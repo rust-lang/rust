@@ -2938,7 +2938,8 @@ impl<'tcx> TypeRelation<'tcx> for SameTypeModuloInfer<'_, 'tcx> {
     }
 
     fn intercrate(&self) -> bool {
-        self.0.intercrate
+        assert!(!self.0.intercrate);
+        false
     }
 
     fn param_env(&self) -> ty::ParamEnv<'tcx> {

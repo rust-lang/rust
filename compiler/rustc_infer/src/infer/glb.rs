@@ -31,7 +31,8 @@ impl<'tcx> TypeRelation<'tcx> for Glb<'_, '_, 'tcx> {
     }
 
     fn intercrate(&self) -> bool {
-        self.fields.infcx.intercrate
+        assert!(!self.fields.infcx.intercrate);
+        false
     }
 
     fn tcx(&self) -> TyCtxt<'tcx> {
@@ -47,7 +48,7 @@ impl<'tcx> TypeRelation<'tcx> for Glb<'_, '_, 'tcx> {
     }
 
     fn mark_ambiguous(&mut self) {
-        self.fields.mark_ambiguous();
+        bug!("mark_ambiguous used outside of coherence");
     }
 
     fn relate_with_variance<T: Relate<'tcx>>(

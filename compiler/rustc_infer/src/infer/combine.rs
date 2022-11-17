@@ -548,7 +548,7 @@ impl<'tcx> TypeRelation<'tcx> for Generalizer<'_, 'tcx> {
     }
 
     fn mark_ambiguous(&mut self) {
-        self.infcx.tcx.sess.delay_span_bug(self.cause.span, "opaque types are handled in `tys`");
+        self.infcx.tcx.sess.delay_span_bug(self.cause.span, "we only generalize opaque types in situations where we already error for them elsewhere in coherence");
     }
 
     fn binders<T>(
@@ -818,7 +818,8 @@ impl<'tcx> TypeRelation<'tcx> for ConstInferUnifier<'_, 'tcx> {
     }
 
     fn intercrate(&self) -> bool {
-        self.infcx.intercrate
+        assert!(!self.infcx.intercrate);
+        false
     }
 
     fn param_env(&self) -> ty::ParamEnv<'tcx> {

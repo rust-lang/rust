@@ -914,7 +914,8 @@ where
     }
 
     fn intercrate(&self) -> bool {
-        self.infcx.intercrate
+        assert!(!self.infcx.intercrate);
+        false
     }
 
     fn param_env(&self) -> ty::ParamEnv<'tcx> {
