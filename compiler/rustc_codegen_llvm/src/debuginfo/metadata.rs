@@ -204,8 +204,7 @@ fn build_pointer_or_reference_di_node<'ll, 'tcx>(
                     Stub::Struct,
                     unique_type_id,
                     &ptr_type_debuginfo_name,
-                    unknown_file_metadata(cx),
-                    UNKNOWN_LINE_NUMBER,
+                    None,
                     cx.size_and_align_of(ptr_type),
                     NO_SCOPE_METADATA,
                     DIFlags::FlagZero,
@@ -373,8 +372,7 @@ fn build_dyn_type_di_node<'ll, 'tcx>(
                 Stub::Struct,
                 unique_type_id,
                 &type_name,
-                unknown_file_metadata(cx),
-                UNKNOWN_LINE_NUMBER,
+                None,
                 cx.size_and_align_of(dyn_type),
                 NO_SCOPE_METADATA,
                 DIFlags::FlagZero,
@@ -845,8 +843,7 @@ fn build_foreign_type_di_node<'ll, 'tcx>(
             Stub::Struct,
             unique_type_id,
             &compute_debuginfo_type_name(cx.tcx, t, false),
-            unknown_file_metadata(cx),
-            UNKNOWN_LINE_NUMBER,
+            None,
             cx.size_and_align_of(t),
             Some(get_namespace_for_item(cx, def_id)),
             DIFlags::FlagZero,
@@ -1050,15 +1047,6 @@ fn build_struct_type_di_node<'ll, 'tcx>(
     let struct_type_and_layout = cx.layout_of(struct_type);
     let variant_def = adt_def.non_enum_variant();
 
-    let tcx = cx.tcx;
-    let struct_span = tcx.def_span(adt_def.did());
-    let (file_metadata, line_number) = if !struct_span.is_dummy() {
-        let loc = cx.lookup_debug_loc(struct_span.lo());
-        (file_metadata(cx, &loc.file), loc.line)
-    } else {
-        (unknown_file_metadata(cx), UNKNOWN_LINE_NUMBER)
-    };
-
     type_map::build_type_with_children(
         cx,
         type_map::stub(
@@ -1066,8 +1054,7 @@ fn build_struct_type_di_node<'ll, 'tcx>(
             Stub::Struct,
             unique_type_id,
             &compute_debuginfo_type_name(cx.tcx, struct_type, false),
-            file_metadata,
-            line_number,
+            Some(adt_def.did()),
             size_and_align_of(struct_type_and_layout),
             Some(containing_scope),
             visibility_di_flags(cx, adt_def.did(), adt_def.did()),
@@ -1171,8 +1158,7 @@ fn build_tuple_type_di_node<'ll, 'tcx>(
             Stub::Struct,
             unique_type_id,
             &type_name,
-            unknown_file_metadata(cx),
-            UNKNOWN_LINE_NUMBER,
+            None,
             size_and_align_of(tuple_type_and_layout),
             NO_SCOPE_METADATA,
             DIFlags::FlagZero,
@@ -1212,14 +1198,6 @@ fn build_closure_env_di_node<'ll, 'tcx>(
     let containing_scope = get_namespace_for_item(cx, def_id);
     let type_name = compute_debuginfo_type_name(cx.tcx, closure_env_type, false);
 
-    let closure_span = cx.tcx.def_span(def_id);
-    let (file_metadata, line_number) = if !closure_span.is_dummy() {
-        let loc = cx.lookup_debug_loc(closure_span.lo());
-        (file_metadata(cx, &loc.file), loc.line)
-    } else {
-        (unknown_file_metadata(cx), UNKNOWN_LINE_NUMBER)
-    };
-
     type_map::build_type_with_children(
         cx,
         type_map::stub(
@@ -1227,8 +1205,7 @@ fn build_closure_env_di_node<'ll, 'tcx>(
             Stub::Struct,
             unique_type_id,
             &type_name,
-            file_metadata,
-            line_number,
+            Some(def_id),
             cx.size_and_align_of(closure_env_type),
             Some(containing_scope),
             DIFlags::FlagZero,
@@ -1260,8 +1237,7 @@ fn build_union_type_di_node<'ll, 'tcx>(
             Stub::Union,
             unique_type_id,
             &type_name,
-            unknown_file_metadata(cx),
-            UNKNOWN_LINE_NUMBER,
+            Some(union_def_id),
             size_and_align_of(union_ty_and_layout),
             Some(containing_scope),
             DIFlags::FlagZero,
@@ -1454,8 +1430,7 @@ fn build_vtable_type_di_node<'ll, 'tcx>(
             Stub::VTableTy { vtable_holder },
             unique_type_id,
             &vtable_type_name,
-            unknown_file_metadata(cx),
-            UNKNOWN_LINE_NUMBER,
+            None,
             (size, pointer_align),
             NO_SCOPE_METADATA,
             DIFlags::FlagArtificial,

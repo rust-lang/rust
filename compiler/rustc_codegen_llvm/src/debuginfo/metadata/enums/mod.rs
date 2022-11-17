@@ -16,8 +16,8 @@ use super::{SmallVec, size_and_align_of};
 use crate::common::{AsCCharPtr, CodegenCx};
 use crate::debuginfo::metadata::type_map::{self, Stub};
 use crate::debuginfo::metadata::{
-    UNKNOWN_LINE_NUMBER, build_field_di_node, build_generic_type_param_di_nodes, type_di_node,
-    unknown_file_metadata,
+    UNKNOWN_LINE_NUMBER, build_field_di_node, build_generic_type_param_di_nodes,
+    file_metadata_from_def_id, type_di_node, unknown_file_metadata,
 };
 use crate::debuginfo::utils::{DIB, create_DIArray, get_namespace_for_item};
 use crate::llvm::debuginfo::{DIFlags, DIType};
@@ -77,6 +77,7 @@ fn build_c_style_enum_di_node<'ll, 'tcx>(
                 let name = Cow::from(enum_adt_def.variant(variant_index).name.as_str());
                 (name, discr.val)
             }),
+            enum_adt_def.did(),
             containing_scope,
         ),
         already_stored_in_typemap: false,
@@ -92,6 +93,7 @@ fn build_enumeration_type_di_node<'ll, 'tcx>(
     type_name: &str,
     base_type: Ty<'tcx>,
     enumerators: impl Iterator<Item = (Cow<'tcx, str>, u128)>,
+    def_id: rustc_span::def_id::DefId,
     containing_scope: &'ll DIType,
 ) -> &'ll DIType {
     let is_unsigned = match base_type.kind() {
@@ -115,14 +117,16 @@ fn build_enumeration_type_di_node<'ll, 'tcx>(
         })
         .collect();
 
+    let (file_metadata, line_number) = file_metadata_from_def_id(cx, Some(def_id));
+
     unsafe {
         llvm::LLVMRustDIBuilderCreateEnumerationType(
             DIB(cx),
             containing_scope,
             type_name.as_c_char_ptr(),
             type_name.len(),
-            unknown_file_metadata(cx),
-            UNKNOWN_LINE_NUMBER,
+            file_metadata,
+            line_number,
             size.bits(),
             align.bits() as u32,
             create_DIArray(DIB(cx), &enumerator_di_nodes[..]),
@@ -204,8 +208,7 @@ fn build_enum_variant_struct_type_di_node<'ll, 'tcx>(
                 variant_index,
             ),
             variant_def.name.as_str(),
-            unknown_file_metadata(cx),
-            UNKNOWN_LINE_NUMBER,
+            None,
             // NOTE: We use size and align of enum_type, not from variant_layout:
             size_and_align_of(enum_type_and_layout),
             Some(enum_type_di_node),
@@ -288,8 +291,7 @@ fn build_coroutine_variant_struct_type_di_node<'ll, 'tcx>(
             Stub::Struct,
             unique_type_id,
             &variant_name,
-            unknown_file_metadata(cx),
-            UNKNOWN_LINE_NUMBER,
+            None,
             size_and_align_of(coroutine_type_and_layout),
             Some(coroutine_type_di_node),
             DIFlags::FlagZero,
@@ -355,11 +357,7 @@ enum DiscrResult {
 
 impl DiscrResult {
     fn opt_single_val(&self) -> Option<u128> {
-        if let Self::Value(d) = *self {
-            Some(d)
-        } else {
-            None
-        }
+        if let Self::Value(d) = *self { Some(d) } else { None }
     }
 }
 

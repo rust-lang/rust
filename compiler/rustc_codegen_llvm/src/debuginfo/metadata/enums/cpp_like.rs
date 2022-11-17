@@ -199,8 +199,7 @@ pub(super) fn build_enum_type_di_node<'ll, 'tcx>(
             type_map::Stub::Union,
             unique_type_id,
             &enum_type_name,
-            unknown_file_metadata(cx),
-            UNKNOWN_LINE_NUMBER,
+            Some(enum_adt_def.did()),
             cx.size_and_align_of(enum_type),
             NO_SCOPE_METADATA,
             visibility_di_flags(cx, enum_adt_def.did(), enum_adt_def.did()),
@@ -276,8 +275,7 @@ pub(super) fn build_coroutine_di_node<'ll, 'tcx>(
             type_map::Stub::Union,
             unique_type_id,
             &coroutine_type_name,
-            unknown_file_metadata(cx),
-            UNKNOWN_LINE_NUMBER,
+            None,
             size_and_align_of(coroutine_type_and_layout),
             NO_SCOPE_METADATA,
             DIFlags::FlagZero,
@@ -332,6 +330,7 @@ fn build_single_variant_union_fields<'ll, 'tcx>(
             variant_index,
             Cow::from(enum_adt_def.variant(variant_index).name.as_str()),
         )),
+        enum_adt_def.did(),
     );
 
     let variant_struct_type_wrapper_di_node = build_variant_struct_wrapper_type_di_node(
@@ -394,6 +393,7 @@ fn build_union_fields_for_enum<'ll, 'tcx>(
             let variant_name = Cow::from(enum_adt_def.variant(variant_index).name.as_str());
             (variant_index, variant_name)
         }),
+        enum_adt_def.did(),
     );
     let visibility_flags = visibility_di_flags(cx, enum_adt_def.did(), enum_adt_def.did());
 
@@ -451,6 +451,7 @@ fn build_variant_names_type_di_node<'ll, 'tcx>(
     cx: &CodegenCx<'ll, 'tcx>,
     containing_scope: &'ll DIType,
     variants: impl Iterator<Item = (VariantIdx, Cow<'tcx, str>)>,
+    enum_def_id: rustc_span::def_id::DefId,
 ) -> &'ll DIType {
     // Create an enumerator for each variant.
     super::build_enumeration_type_di_node(
@@ -458,6 +459,7 @@ fn build_variant_names_type_di_node<'ll, 'tcx>(
         "VariantNames",
         variant_names_enum_base_type(cx),
         variants.map(|(variant_index, variant_name)| (variant_name, variant_index.as_u32().into())),
+        enum_def_id,
         containing_scope,
     )
 }
@@ -485,8 +487,7 @@ fn build_variant_struct_wrapper_type_di_node<'ll, 'tcx>(
                 variant_index,
             ),
             &variant_struct_wrapper_type_name(variant_index),
-            unknown_file_metadata(cx),
-            UNKNOWN_LINE_NUMBER,
+            None,
             // NOTE: We use size and align of enum_type, not from variant_layout:
             size_and_align_of(enum_or_coroutine_type_and_layout),
             Some(enum_or_coroutine_type_di_node),
@@ -690,6 +691,7 @@ fn build_union_fields_for_direct_tag_coroutine<'ll, 'tcx>(
         variant_range
             .clone()
             .map(|variant_index| (variant_index, CoroutineArgs::variant_name(variant_index))),
+        coroutine_def_id,
     );
 
     let discriminants: IndexVec<VariantIdx, DiscrResult> = {
