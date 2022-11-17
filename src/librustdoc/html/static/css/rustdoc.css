@@ -1159,6 +1159,8 @@ pre.rust .doccomment {
 	width: max-content;
 	top: -2px;
 	z-index: 1;
+	background-color: var(--tooltip-background-color);
+	color: var(--tooltip-color);
 }
 
 .example-wrap .tooltip::before {
@@ -1167,10 +1169,10 @@ pre.rust .doccomment {
 	top: 50%;
 	left: 16px;
 	margin-top: -5px;
-	border-width: 5px;
-	border-style: solid;
 	display: none;
 	z-index: 1;
+	border: 5px solid transparent;
+	border-right-color: var(--tooltip-background-color);
 }
 
 .example-wrap.ignore .tooltip::after {
