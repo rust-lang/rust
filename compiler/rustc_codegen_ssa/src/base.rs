@@ -5,6 +5,7 @@ use crate::back::write::{
     submit_post_lto_module_to_llvm, submit_pre_lto_module_to_llvm, ComputedLtoType, OngoingCodegen,
 };
 use crate::common::{IntPredicate, RealPredicate, TypeKind};
+use crate::errors;
 use crate::meth;
 use crate::mir;
 use crate::mir::operand::OperandValue;
@@ -451,10 +452,7 @@ pub fn maybe_create_entry_wrapper<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>>(
         let Some(llfn) = cx.declare_c_main(llfty) else {
             // FIXME: We should be smart and show a better diagnostic here.
             let span = cx.tcx().def_span(rust_main_def_id);
-            cx.sess()
-                .struct_span_err(span, "entry symbol `main` declared multiple times")
-                .help("did you use `#[no_mangle]` on `fn main`? Use `#[start]` instead")
-                .emit();
+            cx.sess().emit_err(errors::MultipleMainFunctions { span });
             cx.sess().abort_if_errors();
             bug!();
         };
@@ -595,8 +593,8 @@ pub fn codegen_crate<B: ExtraBackendMethods>(
                 &metadata,
                 &exported_symbols::metadata_symbol_name(tcx),
             );
-            if let Err(err) = std::fs::write(&file_name, data) {
-                tcx.sess.fatal(&format!("error writing metadata object file: {}", err));
+            if let Err(error) = std::fs::write(&file_name, data) {
+                tcx.sess.emit_fatal(errors::MetadataObjectFileWrite { error });
             }
             Some(CompiledModule {
                 name: metadata_cgu_name,
@@ -815,11 +813,7 @@ impl CrateInfo {
         let subsystem = tcx.sess.first_attr_value_str_by_name(crate_attrs, sym::windows_subsystem);
         let windows_subsystem = subsystem.map(|subsystem| {
             if subsystem != sym::windows && subsystem != sym::console {
-                tcx.sess.fatal(&format!(
-                    "invalid windows subsystem `{}`, only \
-                                     `windows` and `console` are allowed",
-                    subsystem
-                ));
+                tcx.sess.emit_fatal(errors::InvalidWindowsSubsystem { subsystem });
             }
             subsystem.to_string()
         });

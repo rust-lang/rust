@@ -194,3 +194,10 @@ codegen_ssa_unknown_archive_kind =
     Don't know how to build archive of type: {$kind}
 
 codegen_ssa_expected_used_symbol = expected `used`, `used(compiler)` or `used(linker)`
+
+codegen_ssa_multiple_main_functions = entry symbol `main` declared multiple times
+    .help = did you use `#[no_mangle]` on `fn main`? Use `#[start]` instead
+
+codegen_ssa_metadata_object_file_write = error writing metadata object file: {$error}
+
+codegen_ssa_invalid_windows_subsystem = invalid windows subsystem `{$subsystem}`, only `windows` and `console` are allowed

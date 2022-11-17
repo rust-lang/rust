@@ -555,3 +555,23 @@ pub struct ExpectedUsedSymbol {
     #[primary_span]
     pub span: Span,
 }
+
+#[derive(Diagnostic)]
+#[diag(codegen_ssa_multiple_main_functions)]
+#[help]
+pub struct MultipleMainFunctions {
+    #[primary_span]
+    pub span: Span,
+}
+
+#[derive(Diagnostic)]
+#[diag(codegen_ssa_metadata_object_file_write)]
+pub struct MetadataObjectFileWrite {
+    pub error: Error,
+}
+
+#[derive(Diagnostic)]
+#[diag(codegen_ssa_invalid_windows_subsystem)]
+pub struct InvalidWindowsSubsystem {
+    pub subsystem: Symbol,
+}
