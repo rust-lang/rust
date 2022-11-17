@@ -174,6 +174,7 @@ fn pred_known_to_hold_modulo_regions<'tcx>(
         // this function's result remains infallible, we must confirm
         // that guess. While imperfect, I believe this is sound.
 
+        // FIXME(@lcnr): this function doesn't seem right.
         // The handling of regions in this area of the code is terrible,
         // see issue #29149. We should be able to improve on this with
         // NLL.
