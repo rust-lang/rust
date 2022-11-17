@@ -1,6 +1,7 @@
 // build-fail
 // compile-flags: -Copt-level=0
-//~^^ ERROR overflow evaluating the requirement
+// normalize-stderr-test: "long-type-\d+" -> "long-type-hash"
+//~^^^ ERROR overflow evaluating the requirement
 
 fn main() {
     let mut iter = 0u8..1;

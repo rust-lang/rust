@@ -2733,9 +2733,13 @@ impl<'tcx> TypeErrCtxtExt<'tcx> for TypeErrCtxt<'_, 'tcx> {
                     self.resolve_vars_if_possible(data.derived.parent_trait_pred);
                 parent_trait_pred.remap_constness_diag(param_env);
                 let parent_def_id = parent_trait_pred.def_id();
+                let (self_ty, file) =
+                    match self.tcx.short_ty_string(parent_trait_pred.skip_binder().self_ty()) {
+                        Ok(self_ty) => (self_ty, None),
+                        Err((self_ty, file)) => (self_ty, Some(file)),
+                    };
                 let msg = format!(
-                    "required for `{}` to implement `{}`",
-                    parent_trait_pred.skip_binder().self_ty(),
+                    "required for `{self_ty}` to implement `{}`",
                     parent_trait_pred.print_modifiers_and_trait_path()
                 );
                 let mut is_auto_trait = false;
@@ -2764,6 +2768,12 @@ impl<'tcx> TypeErrCtxtExt<'tcx> for TypeErrCtxt<'_, 'tcx> {
                     _ => err.note(&msg),
                 };
 
+                if let Some(file) = file {
+                    err.note(&format!(
+                        "the full type name has been written to '{}'",
+                        file.display(),
+                    ));
+                }
                 let mut parent_predicate = parent_trait_pred;
                 let mut data = &data.derived;
                 let mut count = 0;
@@ -2804,11 +2814,21 @@ impl<'tcx> TypeErrCtxtExt<'tcx> for TypeErrCtxt<'_, 'tcx> {
                         count,
                         pluralize!(count)
                     ));
+                    let (self_ty, file) =
+                        match self.tcx.short_ty_string(parent_trait_pred.skip_binder().self_ty()) {
+                            Ok(self_ty) => (self_ty, None),
+                            Err((self_ty, file)) => (self_ty, Some(file)),
+                        };
                     err.note(&format!(
-                        "required for `{}` to implement `{}`",
-                        parent_trait_pred.skip_binder().self_ty(),
+                        "required for `{self_ty}` to implement `{}`",
                         parent_trait_pred.print_modifiers_and_trait_path()
                     ));
+                    if let Some(file) = file {
+                        err.note(&format!(
+                            "the full type name has been written to '{}'",
+                            file.display(),
+                        ));
+                    }
                 }
                 // #74711: avoid a stack overflow
                 ensure_sufficient_stack(|| {
