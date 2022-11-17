@@ -672,10 +672,9 @@ impl<'cx, 'tcx> WritebackCx<'cx, 'tcx> {
         // We may have introduced e.g. `ty::Error`, if inference failed, make sure
         // to mark the `TypeckResults` as tainted in that case, so that downstream
         // users of the typeck results don't produce extra errors, or worse, ICEs.
-        if resolver.replaced_with_error {
+        if let Some(e) = resolver.replaced_with_error {
             // FIXME(eddyb) keep track of `ErrorGuaranteed` from where the error was emitted.
-            self.typeck_results.tainted_by_errors =
-                Some(ErrorGuaranteed::unchecked_claim_error_was_emitted());
+            self.typeck_results.tainted_by_errors = Some(e);
         }
 
         x
@@ -706,8 +705,8 @@ struct Resolver<'cx, 'tcx> {
     span: &'cx dyn Locatable,
     body: &'tcx hir::Body<'tcx>,
 
-    /// Set to `true` if any `Ty` or `ty::Const` had to be replaced with an `Error`.
-    replaced_with_error: bool,
+    /// Set to `Some` if any `Ty` or `ty::Const` had to be replaced with an `Error`.
+    replaced_with_error: Option<ErrorGuaranteed>,
 }
 
 impl<'cx, 'tcx> Resolver<'cx, 'tcx> {
@@ -716,12 +715,14 @@ impl<'cx, 'tcx> Resolver<'cx, 'tcx> {
         span: &'cx dyn Locatable,
         body: &'tcx hir::Body<'tcx>,
     ) -> Resolver<'cx, 'tcx> {
-        Resolver { tcx: fcx.tcx, infcx: fcx, span, body, replaced_with_error: false }
+        Resolver { tcx: fcx.tcx, infcx: fcx, span, body, replaced_with_error: None }
     }
 
-    fn report_error(&self, p: impl Into<ty::GenericArg<'tcx>>) {
-        if !self.tcx.sess.has_errors().is_some() {
-            self.infcx
+    fn report_error(&self, p: impl Into<ty::GenericArg<'tcx>>) -> ErrorGuaranteed {
+        match self.tcx.sess.has_errors() {
+            Some(e) => e,
+            None => self
+                .infcx
                 .err_ctxt()
                 .emit_inference_failure_err(
                     Some(self.body.id()),
@@ -730,7 +731,7 @@ impl<'cx, 'tcx> Resolver<'cx, 'tcx> {
                     E0282,
                     false,
                 )
-                .emit();
+                .emit(),
         }
     }
 }
@@ -771,9 +772,9 @@ impl<'cx, 'tcx> TypeFolder<'tcx> for Resolver<'cx, 'tcx> {
             }
             Err(_) => {
                 debug!("Resolver::fold_ty: input type `{:?}` not fully resolvable", t);
-                self.report_error(t);
-                self.replaced_with_error = true;
-                self.tcx().ty_error()
+                let e = self.report_error(t);
+                self.replaced_with_error = Some(e);
+                self.tcx().ty_error_with_guaranteed(e)
             }
         }
     }
@@ -788,9 +789,9 @@ impl<'cx, 'tcx> TypeFolder<'tcx> for Resolver<'cx, 'tcx> {
             Ok(ct) => self.tcx.erase_regions(ct),
             Err(_) => {
                 debug!("Resolver::fold_const: input const `{:?}` not fully resolvable", ct);
-                self.report_error(ct);
-                self.replaced_with_error = true;
-                self.tcx().const_error(ct.ty())
+                let e = self.report_error(ct);
+                self.replaced_with_error = Some(e);
+                self.tcx().const_error_with_guaranteed(ct.ty(), e)
             }
         }
     }
