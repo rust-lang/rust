@@ -1,3 +1,4 @@
+use crate::builder::{Builder, RunConfig, ShouldRun, Step};
 use crate::{t, VERSION};
 use crate::{Config, TargetSelection};
 use std::env::consts::EXE_SUFFIX;
@@ -11,7 +12,7 @@ use std::{
     io::{self, Write},
 };
 
-#[derive(Clone, Copy, Debug, Eq, PartialEq)]
+#[derive(Clone, Copy, Debug, Eq, PartialEq, Hash)]
 pub enum Profile {
     Compiler,
     Codegen,
@@ -50,6 +51,16 @@ impl Profile {
         }
         out
     }
+
+    pub fn as_str(&self) -> &'static str {
+        match self {
+            Profile::Compiler => "compiler",
+            Profile::Codegen => "codegen",
+            Profile::Library => "library",
+            Profile::Tools => "tools",
+            Profile::User => "user",
+        }
+    }
 }
 
 impl FromStr for Profile {
@@ -71,13 +82,43 @@ impl FromStr for Profile {
 
 impl fmt::Display for Profile {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        match self {
-            Profile::Compiler => write!(f, "compiler"),
-            Profile::Codegen => write!(f, "codegen"),
-            Profile::Library => write!(f, "library"),
-            Profile::User => write!(f, "user"),
-            Profile::Tools => write!(f, "tools"),
+        f.write_str(self.as_str())
+    }
+}
+
+impl Step for Profile {
+    type Output = ();
+    const DEFAULT: bool = true;
+
+    fn should_run(mut run: ShouldRun<'_>) -> ShouldRun<'_> {
+        for choice in Profile::all() {
+            run = run.alias(choice.as_str());
         }
+        run
+    }
+
+    fn make_run(run: RunConfig<'_>) {
+        // for Profile, `run.paths` will have 1 and only 1 element
+        // this is because we only accept at most 1 path from user input.
+        // If user calls `x.py setup` without arguments, the interacctive TUI
+        // will guide user to provide one.
+        let profile: Profile = run
+            .paths
+            .first()
+            .unwrap()
+            .assert_single_path()
+            .path
+            .to_owned()
+            .into_os_string()
+            .into_string()
+            .unwrap()
+            .parse()
+            .unwrap();
+        run.builder.ensure(profile);
+    }
+
+    fn run(self, builder: &Builder<'_>) {
+        setup(&builder.build.config, self)
     }
 }
 
@@ -103,6 +144,7 @@ pub fn setup(config: &Config, profile: Profile) {
     changelog-seen = {}\n",
         profile, VERSION
     );
+
     t!(fs::write(path, settings));
 
     let include_path = profile.include_path(&config.src);
@@ -116,7 +158,7 @@ pub fn setup(config: &Config, profile: Profile) {
 
     if !rustup_installed() && profile != Profile::User {
         eprintln!("`rustup` is not installed; cannot link `stage1` toolchain");
-    } else if stage_dir_exists(&stage_path[..]) {
+    } else if stage_dir_exists(&stage_path[..]) && !config.dry_run {
         attempt_toolchain_link(&stage_path[..]);
     }
 
@@ -136,7 +178,9 @@ pub fn setup(config: &Config, profile: Profile) {
 
     println!();
 
-    t!(install_git_hook_maybe(&config));
+    if !config.dry_run {
+        t!(install_git_hook_maybe(&config));
+    }
 
     println!();
 
