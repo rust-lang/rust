@@ -83,10 +83,8 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         wbcx.typeck_results.treat_byte_string_as_slice =
             mem::take(&mut self.typeck_results.borrow_mut().treat_byte_string_as_slice);
 
-        if self.is_tainted_by_errors() {
-            // FIXME(eddyb) keep track of `ErrorGuaranteed` from where the error was emitted.
-            wbcx.typeck_results.tainted_by_errors =
-                Some(ErrorGuaranteed::unchecked_claim_error_was_emitted());
+        if let Some(e) = self.is_tainted_by_errors() {
+            wbcx.typeck_results.tainted_by_errors = Some(e);
         }
 
         debug!("writeback: typeck results for {:?} are {:#?}", item_def_id, wbcx.typeck_results);

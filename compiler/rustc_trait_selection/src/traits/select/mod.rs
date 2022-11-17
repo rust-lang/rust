@@ -33,7 +33,7 @@ use crate::traits::ProjectionCacheKey;
 use rustc_data_structures::fx::FxHashMap;
 use rustc_data_structures::fx::{FxHashSet, FxIndexSet};
 use rustc_data_structures::stack::ensure_sufficient_stack;
-use rustc_errors::{Diagnostic, ErrorGuaranteed};
+use rustc_errors::Diagnostic;
 use rustc_hir as hir;
 use rustc_hir::def_id::DefId;
 use rustc_infer::infer::LateBoundRegionConversionTime;
@@ -1089,10 +1089,8 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
         if !self.infcx.tcx.recursion_limit().value_within_limit(depth) {
             match self.query_mode {
                 TraitQueryMode::Standard => {
-                    if self.infcx.is_tainted_by_errors() {
-                        return Err(OverflowError::Error(
-                            ErrorGuaranteed::unchecked_claim_error_was_emitted(),
-                        ));
+                    if let Some(e) = self.infcx.is_tainted_by_errors() {
+                        return Err(OverflowError::Error(e));
                     }
                     self.infcx.err_ctxt().report_overflow_error(error_obligation, true);
                 }

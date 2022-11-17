@@ -19,7 +19,7 @@ extern crate tracing;
 use rustc_data_structures::fx::{FxHashMap, FxHashSet};
 use rustc_data_structures::graph::dominators::Dominators;
 use rustc_data_structures::vec_map::VecMap;
-use rustc_errors::{Diagnostic, DiagnosticBuilder, ErrorGuaranteed};
+use rustc_errors::{Diagnostic, DiagnosticBuilder};
 use rustc_hir as hir;
 use rustc_hir::def_id::LocalDefId;
 use rustc_index::bit_set::ChunkedBitSet;

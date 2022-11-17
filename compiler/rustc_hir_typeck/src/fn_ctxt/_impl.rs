@@ -528,7 +528,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
     pub fn node_ty(&self, id: hir::HirId) -> Ty<'tcx> {
         match self.typeck_results.borrow().node_types().get(id) {
             Some(&t) => t,
-            None if self.is_tainted_by_errors() => self.tcx.ty_error(),
+            None if let Some(e) = self.is_tainted_by_errors() => self.tcx.ty_error_with_guaranteed(e),
             None => {
                 bug!(
                     "no type for node {}: {} in fcx {}",
@@ -543,7 +543,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
     pub fn node_ty_opt(&self, id: hir::HirId) -> Option<Ty<'tcx>> {
         match self.typeck_results.borrow().node_types().get(id) {
             Some(&t) => Some(t),
-            None if self.is_tainted_by_errors() => Some(self.tcx.ty_error()),
+            None if let Some(e) = self.is_tainted_by_errors() => Some(self.tcx.ty_error_with_guaranteed(e)),
             None => None,
         }
     }
@@ -1440,7 +1440,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         if !ty.is_ty_var() {
             ty
         } else {
-            if !self.is_tainted_by_errors() {
+            if let None = self.is_tainted_by_errors() {
                 self.err_ctxt()
                     .emit_inference_failure_err((**self).body_id, sp, ty.into(), E0282, true)
                     .emit();
