@@ -1244,8 +1244,8 @@ supported_targets! {
 
     ("mips64-openwrt-linux-musl", mips64_openwrt_linux_musl),
 
-    ("aarch64-unknown-nto-qnx7.1.0", aarch64_unknown_nto_qnx_710),
-    ("x86_64-pc-nto-qnx7.1.0", x86_64_pc_nto_qnx710),
+    ("aarch64-unknown-nto-qnx710", aarch64_unknown_nto_qnx_710),
+    ("x86_64-pc-nto-qnx710", x86_64_pc_nto_qnx710),
 }
 
 /// Cow-Vec-Str: Cow<'static, [Cow<'static, str>]>
