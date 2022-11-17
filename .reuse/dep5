@@ -57,6 +57,10 @@ Copyright: 2016 The Fuchsia Authors
            The Rust Project Developers (see https://thanks.rust-lang.org)
 License: BSD-2-Clause AND (MIT OR Apache-2.0)
 
+Files: src/test/rustdoc/auxiliary/enum-primitive.rs
+Copyright: 2015 Anders Kaseorg <andersk@mit.edu>
+License: MIT
+
 Files: src/librustdoc/html/static/fonts/FiraSans*
 Copyright: 2014, Mozilla Foundation
            2014, Telefonica S.A.
