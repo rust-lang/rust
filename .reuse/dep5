@@ -79,6 +79,11 @@ Files: src/librustdoc/html/static/css/normalize.css
 Copyright: Nicolas Gallagher and Jonathan Neal
 License: MIT
 
+Files: src/librustdoc/html/static/css/themes/ayu.css
+Copyright: Ike Ku, Jessica Stokes, Leon Guan
+           The Rust Project Developers (see https://thanks.rust-lang.org)
+License: MIT OR Apache-2.0
+
 Files: src/doc/rustc-dev-guide/mermaid.min.js
 Copyright: Knut Sveidqvist
 License: MIT
