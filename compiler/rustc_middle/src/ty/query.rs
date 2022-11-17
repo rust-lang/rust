@@ -68,7 +68,6 @@ use rustc_query_system::query::*;
 #[derive(Copy, Clone)]
 pub struct TyCtxtAt<'tcx> {
     pub tcx: TyCtxt<'tcx>,
-    pub span: Span,
 }
 
 impl<'tcx> Deref for TyCtxtAt<'tcx> {
@@ -96,7 +95,8 @@ impl<'tcx> TyCtxt<'tcx> {
     /// `span` as the location of queries performed through it.
     #[inline(always)]
     pub fn at(self, span: Span) -> TyCtxtAt<'tcx> {
-        TyCtxtAt { tcx: self, span }
+        self.span = span;
+        TyCtxtAt { tcx: self }
     }
 
     pub fn try_mark_green(self, dep_node: &dep_graph::DepNode) -> bool {

@@ -1017,6 +1017,7 @@ pub struct FreeRegionInfo {
 #[rustc_pass_by_value]
 pub struct TyCtxt<'tcx> {
     gcx: &'tcx GlobalCtxt<'tcx>,
+    pub span: Span,
 }
 
 impl<'tcx> Deref for TyCtxt<'tcx> {
@@ -1830,6 +1831,7 @@ pub mod tls {
     use crate::ty::query;
     use rustc_data_structures::sync::{self, Lock};
     use rustc_errors::Diagnostic;
+    use rustc_span::DUMMY_SP;
     use std::mem;
     use thin_vec::ThinVec;
 
@@ -1867,7 +1869,7 @@ pub mod tls {
 
     impl<'a, 'tcx> ImplicitCtxt<'a, 'tcx> {
         pub fn new(gcx: &'tcx GlobalCtxt<'tcx>) -> Self {
-            let tcx = TyCtxt { gcx };
+            let tcx = TyCtxt { gcx, span: DUMMY_SP };
             ImplicitCtxt {
                 tcx,
                 query: None,
