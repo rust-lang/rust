@@ -3,6 +3,8 @@
 # will be uploaded to the deploy bucket and eventually signed and released in
 # static.rust-lang.org.
 
+env
+
 set -euo pipefail
 IFS=$'\n\t'
 

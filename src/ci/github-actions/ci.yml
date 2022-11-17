@@ -206,13 +206,13 @@ x--expand-yaml-anchors--remove:
         run: src/ci/scripts/verify-stable-version-number.sh
         <<: *step
 
-      - name: run the build
-        run: src/ci/scripts/run-build-from-ci.sh
-        env:
-          AWS_ACCESS_KEY_ID: ${{ env.CACHES_AWS_ACCESS_KEY_ID }}
-          AWS_SECRET_ACCESS_KEY: ${{ secrets[format('AWS_SECRET_ACCESS_KEY_{0}', env.CACHES_AWS_ACCESS_KEY_ID)] }}
-          TOOLSTATE_REPO_ACCESS_TOKEN: ${{ secrets.TOOLSTATE_REPO_ACCESS_TOKEN }}
-        <<: *step
+      # - name: run the build
+      #   run: src/ci/scripts/run-build-from-ci.sh
+      #   env:
+      #     AWS_ACCESS_KEY_ID: ${{ env.CACHES_AWS_ACCESS_KEY_ID }}
+      #     AWS_SECRET_ACCESS_KEY: ${{ secrets[format('AWS_SECRET_ACCESS_KEY_{0}', env.CACHES_AWS_ACCESS_KEY_ID)] }}
+      #     TOOLSTATE_REPO_ACCESS_TOKEN: ${{ secrets.TOOLSTATE_REPO_ACCESS_TOKEN }}
+      #   <<: *step
 
       - name: upload artifacts to S3
         run: src/ci/scripts/upload-artifacts.sh
@@ -224,7 +224,7 @@ x--expand-yaml-anchors--remove:
         # adding the condition is helpful as this way CI will not silently skip
         # deploying artifacts from a dist builder if the variables are misconfigured,
         # erroring about invalid credentials instead.
-        if: success() && !env.SKIP_JOB && (github.event_name == 'push' || env.DEPLOY == '1' || env.DEPLOY_ALT == '1')
+        # if: success() && !env.SKIP_JOB && (github.event_name == 'push' || env.DEPLOY == '1' || env.DEPLOY_ALT == '1')
         <<: *step
 
   # These snippets are used by the try-success, try-failure, auto-success and auto-failure jobs.
