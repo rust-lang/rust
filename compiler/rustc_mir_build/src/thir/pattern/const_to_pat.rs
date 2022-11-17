@@ -241,7 +241,7 @@ impl<'tcx> ConstToPat<'tcx> {
             partial_eq_trait_id,
             0,
             ty,
-            &[any_ty],
+            [any_ty],
         );
         // FIXME: should this call a `predicate_must_hold` variant instead?
 

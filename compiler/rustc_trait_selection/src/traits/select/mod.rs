@@ -2101,7 +2101,7 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
                     trait_def_id,
                     recursion_depth,
                     normalized_ty,
-                    &[],
+                    [],
                 );
                 obligations.push(placeholder_obligation);
                 obligations

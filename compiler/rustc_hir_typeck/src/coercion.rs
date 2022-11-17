@@ -631,7 +631,7 @@ impl<'f, 'tcx> Coerce<'f, 'tcx> {
             coerce_unsized_did,
             0,
             coerce_source,
-            &[coerce_target.into()]
+            [coerce_target.into()]
         )];
 
         let mut has_unsized_tuple_coercion = false;

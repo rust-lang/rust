@@ -1108,7 +1108,7 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
                     obligation.predicate.def_id(),
                     obligation.recursion_depth + 1,
                     source_tail,
-                    &[target_tail.into()],
+                    [target_tail.into()],
                 ));
             }
 
@@ -1139,7 +1139,7 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
                         obligation.predicate.def_id(),
                         obligation.recursion_depth + 1,
                         a_last,
-                        &[b_last.into()],
+                        [b_last.into()],
                     )
                 }));
             }
