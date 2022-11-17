@@ -276,24 +276,17 @@ fn adjust_for_rust_scalar<'tcx>(
                 attrs.set(ArgAttribute::NoAliasMutRef);
             }
         }
-    }
 
-    // If this is the argument to `drop_in_place`, the contents of which we fully control as the
-    // compiler, then we may be able to mark that argument `noalias`. Currently, we're conservative
-    // and do so only if `drop_in_place` results in a direct call to the programmer's `drop` method.
-    // The `drop` method requires `&mut self`, so we're effectively just propagating the `noalias`
-    // guarantee from `drop` upward to `drop_in_place` in this case.
-    if is_drop_target {
-        match *layout.ty.kind() {
-            ty::RawPtr(inner) => {
-                if let ty::Adt(adt_def, _) = inner.ty.kind() {
-                    if adt_def.destructor(cx.tcx()).is_some() {
-                        debug!("marking drop_in_place argument as noalias");
-                        attrs.set(ArgAttribute::NoAlias);
-                    }
-                }
-            }
-            _ => bug!("drop target isn't a raw pointer"),
+        // If this is the argument to `drop_in_place`, the contents of which we fully control as the
+        // compiler, then we mark this argument as `noalias`, aligned, and dereferenceable. (The
+        // standard library documents the necessary requirements to uphold these attributes for code
+        // that calls this method directly.) This can enable better optimizations, such as argument
+        // promotion.
+        if is_drop_target {
+            attrs.set(ArgAttribute::NoAlias);
+            attrs.set(ArgAttribute::NonNull);
+            attrs.pointee_size = pointee.size;
+            attrs.pointee_align = Some(pointee.align);
         }
     }
 }

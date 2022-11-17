@@ -4,7 +4,7 @@
 
 use std::hint::black_box;
 
-// CHECK: define{{.*}}drop_in_place{{.*}}Foo{{.*}}({{.*}}noalias{{.*}})
+// CHECK: define{{.*}}core{{.*}}ptr{{.*}}drop_in_place{{.*}}Foo{{.*}}({{.*}}noalias {{.*}} align 4 dereferenceable(12){{.*}})
 
 #[repr(C)]
 pub struct Foo {
