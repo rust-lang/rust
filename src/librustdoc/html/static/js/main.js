@@ -795,7 +795,7 @@ function loadCss(cssUrl) {
             // This means when the window is resized, we need to redo the layout.
             const base = window.CURRENT_NOTABLE_ELEMENT.NOTABLE_BASE;
             const force_visible = base.NOTABLE_FORCE_VISIBLE;
-            hideNotable();
+            hideNotable(false);
             if (force_visible) {
                 showNotable(base);
                 base.NOTABLE_FORCE_VISIBLE = true;
@@ -846,7 +846,7 @@ function loadCss(cssUrl) {
             // Make this function idempotent.
             return;
         }
-        hideNotable();
+        hideNotable(false);
         const ty = e.getAttribute("data-ty");
         const wrapper = document.createElement("div");
         wrapper.innerHTML = "<div class=\"docblock\">" + window.NOTABLE_TRAITS[ty] + "</div>";
@@ -883,7 +883,7 @@ function loadCss(cssUrl) {
                 return;
             }
             if (!e.NOTABLE_FORCE_VISIBLE && !elemIsInParent(event.relatedTarget, e)) {
-                hideNotable();
+                hideNotable(true);
             }
         };
     }
@@ -903,13 +903,16 @@ function loadCss(cssUrl) {
             // To work around this, make sure the click finishes being dispatched before
             // hiding the popover. Since `hideNotable()` is idempotent, this makes Safari behave
             // consistently with the other two.
-            setTimeout(hideNotable, 0);
+            setTimeout(() => hideNotable(false), 0);
         }
     }
 
-    function hideNotable() {
+    function hideNotable(focus) {
         if (window.CURRENT_NOTABLE_ELEMENT) {
             if (window.CURRENT_NOTABLE_ELEMENT.NOTABLE_BASE.NOTABLE_FORCE_VISIBLE) {
+                if (focus) {
+                    window.CURRENT_NOTABLE_ELEMENT.NOTABLE_BASE.focus();
+                }
                 window.CURRENT_NOTABLE_ELEMENT.NOTABLE_BASE.NOTABLE_FORCE_VISIBLE = false;
             }
             const body = document.getElementsByTagName("body")[0];
@@ -922,7 +925,7 @@ function loadCss(cssUrl) {
         e.onclick = function() {
             this.NOTABLE_FORCE_VISIBLE = this.NOTABLE_FORCE_VISIBLE ? false : true;
             if (window.CURRENT_NOTABLE_ELEMENT && !this.NOTABLE_FORCE_VISIBLE) {
-                hideNotable();
+                hideNotable(true);
             } else {
                 showNotable(this);
                 window.CURRENT_NOTABLE_ELEMENT.setAttribute("tabindex", "0");
@@ -945,7 +948,7 @@ function loadCss(cssUrl) {
             }
             if (!this.NOTABLE_FORCE_VISIBLE &&
                 !elemIsInParent(event.relatedTarget, window.CURRENT_NOTABLE_ELEMENT)) {
-                hideNotable();
+                hideNotable(true);
             }
         };
     });
@@ -1056,7 +1059,7 @@ function loadCss(cssUrl) {
         onEachLazy(document.querySelectorAll(".search-form .popover"), elem => {
             elem.style.display = "none";
         });
-        hideNotable();
+        hideNotable(false);
     };
 
     /**
