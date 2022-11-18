@@ -706,8 +706,6 @@ a {
 }
 
 .small-section-header {
-	display: flex;
-	justify-content: space-between;
 	position: relative;
 }
 
@@ -715,7 +713,7 @@ a {
 	display: initial;
 }
 
-.impl:hover > .anchor, .trait-impl:hover > .anchor {
+.impl:hover > .anchor, .trait-impl:hover > .anchor, .variant:hover > .anchor {
 	display: inline-block;
 	position: absolute;
 }
@@ -1232,12 +1230,6 @@ a.test-arrow:hover {
 
 .out-of-band > span.since {
 	font-size: 1.25rem;
-}
-
-h3.variant {
-	font-weight: 600;
-	font-size: 1.125rem;
-	margin-bottom: 10px;
 }
 
 .sub-variant h4 {
@@ -1908,6 +1900,7 @@ in storage.js
 	}
 }
 
+.variant,
 .implementors-toggle > summary,
 .impl,
 #implementors-list > .docblock,
@@ -1919,6 +1912,7 @@ in storage.js
 	margin-bottom: 0.75em;
 }
 
+.variants > .docblock,
 .impl-items > .rustdoc-toggle[open]:not(:last-child),
 .methods > .rustdoc-toggle[open]:not(:last-child),
 .implementors-toggle[open]:not(:last-child) {
