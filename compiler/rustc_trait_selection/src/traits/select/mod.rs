@@ -1089,7 +1089,7 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
         if !self.infcx.tcx.recursion_limit().value_within_limit(depth) {
             match self.query_mode {
                 TraitQueryMode::Standard => {
-                    if let Some(e) = self.infcx.is_tainted_by_errors() {
+                    if let Some(e) = self.infcx.tainted_by_errors() {
                         return Err(OverflowError::Error(e));
                     }
                     self.infcx.err_ctxt().report_overflow_error(error_obligation, true);

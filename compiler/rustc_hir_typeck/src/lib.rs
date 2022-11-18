@@ -344,7 +344,7 @@ fn typeck_with_fallback<'tcx>(
 
         fcx.select_all_obligations_or_error();
 
-        if let None = fcx.infcx.is_tainted_by_errors() {
+        if let None = fcx.infcx.tainted_by_errors() {
             fcx.check_transmutes();
         }
 

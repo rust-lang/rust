@@ -133,7 +133,7 @@ impl<'a, 'tcx> MemCategorizationContext<'a, 'tcx> {
     }
 
     fn is_tainted_by_errors(&self) -> bool {
-        self.infcx.is_tainted_by_errors().is_some()
+        self.infcx.tainted_by_errors().is_some()
     }
 
     fn resolve_type_vars_or_error(

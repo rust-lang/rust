@@ -83,7 +83,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         wbcx.typeck_results.treat_byte_string_as_slice =
             mem::take(&mut self.typeck_results.borrow_mut().treat_byte_string_as_slice);
 
-        if let Some(e) = self.is_tainted_by_errors() {
+        if let Some(e) = self.tainted_by_errors() {
             wbcx.typeck_results.tainted_by_errors = Some(e);
         }
 
@@ -673,7 +673,6 @@ impl<'cx, 'tcx> WritebackCx<'cx, 'tcx> {
         // to mark the `TypeckResults` as tainted in that case, so that downstream
         // users of the typeck results don't produce extra errors, or worse, ICEs.
         if let Some(e) = resolver.replaced_with_error {
-            // FIXME(eddyb) keep track of `ErrorGuaranteed` from where the error was emitted.
             self.typeck_results.tainted_by_errors = Some(e);
         }
 

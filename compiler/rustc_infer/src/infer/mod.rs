@@ -1208,7 +1208,8 @@ impl<'tcx> InferCtxt<'tcx> {
     /// reporting errors that often occur as a result of earlier
     /// errors, but where it's hard to be 100% sure (e.g., unresolved
     /// inference variables, regionck errors).
-    pub fn is_tainted_by_errors(&self) -> Option<ErrorGuaranteed> {
+    #[must_use = "this method does not have any side effects"]
+    pub fn tainted_by_errors(&self) -> Option<ErrorGuaranteed> {
         debug!(
             "is_tainted_by_errors(err_count={}, err_count_on_creation={}, \
              tainted_by_errors={})",
@@ -1217,14 +1218,17 @@ impl<'tcx> InferCtxt<'tcx> {
             self.tainted_by_errors.get().is_some()
         );
 
+        if let Some(e) = self.tainted_by_errors.get() {
+            return Some(e);
+        }
+
         if self.tcx.sess.err_count() > self.err_count_on_creation {
             // errors reported since this infcx was made
-            return Some(self.tcx.sess.delay_span_bug(
-                DUMMY_SP,
-                "`tcx.sess.error_count()` incorrectly returned non zero value",
-            ));
+            self.set_tainted_by_errors();
+            return self.tainted_by_errors.get();
         }
-        self.tainted_by_errors.get()
+
+        None
     }
 
     /// Set the "tainted by errors" flag to true. We call this when we
@@ -1274,7 +1278,7 @@ impl<'tcx> InferCtxt<'tcx> {
             let mut inner = self.inner.borrow_mut();
             let inner = &mut *inner;
             assert!(
-                self.is_tainted_by_errors().is_some() || inner.region_obligations.is_empty(),
+                self.tainted_by_errors().is_some() || inner.region_obligations.is_empty(),
                 "region_obligations not empty: {:#?}",
                 inner.region_obligations
             );
@@ -1711,7 +1715,7 @@ impl<'tcx> TypeErrCtxt<'_, 'tcx> {
     ) {
         let errors = self.resolve_regions(outlives_env);
 
-        if let None = self.is_tainted_by_errors() {
+        if let None = self.tainted_by_errors() {
             // As a heuristic, just skip reporting region errors
             // altogether if other errors have been reported while
             // this infcx was in use.  This is totally hokey but

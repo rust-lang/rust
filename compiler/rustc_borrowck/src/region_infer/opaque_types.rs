@@ -219,7 +219,7 @@ impl<'tcx> InferCtxtExt<'tcx> for InferCtxt<'tcx> {
         instantiated_ty: OpaqueHiddenType<'tcx>,
         origin: OpaqueTyOrigin,
     ) -> Ty<'tcx> {
-        if let Some(e) = self.is_tainted_by_errors() {
+        if let Some(e) = self.tainted_by_errors() {
             return self.tcx.ty_error_with_guaranteed(e);
         }
 
