@@ -95,6 +95,14 @@ macro_rules! language_item_table {
                 }
             }
 
+            /// Returns the name of the `LangItem` enum variant.
+            // This method is used by Clippy for internal lints.
+            pub fn variant_name(self) -> &'static str {
+                match self {
+                    $( LangItem::$variant => stringify!($variant), )*
+                }
+            }
+
             pub fn target(self) -> Target {
                 match self {
                     $( LangItem::$variant => $target, )*
