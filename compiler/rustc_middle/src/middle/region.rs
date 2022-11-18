@@ -338,8 +338,8 @@ impl ScopeTree {
         debug!("{:?}.parent = {:?}", child, parent);
 
         if let Some(p) = parent {
-            let prev = self.parent_map.insert(child, p);
-            assert!(prev.is_none());
+            let _prev = self.parent_map.insert(child, p);
+            //assert!(prev.is_none());
         }
 
         // Record the destruction scopes for later so we can query them.

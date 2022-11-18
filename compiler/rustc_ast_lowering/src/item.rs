@@ -1076,6 +1076,8 @@ impl<'hir> LoweringContext<'_, 'hir> {
         self.lower_body(|this| {
             let mut parameters: Vec<hir::Param<'_>> = Vec::new();
             let mut statements: Vec<hir::Stmt<'_>> = Vec::new();
+            let expr_hirid = this.next_id();
+            //let block_hirid = this.next_id();
 
             // Async function parameters are lowered into the closure body so that they are
             // captured and so that the drop order matches the equivalent non-async functions.
@@ -1143,6 +1145,7 @@ impl<'hir> LoweringContext<'_, 'hir> {
                 // If this is the simple case, this parameter will end up being the same as the
                 // original parameter, but with a different pattern id.
                 let stmt_attrs = this.attrs.get(&parameter.hir_id.local_id).copied();
+                let expr_ident_hir_id = this.next_id();
                 let (new_parameter_pat, new_parameter_id) = this.pat_ident(desugared_span, ident);
                 let new_parameter = hir::Param {
                     hir_id: parameter.hir_id,
@@ -1155,7 +1158,7 @@ impl<'hir> LoweringContext<'_, 'hir> {
                     // If this is the simple case, then we only insert one statement that is
                     // `let <pat> = <pat>;`. We re-use the original argument's pattern so that
                     // `HirId`s are densely assigned.
-                    let expr = this.expr_ident(desugared_span, ident, new_parameter_id);
+                    let expr = this.expr_ident(expr_ident_hir_id, desugared_span, ident, new_parameter_id);
                     let stmt = this.stmt_let_pat(
                         stmt_attrs,
                         desugared_span,
@@ -1180,6 +1183,7 @@ impl<'hir> LoweringContext<'_, 'hir> {
                     // Construct the `let mut __argN = __argN;` statement. It must be a mut binding
                     // because the user may have specified a `ref mut` binding in the next
                     // statement.
+                    let expr_ident_hir_id = self.next_id();
                     let (move_pat, move_id) = this.pat_ident_binding_mode(
                         desugared_span,
                         ident,
@@ -1196,7 +1200,7 @@ impl<'hir> LoweringContext<'_, 'hir> {
 
                     // Construct the `let <pat> = __argN;` statement. We re-use the original
                     // parameter's pattern so that `HirId`s are densely assigned.
-                    let pattern_expr = this.expr_ident(desugared_span, ident, move_id);
+                    let pattern_expr = this.expr_ident(expr_ident_hir_id, desugared_span, ident, move_id);
                     let pattern_stmt = this.stmt_let_pat(
                         stmt_attrs,
                         desugared_span,
@@ -1219,13 +1223,15 @@ impl<'hir> LoweringContext<'_, 'hir> {
                 body.span,
                 hir::AsyncGeneratorKind::Fn,
                 |this| {
+                    let hir_id = this.next_id();
                     // Create a block from the user's function body:
                     let user_body = this.lower_block_expr(body);
 
                     // Transform into `drop-temps { <user-body> }`, an expression:
                     let desugared_span =
                         this.mark_span_with_reason(DesugaringKind::Async, user_body.span, None);
-                    let user_body = this.expr_drop_temps(
+                    let user_body = this.expr_drop_temps_with_hirid(
+                        hir_id,
                         desugared_span,
                         this.arena.alloc(user_body),
                         AttrVec::new(),
@@ -1261,7 +1267,7 @@ impl<'hir> LoweringContext<'_, 'hir> {
 
             (
                 this.arena.alloc_from_iter(parameters),
-                this.expr(body.span, async_expr, AttrVec::new()),
+                this.expr_with_hirid(expr_hirid, body.span, async_expr, AttrVec::new()),
             )
         })
     }
@@ -1487,6 +1493,7 @@ impl<'hir> LoweringContext<'_, 'hir> {
             GenericParamKind::Const { .. } => None,
             GenericParamKind::Type { .. } => {
                 let hir_id = self.next_id();
+                let ty_id = self.next_id();
                 let def_id = self.local_def_id(id).to_def_id();
                 let path_id = self.next_id();
                 let res = Res::Def(DefKind::TyParam, def_id);
@@ -1497,7 +1504,6 @@ impl<'hir> LoweringContext<'_, 'hir> {
                         .arena
                         .alloc_from_iter([hir::PathSegment::new(ident, path_id, res)]),
                 });
-                let ty_id = self.next_id();
                 let bounded_ty =
                     self.ty_path(ty_id, param_span, hir::QPath::Resolved(None, ty_path));
                 Some(hir::WherePredicate::BoundPredicate(hir::WhereBoundPredicate {

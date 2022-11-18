@@ -49,12 +49,9 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
                     stmts.push(hir::Stmt { hir_id, kind, span });
                 }
                 StmtKind::Item(ref it) => {
+                    let hir_id = self.lower_node_id(s.id);
                     stmts.extend(self.lower_item_ref(it).into_iter().enumerate().map(
-                        |(i, item_id)| {
-                            let hir_id = match i {
-                                0 => self.lower_node_id(s.id),
-                                _ => self.next_id(),
-                            };
+                        |(_i, item_id)| {
                             let kind = hir::StmtKind::Item(item_id);
                             let span = self.lower_span(s.span);
                             hir::Stmt { hir_id, kind, span }

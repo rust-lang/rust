@@ -440,18 +440,19 @@ impl<'hir> LoweringContext<'_, 'hir> {
                 let lhs = self.lower_cond(lhs);
                 let rhs = self.lower_cond(rhs);
                 self.arena.alloc(self.expr_with_hirid(
-                    cond.span,
                     hir_id,
+                    cond.span,
                     hir::ExprKind::Binary(op, lhs, rhs),
                     AttrVec::new(),
                 ))
             }
             ExprKind::Let(..) => self.lower_expr(cond),
             _ => {
+                let hir_id = self.next_id();
                 let cond = self.lower_expr(cond);
                 let reason = DesugaringKind::CondTemporary;
                 let span_block = self.mark_span_with_reason(reason, cond.span, None);
-                self.expr_drop_temps(span_block, cond, AttrVec::new())
+                self.expr_drop_temps_with_hirid(hir_id, span_block, cond, AttrVec::new())
             }
         }
     }
@@ -479,19 +480,23 @@ impl<'hir> LoweringContext<'_, 'hir> {
         body: &Block,
         opt_label: Option<Label>,
     ) -> hir::ExprKind<'hir> {
+        let block_hir_id = self.next_id();
+        let if_hir_id = self.next_id();
         let lowered_cond = self.with_loop_condition_scope(|t| t.lower_cond(cond));
         let then = self.lower_block_expr(body);
-        let expr_break = self.expr_break(span, AttrVec::new());
         let else_expr = self.arena.alloc(self.expr_block(
             |this| {
-                let stmt_break = this.stmt_expr(span, expr_break);
-                this.block_all(span, arena_vec![self; stmt_break], None)
+                let hir_id = this.next_id();
+                let stmt_hir_id = this.next_id();
+                let expr_break = this.expr_break(span, AttrVec::new());
+                let stmt_break = this.stmt_expr_with_hirid(stmt_hir_id, span, expr_break);
+                this.block_all_with_hirid(hir_id, span, arena_vec![self; stmt_break], None)
             },
             AttrVec::new(),
         ));
         let if_kind = hir::ExprKind::If(lowered_cond, self.arena.alloc(then), Some(else_expr));
-        let if_expr = self.expr(span, if_kind, AttrVec::new());
-        let block = self.block_expr(self.arena.alloc(if_expr));
+        let if_expr = self.expr_with_hirid(if_hir_id, span, if_kind, AttrVec::new());
+        let block = self.block_expr_with_hirid(block_hir_id, self.arena.alloc(if_expr));
         let span = self.lower_span(span.with_hi(cond.span.hi()));
         let opt_label = self.lower_label(opt_label);
         hir::ExprKind::Loop(block, opt_label, hir::LoopSource::While, span)
@@ -746,6 +751,7 @@ impl<'hir> LoweringContext<'_, 'hir> {
         // Note that the name of this binding must not be changed to something else because
         // debuggers and debugger extensions expect it to be called `__awaitee`. They use
         // this name to identify what is being awaited by a suspended async functions.
+        let expr_ident_hir_id = self.next_id();
         let awaitee_ident = Ident::with_dummy_span(sym::__awaitee);
         let (awaitee_pat, awaitee_pat_hid) =
             self.pat_ident_binding_mode(span, awaitee_ident, hir::BindingAnnotation::MUT);
@@ -759,10 +765,11 @@ impl<'hir> LoweringContext<'_, 'hir> {
         //     )
         // }
         let poll_expr = {
-            let awaitee = self.expr_ident(span, awaitee_ident, awaitee_pat_hid);
+            let awaitee = self.expr_ident(expr_ident_hir_id, span, awaitee_ident, awaitee_pat_hid);
             let ref_mut_awaitee = self.expr_mut_addr_of(span, awaitee);
             let task_context = if let Some(task_context_hid) = self.task_context {
-                self.expr_ident_mut(span, task_context_ident, task_context_hid)
+                let ident_mut_hir_id = self.next_id();
+                self.expr_ident_mut(ident_mut_hir_id, span, task_context_ident, task_context_hid)
             } else {
                 // Use of `await` outside of an async context, we cannot use `task_context` here.
                 self.expr_err(span)
@@ -791,6 +798,7 @@ impl<'hir> LoweringContext<'_, 'hir> {
         // `::std::task::Poll::Ready(result) => break result`
         let loop_node_id = self.next_node_id();
         let loop_hir_id = self.lower_node_id(loop_node_id);
+        let block_hir_id = self.next_id();
         let ready_arm = {
             let x_ident = Ident::with_dummy_span(sym::result);
             let (x_pat, x_pat_hid) = self.pat_ident(gen_future_span, x_ident);
@@ -823,17 +831,19 @@ impl<'hir> LoweringContext<'_, 'hir> {
         };
 
         let inner_match_stmt = {
+            let stmt_hir_id = self.next_id();
             let match_expr = self.expr_match(
                 span,
                 poll_expr,
                 arena_vec![self; ready_arm, pending_arm],
                 hir::MatchSource::AwaitDesugar,
             );
-            self.stmt_expr(span, match_expr)
+            self.stmt_expr_with_hirid(stmt_hir_id, span, match_expr)
         };
 
         // task_context = yield ();
         let yield_stmt = {
+            let stmt_hir_id = self.next_id();
             let unit = self.expr_unit(span);
             let yield_expr = self.expr(
                 span,
@@ -849,15 +859,15 @@ impl<'hir> LoweringContext<'_, 'hir> {
                     hir::ExprKind::Assign(lhs, yield_expr, self.lower_span(span)),
                     AttrVec::new(),
                 );
-                self.stmt_expr(span, assign)
+                self.stmt_expr_with_hirid(stmt_hir_id, span, assign)
             } else {
                 // Use of `await` outside of an async context. Return `yield_expr` so that we can
                 // proceed with type checking.
-                self.stmt(span, hir::StmtKind::Semi(yield_expr))
+                self.stmt(stmt_hir_id, span, hir::StmtKind::Semi(yield_expr))
             }
         };
 
-        let loop_block = self.block_all(span, arena_vec![self; inner_match_stmt, yield_stmt], None);
+        let loop_block = self.block_all_with_hirid(block_hir_id, span, arena_vec![self; inner_match_stmt, yield_stmt], None);
 
         // loop { .. }
         let loop_expr = self.arena.alloc(hir::Expr {
@@ -1083,6 +1093,7 @@ impl<'hir> LoweringContext<'_, 'hir> {
         }
 
         let mut assignments = vec![];
+        let block_hir_id = self.next_id();
 
         // The LHS becomes a pattern: `(lhs1, lhs2)`.
         let pat = self.destructure_assign(lhs, eq_sign_span, &mut assignments);
@@ -1103,7 +1114,7 @@ impl<'hir> LoweringContext<'_, 'hir> {
             .alloc_from_iter(std::iter::once(destructure_let).chain(assignments.into_iter()));
 
         // Wrap everything in a block.
-        hir::ExprKind::Block(&self.block_all(whole_span, stmts, None), None)
+        hir::ExprKind::Block(&self.block_all_with_hirid(block_hir_id, whole_span, stmts, None), None)
     }
 
     /// If the given expression is a path to a tuple struct, returns that path.
@@ -1170,6 +1181,7 @@ impl<'hir> LoweringContext<'_, 'hir> {
             }
             // Slice patterns.
             ExprKind::Array(elements) => {
+                let hir_id = self.next_id();
                 let (pats, rest) =
                     self.destructure_sequence(elements, "slice", eq_sign_span, assignments);
                 let slice_pat = if let Some((i, span)) = rest {
@@ -1182,11 +1194,13 @@ impl<'hir> LoweringContext<'_, 'hir> {
                 } else {
                     hir::PatKind::Slice(pats, None, &[])
                 };
-                return self.pat_without_dbm(lhs.span, slice_pat);
+                return self.pat_without_dbm_with_hirid(hir_id, lhs.span, slice_pat);
             }
             // Tuple structs.
             ExprKind::Call(callee, args) => {
                 if let Some((qself, path)) = self.extract_tuple_struct_path(callee) {
+                    let hir_id = self.next_id();
+
                     let (pats, rest) = self.destructure_sequence(
                         args,
                         "tuple struct or variant",
@@ -1206,12 +1220,13 @@ impl<'hir> LoweringContext<'_, 'hir> {
                         pats,
                         hir::DotDotPos::new(rest.map(|r| r.0)),
                     );
-                    return self.pat_without_dbm(lhs.span, tuple_struct_pat);
+                    return self.pat_without_dbm_with_hirid(hir_id, lhs.span, tuple_struct_pat);
                 }
             }
             // Unit structs and enum variants.
             ExprKind::Path(..) => {
                 if let Some((qself, path)) = self.extract_unit_struct_path(lhs) {
+                    let hir_id = self.next_id();
                     let qpath = self.lower_qpath(
                         lhs.id,
                         qself,
@@ -1221,11 +1236,12 @@ impl<'hir> LoweringContext<'_, 'hir> {
                     );
                     // Destructure like a unit struct.
                     let unit_struct_pat = hir::PatKind::Path(qpath);
-                    return self.pat_without_dbm(lhs.span, unit_struct_pat);
+                    return self.pat_without_dbm_with_hirid(hir_id, lhs.span, unit_struct_pat);
                 }
             }
             // Structs.
             ExprKind::Struct(se) => {
+                let hir_id = self.next_id();
                 let field_pats = self.arena.alloc_from_iter(se.fields.iter().map(|f| {
                     let hir_id = self.next_id();
                     let pat = self.destructure_assign(&f.expr, eq_sign_span, assignments);
@@ -1255,20 +1271,22 @@ impl<'hir> LoweringContext<'_, 'hir> {
                     StructRest::None => false,
                 };
                 let struct_pat = hir::PatKind::Struct(qpath, field_pats, fields_omitted);
-                return self.pat_without_dbm(lhs.span, struct_pat);
+                return self.pat_without_dbm_with_hirid(hir_id, lhs.span, struct_pat);
             }
             // Tuples.
             ExprKind::Tup(elements) => {
+                let hir_id = self.next_id();
                 let (pats, rest) =
                     self.destructure_sequence(elements, "tuple", eq_sign_span, assignments);
                 let tuple_pat = hir::PatKind::Tuple(pats, hir::DotDotPos::new(rest.map(|r| r.0)));
-                return self.pat_without_dbm(lhs.span, tuple_pat);
+                return self.pat_without_dbm_with_hirid(hir_id, lhs.span, tuple_pat);
             }
             ExprKind::Paren(e) => {
+                let hir_id = self.next_id();
                 // We special-case `(..)` for consistency with patterns.
                 if let ExprKind::Range(None, None, RangeLimits::HalfOpen) = e.kind {
                     let tuple_pat = hir::PatKind::Tuple(&[], hir::DotDotPos::new(Some(0)));
-                    return self.pat_without_dbm(lhs.span, tuple_pat);
+                    return self.pat_without_dbm_with_hirid(hir_id, lhs.span, tuple_pat);
                 } else {
                     return self.destructure_assign_mut(e, eq_sign_span, assignments);
                 }
@@ -1276,13 +1294,15 @@ impl<'hir> LoweringContext<'_, 'hir> {
             _ => {}
         }
         // Treat all other cases as normal lvalue.
+        let stmt_hir_id = self.next_id();
+        let expr_hir_id = self.next_id();
         let ident = Ident::new(sym::lhs, self.lower_span(lhs.span));
         let (pat, binding) = self.pat_ident_mut(lhs.span, ident);
         let ident = self.expr_ident(lhs.span, ident, binding);
         let assign =
             hir::ExprKind::Assign(self.lower_expr(lhs), ident, self.lower_span(eq_sign_span));
-        let expr = self.expr(lhs.span, assign, AttrVec::new());
-        assignments.push(self.stmt_expr(lhs.span, expr));
+        let expr = self.expr_with_hirid(expr_hir_id, lhs.span, assign, AttrVec::new());
+        assignments.push(self.stmt_expr_with_hirid(stmt_hir_id, lhs.span, expr));
         pat
     }
 
@@ -1486,7 +1506,11 @@ impl<'hir> LoweringContext<'_, 'hir> {
         body: &Block,
         opt_label: Option<Label>,
     ) -> hir::Expr<'hir> {
-        let hir_id = self.lower_node_id(e.id);
+        let drop_temps_hir_id = self.next_id();
+        let loop_hir_id = self.lower_node_id(e.id);
+        let block_hir_id = self.next_id();
+        let stmt_hir_id = self.next_id();
+
         let head = self.lower_expr_mut(head);
         let pat = self.lower_pat(pat);
         let for_span =
@@ -1532,9 +1556,9 @@ impl<'hir> LoweringContext<'_, 'hir> {
 
             self.expr_match(head_span, next_expr, arms, hir::MatchSource::ForLoopDesugar)
         };
-        let match_stmt = self.stmt_expr(for_span, match_expr);
+        let match_stmt = self.stmt_expr_with_hirid(stmt_hir_id, for_span, match_expr);
 
-        let loop_block = self.block_all(for_span, arena_vec![self; match_stmt], None);
+        let loop_block = self.block_all_with_hirid(block_hir_id, for_span, arena_vec![self; match_stmt], None);
 
         // `[opt_ident]: loop { ... }`
         let kind = hir::ExprKind::Loop(
@@ -1543,7 +1567,7 @@ impl<'hir> LoweringContext<'_, 'hir> {
             hir::LoopSource::ForLoop,
             self.lower_span(for_span.with_hi(head.span.hi())),
         );
-        let loop_expr = self.arena.alloc(hir::Expr { hir_id, kind, span: for_span });
+        let loop_expr = self.arena.alloc(hir::Expr { hir_id: loop_hir_id, kind, span: for_span });
 
         // `mut iter => { ... }`
         let iter_arm = self.arm(iter_pat, loop_expr);
@@ -1571,7 +1595,7 @@ impl<'hir> LoweringContext<'_, 'hir> {
         // surrounding scope of the `match` since the `match` is not a terminating scope.
         //
         // Also, add the attributes to the outer returned expr node.
-        self.expr_drop_temps_mut(for_span, match_expr, e.attrs.clone())
+        self.expr_drop_temps_mut_with_hirid(drop_temps_hir_id, for_span, match_expr, e.attrs.clone())
     }
 
     /// Desugar `ExprKind::Try` from: `<expr>?` into:
@@ -1628,8 +1652,10 @@ impl<'hir> LoweringContext<'_, 'hir> {
         // `ControlFlow::Continue(val) => #[allow(unreachable_code)] val,`
         let continue_arm = {
             let val_ident = Ident::with_dummy_span(sym::val);
+            let hir_id = self.next_id();
             let (val_pat, val_pat_nid) = self.pat_ident(span, val_ident);
-            let val_expr = self.arena.alloc(self.expr_ident_with_attrs(
+            let val_expr = self.arena.alloc(self.expr_ident_with_attrs_with_hirid(
+                hir_id,
                 span,
                 val_ident,
                 val_pat_nid,
@@ -1729,23 +1755,43 @@ impl<'hir> LoweringContext<'_, 'hir> {
     /// `{ let _t = $expr; _t }` but should provide better compile-time performance.
     ///
     /// The drop order can be important in e.g. `if expr { .. }`.
-    pub(super) fn expr_drop_temps(
+    pub(super) fn expr_drop_temps_with_hirid(
+        &mut self,
+        hir_id: hir::HirId,
+        span: Span,
+        expr: &'hir hir::Expr<'hir>,
+        attrs: AttrVec,
+    ) -> &'hir hir::Expr<'hir> {
+        self.arena.alloc(self.expr_drop_temps_mut_with_hirid(hir_id, span, expr, attrs))
+    }
+
+    pub(super) fn expr_drop_temps_mut_with_hirid(
+        &mut self,
+        hir_id: hir::HirId,
+        span: Span,
+        expr: &'hir hir::Expr<'hir>,
+        attrs: AttrVec,
+    ) -> hir::Expr<'hir> {
+        self.expr_with_hirid(hir_id, span, hir::ExprKind::DropTemps(expr), attrs)
+    }
+
+  /*   pub(super) fn expr_drop_temps(
         &mut self,
         span: Span,
         expr: &'hir hir::Expr<'hir>,
         attrs: AttrVec,
     ) -> &'hir hir::Expr<'hir> {
         self.arena.alloc(self.expr_drop_temps_mut(span, expr, attrs))
-    }
+    } */
 
-    pub(super) fn expr_drop_temps_mut(
+/*     pub(super) fn expr_drop_temps_mut(
         &mut self,
         span: Span,
         expr: &'hir hir::Expr<'hir>,
         attrs: AttrVec,
     ) -> hir::Expr<'hir> {
         self.expr(span, hir::ExprKind::DropTemps(expr), attrs)
-    }
+    } */
 
     fn expr_match(
         &mut self,
@@ -1781,24 +1827,27 @@ impl<'hir> LoweringContext<'_, 'hir> {
 
     fn expr_call_mut(
         &mut self,
+        hir_id: hir::HirId,
         span: Span,
         e: &'hir hir::Expr<'hir>,
         args: &'hir [hir::Expr<'hir>],
     ) -> hir::Expr<'hir> {
-        self.expr(span, hir::ExprKind::Call(e, args), AttrVec::new())
+        self.expr_with_hirid(hir_id, span, hir::ExprKind::Call(e, args), AttrVec::new())
     }
 
     fn expr_call(
         &mut self,
+        hir_id: hir::HirId,
         span: Span,
         e: &'hir hir::Expr<'hir>,
         args: &'hir [hir::Expr<'hir>],
     ) -> &'hir hir::Expr<'hir> {
-        self.arena.alloc(self.expr_call_mut(span, e, args))
+        self.arena.alloc(self.expr_call_mut(hir_id, span, e, args))
     }
 
     fn expr_call_lang_item_fn_mut(
         &mut self,
+        fn_mut_hir_id: hir::HirId,
         span: Span,
         lang_item: hir::LangItem,
         args: &'hir [hir::Expr<'hir>],
@@ -1806,7 +1855,7 @@ impl<'hir> LoweringContext<'_, 'hir> {
     ) -> hir::Expr<'hir> {
         let path =
             self.arena.alloc(self.expr_lang_item_path(span, lang_item, AttrVec::new(), hir_id));
-        self.expr_call_mut(span, path, args)
+        self.expr_call_mut(fn_mut_hir_id, span, path, args)
     }
 
     fn expr_call_lang_item_fn(
@@ -1835,45 +1884,49 @@ impl<'hir> LoweringContext<'_, 'hir> {
 
     pub(super) fn expr_ident(
         &mut self,
+        hir_id: hir::HirId,
         sp: Span,
         ident: Ident,
         binding: hir::HirId,
     ) -> &'hir hir::Expr<'hir> {
-        self.arena.alloc(self.expr_ident_mut(sp, ident, binding))
+        self.arena.alloc(self.expr_ident_mut(hir_id, sp, ident, binding))
     }
 
     pub(super) fn expr_ident_mut(
         &mut self,
+        hir_id: hir::HirId,
         sp: Span,
         ident: Ident,
         binding: hir::HirId,
     ) -> hir::Expr<'hir> {
-        self.expr_ident_with_attrs(sp, ident, binding, AttrVec::new())
+        self.expr_ident_with_attrs_hirid(hir_id, sp, ident, binding, AttrVec::new())
     }
 
-    fn expr_ident_with_attrs(
+    fn expr_ident_with_attrs_with_hirid(
         &mut self,
+        hir_id: hir::HirId,
         span: Span,
         ident: Ident,
         binding: hir::HirId,
         attrs: AttrVec,
     ) -> hir::Expr<'hir> {
-        let hir_id = self.next_id();
+        let path_hir_id = self.next_id();
         let res = Res::Local(binding);
         let expr_path = hir::ExprKind::Path(hir::QPath::Resolved(
             None,
             self.arena.alloc(hir::Path {
                 span: self.lower_span(span),
                 res,
-                segments: arena_vec![self; hir::PathSegment::new(ident, hir_id, res)],
+                segments: arena_vec![self; hir::PathSegment::new(ident, path_hir_id, res)],
             }),
         ));
 
-        self.expr(span, expr_path, attrs)
+        self.expr_with_hirid(hir_id, span, expr_path, attrs)
     }
 
-    fn expr_unsafe(&mut self, expr: &'hir hir::Expr<'hir>) -> hir::Expr<'hir> {
-        let hir_id = self.next_id();
+    fn expr_unsafe(&mut self,
+        hir_id: hir::HirId,
+        expr: &'hir hir::Expr<'hir>) -> hir::Expr<'hir> {
         let span = expr.span;
         self.expr(
             span,
@@ -1927,8 +1980,8 @@ impl<'hir> LoweringContext<'_, 'hir> {
 
     pub(super) fn expr_with_hirid(
         &mut self,
-        span: Span,
         hir_id: hir::HirId,
+        span: Span,
         kind: hir::ExprKind<'hir>,
         attrs: AttrVec,
     ) -> hir::Expr<'hir> {
@@ -1940,12 +1993,13 @@ impl<'hir> LoweringContext<'_, 'hir> {
 
     fn expr_field(
         &mut self,
+        hir_id: hir::HirId,
         ident: Ident,
         expr: &'hir hir::Expr<'hir>,
         span: Span,
     ) -> hir::ExprField<'hir> {
         hir::ExprField {
-            hir_id: self.next_id(),
+            hir_id,
             ident,
             span: self.lower_span(span),
             expr,
@@ -1953,9 +2007,9 @@ impl<'hir> LoweringContext<'_, 'hir> {
         }
     }
 
-    fn arm(&mut self, pat: &'hir hir::Pat<'hir>, expr: &'hir hir::Expr<'hir>) -> hir::Arm<'hir> {
+    fn arm(&mut self, hir_id: hir::HirId, pat: &'hir hir::Pat<'hir>, expr: &'hir hir::Expr<'hir>) -> hir::Arm<'hir> {
         hir::Arm {
-            hir_id: self.next_id(),
+            hir_id,
             pat,
             guard: None,
             span: self.lower_span(expr.span),

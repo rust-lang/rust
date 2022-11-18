@@ -2384,12 +2384,12 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
 
     // Helper methods for building HIR.
 
-    fn stmt(&mut self, span: Span, kind: hir::StmtKind<'hir>) -> hir::Stmt<'hir> {
-        hir::Stmt { span: self.lower_span(span), kind, hir_id: self.next_id() }
+    fn stmt(&mut self, hir_id: hir::HirId, span: Span, kind: hir::StmtKind<'hir>) -> hir::Stmt<'hir> {
+        hir::Stmt { span: self.lower_span(span), kind, hir_id }
     }
 
-    fn stmt_expr(&mut self, span: Span, expr: hir::Expr<'hir>) -> hir::Stmt<'hir> {
-        self.stmt(span, hir::StmtKind::Expr(self.arena.alloc(expr)))
+    fn stmt_expr_with_hirid(&mut self, hir_id: hir::HirId, span: Span, expr: hir::Expr<'hir>) -> hir::Stmt<'hir> {
+        self.stmt(hir_id, span, hir::StmtKind::Expr(self.arena.alloc(expr)))
     }
 
     fn stmt_let_pat(
@@ -2400,6 +2400,7 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
         pat: &'hir hir::Pat<'hir>,
         source: hir::LocalSource,
     ) -> hir::Stmt<'hir> {
+        let stmt_hir_id = self.next_id();
         let hir_id = self.next_id();
         if let Some(a) = attrs {
             debug_assert!(!a.is_empty());
@@ -2414,11 +2415,37 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
             span: self.lower_span(span),
             ty: None,
         };
-        self.stmt(span, hir::StmtKind::Local(self.arena.alloc(local)))
+        self.stmt(stmt_hir_id, span, hir::StmtKind::Local(self.arena.alloc(local)))
     }
 
-    fn block_expr(&mut self, expr: &'hir hir::Expr<'hir>) -> &'hir hir::Block<'hir> {
+    /* fn block_expr(&mut self, expr: &'hir hir::Expr<'hir>) -> &'hir hir::Block<'hir> {
         self.block_all(expr.span, &[], Some(expr))
+    }
+ */
+    fn block_expr_with_hirid(
+        &mut self,
+        hir_id: hir::HirId,
+        expr: &'hir hir::Expr<'hir>,
+    ) -> &'hir hir::Block<'hir> {
+        self.block_all_with_hirid(hir_id, expr.span, &[], Some(expr))
+    }
+
+    fn block_all_with_hirid(
+        &mut self,
+        hir_id: hir::HirId,
+        span: Span,
+        stmts: &'hir [hir::Stmt<'hir>],
+        expr: Option<&'hir hir::Expr<'hir>>,
+    ) -> &'hir hir::Block<'hir> {
+        let blk = hir::Block {
+            stmts,
+            expr,
+            hir_id,
+            rules: hir::BlockCheckMode::DefaultBlock,
+            span: self.lower_span(span),
+            targeted_by_break: false,
+        };
+        self.arena.alloc(blk)
     }
 
     fn block_all(
@@ -2508,7 +2535,6 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
         bm: hir::BindingAnnotation,
     ) -> (hir::Pat<'hir>, hir::HirId) {
         let hir_id = self.next_id();
-
         (
             hir::Pat {
                 hir_id,
@@ -2527,6 +2553,15 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
             span: self.lower_span(span),
             default_binding_modes: true,
         })
+    }
+
+    fn pat_without_dbm_with_hirid(&mut self, hir_id: hir::HirId, span: Span, kind: hir::PatKind<'hir>) -> hir::Pat<'hir> {
+        hir::Pat {
+            hir_id,
+            kind,
+            span: self.lower_span(span),
+            default_binding_modes: false,
+        }
     }
 
     fn pat_without_dbm(&mut self, span: Span, kind: hir::PatKind<'hir>) -> hir::Pat<'hir> {
