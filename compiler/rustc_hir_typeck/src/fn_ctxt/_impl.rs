@@ -1440,12 +1440,12 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         if !ty.is_ty_var() {
             ty
         } else {
-            if let None = self.tainted_by_errors() {
+            let e = self.tainted_by_errors().unwrap_or_else(|| {
                 self.err_ctxt()
                     .emit_inference_failure_err((**self).body_id, sp, ty.into(), E0282, true)
-                    .emit();
-            }
-            let err = self.tcx.ty_error();
+                    .emit()
+            });
+            let err = self.tcx.ty_error_with_guaranteed(e);
             self.demand_suptype(sp, err, ty);
             err
         }
