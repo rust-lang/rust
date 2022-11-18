@@ -644,13 +644,14 @@ impl Handler {
         inner.stashed_diagnostics = Default::default();
     }
 
-    /// Stash a given diagnostic with the given `Span` and `StashKey` as the key for later stealing.
+    /// Stash a given diagnostic with the given `Span` and [`StashKey`] as the key.
+    /// Retrieve a stashed diagnostic with `steal_diagnostic`.
     pub fn stash_diagnostic(&self, span: Span, key: StashKey, diag: Diagnostic) {
         let mut inner = self.inner.borrow_mut();
         inner.stash((span, key), diag);
     }
 
-    /// Steal a previously stashed diagnostic with the given `Span` and `StashKey` as the key.
+    /// Steal a previously stashed diagnostic with the given `Span` and [`StashKey`] as the key.
     pub fn steal_diagnostic(&self, span: Span, key: StashKey) -> Option<DiagnosticBuilder<'_, ()>> {
         let mut inner = self.inner.borrow_mut();
         inner.steal((span, key)).map(|diag| DiagnosticBuilder::new_diagnostic(self, diag))
