@@ -715,12 +715,8 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
         // <ty as Deref>
         let trait_ref = tcx.mk_trait_ref(tcx.lang_items().deref_trait()?, [ty]);
 
-        let obligation = traits::Obligation::new(
-            tcx,
-            cause.clone(),
-            param_env,
-            ty::Binder::dummy(trait_ref).without_const(),
-        );
+        let obligation =
+            traits::Obligation::new(tcx, cause.clone(), param_env, ty::Binder::dummy(trait_ref));
         if !self.infcx.predicate_may_hold(&obligation) {
             return None;
         }

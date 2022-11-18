@@ -698,9 +698,8 @@ fn matches_preds<'tcx>(
             cx.tcx,
             ObligationCause::dummy(),
             cx.param_env,
-            cx.tcx.mk_predicate(Binder::bind_with_vars(
+            cx.tcx.mk_predicate(Binder::dummy(
                 PredicateKind::Projection(p.with_self_ty(cx.tcx, ty)),
-                List::empty(),
             )),
         )),
         ExistentialPredicate::AutoTrait(p) => infcx

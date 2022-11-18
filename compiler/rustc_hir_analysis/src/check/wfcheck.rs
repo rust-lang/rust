@@ -1784,7 +1784,7 @@ fn receiver_is_implemented<'tcx>(
     let tcx = wfcx.tcx();
     let trait_ref = ty::Binder::dummy(tcx.mk_trait_ref(receiver_trait_def_id, [receiver_ty]));
 
-    let obligation = traits::Obligation::new(tcx, cause, wfcx.param_env, trait_ref.without_const());
+    let obligation = traits::Obligation::new(tcx, cause, wfcx.param_env, trait_ref);
 
     if wfcx.infcx.predicate_must_hold_modulo_regions(&obligation) {
         true
