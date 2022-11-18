@@ -1501,7 +1501,7 @@ impl<'a> Parser<'a> {
             let lo = path.span;
             let mac = P(MacCall {
                 path,
-                args: self.parse_mac_args()?,
+                args: self.parse_delim_args()?,
                 prior_type_ascription: self.last_type_ascription,
             });
             (lo.to(self.prev_token.span), ExprKind::MacCall(mac))

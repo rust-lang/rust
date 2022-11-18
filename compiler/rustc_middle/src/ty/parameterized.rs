@@ -70,7 +70,7 @@ trivially_parameterized_over_tcx! {
     ty::adjustment::CoerceUnsizedInfo,
     ty::fast_reject::SimplifiedTypeGen<DefId>,
     rustc_ast::Attribute,
-    rustc_ast::MacArgs,
+    rustc_ast::DelimArgs,
     rustc_attr::ConstStability,
     rustc_attr::DefaultBodyStability,
     rustc_attr::Deprecation,

@@ -4,7 +4,7 @@ use crate::edition_panic::use_panic_2021;
 use rustc_ast::ptr::P;
 use rustc_ast::token;
 use rustc_ast::tokenstream::{DelimSpan, TokenStream};
-use rustc_ast::{Expr, ExprKind, MacArgs, MacCall, MacDelimiter, Path, PathSegment, UnOp};
+use rustc_ast::{DelimArgs, Expr, ExprKind, MacCall, MacDelimiter, Path, PathSegment, UnOp};
 use rustc_ast_pretty::pprust;
 use rustc_errors::{Applicability, PResult};
 use rustc_expand::base::{DummyResult, ExtCtxt, MacEager, MacResult};
@@ -54,11 +54,11 @@ pub fn expand_assert<'cx>(
             call_site_span,
             ExprKind::MacCall(P(MacCall {
                 path: panic_path(),
-                args: P(MacArgs::Delimited(
-                    DelimSpan::from_single(call_site_span),
-                    MacDelimiter::Parenthesis,
+                args: P(DelimArgs {
+                    dspan: DelimSpan::from_single(call_site_span),
+                    delim: MacDelimiter::Parenthesis,
                     tokens,
-                )),
+                }),
                 prior_type_ascription: None,
             })),
         );

@@ -470,7 +470,7 @@ impl<'hir> LoweringContext<'_, 'hir> {
                 hir::ItemKind::TraitAlias(generics, bounds)
             }
             ItemKind::MacroDef(MacroDef { ref body, macro_rules }) => {
-                let body = P(self.lower_mac_args(body));
+                let body = P(self.lower_delim_args(body));
                 let macro_kind = self.resolver.decl_macro_kind(self.local_def_id(id));
                 hir::ItemKind::Macro(ast::MacroDef { body, macro_rules }, macro_kind)
             }
