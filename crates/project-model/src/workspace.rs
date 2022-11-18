@@ -377,6 +377,21 @@ impl ProjectWorkspace {
         }
     }
 
+    pub fn find_sysroot_proc_macro_srv(&self) -> Option<AbsPathBuf> {
+        match self {
+            ProjectWorkspace::Cargo { sysroot: Some(sysroot), .. }
+            | ProjectWorkspace::Json { sysroot: Some(sysroot), .. } => {
+                let standalone_server_name =
+                    format!("rust-analyzer-proc-macro-srv{}", std::env::consts::EXE_SUFFIX);
+                ["libexec", "lib"]
+                    .into_iter()
+                    .map(|segment| sysroot.root().join(segment).join(&standalone_server_name))
+                    .find(|server_path| std::fs::metadata(&server_path).is_ok())
+            }
+            _ => None,
+        }
+    }
+
     /// Returns the roots for the current `ProjectWorkspace`
     /// The return type contains the path and whether or not
     /// the root is a member of the current workspace
