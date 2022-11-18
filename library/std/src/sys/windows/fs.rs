@@ -734,15 +734,19 @@ impl<'a> Iterator for DirBuffIter<'a> {
         //   `FileNameLength` bytes)
         let (name, is_directory, next_entry) = unsafe {
             let info = buffer.as_ptr().cast::<c::FILE_ID_BOTH_DIR_INFO>();
-            // Guaranteed to be aligned in documentation for
+            // While this is guaranteed to be aligned in documentation for
             // https://docs.microsoft.com/en-us/windows/win32/api/winbase/ns-winbase-file_id_both_dir_info
-            assert!(info.is_aligned());
-            let next_entry = (*info).NextEntryOffset as usize;
+            // it does not seem that reality is so kind, and assuming this
+            // caused crashes in some cases (https://github.com/rust-lang/rust/issues/104530)
+            // presumably, this can be blamed on buggy filesystem drivers, but who knows.
+            let next_entry = ptr::addr_of!((*info).NextEntryOffset).read_unaligned() as usize;
+            let length = ptr::addr_of!((*info).FileNameLength).read_unaligned() as usize;
+            let attrs = ptr::addr_of!((*info).FileAttributes).read_unaligned();
             let name = crate::slice::from_raw_parts(
                 ptr::addr_of!((*info).FileName).cast::<u16>(),
-                (*info).FileNameLength as usize / size_of::<u16>(),
+                length / size_of::<u16>(),
             );
-            let is_directory = ((*info).FileAttributes & c::FILE_ATTRIBUTE_DIRECTORY) != 0;
+            let is_directory = (attrs & c::FILE_ATTRIBUTE_DIRECTORY) != 0;
 
             (name, is_directory, next_entry)
         };
