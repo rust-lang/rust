@@ -1,5 +1,6 @@
 use crate::os::windows::prelude::*;
 
+use crate::borrow::Cow;
 use crate::ffi::OsString;
 use crate::fmt;
 use crate::io::{self, BorrowedCursor, Error, IoSlice, IoSliceMut, SeekFrom};
@@ -719,7 +720,7 @@ impl<'a> DirBuffIter<'a> {
     }
 }
 impl<'a> Iterator for DirBuffIter<'a> {
-    type Item = (&'a [u16], bool);
+    type Item = (Cow<'a, [u16]>, bool);
     fn next(&mut self) -> Option<Self::Item> {
         use crate::mem::size_of;
         let buffer = &self.buffer?[self.cursor..];
@@ -742,7 +743,7 @@ impl<'a> Iterator for DirBuffIter<'a> {
             let next_entry = ptr::addr_of!((*info).NextEntryOffset).read_unaligned() as usize;
             let length = ptr::addr_of!((*info).FileNameLength).read_unaligned() as usize;
             let attrs = ptr::addr_of!((*info).FileAttributes).read_unaligned();
-            let name = crate::slice::from_raw_parts(
+            let name = from_maybe_unaligned(
                 ptr::addr_of!((*info).FileName).cast::<u16>(),
                 length / size_of::<u16>(),
             );
@@ -759,10 +760,18 @@ impl<'a> Iterator for DirBuffIter<'a> {
 
         // Skip `.` and `..` pseudo entries.
         const DOT: u16 = b'.' as u16;
-        match name {
+        match &name[..] {
             [DOT] | [DOT, DOT] => self.next(),
             _ => Some((name, is_directory)),
         }
+    }
+}
+
+unsafe fn from_maybe_unaligned<'a>(p: *const u16, len: usize) -> Cow<'a, [u16]> {
+    if p.is_aligned() {
+        Cow::Borrowed(crate::slice::from_raw_parts(p, len))
+    } else {
+        Cow::Owned((0..len).map(|i| p.add(i).read_unaligned()).collect())
     }
 }
 
@@ -1121,13 +1130,13 @@ fn remove_dir_all_iterative(f: &File, delete: fn(&File) -> io::Result<()>) -> io
             if is_directory {
                 let child_dir = open_link_no_reparse(
                     &dir,
-                    name,
+                    &name,
                     c::SYNCHRONIZE | c::DELETE | c::FILE_LIST_DIRECTORY,
                 )?;
                 dirlist.push(child_dir);
             } else {
                 for i in 1..=MAX_RETRIES {
-                    let result = open_link_no_reparse(&dir, name, c::SYNCHRONIZE | c::DELETE);
+                    let result = open_link_no_reparse(&dir, &name, c::SYNCHRONIZE | c::DELETE);
                     match result {
                         Ok(f) => delete(&f)?,
                         // Already deleted, so skip.
