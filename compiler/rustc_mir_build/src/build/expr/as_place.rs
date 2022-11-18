@@ -267,14 +267,13 @@ impl<'tcx> PlaceBuilder<'tcx> {
         }
     }
 
-    pub(in crate::build) fn try_upvars_resolved(
-        self,
-        cx: &Builder<'_, 'tcx>,
-    ) -> Result<PlaceBuilder<'tcx>, PlaceBuilder<'tcx>> {
-        match self.base {
-            PlaceBase::Local(_) => Ok(self),
-            PlaceBase::Upvar { .. } => self.resolve_upvar(cx).ok_or(self),
-        }
+    /// Creates a `Place` or returns `None` if an upvar cannot be resolved
+    pub(in crate::build) fn try_to_place(&self, cx: &Builder<'_, 'tcx>) -> Option<Place<'tcx>> {
+        let resolved = self.resolve_upvar(cx);
+        let builder = resolved.as_ref().unwrap_or(self);
+        let PlaceBase::Local(local) = builder.base else { return None };
+        let projection = cx.tcx.intern_place_elems(&builder.projection);
+        Some(Place { local, projection })
     }
 
     /// Attempts to resolve the `PlaceBuilder`.

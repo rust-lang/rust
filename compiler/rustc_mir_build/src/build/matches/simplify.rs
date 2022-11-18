@@ -156,10 +156,10 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
                 ascription: thir::Ascription { ref annotation, variance },
             } => {
                 // Apply the type ascription to the value at `match_pair.place`, which is the
-                if let Ok(place_resolved) = match_pair.place.clone().try_upvars_resolved(self) {
+                if let Some(source) = match_pair.place.try_to_place(self) {
                     candidate.ascriptions.push(Ascription {
                         annotation: annotation.clone(),
-                        source: place_resolved.into_place(self),
+                        source,
                         variance,
                     });
                 }
@@ -183,10 +183,10 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
                 ref subpattern,
                 is_primary: _,
             } => {
-                if let Ok(place_resolved) = match_pair.place.clone().try_upvars_resolved(self) {
+                if let Some(source) = match_pair.place.try_to_place(self) {
                     candidate.bindings.push(Binding {
                         span: match_pair.pattern.span,
-                        source: place_resolved.into_place(self),
+                        source,
                         var_id: var,
                         binding_mode: mode,
                     });

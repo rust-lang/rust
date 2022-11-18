@@ -369,8 +369,7 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
                     let place_builder =
                         unpack!(block = this.as_place_builder(block, &this.thir[*thir_place]));
 
-                    if let Ok(place_builder_resolved) = place_builder.try_upvars_resolved(this) {
-                        let mir_place = place_builder_resolved.into_place(this);
+                    if let Some(mir_place) = place_builder.try_to_place(this) {
                         this.cfg.push_fake_read(
                             block,
                             this.source_info(this.tcx.hir().span(*hir_id)),
