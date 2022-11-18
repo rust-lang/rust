@@ -119,11 +119,13 @@ impl<'tcx> LateLintPass<'tcx> for EtaReduction {
             let callee_ty_unadjusted = cx.typeck_results().expr_ty(callee).peel_refs();
             if !is_type_diagnostic_item(cx, callee_ty_unadjusted, sym::Arc);
             if !is_type_diagnostic_item(cx, callee_ty_unadjusted, sym::Rc);
+            if let ty::Closure(_, substs) = *closure_ty.kind();
             then {
                 span_lint_and_then(cx, REDUNDANT_CLOSURE, expr.span, "redundant closure", |diag| {
                     if let Some(mut snippet) = snippet_opt(cx, callee.span) {
                         if let Some(fn_mut_id) = cx.tcx.lang_items().fn_mut_trait()
-                            && implements_trait(cx, callee_ty.peel_refs(), fn_mut_id, &[])
+                            && let args = cx.tcx.erase_late_bound_regions(ty::ClosureSubsts { substs }.sig()).inputs()
+                            && implements_trait(cx, callee_ty.peel_refs(), fn_mut_id, &args.iter().copied().map(Into::into).collect::<Vec<_>>())
                             && path_to_local(callee).map_or(false, |l| local_used_after_expr(cx, l, expr))
                         {
                                 // Mutable closure is used after current expr; we cannot consume it.

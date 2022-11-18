@@ -9,7 +9,7 @@ use rustc_hir as hir;
 use rustc_hir::def::{CtorKind, CtorOf, DefKind, Res};
 use rustc_hir::def_id::DefId;
 use rustc_hir::{Expr, FnDecl, LangItem, TyKind, Unsafety};
-use rustc_infer::infer::TyCtxtInferExt;
+use rustc_infer::infer::{TyCtxtInferExt, type_variable::{TypeVariableOrigin, TypeVariableOriginKind}};
 use rustc_lint::LateContext;
 use rustc_middle::mir::interpret::{ConstValue, Scalar};
 use rustc_middle::ty::{
@@ -18,7 +18,7 @@ use rustc_middle::ty::{
 };
 use rustc_middle::ty::{GenericArg, GenericArgKind};
 use rustc_span::symbol::Ident;
-use rustc_span::{sym, Span, Symbol};
+use rustc_span::{sym, Span, Symbol, DUMMY_SP};
 use rustc_target::abi::{Size, VariantIdx};
 use rustc_trait_selection::infer::InferCtxtExt;
 use rustc_trait_selection::traits::query::normalize::AtExt;
@@ -153,7 +153,7 @@ pub fn implements_trait<'tcx>(
     trait_id: DefId,
     ty_params: &[GenericArg<'tcx>],
 ) -> bool {
-    implements_trait_with_env(cx.tcx, cx.param_env, ty, trait_id, ty_params)
+    implements_trait_with_env(cx.tcx, cx.param_env, ty, trait_id, ty_params.iter().map(|&arg| Some(arg)))
 }
 
 /// Same as `implements_trait` but allows using a `ParamEnv` different from the lint context.
@@ -162,7 +162,7 @@ pub fn implements_trait_with_env<'tcx>(
     param_env: ParamEnv<'tcx>,
     ty: Ty<'tcx>,
     trait_id: DefId,
-    ty_params: &[GenericArg<'tcx>],
+    ty_params: impl IntoIterator<Item = Option<GenericArg<'tcx>>>,
 ) -> bool {
     // Clippy shouldn't have infer types
     assert!(!ty.needs_infer());
@@ -171,8 +171,12 @@ pub fn implements_trait_with_env<'tcx>(
     if ty.has_escaping_bound_vars() {
         return false;
     }
-    let ty_params = tcx.mk_substs(ty_params.iter());
     let infcx = tcx.infer_ctxt().build();
+    let orig = TypeVariableOrigin {
+        kind: TypeVariableOriginKind::MiscVariable,
+        span: DUMMY_SP,
+    };
+    let ty_params = tcx.mk_substs(ty_params.into_iter().map(|arg| arg.unwrap_or_else(|| infcx.next_ty_var(orig).into())));
     infcx
         .type_implements_trait(trait_id, ty, ty_params, param_env)
         .must_apply_modulo_regions()

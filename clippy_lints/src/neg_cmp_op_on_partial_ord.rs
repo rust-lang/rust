@@ -65,7 +65,7 @@ impl<'tcx> LateLintPass<'tcx> for NoNegCompOpForPartialOrd {
 
                 let implements_partial_ord = {
                     if let Some(id) = cx.tcx.lang_items().partial_ord_trait() {
-                        implements_trait(cx, ty, id, &[])
+                        implements_trait(cx, ty, id, &[ty.into()])
                     } else {
                         return;
                     }

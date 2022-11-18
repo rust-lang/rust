@@ -474,7 +474,7 @@ fn is_cow_into_owned(cx: &LateContext<'_>, method_name: Symbol, method_def_id: D
 }
 
 /// Returns true if the named method is `ToString::to_string` and it's called on a type that
-/// is string-like i.e. implements `AsRef<str>` or `Deref<str>`.
+/// is string-like i.e. implements `AsRef<str>` or `Deref<Target = str>`.
 fn is_to_string_on_string_like<'a>(
     cx: &LateContext<'_>,
     call_expr: &'a Expr<'a>,
@@ -490,7 +490,7 @@ fn is_to_string_on_string_like<'a>(
         && let GenericArgKind::Type(ty) = generic_arg.unpack()
         && let Some(deref_trait_id) = cx.tcx.get_diagnostic_item(sym::Deref)
         && let Some(as_ref_trait_id) = cx.tcx.get_diagnostic_item(sym::AsRef)
-        && (implements_trait(cx, ty, deref_trait_id, &[cx.tcx.types.str_.into()]) ||
+        && (get_associated_type(cx, ty, deref_trait_id, "Target") == Some(cx.tcx.types.str_) ||
             implements_trait(cx, ty, as_ref_trait_id, &[cx.tcx.types.str_.into()])) {
             true
         } else {
