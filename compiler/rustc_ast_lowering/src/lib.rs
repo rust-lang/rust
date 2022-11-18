@@ -1472,7 +1472,15 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
                 DefPathData::ImplTrait,
             ),
             hir::OpaqueTyOrigin::FnReturn(fn_def_id) => {
-                self.create_def(fn_def_id, opaque_ty_node_id, DefPathData::ImplTrait)
+                if in_trait {
+                    self.create_def(
+                        fn_def_id,
+                        opaque_ty_node_id,
+                        DefPathData::ImplTraitInTrait(fn_def_id.to_def_id(), None),
+                    )
+                } else {
+                    self.create_def(fn_def_id, opaque_ty_node_id, DefPathData::ImplTrait)
+                }
             }
             hir::OpaqueTyOrigin::AsyncFn(..) => bug!("unreachable"),
         };
@@ -1839,8 +1847,15 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
 
         let fn_def_id = self.local_def_id(fn_node_id);
 
-        let opaque_ty_def_id =
-            self.create_def(fn_def_id, opaque_ty_node_id, DefPathData::ImplTrait);
+        let opaque_ty_def_id = if in_trait {
+            self.create_def(
+                fn_def_id,
+                opaque_ty_node_id,
+                DefPathData::ImplTraitInTrait(fn_def_id.to_def_id(), None),
+            )
+        } else {
+            self.create_def(fn_def_id, opaque_ty_node_id, DefPathData::ImplTrait)
+        };
 
         // When we create the opaque type for this async fn, it is going to have
         // to capture all the lifetimes involved in the signature (including in the

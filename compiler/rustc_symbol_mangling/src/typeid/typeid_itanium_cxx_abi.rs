@@ -396,7 +396,8 @@ fn encode_ty_name<'tcx>(tcx: TyCtxt<'tcx>, def_id: DefId) -> String {
             hir::definitions::DefPathData::ClosureExpr => "C",
             hir::definitions::DefPathData::Ctor => "c",
             hir::definitions::DefPathData::AnonConst => "k",
-            hir::definitions::DefPathData::ImplTrait => "i",
+            hir::definitions::DefPathData::ImplTrait
+            | hir::definitions::DefPathData::ImplTraitInTrait(..) => "i",
             hir::definitions::DefPathData::CrateRoot
             | hir::definitions::DefPathData::Use
             | hir::definitions::DefPathData::GlobalAsm

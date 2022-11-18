@@ -564,14 +564,17 @@ fn check_item_type<'tcx>(tcx: TyCtxt<'tcx>, id: hir::ItemId) {
             check_opaque(tcx, id);
         }
         DefKind::ImplTraitPlaceholder => {
-            let parent = tcx.impl_trait_in_trait_parent(id.owner_id.to_def_id());
-            // Only check the validity of this opaque type if the function has a default body
-            if let hir::Node::TraitItem(hir::TraitItem {
-                kind: hir::TraitItemKind::Fn(_, hir::TraitFn::Provided(_)),
-                ..
-            }) = tcx.hir().get_by_def_id(parent.expect_local())
+            if let Some((fn_def_id, _)) =
+                tcx.def_path(id.owner_id.to_def_id()).get_impl_trait_in_trait_data()
             {
-                check_opaque(tcx, id);
+                // Only check the validity of this opaque type if the function has a default body
+                if let hir::Node::TraitItem(hir::TraitItem {
+                    kind: hir::TraitItemKind::Fn(_, hir::TraitFn::Provided(_)),
+                    ..
+                }) = tcx.hir().get_by_def_id(fn_def_id.as_local().unwrap())
+                {
+                    check_opaque(tcx, id);
+                }
             }
         }
         DefKind::TyAlias => {

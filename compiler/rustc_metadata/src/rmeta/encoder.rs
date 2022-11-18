@@ -1020,15 +1020,20 @@ fn should_encode_type(tcx: TyCtxt<'_>, def_id: LocalDefId, def_kind: DefKind) ->
         | DefKind::InlineConst => true,
 
         DefKind::ImplTraitPlaceholder => {
-            let parent_def_id = tcx.impl_trait_in_trait_parent(def_id.to_def_id());
-            let assoc_item = tcx.associated_item(parent_def_id);
-            match assoc_item.container {
-                // Always encode an RPIT in an impl fn, since it always has a body
-                ty::AssocItemContainer::ImplContainer => true,
-                ty::AssocItemContainer::TraitContainer => {
-                    // Encode an RPIT for a trait only if the trait has a default body
-                    assoc_item.defaultness(tcx).has_value()
+            if let Some((fn_def_id, _)) =
+                tcx.def_path(def_id.to_def_id()).get_impl_trait_in_trait_data()
+            {
+                let assoc_item = tcx.associated_item(fn_def_id);
+                match assoc_item.container {
+                    // Always encode an RPIT in an impl fn, since it always has a body
+                    ty::AssocItemContainer::ImplContainer => true,
+                    ty::AssocItemContainer::TraitContainer => {
+                        // Encode an RPIT for a trait only if the trait has a default body
+                        assoc_item.defaultness(tcx).has_value()
+                    }
                 }
+            } else {
+                bug!();
             }
         }
 

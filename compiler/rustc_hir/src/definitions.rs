@@ -5,7 +5,9 @@
 //! expressions) that are mostly just leftovers.
 
 pub use crate::def_id::DefPathHash;
-use crate::def_id::{CrateNum, DefIndex, LocalDefId, StableCrateId, CRATE_DEF_INDEX, LOCAL_CRATE};
+use crate::def_id::{
+    CrateNum, DefId, DefIndex, LocalDefId, StableCrateId, CRATE_DEF_INDEX, LOCAL_CRATE,
+};
 use crate::def_path_hash_map::DefPathHashMap;
 
 use rustc_data_structures::fx::FxHashMap;
@@ -245,6 +247,17 @@ impl DefPath {
 
         s
     }
+
+    pub fn get_impl_trait_in_trait_data(&self) -> Option<(DefId, Option<DefId>)> {
+        if let Some(def_path_data) = self.data.last()
+            && let DefPathData::ImplTraitInTrait(fn_def_id, of_trait) =
+            def_path_data.data
+        {
+            Some((fn_def_id, of_trait))
+        } else {
+            None
+        }
+    }
 }
 
 #[derive(Copy, Clone, Debug, PartialEq, Eq, Hash, Encodable, Decodable)]
@@ -281,6 +294,10 @@ pub enum DefPathData {
     AnonConst,
     /// An `impl Trait` type node.
     ImplTrait,
+    /// An `impl Trait` type node inside a `trait` or inside an `impl` of a `trait`.
+    /// On a `trait` the value is `(trait_fn_def_id, None)`.
+    /// On an `impl` the value is `(impl_fn_def_id, Some(trait_rpit_def_id))`.
+    ImplTraitInTrait(DefId, Option<DefId>),
 }
 
 impl Definitions {
@@ -404,7 +421,7 @@ impl DefPathData {
             TypeNs(name) | ValueNs(name) | MacroNs(name) | LifetimeNs(name) => Some(name),
 
             Impl | ForeignMod | CrateRoot | Use | GlobalAsm | ClosureExpr | Ctor | AnonConst
-            | ImplTrait => None,
+            | ImplTrait | ImplTraitInTrait(..) => None,
         }
     }
 
@@ -424,6 +441,7 @@ impl DefPathData {
             Ctor => DefPathDataName::Anon { namespace: sym::constructor },
             AnonConst => DefPathDataName::Anon { namespace: sym::constant },
             ImplTrait => DefPathDataName::Anon { namespace: sym::opaque },
+            ImplTraitInTrait(..) => DefPathDataName::Anon { namespace: sym::opaque },
         }
     }
 }
