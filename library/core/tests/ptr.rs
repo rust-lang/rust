@@ -564,9 +564,15 @@ fn align_offset_various_strides_const() {
 #[cfg(not(bootstrap))]
 fn align_offset_with_provenance_const() {
     const {
-        let data = 42;
+        // On some platforms (e.g. msp430-none-elf), the alignment of `i32` is less than 4.
+        #[repr(align(4))]
+        struct AlignedI32(i32);
 
-        let ptr: *const i32 = &data;
+        let data = AlignedI32(42);
+
+        // `stride % align == 0` (usual case)
+
+        let ptr: *const i32 = &data.0;
         assert!(ptr.align_offset(1) == 0);
         assert!(ptr.align_offset(2) == 0);
         assert!(ptr.align_offset(4) == 0);
@@ -621,6 +627,44 @@ fn align_offset_with_provenance_const() {
         assert!(ptr3.align_offset(8) == usize::MAX);
         assert!(ptr3.wrapping_byte_add(1).align_offset(1) == 0);
         assert!(ptr3.wrapping_byte_add(1).align_offset(2) == usize::MAX);
+
+        // `stride % align != 0` (edge case)
+
+        let ptr4: *const [u8; 3] = ptr.cast();
+        assert!(ptr4.align_offset(1) == 0);
+        assert!(ptr4.align_offset(2) == 0);
+        assert!(ptr4.align_offset(4) == 0);
+        assert!(ptr4.align_offset(8) == usize::MAX);
+        assert!(ptr4.wrapping_byte_add(1).align_offset(1) == 0);
+        assert!(ptr4.wrapping_byte_add(1).align_offset(2) == 1);
+        assert!(ptr4.wrapping_byte_add(1).align_offset(4) == 1);
+        assert!(ptr4.wrapping_byte_add(1).align_offset(8) == usize::MAX);
+        assert!(ptr4.wrapping_byte_add(2).align_offset(1) == 0);
+        assert!(ptr4.wrapping_byte_add(2).align_offset(2) == 0);
+        assert!(ptr4.wrapping_byte_add(2).align_offset(4) == 2);
+        assert!(ptr4.wrapping_byte_add(2).align_offset(8) == usize::MAX);
+        assert!(ptr4.wrapping_byte_add(3).align_offset(1) == 0);
+        assert!(ptr4.wrapping_byte_add(3).align_offset(2) == 1);
+        assert!(ptr4.wrapping_byte_add(3).align_offset(4) == 3);
+        assert!(ptr4.wrapping_byte_add(3).align_offset(8) == usize::MAX);
+
+        let ptr5: *const [u8; 5] = ptr.cast();
+        assert!(ptr5.align_offset(1) == 0);
+        assert!(ptr5.align_offset(2) == 0);
+        assert!(ptr5.align_offset(4) == 0);
+        assert!(ptr5.align_offset(8) == usize::MAX);
+        assert!(ptr5.wrapping_byte_add(1).align_offset(1) == 0);
+        assert!(ptr5.wrapping_byte_add(1).align_offset(2) == 1);
+        assert!(ptr5.wrapping_byte_add(1).align_offset(4) == 3);
+        assert!(ptr5.wrapping_byte_add(1).align_offset(8) == usize::MAX);
+        assert!(ptr5.wrapping_byte_add(2).align_offset(1) == 0);
+        assert!(ptr5.wrapping_byte_add(2).align_offset(2) == 0);
+        assert!(ptr5.wrapping_byte_add(2).align_offset(4) == 2);
+        assert!(ptr5.wrapping_byte_add(2).align_offset(8) == usize::MAX);
+        assert!(ptr5.wrapping_byte_add(3).align_offset(1) == 0);
+        assert!(ptr5.wrapping_byte_add(3).align_offset(2) == 1);
+        assert!(ptr5.wrapping_byte_add(3).align_offset(4) == 1);
+        assert!(ptr5.wrapping_byte_add(3).align_offset(8) == usize::MAX);
     }
 }
 
