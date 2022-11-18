@@ -79,19 +79,14 @@ impl<T: ?Sized> *const T {
     /// }
     /// ```
     #[unstable(feature = "set_ptr_value", issue = "75091")]
+    #[rustc_const_unstable(feature = "set_ptr_value", issue = "75091")]
     #[must_use = "returns a new pointer rather than modifying its argument"]
     #[inline]
-    pub fn with_metadata_of<U>(self, mut val: *const U) -> *const U
+    pub const fn with_metadata_of<U>(self, meta: *const U) -> *const U
     where
         U: ?Sized,
     {
-        let target = &mut val as *mut *const U as *mut *const u8;
-        // SAFETY: In case of a thin pointer, this operations is identical
-        // to a simple assignment. In case of a fat pointer, with the current
-        // fat pointer layout implementation, the first field of such a
-        // pointer is always the data pointer, which is likewise assigned.
-        unsafe { *target = self as *const u8 };
-        val
+        from_raw_parts::<U>(self as *const (), metadata(meta))
     }
 
     /// Changes constness without changing the type.
@@ -478,8 +473,7 @@ impl<T: ?Sized> *const T {
     #[cfg_attr(miri, track_caller)] // even without panics, this helps for Miri backtraces
     pub const unsafe fn byte_offset(self, count: isize) -> Self {
         // SAFETY: the caller must uphold the safety contract for `offset`.
-        let this = unsafe { self.cast::<u8>().offset(count).cast::<()>() };
-        from_raw_parts::<T>(this, metadata(self))
+        unsafe { self.cast::<u8>().offset(count).with_metadata_of(self) }
     }
 
     /// Calculates the offset from a pointer using wrapping arithmetic.
@@ -559,7 +553,7 @@ impl<T: ?Sized> *const T {
     #[unstable(feature = "pointer_byte_offsets", issue = "96283")]
     #[rustc_const_unstable(feature = "const_pointer_byte_offsets", issue = "96283")]
     pub const fn wrapping_byte_offset(self, count: isize) -> Self {
-        from_raw_parts::<T>(self.cast::<u8>().wrapping_offset(count).cast::<()>(), metadata(self))
+        self.cast::<u8>().wrapping_offset(count).with_metadata_of(self)
     }
 
     /// Masks out bits of the pointer according to a mask.
@@ -597,8 +591,7 @@ impl<T: ?Sized> *const T {
     #[must_use = "returns a new pointer rather than modifying its argument"]
     #[inline(always)]
     pub fn mask(self, mask: usize) -> *const T {
-        let this = intrinsics::ptr_mask(self.cast::<()>(), mask);
-        from_raw_parts::<T>(this, metadata(self))
+        intrinsics::ptr_mask(self.cast::<()>(), mask).with_metadata_of(self)
     }
 
     /// Calculates the distance between two pointers. The returned value is in
@@ -939,8 +932,7 @@ impl<T: ?Sized> *const T {
     #[cfg_attr(miri, track_caller)] // even without panics, this helps for Miri backtraces
     pub const unsafe fn byte_add(self, count: usize) -> Self {
         // SAFETY: the caller must uphold the safety contract for `add`.
-        let this = unsafe { self.cast::<u8>().add(count).cast::<()>() };
-        from_raw_parts::<T>(this, metadata(self))
+        unsafe { self.cast::<u8>().add(count).with_metadata_of(self) }
     }
 
     /// Calculates the offset from a pointer (convenience for
@@ -1026,8 +1018,7 @@ impl<T: ?Sized> *const T {
     #[cfg_attr(miri, track_caller)] // even without panics, this helps for Miri backtraces
     pub const unsafe fn byte_sub(self, count: usize) -> Self {
         // SAFETY: the caller must uphold the safety contract for `sub`.
-        let this = unsafe { self.cast::<u8>().sub(count).cast::<()>() };
-        from_raw_parts::<T>(this, metadata(self))
+        unsafe { self.cast::<u8>().sub(count).with_metadata_of(self) }
     }
 
     /// Calculates the offset from a pointer using wrapping arithmetic.
@@ -1107,7 +1098,7 @@ impl<T: ?Sized> *const T {
     #[unstable(feature = "pointer_byte_offsets", issue = "96283")]
     #[rustc_const_unstable(feature = "const_pointer_byte_offsets", issue = "96283")]
     pub const fn wrapping_byte_add(self, count: usize) -> Self {
-        from_raw_parts::<T>(self.cast::<u8>().wrapping_add(count).cast::<()>(), metadata(self))
+        self.cast::<u8>().wrapping_add(count).with_metadata_of(self)
     }
 
     /// Calculates the offset from a pointer using wrapping arithmetic.
@@ -1187,7 +1178,7 @@ impl<T: ?Sized> *const T {
     #[unstable(feature = "pointer_byte_offsets", issue = "96283")]
     #[rustc_const_unstable(feature = "const_pointer_byte_offsets", issue = "96283")]
     pub const fn wrapping_byte_sub(self, count: usize) -> Self {
-        from_raw_parts::<T>(self.cast::<u8>().wrapping_sub(count).cast::<()>(), metadata(self))
+        self.cast::<u8>().wrapping_sub(count).with_metadata_of(self)
     }
 
     /// Reads the value from `self` without moving it. This leaves the
