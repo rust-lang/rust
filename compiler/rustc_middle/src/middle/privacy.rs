@@ -142,13 +142,13 @@ impl EffectiveVisibilities {
     pub fn set_public_at_level(
         &mut self,
         id: LocalDefId,
-        default_vis: impl FnOnce() -> Visibility,
+        lazy_private_vis: impl FnOnce() -> Visibility,
         level: Level,
     ) {
         let mut effective_vis = self
             .effective_vis(id)
             .copied()
-            .unwrap_or_else(|| EffectiveVisibility::from_vis(default_vis()));
+            .unwrap_or_else(|| EffectiveVisibility::from_vis(lazy_private_vis()));
         for l in Level::all_levels() {
             if l <= level {
                 *effective_vis.at_level_mut(l) = Visibility::Public;
@@ -206,6 +206,11 @@ impl EffectiveVisibilities {
     }
 }
 
+pub trait IntoDefIdTree {
+    type Tree: DefIdTree;
+    fn tree(self) -> Self::Tree;
+}
+
 impl<Id: Eq + Hash> EffectiveVisibilities<Id> {
     pub fn iter(&self) -> impl Iterator<Item = (&Id, &EffectiveVisibility)> {
         self.map.iter()
@@ -217,21 +222,26 @@ impl<Id: Eq + Hash> EffectiveVisibilities<Id> {
 
     // `parent_id` is not necessarily a parent in source code tree,
     // it is the node from which the maximum effective visibility is inherited.
-    pub fn update(
+    pub fn update<T: IntoDefIdTree>(
         &mut self,
         id: Id,
         nominal_vis: Visibility,
-        default_vis: Visibility,
+        lazy_private_vis: impl FnOnce(T) -> (Visibility, T),
         inherited_eff_vis: Option<EffectiveVisibility>,
         level: Level,
-        tree: impl DefIdTree,
+        mut into_tree: T,
     ) -> bool {
         let mut changed = false;
-        let mut current_effective_vis = self
-            .map
-            .get(&id)
-            .copied()
-            .unwrap_or_else(|| EffectiveVisibility::from_vis(default_vis));
+        let mut current_effective_vis = match self.map.get(&id).copied() {
+            Some(eff_vis) => eff_vis,
+            None => {
+                let private_vis;
+                (private_vis, into_tree) = lazy_private_vis(into_tree);
+                EffectiveVisibility::from_vis(private_vis)
+            }
+        };
+        let tree = into_tree.tree();
+
         if let Some(inherited_effective_vis) = inherited_eff_vis {
             let mut inherited_effective_vis_at_prev_level =
                 *inherited_effective_vis.at_level(level);
