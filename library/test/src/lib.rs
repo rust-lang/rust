@@ -16,6 +16,7 @@
 
 #![unstable(feature = "test", issue = "50297")]
 #![doc(test(attr(deny(warnings))))]
+#![feature(exclusive_wrapper)]
 #![feature(internal_output_capture)]
 #![feature(is_terminal)]
 #![feature(staged_api)]
@@ -59,7 +60,7 @@ use std::{
     panic::{self, catch_unwind, AssertUnwindSafe, PanicInfo},
     process::{self, Command, Termination},
     sync::mpsc::{channel, Sender},
-    sync::{Arc, Mutex},
+    sync::{Arc, Exclusive, Mutex},
     thread,
     time::{Duration, Instant},
 };
@@ -576,14 +577,14 @@ pub fn run_test(
         let supports_threads = !cfg!(target_os = "emscripten") && !cfg!(target_family = "wasm");
         if supports_threads {
             let cfg = thread::Builder::new().name(name.as_slice().to_owned());
-            let mut runtest = Arc::new(Mutex::new(Some(runtest)));
-            let runtest2 = runtest.clone();
-            match cfg.spawn(move || runtest2.lock().unwrap().take().unwrap()()) {
+            let runtest = Arc::new(Exclusive::new(runtest));
+            let runtest = move || Arc::try_unwrap(runtest).ok().unwrap().into_inner()();
+            match cfg.spawn(runtest.clone()) {
                 Ok(handle) => Some(handle),
                 Err(e) if e.kind() == io::ErrorKind::WouldBlock => {
                     // `ErrorKind::WouldBlock` means hitting the thread limit on some
                     // platforms, so run the test synchronously here instead.
-                    Arc::get_mut(&mut runtest).unwrap().get_mut().unwrap().take().unwrap()();
+                    runtest();
                     None
                 }
                 Err(e) => panic!("failed to spawn thread to run test: {e}"),
