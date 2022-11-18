@@ -211,7 +211,7 @@ checksum = "ba3569f383e8f1598449f1a423e72e99569137b47740b1da11ef19af3d5c3223"
 dependencies = [
  "lazy_static",
  "memchr",
- "regex-automata",
+ "regex-automata 0.1.10",
 ]
 
 [[package]]
@@ -1708,6 +1708,73 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "3c1ad908cc71012b7bea4d0c53ba96a8cba9962f048fa68d143376143d863b7a"
 
 [[package]]
+name = "icu_list"
+version = "1.0.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "c40218275f081c4493f190357c5395647b06734c2dc3dcb41cc099a0f60168b1"
+dependencies = [
+ "displaydoc",
+ "icu_locid",
+ "icu_provider",
+ "regex-automata 0.2.0",
+ "writeable",
+ "zerovec",
+]
+
+[[package]]
+name = "icu_locid"
+version = "1.0.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "34b3de5d99a0e275fe6193b9586dbf37364daebc0d39c89b5cf8376a53b789e8"
+dependencies = [
+ "displaydoc",
+ "litemap",
+ "tinystr",
+ "writeable",
+ "zerovec",
+]
+
+[[package]]
+name = "icu_provider"
+version = "1.0.1"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "2f911086e3c521a8a824d4f8bfd87769645ced2f07ff913b521c0d793be07100"
+dependencies = [
+ "displaydoc",
+ "icu_locid",
+ "icu_provider_macros",
+ "stable_deref_trait",
+ "writeable",
+ "yoke",
+ "zerofrom",
+ "zerovec",
+]
+
+[[package]]
+name = "icu_provider_adapters"
+version = "1.0.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "980c71d8a91b246ebbb97847178a4b816eea39d1d550c70ee566384555bb6545"
+dependencies = [
+ "icu_locid",
+ "icu_provider",
+ "tinystr",
+ "yoke",
+ "zerovec",
+]
+
+[[package]]
+name = "icu_provider_macros"
+version = "1.0.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "38cf6f5b65cf81f0b4298da647101acbfe6ae0e25263f92bd7a22597e9d6d606"
+dependencies = [
+ "proc-macro2",
+ "quote",
+ "syn",
+]
+
+[[package]]
 name = "idna"
 version = "0.2.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -2035,6 +2102,12 @@ dependencies = [
 ]
 
 [[package]]
+name = "litemap"
+version = "0.6.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "f34a3f4798fac63fb48cf277eefa38f94d3443baff555bb98e4f56bc9092368e"
+
+[[package]]
 name = "lld-wrapper"
 version = "0.1.0"
 
@@ -2100,7 +2173,7 @@ version = "0.1.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "8263075bb86c5a1b1427b5ae862e8889656f126e9f77c484496e8b47cf5c5558"
 dependencies = [
- "regex-automata",
+ "regex-automata 0.1.10",
 ]
 
 [[package]]
@@ -2928,6 +3001,15 @@ dependencies = [
 ]
 
 [[package]]
+name = "regex-automata"
+version = "0.2.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "e9368763f5a9b804326f3af749e16f9abf378d227bcdee7634b13d8f17793782"
+dependencies = [
+ "memchr",
+]
+
+[[package]]
 name = "regex-syntax"
 version = "0.6.26"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -3203,6 +3285,18 @@ dependencies = [
 ]
 
 [[package]]
+name = "rustc_baked_icu_data"
+version = "0.0.0"
+dependencies = [
+ "icu_list",
+ "icu_locid",
+ "icu_provider",
+ "icu_provider_adapters",
+ "litemap",
+ "zerovec",
+]
+
+[[package]]
 name = "rustc_borrowck"
 version = "0.0.0"
 dependencies = [
@@ -3422,13 +3516,18 @@ version = "0.0.0"
 dependencies = [
  "fluent-bundle",
  "fluent-syntax",
+ "icu_list",
+ "icu_locid",
+ "icu_provider_adapters",
  "intl-memoizer",
+ "rustc_baked_icu_data",
  "rustc_data_structures",
  "rustc_macros",
  "rustc_serialize",
  "rustc_span",
  "tracing",
  "unic-langid",
+ "writeable",
 ]
 
 [[package]]
@@ -4934,6 +5033,7 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "f8aeafdfd935e4a7fe16a91ab711fa52d54df84f9c8f7ca5837a9d1d902ef4c2"
 dependencies = [
  "displaydoc",
+ "zerovec",
 ]
 
 [[package]]
@@ -5547,6 +5647,12 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "f40009d85759725a34da6d89a94e63d7bdc50a862acf0dbc7c8e488f1edcb6f5"
 
 [[package]]
+name = "writeable"
+version = "0.5.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "f8e6ab4f5da1b24daf2c590cfac801bacb27b15b4f050e84eb60149ea726f06b"
+
+[[package]]
 name = "xattr"
 version = "0.2.2"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -5597,4 +5703,72 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "fe5c30ade05e61656247b2e334a031dfd0cc466fadef865bdcdea8d537951bf1"
 dependencies = [
  "winapi",
+]
+
+[[package]]
+name = "yoke"
+version = "0.6.2"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "1fe1d55ca72c32d573bfbd5cb2f0ca65a497854c44762957a6d3da96041a5184"
+dependencies = [
+ "serde",
+ "stable_deref_trait",
+ "yoke-derive",
+ "zerofrom",
+]
+
+[[package]]
+name = "yoke-derive"
+version = "0.6.1"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "1346e4cd025ae818b88566eac7eb65ab33a994ea55f355c86889af2e7e56b14e"
+dependencies = [
+ "proc-macro2",
+ "quote",
+ "syn",
+ "synstructure",
+]
+
+[[package]]
+name = "zerofrom"
+version = "0.1.1"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "79e9355fccf72b04b7deaa99ce7a0f6630530acf34045391b74460fcd714de54"
+dependencies = [
+ "zerofrom-derive",
+]
+
+[[package]]
+name = "zerofrom-derive"
+version = "0.1.1"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "2e8aa86add9ddbd2409c1ed01e033cd457d79b1b1229b64922c25095c595e829"
+dependencies = [
+ "proc-macro2",
+ "quote",
+ "syn",
+ "synstructure",
+]
+
+[[package]]
+name = "zerovec"
+version = "0.9.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "b9d919a74c17749ccb17beaf6405562e413cd94e98ba52ca1e64bbe7eefbd8b8"
+dependencies = [
+ "yoke",
+ "zerofrom",
+ "zerovec-derive",
+]
+
+[[package]]
+name = "zerovec-derive"
+version = "0.9.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "490e5f878c2856225e884c35927e7ea6db3c24cdb7229b72542c7526ad7ed49e"
+dependencies = [
+ "proc-macro2",
+ "quote",
+ "syn",
+ "synstructure",
 ]
