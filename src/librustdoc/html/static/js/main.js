@@ -910,7 +910,6 @@ function loadCss(cssUrl) {
     function hideNotable() {
         if (window.CURRENT_NOTABLE_ELEMENT) {
             if (window.CURRENT_NOTABLE_ELEMENT.NOTABLE_BASE.NOTABLE_FORCE_VISIBLE) {
-                window.CURRENT_NOTABLE_ELEMENT.NOTABLE_BASE.focus();
                 window.CURRENT_NOTABLE_ELEMENT.NOTABLE_BASE.NOTABLE_FORCE_VISIBLE = false;
             }
             const body = document.getElementsByTagName("body")[0];
