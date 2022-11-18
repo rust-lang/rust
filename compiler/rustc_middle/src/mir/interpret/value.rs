@@ -1,6 +1,8 @@
 use std::convert::{TryFrom, TryInto};
 use std::fmt;
 
+use either::{Either, Left, Right};
+
 use rustc_apfloat::{
     ieee::{Double, Single},
     Float,
@@ -293,10 +295,10 @@ impl<Prov> Scalar<Prov> {
     pub fn to_bits_or_ptr_internal(
         self,
         target_size: Size,
-    ) -> Result<Result<u128, Pointer<Prov>>, ScalarSizeMismatch> {
+    ) -> Result<Either<u128, Pointer<Prov>>, ScalarSizeMismatch> {
         assert_ne!(target_size.bytes(), 0, "you should never look at the bits of a ZST");
         Ok(match self {
-            Scalar::Int(int) => Ok(int.to_bits(target_size).map_err(|size| {
+            Scalar::Int(int) => Left(int.to_bits(target_size).map_err(|size| {
                 ScalarSizeMismatch { target_size: target_size.bytes(), data_size: size.bytes() }
             })?),
             Scalar::Ptr(ptr, sz) => {
@@ -306,7 +308,7 @@ impl<Prov> Scalar<Prov> {
                         data_size: sz.into(),
                     });
                 }
-                Err(ptr)
+                Right(ptr)
             }
         })
     }
@@ -318,8 +320,8 @@ impl<'tcx, Prov: Provenance> Scalar<Prov> {
             .to_bits_or_ptr_internal(cx.pointer_size())
             .map_err(|s| err_ub!(ScalarSizeMismatch(s)))?
         {
-            Err(ptr) => Ok(ptr.into()),
-            Ok(bits) => {
+            Right(ptr) => Ok(ptr.into()),
+            Left(bits) => {
                 let addr = u64::try_from(bits).unwrap();
                 Ok(Pointer::from_addr(addr))
             }

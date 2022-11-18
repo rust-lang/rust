@@ -3330,6 +3330,7 @@ dependencies = [
 name = "rustc_const_eval"
 version = "0.0.0"
 dependencies = [
+ "either",
  "rustc_apfloat",
  "rustc_ast",
  "rustc_attr",
@@ -3820,6 +3821,7 @@ dependencies = [
 name = "rustc_mir_build"
 version = "0.0.0"
 dependencies = [
+ "either",
  "rustc_apfloat",
  "rustc_arena",
  "rustc_ast",
@@ -3866,6 +3868,7 @@ name = "rustc_mir_transform"
 version = "0.0.0"
 dependencies = [
  "coverage_test_macros",
+ "either",
  "itertools",
  "rustc_ast",
  "rustc_attr",

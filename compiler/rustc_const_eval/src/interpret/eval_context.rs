@@ -2,6 +2,8 @@ use std::cell::Cell;
 use std::fmt;
 use std::mem;
 
+use either::{Either, Left, Right};
+
 use rustc_hir::{self as hir, def_id::DefId, definitions::DefPathData};
 use rustc_index::vec::IndexVec;
 use rustc_middle::mir;
@@ -121,13 +123,12 @@ pub struct Frame<'mir, 'tcx, Prov: Provenance = AllocId, Extra = ()> {
     ////////////////////////////////////////////////////////////////////////////////
     // Current position within the function
     ////////////////////////////////////////////////////////////////////////////////
-    /// If this is `Err`, we are not currently executing any particular statement in
+    /// If this is `Right`, we are not currently executing any particular statement in
     /// this frame (can happen e.g. during frame initialization, and during unwinding on
     /// frames without cleanup code).
-    /// We basically abuse `Result` as `Either`.
     ///
     /// Needs to be public because ConstProp does unspeakable things to it.
-    pub loc: Result<mir::Location, Span>,
+    pub loc: Either<mir::Location, Span>,
 }
 
 /// What we store about a frame in an interpreter backtrace.
@@ -227,25 +228,24 @@ impl<'mir, 'tcx, Prov: Provenance> Frame<'mir, 'tcx, Prov> {
 impl<'mir, 'tcx, Prov: Provenance, Extra> Frame<'mir, 'tcx, Prov, Extra> {
     /// Get the current location within the Frame.
     ///
-    /// If this is `Err`, we are not currently executing any particular statement in
+    /// If this is `Left`, we are not currently executing any particular statement in
     /// this frame (can happen e.g. during frame initialization, and during unwinding on
     /// frames without cleanup code).
-    /// We basically abuse `Result` as `Either`.
     ///
     /// Used by priroda.
-    pub fn current_loc(&self) -> Result<mir::Location, Span> {
+    pub fn current_loc(&self) -> Either<mir::Location, Span> {
         self.loc
     }
 
     /// Return the `SourceInfo` of the current instruction.
     pub fn current_source_info(&self) -> Option<&mir::SourceInfo> {
-        self.loc.ok().map(|loc| self.body.source_info(loc))
+        self.loc.left().map(|loc| self.body.source_info(loc))
     }
 
     pub fn current_span(&self) -> Span {
         match self.loc {
-            Ok(loc) => self.body.source_info(loc).span,
-            Err(span) => span,
+            Left(loc) => self.body.source_info(loc).span,
+            Right(span) => span,
         }
     }
 }
@@ -679,7 +679,7 @@ impl<'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
         // first push a stack frame so we have access to the local substs
         let pre_frame = Frame {
             body,
-            loc: Err(body.span), // Span used for errors caused during preamble.
+            loc: Right(body.span), // Span used for errors caused during preamble.
             return_to_block,
             return_place: return_place.clone(),
             // empty local array, we fill it in below, after we are inside the stack frame and
@@ -713,7 +713,7 @@ impl<'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
         // done
         self.frame_mut().locals = locals;
         M::after_stack_push(self)?;
-        self.frame_mut().loc = Ok(mir::Location::START);
+        self.frame_mut().loc = Left(mir::Location::START);
 
         let span = info_span!("frame", "{}", instance);
         self.frame_mut().tracing_span.enter(span);
@@ -724,7 +724,7 @@ impl<'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
     /// Jump to the given block.
     #[inline]
     pub fn go_to_block(&mut self, target: mir::BasicBlock) {
-        self.frame_mut().loc = Ok(mir::Location { block: target, statement_index: 0 });
+        self.frame_mut().loc = Left(mir::Location { block: target, statement_index: 0 });
     }
 
     /// *Return* to the given `target` basic block.
@@ -750,8 +750,8 @@ impl<'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
     /// unwinding, and doing so is UB.
     pub fn unwind_to_block(&mut self, target: StackPopUnwind) -> InterpResult<'tcx> {
         self.frame_mut().loc = match target {
-            StackPopUnwind::Cleanup(block) => Ok(mir::Location { block, statement_index: 0 }),
-            StackPopUnwind::Skip => Err(self.frame_mut().body.span),
+            StackPopUnwind::Cleanup(block) => Left(mir::Location { block, statement_index: 0 }),
+            StackPopUnwind::Skip => Right(self.frame_mut().body.span),
             StackPopUnwind::NotAllowed => {
                 throw_ub_format!("unwinding past a stack frame that does not allow unwinding")
             }
@@ -783,8 +783,8 @@ impl<'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
         assert_eq!(
             unwinding,
             match self.frame().loc {
-                Ok(loc) => self.body().basic_blocks[loc.block].is_cleanup,
-                Err(_) => true,
+                Left(loc) => self.body().basic_blocks[loc.block].is_cleanup,
+                Right(_) => true,
             }
         );
         if unwinding && self.frame_idx() == 0 {
