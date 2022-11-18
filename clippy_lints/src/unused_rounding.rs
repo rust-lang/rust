@@ -36,7 +36,7 @@ fn is_useless_rounding(expr: &Expr) -> Option<(&str, String)> {
         && let ExprKind::Lit(spanned) = &receiver.kind
         && let LitKind::Float(symbol, ty) = spanned.kind {
             let f = symbol.as_str().parse::<f64>().unwrap();
-            let f_str = symbol.to_string() + if let LitFloatType::Suffixed(ty) = ty {
+            let f_str = spanned.token_lit.symbol.to_string() + if let LitFloatType::Suffixed(ty) = ty {
                 ty.name_str()
             } else {
                 ""
