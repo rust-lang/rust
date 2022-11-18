@@ -441,7 +441,7 @@ mod mut_ptr;
 ///
 /// ```
 /// # struct Foo { x: i32 }
-/// fn drop_in_place(to_drop: *mut Foo) {
+/// unsafe fn drop_in_place(to_drop: *mut Foo) {
 ///     let mut value = &mut *to_drop;
 ///     // ... drop the fields of `value` ...
 /// }
