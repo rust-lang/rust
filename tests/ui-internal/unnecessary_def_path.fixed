@@ -48,14 +48,14 @@ fn _f<'tcx>(cx: &LateContext<'tcx>, ty: Ty<'tcx>, did: DefId, expr: &Expr<'_>) {
     let _ = is_type_lang_item(cx, ty, LangItem::OwnedBox);
     let _ = is_type_diagnostic_item(cx, ty, sym::maybe_uninit_uninit);
 
-    let _ = cx.tcx.lang_items().require(LangItem::OwnedBox).ok() == Some(did);
+    let _ = cx.tcx.lang_items().get(LangItem::OwnedBox) == Some(did);
     let _ = cx.tcx.is_diagnostic_item(sym::Option, did);
-    let _ = cx.tcx.lang_items().require(LangItem::OptionSome).ok() == Some(did);
+    let _ = cx.tcx.lang_items().get(LangItem::OptionSome) == Some(did);
 
     let _ = is_trait_method(cx, expr, sym::AsRef);
 
     let _ = is_path_diagnostic_item(cx, expr, sym::Option);
-    let _ = path_res(cx, expr).opt_def_id().map_or(false, |id| cx.tcx.lang_items().require(LangItem::IteratorNext).ok() == Some(id));
+    let _ = path_res(cx, expr).opt_def_id().map_or(false, |id| cx.tcx.lang_items().get(LangItem::IteratorNext) == Some(id));
     let _ = is_res_lang_ctor(cx, path_res(cx, expr), LangItem::OptionSome);
 }
 
