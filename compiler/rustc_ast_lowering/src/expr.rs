@@ -435,12 +435,13 @@ impl<'hir> LoweringContext<'_, 'hir> {
             ExprKind::Binary(op @ Spanned { node: ast::BinOpKind::And, .. }, lhs, rhs)
                 if has_let_expr(cond) =>
             {
+                let hir_id = self.next_id();
                 let op = self.lower_binop(*op);
                 let lhs = self.lower_cond(lhs);
                 let rhs = self.lower_cond(rhs);
-
-                self.arena.alloc(self.expr(
+                self.arena.alloc(self.expr_with_hirid(
                     cond.span,
+                    hir_id,
                     hir::ExprKind::Binary(op, lhs, rhs),
                     AttrVec::new(),
                 ))
@@ -483,10 +484,11 @@ impl<'hir> LoweringContext<'_, 'hir> {
         let expr_break = self.expr_break(span, AttrVec::new());
         let else_expr = self.arena.alloc(self.expr_block(
             |this| {
-                    let stmt_break = this.stmt_expr(span, expr_break);
-                    this.block_all(span, arena_vec![self; stmt_break], None)
+                let stmt_break = this.stmt_expr(span, expr_break);
+                this.block_all(span, arena_vec![self; stmt_break], None)
             },
-            AttrVec::new()));
+            AttrVec::new(),
+        ));
         let if_kind = hir::ExprKind::If(lowered_cond, self.arena.alloc(then), Some(else_expr));
         let if_expr = self.expr(span, if_kind, AttrVec::new());
         let block = self.block_expr(self.arena.alloc(if_expr));
@@ -1918,6 +1920,19 @@ impl<'hir> LoweringContext<'_, 'hir> {
     ) -> hir::Expr<'hir> {
         debug!("yukang expr({:?}, {:?})", span, kind);
         let hir_id = self.next_id();
+        debug!("yuakng expr hir_id: {:?}", hir_id);
+        self.lower_attrs(hir_id, &attrs);
+        hir::Expr { hir_id, kind, span: self.lower_span(span) }
+    }
+
+     pub(super) fn expr_with_hirid(
+        &mut self,
+        span: Span,
+        hir_id: HirId,
+        kind: hir::ExprKind<'hir>,
+        attrs: AttrVec,
+    ) -> hir::Expr<'hir> {
+        debug!("yukang expr_with_hirid ({:?}, {:?})", span, kind);
         debug!("yuakng expr hir_id: {:?}", hir_id);
         self.lower_attrs(hir_id, &attrs);
         hir::Expr { hir_id, kind, span: self.lower_span(span) }
