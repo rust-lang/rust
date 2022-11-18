@@ -211,6 +211,12 @@ impl IntoDiagnosticArg for DiagnosticSymbolList {
     }
 }
 
+impl<Id> IntoDiagnosticArg for hir::def::Res<Id> {
+    fn into_diagnostic_arg(self) -> DiagnosticArgValue<'static> {
+        DiagnosticArgValue::Str(Cow::Borrowed(self.descr()))
+    }
+}
+
 impl IntoDiagnostic<'_, !> for TargetDataLayoutErrors<'_> {
     fn into_diagnostic(self, handler: &Handler) -> DiagnosticBuilder<'_, !> {
         let mut diag;

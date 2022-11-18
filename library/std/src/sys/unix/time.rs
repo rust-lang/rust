@@ -149,7 +149,11 @@ impl From<libc::timespec> for Timespec {
     }
 }
 
-#[cfg(any(target_os = "macos", target_os = "ios", target_os = "watchos"))]
+#[cfg(any(
+    all(target_os = "macos", any(not(target_arch = "aarch64"), miri)),
+    target_os = "ios",
+    target_os = "watchos"
+))]
 mod inner {
     use crate::sync::atomic::{AtomicU64, Ordering};
     use crate::sys::cvt;
@@ -265,7 +269,11 @@ mod inner {
     }
 }
 
-#[cfg(not(any(target_os = "macos", target_os = "ios", target_os = "watchos")))]
+#[cfg(not(any(
+    all(target_os = "macos", any(not(target_arch = "aarch64"), miri)),
+    target_os = "ios",
+    target_os = "watchos"
+)))]
 mod inner {
     use crate::fmt;
     use crate::mem::MaybeUninit;
@@ -281,7 +289,11 @@ mod inner {
 
     impl Instant {
         pub fn now() -> Instant {
-            Instant { t: Timespec::now(libc::CLOCK_MONOTONIC) }
+            #[cfg(target_os = "macos")]
+            const clock_id: libc::clockid_t = libc::CLOCK_UPTIME_RAW;
+            #[cfg(not(target_os = "macos"))]
+            const clock_id: libc::clockid_t = libc::CLOCK_MONOTONIC;
+            Instant { t: Timespec::now(clock_id) }
         }
 
         pub fn checked_sub_instant(&self, other: &Instant) -> Option<Duration> {
@@ -312,13 +324,8 @@ mod inner {
         }
     }
 
-    #[cfg(not(any(target_os = "dragonfly", target_os = "espidf", target_os = "horizon")))]
-    pub type clock_t = libc::c_int;
-    #[cfg(any(target_os = "dragonfly", target_os = "espidf", target_os = "horizon"))]
-    pub type clock_t = libc::c_ulong;
-
     impl Timespec {
-        pub fn now(clock: clock_t) -> Timespec {
+        pub fn now(clock: libc::clockid_t) -> Timespec {
             // Try to use 64-bit time in preparation for Y2038.
             #[cfg(all(target_os = "linux", target_env = "gnu", target_pointer_width = "32"))]
             {

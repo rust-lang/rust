@@ -780,7 +780,9 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
 
         match (source.kind(), target.kind()) {
             // Trait+Kx+'a -> Trait+Ky+'b (upcasts).
-            (&ty::Dynamic(ref data_a, ..), &ty::Dynamic(ref data_b, ..)) => {
+            (&ty::Dynamic(ref data_a, _, dyn_a), &ty::Dynamic(ref data_b, _, dyn_b))
+                if dyn_a == dyn_b =>
+            {
                 // Upcast coercions permit several things:
                 //
                 // 1. Dropping auto traits, e.g., `Foo + Send` to `Foo`
@@ -841,7 +843,7 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
             }
 
             // `T` -> `Trait`
-            (_, &ty::Dynamic(..)) => {
+            (_, &ty::Dynamic(_, _, ty::Dyn)) => {
                 candidates.vec.push(BuiltinUnsizeCandidate);
             }
 

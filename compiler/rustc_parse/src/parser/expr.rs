@@ -21,8 +21,8 @@ use crate::errors::{
     NoFieldsForFnCall, NotAsNegationOperator, NotAsNegationOperatorSub,
     OuterAttributeNotAllowedOnIfElse, ParenthesesWithStructFields,
     RequireColonAfterLabeledExpression, ShiftInterpretedAsGeneric, StructLiteralNotAllowedHere,
-    StructLiteralNotAllowedHereSugg, TildeAsUnaryOperator, UnexpectedTokenAfterLabel,
-    UnexpectedTokenAfterLabelSugg, WrapExpressionInParentheses,
+    StructLiteralNotAllowedHereSugg, TildeAsUnaryOperator, UnexpectedIfWithIf,
+    UnexpectedTokenAfterLabel, UnexpectedTokenAfterLabelSugg, WrapExpressionInParentheses,
 };
 use crate::maybe_recover_from_interpolated_ty_qpath;
 use core::mem;
@@ -2239,6 +2239,7 @@ impl<'a> Parser<'a> {
                 if let Some(block) = recover_block_from_condition(self) {
                     block
                 } else {
+                    self.error_on_extra_if(&cond)?;
                     // Parse block, which will always fail, but we can add a nice note to the error
                     self.parse_block().map_err(|mut err| {
                         err.span_note(
@@ -2373,6 +2374,16 @@ impl<'a> Parser<'a> {
             ctx: ctx.to_string(),
             attributes,
         });
+    }
+
+    fn error_on_extra_if(&mut self, cond: &P<Expr>) -> PResult<'a, ()> {
+        if let ExprKind::Binary(Spanned { span: binop_span, node: binop}, _, right) = &cond.kind &&
+            let BinOpKind::And = binop &&
+            let ExprKind::If(cond, ..) = &right.kind {
+                    Err(self.sess.create_err(UnexpectedIfWithIf(binop_span.shrink_to_hi().to(cond.span.shrink_to_lo()))))
+            } else {
+                Ok(())
+            }
     }
 
     /// Parses `for <src_pat> in <src_expr> <src_loop_block>` (`for` token already eaten).

@@ -17,6 +17,7 @@ rustc_expand = { path = "../rustc_expand" }
 rustc_feature = { path = "../rustc_feature" }
 rustc_hir = { path = "../rustc_hir" }
 rustc_index = { path = "../rustc_index" }
+rustc_macros = { path = "../rustc_macros" }
 rustc_metadata = { path = "../rustc_metadata" }
 rustc_middle = { path = "../rustc_middle" }
 rustc_query_system = { path = "../rustc_query_system" }

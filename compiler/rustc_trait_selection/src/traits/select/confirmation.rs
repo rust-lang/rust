@@ -912,7 +912,9 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
         let mut nested = vec![];
         match (source.kind(), target.kind()) {
             // Trait+Kx+'a -> Trait+Ky+'b (auto traits and lifetime subtyping).
-            (&ty::Dynamic(ref data_a, r_a, ty::Dyn), &ty::Dynamic(ref data_b, r_b, ty::Dyn)) => {
+            (&ty::Dynamic(ref data_a, r_a, dyn_a), &ty::Dynamic(ref data_b, r_b, dyn_b))
+                if dyn_a == dyn_b =>
+            {
                 // See `assemble_candidates_for_unsizing` for more info.
                 // We already checked the compatibility of auto traits within `assemble_candidates_for_unsizing`.
                 let iter = data_a
@@ -931,7 +933,7 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
                             .map(ty::Binder::dummy),
                     );
                 let existential_predicates = tcx.mk_poly_existential_predicates(iter);
-                let source_trait = tcx.mk_dynamic(existential_predicates, r_b, ty::Dyn);
+                let source_trait = tcx.mk_dynamic(existential_predicates, r_b, dyn_a);
 
                 // Require that the traits involved in this upcast are **equal**;
                 // only the **lifetime bound** is changed.
@@ -1140,7 +1142,7 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
                 }));
             }
 
-            _ => bug!(),
+            _ => bug!("source: {source}, target: {target}"),
         };
 
         Ok(ImplSourceBuiltinData { nested })

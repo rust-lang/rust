@@ -16,7 +16,7 @@ use rustc_ast::ptr::P;
 use rustc_ast::visit::{self, AssocCtxt, BoundKind, FnCtxt, FnKind, Visitor};
 use rustc_ast::*;
 use rustc_data_structures::fx::{FxHashMap, FxHashSet, FxIndexMap};
-use rustc_errors::DiagnosticId;
+use rustc_errors::{DiagnosticArgValue, DiagnosticId, IntoDiagnosticArg};
 use rustc_hir::def::Namespace::{self, *};
 use rustc_hir::def::{self, CtorKind, DefKind, LifetimeRes, PartialRes, PerNS};
 use rustc_hir::def_id::{DefId, LocalDefId, CRATE_DEF_ID, LOCAL_CRATE};
@@ -31,6 +31,7 @@ use smallvec::{smallvec, SmallVec};
 
 use rustc_span::source_map::{respan, Spanned};
 use std::assert_matches::debug_assert_matches;
+use std::borrow::Cow;
 use std::collections::{hash_map::Entry, BTreeSet};
 use std::mem::{replace, swap, take};
 
@@ -75,6 +76,12 @@ impl PatternSource {
             PatternSource::For => "for binding",
             PatternSource::FnParam => "function parameter",
         }
+    }
+}
+
+impl IntoDiagnosticArg for PatternSource {
+    fn into_diagnostic_arg(self) -> DiagnosticArgValue<'static> {
+        DiagnosticArgValue::Str(Cow::Borrowed(self.descr()))
     }
 }
 
