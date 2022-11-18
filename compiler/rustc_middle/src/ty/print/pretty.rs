@@ -2194,11 +2194,9 @@ impl<'tcx> FmtPrinter<'_, 'tcx> {
 
         define_scoped_cx!(self);
 
-        let possible_names =
-            ('a'..='z').rev().map(|s| Symbol::intern(&format!("'{s}"))).collect::<Vec<_>>();
+        let possible_names = ('a'..='z').rev().map(|s| Symbol::intern(&format!("'{s}")));
 
         let mut available_names = possible_names
-            .into_iter()
             .filter(|name| !self.used_region_names.contains(&name))
             .collect::<Vec<_>>();
         debug!(?available_names);

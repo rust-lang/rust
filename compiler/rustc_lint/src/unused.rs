@@ -584,7 +584,7 @@ trait UnusedDelimLint {
                 let sm = cx.sess().source_map();
                 let lo_replace =
                     if keep_space.0 &&
-                        let Ok(snip) = sm.span_to_prev_source(lo) && !snip.ends_with(" ") {
+                        let Ok(snip) = sm.span_to_prev_source(lo) && !snip.ends_with(' ') {
                         " ".to_string()
                         } else {
                             "".to_string()
@@ -592,7 +592,7 @@ trait UnusedDelimLint {
 
                 let hi_replace =
                     if keep_space.1 &&
-                        let Ok(snip) = sm.span_to_next_source(hi) && !snip.starts_with(" ") {
+                        let Ok(snip) = sm.span_to_next_source(hi) && !snip.starts_with(' ') {
                         " ".to_string()
                         } else {
                             "".to_string()
