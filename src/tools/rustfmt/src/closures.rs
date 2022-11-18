@@ -326,16 +326,16 @@ pub(crate) fn rewrite_last_closure(
     expr: &ast::Expr,
     shape: Shape,
 ) -> Option<String> {
-    if let ast::ExprKind::Closure(
-        ref binder,
-        capture,
-        ref is_async,
-        movability,
-        ref fn_decl,
-        ref body,
-        _,
-    ) = expr.kind
-    {
+    if let ast::ExprKind::Closure(ref closure) = expr.kind {
+        let ast::Closure {
+            ref binder,
+            capture_clause,
+            ref asyncness,
+            movability,
+            ref fn_decl,
+            ref body,
+            fn_decl_span: _,
+        } = **closure;
         let body = match body.kind {
             ast::ExprKind::Block(ref block, _)
                 if !is_unsafe_block(block)
@@ -347,7 +347,15 @@ pub(crate) fn rewrite_last_closure(
             _ => body,
         };
         let (prefix, extra_offset) = rewrite_closure_fn_decl(
-            binder, capture, is_async, movability, fn_decl, body, expr.span, context, shape,
+            binder,
+            capture_clause,
+            asyncness,
+            movability,
+            fn_decl,
+            body,
+            expr.span,
+            context,
+            shape,
         )?;
         // If the closure goes multi line before its body, do not overflow the closure.
         if prefix.contains('\n') {

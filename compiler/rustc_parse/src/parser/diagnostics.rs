@@ -18,6 +18,7 @@ use crate::errors::{
 };
 
 use crate::lexer::UnmatchedBrace;
+use crate::parser;
 use rustc_ast as ast;
 use rustc_ast::ptr::P;
 use rustc_ast::token::{self, Delimiter, Lit, LitKind, TokenKind};
@@ -37,11 +38,10 @@ use rustc_session::errors::ExprParenthesesNeeded;
 use rustc_span::source_map::Spanned;
 use rustc_span::symbol::{kw, sym, Ident};
 use rustc_span::{Span, SpanSnippetError, DUMMY_SP};
-use std::ops::{Deref, DerefMut};
-
 use std::mem::take;
-
-use crate::parser;
+use std::ops::{Deref, DerefMut};
+use thin_vec::{thin_vec, ThinVec};
+use tracing::{debug, trace};
 
 /// Creates a placeholder argument.
 pub(super) fn dummy_arg(ident: Ident) -> Param {
@@ -65,7 +65,7 @@ pub(super) fn dummy_arg(ident: Ident) -> Param {
 pub(super) trait RecoverQPath: Sized + 'static {
     const PATH_STYLE: PathStyle = PathStyle::Expr;
     fn to_ty(&self) -> Option<P<Ty>>;
-    fn recovered(qself: Option<QSelf>, path: ast::Path) -> Self;
+    fn recovered(qself: Option<P<QSelf>>, path: ast::Path) -> Self;
 }
 
 impl RecoverQPath for Ty {
@@ -73,7 +73,7 @@ impl RecoverQPath for Ty {
     fn to_ty(&self) -> Option<P<Ty>> {
         Some(P(self.clone()))
     }
-    fn recovered(qself: Option<QSelf>, path: ast::Path) -> Self {
+    fn recovered(qself: Option<P<QSelf>>, path: ast::Path) -> Self {
         Self {
             span: path.span,
             kind: TyKind::Path(qself, path),
@@ -87,7 +87,7 @@ impl RecoverQPath for Pat {
     fn to_ty(&self) -> Option<P<Ty>> {
         self.to_ty()
     }
-    fn recovered(qself: Option<QSelf>, path: ast::Path) -> Self {
+    fn recovered(qself: Option<P<QSelf>>, path: ast::Path) -> Self {
         Self {
             span: path.span,
             kind: PatKind::Path(qself, path),
@@ -101,7 +101,7 @@ impl RecoverQPath for Expr {
     fn to_ty(&self) -> Option<P<Ty>> {
         self.to_ty()
     }
-    fn recovered(qself: Option<QSelf>, path: ast::Path) -> Self {
+    fn recovered(qself: Option<P<QSelf>>, path: ast::Path) -> Self {
         Self {
             span: path.span,
             kind: ExprKind::Path(qself, path),
@@ -638,8 +638,11 @@ impl<'a> Parser<'a> {
             //     field: value,
             // }
             let mut snapshot = self.create_snapshot_for_diagnostic();
-            let path =
-                Path { segments: vec![], span: self.prev_token.span.shrink_to_lo(), tokens: None };
+            let path = Path {
+                segments: ThinVec::new(),
+                span: self.prev_token.span.shrink_to_lo(),
+                tokens: None,
+            };
             let struct_expr = snapshot.parse_struct_expr(None, path, false);
             let block_tail = self.parse_block_tail(lo, s, AttemptLocalParseRecovery::No);
             return Some(match (struct_expr, block_tail) {
@@ -1426,7 +1429,7 @@ impl<'a> Parser<'a> {
     ) -> PResult<'a, P<T>> {
         self.expect(&token::ModSep)?;
 
-        let mut path = ast::Path { segments: Vec::new(), span: DUMMY_SP, tokens: None };
+        let mut path = ast::Path { segments: ThinVec::new(), span: DUMMY_SP, tokens: None };
         self.parse_path_segments(&mut path.segments, T::PATH_STYLE, None)?;
         path.span = ty_span.to(self.prev_token.span);
 
@@ -1437,7 +1440,7 @@ impl<'a> Parser<'a> {
         });
 
         let path_span = ty_span.shrink_to_hi(); // Use an empty path since `position == 0`.
-        Ok(P(T::recovered(Some(QSelf { ty, path_span, position: 0 }), path)))
+        Ok(P(T::recovered(Some(P(QSelf { ty, path_span, position: 0 })), path)))
     }
 
     pub fn maybe_consume_incorrect_semicolon(&mut self, items: &[P<Item>]) -> bool {
@@ -2434,7 +2437,7 @@ impl<'a> Parser<'a> {
                                             None,
                                             Path {
                                                 span: new_span,
-                                                segments: vec![
+                                                segments: thin_vec![
                                                     PathSegment::from_ident(*old_ident),
                                                     PathSegment::from_ident(*ident),
                                                 ],
