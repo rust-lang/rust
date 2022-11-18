@@ -15,11 +15,16 @@ pub enum MyCppLikeEnum {
 }
 
 // CHECK: !DICompositeType({{.*"}}MyType{{".*}}file: ![[#FILE]]{{.*}}line: [[# @LINE + 1]],
-pub struct MyType;
+pub struct MyType {
+    // CHECK: !DIDerivedType({{.*"}}i{{".*}}file: ![[#FILE]]{{.*}}line: [[# @LINE + 1]],
+    i: i32,
+}
 
 // CHECK: !DICompositeType({{.*"}}MyUnion{{".*}}file: ![[#FILE]]{{.*}}line: [[# @LINE + 1]],
 pub union MyUnion {
-    i: i32, // TODO fields are still wrong
+    // CHECK: !DIDerivedType({{.*"}}i{{".*}}file: ![[#FILE]]{{.*}}line: [[# @LINE + 1]],
+    i: i32,
+    // CHECK: !DIDerivedType({{.*"}}f{{".*}}file: ![[#FILE]]{{.*}}line: [[# @LINE + 1]],
     f: f32,
 }
 

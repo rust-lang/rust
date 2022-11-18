@@ -236,6 +236,7 @@ fn build_enum_variant_struct_type_di_node<'ll, 'tcx>(
                         variant_layout.fields.offset(field_index),
                         di_flags,
                         type_di_node(cx, field_layout.ty),
+                        None,
                     )
                 })
                 .collect::<SmallVec<_>>()
@@ -318,6 +319,7 @@ fn build_coroutine_variant_struct_type_di_node<'ll, 'tcx>(
                         variant_layout.fields.offset(field_index),
                         DIFlags::FlagZero,
                         type_di_node(cx, field_type),
+                        None,
                     )
                 })
                 .collect();
@@ -337,6 +339,7 @@ fn build_coroutine_variant_struct_type_di_node<'ll, 'tcx>(
                         coroutine_type_and_layout.fields.offset(index),
                         DIFlags::FlagZero,
                         type_di_node(cx, upvar_ty),
+                        None,
                     )
                 })
                 .collect();

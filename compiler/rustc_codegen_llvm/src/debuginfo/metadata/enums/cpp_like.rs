@@ -360,6 +360,7 @@ fn build_single_variant_union_fields<'ll, 'tcx>(
             Size::ZERO,
             visibility_flags,
             variant_struct_type_wrapper_di_node,
+            None,
         ),
         unsafe {
             llvm::LLVMRustDIBuilderCreateStaticMemberType(
@@ -540,6 +541,7 @@ fn build_variant_struct_wrapper_type_di_node<'ll, 'tcx>(
                 Size::ZERO,
                 DIFlags::FlagZero,
                 variant_struct_type_di_node,
+                None,
             ));
 
             let build_assoc_const =
@@ -842,6 +844,7 @@ fn build_union_fields_for_direct_tag_enum_or_coroutine<'ll, 'tcx>(
             lo_offset,
             di_flags,
             type_di_node,
+            None,
         ));
 
         unions_fields.push(build_field_di_node(
@@ -852,6 +855,7 @@ fn build_union_fields_for_direct_tag_enum_or_coroutine<'ll, 'tcx>(
             hi_offset,
             DIFlags::FlagZero,
             type_di_node,
+            None,
         ));
     } else {
         unions_fields.push(build_field_di_node(
@@ -862,6 +866,7 @@ fn build_union_fields_for_direct_tag_enum_or_coroutine<'ll, 'tcx>(
             enum_type_and_layout.fields.offset(tag_field),
             di_flags,
             tag_base_type_di_node,
+            None,
         ));
     }
 
