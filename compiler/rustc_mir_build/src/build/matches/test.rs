@@ -154,7 +154,7 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
         test: &Test<'tcx>,
         make_target_blocks: impl FnOnce(&mut Self) -> Vec<BasicBlock>,
     ) {
-        let place = place_builder.into_place(self);
+        let place = place_builder.to_place(self);
         let place_ty = place.ty(&self.local_decls, self.tcx);
         debug!(?place, ?place_ty,);
 

@@ -660,7 +660,7 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
             // by the parent itself. The mutability of the current capture
             // is same as that of the capture in the parent closure.
             PlaceBase::Upvar { .. } => {
-                let enclosing_upvars_resolved = arg_place_builder.clone().into_place(this);
+                let enclosing_upvars_resolved = arg_place_builder.to_place(this);
 
                 match enclosing_upvars_resolved.as_ref() {
                     PlaceRef {
@@ -697,7 +697,7 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
             Mutability::Mut => BorrowKind::Mut { allow_two_phase_borrow: false },
         };
 
-        let arg_place = arg_place_builder.into_place(this);
+        let arg_place = arg_place_builder.to_place(this);
 
         this.cfg.push_assign(
             block,

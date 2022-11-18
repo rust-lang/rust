@@ -365,7 +365,7 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
                             None => {
                                 let place_builder = place_builder.clone();
                                 this.consume_by_copy_or_move(
-                                    place_builder.field(n, *ty).into_place(this),
+                                    place_builder.field(n, *ty).to_place(this),
                                 )
                             }
                         })

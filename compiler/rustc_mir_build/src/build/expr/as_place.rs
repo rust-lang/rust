@@ -65,7 +65,7 @@ pub(crate) enum PlaceBase {
 
 /// `PlaceBuilder` is used to create places during MIR construction. It allows you to "build up" a
 /// place by pushing more and more projections onto the end, and then convert the final set into a
-/// place using the `into_place` method.
+/// place using the `to_place` method.
 ///
 /// This is used internally when building a place for an expression like `a.b.c`. The fields `b`
 /// and `c` can be progressively pushed onto the place builder that is created when converting `a`.
@@ -254,17 +254,8 @@ fn strip_prefix<'a, 'tcx>(
 }
 
 impl<'tcx> PlaceBuilder<'tcx> {
-    pub(in crate::build) fn into_place(mut self, cx: &Builder<'_, 'tcx>) -> Place<'tcx> {
-        self = self.resolve_upvar(cx).unwrap_or(self);
-        let PlaceBase::Local(local) = self.base else { panic!("expected local") };
-        Place { local, projection: cx.tcx.intern_place_elems(&self.projection) }
-    }
-
-    fn expect_upvars_resolved(self, cx: &Builder<'_, 'tcx>) -> PlaceBuilder<'tcx> {
-        match self.base {
-            PlaceBase::Local(_) => self,
-            PlaceBase::Upvar {..} => self.resolve_upvar(cx).unwrap(),
-        }
+    pub(in crate::build) fn to_place(&self, cx: &Builder<'_, 'tcx>) -> Place<'tcx> {
+        self.try_to_place(cx).unwrap()
     }
 
     /// Creates a `Place` or returns `None` if an upvar cannot be resolved
@@ -363,7 +354,7 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
         expr: &Expr<'tcx>,
     ) -> BlockAnd<Place<'tcx>> {
         let place_builder = unpack!(block = self.as_place_builder(block, expr));
-        block.and(place_builder.into_place(self))
+        block.and(place_builder.to_place(self))
     }
 
     /// This is used when constructing a compound `Place`, so that we can avoid creating
@@ -387,7 +378,7 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
         expr: &Expr<'tcx>,
     ) -> BlockAnd<Place<'tcx>> {
         let place_builder = unpack!(block = self.as_read_only_place_builder(block, expr));
-        block.and(place_builder.into_place(self))
+        block.and(place_builder.to_place(self))
     }
 
     /// This is used when constructing a compound `Place`, so that we can avoid creating
@@ -482,7 +473,7 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
                             inferred_ty: expr.ty,
                         });
 
-                    let place = place_builder.clone().into_place(this);
+                    let place = place_builder.to_place(this);
                     this.cfg.push(
                         block,
                         Statement {
@@ -607,7 +598,7 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
         let is_outermost_index = fake_borrow_temps.is_none();
         let fake_borrow_temps = fake_borrow_temps.unwrap_or(base_fake_borrow_temps);
 
-        let mut base_place =
+        let base_place =
             unpack!(block = self.expr_as_place(block, base, mutability, Some(fake_borrow_temps),));
 
         // Making this a *fresh* temporary means we do not have to worry about
@@ -615,14 +606,13 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
         // The "retagging" transformation (for Stacked Borrows) relies on this.
         let idx = unpack!(block = self.as_temp(block, temp_lifetime, index, Mutability::Not,));
 
-        block = self.bounds_check(block, base_place.clone(), idx, expr_span, source_info);
+        block = self.bounds_check(block, &base_place, idx, expr_span, source_info);
 
         if is_outermost_index {
             self.read_fake_borrows(block, fake_borrow_temps, source_info)
         } else {
-            base_place = base_place.expect_upvars_resolved(self);
             self.add_fake_borrows_of_base(
-                &base_place,
+                base_place.to_place(self),
                 block,
                 fake_borrow_temps,
                 expr_span,
@@ -636,7 +626,7 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
     fn bounds_check(
         &mut self,
         block: BasicBlock,
-        slice: PlaceBuilder<'tcx>,
+        slice: &PlaceBuilder<'tcx>,
         index: Local,
         expr_span: Span,
         source_info: SourceInfo,
@@ -648,7 +638,7 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
         let lt = self.temp(bool_ty, expr_span);
 
         // len = len(slice)
-        self.cfg.push_assign(block, source_info, len, Rvalue::Len(slice.into_place(self)));
+        self.cfg.push_assign(block, source_info, len, Rvalue::Len(slice.to_place(self)));
         // lt = idx < len
         self.cfg.push_assign(
             block,
@@ -666,19 +656,15 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
 
     fn add_fake_borrows_of_base(
         &mut self,
-        base_place: &PlaceBuilder<'tcx>,
+        base_place: Place<'tcx>,
         block: BasicBlock,
         fake_borrow_temps: &mut Vec<Local>,
         expr_span: Span,
         source_info: SourceInfo,
     ) {
         let tcx = self.tcx;
-        let local = match base_place.base {
-            PlaceBase::Local(local) => local,
-            PlaceBase::Upvar { .. } => bug!("Expected PlacseBase::Local found Upvar"),
-        };
 
-        let place_ty = Place::ty_from(local, &base_place.projection, &self.local_decls, tcx);
+        let place_ty = base_place.ty(&self.local_decls, tcx);
         if let ty::Slice(_) = place_ty.ty.kind() {
             // We need to create fake borrows to ensure that the bounds
             // check that we just did stays valid. Since we can't assign to
@@ -688,7 +674,7 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
                 match elem {
                     ProjectionElem::Deref => {
                         let fake_borrow_deref_ty = Place::ty_from(
-                            local,
+                            base_place.local,
                             &base_place.projection[..idx],
                             &self.local_decls,
                             tcx,
@@ -706,14 +692,14 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
                             Rvalue::Ref(
                                 tcx.lifetimes.re_erased,
                                 BorrowKind::Shallow,
-                                Place { local, projection },
+                                Place { local: base_place.local, projection },
                             ),
                         );
                         fake_borrow_temps.push(fake_borrow_temp);
                     }
                     ProjectionElem::Index(_) => {
                         let index_ty = Place::ty_from(
-                            local,
+                            base_place.local,
                             &base_place.projection[..idx],
                             &self.local_decls,
                             tcx,
