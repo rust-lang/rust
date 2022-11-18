@@ -535,7 +535,8 @@ mod tests {
             Config::new(workspace_root.to_path_buf(), ClientCapabilities::default()),
         );
         let snap = state.snapshot();
-        let actual = map_rust_diagnostic_to_lsp(&config, &diagnostic, workspace_root, &snap);
+        let mut actual = map_rust_diagnostic_to_lsp(&config, &diagnostic, workspace_root, &snap);
+        actual.iter_mut().for_each(|diag| diag.diagnostic.data = None);
         expect.assert_debug_eq(&actual)
     }
 
