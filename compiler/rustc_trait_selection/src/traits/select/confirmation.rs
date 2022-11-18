@@ -640,12 +640,7 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
         );
         let tr =
             ty::Binder::dummy(self.tcx().at(cause.span).mk_trait_ref(LangItem::Sized, [output_ty]));
-        nested.push(Obligation::new(
-            self.infcx.tcx,
-            cause,
-            obligation.param_env,
-            tr.to_poly_trait_predicate(),
-        ));
+        nested.push(Obligation::new(self.infcx.tcx, cause, obligation.param_env, tr));
 
         Ok(ImplSourceFnPointerData { fn_ty: self_ty, nested })
     }

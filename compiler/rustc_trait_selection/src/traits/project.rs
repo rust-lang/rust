@@ -1328,8 +1328,7 @@ fn assemble_candidate_for_impl_trait_in_trait<'cx, 'tcx>(
             obligation.predicate.substs.truncate_to(tcx, tcx.generics_of(trait_def_id));
         // FIXME(named-returns): Binders
         let trait_predicate =
-            ty::Binder::dummy(ty::TraitRef { def_id: trait_def_id, substs: trait_substs })
-                .to_poly_trait_predicate();
+            ty::Binder::dummy(ty::TraitRef { def_id: trait_def_id, substs: trait_substs });
 
         let _ = selcx.infcx().commit_if_ok(|_| {
             match selcx.select(&obligation.with(tcx, trait_predicate)) {
@@ -1527,7 +1526,7 @@ fn assemble_candidates_from_impls<'cx, 'tcx>(
     // If we are resolving `<T as TraitRef<...>>::Item == Type`,
     // start out by selecting the predicate `T as TraitRef<...>`:
     let poly_trait_ref = ty::Binder::dummy(obligation.predicate.trait_ref(selcx.tcx()));
-    let trait_obligation = obligation.with(selcx.tcx(), poly_trait_ref.to_poly_trait_predicate());
+    let trait_obligation = obligation.with(selcx.tcx(), poly_trait_ref);
     let _ = selcx.infcx().commit_if_ok(|_| {
         let impl_source = match selcx.select(&trait_obligation) {
             Ok(Some(impl_source)) => impl_source,
