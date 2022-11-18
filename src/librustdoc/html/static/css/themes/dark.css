@@ -60,6 +60,8 @@
 	--test-arrow-hover-background-color: #4e8bca;
 	--target-background-color: #494a3d;
 	--target-border-color: #bb7410;
+	--tooltip-background-color: #000;
+	--tooltip-color: #fff;
 	--rust-logo-filter: drop-shadow(1px 0 0px #fff)
 		drop-shadow(0 1px 0 #fff)
 		drop-shadow(-1px 0 0 #fff)
@@ -80,16 +82,6 @@ body.source .example-wrap pre.rust a {
 
 details.rustdoc-toggle > summary::before {
 	filter: invert(100%);
-}
-
-.tooltip::after {
-	background-color: #000;
-	color: #fff;
-	border-color: #000;
-}
-
-.tooltip::before {
-	border-color: transparent black transparent transparent;
 }
 
 #titles > button:not(.selected) {

@@ -156,6 +156,7 @@ impl Qualif for NeedsNonConstDrop {
         let destruct = cx.tcx.require_lang_item(LangItem::Destruct, None);
 
         let obligation = Obligation::new(
+            cx.tcx,
             ObligationCause::dummy(),
             cx.param_env,
             ty::Binder::dummy(ty::TraitPredicate {
@@ -351,7 +352,11 @@ where
     // FIXME(valtrees): check whether const qualifs should behave the same
     // way for type and mir constants.
     let uneval = match constant.literal {
-        ConstantKind::Ty(ct) if matches!(ct.kind(), ty::ConstKind::Param(_)) => None,
+        ConstantKind::Ty(ct)
+            if matches!(ct.kind(), ty::ConstKind::Param(_) | ty::ConstKind::Error(_)) =>
+        {
+            None
+        }
         ConstantKind::Ty(c) => bug!("expected ConstKind::Param here, found {:?}", c),
         ConstantKind::Unevaluated(uv, _) => Some(uv),
         ConstantKind::Val(..) => None,
