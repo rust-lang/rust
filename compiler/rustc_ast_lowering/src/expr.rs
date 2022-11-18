@@ -481,7 +481,12 @@ impl<'hir> LoweringContext<'_, 'hir> {
         let lowered_cond = self.with_loop_condition_scope(|t| t.lower_cond(cond));
         let then = self.lower_block_expr(body);
         let expr_break = self.expr_break(span, AttrVec::new());
-        let else_expr = self.arena.alloc(self.expr_block(else_blk, AttrVec::new()));
+        let else_expr = self.arena.alloc(self.expr_block(
+            |this| {
+                    let stmt_break = this.stmt_expr(span, expr_break);
+                    this.block_all(span, arena_vec![self; stmt_break], None)
+            },
+            AttrVec::new()));
         let if_kind = hir::ExprKind::If(lowered_cond, self.arena.alloc(then), Some(else_expr));
         let if_expr = self.expr(span, if_kind, AttrVec::new());
         let block = self.block_expr(self.arena.alloc(if_expr));
@@ -593,7 +598,7 @@ impl<'hir> LoweringContext<'_, 'hir> {
         async_gen_kind: hir::AsyncGeneratorKind,
         body: impl FnOnce(&mut Self) -> hir::Expr<'hir>,
     ) -> hir::ExprKind<'hir> {
-        let hir_id = self.lower_node_id(closure_node_id);
+        let generator_hir_id = self.lower_node_id(closure_node_id);
 
         let output = match ret_ty {
             Some(ty) => hir::FnRetTy::Return(
@@ -666,7 +671,6 @@ impl<'hir> LoweringContext<'_, 'hir> {
             self.mark_span_with_reason(DesugaringKind::Async, span, self.allow_gen_future.clone());
 
         let hir_id = if parent_has_track_caller {
-            let generator_hir_id = self.lower_node_id(closure_node_id);
             self.lower_attrs(
                 generator_hir_id,
                 &[Attribute {
