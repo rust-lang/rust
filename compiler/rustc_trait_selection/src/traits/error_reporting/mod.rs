@@ -2111,7 +2111,7 @@ impl<'tcx> InferCtxtPrivExt<'tcx> for TypeErrCtxt<'_, 'tcx> {
                     )
                 };
 
-                let obligation = obligation.with(self.tcx, trait_ref.to_poly_trait_predicate());
+                let obligation = obligation.with(self.tcx, trait_ref);
                 let mut selcx = SelectionContext::with_query_mode(
                     &self,
                     crate::traits::TraitQueryMode::Standard,

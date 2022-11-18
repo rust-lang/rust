@@ -1429,7 +1429,7 @@ impl<'a, 'tcx> ProbeContext<'a, 'tcx> {
         trait_ref: ty::TraitRef<'tcx>,
     ) -> traits::SelectionResult<'tcx, traits::Selection<'tcx>> {
         let cause = traits::ObligationCause::misc(self.span, self.body_id);
-        let predicate = ty::Binder::dummy(trait_ref).to_poly_trait_predicate();
+        let predicate = ty::Binder::dummy(trait_ref);
         let obligation = traits::Obligation::new(self.tcx, cause, self.param_env, predicate);
         traits::SelectionContext::new(self).select(&obligation)
     }
