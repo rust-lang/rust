@@ -1,4 +1,6 @@
+// revisions: current negative
 #![feature(specialization)]
+#![cfg_attr(negative, feature(with_negative_coherence))]
 #![allow(incomplete_features)]
 
 trait X {}
