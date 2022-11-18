@@ -16,6 +16,8 @@ declare_clippy_lint! {
     /// ### What it does
     /// Checks for manual swapping.
     ///
+    /// Note that the lint will not be emitted in const blocks, as the suggestion would not be applicable.
+    ///
     /// ### Why is this bad?
     /// The `std::mem::swap` function exposes the intent better
     /// without deinitializing or copying either variable.
