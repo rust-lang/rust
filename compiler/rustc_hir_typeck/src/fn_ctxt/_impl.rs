@@ -140,8 +140,8 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         debug!("write_ty({:?}, {:?}) in fcx {}", id, self.resolve_vars_if_possible(ty), self.tag());
         self.typeck_results.borrow_mut().node_types_mut().insert(id, ty);
 
-        if ty.references_error() {
-            self.set_tainted_by_errors();
+        if let Err(e) = ty.error_reported() {
+            self.set_tainted_by_errors(e);
         }
     }
 
@@ -1148,9 +1148,9 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                 explicit_late_bound = ExplicitLateBound::Yes;
             }
 
-            if let Err(GenericArgCountMismatch { reported: Some(_), .. }) = arg_count.correct {
+            if let Err(GenericArgCountMismatch { reported: Some(e), .. }) = arg_count.correct {
                 infer_args_for_err.insert(index);
-                self.set_tainted_by_errors(); // See issue #53251.
+                self.set_tainted_by_errors(e); // See issue #53251.
             }
         }
 

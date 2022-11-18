@@ -197,7 +197,7 @@ fn do_mir_borrowck<'tcx>(
     // Gather the upvars of a closure, if any.
     let tables = tcx.typeck_opt_const_arg(def);
     if let Some(e) = tables.tainted_by_errors {
-        infcx.set_tainted_by_errors();
+        infcx.set_tainted_by_errors(e);
         errors.set_tainted_by_errors(e);
     }
     let upvars: Vec<_> = tables
