@@ -9,13 +9,18 @@ LL |     func(&mut iter.map(|x| x + 1))
    = help: a `loop` may express intention better if this is on purpose
    = note: `#[warn(unconditional_recursion)]` on by default
 
-error[E0275]: overflow evaluating the requirement `<std::ops::Range<u8> as Iterator>::Item`
+error: reached the recursion limit while instantiating `func::<Map<&mut Map<&mut Map<&mu...n/issue-83150.rs:11:24: 11:27]>>`
+  --> $DIR/issue-83150.rs:11:5
    |
-   = help: consider increasing the recursion limit by adding a `#![recursion_limit = "256"]` attribute to your crate (`issue_83150`)
-   = note: required for `Map<&mut std::ops::Range<u8>, [closure@$DIR/issue-83150.rs:11:24: 11:27]>` to implement `Iterator`
-   = note: 64 redundant requirements hidden
-   = note: required for `&mut Map<&mut Map<&mut Map<&mut Map<&mut Map<&mut Map<&mut Map<&mut Map<&mut Map<&mut Map<&mut Map<&mut Map<&mut Map<&mut Map<&mut Map<&mut Map<&mut Map<&mut Map<&mut Map<&mut Map<&mut Map<&mut Map<&mut Map<&mut Map<&mut Map<&mut Map<&mut Map<&mut Map<&mut Map<&mut Map<&mut Map<&mut Map<&mut Map<&mut Map<&mut Map<&mut Map<&mut Map<&mut Map<&mut Map<&mut Map<&mut Map<&mut Map<&mut Map<&mut Map<&mut Map<&mut Map<&mut Map<&mut Map<&mut Map<&mut Map<&mut Map<&mut Map<&mut Map<&mut Map<&mut Map<&mut Map<&mut Map<&mut Map<&mut Map<&mut Map<&mut Map<&mut Map<&mut Map<&mut Map<&mut std::ops::Range<u8>, [closure@$DIR/issue-83150.rs:11:24: 11:27]>, [closure@$DIR/issue-83150.rs:11:24: 11:27]>, [closure@$DIR/issue-83150.rs:11:24: 11:27]>, [closure@$DIR/issue-83150.rs:11:24: 11:27]>, [closure@$DIR/issue-83150.rs:11:24: 11:27]>, [closure@$DIR/issue-83150.rs:11:24: 11:27]>, [closure@$DIR/issue-83150.rs:11:24: 11:27]>, [closure@$DIR/issue-83150.rs:11:24: 11:27]>, [closure@$DIR/issue-83150.rs:11:24: 11:27]>, [closure@$DIR/issue-83150.rs:11:24: 11:27]>, [closure@$DIR/issue-83150.rs:11:24: 11:27]>, [closure@$DIR/issue-83150.rs:11:24: 11:27]>, [closure@$DIR/issue-83150.rs:11:24: 11:27]>, [closure@$DIR/issue-83150.rs:11:24: 11:27]>, [closure@$DIR/issue-83150.rs:11:24: 11:27]>, [closure@$DIR/issue-83150.rs:11:24: 11:27]>, [closure@$DIR/issue-83150.rs:11:24: 11:27]>, [closure@$DIR/issue-83150.rs:11:24: 11:27]>, [closure@$DIR/issue-83150.rs:11:24: 11:27]>, [closure@$DIR/issue-83150.rs:11:24: 11:27]>, [closure@$DIR/issue-83150.rs:11:24: 11:27]>, [closure@$DIR/issue-83150.rs:11:24: 11:27]>, [closure@$DIR/issue-83150.rs:11:24: 11:27]>, [closure@$DIR/issue-83150.rs:11:24: 11:27]>, [closure@$DIR/issue-83150.rs:11:24: 11:27]>, [closure@$DIR/issue-83150.rs:11:24: 11:27]>, [closure@$DIR/issue-83150.rs:11:24: 11:27]>, [closure@$DIR/issue-83150.rs:11:24: 11:27]>, [closure@$DIR/issue-83150.rs:11:24: 11:27]>, [closure@$DIR/issue-83150.rs:11:24: 11:27]>, [closure@$DIR/issue-83150.rs:11:24: 11:27]>, [closure@$DIR/issue-83150.rs:11:24: 11:27]>, [closure@$DIR/issue-83150.rs:11:24: 11:27]>, [closure@$DIR/issue-83150.rs:11:24: 11:27]>, [closure@$DIR/issue-83150.rs:11:24: 11:27]>, [closure@$DIR/issue-83150.rs:11:24: 11:27]>, [closure@$DIR/issue-83150.rs:11:24: 11:27]>, [closure@$DIR/issue-83150.rs:11:24: 11:27]>, [closure@$DIR/issue-83150.rs:11:24: 11:27]>, [closure@$DIR/issue-83150.rs:11:24: 11:27]>, [closure@$DIR/issue-83150.rs:11:24: 11:27]>, [closure@$DIR/issue-83150.rs:11:24: 11:27]>, [closure@$DIR/issue-83150.rs:11:24: 11:27]>, [closure@$DIR/issue-83150.rs:11:24: 11:27]>, [closure@$DIR/issue-83150.rs:11:24: 11:27]>, [closure@$DIR/issue-83150.rs:11:24: 11:27]>, [closure@$DIR/issue-83150.rs:11:24: 11:27]>, [closure@$DIR/issue-83150.rs:11:24: 11:27]>, [closure@$DIR/issue-83150.rs:11:24: 11:27]>, [closure@$DIR/issue-83150.rs:11:24: 11:27]>, [closure@$DIR/issue-83150.rs:11:24: 11:27]>, [closure@$DIR/issue-83150.rs:11:24: 11:27]>, [closure@$DIR/issue-83150.rs:11:24: 11:27]>, [closure@$DIR/issue-83150.rs:11:24: 11:27]>, [closure@$DIR/issue-83150.rs:11:24: 11:27]>, [closure@$DIR/issue-83150.rs:11:24: 11:27]>, [closure@$DIR/issue-83150.rs:11:24: 11:27]>, [closure@$DIR/issue-83150.rs:11:24: 11:27]>, [closure@$DIR/issue-83150.rs:11:24: 11:27]>, [closure@$DIR/issue-83150.rs:11:24: 11:27]>, [closure@$DIR/issue-83150.rs:11:24: 11:27]>, [closure@$DIR/issue-83150.rs:11:24: 11:27]>, [closure@$DIR/issue-83150.rs:11:24: 11:27]>, [closure@$DIR/issue-83150.rs:11:24: 11:27]>` to implement `Iterator`
+LL |     func(&mut iter.map(|x| x + 1))
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+note: `func` defined here
+  --> $DIR/issue-83150.rs:10:1
+   |
+LL | fn func<T: Iterator<Item = u8>>(iter: &mut T) {
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   = note: the full type name has been written to '$TEST_BUILD_DIR/recursion/issue-83150/issue-83150.long-type.txt'
 
 error: aborting due to previous error; 1 warning emitted
 
-For more information about this error, try `rustc --explain E0275`.

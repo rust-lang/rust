@@ -1,7 +1,6 @@
 // build-fail
 // compile-flags: -Zinline-mir=no
-// error-pattern: overflow evaluating the requirement `(): Sized`
-// error-pattern: function cannot return without recursing
+//~^^ ERROR overflow evaluating the requirement
 
 // Regression test for #91949.
 // This hanged *forever* on 1.56, fixed by #90423.
@@ -19,7 +18,7 @@ impl<T, I: Iterator<Item = T>> Iterator for IteratorOfWrapped<T, I> {
     }
 }
 
-fn recurse<T>(elements: T) -> Vec<char>
+fn recurse<T>(elements: T) -> Vec<char> //~ WARN function cannot return without recursing
 where
     T: Iterator<Item = ()>,
 {
