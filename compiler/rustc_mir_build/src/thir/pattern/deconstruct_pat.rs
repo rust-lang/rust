@@ -147,13 +147,7 @@ impl IntRange {
                         // straight to the result, after doing a bit of checking. (We
                         // could remove this branch and just fall through, which
                         // is more general but much slower.)
-                        if let either::Left(bits) =
-                            scalar.to_bits_or_ptr_internal(target_size).unwrap()
-                        {
-                            return Some(bits);
-                        } else {
-                            return None;
-                        }
+                        return scalar.to_bits_or_ptr_internal(target_size).unwrap().left();
                     }
                     mir::ConstantKind::Ty(c) => match c.kind() {
                         ty::ConstKind::Value(_) => bug!(

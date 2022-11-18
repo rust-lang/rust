@@ -3,7 +3,7 @@
 
 use std::cell::Cell;
 
-use either::Left;
+use either::Right;
 
 use rustc_ast::Mutability;
 use rustc_data_structures::fx::FxHashSet;
@@ -431,7 +431,7 @@ impl<'mir, 'tcx> ConstPropagator<'mir, 'tcx> {
         // Try to read the local as an immediate so that if it is representable as a scalar, we can
         // handle it as such, but otherwise, just return the value as is.
         Some(match self.ecx.read_immediate_raw(&op) {
-            Ok(Left(imm)) => imm.into(),
+            Ok(Right(imm)) => imm.into(),
             _ => op,
         })
     }
@@ -745,7 +745,7 @@ impl<'mir, 'tcx> ConstPropagator<'mir, 'tcx> {
         // FIXME> figure out what to do when read_immediate_raw fails
         let imm = self.use_ecx(|this| this.ecx.read_immediate_raw(value));
 
-        if let Some(Left(imm)) = imm {
+        if let Some(Right(imm)) = imm {
             match *imm {
                 interpret::Immediate::Scalar(scalar) => {
                     *rval = Rvalue::Use(self.operand_from_scalar(

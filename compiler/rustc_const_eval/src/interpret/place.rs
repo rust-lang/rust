@@ -641,7 +641,7 @@ where
         // Let us see if the layout is simple so we take a shortcut,
         // avoid force_allocation.
         let src = match self.read_immediate_raw(src)? {
-            Left(src_val) => {
+            Right(src_val) => {
                 // FIXME(const_prop): Const-prop can possibly evaluate an
                 // unsized copy operation when it thinks that the type is
                 // actually sized, due to a trivially false where-clause
@@ -671,7 +671,7 @@ where
                     )
                 };
             }
-            Right(mplace) => mplace,
+            Left(mplace) => mplace,
         };
         // Slow path, this does not fit into an immediate. Just memcpy.
         trace!("copy_op: {:?} <- {:?}: {}", *dest, src, dest.layout.ty);

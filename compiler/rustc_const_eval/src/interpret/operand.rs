@@ -364,16 +364,16 @@ impl<'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
     pub fn read_immediate_raw(
         &self,
         src: &OpTy<'tcx, M::Provenance>,
-    ) -> InterpResult<'tcx, Either<ImmTy<'tcx, M::Provenance>, MPlaceTy<'tcx, M::Provenance>>> {
+    ) -> InterpResult<'tcx, Either<MPlaceTy<'tcx, M::Provenance>, ImmTy<'tcx, M::Provenance>>> {
         Ok(match src.as_mplace_or_imm() {
             Left(ref mplace) => {
                 if let Some(val) = self.read_immediate_from_mplace_raw(mplace)? {
-                    Left(val)
+                    Right(val)
                 } else {
-                    Right(*mplace)
+                    Left(*mplace)
                 }
             }
-            Right(val) => Left(val),
+            Right(val) => Right(val),
         })
     }
 
@@ -392,7 +392,7 @@ impl<'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
         ) {
             span_bug!(self.cur_span(), "primitive read not possible for type: {:?}", op.layout.ty);
         }
-        let imm = self.read_immediate_raw(op)?.left().unwrap();
+        let imm = self.read_immediate_raw(op)?.right().unwrap();
         if matches!(*imm, Immediate::Uninit) {
             throw_ub!(InvalidUninitBytes(None));
         }
