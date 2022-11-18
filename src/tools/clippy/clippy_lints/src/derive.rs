@@ -466,12 +466,12 @@ fn check_partial_eq_without_eq<'tcx>(cx: &LateContext<'tcx>, span: Span, trait_r
         if let Some(def_id) = trait_ref.trait_def_id();
         if cx.tcx.is_diagnostic_item(sym::PartialEq, def_id);
         let param_env = param_env_for_derived_eq(cx.tcx, adt.did(), eq_trait_def_id);
-        if !implements_trait_with_env(cx.tcx, param_env, ty, eq_trait_def_id, &[]);
+        if !implements_trait_with_env(cx.tcx, param_env, ty, eq_trait_def_id, []);
         // If all of our fields implement `Eq`, we can implement `Eq` too
         if adt
             .all_fields()
             .map(|f| f.ty(cx.tcx, substs))
-            .all(|ty| implements_trait_with_env(cx.tcx, param_env, ty, eq_trait_def_id, &[]));
+            .all(|ty| implements_trait_with_env(cx.tcx, param_env, ty, eq_trait_def_id, []));
         then {
             span_lint_and_sugg(
                 cx,
