@@ -1925,10 +1925,10 @@ impl<'hir> LoweringContext<'_, 'hir> {
         hir::Expr { hir_id, kind, span: self.lower_span(span) }
     }
 
-     pub(super) fn expr_with_hirid(
+    pub(super) fn expr_with_hirid(
         &mut self,
         span: Span,
-        hir_id: HirId,
+        hir_id: hir::HirId,
         kind: hir::ExprKind<'hir>,
         attrs: AttrVec,
     ) -> hir::Expr<'hir> {
