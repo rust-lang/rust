@@ -63,6 +63,7 @@ fluent_messages! {
     plugin_impl => "../locales/en-US/plugin_impl.ftl",
     privacy => "../locales/en-US/privacy.ftl",
     query_system => "../locales/en-US/query_system.ftl",
+    resolve => "../locales/en-US/resolve.ftl",
     save_analysis => "../locales/en-US/save_analysis.ftl",
     session => "../locales/en-US/session.ftl",
     symbol_mangling => "../locales/en-US/symbol_mangling.ftl",
