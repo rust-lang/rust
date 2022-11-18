@@ -1139,9 +1139,10 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
                     ProjectionCandidate(_, ty::BoundConstness::ConstIfConst) => {}
                     // auto trait impl
                     AutoImplCandidate => {}
-                    // generator, this will raise error in other places
+                    // generator / future, this will raise error in other places
                     // or ignore error with const_async_blocks feature
                     GeneratorCandidate => {}
+                    FutureCandidate => {}
                     // FnDef where the function is const
                     FnPointerCandidate { is_const: true } => {}
                     ConstDestructCandidate(_) => {}
@@ -1620,6 +1621,7 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
                 ImplCandidate(..)
                 | ClosureCandidate
                 | GeneratorCandidate
+                | FutureCandidate
                 | FnPointerCandidate { .. }
                 | BuiltinObjectCandidate
                 | BuiltinUnsizeCandidate
@@ -1638,6 +1640,7 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
                 ImplCandidate(_)
                 | ClosureCandidate
                 | GeneratorCandidate
+                | FutureCandidate
                 | FnPointerCandidate { .. }
                 | BuiltinObjectCandidate
                 | BuiltinUnsizeCandidate
@@ -1668,6 +1671,7 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
                 ImplCandidate(..)
                 | ClosureCandidate
                 | GeneratorCandidate
+                | FutureCandidate
                 | FnPointerCandidate { .. }
                 | BuiltinObjectCandidate
                 | BuiltinUnsizeCandidate
@@ -1680,6 +1684,7 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
                 ImplCandidate(..)
                 | ClosureCandidate
                 | GeneratorCandidate
+                | FutureCandidate
                 | FnPointerCandidate { .. }
                 | BuiltinObjectCandidate
                 | BuiltinUnsizeCandidate
@@ -1761,6 +1766,7 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
                 ImplCandidate(_)
                 | ClosureCandidate
                 | GeneratorCandidate
+                | FutureCandidate
                 | FnPointerCandidate { .. }
                 | BuiltinObjectCandidate
                 | BuiltinUnsizeCandidate
@@ -1770,6 +1776,7 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
                 ImplCandidate(_)
                 | ClosureCandidate
                 | GeneratorCandidate
+                | FutureCandidate
                 | FnPointerCandidate { .. }
                 | BuiltinObjectCandidate
                 | BuiltinUnsizeCandidate
@@ -2277,28 +2284,6 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
             util::TupleArgumentsFlag::No,
         )
         .map_bound(|(trait_ref, _)| trait_ref)
-    }
-
-    fn generator_trait_ref_unnormalized(
-        &mut self,
-        obligation: &TraitObligation<'tcx>,
-        substs: SubstsRef<'tcx>,
-    ) -> ty::PolyTraitRef<'tcx> {
-        let gen_sig = substs.as_generator().poly_sig();
-
-        // (1) Feels icky to skip the binder here, but OTOH we know
-        // that the self-type is an generator type and hence is
-        // in fact unparameterized (or at least does not reference any
-        // regions bound in the obligation). Still probably some
-        // refactoring could make this nicer.
-
-        super::util::generator_trait_ref_and_outputs(
-            self.tcx(),
-            obligation.predicate.def_id(),
-            obligation.predicate.skip_binder().self_ty(), // (1)
-            gen_sig,
-        )
-        .map_bound(|(trait_ref, ..)| trait_ref)
     }
 
     /// Returns the obligations that are implied by instantiating an

@@ -131,6 +131,10 @@ pub enum SelectionCandidate<'tcx> {
     /// generated for a generator.
     GeneratorCandidate,
 
+    /// Implementation of a `Future` trait by one of the generator types
+    /// generated for an async construct.
+    FutureCandidate,
+
     /// Implementation of a `Fn`-family trait by one of the anonymous
     /// types generated for a fn pointer type (e.g., `fn(int) -> int`)
     FnPointerCandidate {

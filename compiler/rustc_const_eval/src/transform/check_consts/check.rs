@@ -449,8 +449,17 @@ impl<'tcx> Visitor<'tcx> for Checker<'_, 'tcx> {
             | Rvalue::CopyForDeref(..)
             | Rvalue::Repeat(..)
             | Rvalue::Discriminant(..)
-            | Rvalue::Len(_)
-            | Rvalue::Aggregate(..) => {}
+            | Rvalue::Len(_) => {}
+
+            Rvalue::Aggregate(ref kind, ..) => {
+                if let AggregateKind::Generator(def_id, ..) = kind.as_ref() {
+                    if let Some(generator_kind) = self.tcx.generator_kind(def_id.to_def_id()) {
+                        if matches!(generator_kind, hir::GeneratorKind::Async(..)) {
+                            self.check_op(ops::Generator(generator_kind));
+                        }
+                    }
+                }
+            }
 
             Rvalue::Ref(_, kind @ BorrowKind::Mut { .. }, ref place)
             | Rvalue::Ref(_, kind @ BorrowKind::Unique, ref place) => {
@@ -886,14 +895,6 @@ impl<'tcx> Visitor<'tcx> for Checker<'_, 'tcx> {
 
                 if Some(callee) == tcx.lang_items().exchange_malloc_fn() {
                     self.check_op(ops::HeapAllocation);
-                    return;
-                }
-
-                // `async` blocks get lowered to `std::future::from_generator(/* a closure */)`.
-                let is_async_block = Some(callee) == tcx.lang_items().from_generator_fn();
-                if is_async_block {
-                    let kind = hir::GeneratorKind::Async(hir::AsyncGeneratorKind::Block);
-                    self.check_op(ops::Generator(kind));
                     return;
                 }
 

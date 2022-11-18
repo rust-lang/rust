@@ -2588,7 +2588,6 @@ impl<'a, 'tcx> TypeChecker<'a, 'tcx> {
             }
 
             // For closures, we have some **extra requirements** we
-            //
             // have to check. In particular, in their upvars and
             // signatures, closures often reference various regions
             // from the surrounding function -- we call those the

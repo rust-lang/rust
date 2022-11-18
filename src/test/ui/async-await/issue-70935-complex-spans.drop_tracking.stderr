@@ -20,10 +20,9 @@ LL | | }
    | |_^
    = note: required because it captures the following types: `ResumeTy`, `impl Future<Output = ()>`, `()`
 note: required because it's used within this `async` block
-  --> $DIR/issue-70935-complex-spans.rs:16:16
+  --> $DIR/issue-70935-complex-spans.rs:16:5
    |
-LL |       async move {
-   |  ________________^
+LL | /     async move {
 LL | |         baz(|| async{
 LL | |             foo(tx.clone());
 LL | |         }).await;

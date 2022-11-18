@@ -681,6 +681,17 @@ pub trait PrettyPrinter<'tcx>:
             }
             ty::Str => p!("str"),
             ty::Generator(did, substs, movability) => {
+                // FIXME(swatinem): async constructs used to be pretty printed
+                // as `impl Future` previously due to the `from_generator` wrapping.
+                // lets special case this here for now to avoid churn in diagnostics.
+                let generator_kind = self.tcx().generator_kind(did);
+                if matches!(generator_kind, Some(hir::GeneratorKind::Async(..))) {
+                    let return_ty = substs.as_generator().return_ty();
+                    p!(write("impl Future<Output = {}>", return_ty));
+
+                    return Ok(self);
+                }
+
                 p!(write("["));
                 match movability {
                     hir::Movability::Movable => {}

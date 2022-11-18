@@ -9,12 +9,8 @@
 //! [`await`]: ../../std/keyword.await.html
 //! [async book]: https://rust-lang.github.io/async-book/
 
-use crate::{
-    ops::{Generator, GeneratorState},
-    pin::Pin,
-    ptr::NonNull,
-    task::{Context, Poll},
-};
+use crate::ptr::NonNull;
+use crate::task::Context;
 
 mod future;
 mod into_future;
@@ -48,6 +44,7 @@ pub use poll_fn::{poll_fn, PollFn};
 ///    non-Send/Sync as well, and we don't want that.
 ///
 /// It also simplifies the HIR lowering of `.await`.
+#[cfg_attr(not(bootstrap), lang = "ResumeTy")]
 #[doc(hidden)]
 #[unstable(feature = "gen_future", issue = "50547")]
 #[derive(Debug, Copy, Clone)]
@@ -64,15 +61,21 @@ unsafe impl Sync for ResumeTy {}
 /// This function returns a `GenFuture` underneath, but hides it in `impl Trait` to give
 /// better error messages (`impl Future` rather than `GenFuture<[closure.....]>`).
 // This is `const` to avoid extra errors after we recover from `const async fn`
-#[lang = "from_generator"]
+#[cfg_attr(bootstrap, lang = "from_generator")]
 #[doc(hidden)]
 #[unstable(feature = "gen_future", issue = "50547")]
 #[rustc_const_unstable(feature = "gen_future", issue = "50547")]
 #[inline]
 pub const fn from_generator<T>(gen: T) -> impl Future<Output = T::Return>
 where
-    T: Generator<ResumeTy, Yield = ()>,
+    T: crate::ops::Generator<ResumeTy, Yield = ()>,
 {
+    use crate::{
+        ops::{Generator, GeneratorState},
+        pin::Pin,
+        task::Poll,
+    };
+
     #[rustc_diagnostic_item = "gen_future"]
     struct GenFuture<T: Generator<ResumeTy, Yield = ()>>(T);
 
@@ -108,4 +111,12 @@ pub unsafe fn get_context<'a, 'b>(cx: ResumeTy) -> &'a mut Context<'b> {
     // SAFETY: the caller must guarantee that `cx.0` is a valid pointer
     // that fulfills all the requirements for a mutable reference.
     unsafe { &mut *cx.0.as_ptr().cast() }
+}
+
+#[cfg_attr(not(bootstrap), lang = "identity_future")]
+#[doc(hidden)]
+#[unstable(feature = "gen_future", issue = "50547")]
+#[inline]
+pub const fn identity_future<O, Fut: Future<Output = O>>(f: Fut) -> Fut {
+    f
 }
