@@ -238,6 +238,9 @@ export class Config {
             gotoTypeDef: this.get<boolean>("hover.actions.gotoTypeDef.enable"),
         };
     }
+    get previewRustcOutput() {
+        return this.get<boolean>("diagnostics.previewRustcOutput");
+    }
 }
 
 const VarRegex = new RegExp(/\$\{(.+?)\}/g);
