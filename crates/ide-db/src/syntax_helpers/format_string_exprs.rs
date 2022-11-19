@@ -103,12 +103,12 @@ pub fn parse_format_exprs(input: &str) -> Result<(String, Vec<Arg>), ()> {
                 output.push(chr);
                 extracted_expressions.push(Arg::Placeholder);
                 state = State::NotArg;
-            },
+            }
             (State::MaybeArg, ':') => {
                 output.push(chr);
                 extracted_expressions.push(Arg::Placeholder);
                 state = State::FormatOpts;
-            },
+            }
             (State::MaybeArg, _) => {
                 if matches!(chr, '\\' | '$') {
                     current_expr.push('\\');
@@ -122,13 +122,13 @@ pub fn parse_format_exprs(input: &str) -> Result<(String, Vec<Arg>), ()> {
                 } else {
                     state = State::Expr;
                 }
-            },
+            }
             (State::Ident | State::Expr, ':') if matches!(chars.peek(), Some(':')) => {
                 // path separator
                 state = State::Expr;
                 current_expr.push_str("::");
                 chars.next();
-            },
+            }
             (State::Ident | State::Expr, ':' | '}') => {
                 if inexpr_open_count == 0 {
                     let trimmed = current_expr.trim();
@@ -146,7 +146,13 @@ pub fn parse_format_exprs(input: &str) -> Result<(String, Vec<Arg>), ()> {
 
                     output.push(chr);
                     current_expr.clear();
-                    state = if chr == ':' {State::FormatOpts} else if chr == '}' {State::NotArg} else {unreachable!()};
+                    state = if chr == ':' {
+                        State::FormatOpts
+                    } else if chr == '}' {
+                        State::NotArg
+                    } else {
+                        unreachable!()
+                    };
                 } else if chr == '}' {
                     // We're closing one brace met before inside of the expression.
                     current_expr.push(chr);
@@ -155,7 +161,7 @@ pub fn parse_format_exprs(input: &str) -> Result<(String, Vec<Arg>), ()> {
                     // We're inside of braced expression, assume that it's a struct field name/value delimiter.
                     current_expr.push(chr);
                 }
-            },
+            }
             (State::Ident | State::Expr, '{') => {
                 state = State::Expr;
                 current_expr.push(chr);
