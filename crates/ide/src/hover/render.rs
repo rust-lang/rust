@@ -14,7 +14,7 @@ use ide_db::{
 use itertools::Itertools;
 use stdx::format_to;
 use syntax::{
-    algo, ast, match_ast, AstNode, Direction,
+    algo, ast::{self, RecordPat}, match_ast, AstNode, Direction,
     SyntaxKind::{LET_EXPR, LET_STMT},
     SyntaxToken, T,
 };
@@ -248,6 +248,58 @@ pub(super) fn keyword(
         config,
     );
     Some(HoverResult { markup, actions })
+}
+
+pub(super) fn struct_rest_pat(
+    sema: &Semantics<'_, RootDatabase>,
+    config: &HoverConfig,
+    expr_or_pat: &Either<ast::Expr, ast::Pat>,
+) -> Option<HoverResult> {
+    let pat = expr_or_pat.as_ref().right()?;
+
+    let mut ancestors = sema.ancestors_with_macros(pat.syntax().clone());
+    let _record_pat_field_list = ancestors.next()?;
+    let record_pat = ancestors.next()?;
+    let pattern = sema
+        .find_nodes_at_offset_with_descend::<RecordPat>(
+            &record_pat,
+        record_pat.text_range().start())
+        .next()?;
+
+    let missing_fields = sema.record_pattern_missing_fields(&pattern);
+
+    // if there are no missing fields, the end result is a hover that shows ".."
+    // should be left in to indicate that there are no more fields in the pattern
+    // example, S {a: 1, b: 2, ..} when struct S {a: u32, b: u32}
+
+    let mut res = HoverResult::default();
+    let mut targets: Vec<hir::ModuleDef> = Vec::new();
+    let mut push_new_def = |item: hir::ModuleDef| {
+        if !targets.contains(&item) {
+            targets.push(item);
+        }
+    };
+    for (_, t) in &missing_fields {
+        walk_and_push_ty(sema.db, &t, &mut push_new_def);
+    }
+
+    res.markup = {
+        let mut s = String::from(".., ");
+        for (f, _) in &missing_fields {
+            s += f.display(sema.db).to_string().as_ref();
+            s += ", ";
+        }
+        // get rid of trailing comma
+        if s.len() > 0 {s.truncate(s.len() - 2);}
+
+        if config.markdown() {
+            Markup::fenced_block(&s)
+        } else {
+            s.into()
+        }
+    };
+    res.actions.push(HoverAction::goto_type_from_targets(sema.db, targets));
+    Some(res)
 }
 
 pub(super) fn try_for_lint(attr: &ast::Attr, token: &SyntaxToken) -> Option<HoverResult> {
