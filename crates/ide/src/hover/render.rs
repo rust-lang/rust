@@ -14,7 +14,9 @@ use ide_db::{
 use itertools::Itertools;
 use stdx::format_to;
 use syntax::{
-    algo, ast::{self, RecordPat}, match_ast, AstNode, Direction,
+    algo,
+    ast::{self, RecordPat},
+    match_ast, AstNode, Direction,
     SyntaxKind::{LET_EXPR, LET_STMT},
     SyntaxToken, T,
 };
@@ -263,7 +265,8 @@ pub(super) fn struct_rest_pat(
     let pattern = sema
         .find_nodes_at_offset_with_descend::<RecordPat>(
             &record_pat,
-        record_pat.text_range().start())
+            record_pat.text_range().start(),
+        )
         .next()?;
 
     let missing_fields = sema.record_pattern_missing_fields(&pattern);
@@ -290,7 +293,7 @@ pub(super) fn struct_rest_pat(
             s += ", ";
         }
         // get rid of trailing comma
-        if s.len() > 0 {s.truncate(s.len() - 2);}
+        s.truncate(s.len() - 2);
 
         if config.markdown() {
             Markup::fenced_block(&s)

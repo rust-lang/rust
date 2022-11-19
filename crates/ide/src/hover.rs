@@ -268,8 +268,7 @@ fn hover_type_fallback(
         }
     };
 
-    let res =
-        render::type_info(sema, config, &expr_or_pat)
+    let res = render::type_info(sema, config, &expr_or_pat)
         .or_else(|| render::struct_rest_pat(sema, config, &expr_or_pat))?;
 
     let range = sema
