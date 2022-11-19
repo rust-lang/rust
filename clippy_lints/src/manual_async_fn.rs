@@ -6,7 +6,7 @@ use rustc_errors::Applicability;
 use rustc_hir::intravisit::FnKind;
 use rustc_hir::{
     AsyncGeneratorKind, Block, Body, Closure, Expr, ExprKind, FnDecl, FnRetTy, GeneratorKind, GenericArg, GenericBound,
-    HirId, IsAsync, ItemKind, LifetimeName, Term, TraitRef, Ty, TyKind, TypeBindingKind,
+    HirId, ItemKind, LifetimeName, Term, TraitRef, Ty, TyKind, TypeBindingKind,
 };
 use rustc_lint::{LateContext, LateLintPass};
 use rustc_session::{declare_lint_pass, declare_tool_lint};
@@ -49,7 +49,7 @@ impl<'tcx> LateLintPass<'tcx> for ManualAsyncFn {
     ) {
         if_chain! {
             if let Some(header) = kind.header();
-            if header.asyncness == IsAsync::NotAsync;
+            if !header.asyncness.is_async();
             // Check that this function returns `impl Future`
             if let FnRetTy::Return(ret_ty) = decl.output;
             if let Some((trait_ref, output_lifetimes)) = future_trait_ref(cx, ret_ty);
