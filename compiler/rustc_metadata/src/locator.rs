@@ -1024,7 +1024,7 @@ impl CrateError {
                 if !locator.crate_rejections.via_filename.is_empty() {
                     let mismatches = locator.crate_rejections.via_filename.iter();
                     for CrateMismatch { path, .. } in mismatches {
-                        sess.emit_err(CrateLocationUnknownType { span, path: &path });
+                        sess.emit_err(CrateLocationUnknownType { span, path: &path, crate_name });
                         sess.emit_err(LibFilenameForm {
                             span,
                             dll_prefix: &locator.dll_prefix,
