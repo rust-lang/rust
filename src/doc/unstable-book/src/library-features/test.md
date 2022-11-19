@@ -75,6 +75,46 @@ Advice on writing benchmarks:
 * Make the code in the `iter` loop do something simple, to assist in pinpointing
   performance improvements (or regressions)
 
+## Using cargo bench along stable rust
+
+To improve user experience when using `cargo bench` in a porject built with stable rust,
+you can gate all the benchmarking under a seperate feature that you shoulld only call it
+with nightly. In this example we add a new feature to `Cargo.toml` called `bench`.
+
+```toml
+[features]
+bench = []
+```
+and update our `lib.rs`:
+
+```rs
+#![cfg_attr(feature = "bench", feature(test))]
+
+pub fn add_two(a: i32) -> i32 {
+    a + 2
+}
+
+#[cfg(test)]
+mod tests {
+    #[cfg(feature = "bench")]
+    extern crate test;
+
+    use super::*;
+
+    #[test]
+    fn it_works() {
+        assert_eq!(4, add_two(2));
+    }
+
+    #[cfg(feature = "nightly")]
+    #[bench]
+    fn bench_add_two(b: &mut test::Bencher) {
+        b.iter(|| add_two(2));
+    }
+}
+```
+And now to invoke the bechmark, we can use `cargo +nightly bench --features nightly`.
+
 ## Gotcha: optimizations
 
 There's another tricky part to writing benchmarks: benchmarks compiled with
