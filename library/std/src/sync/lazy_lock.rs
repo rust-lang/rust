@@ -6,7 +6,9 @@ use crate::sync::OnceLock;
 
 /// A value which is initialized on the first access.
 ///
-/// This type is a thread-safe `Lazy`, and can be used in statics.
+/// This type is a thread-safe [`LazyCell`], and can be used in statics.
+///
+/// [`LazyCell`]: crate::cell::LazyCell
 ///
 /// # Examples
 ///
