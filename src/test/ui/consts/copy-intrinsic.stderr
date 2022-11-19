@@ -1,27 +1,33 @@
 error[E0080]: evaluation of constant value failed
-  --> $DIR/copy-intrinsic.rs:27:5
+  --> $DIR/copy-intrinsic.rs:20:5
+   |
+LL |     copy_nonoverlapping(&src as *const _ as *const i32, &mut dst as *mut _ as *mut i32, 0);
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ accessing memory with alignment 1, but alignment 4 is required
+
+error[E0080]: evaluation of constant value failed
+  --> $DIR/copy-intrinsic.rs:28:5
    |
 LL |     copy_nonoverlapping(0x100 as *const i32, dangle, 0);
    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ memory access failed: alloc5 has size 4, so pointer at offset 40 is out-of-bounds
 
 error[E0080]: evaluation of constant value failed
-  --> $DIR/copy-intrinsic.rs:34:5
+  --> $DIR/copy-intrinsic.rs:35:5
    |
 LL |     copy_nonoverlapping(dangle, 0x100 as *mut i32, 0);
    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ memory access failed: alloc7 has size 4, so pointer at offset 40 is out-of-bounds
 
 error[E0080]: evaluation of constant value failed
-  --> $DIR/copy-intrinsic.rs:41:5
+  --> $DIR/copy-intrinsic.rs:42:5
    |
 LL |     copy(&x, &mut y, 1usize << (mem::size_of::<usize>() * 8 - 1));
    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ overflow computing total size of `copy`
 
 error[E0080]: evaluation of constant value failed
-  --> $DIR/copy-intrinsic.rs:47:5
+  --> $DIR/copy-intrinsic.rs:48:5
    |
 LL |     copy_nonoverlapping(&x, &mut y, 1usize << (mem::size_of::<usize>() * 8 - 1));
    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ overflow computing total size of `copy_nonoverlapping`
 
-error: aborting due to 4 previous errors
+error: aborting due to 5 previous errors
 
 For more information about this error, try `rustc --explain E0080`.

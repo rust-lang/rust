@@ -30,7 +30,6 @@ pub static S6: &[bool] = unsafe { from_raw_parts((&D0) as *const _ as _, 4) }; /
 
 // Reading padding is not ok
 pub static S7: &[u16] = unsafe {
-    //~^ ERROR: it is undefined behavior to use this value
     let ptr = (&D2 as *const Struct as *const u16).byte_add(1);
 
     from_raw_parts(ptr, 4)
@@ -65,7 +64,6 @@ pub static R6: &[bool] = unsafe {
     from_ptr_range(ptr..ptr.add(4))
 };
 pub static R7: &[u16] = unsafe {
-    //~^ ERROR: it is undefined behavior to use this value
     let ptr = (&D2 as *const Struct as *const u16).byte_add(1);
     from_ptr_range(ptr..ptr.add(4))
 };

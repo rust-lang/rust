@@ -18,6 +18,7 @@ const COPY_ZERO: () = unsafe {
     let src = ();
     let mut dst = ();
     copy_nonoverlapping(&src as *const _ as *const i32, &mut dst as *mut _ as *mut i32, 0);
+    //~^ ERROR: evaluation of constant value failed
 };
 
 const COPY_OOB_1: () = unsafe {

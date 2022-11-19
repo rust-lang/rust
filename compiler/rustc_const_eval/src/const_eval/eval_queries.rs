@@ -311,7 +311,7 @@ pub fn eval_to_allocation_raw_provider<'tcx>(
         CompileTimeInterpreter::new(
             tcx.const_eval_limit(),
             /*can_access_statics:*/ is_static,
-            /*check_alignment:*/ tcx.sess.opts.unstable_opts.extra_const_ub_checks,
+            /*check_alignment:*/ true,
         ),
     );
 
