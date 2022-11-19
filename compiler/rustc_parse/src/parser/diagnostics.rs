@@ -1660,14 +1660,14 @@ impl<'a> Parser<'a> {
                 let left = begin_par_sp;
                 let right = self.prev_token.span;
                 let left_snippet = if let Ok(snip) = sm.span_to_prev_source(left) &&
-                        !snip.ends_with(" ") {
+                        !snip.ends_with(' ') {
                                 " ".to_string()
                             } else {
                                 "".to_string()
                             };
 
                 let right_snippet = if let Ok(snip) = sm.span_to_next_source(right) &&
-                        !snip.starts_with(" ") {
+                        !snip.starts_with(' ') {
                                 " ".to_string()
                             } else {
                                 "".to_string()

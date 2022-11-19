@@ -772,7 +772,7 @@ impl<'tcx> DeadVisitor<'tcx> {
         self.tcx.emit_spanned_lint(
             lint,
             tcx.hir().local_def_id_to_hir_id(first_id),
-            MultiSpan::from_spans(spans.clone()),
+            MultiSpan::from_spans(spans),
             diag,
         );
     }
