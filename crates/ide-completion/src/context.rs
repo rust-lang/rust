@@ -569,7 +569,7 @@ impl<'a> CompletionContext<'a> {
         // completing on
         let original_token = original_file.syntax().token_at_offset(offset).left_biased()?;
 
-        // try to skip completions on path with qinvalid colons
+        // try to skip completions on path with invalid colons
         // this approach works in normal path and inside token tree
         match original_token.kind() {
             T![:] => {
