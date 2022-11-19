@@ -127,7 +127,7 @@ pub(crate) fn hover(
             original_token.parent().and_then(ast::TokenTree::cast),
             Some(tt) if tt.syntax().ancestors().any(|it| ast::Meta::can_cast(it.kind()))
         );
-        
+
     // prefer descending the same token kind in attribute expansions, in normal macros text
     // equivalency is more important
     let descended = if in_attr {
@@ -168,9 +168,7 @@ pub(crate) fn hover(
                 })
         })
         // try keywords
-        .or_else(|| {
-            descended.iter().find_map(|token| render::keyword(sema, config, token))
-        })
+        .or_else(|| descended.iter().find_map(|token| render::keyword(sema, config, token)))
         // try rest item hover
         .or_else(|| {
             descended.iter().find_map(|token| {
