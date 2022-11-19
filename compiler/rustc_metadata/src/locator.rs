@@ -707,6 +707,12 @@ impl<'a> CrateLocator<'a> {
                     loc.original().clone(),
                 ));
             }
+            if !loc.original().is_file() {
+                return Err(CrateError::ExternLocationNotFile(
+                    self.crate_name,
+                    loc.original().clone(),
+                ));
+            }
             let Some(file) = loc.original().file_name().and_then(|s| s.to_str()) else {
                 return Err(CrateError::ExternLocationNotFile(
                     self.crate_name,
