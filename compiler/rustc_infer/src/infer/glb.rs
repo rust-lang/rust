@@ -34,7 +34,8 @@ impl<'tcx> TypeRelation<'tcx> for Glb<'_, '_, 'tcx> {
         self.fields.tcx()
     }
 
-    fn fast_equate_combine(&self) -> bool {
+    #[inline]
+    fn fast_equate(&self) -> bool {
         true
     }
 

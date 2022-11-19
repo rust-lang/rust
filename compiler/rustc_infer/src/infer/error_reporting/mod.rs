@@ -2945,7 +2945,8 @@ impl<'tcx> TypeRelation<'tcx> for SameTypeModuloInfer<'_, 'tcx> {
         "SameTypeModuloInfer"
     }
 
-    fn fast_equate_combine(&self) -> bool {
+    #[inline]
+    fn fast_equate(&self) -> bool {
         true
     }
 

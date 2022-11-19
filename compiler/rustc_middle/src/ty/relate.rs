@@ -29,7 +29,7 @@ pub trait TypeRelation<'tcx>: Sized {
     fn tag(&self) -> &'static str;
 
     /// Returns whether or not structural equality can be used to fast-path this relation
-    fn fast_equate_combine(&self) -> bool;
+    fn fast_equate(&self) -> bool;
 
     /// Returns `true` if the value `a` is the "expected" type in the
     /// relation. Just affects error messages.
@@ -143,7 +143,7 @@ pub fn relate_substs<'tcx, R: TypeRelation<'tcx>>(
     a_subst: SubstsRef<'tcx>,
     b_subst: SubstsRef<'tcx>,
 ) -> RelateResult<'tcx, SubstsRef<'tcx>> {
-    if relation.fast_equate_combine() && a_subst == b_subst {
+    if relation.fast_equate() && a_subst == b_subst {
         return Ok(a_subst);
     }
 
@@ -159,7 +159,7 @@ pub fn relate_substs_with_variances<'tcx, R: TypeRelation<'tcx>>(
     a_subst: SubstsRef<'tcx>,
     b_subst: SubstsRef<'tcx>,
 ) -> RelateResult<'tcx, SubstsRef<'tcx>> {
-    if relation.fast_equate_combine() && a_subst == b_subst {
+    if relation.fast_equate() && a_subst == b_subst {
         return Ok(a_subst);
     }
 
@@ -365,7 +365,7 @@ impl<'tcx> Relate<'tcx> for GeneratorWitness<'tcx> {
         a: GeneratorWitness<'tcx>,
         b: GeneratorWitness<'tcx>,
     ) -> RelateResult<'tcx, GeneratorWitness<'tcx>> {
-        if relation.fast_equate_combine() && a == b {
+        if relation.fast_equate() && a == b {
             return Ok(a);
         }
 
@@ -670,7 +670,7 @@ impl<'tcx> Relate<'tcx> for &'tcx ty::List<ty::Binder<'tcx, ty::ExistentialPredi
         a: Self,
         b: Self,
     ) -> RelateResult<'tcx, Self> {
-        if relation.fast_equate_combine() && a == b {
+        if relation.fast_equate() && a == b {
             return Ok(a);
         }
 

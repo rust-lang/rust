@@ -525,7 +525,8 @@ impl<'tcx> TypeRelation<'tcx> for Generalizer<'_, 'tcx> {
         self.param_env
     }
 
-    fn fast_equate_combine(&self) -> bool {
+    #[inline]
+    fn fast_equate(&self) -> bool {
         false
     }
 
@@ -806,7 +807,8 @@ impl<'tcx> TypeRelation<'tcx> for ConstInferUnifier<'_, 'tcx> {
         self.param_env
     }
 
-    fn fast_equate_combine(&self) -> bool {
+    #[inline]
+    fn fast_equate(&self) -> bool {
         false
     }
 

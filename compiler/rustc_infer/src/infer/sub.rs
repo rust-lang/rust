@@ -43,7 +43,8 @@ impl<'tcx> TypeRelation<'tcx> for Sub<'_, '_, 'tcx> {
         self.fields.param_env
     }
 
-    fn fast_equate_combine(&self) -> bool {
+    #[inline]
+    fn fast_equate(&self) -> bool {
         true
     }
 

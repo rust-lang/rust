@@ -535,7 +535,8 @@ where
         self.delegate.param_env()
     }
 
-    fn fast_equate_combine(&self) -> bool {
+    #[inline]
+    fn fast_equate(&self) -> bool {
         false
     }
 
@@ -905,7 +906,8 @@ where
         self.delegate.param_env()
     }
 
-    fn fast_equate_combine(&self) -> bool {
+    #[inline]
+    fn fast_equate(&self) -> bool {
         false
     }
 

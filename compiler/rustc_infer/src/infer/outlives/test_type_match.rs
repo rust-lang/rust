@@ -142,7 +142,8 @@ impl<'tcx> TypeRelation<'tcx> for Match<'tcx> {
     fn param_env(&self) -> ty::ParamEnv<'tcx> {
         self.param_env
     }
-    fn fast_equate_combine(&self) -> bool {
+    #[inline]
+    fn fast_equate(&self) -> bool {
         false
     }
     fn a_is_expected(&self) -> bool {
