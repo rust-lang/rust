@@ -425,8 +425,9 @@ impl<'gcc, 'tcx> MiscMethods<'tcx> for CodegenCx<'gcc, 'tcx> {
     }
 
     fn declare_c_main(&self, fn_type: Self::Type) -> Option<Self::Function> {
-        if self.get_declared_value("main").is_none() {
-            Some(self.declare_cfn("main", fn_type))
+        let entry_name = self.sess().target.entry_name.as_ref();
+        if self.get_declared_value(entry_name).is_none() {
+            Some(self.declare_entry_fn(entry_name, fn_type, ()))
         }
         else {
             // If the symbol already exists, it is an error: for example, the user wrote
