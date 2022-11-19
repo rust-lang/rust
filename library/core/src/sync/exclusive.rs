@@ -2,6 +2,7 @@
 
 use core::fmt;
 use core::future::Future;
+use core::ops::{Generator, GeneratorState};
 use core::pin::Pin;
 use core::task::{Context, Poll};
 
@@ -91,7 +92,7 @@ unsafe impl<T: ?Sized> Sync for Exclusive<T> {}
 
 #[unstable(feature = "exclusive_wrapper", issue = "98407")]
 impl<T: ?Sized> fmt::Debug for Exclusive<T> {
-    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> Result<(), fmt::Error> {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         f.debug_struct("Exclusive").finish_non_exhaustive()
     }
 }
@@ -99,6 +100,7 @@ impl<T: ?Sized> fmt::Debug for Exclusive<T> {
 impl<T: Sized> Exclusive<T> {
     /// Wrap a value in an `Exclusive`
     #[unstable(feature = "exclusive_wrapper", issue = "98407")]
+    #[rustc_const_unstable(feature = "exclusive_wrapper", issue = "98407")]
     #[must_use]
     #[inline]
     pub const fn new(t: T) -> Self {
@@ -107,6 +109,7 @@ impl<T: Sized> Exclusive<T> {
 
     /// Unwrap the value contained in the `Exclusive`
     #[unstable(feature = "exclusive_wrapper", issue = "98407")]
+    #[rustc_const_unstable(feature = "const_exclusive_into_inner", issue = "98407")]
     #[must_use]
     #[inline]
     pub const fn into_inner(self) -> T {
@@ -117,6 +120,7 @@ impl<T: Sized> Exclusive<T> {
 impl<T: ?Sized> Exclusive<T> {
     /// Get exclusive access to the underlying value.
     #[unstable(feature = "exclusive_wrapper", issue = "98407")]
+    #[rustc_const_unstable(feature = "const_exclusive_get_mut", issue = "98407")]
     #[must_use]
     #[inline]
     pub const fn get_mut(&mut self) -> &mut T {
@@ -130,6 +134,7 @@ impl<T: ?Sized> Exclusive<T> {
     /// access to the underlying value, but _pinned_ `Exclusive`s only
     /// produce _pinned_ access to the underlying value.
     #[unstable(feature = "exclusive_wrapper", issue = "98407")]
+    #[rustc_const_unstable(feature = "const_exclusive_get_mut", issue = "98407")]
     #[must_use]
     #[inline]
     pub const fn get_pin_mut(self: Pin<&mut Self>) -> Pin<&mut T> {
@@ -142,6 +147,7 @@ impl<T: ?Sized> Exclusive<T> {
     /// a _mutable_ reference to a `T`. This allows you to skip
     /// building an `Exclusive` with [`Exclusive::new`].
     #[unstable(feature = "exclusive_wrapper", issue = "98407")]
+    #[rustc_const_unstable(feature = "const_exclusive_get_mut", issue = "98407")]
     #[must_use]
     #[inline]
     pub const fn from_mut(r: &'_ mut T) -> &'_ mut Exclusive<T> {
@@ -153,6 +159,7 @@ impl<T: ?Sized> Exclusive<T> {
     /// a _pinned mutable_ reference to a `T`. This allows you to skip
     /// building an `Exclusive` with [`Exclusive::new`].
     #[unstable(feature = "exclusive_wrapper", issue = "98407")]
+    #[rustc_const_unstable(feature = "const_exclusive_get_mut", issue = "98407")]
     #[must_use]
     #[inline]
     pub const fn from_pin_mut(r: Pin<&'_ mut T>) -> Pin<&'_ mut Exclusive<T>> {
@@ -163,7 +170,8 @@ impl<T: ?Sized> Exclusive<T> {
 }
 
 #[unstable(feature = "exclusive_wrapper", issue = "98407")]
-impl<T> From<T> for Exclusive<T> {
+#[rustc_const_unstable(feature = "core_convert", issue = "88674")]
+impl<T> const From<T> for Exclusive<T> {
     #[inline]
     fn from(t: T) -> Self {
         Self::new(t)
@@ -171,10 +179,38 @@ impl<T> From<T> for Exclusive<T> {
 }
 
 #[unstable(feature = "exclusive_wrapper", issue = "98407")]
+impl<Args, F: FnOnce<Args>> FnOnce<Args> for Exclusive<F> {
+    type Output = F::Output;
+
+    extern "rust-call" fn call_once(self, args: Args) -> Self::Output {
+        self.into_inner().call_once(args)
+    }
+}
+
+#[unstable(feature = "exclusive_wrapper", issue = "98407")]
+impl<Args, F: FnMut<Args>> FnMut<Args> for Exclusive<F> {
+    extern "rust-call" fn call_mut(&mut self, args: Args) -> Self::Output {
+        self.get_mut().call_mut(args)
+    }
+}
+
+#[unstable(feature = "exclusive_wrapper", issue = "98407")]
 impl<T: Future + ?Sized> Future for Exclusive<T> {
     type Output = T::Output;
+
     #[inline]
     fn poll(self: Pin<&mut Self>, cx: &mut Context<'_>) -> Poll<Self::Output> {
         self.get_pin_mut().poll(cx)
+    }
+}
+
+#[unstable(feature = "generator_trait", issue = "43122")]
+impl<R, G: Generator<R> + ?Sized> Generator<R> for Exclusive<G> {
+    type Yield = G::Yield;
+    type Return = G::Return;
+
+    #[inline]
+    fn resume(self: Pin<&mut Self>, arg: R) -> GeneratorState<Self::Yield, Self::Return> {
+        G::resume(self.get_pin_mut(), arg)
     }
 }
