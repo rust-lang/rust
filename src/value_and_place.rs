@@ -19,7 +19,7 @@ fn codegen_field<'tcx>(
     };
 
     if let Some(extra) = extra {
-        if !field_layout.is_unsized() {
+        if field_layout.is_sized() {
             return simple(fx);
         }
         match field_layout.ty.kind() {
@@ -364,7 +364,7 @@ impl<'tcx> CPlace<'tcx> {
         fx: &mut FunctionCx<'_, '_, 'tcx>,
         layout: TyAndLayout<'tcx>,
     ) -> CPlace<'tcx> {
-        assert!(!layout.is_unsized());
+        assert!(layout.is_sized());
         if layout.size.bytes() == 0 {
             return CPlace {
                 inner: CPlaceInner::Addr(Pointer::dangling(layout.align.pref), None),
@@ -828,7 +828,7 @@ impl<'tcx> CPlace<'tcx> {
         fx: &FunctionCx<'_, '_, 'tcx>,
         variant: VariantIdx,
     ) -> Self {
-        assert!(!self.layout().is_unsized());
+        assert!(self.layout().is_sized());
         let layout = self.layout().for_variant(fx, variant);
         CPlace { inner: self.inner, layout }
     }

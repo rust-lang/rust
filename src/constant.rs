@@ -45,7 +45,7 @@ pub(crate) fn check_constants(fx: &mut FunctionCx<'_, '_, '_>) -> bool {
         if let Err(err) = fx.tcx.const_eval_resolve(ParamEnv::reveal_all(), unevaluated, None) {
             all_constants_ok = false;
             match err {
-                ErrorHandled::Reported(_) | ErrorHandled::Linted => {
+                ErrorHandled::Reported(_) => {
                     fx.tcx.sess.span_err(constant.span, "erroneous constant encountered");
                 }
                 ErrorHandled::TooGeneric => {
@@ -126,7 +126,7 @@ pub(crate) fn codegen_const_value<'tcx>(
     ty: Ty<'tcx>,
 ) -> CValue<'tcx> {
     let layout = fx.layout_of(ty);
-    assert!(!layout.is_unsized(), "sized const value");
+    assert!(layout.is_sized(), "unsized const value");
 
     if layout.is_zst() {
         return CValue::by_ref(crate::Pointer::dangling(layout.align.pref), layout);
@@ -393,7 +393,7 @@ fn define_all_allocs(tcx: TyCtxt<'_>, module: &mut dyn Module, cx: &mut Constant
         let bytes = alloc.inspect_with_uninit_and_ptr_outside_interpreter(0..alloc.len()).to_vec();
         data_ctx.define(bytes.into_boxed_slice());
 
-        for &(offset, alloc_id) in alloc.provenance().iter() {
+        for &(offset, alloc_id) in alloc.provenance().ptrs().iter() {
             let addend = {
                 let endianness = tcx.data_layout.endian;
                 let offset = offset.bytes() as usize;
@@ -426,7 +426,7 @@ fn define_all_allocs(tcx: TyCtxt<'_>, module: &mut dyn Module, cx: &mut Constant
                     {
                         tcx.sess.fatal(&format!(
                             "Allocation {:?} contains reference to TLS value {:?}",
-                            alloc, def_id
+                            alloc_id, def_id
                         ));
                     }
 
