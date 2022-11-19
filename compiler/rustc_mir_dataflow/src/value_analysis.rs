@@ -899,7 +899,7 @@ fn debug_with_context_rec<V: Debug + Eq>(
         let info_elem = map.places[child].proj_elem.unwrap();
         let child_place_str = match info_elem {
             TrackElem::Field(field) => {
-                if place_str.starts_with("*") {
+                if place_str.starts_with('*') {
                     format!("({}).{}", place_str, field.index())
                 } else {
                     format!("{}.{}", place_str, field.index())

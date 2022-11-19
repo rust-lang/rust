@@ -532,9 +532,12 @@ impl<'tcx> TypeErrCtxtExt<'tcx> for TypeErrCtxt<'_, 'tcx> {
         root_obligation: &PredicateObligation<'tcx>,
         error: &SelectionError<'tcx>,
     ) {
-        self.set_tainted_by_errors();
         let tcx = self.tcx;
         let mut span = obligation.cause.span;
+        // FIXME: statically guarantee this by tainting after the diagnostic is emitted
+        self.set_tainted_by_errors(
+            tcx.sess.delay_span_bug(span, "`report_selection_error` did not emit an error"),
+        );
 
         let mut err = match *error {
             SelectionError::Unimplemented => {
@@ -2060,7 +2063,7 @@ impl<'tcx> InferCtxtPrivExt<'tcx> for TypeErrCtxt<'_, 'tcx> {
                 // check upstream for type errors and don't add the obligations to
                 // begin with in those cases.
                 if self.tcx.lang_items().sized_trait() == Some(trait_ref.def_id()) {
-                    if !self.is_tainted_by_errors() {
+                    if let None = self.tainted_by_errors() {
                         self.emit_inference_failure_err(
                             body_id,
                             span,
@@ -2115,16 +2118,16 @@ impl<'tcx> InferCtxtPrivExt<'tcx> for TypeErrCtxt<'_, 'tcx> {
                         if impls.len() > 1 && impls.len() < 5 && has_non_region_infer {
                             self.annotate_source_of_ambiguity(&mut err, &impls, predicate);
                         } else {
-                            if self.is_tainted_by_errors() {
-                                err.delay_as_bug();
+                            if self.tainted_by_errors().is_some() {
+                                err.cancel();
                                 return;
                             }
                             err.note(&format!("cannot satisfy `{}`", predicate));
                         }
                     }
                     _ => {
-                        if self.is_tainted_by_errors() {
-                            err.delay_as_bug();
+                        if self.tainted_by_errors().is_some() {
+                            err.cancel();
                             return;
                         }
                         err.note(&format!("cannot satisfy `{}`", predicate));
@@ -2226,7 +2229,7 @@ impl<'tcx> InferCtxtPrivExt<'tcx> for TypeErrCtxt<'_, 'tcx> {
                         ] = path.segments
                         && data.trait_ref.def_id == *trait_id
                         && self.tcx.trait_of_item(*item_id) == Some(*trait_id)
-                        && !self.is_tainted_by_errors()
+                        && let None = self.tainted_by_errors()
                     {
                         let (verb, noun) = match self.tcx.associated_item(item_id).kind {
                             ty::AssocKind::Const => ("refer to the", "constant"),
@@ -2295,7 +2298,7 @@ impl<'tcx> InferCtxtPrivExt<'tcx> for TypeErrCtxt<'_, 'tcx> {
                 // with error messages.
                 if arg.references_error()
                     || self.tcx.sess.has_errors().is_some()
-                    || self.is_tainted_by_errors()
+                    || self.tainted_by_errors().is_some()
                 {
                     return;
                 }
@@ -2306,7 +2309,7 @@ impl<'tcx> InferCtxtPrivExt<'tcx> for TypeErrCtxt<'_, 'tcx> {
             ty::PredicateKind::Subtype(data) => {
                 if data.references_error()
                     || self.tcx.sess.has_errors().is_some()
-                    || self.is_tainted_by_errors()
+                    || self.tainted_by_errors().is_some()
                 {
                     // no need to overload user in such cases
                     return;
@@ -2317,7 +2320,7 @@ impl<'tcx> InferCtxtPrivExt<'tcx> for TypeErrCtxt<'_, 'tcx> {
                 self.emit_inference_failure_err(body_id, span, a.into(), ErrorCode::E0282, true)
             }
             ty::PredicateKind::Projection(data) => {
-                if predicate.references_error() || self.is_tainted_by_errors() {
+                if predicate.references_error() || self.tainted_by_errors().is_some() {
                     return;
                 }
                 let subst = data
@@ -2351,7 +2354,7 @@ impl<'tcx> InferCtxtPrivExt<'tcx> for TypeErrCtxt<'_, 'tcx> {
             }
 
             ty::PredicateKind::ConstEvaluatable(data) => {
-                if predicate.references_error() || self.is_tainted_by_errors() {
+                if predicate.references_error() || self.tainted_by_errors().is_some() {
                     return;
                 }
                 let subst = data.walk().find(|g| g.is_non_region_infer());
@@ -2378,7 +2381,7 @@ impl<'tcx> InferCtxtPrivExt<'tcx> for TypeErrCtxt<'_, 'tcx> {
                 }
             }
             _ => {
-                if self.tcx.sess.has_errors().is_some() || self.is_tainted_by_errors() {
+                if self.tcx.sess.has_errors().is_some() || self.tainted_by_errors().is_some() {
                     return;
                 }
                 let mut err = struct_span_err!(
@@ -2422,7 +2425,7 @@ impl<'tcx> InferCtxtPrivExt<'tcx> for TypeErrCtxt<'_, 'tcx> {
         post.sort();
         post.dedup();
 
-        if self.is_tainted_by_errors()
+        if self.tainted_by_errors().is_some()
             && (crate_names.len() == 1
                 && spans.len() == 0
                 && ["`core`", "`alloc`", "`std`"].contains(&crate_names[0].as_str())

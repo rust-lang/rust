@@ -58,7 +58,7 @@ pub(crate) fn suffix_path(filename: &str, suffix: &str) -> PathBuf {
 }
 
 pub(crate) fn static_filename(filename: &str, contents: &[u8]) -> PathBuf {
-    let filename = filename.rsplit("/").next().unwrap();
+    let filename = filename.rsplit('/').next().unwrap();
     suffix_path(filename, &static_suffix(contents))
 }
 

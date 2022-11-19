@@ -449,8 +449,8 @@ fn check_opaque_meets_bounds<'tcx>(
 
     let misc_cause = traits::ObligationCause::misc(span, hir_id);
 
-    match infcx.at(&misc_cause, param_env).eq(opaque_ty, hidden_ty) {
-        Ok(infer_ok) => ocx.register_infer_ok_obligations(infer_ok),
+    match ocx.eq(&misc_cause, param_env, opaque_ty, hidden_ty) {
+        Ok(()) => {}
         Err(ty_err) => {
             tcx.sess.delay_span_bug(
                 span,

@@ -11,7 +11,7 @@ pub fn files_for_miropt_test(testfile: &std::path::Path, bit_width: u32) -> Vec<
     let test_file_contents = fs::read_to_string(&testfile).unwrap();
 
     let test_dir = testfile.parent().unwrap();
-    let test_crate = testfile.file_stem().unwrap().to_str().unwrap().replace("-", "_");
+    let test_crate = testfile.file_stem().unwrap().to_str().unwrap().replace('-', "_");
 
     let bit_width = if test_file_contents.lines().any(|l| l == "// EMIT_MIR_FOR_EACH_BIT_WIDTH") {
         format!(".{}bit", bit_width)

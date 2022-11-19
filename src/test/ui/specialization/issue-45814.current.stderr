@@ -2,7 +2,7 @@ error[E0275]: overflow evaluating the requirement `T: Trait<_>`
    |
    = help: consider increasing the recursion limit by adding a `#![recursion_limit = "256"]` attribute to your crate (`issue_45814`)
 note: required for `T` to implement `Trait<_>`
-  --> $DIR/issue-45814.rs:8:20
+  --> $DIR/issue-45814.rs:9:20
    |
 LL | default impl<T, U> Trait<T> for U {}
    |                    ^^^^^^^^     ^

@@ -114,7 +114,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         let report_candidates = |span: Span,
                                  err: &mut Diagnostic,
                                  sources: &mut Vec<CandidateSource>,
-                                 sugg_span: Span| {
+                                 sugg_span: Option<Span>| {
             sources.sort();
             sources.dedup();
             // Dynamic limit to avoid hiding just one candidate, which is silly.
@@ -175,7 +175,8 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                         } else {
                             err.note(&note_str);
                         }
-                        if let Some(trait_ref) = self.tcx.impl_trait_ref(impl_did) {
+                        if let Some(sugg_span) = sugg_span
+                            && let Some(trait_ref) = self.tcx.impl_trait_ref(impl_did) {
                             let path = self.tcx.def_path_str(trait_ref.def_id);
 
                             let ty = match item.kind {
@@ -224,20 +225,22 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                             err.span_note(item_span, msg);
                             None
                         };
-                        let path = self.tcx.def_path_str(trait_did);
-                        print_disambiguation_help(
-                            item_name,
-                            args,
-                            err,
-                            path,
-                            rcvr_ty,
-                            item.kind,
-                            item.def_id,
-                            sugg_span,
-                            idx,
-                            self.tcx.sess.source_map(),
-                            item.fn_has_self_parameter,
-                        );
+                        if let Some(sugg_span) = sugg_span {
+                            let path = self.tcx.def_path_str(trait_did);
+                            print_disambiguation_help(
+                                item_name,
+                                args,
+                                err,
+                                path,
+                                rcvr_ty,
+                                item.kind,
+                                item.def_id,
+                                sugg_span,
+                                idx,
+                                self.tcx.sess.source_map(),
+                                item.fn_has_self_parameter,
+                            );
+                        }
                     }
                 }
             }
@@ -407,9 +410,9 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                         sugg_span,
                     );
 
-                    report_candidates(span, &mut err, &mut static_candidates, sugg_span);
+                    report_candidates(span, &mut err, &mut static_candidates, None);
                 } else if static_candidates.len() > 1 {
-                    report_candidates(span, &mut err, &mut static_candidates, sugg_span);
+                    report_candidates(span, &mut err, &mut static_candidates, Some(sugg_span));
                 }
 
                 let mut bound_spans = vec![];
@@ -1015,7 +1018,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                 );
                 err.span_label(item_name.span, format!("multiple `{}` found", item_name));
 
-                report_candidates(span, &mut err, &mut sources, sugg_span);
+                report_candidates(span, &mut err, &mut sources, Some(sugg_span));
                 err.emit();
             }
 

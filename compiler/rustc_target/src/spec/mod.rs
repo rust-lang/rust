@@ -34,6 +34,7 @@
 //! the target's settings, though `target-feature` and `link-args` will *add*
 //! to the list specified by the target, rather than replace.
 
+use crate::abi::call::Conv;
 use crate::abi::Endian;
 use crate::json::{Json, ToJson};
 use crate::spec::abi::{lookup as lookup_abi, Abi};
@@ -1668,6 +1669,14 @@ pub struct TargetOptions {
     /// Whether the target supports stack canary checks. `true` by default,
     /// since this is most common among tier 1 and tier 2 targets.
     pub supports_stack_protector: bool,
+
+    // The name of entry function.
+    // Default value is "main"
+    pub entry_name: StaticCow<str>,
+
+    // The ABI of entry function.
+    // Default value is `Conv::C`, i.e. C call convention
+    pub entry_abi: Conv,
 }
 
 /// Add arguments for the given flavor and also for its "twin" flavors
@@ -1884,6 +1893,8 @@ impl Default for TargetOptions {
             c_enum_min_bits: 32,
             generate_arange_section: true,
             supports_stack_protector: true,
+            entry_name: "main".into(),
+            entry_abi: Conv::C,
         }
     }
 }
@@ -2404,6 +2415,18 @@ impl Target {
                     }
                 }
             } );
+            ($key_name:ident, Conv) => ( {
+                let name = (stringify!($key_name)).replace("_", "-");
+                obj.remove(&name).and_then(|o| o.as_str().and_then(|s| {
+                    match Conv::from_str(s) {
+                        Ok(c) => {
+                            base.$key_name = c;
+                            Some(Ok(()))
+                        }
+                        Err(e) => Some(Err(e))
+                    }
+                })).unwrap_or(Ok(()))
+            } );
         }
 
         if let Some(j) = obj.remove("target-endian") {
@@ -2523,6 +2546,8 @@ impl Target {
         key!(c_enum_min_bits, u64);
         key!(generate_arange_section, bool);
         key!(supports_stack_protector, bool);
+        key!(entry_name);
+        key!(entry_abi, Conv)?;
 
         if base.is_builtin {
             // This can cause unfortunate ICEs later down the line.
@@ -2773,6 +2798,8 @@ impl ToJson for Target {
         target_option_val!(c_enum_min_bits);
         target_option_val!(generate_arange_section);
         target_option_val!(supports_stack_protector);
+        target_option_val!(entry_name);
+        target_option_val!(entry_abi);
 
         if let Some(abi) = self.default_adjusted_cabi {
             d.insert("default-adjusted-cabi".into(), Abi::name(abi).to_json());

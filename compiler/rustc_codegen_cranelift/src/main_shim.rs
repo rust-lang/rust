@@ -63,10 +63,14 @@ pub(crate) fn maybe_create_entry_wrapper(
                 AbiParam::new(m.target_config().pointer_type()),
             ],
             returns: vec![AbiParam::new(m.target_config().pointer_type() /*isize*/)],
-            call_conv: CallConv::triple_default(m.isa().triple()),
+            call_conv: crate::conv_to_call_conv(
+                tcx.sess.target.options.entry_abi,
+                CallConv::triple_default(m.isa().triple()),
+            ),
         };
 
-        let cmain_func_id = m.declare_function("main", Linkage::Export, &cmain_sig).unwrap();
+        let entry_name = tcx.sess.target.options.entry_name.as_ref();
+        let cmain_func_id = m.declare_function(entry_name, Linkage::Export, &cmain_sig).unwrap();
 
         let instance = Instance::mono(tcx, rust_main_def_id).polymorphize(tcx);
 
