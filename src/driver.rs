@@ -252,6 +252,13 @@ pub fn main() {
     exit(rustc_driver::catch_with_exit_code(move || {
         let mut orig_args: Vec<String> = env::args().collect();
 
+        let sys_root_env = std::env::var("SYSROOT").ok();
+        let pass_sysroot_env_if_given = |args: &mut Vec<String>, sys_root_env| {
+            if let Some(sys_root) = sys_root_env {
+                args.extend(vec!["--sysroot".into(), sys_root]);
+            };
+        };
+
         // make "clippy-driver --rustc" work like a subcommand that passes further args to "rustc"
         // for example `clippy-driver --rustc --version` will print the rustc version that clippy-driver
         // uses
@@ -259,7 +266,10 @@ pub fn main() {
             orig_args.remove(pos);
             orig_args[0] = "rustc".to_string();
 
-            return rustc_driver::RunCompiler::new(&orig_args, &mut DefaultCallbacks).run();
+            let mut args: Vec<String> = orig_args.clone();
+            pass_sysroot_env_if_given(&mut args, sys_root_env);
+
+            return rustc_driver::RunCompiler::new(&args, &mut DefaultCallbacks).run();
         }
 
         if orig_args.iter().any(|a| a == "--version" || a == "-V") {
@@ -281,6 +291,9 @@ pub fn main() {
             display_help();
             exit(0);
         }
+
+        let mut args: Vec<String> = orig_args.clone();
+        pass_sysroot_env_if_given(&mut args, sys_root_env);
 
         let mut no_deps = false;
         let clippy_args_var = env::var("CLIPPY_ARGS").ok();
@@ -310,11 +323,10 @@ pub fn main() {
 
         let clippy_enabled = !cap_lints_allow && (!no_deps || in_primary_package);
         if clippy_enabled {
-            let mut args: Vec<String> = orig_args.clone();
             args.extend(clippy_args);
             rustc_driver::RunCompiler::new(&args, &mut ClippyCallbacks { clippy_args_var }).run()
         } else {
-            rustc_driver::RunCompiler::new(&orig_args, &mut RustcCallbacks { clippy_args_var }).run()
+            rustc_driver::RunCompiler::new(&args, &mut RustcCallbacks { clippy_args_var }).run()
         }
     }))
 }
