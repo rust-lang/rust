@@ -293,6 +293,12 @@ language_item_table! {
     ConstPanicFmt,           sym::const_panic_fmt,     const_panic_fmt,            Target::Fn,             GenericRequirement::None;
     PanicBoundsCheck,        sym::panic_bounds_check,  panic_bounds_check_fn,      Target::Fn,             GenericRequirement::Exact(0);
     PanicMisalignedPointerDereference, sym::panic_misaligned_pointer_dereference, panic_misaligned_pointer_dereference_fn, Target::Fn, GenericRequirement::Exact(0);
+    PanicOccupiedNicheU8,    sym::panic_occupied_niche_u8, panic_occupied_niche_u8, Target::Fn,            GenericRequirement::None;
+    PanicOccupiedNicheU16,   sym::panic_occupied_niche_u16, panic_occupied_niche_u16, Target::Fn,           GenericRequirement::None;
+    PanicOccupiedNicheU32,   sym::panic_occupied_niche_u32, panic_occupied_niche_u32, Target::Fn,           GenericRequirement::None;
+    PanicOccupiedNicheU64,   sym::panic_occupied_niche_u64, panic_occupied_niche_u64, Target::Fn,           GenericRequirement::None;
+    PanicOccupiedNicheU128,  sym::panic_occupied_niche_u128, panic_occupied_niche_u128, Target::Fn,          GenericRequirement::None;
+    PanicOccupiedNichePtr,   sym::panic_occupied_niche_ptr, panic_occupied_niche_ptr, Target::Fn,           GenericRequirement::None;
     PanicInfo,               sym::panic_info,          panic_info,                 Target::Struct,         GenericRequirement::None;
     PanicLocation,           sym::panic_location,      panic_location,             Target::Struct,         GenericRequirement::None;
     PanicImpl,               sym::panic_impl,          panic_impl,                 Target::Fn,             GenericRequirement::None;

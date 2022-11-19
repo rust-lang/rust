@@ -3210,6 +3210,14 @@ impl<'tcx> TyCtxt<'tcx> {
     pub fn do_not_recommend_impl(self, def_id: DefId) -> bool {
         self.get_diagnostic_attr(def_id, sym::do_not_recommend).is_some()
     }
+
+    /// Whether a codegen backend may emit alignment checks for pointers when they are
+    /// read or written through. If this returns true, the backend is allowed to emit such checks.
+    /// If this returns false, the backend must not emit such checks.
+    pub fn may_insert_niche_checks(self) -> bool {
+        let has_panic_shim = self.lang_items().get(LangItem::PanicOccupiedNicheU8).is_some();
+        has_panic_shim && self.sess.ub_checks()
+    }
 }
 
 /// Parameter attributes that can only be determined by examining the body of a function instead

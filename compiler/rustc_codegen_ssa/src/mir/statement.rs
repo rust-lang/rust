@@ -1,14 +1,33 @@
+use rustc_middle::mir::visit::Visitor;
 use rustc_middle::mir::{self, NonDivergingIntrinsic};
 use rustc_middle::span_bug;
 use tracing::instrument;
 
 use super::{FunctionCx, LocalRef};
+use crate::mir::niche_check::NicheFinder;
 use crate::traits::*;
 
 impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
+    fn niches_to_check(
+        &mut self,
+        bx: &mut Bx,
+        statement: &mir::Statement<'tcx>,
+    ) -> Vec<(mir::Operand<'tcx>, rustc_target::abi::Niche)> {
+        let mut finder = NicheFinder { fx: self, bx, places: Vec::new() };
+        finder.visit_statement(statement, rustc_middle::mir::Location::START);
+        finder.places
+    }
+
     #[instrument(level = "debug", skip(self, bx))]
     pub(crate) fn codegen_statement(&mut self, bx: &mut Bx, statement: &mir::Statement<'tcx>) {
         self.set_debug_loc(bx, statement.source_info);
+
+        if bx.tcx().may_insert_niche_checks() {
+            for (op, niche) in self.niches_to_check(bx, statement) {
+                self.codegen_niche_check(bx, op, niche, statement.source_info);
+            }
+        }
+
         match statement.kind {
             mir::StatementKind::Assign(box (ref place, ref rvalue)) => {
                 if let Some(index) = place.as_local() {

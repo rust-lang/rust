@@ -291,7 +291,34 @@ fn panic_misaligned_pointer_dereference(required: usize, found: usize) -> ! {
     )
 }
 
-/// Panics because we cannot unwind out of a function.
+macro_rules! panic_occupied_niche {
+    ($name:ident, $ty:ty) => {
+        #[cfg_attr(not(feature = "panic_immediate_abort"), inline(never), cold)]
+        #[cfg_attr(feature = "panic_immediate_abort", inline)]
+        #[track_caller]
+        #[cfg_attr(not(bootstrap), lang = stringify!($name))] // needed by codegen for panic on occupied niches
+        #[rustc_nounwind]
+        fn $name(found: $ty, min: $ty, max: $ty) -> ! {
+            if cfg!(feature = "panic_immediate_abort") {
+                super::intrinsics::abort()
+            }
+
+            panic_nounwind_fmt(
+                format_args!("occupied niche: found {found:?} but must be in {min:?}..={max:?}"),
+                /* force_no_backtrace */ false,
+            )
+        }
+    };
+}
+
+panic_occupied_niche!(panic_occupied_niche_u8, u8);
+panic_occupied_niche!(panic_occupied_niche_u16, u16);
+panic_occupied_niche!(panic_occupied_niche_u32, u32);
+panic_occupied_niche!(panic_occupied_niche_u64, u64);
+panic_occupied_niche!(panic_occupied_niche_u128, u128);
+panic_occupied_niche!(panic_occupied_niche_ptr, *const ());
+
+/// Panic because we cannot unwind out of a function.
 ///
 /// This is a separate function to avoid the codesize impact of each crate containing the string to
 /// pass to `panic_nounwind`.

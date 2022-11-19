@@ -231,6 +231,7 @@ use rustc_middle::util::Providers;
 use rustc_middle::{bug, span_bug};
 use rustc_session::Limit;
 use rustc_session::config::EntryFnType;
+use rustc_span::def_id::LOCAL_CRATE;
 use rustc_span::source_map::{Spanned, dummy_spanned, respan};
 use rustc_span::symbol::sym;
 use rustc_span::{DUMMY_SP, Span};
@@ -1367,6 +1368,26 @@ fn collect_roots(tcx: TyCtxt<'_>, mode: MonoItemCollectionStrategy) -> Vec<MonoI
 
         for id in crate_items.impl_items() {
             collector.process_impl_item(id);
+        }
+
+        if tcx.may_insert_niche_checks() && !tcx.is_compiler_builtins(LOCAL_CRATE) {
+            for item in [
+                LangItem::PanicOccupiedNicheU8,
+                LangItem::PanicOccupiedNicheU16,
+                LangItem::PanicOccupiedNicheU32,
+                LangItem::PanicOccupiedNicheU64,
+                LangItem::PanicOccupiedNicheU128,
+                LangItem::PanicOccupiedNichePtr,
+            ] {
+                let Some(def_id) = tcx.lang_items().get(item) else {
+                    continue;
+                };
+                let instance = rustc_middle::ty::Instance::mono(tcx, def_id);
+                if tcx.should_codegen_locally(instance) {
+                    let mono_item = create_fn_mono_item(tcx, instance, DUMMY_SP);
+                    collector.output.push(mono_item)
+                }
+            }
         }
 
         collector.push_extra_entry_roots();

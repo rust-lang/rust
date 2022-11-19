@@ -1279,6 +1279,17 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
     ) -> MergingSucc {
         debug!("codegen_terminator: {:?}", terminator);
 
+        if bx.tcx().may_insert_niche_checks() {
+            if let mir::TerminatorKind::Return = terminator.kind {
+                let op = mir::Operand::Copy(mir::Place::return_place());
+                let ty = op.ty(self.mir, bx.tcx());
+                let ty = self.monomorphize(ty);
+                if let Some(niche) = bx.layout_of(ty).largest_niche {
+                    self.codegen_niche_check(bx, op, niche, terminator.source_info);
+                }
+            }
+        }
+
         let helper = TerminatorCodegenHelper { bb, terminator };
 
         let mergeable_succ = || {
@@ -1583,7 +1594,7 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
         tuple.layout.fields.count()
     }
 
-    fn get_caller_location(
+    pub fn get_caller_location(
         &mut self,
         bx: &mut Bx,
         source_info: mir::SourceInfo,
