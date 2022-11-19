@@ -14,8 +14,8 @@ use rustc_middle::mir::ConstraintCategory;
 use rustc_middle::ty::query::Providers;
 use rustc_middle::ty::trait_def::TraitSpecializationKind;
 use rustc_middle::ty::{
-    self, AdtKind, DefIdTree, GenericParamDefKind, ToPredicate, Ty, TyCtxt, TypeFoldable,
-    TypeSuperVisitable, TypeVisitable, TypeVisitor,
+    self, AdtKind, DefIdTree, GenericParamDefKind, Ty, TyCtxt, TypeFoldable, TypeSuperVisitable,
+    TypeVisitable, TypeVisitor,
 };
 use rustc_middle::ty::{GenericArgKind, InternalSubsts};
 use rustc_session::parse::feature_err;
@@ -75,9 +75,10 @@ impl<'tcx> WfCheckingCtxt<'_, 'tcx> {
         // for a type to be WF, we do not need to check if const trait predicates satisfy.
         let param_env = self.param_env.without_const();
         self.ocx.register_obligation(traits::Obligation::new(
+            self.tcx(),
             cause,
             param_env,
-            ty::Binder::dummy(ty::PredicateKind::WellFormed(arg)).to_predicate(self.tcx()),
+            ty::Binder::dummy(ty::PredicateKind::WellFormed(arg)),
         ));
     }
 }
@@ -1111,12 +1112,12 @@ fn check_type_defn<'tcx>(tcx: TyCtxt<'tcx>, item: &hir::Item<'tcx>, all_sized: b
                     traits::MiscObligation,
                 );
                 wfcx.register_obligation(traits::Obligation::new(
+                    tcx,
                     cause,
                     wfcx.param_env,
                     ty::Binder::dummy(ty::PredicateKind::ConstEvaluatable(
                         ty::Const::from_anon_const(tcx, discr_def_id.expect_local()),
-                    ))
-                    .to_predicate(tcx),
+                    )),
                 ));
             }
         }
@@ -1453,7 +1454,7 @@ fn check_where_clauses<'tcx>(wfcx: &WfCheckingCtxt<'_, 'tcx>, span: Span, def_id
                 wfcx.body_id,
                 traits::ItemObligation(def_id.to_def_id()),
             );
-            traits::Obligation::new(cause, wfcx.param_env, pred)
+            traits::Obligation::new(tcx, cause, wfcx.param_env, pred)
         });
 
     let predicates = predicates.0.instantiate_identity(tcx);
@@ -1783,8 +1784,7 @@ fn receiver_is_implemented<'tcx>(
         substs: tcx.mk_substs_trait(receiver_ty, &[]),
     });
 
-    let obligation =
-        traits::Obligation::new(cause, wfcx.param_env, trait_ref.without_const().to_predicate(tcx));
+    let obligation = traits::Obligation::new(tcx, cause, wfcx.param_env, trait_ref.without_const());
 
     if wfcx.infcx.predicate_must_hold_modulo_regions(&obligation) {
         true
@@ -1931,6 +1931,7 @@ impl<'tcx> WfCheckingCtxt<'_, 'tcx> {
                 }
 
                 let obligation = traits::Obligation::new(
+                    tcx,
                     traits::ObligationCause::new(span, self.body_id, traits::TrivialBound),
                     empty_env,
                     pred,

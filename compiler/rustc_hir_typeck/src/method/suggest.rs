@@ -23,7 +23,7 @@ use rustc_middle::traits::util::supertraits;
 use rustc_middle::ty::fast_reject::DeepRejectCtxt;
 use rustc_middle::ty::fast_reject::{simplify_type, TreatParams};
 use rustc_middle::ty::print::with_crate_prefix;
-use rustc_middle::ty::{self, DefIdTree, GenericArgKind, ToPredicate, Ty, TyCtxt, TypeVisitable};
+use rustc_middle::ty::{self, DefIdTree, GenericArgKind, Ty, TyCtxt, TypeVisitable};
 use rustc_middle::ty::{IsSuggestable, ToPolyTraitRef};
 use rustc_span::symbol::{kw, sym, Ident};
 use rustc_span::Symbol;
@@ -80,10 +80,11 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                         let trait_ref = ty::TraitRef::new(fn_once, fn_once_substs);
                         let poly_trait_ref = ty::Binder::dummy(trait_ref);
                         let obligation = Obligation::misc(
+                            tcx,
                             span,
                             self.body_id,
                             self.param_env,
-                            poly_trait_ref.without_const().to_predicate(tcx),
+                            poly_trait_ref.without_const(),
                         );
                         self.predicate_may_hold(&obligation)
                     })

@@ -73,7 +73,6 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                 let ty = self.typeck_results.borrow().expr_ty_adjusted(expr);
                 let ty = self.resolve_vars_if_possible(ty);
                 if ty.has_non_region_infer() {
-                    assert!(self.is_tainted_by_errors());
                     self.tcx.ty_error()
                 } else {
                     self.tcx.erase_regions(ty)
@@ -2150,6 +2149,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                             ),
                         );
                         let obligation = traits::Obligation::new(
+                            self.tcx,
                             traits::ObligationCause::dummy(),
                             self.param_env,
                             ty::Binder::dummy(ty::TraitPredicate {

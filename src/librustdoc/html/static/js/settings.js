@@ -9,13 +9,16 @@
     const isSettingsPage = window.location.pathname.endsWith("/settings.html");
 
     function changeSetting(settingName, value) {
+        if (settingName === "theme") {
+            const useSystem = value === "system preference" ? "true" : "false";
+            updateLocalStorage("use-system-theme", useSystem);
+        }
         updateLocalStorage(settingName, value);
 
         switch (settingName) {
             case "theme":
             case "preferred-dark-theme":
             case "preferred-light-theme":
-            case "use-system-theme":
                 updateSystemTheme();
                 updateLightAndDark();
                 break;
@@ -45,7 +48,6 @@
     }
 
     function showLightAndDark() {
-        addClass(document.getElementById("theme").parentElement, "hidden");
         removeClass(document.getElementById("preferred-light-theme").parentElement, "hidden");
         removeClass(document.getElementById("preferred-dark-theme").parentElement, "hidden");
     }
@@ -53,11 +55,11 @@
     function hideLightAndDark() {
         addClass(document.getElementById("preferred-light-theme").parentElement, "hidden");
         addClass(document.getElementById("preferred-dark-theme").parentElement, "hidden");
-        removeClass(document.getElementById("theme").parentElement, "hidden");
     }
 
     function updateLightAndDark() {
-        if (getSettingValue("use-system-theme") !== "false") {
+        const useSystem = getSettingValue("use-system-theme");
+        if (useSystem === "true" || (useSystem === null && getSettingValue("theme") === null)) {
             showLightAndDark();
         } else {
             hideLightAndDark();
@@ -91,7 +93,18 @@
         });
         onEachLazy(settingsElement.querySelectorAll("input[type=\"radio\"]"), elem => {
             const settingId = elem.name;
-            const settingValue = getSettingValue(settingId);
+            let settingValue = getSettingValue(settingId);
+            if (settingId === "theme") {
+                const useSystem = getSettingValue("use-system-theme");
+                if (useSystem === "true" || settingValue === null) {
+                    if (useSystem !== "false") {
+                        settingValue = "system preference";
+                    } else {
+                        // This is the default theme.
+                        settingValue = "light";
+                    }
+                }
+            }
             if (settingValue !== null && settingValue !== "null") {
                 elem.checked = settingValue === elem.value;
             }
@@ -120,26 +133,30 @@
 
             if (setting["options"] !== undefined) {
                 // This is a select setting.
-                output += `<div class="radio-line" id="${js_data_name}">\
-                        <span class="setting-name">${setting_name}</span>\
-                        <div class="choices">`;
+                output += `\
+<div class="radio-line" id="${js_data_name}">
+    <span class="setting-name">${setting_name}</span>
+<div class="choices">`;
                 onEach(setting["options"], option => {
                     const checked = option === setting["default"] ? " checked" : "";
+                    const full = `${js_data_name}-${option.replace(/ /g,"-")}`;
 
-                    output += `<label for="${js_data_name}-${option}" class="choice">\
-                           <input type="radio" name="${js_data_name}" \
-                                id="${js_data_name}-${option}" value="${option}"${checked}>\
-                           <span>${option}</span>\
-                         </label>`;
+                    output += `\
+<label for="${full}" class="choice">
+    <input type="radio" name="${js_data_name}"
+        id="${full}" value="${option}"${checked}>
+    <span>${option}</span>
+</label>`;
                 });
                 output += "</div></div>";
             } else {
                 // This is a toggle.
                 const checked = setting["default"] === true ? " checked" : "";
-                output += `<label class="toggle">\
-                        <input type="checkbox" id="${js_data_name}"${checked}>\
-                        <span class="label">${setting_name}</span>\
-                    </label>`;
+                output += `\
+<label class="toggle">\
+    <input type="checkbox" id="${js_data_name}"${checked}>\
+    <span class="label">${setting_name}</span>\
+</label>`;
             }
             output += "</div>";
         }
@@ -157,15 +174,10 @@
 
         const settings = [
             {
-                "name": "Use system theme",
-                "js_name": "use-system-theme",
-                "default": true,
-            },
-            {
                 "name": "Theme",
                 "js_name": "theme",
-                "default": "light",
-                "options": theme_names,
+                "default": "system preference",
+                "options": theme_names.concat("system preference"),
             },
             {
                 "name": "Preferred light theme",

@@ -217,10 +217,7 @@ h1 a,
 .search-results a,
 .module-item .stab,
 .import-item .stab,
-.result-name .primitive > i, .result-name .keyword > i,
-.method .where,
-.fn .where,
-.where.fmt-newline {
+.result-name .primitive > i, .result-name .keyword > i {
 	color: var(--main-color);
 }
 
@@ -1162,6 +1159,8 @@ pre.rust .doccomment {
 	width: max-content;
 	top: -2px;
 	z-index: 1;
+	background-color: var(--tooltip-background-color);
+	color: var(--tooltip-color);
 }
 
 .example-wrap .tooltip::before {
@@ -1170,10 +1169,10 @@ pre.rust .doccomment {
 	top: 50%;
 	left: 16px;
 	margin-top: -5px;
-	border-width: 5px;
-	border-style: solid;
 	display: none;
 	z-index: 1;
+	border: 5px solid transparent;
+	border-right-color: var(--tooltip-background-color);
 }
 
 .example-wrap.ignore .tooltip::after {
@@ -1393,12 +1392,6 @@ h3.variant {
 	background-color: var(--button-background-color);
 	border: 1px solid var(--border-color);
 	border-radius: 2px;
-	color: var(--settings-button-color);
-}
-
-#settings-menu > a:hover, #settings-menu > a:focus,
-#help-button > a:hover, #help-button > a:focus {
-	border-color: var(--settings-button-border-focus);
 }
 
 #copy-path {
