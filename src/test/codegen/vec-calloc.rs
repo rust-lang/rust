@@ -6,6 +6,7 @@
 #![crate_type = "lib"]
 
 // CHECK-LABEL: @vec_zero_bytes
+// CHECK-SAME: i64 %n
 #[no_mangle]
 pub fn vec_zero_bytes(n: usize) -> Vec<u8> {
     // CHECK-NOT: call {{.*}}alloc::vec::from_elem
@@ -13,7 +14,7 @@ pub fn vec_zero_bytes(n: usize) -> Vec<u8> {
     // CHECK-NOT: call {{.*}}__rust_alloc(
     // CHECK-NOT: call {{.*}}llvm.memset
 
-    // CHECK: call {{.*}}__rust_alloc_zeroed(
+    // CHECK: call {{.*}}__rust_alloc_zeroed(i64 %n
 
     // CHECK-NOT: call {{.*}}alloc::vec::from_elem
     // CHECK-NOT: call {{.*}}reserve
@@ -22,17 +23,19 @@ pub fn vec_zero_bytes(n: usize) -> Vec<u8> {
 
     // CHECK: ret void
     vec![0; n]
-}
 
+}
 // CHECK-LABEL: @vec_one_bytes
+// CHECK-SAME: i64 %n
 #[no_mangle]
 pub fn vec_one_bytes(n: usize) -> Vec<u8> {
     // CHECK-NOT: call {{.*}}alloc::vec::from_elem
     // CHECK-NOT: call {{.*}}reserve
     // CHECK-NOT: call {{.*}}__rust_alloc_zeroed(
 
-    // CHECK: call {{.*}}__rust_alloc(
+    // CHECK: call {{.*}}__rust_alloc(i64 %n
     // CHECK: call {{.*}}llvm.memset
+    // CHECK-SAME: i8 1, i64 %n
 
     // CHECK-NOT: call {{.*}}alloc::vec::from_elem
     // CHECK-NOT: call {{.*}}reserve
@@ -43,13 +46,20 @@ pub fn vec_one_bytes(n: usize) -> Vec<u8> {
 }
 
 // CHECK-LABEL: @vec_zero_scalar
+// CHECK-SAME: i64 %n
 #[no_mangle]
 pub fn vec_zero_scalar(n: usize) -> Vec<i32> {
     // CHECK-NOT: call {{.*}}alloc::vec::from_elem
     // CHECK-NOT: call {{.*}}reserve
     // CHECK-NOT: call {{.*}}__rust_alloc(
 
-    // CHECK: call {{.*}}__rust_alloc_zeroed(
+    // CHECK: %[[BYTES:.+]] = shl i64 %n, 2
+
+    // CHECK-NOT: call {{.*}}alloc::vec::from_elem
+    // CHECK-NOT: call {{.*}}reserve
+    // CHECK-NOT: call {{.*}}__rust_alloc(
+
+    // CHECK: call {{.*}}__rust_alloc_zeroed(i64 %[[BYTES]]
 
     // CHECK-NOT: call {{.*}}alloc::vec::from_elem
     // CHECK-NOT: call {{.*}}reserve
@@ -60,13 +70,20 @@ pub fn vec_zero_scalar(n: usize) -> Vec<i32> {
 }
 
 // CHECK-LABEL: @vec_one_scalar
+// CHECK-SAME: i64 %n
 #[no_mangle]
 pub fn vec_one_scalar(n: usize) -> Vec<i32> {
     // CHECK-NOT: call {{.*}}alloc::vec::from_elem
     // CHECK-NOT: call {{.*}}reserve
     // CHECK-NOT: call {{.*}}__rust_alloc_zeroed(
 
-    // CHECK: call {{.*}}__rust_alloc(
+    // CHECK: %[[BYTES:.+]] = shl i64 %n, 2
+
+    // CHECK-NOT: call {{.*}}alloc::vec::from_elem
+    // CHECK-NOT: call {{.*}}reserve
+    // CHECK-NOT: call {{.*}}__rust_alloc_zeroed(
+
+    // CHECK: call {{.*}}__rust_alloc(i64 %[[BYTES]]
 
     // CHECK-NOT: call {{.*}}alloc::vec::from_elem
     // CHECK-NOT: call {{.*}}reserve

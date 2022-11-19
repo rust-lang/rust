@@ -1,9 +1,10 @@
+use core::iter;
 use core::ptr;
 
 use crate::alloc::Allocator;
 use crate::raw_vec::RawVec;
 
-use super::{ExtendElement, IsZero, Vec};
+use super::{IsZero, Vec};
 
 // Specialization trait used for Vec::from_elem
 pub(super) trait SpecFromElem: Sized {
@@ -13,7 +14,7 @@ pub(super) trait SpecFromElem: Sized {
 impl<T: Clone> SpecFromElem for T {
     default fn from_elem<A: Allocator>(elem: Self, n: usize, alloc: A) -> Vec<Self, A> {
         let mut v = Vec::with_capacity_in(n, alloc);
-        v.extend_with(n, ExtendElement(elem));
+        v.extend(iter::repeat_n(elem, n));
         v
     }
 }
@@ -25,7 +26,7 @@ impl<T: Clone + IsZero> SpecFromElem for T {
             return Vec { buf: RawVec::with_capacity_zeroed_in(n, alloc), len: n };
         }
         let mut v = Vec::with_capacity_in(n, alloc);
-        v.extend_with(n, ExtendElement(elem));
+        v.extend(iter::repeat_n(elem, n));
         v
     }
 }
