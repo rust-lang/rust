@@ -839,12 +839,13 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         let (res, opt_ty, segments) = path_resolution;
         match res {
             Res::Err => {
-                self.set_tainted_by_errors();
-                return tcx.ty_error();
+                let e = tcx.sess.delay_span_bug(qpath.span(), "`Res::Err` but no error emitted");
+                self.set_tainted_by_errors(e);
+                return tcx.ty_error_with_guaranteed(e);
             }
             Res::Def(DefKind::AssocFn | DefKind::Ctor(_, CtorKind::Fictive | CtorKind::Fn), _) => {
-                report_unexpected_variant_res(tcx, res, qpath, pat.span);
-                return tcx.ty_error();
+                let e = report_unexpected_variant_res(tcx, res, qpath, pat.span);
+                return tcx.ty_error_with_guaranteed(e);
             }
             Res::SelfCtor(..)
             | Res::Def(
@@ -985,9 +986,9 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         ti: TopInfo<'tcx>,
     ) -> Ty<'tcx> {
         let tcx = self.tcx;
-        let on_error = || {
+        let on_error = |e| {
             for pat in subpats {
-                self.check_pat(pat, tcx.ty_error(), def_bm, ti);
+                self.check_pat(pat, tcx.ty_error_with_guaranteed(e), def_bm, ti);
             }
         };
         let report_unexpected_res = |res: Res| {
@@ -1014,36 +1015,39 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                     err.span_label(pat.span, "not a tuple variant or struct");
                 }
             }
-            err.emit();
-            on_error();
+            let e = err.emit();
+            on_error(e);
+            e
         };
 
         // Resolve the path and check the definition for errors.
         let (res, opt_ty, segments) =
             self.resolve_ty_and_res_fully_qualified_call(qpath, pat.hir_id, pat.span);
         if res == Res::Err {
-            self.set_tainted_by_errors();
-            on_error();
-            return self.tcx.ty_error();
+            let e = tcx.sess.delay_span_bug(pat.span, "`Res:Err` but no error emitted");
+            self.set_tainted_by_errors(e);
+            on_error(e);
+            return tcx.ty_error_with_guaranteed(e);
         }
 
         // Type-check the path.
         let (pat_ty, res) =
             self.instantiate_value_path(segments, opt_ty, res, pat.span, pat.hir_id);
         if !pat_ty.is_fn() {
-            report_unexpected_res(res);
-            return tcx.ty_error();
+            let e = report_unexpected_res(res);
+            return tcx.ty_error_with_guaranteed(e);
         }
 
         let variant = match res {
             Res::Err => {
-                self.set_tainted_by_errors();
-                on_error();
-                return tcx.ty_error();
+                let e = tcx.sess.delay_span_bug(pat.span, "`Res::Err` but no error emitted");
+                self.set_tainted_by_errors(e);
+                on_error(e);
+                return tcx.ty_error_with_guaranteed(e);
             }
             Res::Def(DefKind::AssocConst | DefKind::AssocFn, _) => {
-                report_unexpected_res(res);
-                return tcx.ty_error();
+                let e = report_unexpected_res(res);
+                return tcx.ty_error_with_guaranteed(e);
             }
             Res::Def(DefKind::Ctor(_, CtorKind::Fn), _) => tcx.expect_variant_res(res),
             _ => bug!("unexpected pattern resolution: {:?}", res),
@@ -1082,9 +1086,9 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             }
         } else {
             // Pattern has wrong number of fields.
-            self.e0023(pat.span, res, qpath, subpats, &variant.fields, expected, had_err);
-            on_error();
-            return tcx.ty_error();
+            let e = self.e0023(pat.span, res, qpath, subpats, &variant.fields, expected, had_err);
+            on_error(e);
+            return tcx.ty_error_with_guaranteed(e);
         }
         pat_ty
     }
@@ -1098,7 +1102,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         fields: &'tcx [ty::FieldDef],
         expected: Ty<'tcx>,
         had_err: bool,
-    ) {
+    ) -> ErrorGuaranteed {
         let subpats_ending = pluralize!(subpats.len());
         let fields_ending = pluralize!(fields.len());
 
@@ -1245,7 +1249,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             }
         }
 
-        err.emit();
+        err.emit()
     }
 
     fn check_pat_tuple(

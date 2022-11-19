@@ -53,7 +53,7 @@ use crate::check::check_fn;
 use crate::coercion::DynamicCoerceMany;
 use crate::gather_locals::GatherLocalsVisitor;
 use rustc_data_structures::unord::UnordSet;
-use rustc_errors::{struct_span_err, MultiSpan};
+use rustc_errors::{struct_span_err, ErrorGuaranteed, MultiSpan};
 use rustc_hir as hir;
 use rustc_hir::def::Res;
 use rustc_hir::intravisit::Visitor;
@@ -344,7 +344,7 @@ fn typeck_with_fallback<'tcx>(
 
         fcx.select_all_obligations_or_error();
 
-        if !fcx.infcx.is_tainted_by_errors() {
+        if let None = fcx.infcx.tainted_by_errors() {
             fcx.check_transmutes();
         }
 
@@ -428,7 +428,12 @@ impl<'tcx> EnclosingBreakables<'tcx> {
     }
 }
 
-fn report_unexpected_variant_res(tcx: TyCtxt<'_>, res: Res, qpath: &hir::QPath<'_>, span: Span) {
+fn report_unexpected_variant_res(
+    tcx: TyCtxt<'_>,
+    res: Res,
+    qpath: &hir::QPath<'_>,
+    span: Span,
+) -> ErrorGuaranteed {
     struct_span_err!(
         tcx.sess,
         span,
@@ -437,7 +442,7 @@ fn report_unexpected_variant_res(tcx: TyCtxt<'_>, res: Res, qpath: &hir::QPath<'
         res.descr(),
         rustc_hir_pretty::qpath_to_string(qpath),
     )
-    .emit();
+    .emit()
 }
 
 /// Controls whether the arguments are tupled. This is used for the call

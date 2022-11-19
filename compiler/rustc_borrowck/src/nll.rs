@@ -303,7 +303,10 @@ pub(crate) fn compute_regions<'cx, 'tcx>(
 
     if !nll_errors.is_empty() {
         // Suppress unhelpful extra errors in `infer_opaque_types`.
-        infcx.set_tainted_by_errors();
+        infcx.set_tainted_by_errors(infcx.tcx.sess.delay_span_bug(
+            body.span,
+            "`compute_regions` tainted `infcx` with errors but did not emit any errors",
+        ));
     }
 
     let remapped_opaque_tys = regioncx.infer_opaque_types(&infcx, opaque_type_values);

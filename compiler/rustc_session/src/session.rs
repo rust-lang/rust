@@ -562,7 +562,10 @@ impl Session {
         if self.err_count() == old_count {
             Ok(result)
         } else {
-            Err(ErrorGuaranteed::unchecked_claim_error_was_emitted())
+            Err(self.delay_span_bug(
+                rustc_span::DUMMY_SP,
+                "`self.err_count()` changed but an error was not emitted",
+            ))
         }
     }
     #[allow(rustc::untranslatable_diagnostic)]
