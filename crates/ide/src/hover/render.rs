@@ -257,7 +257,7 @@ pub(super) fn struct_rest_pat(
 ) -> Option<HoverResult> {
     let pat = expr_or_pat.as_ref().right()?;
 
-    let mut ancestors = sema.ancestors_with_macros(pat.syntax().clone());
+    let mut ancestors = pat.syntax().ancestors();
     let _record_pat_field_list = ancestors.next()?;
     let record_pat = ancestors.next()?;
     let pattern = sema
