@@ -22,6 +22,7 @@ use rustc_errors::{
     MultiSpan, Style,
 };
 use rustc_hir as hir;
+use rustc_hir::def::Namespace;
 use rustc_hir::def_id::DefId;
 use rustc_hir::intravisit::Visitor;
 use rustc_hir::GenericParam;
@@ -34,6 +35,7 @@ use rustc_middle::traits::select::OverflowError;
 use rustc_middle::ty::abstract_const::NotConstEvaluatable;
 use rustc_middle::ty::error::ExpectedFound;
 use rustc_middle::ty::fold::{TypeFolder, TypeSuperFoldable};
+use rustc_middle::ty::print::{FmtPrinter, Print};
 use rustc_middle::ty::{
     self, SubtypePredicate, ToPolyTraitRef, ToPredicate, TraitRef, Ty, TyCtxt, TypeFoldable,
     TypeVisitable,
@@ -109,7 +111,10 @@ pub trait TypeErrCtxtExt<'tcx> {
         suggest_increasing_limit: bool,
     ) -> !
     where
-        T: fmt::Display + TypeFoldable<'tcx>;
+        T: fmt::Display
+            + TypeFoldable<'tcx>
+            + Print<'tcx, FmtPrinter<'tcx, 'tcx>, Output = FmtPrinter<'tcx, 'tcx>>,
+        <T as Print<'tcx, FmtPrinter<'tcx, 'tcx>>>::Error: std::fmt::Debug;
 
     fn suggest_new_overflow_limit(&self, err: &mut Diagnostic);
 
@@ -468,15 +473,31 @@ impl<'tcx> TypeErrCtxtExt<'tcx> for TypeErrCtxt<'_, 'tcx> {
         suggest_increasing_limit: bool,
     ) -> !
     where
-        T: fmt::Display + TypeFoldable<'tcx>,
+        T: fmt::Display
+            + TypeFoldable<'tcx>
+            + Print<'tcx, FmtPrinter<'tcx, 'tcx>, Output = FmtPrinter<'tcx, 'tcx>>,
+        <T as Print<'tcx, FmtPrinter<'tcx, 'tcx>>>::Error: std::fmt::Debug,
     {
         let predicate = self.resolve_vars_if_possible(obligation.predicate.clone());
+        let mut pred_str = predicate.to_string();
+        if pred_str.len() > 50 {
+            // We don't need to save the type to a file, we will be talking about this type already
+            // in a separate note when we explain the obligation, so it will be available that way.
+            pred_str = predicate
+                .print(FmtPrinter::new_with_limit(
+                    self.tcx,
+                    Namespace::TypeNS,
+                    rustc_session::Limit(6),
+                ))
+                .unwrap()
+                .into_buffer();
+        }
         let mut err = struct_span_err!(
             self.tcx.sess,
             obligation.cause.span,
             E0275,
             "overflow evaluating the requirement `{}`",
-            predicate
+            pred_str,
         );
 
         if suggest_increasing_limit {

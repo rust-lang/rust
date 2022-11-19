@@ -12,7 +12,12 @@ use rustc_span::{BytePos, Span};
 use rustc_target::spec::abi;
 
 use std::borrow::Cow;
+use std::collections::hash_map::DefaultHasher;
 use std::fmt;
+use std::hash::{Hash, Hasher};
+use std::path::PathBuf;
+
+use super::print::PrettyPrinter;
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq, TypeFoldable, TypeVisitable, Lift)]
 pub struct ExpectedFound<T> {
@@ -983,6 +988,38 @@ fn foo(&self) -> Self::T { String::new() }
             return true;
         }
         false
+    }
+
+    pub fn short_ty_string(self, ty: Ty<'tcx>) -> (String, Option<PathBuf>) {
+        let length_limit = 50;
+        let type_limit = 4;
+        let regular = FmtPrinter::new(self, hir::def::Namespace::TypeNS)
+            .pretty_print_type(ty)
+            .expect("could not write to `String`")
+            .into_buffer();
+        if regular.len() <= length_limit {
+            return (regular, None);
+        }
+        let short = FmtPrinter::new_with_limit(
+            self,
+            hir::def::Namespace::TypeNS,
+            rustc_session::Limit(type_limit),
+        )
+        .pretty_print_type(ty)
+        .expect("could not write to `String`")
+        .into_buffer();
+        if regular == short {
+            return (regular, None);
+        }
+        // Multiple types might be shortened in a single error, ensure we create a file for each.
+        let mut s = DefaultHasher::new();
+        ty.hash(&mut s);
+        let hash = s.finish();
+        let path = self.output_filenames(()).temp_path_ext(&format!("long-type-{hash}.txt"), None);
+        match std::fs::write(&path, &regular) {
+            Ok(_) => (short, Some(path)),
+            Err(_) => (regular, None),
+        }
     }
 
     fn format_generic_args(self, args: &[ty::GenericArg<'tcx>]) -> String {
