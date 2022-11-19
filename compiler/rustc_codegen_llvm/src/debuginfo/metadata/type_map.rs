@@ -182,17 +182,7 @@ pub(super) fn stub<'ll, 'tcx>(
     let empty_array = create_DIArray(DIB(cx), &[]);
     let unique_type_id_str = unique_type_id.generate_unique_id_string(cx.tcx);
 
-    let (file_metadata, line_number) = if let Some(def_id) = def_id {
-        let span = cx.tcx.def_span(def_id);
-        if !span.is_dummy() {
-            let loc = cx.lookup_debug_loc(span.lo());
-            (file_metadata(cx, &loc.file), loc.line)
-        } else {
-            (unknown_file_metadata(cx), UNKNOWN_LINE_NUMBER)
-        }
-    } else {
-        (unknown_file_metadata(cx), UNKNOWN_LINE_NUMBER)
-    };
+    let (file_metadata, line_number) = super::file_metadata_from_def_id(cx, def_id);
 
     let metadata = match kind {
         Stub::Struct | Stub::VTableTy { .. } => {

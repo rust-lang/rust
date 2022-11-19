@@ -208,7 +208,7 @@ fn build_enum_variant_struct_type_di_node<'ll, 'tcx>(
                 variant_index,
             ),
             variant_def.name.as_str(),
-            None,
+            Some(variant_def.def_id),
             // NOTE: We use size and align of enum_type, not from variant_layout:
             size_and_align_of(enum_type_and_layout),
             Some(enum_type_di_node),

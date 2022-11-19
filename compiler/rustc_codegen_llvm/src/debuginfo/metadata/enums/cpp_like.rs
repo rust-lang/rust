@@ -338,6 +338,7 @@ fn build_single_variant_union_fields<'ll, 'tcx>(
 
     let variant_struct_type_wrapper_di_node = build_variant_struct_wrapper_type_di_node(
         cx,
+        enum_adt_def,
         enum_type_and_layout,
         enum_type_di_node,
         variant_index,
@@ -470,6 +471,7 @@ fn build_variant_names_type_di_node<'ll, 'tcx>(
 
 fn build_variant_struct_wrapper_type_di_node<'ll, 'tcx>(
     cx: &CodegenCx<'ll, 'tcx>,
+    enum_adt_def: AdtDef<'tcx>,
     enum_or_coroutine_type_and_layout: TyAndLayout<'tcx>,
     enum_or_coroutine_type_di_node: &'ll DIType,
     variant_index: VariantIdx,
@@ -491,7 +493,7 @@ fn build_variant_struct_wrapper_type_di_node<'ll, 'tcx>(
                 variant_index,
             ),
             &variant_struct_wrapper_type_name(variant_index),
-            None,
+            Some(enum_adt_def.variant(variant_index).def_id),
             // NOTE: We use size and align of enum_type, not from variant_layout:
             size_and_align_of(enum_or_coroutine_type_and_layout),
             Some(enum_or_coroutine_type_di_node),
@@ -778,8 +780,13 @@ fn build_union_fields_for_direct_tag_enum_or_coroutine<'ll, 'tcx>(
         let field_name = variant_union_field_name(variant_member_info.variant_index);
         let (size, align) = size_and_align_of(enum_type_and_layout);
 
+        let ty::Adt(enum_adt_def, _) = enum_type_and_layout.ty.kind() else {
+            unreachable!();
+        };
+
         let variant_struct_type_wrapper = build_variant_struct_wrapper_type_di_node(
             cx,
+            *enum_adt_def,
             enum_type_and_layout,
             enum_type_di_node,
             variant_member_info.variant_index,

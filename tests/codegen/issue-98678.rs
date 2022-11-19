@@ -6,7 +6,7 @@
 
 // The use of CHECK-DAG here is because the C++-like enum is emitted before the `DIFile` node
 
-// CHECK-DAG: ![[#FILE:]] = !DIFile({{.*}}filename:{{.*}}src/test/codegen/issue-98678.rs{{".*}})
+// CHECK-DAG: ![[#FILE:]] = !DIFile({{.*}}filename:{{.*}}/codegen/issue-98678.rs{{".*}})
 
 // CHECK-DAG: !DICompositeType({{.*"}}MyCppLikeEnum{{".*}}file: ![[#FILE]]{{.*}}line: [[# @LINE + 2]],
 #[repr(C)]
@@ -28,8 +28,10 @@ pub union MyUnion {
     f: f32,
 }
 
-// CHECK: !DICompositeType({{.*"}}MyNativeEnum{{".*}}file: ![[#FILE]]{{.*}}line: [[# @LINE + 1]],
+// CHECK: !DICompositeType({{.*"}}MyNativeEnum{{".*}}file: ![[#FILE]]{{.*}}line: [[# @LINE + 2]],
+// CHECK: !DICompositeType({{.*}}DW_TAG_variant_part{{.*}}file: ![[#FILE]]{{.*}}line: [[# @LINE + 1]],
 pub enum MyNativeEnum {
+    // CHECK: !DIDerivedType({{.*"}}One{{".*}}file: ![[#FILE]]{{.*}}line: [[# @LINE + 1]],
     One,
 }
 
