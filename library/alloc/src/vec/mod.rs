@@ -2163,7 +2163,7 @@ impl<T, A: Allocator> Vec<T, A> {
     {
         let len = self.len();
         if new_len > len {
-            self.extend_with(new_len - len, ExtendFunc(f));
+            self.extend(iter::repeat_with(f).take(new_len - len));
         } else {
             self.truncate(new_len);
         }
@@ -2361,7 +2361,7 @@ impl<T: Clone, A: Allocator> Vec<T, A> {
         let len = self.len();
 
         if new_len > len {
-            self.extend_with(new_len - len, ExtendElement(value))
+            self.extend(iter::repeat_n(value, new_len - len))
         } else {
             self.truncate(new_len);
         }
@@ -2472,64 +2472,6 @@ impl<T, A: Allocator, const N: usize> Vec<[T; N], A> {
         // `new_cap * size_of::<T>()` == `cap * size_of::<[T; N]>()`
         // - `len` <= `cap`, so `len * N` <= `cap * N`.
         unsafe { Vec::<T, A>::from_raw_parts_in(ptr.cast(), new_len, new_cap, alloc) }
-    }
-}
-
-// This code generalizes `extend_with_{element,default}`.
-trait ExtendWith<T> {
-    fn next(&mut self) -> T;
-    fn last(self) -> T;
-}
-
-struct ExtendElement<T>(T);
-impl<T: Clone> ExtendWith<T> for ExtendElement<T> {
-    fn next(&mut self) -> T {
-        self.0.clone()
-    }
-    fn last(self) -> T {
-        self.0
-    }
-}
-
-struct ExtendFunc<F>(F);
-impl<T, F: FnMut() -> T> ExtendWith<T> for ExtendFunc<F> {
-    fn next(&mut self) -> T {
-        (self.0)()
-    }
-    fn last(mut self) -> T {
-        (self.0)()
-    }
-}
-
-impl<T, A: Allocator> Vec<T, A> {
-    #[cfg(not(no_global_oom_handling))]
-    /// Extend the vector by `n` values, using the given generator.
-    fn extend_with<E: ExtendWith<T>>(&mut self, n: usize, mut value: E) {
-        self.reserve(n);
-
-        unsafe {
-            let mut ptr = self.as_mut_ptr().add(self.len());
-            // Use SetLenOnDrop to work around bug where compiler
-            // might not realize the store through `ptr` through self.set_len()
-            // don't alias.
-            let mut local_len = SetLenOnDrop::new(&mut self.len);
-
-            // Write all elements except the last one
-            for _ in 1..n {
-                ptr::write(ptr, value.next());
-                ptr = ptr.add(1);
-                // Increment the length in every step in case next() panics
-                local_len.increment_len(1);
-            }
-
-            if n > 0 {
-                // We can write the last element directly without cloning needlessly
-                ptr::write(ptr, value.last());
-                local_len.increment_len(1);
-            }
-
-            // len set by scope guard
-        }
     }
 }
 
