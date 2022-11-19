@@ -525,6 +525,10 @@ impl<'tcx> TypeRelation<'tcx> for Generalizer<'_, 'tcx> {
         self.param_env
     }
 
+    fn fast_equate_combine(&self) -> bool {
+        false
+    }
+
     fn tag(&self) -> &'static str {
         "Generalizer"
     }
@@ -800,6 +804,10 @@ impl<'tcx> TypeRelation<'tcx> for ConstInferUnifier<'_, 'tcx> {
 
     fn param_env(&self) -> ty::ParamEnv<'tcx> {
         self.param_env
+    }
+
+    fn fast_equate_combine(&self) -> bool {
+        false
     }
 
     fn tag(&self) -> &'static str {

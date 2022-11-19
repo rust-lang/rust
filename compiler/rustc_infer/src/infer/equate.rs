@@ -32,6 +32,10 @@ impl<'tcx> TypeRelation<'tcx> for Equate<'_, '_, 'tcx> {
         self.fields.tcx()
     }
 
+    fn fast_equate_combine(&self) -> bool {
+        true
+    }
+
     fn param_env(&self) -> ty::ParamEnv<'tcx> {
         self.fields.param_env
     }

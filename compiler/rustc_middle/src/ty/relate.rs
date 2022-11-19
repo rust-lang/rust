@@ -28,6 +28,9 @@ pub trait TypeRelation<'tcx>: Sized {
     /// Returns a static string we can use for printouts.
     fn tag(&self) -> &'static str;
 
+    /// Returns whether or not structural equality can be used to fast-path this relation
+    fn fast_equate_combine(&self) -> bool;
+
     /// Returns `true` if the value `a` is the "expected" type in the
     /// relation. Just affects error messages.
     fn a_is_expected(&self) -> bool;
@@ -140,6 +143,10 @@ pub fn relate_substs<'tcx, R: TypeRelation<'tcx>>(
     a_subst: SubstsRef<'tcx>,
     b_subst: SubstsRef<'tcx>,
 ) -> RelateResult<'tcx, SubstsRef<'tcx>> {
+    if relation.fast_equate_combine() && a_subst == b_subst {
+        return Ok(a_subst);
+    }
+
     relation.tcx().mk_substs(iter::zip(a_subst, b_subst).map(|(a, b)| {
         relation.relate_with_variance(ty::Invariant, ty::VarianceDiagInfo::default(), a, b)
     }))
@@ -152,6 +159,10 @@ pub fn relate_substs_with_variances<'tcx, R: TypeRelation<'tcx>>(
     a_subst: SubstsRef<'tcx>,
     b_subst: SubstsRef<'tcx>,
 ) -> RelateResult<'tcx, SubstsRef<'tcx>> {
+    if relation.fast_equate_combine() && a_subst == b_subst {
+        return Ok(a_subst);
+    }
+
     let tcx = relation.tcx();
 
     let mut cached_ty = None;
@@ -345,7 +356,7 @@ impl<'tcx> Relate<'tcx> for ty::ExistentialTraitRef<'tcx> {
     }
 }
 
-#[derive(Copy, Debug, Clone, TypeFoldable, TypeVisitable)]
+#[derive(Copy, Debug, Clone, PartialEq, Eq, TypeFoldable, TypeVisitable)]
 struct GeneratorWitness<'tcx>(&'tcx ty::List<Ty<'tcx>>);
 
 impl<'tcx> Relate<'tcx> for GeneratorWitness<'tcx> {
@@ -354,6 +365,10 @@ impl<'tcx> Relate<'tcx> for GeneratorWitness<'tcx> {
         a: GeneratorWitness<'tcx>,
         b: GeneratorWitness<'tcx>,
     ) -> RelateResult<'tcx, GeneratorWitness<'tcx>> {
+        if relation.fast_equate_combine() && a == b {
+            return Ok(a);
+        }
+
         assert_eq!(a.0.len(), b.0.len());
         let tcx = relation.tcx();
         let types = tcx.mk_type_list(iter::zip(a.0, b.0).map(|(a, b)| relation.relate(a, b)))?;
@@ -655,6 +670,10 @@ impl<'tcx> Relate<'tcx> for &'tcx ty::List<ty::Binder<'tcx, ty::ExistentialPredi
         a: Self,
         b: Self,
     ) -> RelateResult<'tcx, Self> {
+        if relation.fast_equate_combine() && a == b {
+            return Ok(a);
+        }
+
         let tcx = relation.tcx();
 
         // FIXME: this is wasteful, but want to do a perf run to see how slow it is.
@@ -799,9 +818,9 @@ impl<'tcx> Relate<'tcx> for ty::TraitPredicate<'tcx> {
         b: ty::TraitPredicate<'tcx>,
     ) -> RelateResult<'tcx, ty::TraitPredicate<'tcx>> {
         Ok(ty::TraitPredicate {
-            trait_ref: relation.relate(a.trait_ref, b.trait_ref)?,
             constness: relation.relate(a.constness, b.constness)?,
             polarity: relation.relate(a.polarity, b.polarity)?,
+            trait_ref: relation.relate(a.trait_ref, b.trait_ref)?,
         })
     }
 }

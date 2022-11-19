@@ -248,6 +248,10 @@ impl<'tcx> TypeRelation<'tcx> for SimpleEqRelation<'tcx> {
         self.param_env
     }
 
+    fn fast_equate_combine(&self) -> bool {
+        true
+    }
+
     fn tag(&self) -> &'static str {
         "dropck::SimpleEqRelation"
     }

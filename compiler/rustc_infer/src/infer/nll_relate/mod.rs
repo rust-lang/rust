@@ -535,6 +535,10 @@ where
         self.delegate.param_env()
     }
 
+    fn fast_equate_combine(&self) -> bool {
+        false
+    }
+
     fn tag(&self) -> &'static str {
         "nll::subtype"
     }
@@ -899,6 +903,10 @@ where
 
     fn param_env(&self) -> ty::ParamEnv<'tcx> {
         self.delegate.param_env()
+    }
+
+    fn fast_equate_combine(&self) -> bool {
+        false
     }
 
     fn tag(&self) -> &'static str {

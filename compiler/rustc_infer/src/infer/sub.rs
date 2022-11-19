@@ -43,6 +43,10 @@ impl<'tcx> TypeRelation<'tcx> for Sub<'_, '_, 'tcx> {
         self.fields.param_env
     }
 
+    fn fast_equate_combine(&self) -> bool {
+        true
+    }
+
     fn a_is_expected(&self) -> bool {
         self.a_is_expected
     }
