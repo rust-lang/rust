@@ -527,12 +527,14 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             self.resolve_ty_and_res_fully_qualified_call(qpath, expr.hir_id, expr.span);
         let ty = match res {
             Res::Err => {
-                self.set_tainted_by_errors();
-                tcx.ty_error()
+                let e =
+                    self.tcx.sess.delay_span_bug(qpath.span(), "`Res::Err` but no error emitted");
+                self.set_tainted_by_errors(e);
+                tcx.ty_error_with_guaranteed(e)
             }
             Res::Def(DefKind::Ctor(_, CtorKind::Fictive), _) => {
-                report_unexpected_variant_res(tcx, res, qpath, expr.span);
-                tcx.ty_error()
+                let e = report_unexpected_variant_res(tcx, res, qpath, expr.span);
+                tcx.ty_error_with_guaranteed(e)
             }
             _ => self.instantiate_value_path(segs, opt_ty, res, expr.span, expr.hir_id).0,
         };
@@ -1962,7 +1964,11 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         expr_span: Span,
     ) {
         if variant.is_recovered() {
-            self.set_tainted_by_errors();
+            self.set_tainted_by_errors(
+                self.tcx
+                    .sess
+                    .delay_span_bug(expr_span, "parser recovered but no error was emitted"),
+            );
             return;
         }
         let mut err = self.err_ctxt().type_error_struct_with_diag(

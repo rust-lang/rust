@@ -116,9 +116,9 @@ impl<'tcx> TypeRelation<'tcx> for Sub<'_, '_, 'tcx> {
                 Ok(a)
             }
 
-            (&ty::Error(_), _) | (_, &ty::Error(_)) => {
-                infcx.set_tainted_by_errors();
-                Ok(self.tcx().ty_error())
+            (&ty::Error(e), _) | (_, &ty::Error(e)) => {
+                infcx.set_tainted_by_errors(e);
+                Ok(self.tcx().ty_error_with_guaranteed(e))
             }
 
             (&ty::Opaque(a_def_id, _), &ty::Opaque(b_def_id, _)) if a_def_id == b_def_id => {

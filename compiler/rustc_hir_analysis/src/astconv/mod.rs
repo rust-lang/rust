@@ -115,7 +115,7 @@ pub trait AstConv<'tcx> {
     /// (e.g., resolve) that is translated into a ty-error. This is
     /// used to help suppress derived errors typeck might otherwise
     /// report.
-    fn set_tainted_by_errors(&self);
+    fn set_tainted_by_errors(&self, e: ErrorGuaranteed);
 
     fn record_ty(&self, hir_id: hir::HirId, ty: Ty<'tcx>, span: Span);
 }
@@ -2620,8 +2620,12 @@ impl<'o, 'tcx> dyn AstConv<'tcx> + 'o {
                 }
             }
             Res::Err => {
-                self.set_tainted_by_errors();
-                self.tcx().ty_error()
+                let e = self
+                    .tcx()
+                    .sess
+                    .delay_span_bug(path.span, "path with `Res:Err` but no error emitted");
+                self.set_tainted_by_errors(e);
+                self.tcx().ty_error_with_guaranteed(e)
             }
             _ => span_bug!(span, "unexpected resolution: {:?}", path.res),
         }

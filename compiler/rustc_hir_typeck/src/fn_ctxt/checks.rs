@@ -511,8 +511,11 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             tys.into_iter().any(|ty| ty.references_error() || ty.is_ty_var())
         }
 
-        self.set_tainted_by_errors();
         let tcx = self.tcx;
+        // FIXME: taint after emitting errors and pass through an `ErrorGuaranteed`
+        self.set_tainted_by_errors(
+            tcx.sess.delay_span_bug(call_span, "no errors reported for args"),
+        );
 
         // Get the argument span in the context of the call span so that
         // suggestions and labels are (more) correct when an arg is a
@@ -1207,7 +1210,9 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         let (def, ty) = self.finish_resolving_struct_path(qpath, path_span, hir_id);
         let variant = match def {
             Res::Err => {
-                self.set_tainted_by_errors();
+                self.set_tainted_by_errors(
+                    self.tcx.sess.delay_span_bug(path_span, "`Res::Err` but no error emitted"),
+                );
                 return None;
             }
             Res::Def(DefKind::Variant, _) => match ty.kind() {
