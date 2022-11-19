@@ -57,11 +57,8 @@ use crate::mem::ManuallyDrop;
 /// assert_eq!(None, it.next());
 /// ```
 #[inline]
-#[unstable(
-    feature = "iter_repeat_n",
-    reason = "waiting on FCP to decide whether to expose publicly",
-    issue = "104434"
-)]
+#[unstable(feature = "iter_repeat_n", issue = "104434")]
+#[doc(hidden)] // waiting on ACP#120 to decide whether to expose publicly
 pub fn repeat_n<T: Clone>(element: T, count: usize) -> RepeatN<T> {
     let mut element = ManuallyDrop::new(element);
 
@@ -80,11 +77,8 @@ pub fn repeat_n<T: Clone>(element: T, count: usize) -> RepeatN<T> {
 /// This `struct` is created by the [`repeat_n()`] function.
 /// See its documentation for more.
 #[derive(Clone, Debug)]
-#[unstable(
-    feature = "iter_repeat_n",
-    reason = "waiting on FCP to decide whether to expose publicly",
-    issue = "104434"
-)]
+#[unstable(feature = "iter_repeat_n", issue = "104434")]
+#[doc(hidden)] // waiting on ACP#120 to decide whether to expose publicly
 pub struct RepeatN<A> {
     count: usize,
     // Invariant: has been dropped iff count == 0.
