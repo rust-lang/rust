@@ -13,7 +13,7 @@ LL | #[cfg_attr(rustfmt, rustfmt_skip)]
    | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: use: `#[rustfmt::skip]`
 
 error: `cfg_attr` is deprecated for rustfmt and got replaced by tool attributes
-  --> $DIR/cfg_attr_rustfmt.rs:43:5
+  --> $DIR/cfg_attr_rustfmt.rs:41:5
    |
 LL |     #[cfg_attr(rustfmt, rustfmt::skip)]
    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: use: `#[rustfmt::skip]`

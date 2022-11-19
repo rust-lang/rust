@@ -163,55 +163,55 @@ LL |     let _ = std::fs::write("x", &"".to_string());
    |                                 ^^^^^^^^^^^^^^^ help: change this to: `"".to_string()`
 
 error: this expression borrows a value the compiler would automatically borrow
-  --> $DIR/needless_borrow.rs:192:13
+  --> $DIR/needless_borrow.rs:190:13
    |
 LL |             (&self.f)()
    |             ^^^^^^^^^ help: change this to: `(self.f)`
 
 error: this expression borrows a value the compiler would automatically borrow
-  --> $DIR/needless_borrow.rs:201:13
+  --> $DIR/needless_borrow.rs:199:13
    |
 LL |             (&mut self.f)()
    |             ^^^^^^^^^^^^^ help: change this to: `(self.f)`
 
 error: the borrowed expression implements the required traits
-  --> $DIR/needless_borrow.rs:286:20
+  --> $DIR/needless_borrow.rs:283:20
    |
 LL |         takes_iter(&mut x)
    |                    ^^^^^^ help: change this to: `x`
 
 error: the borrowed expression implements the required traits
-  --> $DIR/needless_borrow.rs:304:55
+  --> $DIR/needless_borrow.rs:297:55
    |
 LL |         let _ = std::process::Command::new("ls").args(&["-a", "-l"]).status().unwrap();
    |                                                       ^^^^^^^^^^^^^ help: change this to: `["-a", "-l"]`
 
 error: the borrowed expression implements the required traits
-  --> $DIR/needless_borrow.rs:344:37
+  --> $DIR/needless_borrow.rs:335:37
    |
 LL |         let _ = std::fs::write("x", &arg);
    |                                     ^^^^ help: change this to: `arg`
 
 error: the borrowed expression implements the required traits
-  --> $DIR/needless_borrow.rs:345:37
+  --> $DIR/needless_borrow.rs:336:37
    |
 LL |         let _ = std::fs::write("x", &loc);
    |                                     ^^^^ help: change this to: `loc`
 
 error: the borrowed expression implements the required traits
-  --> $DIR/needless_borrow.rs:364:15
+  --> $DIR/needless_borrow.rs:354:15
    |
 LL |         debug(&x);
    |               ^^ help: change this to: `x`
 
 error: the borrowed expression implements the required traits
-  --> $DIR/needless_borrow.rs:374:15
+  --> $DIR/needless_borrow.rs:363:15
    |
 LL |         use_x(&x);
    |               ^^ help: change this to: `x`
 
 error: the borrowed expression implements the required traits
-  --> $DIR/needless_borrow.rs:474:13
+  --> $DIR/needless_borrow.rs:457:13
    |
 LL |         foo(&a);
    |             ^^ help: change this to: `a`

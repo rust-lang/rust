@@ -1,6 +1,5 @@
 // aux-build:proc_macro_with_span.rs
 // run-rustfix
-#![feature(custom_inner_attributes)]
 #![warn(clippy::uninlined_format_args)]
 #![allow(named_arguments_used_positionally, unused_imports, unused_macros, unused_variables)]
 #![allow(clippy::eq_op, clippy::format_in_format_args, clippy::print_literal)]
@@ -164,14 +163,14 @@ fn main() {
     tester(42);
 }
 
+#[clippy::msrv = "1.57"]
 fn _under_msrv() {
-    #![clippy::msrv = "1.57"]
     let local_i32 = 1;
     println!("don't expand='{}'", local_i32);
 }
 
+#[clippy::msrv = "1.58"]
 fn _meets_msrv() {
-    #![clippy::msrv = "1.58"]
     let local_i32 = 1;
     println!("expand='{local_i32}'");
 }

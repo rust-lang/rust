@@ -2,7 +2,6 @@
 
 #![allow(clippy::needless_borrow, clippy::ptr_arg)]
 #![warn(clippy::unnecessary_to_owned)]
-#![feature(custom_inner_attributes)]
 
 use std::borrow::Cow;
 use std::ffi::{CStr, CString, OsStr, OsString};
@@ -215,14 +214,14 @@ fn get_file_path(_file_type: &FileType) -> Result<std::path::PathBuf, std::io::E
 
 fn require_string(_: &String) {}
 
+#[clippy::msrv = "1.35"]
 fn _msrv_1_35() {
-    #![clippy::msrv = "1.35"]
     // `copied` was stabilized in 1.36, so clippy should use `cloned`.
     let _ = &["x"][..].to_vec().into_iter();
 }
 
+#[clippy::msrv = "1.36"]
 fn _msrv_1_36() {
-    #![clippy::msrv = "1.36"]
     let _ = &["x"][..].to_vec().into_iter();
 }
 

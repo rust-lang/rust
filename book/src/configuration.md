@@ -72,7 +72,7 @@ minimum supported Rust version (MSRV) in the clippy configuration file.
 msrv = "1.30.0"
 ```
 
-The MSRV can also be specified as an inner attribute, like below.
+The MSRV can also be specified as an attribute, like below.
 
 ```rust
 #![feature(custom_inner_attributes)]
