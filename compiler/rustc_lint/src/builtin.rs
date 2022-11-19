@@ -769,10 +769,13 @@ impl<'tcx> LateLintPass<'tcx> for MissingCopyImplementations {
         // We shouldn't recommend implementing `Copy` on stateful things,
         // such as iterators.
         if let Some(iter_trait) = cx.tcx.get_diagnostic_item(sym::Iterator) {
-            if cx.tcx.infer_ctxt().enter(|infer_ctxt| {
-                infer_ctxt.type_implements_trait(iter_trait, ty, List::empty(), param_env)
-                    == EvaluationResult::EvaluatedToOk
-            }) {
+            if cx.tcx.infer_ctxt().build().type_implements_trait(
+                iter_trait,
+                ty,
+                List::empty(),
+                param_env,
+            ) == EvaluationResult::EvaluatedToOk
+            {
                 return;
             }
         }
