@@ -980,11 +980,4 @@ fn foo { crate::::$0 }
 "#,
         expect![""],
     );
-
-    check(
-        r#"
-fn foo { crate:::::$0 }
-"#,
-        expect![""],
-    );
 }

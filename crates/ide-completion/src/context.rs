@@ -585,9 +585,6 @@ impl<'a> CompletionContext<'a> {
                     return None;
                 }
             }
-            T![::] if !is_prev_token_valid_path_start_or_segment(&original_token) => {
-                return None;
-            }
             _ => {}
         }
 
