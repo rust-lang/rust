@@ -755,20 +755,9 @@ impl<'f, 'tcx> Coerce<'f, 'tcx> {
 
         if let ty::Dynamic(a_data, _, _) = a.kind()
             && let ty::Dynamic(b_data, _, _) = b.kind()
+            && a_data.principal_def_id() == b_data.principal_def_id()
         {
-            if a_data.principal_def_id() == b_data.principal_def_id() {
-                return self.unify_and(a, b, |_| vec![]);
-            } else if !self.tcx().features().trait_upcasting {
-                let mut err = feature_err(
-                    &self.tcx.sess.parse_sess,
-                    sym::trait_upcasting,
-                    self.cause.span,
-                    &format!(
-                        "cannot cast `{a}` to `{b}`, trait upcasting coercion is experimental"
-                    ),
-                );
-                err.emit();
-            }
+            return self.unify_and(a, b, |_| vec![]);
         }
 
         // Check the obligations of the cast -- for example, when casting
@@ -796,19 +785,16 @@ impl<'f, 'tcx> Coerce<'f, 'tcx> {
             ])
             .collect();
 
-        // Enforce that the type is `usize`/pointer-sized. For now, only those
-        // can be coerced to `dyn*`, except for `dyn* -> dyn*` upcasts.
-        if !a.is_dyn_star() {
-            obligations.push(Obligation::new(
-                self.tcx,
-                self.cause.clone(),
-                self.param_env,
-                ty::Binder::dummy(
-                    self.tcx.at(self.cause.span).mk_trait_ref(hir::LangItem::PointerSized, [a]),
-                )
-                .to_poly_trait_predicate(),
-            ));
-        }
+        // Enforce that the type is `usize`/pointer-sized.
+        obligations.push(Obligation::new(
+            self.tcx,
+            self.cause.clone(),
+            self.param_env,
+            ty::Binder::dummy(
+                self.tcx.at(self.cause.span).mk_trait_ref(hir::LangItem::PointerSized, [a]),
+            )
+            .to_poly_trait_predicate(),
+        ));
 
         Ok(InferOk {
             value: (vec![Adjustment { kind: Adjust::DynStar, target: b }], b),
