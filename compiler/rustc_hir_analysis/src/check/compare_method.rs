@@ -684,9 +684,7 @@ fn report_trait_method_mismatch<'tcx>(
                 // Suggestion to change output type. We do not suggest in `async` functions
                 // to avoid complex logic or incorrect output.
                 match tcx.hir().expect_impl_item(impl_m.def_id.expect_local()).kind {
-                    ImplItemKind::Fn(ref sig, _)
-                        if sig.header.asyncness == hir::IsAsync::NotAsync =>
-                    {
+                    ImplItemKind::Fn(ref sig, _) if !sig.header.asyncness.is_async() => {
                         let msg = "change the output type to match the trait";
                         let ap = Applicability::MachineApplicable;
                         match sig.decl.output {

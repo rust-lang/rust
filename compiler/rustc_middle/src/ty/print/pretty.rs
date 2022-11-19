@@ -13,6 +13,7 @@ use rustc_hir::def_id::{DefId, DefIdSet, CRATE_DEF_ID, LOCAL_CRATE};
 use rustc_hir::definitions::{DefPathData, DefPathDataName, DisambiguatedDefPathData};
 use rustc_session::config::TrimmedDefPaths;
 use rustc_session::cstore::{ExternCrate, ExternCrateSource};
+use rustc_session::Limit;
 use rustc_span::symbol::{kw, Ident, Symbol};
 use rustc_target::abi::Size;
 use rustc_target::spec::abi::Abi;
@@ -1583,6 +1584,8 @@ pub struct FmtPrinterData<'a, 'tcx> {
     region_index: usize,
     binder_depth: usize,
     printed_type_count: usize,
+    type_length_limit: Limit,
+    truncated: bool,
 
     pub region_highlight_mode: RegionHighlightMode<'tcx>,
 
@@ -1605,6 +1608,10 @@ impl DerefMut for FmtPrinter<'_, '_> {
 
 impl<'a, 'tcx> FmtPrinter<'a, 'tcx> {
     pub fn new(tcx: TyCtxt<'tcx>, ns: Namespace) -> Self {
+        Self::new_with_limit(tcx, ns, tcx.type_length_limit())
+    }
+
+    pub fn new_with_limit(tcx: TyCtxt<'tcx>, ns: Namespace, type_length_limit: Limit) -> Self {
         FmtPrinter(Box::new(FmtPrinterData {
             tcx,
             // Estimated reasonable capacity to allocate upfront based on a few
@@ -1617,6 +1624,8 @@ impl<'a, 'tcx> FmtPrinter<'a, 'tcx> {
             region_index: 0,
             binder_depth: 0,
             printed_type_count: 0,
+            type_length_limit,
+            truncated: false,
             region_highlight_mode: RegionHighlightMode::new(tcx),
             ty_infer_name_resolver: None,
             const_infer_name_resolver: None,
@@ -1751,11 +1760,11 @@ impl<'tcx> Printer<'tcx> for FmtPrinter<'_, 'tcx> {
     }
 
     fn print_type(mut self, ty: Ty<'tcx>) -> Result<Self::Type, Self::Error> {
-        let type_length_limit = self.tcx.type_length_limit();
-        if type_length_limit.value_within_limit(self.printed_type_count) {
+        if self.type_length_limit.value_within_limit(self.printed_type_count) {
             self.printed_type_count += 1;
             self.pretty_print_type(ty)
         } else {
+            self.truncated = true;
             write!(self, "...")?;
             Ok(self)
         }

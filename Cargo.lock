@@ -307,6 +307,7 @@ dependencies = [
  "glob",
  "hex 0.4.2",
  "home",
+ "http-auth",
  "humantime 2.0.1",
  "ignore",
  "im-rc",
@@ -349,11 +350,11 @@ dependencies = [
 
 [[package]]
 name = "cargo-credential"
-version = "0.1.0"
+version = "0.2.0"
 
 [[package]]
 name = "cargo-credential-1password"
-version = "0.1.0"
+version = "0.2.0"
 dependencies = [
  "cargo-credential",
  "serde",
@@ -362,7 +363,7 @@ dependencies = [
 
 [[package]]
 name = "cargo-credential-macos-keychain"
-version = "0.1.0"
+version = "0.2.0"
 dependencies = [
  "cargo-credential",
  "security-framework",
@@ -370,7 +371,7 @@ dependencies = [
 
 [[package]]
 name = "cargo-credential-wincred"
-version = "0.1.0"
+version = "0.2.0"
 dependencies = [
  "cargo-credential",
  "winapi",
@@ -1690,6 +1691,15 @@ dependencies = [
  "proc-macro2",
  "quote",
  "syn",
+]
+
+[[package]]
+name = "http-auth"
+version = "0.1.6"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "c0b40b39d66c28829a0cf4d09f7e139ff8201f7500a5083732848ed3b4b4d850"
+dependencies = [
+ "memchr",
 ]
 
 [[package]]
@@ -3535,7 +3545,6 @@ name = "rustc_errors"
 version = "0.0.0"
 dependencies = [
  "annotate-snippets",
- "atty",
  "rustc_ast",
  "rustc_ast_pretty",
  "rustc_data_structures",
@@ -3834,7 +3843,6 @@ dependencies = [
 name = "rustc_log"
 version = "0.0.0"
 dependencies = [
- "atty",
  "rustc_span",
  "tracing",
  "tracing-subscriber",
@@ -4389,7 +4397,6 @@ version = "0.0.0"
 dependencies = [
  "arrayvec",
  "askama",
- "atty",
  "expect-test",
  "itertools",
  "minifier",

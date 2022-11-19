@@ -9,7 +9,6 @@ note: `A::matches` defined here
    |
 LL |     pub fn matches<F: Fn()>(&self, f: &F) {
    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
-   = note: the full type name has been written to '$TEST_BUILD_DIR/issues/issue-22638/issue-22638.long-type.txt'
 
 error: aborting due to previous error
 

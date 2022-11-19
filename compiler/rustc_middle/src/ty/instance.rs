@@ -276,28 +276,45 @@ impl<'tcx> InstanceDef<'tcx> {
     }
 }
 
+fn fmt_instance(
+    f: &mut fmt::Formatter<'_>,
+    instance: &Instance<'_>,
+    type_length: rustc_session::Limit,
+) -> fmt::Result {
+    ty::tls::with(|tcx| {
+        let substs = tcx.lift(instance.substs).expect("could not lift for printing");
+
+        let s = FmtPrinter::new_with_limit(tcx, Namespace::ValueNS, type_length)
+            .print_def_path(instance.def_id(), substs)?
+            .into_buffer();
+        f.write_str(&s)
+    })?;
+
+    match instance.def {
+        InstanceDef::Item(_) => Ok(()),
+        InstanceDef::VTableShim(_) => write!(f, " - shim(vtable)"),
+        InstanceDef::ReifyShim(_) => write!(f, " - shim(reify)"),
+        InstanceDef::Intrinsic(_) => write!(f, " - intrinsic"),
+        InstanceDef::Virtual(_, num) => write!(f, " - virtual#{}", num),
+        InstanceDef::FnPtrShim(_, ty) => write!(f, " - shim({})", ty),
+        InstanceDef::ClosureOnceShim { .. } => write!(f, " - shim"),
+        InstanceDef::DropGlue(_, None) => write!(f, " - shim(None)"),
+        InstanceDef::DropGlue(_, Some(ty)) => write!(f, " - shim(Some({}))", ty),
+        InstanceDef::CloneShim(_, ty) => write!(f, " - shim({})", ty),
+    }
+}
+
+pub struct ShortInstance<'a, 'tcx>(pub &'a Instance<'tcx>, pub usize);
+
+impl<'a, 'tcx> fmt::Display for ShortInstance<'a, 'tcx> {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        fmt_instance(f, self.0, rustc_session::Limit(self.1))
+    }
+}
+
 impl<'tcx> fmt::Display for Instance<'tcx> {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        ty::tls::with(|tcx| {
-            let substs = tcx.lift(self.substs).expect("could not lift for printing");
-            let s = FmtPrinter::new(tcx, Namespace::ValueNS)
-                .print_def_path(self.def_id(), substs)?
-                .into_buffer();
-            f.write_str(&s)
-        })?;
-
-        match self.def {
-            InstanceDef::Item(_) => Ok(()),
-            InstanceDef::VTableShim(_) => write!(f, " - shim(vtable)"),
-            InstanceDef::ReifyShim(_) => write!(f, " - shim(reify)"),
-            InstanceDef::Intrinsic(_) => write!(f, " - intrinsic"),
-            InstanceDef::Virtual(_, num) => write!(f, " - virtual#{}", num),
-            InstanceDef::FnPtrShim(_, ty) => write!(f, " - shim({})", ty),
-            InstanceDef::ClosureOnceShim { .. } => write!(f, " - shim"),
-            InstanceDef::DropGlue(_, None) => write!(f, " - shim(None)"),
-            InstanceDef::DropGlue(_, Some(ty)) => write!(f, " - shim(Some({}))", ty),
-            InstanceDef::CloneShim(_, ty) => write!(f, " - shim({})", ty),
-        }
+        ty::tls::with(|tcx| fmt_instance(f, self, tcx.type_length_limit()))
     }
 }
 

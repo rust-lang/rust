@@ -753,10 +753,11 @@ impl SourceMap {
         }
     }
 
-    /// Given a 'Span', tries to tell if the next character is '>'
-    /// and the previous charactoer is '<' after skipping white space
-    /// return true if wrapped by '<>'
-    pub fn span_wrapped_by_angle_bracket(&self, span: Span) -> bool {
+    /// Given a 'Span', tries to tell if it's wrapped by "<>" or "()"
+    /// the algorithm searches if the next character is '>' or ')' after skipping white space
+    /// then searches the previous charactoer to match '<' or '(' after skipping white space
+    /// return true if wrapped by '<>' or '()'
+    pub fn span_wrapped_by_angle_or_parentheses(&self, span: Span) -> bool {
         self.span_to_source(span, |src, start_index, end_index| {
             if src.get(start_index..end_index).is_none() {
                 return Ok(false);
@@ -764,11 +765,17 @@ impl SourceMap {
             // test the right side to match '>' after skipping white space
             let end_src = &src[end_index..];
             let mut i = 0;
+            let mut found_right_parentheses = false;
+            let mut found_right_angle = false;
             while let Some(cc) = end_src.chars().nth(i) {
                 if cc == ' ' {
                     i = i + 1;
                 } else if cc == '>' {
                     // found > in the right;
+                    found_right_angle = true;
+                    break;
+                } else if cc == ')' {
+                    found_right_parentheses = true;
                     break;
                 } else {
                     // failed to find '>' return false immediately
@@ -786,6 +793,16 @@ impl SourceMap {
                     i = i - 1;
                 } else if cc == '<' {
                     // found < in the left
+                    if !found_right_angle {
+                        // skip something like "(< )>"
+                        return Ok(false);
+                    }
+                    break;
+                } else if cc == '(' {
+                    if !found_right_parentheses {
+                        // skip something like "<(>)"
+                        return Ok(false);
+                    }
                     break;
                 } else {
                     // failed to find '<' return false immediately

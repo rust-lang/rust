@@ -219,3 +219,33 @@ press-key: "Tab"
 press-key: "Tab"
 press-key: "Tab"
 assert-count: ("//*[@class='notable popover']", 0)
+assert: "#method\.create_an_iterator_from_read .notable-traits:focus"
+
+// Now we check that the focus isn't given back to the wrong item when opening
+// another popover.
+store-window-property: (scroll, "scrollY")
+click: "#method\.create_an_iterator_from_read .fnname"
+// We ensure that the scroll position changed.
+assert-window-property-false: {"scrollY": |scroll|}
+// Store the new position.
+store-window-property: (scroll, "scrollY")
+click: "//*[@id='method.create_an_iterator_from_read']//*[@class='notable-traits']"
+wait-for: "//*[@class='notable popover']"
+click: "#settings-menu a"
+click: ".search-input"
+// We ensure we didn't come back to the previous focused item.
+assert-window-property-false: {"scrollY": |scroll|}
+
+// Same but with Escape handling.
+store-window-property: (scroll, "scrollY")
+click: "#method\.create_an_iterator_from_read .fnname"
+// We ensure that the scroll position changed.
+assert-window-property-false: {"scrollY": |scroll|}
+// Store the new position.
+store-window-property: (scroll, "scrollY")
+click: "//*[@id='method.create_an_iterator_from_read']//*[@class='notable-traits']"
+wait-for: "//*[@class='notable popover']"
+click: "#settings-menu a"
+press-key: "Escape"
+// We ensure we didn't come back to the previous focused item.
+assert-window-property-false: {"scrollY": |scroll|}
