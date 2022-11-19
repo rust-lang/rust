@@ -689,7 +689,7 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
             }
         };
 
-        let (fn_abi, llfn, instance) = common::build_langcall(bx, Some(span), lang_item);
+        let (fn_abi, llfn, instance) = common::build_langcall(bx, Some(span), lang_item, None);
 
         // Codegen the actual panic invoke/call.
         let merging_succ =
@@ -709,7 +709,8 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
         self.set_debug_loc(bx, terminator.source_info);
 
         // Obtain the panic entry point.
-        let (fn_abi, llfn, instance) = common::build_langcall(bx, Some(span), reason.lang_item());
+        let (fn_abi, llfn, instance) =
+            common::build_langcall(bx, Some(span), reason.lang_item(), None);
 
         // Codegen the actual panic invoke/call.
         let merging_succ = helper.do_call(
@@ -771,8 +772,12 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
                 let msg = bx.const_str(&msg_str);
 
                 // Obtain the panic entry point.
-                let (fn_abi, llfn, instance) =
-                    common::build_langcall(bx, Some(source_info.span), LangItem::PanicNounwind);
+                let (fn_abi, llfn, instance) = common::build_langcall(
+                    bx,
+                    Some(source_info.span),
+                    LangItem::PanicNounwind,
+                    None,
+                );
 
                 // Codegen the actual panic invoke/call.
                 helper.do_call(
@@ -1291,6 +1296,17 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
     ) -> MergingSucc {
         debug!("codegen_terminator: {:?}", terminator);
 
+        if bx.tcx().may_insert_niche_checks() {
+            if let mir::TerminatorKind::Return = terminator.kind {
+                let op = mir::Operand::Copy(mir::Place::return_place());
+                let ty = op.ty(self.mir, bx.tcx());
+                let ty = self.monomorphize(ty);
+                if let Some(niche) = bx.layout_of(ty).largest_niche {
+                    self.codegen_niche_check(bx, op, niche, terminator.source_info);
+                }
+            }
+        }
+
         let helper = TerminatorCodegenHelper { bb, terminator };
 
         let mergeable_succ = || {
@@ -1559,7 +1575,7 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
         tuple.layout.fields.count()
     }
 
-    fn get_caller_location(
+    pub fn get_caller_location(
         &mut self,
         bx: &mut Bx,
         source_info: mir::SourceInfo,
@@ -1700,12 +1716,12 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
 
         self.set_debug_loc(&mut bx, mir::SourceInfo::outermost(self.mir.span));
 
-        let (fn_abi, fn_ptr, instance) = common::build_langcall(&bx, None, reason.lang_item());
+        let (fn_abi, fn_ptr, instance) =
+            common::build_langcall(&bx, None, reason.lang_item(), None);
         if is_call_from_compiler_builtins_to_upstream_monomorphization(bx.tcx(), instance) {
             bx.abort();
         } else {
             let fn_ty = bx.fn_decl_backend_type(fn_abi);
-
             let llret = bx.call(fn_ty, None, Some(fn_abi), fn_ptr, &[], funclet.as_ref(), None);
             bx.apply_attrs_to_cleanup_callsite(llret);
         }

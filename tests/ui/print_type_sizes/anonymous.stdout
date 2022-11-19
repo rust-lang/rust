@@ -37,18 +37,6 @@ print-type-size     variant `None`: 0 bytes
 print-type-size type: `std::ptr::DynMetadata<dyn std::fmt::Write>`: 8 bytes, alignment: 8 bytes
 print-type-size     field `.vtable_ptr`: 8 bytes
 print-type-size     field `.phantom`: 0 bytes
-print-type-size type: `ReprCu8`: 4 bytes, alignment: 2 bytes
-print-type-size     discriminant: 1 bytes
-print-type-size     variant `A`: 3 bytes
-print-type-size         padding: 1 bytes
-print-type-size         field `.0`: 2 bytes, alignment: 2 bytes
-print-type-size     variant `B`: 1 bytes
-print-type-size type: `Repru8`: 4 bytes, alignment: 2 bytes
-print-type-size     discriminant: 1 bytes
-print-type-size     variant `A`: 3 bytes
-print-type-size         padding: 1 bytes
-print-type-size         field `.0`: 2 bytes, alignment: 2 bytes
-print-type-size     variant `B`: 0 bytes
 print-type-size type: `unwind::libunwind::_Unwind_Action`: 4 bytes, alignment: 4 bytes
 print-type-size     discriminant: 4 bytes
 print-type-size     variant `_UA_SEARCH_PHASE`: 0 bytes

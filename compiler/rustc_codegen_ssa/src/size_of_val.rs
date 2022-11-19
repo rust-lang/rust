@@ -63,7 +63,7 @@ pub fn size_and_align_of_dst<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>>(
 
             // Obtain the panic entry point.
             let (fn_abi, llfn, _instance) =
-                common::build_langcall(bx, None, LangItem::PanicNounwind);
+                common::build_langcall(bx, None, LangItem::PanicNounwind, None);
 
             // Generate the call.
             // Cannot use `do_call` since we don't have a MIR terminator so we can't create a `TerminationCodegenHelper`.

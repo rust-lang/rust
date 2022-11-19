@@ -17,7 +17,7 @@ use std::fmt;
 use std::hash::Hash;
 
 /// Describes how a monomorphization will be instantiated in object files.
-#[derive(PartialEq)]
+#[derive(PartialEq, Debug)]
 pub enum InstantiationMode {
     /// There will be exactly one instance of the given MonoItem. It will have
     /// external linkage so that it can be linked to from other codegen units.

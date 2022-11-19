@@ -1,14 +1,87 @@
 print-type-size type: `Pair<FiftyBytes>`: 100 bytes, alignment: 1 bytes
 print-type-size     field `._car`: 50 bytes
 print-type-size     field `._cdr`: 50 bytes
+print-type-size type: `std::fmt::Formatter<'_>`: 64 bytes, alignment: 8 bytes
+print-type-size     field `.width`: 16 bytes
+print-type-size     field `.precision`: 16 bytes
+print-type-size     field `.buf`: 16 bytes
+print-type-size     field `.fill`: 4 bytes
+print-type-size     field `.flags`: 4 bytes
+print-type-size     field `.align`: 1 bytes
+print-type-size     end padding: 7 bytes
 print-type-size type: `FiftyBytes`: 50 bytes, alignment: 1 bytes
 print-type-size     field `.0`: 50 bytes
+print-type-size type: `std::fmt::Arguments<'_>`: 48 bytes, alignment: 8 bytes
+print-type-size     field `.pieces`: 16 bytes
+print-type-size     field `.args`: 16 bytes
+print-type-size     field `.fmt`: 16 bytes
+print-type-size type: `unwind::libunwind::_Unwind_Exception`: 32 bytes, alignment: 8 bytes
+print-type-size     field `.exception_class`: 8 bytes
+print-type-size     field `.exception_cleanup`: 8 bytes
+print-type-size     field `.private`: 16 bytes
+print-type-size type: `std::panic::Location<'_>`: 24 bytes, alignment: 8 bytes
+print-type-size     field `.file`: 16 bytes
+print-type-size     field `.line`: 4 bytes
+print-type-size     field `.col`: 4 bytes
+print-type-size type: `core::fmt::rt::Argument<'_>`: 16 bytes, alignment: 8 bytes
+print-type-size     field `.value`: 8 bytes
+print-type-size     field `.formatter`: 8 bytes
+print-type-size type: `std::option::Option<&[core::fmt::rt::Placeholder]>`: 16 bytes, alignment: 8 bytes
+print-type-size     variant `Some`: 16 bytes
+print-type-size         field `.0`: 16 bytes
+print-type-size     variant `None`: 0 bytes
+print-type-size type: `std::option::Option<usize>`: 16 bytes, alignment: 8 bytes
+print-type-size     discriminant: 8 bytes
+print-type-size     variant `Some`: 8 bytes
+print-type-size         field `.0`: 8 bytes
+print-type-size     variant `None`: 0 bytes
 print-type-size type: `Pair<SevenBytes>`: 14 bytes, alignment: 1 bytes
 print-type-size     field `._car`: 7 bytes
 print-type-size     field `._cdr`: 7 bytes
+print-type-size type: `std::option::Option<extern "C" fn(unwind::libunwind::_Unwind_Reason_Code, *mut unwind::libunwind::_Unwind_Exception)>`: 8 bytes, alignment: 8 bytes
+print-type-size     variant `Some`: 8 bytes
+print-type-size         field `.0`: 8 bytes
+print-type-size     variant `None`: 0 bytes
+print-type-size type: `std::ptr::DynMetadata<dyn std::fmt::Write>`: 8 bytes, alignment: 8 bytes
+print-type-size     field `.vtable_ptr`: 8 bytes
+print-type-size     field `.phantom`: 0 bytes
 print-type-size type: `SevenBytes`: 7 bytes, alignment: 1 bytes
 print-type-size     field `.0`: 7 bytes
+print-type-size type: `unwind::libunwind::_Unwind_Action`: 4 bytes, alignment: 4 bytes
+print-type-size     discriminant: 4 bytes
+print-type-size     variant `_UA_SEARCH_PHASE`: 0 bytes
+print-type-size     variant `_UA_CLEANUP_PHASE`: 0 bytes
+print-type-size     variant `_UA_HANDLER_FRAME`: 0 bytes
+print-type-size     variant `_UA_FORCE_UNWIND`: 0 bytes
+print-type-size     variant `_UA_END_OF_STACK`: 0 bytes
+print-type-size type: `unwind::libunwind::_Unwind_Reason_Code`: 4 bytes, alignment: 4 bytes
+print-type-size     discriminant: 4 bytes
+print-type-size     variant `_URC_NO_REASON`: 0 bytes
+print-type-size     variant `_URC_FOREIGN_EXCEPTION_CAUGHT`: 0 bytes
+print-type-size     variant `_URC_FATAL_PHASE2_ERROR`: 0 bytes
+print-type-size     variant `_URC_FATAL_PHASE1_ERROR`: 0 bytes
+print-type-size     variant `_URC_NORMAL_STOP`: 0 bytes
+print-type-size     variant `_URC_END_OF_STACK`: 0 bytes
+print-type-size     variant `_URC_HANDLER_FOUND`: 0 bytes
+print-type-size     variant `_URC_INSTALL_CONTEXT`: 0 bytes
+print-type-size     variant `_URC_CONTINUE_UNWIND`: 0 bytes
+print-type-size     variant `_URC_FAILURE`: 0 bytes
 print-type-size type: `Pair<u8>`: 2 bytes, alignment: 1 bytes
 print-type-size     field `._car`: 1 bytes
 print-type-size     field `._cdr`: 1 bytes
+print-type-size type: `core::fmt::rt::Alignment`: 1 bytes, alignment: 1 bytes
+print-type-size     discriminant: 1 bytes
+print-type-size     variant `Left`: 0 bytes
+print-type-size     variant `Right`: 0 bytes
+print-type-size     variant `Center`: 0 bytes
+print-type-size     variant `Unknown`: 0 bytes
+print-type-size type: `std::result::Result<(), std::fmt::Error>`: 1 bytes, alignment: 1 bytes
+print-type-size     discriminant: 1 bytes
+print-type-size     variant `Ok`: 0 bytes
+print-type-size         field `.0`: 0 bytes
+print-type-size     variant `Err`: 0 bytes
+print-type-size         field `.0`: 0 bytes
 print-type-size type: `ZeroSized`: 0 bytes, alignment: 1 bytes
+print-type-size type: `std::fmt::Error`: 0 bytes, alignment: 1 bytes
+print-type-size type: `std::marker::PhantomData<dyn std::fmt::Write>`: 0 bytes, alignment: 1 bytes
+print-type-size type: `unwind::libunwind::_Unwind_Context`: 0 bytes, alignment: 1 bytes
