@@ -103,7 +103,12 @@ pub fn parse_format_exprs(input: &str) -> Result<(String, Vec<Arg>), ()> {
                 output.push(chr);
                 extracted_expressions.push(Arg::Placeholder);
                 state = State::NotArg;
-            }
+            },
+            (State::MaybeArg, ':') => {
+                output.push(chr);
+                extracted_expressions.push(Arg::Placeholder);
+                state = State::FormatOpts;
+            },
             (State::MaybeArg, _) => {
                 if matches!(chr, '\\' | '$') {
                     current_expr.push('\\');
@@ -117,49 +122,40 @@ pub fn parse_format_exprs(input: &str) -> Result<(String, Vec<Arg>), ()> {
                 } else {
                     state = State::Expr;
                 }
-            }
-            (State::Ident | State::Expr, '}') => {
-                if inexpr_open_count == 0 {
-                    output.push(chr);
-
-                    if matches!(state, State::Expr) {
-                        extracted_expressions.push(Arg::Expr(current_expr.trim().into()));
-                    } else {
-                        extracted_expressions.push(Arg::Ident(current_expr.trim().into()));
-                    }
-
-                    current_expr = String::new();
-                    state = State::NotArg;
-                } else {
-                    // We're closing one brace met before inside of the expression.
-                    current_expr.push(chr);
-                    inexpr_open_count -= 1;
-                }
-            }
+            },
             (State::Ident | State::Expr, ':') if matches!(chars.peek(), Some(':')) => {
                 // path separator
                 state = State::Expr;
                 current_expr.push_str("::");
                 chars.next();
-            }
-            (State::Ident | State::Expr, ':') => {
+            },
+            (State::Ident | State::Expr, ':' | '}') => {
                 if inexpr_open_count == 0 {
-                    // We're outside of braces, thus assume that it's a specifier, like "{Some(value):?}"
-                    output.push(chr);
+                    let trimmed = current_expr.trim();
 
-                    if matches!(state, State::Expr) {
-                        extracted_expressions.push(Arg::Expr(current_expr.trim().into()));
+                    // if the expression consists of a single number, like "0" or "12", it can refer to
+                    // format args in the order they are specified.
+                    // see: https://doc.rust-lang.org/std/fmt/#positional-parameters
+                    if trimmed.chars().fold(true, |only_num, c| c.is_ascii_digit() && only_num) {
+                        output.push_str(trimmed);
+                    } else if matches!(state, State::Expr) {
+                        extracted_expressions.push(Arg::Expr(trimmed.into()));
                     } else {
-                        extracted_expressions.push(Arg::Ident(current_expr.trim().into()));
+                        extracted_expressions.push(Arg::Ident(trimmed.into()));
                     }
 
-                    current_expr = String::new();
-                    state = State::FormatOpts;
-                } else {
+                    output.push(chr);
+                    current_expr.clear();
+                    state = if chr == ':' {State::FormatOpts} else if chr == '}' {State::NotArg} else {unreachable!()};
+                } else if chr == '}' {
+                    // We're closing one brace met before inside of the expression.
+                    current_expr.push(chr);
+                    inexpr_open_count -= 1;
+                } else if chr == ':' {
                     // We're inside of braced expression, assume that it's a struct field name/value delimiter.
                     current_expr.push(chr);
                 }
-            }
+            },
             (State::Ident | State::Expr, '{') => {
                 state = State::Expr;
                 current_expr.push(chr);
@@ -219,6 +215,10 @@ mod tests {
             ("{expr} is {2 + 2}", expect![["{} is {}; expr, 2 + 2"]]),
             ("{expr:?}", expect![["{:?}; expr"]]),
             ("{expr:1$}", expect![[r"{:1\$}; expr"]]),
+            ("{:1$}", expect![[r"{:1\$}; $1"]]),
+            ("{:>padding$}", expect![[r"{:>padding\$}; $1"]]),
+            ("{}, {}, {0}", expect![[r"{}, {}, {0}; $1, $2"]]),
+            ("{}, {}, {0:b}", expect![[r"{}, {}, {0:b}; $1, $2"]]),
             ("{$0}", expect![[r"{}; \$0"]]),
             ("{malformed", expect![["-"]]),
             ("malformed}", expect![["-"]]),
