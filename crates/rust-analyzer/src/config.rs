@@ -118,9 +118,11 @@ config_data! {
         /// This option does not take effect until rust-analyzer is restarted.
         cargo_sysroot: Option<String>    = "\"discover\"",
         /// Compilation target override (target triple).
+        // FIXME(@poliorcetics): move to multiple targets here too, but this will need more work
+        // than `checkOnSave_target`
         cargo_target: Option<String>     = "null",
         /// Unsets `#[cfg(test)]` for the specified crates.
-        cargo_unsetTest: Vec<String>   = "[\"core\"]",
+        cargo_unsetTest: Vec<String>     = "[\"core\"]",
 
         /// Check all targets and tests (`--all-targets`).
         checkOnSave_allTargets: bool                     = "true",
@@ -174,9 +176,13 @@ config_data! {
         /// ```
         /// .
         checkOnSave_overrideCommand: Option<Vec<String>> = "null",
-        /// Check for a specific target. Defaults to
-        /// `#rust-analyzer.cargo.target#`.
-        checkOnSave_target: Option<String>               = "null",
+        /// Check for specific targets. Defaults to `#rust-analyzer.cargo.target#` if empty.
+        ///
+        /// Can be a single target, e.g. `"x86_64-unknown-linux-gnu"` or a list of targets, e.g.
+        /// `["aarch64-apple-darwin", "x86_64-apple-darwin"]`.
+        ///
+        /// Aliased as `"checkOnSave.targets"`.
+        checkOnSave_target | checkOnSave_targets: CheckOnSaveTargets           = "[]",
 
         /// Toggles the additional completions that automatically add imports when completed.
         /// Note that your client must specify the `additionalTextEdits` LSP client capability to truly have this feature enabled.
@@ -1147,11 +1153,10 @@ impl Config {
             }
             Some(_) | None => FlycheckConfig::CargoCommand {
                 command: self.data.checkOnSave_command.clone(),
-                target_triple: self
-                    .data
-                    .checkOnSave_target
-                    .clone()
-                    .or_else(|| self.data.cargo_target.clone()),
+                target_triples: match &self.data.checkOnSave_target.0[..] {
+                    [] => self.data.cargo_target.clone().into_iter().collect(),
+                    targets => targets.into(),
+                },
                 all_targets: self.data.checkOnSave_allTargets,
                 no_default_features: self
                     .data
@@ -1658,6 +1663,9 @@ enum InvocationStrategy {
 }
 
 #[derive(Deserialize, Debug, Clone)]
+struct CheckOnSaveTargets(#[serde(deserialize_with = "single_or_array")] Vec<String>);
+
+#[derive(Deserialize, Debug, Clone)]
 #[serde(rename_all = "snake_case")]
 enum InvocationLocation {
     Root,
@@ -2116,6 +2124,17 @@ fn field_props(field: &str, ty: &str, doc: &[&str], default: &str) -> serde_json
             "enumDescriptions": [
                 "The command will be executed in the corresponding workspace root.",
                 "The command will be executed in the project root."
+            ],
+        },
+        "CheckOnSaveTargets" => set! {
+            "anyOf": [
+                {
+                    "type": "string",
+                },
+                {
+                    "type": "array",
+                    "items": { "type": "string" }
+                },
             ],
         },
         _ => panic!("missing entry for {}: {}", ty, default),

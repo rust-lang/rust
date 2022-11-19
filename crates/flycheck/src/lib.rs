@@ -40,7 +40,7 @@ pub enum InvocationLocation {
 pub enum FlycheckConfig {
     CargoCommand {
         command: String,
-        target_triple: Option<String>,
+        target_triples: Vec<String>,
         all_targets: bool,
         no_default_features: bool,
         all_features: bool,
@@ -286,7 +286,7 @@ impl FlycheckActor {
         let (mut cmd, args) = match &self.config {
             FlycheckConfig::CargoCommand {
                 command,
-                target_triple,
+                target_triples,
                 no_default_features,
                 all_targets,
                 all_features,
@@ -300,7 +300,7 @@ impl FlycheckActor {
                 cmd.args(&["--workspace", "--message-format=json", "--manifest-path"])
                     .arg(self.root.join("Cargo.toml").as_os_str());
 
-                if let Some(target) = target_triple {
+                for target in target_triples {
                     cmd.args(&["--target", target.as_str()]);
                 }
                 if *all_targets {

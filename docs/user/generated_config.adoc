@@ -190,11 +190,15 @@ cargo check --workspace --message-format=json --all-targets
 ```
 .
 --
-[[rust-analyzer.checkOnSave.target]]rust-analyzer.checkOnSave.target (default: `null`)::
+[[rust-analyzer.checkOnSave.target]]rust-analyzer.checkOnSave.target (default: `[]`)::
 +
 --
-Check for a specific target. Defaults to
-`#rust-analyzer.cargo.target#`.
+Check for specific targets. Defaults to `#rust-analyzer.cargo.target#` if empty.
+
+Can be a single target, e.g. `"x86_64-unknown-linux-gnu"` or a list of targets, e.g.
+`["aarch64-apple-darwin", "x86_64-apple-darwin"]`.
+
+Aliased as `"checkOnSave.targets"`.
 --
 [[rust-analyzer.completion.autoimport.enable]]rust-analyzer.completion.autoimport.enable (default: `true`)::
 +
