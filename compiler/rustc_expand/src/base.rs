@@ -1436,7 +1436,7 @@ fn pretty_printing_compatibility_hack(item: &Item, sess: &ParseSess) -> bool {
                             let crate_matches = if c.starts_with("allsorts-rental") {
                                 true
                             } else {
-                                let mut version = c.trim_start_matches("rental-").split(".");
+                                let mut version = c.trim_start_matches("rental-").split('.');
                                 version.next() == Some("0")
                                     && version.next() == Some("5")
                                     && version
