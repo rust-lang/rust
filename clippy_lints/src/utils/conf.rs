@@ -53,11 +53,11 @@ impl DisallowedPath {
         path
     }
 
-    pub fn reason(&self) -> Option<&str> {
+    pub fn reason(&self) -> Option<String> {
         match self {
             Self::WithReason {
                 reason: Some(reason), ..
-            } => Some(reason),
+            } => Some(format!("{reason} (from clippy.toml)")),
             _ => None,
         }
     }

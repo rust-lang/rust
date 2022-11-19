@@ -1,8 +1,7 @@
 use clippy_utils::diagnostics::span_lint;
-use clippy_utils::{def_path_res, trait_ref_of_method};
+use clippy_utils::{def_path_def_ids, trait_ref_of_method};
 use rustc_data_structures::fx::FxHashSet;
 use rustc_hir as hir;
-use rustc_hir::def::Namespace;
 use rustc_lint::{LateContext, LateLintPass};
 use rustc_middle::ty::TypeVisitable;
 use rustc_middle::ty::{Adt, Array, Ref, Slice, Tuple, Ty};
@@ -94,7 +93,7 @@ impl<'tcx> LateLintPass<'tcx> for MutableKeyType {
         let mut path = Vec::new();
         for ty in &self.ignore_interior_mutability {
             path.extend(ty.split("::"));
-            if let Some(id) = def_path_res(cx, &path[..], Some(Namespace::TypeNS)).opt_def_id() {
+            for id in def_path_def_ids(cx, &path[..]) {
                 self.ignore_mut_def_ids.insert(id);
             }
             path.clear();
