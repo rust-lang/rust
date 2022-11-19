@@ -372,6 +372,11 @@ pub trait MirVisitor {
                 self.visit_operand(required, location);
                 self.visit_operand(found, location);
             }
+            AssertMessage::OccupiedNiche { found, start, end } => {
+                self.visit_operand(found, location);
+                self.visit_operand(start, location);
+                self.visit_operand(end, location);
+            }
         }
     }
 }

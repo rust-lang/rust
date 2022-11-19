@@ -157,7 +157,7 @@ impl<O> AssertKind<O> {
                 "`gen fn` should just keep returning `None` after panicking"
             }
 
-            BoundsCheck { .. } | MisalignedPointerDereference { .. } => {
+            BoundsCheck { .. } | MisalignedPointerDereference { .. } | OccupiedNiche { .. } => {
                 bug!("Unexpected AssertKind")
             }
         }
@@ -220,6 +220,13 @@ impl<O> AssertKind<O> {
                     "\"misaligned pointer dereference: address must be a multiple of {{}} but is {{}}\", {required:?}, {found:?}"
                 )
             }
+            OccupiedNiche { found, start, end } => {
+                write!(
+                    f,
+                    "\"occupied niche: {{}} must be in {{}}..={{}}\", {:?}, {:?}, {:?}",
+                    found, start, end
+                )
+            }
             _ => write!(f, "\"{}\"", self.description()),
         }
     }
@@ -254,8 +261,8 @@ impl<O> AssertKind<O> {
             ResumedAfterPanic(CoroutineKind::Coroutine) => {
                 middle_assert_coroutine_resume_after_panic
             }
-
             MisalignedPointerDereference { .. } => middle_assert_misaligned_ptr_deref,
+            OccupiedNiche { .. } => middle_assert_occupied_niche,
         }
     }
 
@@ -291,6 +298,11 @@ impl<O> AssertKind<O> {
             MisalignedPointerDereference { required, found } => {
                 add!("required", format!("{required:#?}"));
                 add!("found", format!("{found:#?}"));
+            }
+            OccupiedNiche { found, start, end } => {
+                add!("found", format!("{found:?}"));
+                add!("start", format!("{start:?}"));
+                add!("end", format!("{end:?}"));
             }
         }
     }

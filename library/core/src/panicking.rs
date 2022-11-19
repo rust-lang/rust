@@ -208,6 +208,22 @@ fn panic_misaligned_pointer_dereference(required: usize, found: usize) -> ! {
     )
 }
 
+#[cold]
+#[cfg_attr(not(feature = "panic_immediate_abort"), inline(never))]
+#[track_caller]
+#[cfg_attr(not(bootstrap), lang = "panic_occupied_niche")] // needed by codegen for panic on occupied niches
+#[rustc_nounwind] // `CheckNiches` MIR pass requires this function to never unwind
+fn panic_occupied_niche<T: crate::fmt::Debug>(found: T, min: T, max: T) -> ! {
+    if cfg!(feature = "panic_immediate_abort") {
+        super::intrinsics::abort()
+    }
+
+    panic_nounwind_fmt(
+        format_args!("occupied niche: found {found:?} but must be in {min:?}..={max:?}"),
+        /* force_no_backtrace */ false,
+    )
+}
+
 /// Panic because we cannot unwind out of a function.
 ///
 /// This is a separate function to avoid the codesize impact of each crate containing the string to

@@ -844,6 +844,20 @@ impl<'a, 'tcx> MirVisitor<'tcx> for MirUsedCollector<'a, 'tcx> {
             mir::TerminatorKind::Assert { ref msg, .. } => {
                 let lang_item = match &**msg {
                     mir::AssertKind::BoundsCheck { .. } => LangItem::PanicBoundsCheck,
+                    mir::AssertKind::MisalignedPointerDereference { .. } => {
+                        LangItem::PanicMisalignedPointerDereference
+                    }
+                    mir::AssertKind::OccupiedNiche { found, .. } => {
+                        let lang_item = LangItem::PanicOccupiedNiche;
+                        let instance = Instance::new(
+                            tcx.require_lang_item(lang_item, Some(source)),
+                            tcx.mk_args(&[ty::GenericArg::from(found.ty(self.body, tcx))]),
+                        );
+                        if should_codegen_locally(tcx, &instance) {
+                            self.output.push(create_fn_mono_item(tcx, instance, source));
+                        }
+                        LangItem::Panic
+                    }
                     _ => LangItem::Panic,
                 };
                 push_mono_lang_item(self, lang_item);

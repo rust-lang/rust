@@ -52,6 +52,7 @@ mod add_call_guards;
 mod add_moves_for_packed_drops;
 mod add_retag;
 mod check_const_item_mutation;
+mod check_niches;
 mod check_packed_ref;
 pub mod check_unsafety;
 mod remove_place_mention;
@@ -321,6 +322,7 @@ fn mir_promoted(
     tcx: TyCtxt<'_>,
     def: LocalDefId,
 ) -> (&Steal<Body<'_>>, &Steal<IndexVec<Promoted, Body<'_>>>) {
+    tcx.ensure_with_value().unsafety_check_result(def);
     // Ensure that we compute the `mir_const_qualif` for constants at
     // this point, before we steal the mir-const result.
     // Also this means promotion can rely on all const checks having been done.
@@ -567,6 +569,7 @@ fn run_optimization_passes<'tcx>(tcx: TyCtxt<'tcx>, body: &mut Body<'tcx>) {
         body,
         &[
             &check_alignment::CheckAlignment,
+            &check_niches::CheckNiches,
             &lower_slice_len::LowerSliceLenCalls, // has to be done before inlining, otherwise actual call will be almost always inlined. Also simple, so can just do first
             &inline::Inline,
             // Substitutions during inlining may introduce switch on enums with uninhabited branches.

@@ -5,7 +5,7 @@
 // only-x86_64
 
 // edition:2018
-// compile-flags: -Zmir-opt-level=0
+// compile-flags: -Zmir-opt-level=0 -Zmir-enable-passes=-CheckNiches
 
 use std::{sync::Arc, rc::Rc};
 

@@ -572,7 +572,7 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
         mergeable_succ: bool,
     ) -> MergingSucc {
         let span = terminator.source_info.span;
-        let cond = self.codegen_operand(bx, cond).immediate();
+        let mut cond = self.codegen_operand(bx, cond).immediate();
         let mut const_cond = bx.const_to_opt_u128(cond, false).map(|c| c == 1);
 
         // This case can currently arise only from functions marked
@@ -588,8 +588,10 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
             return helper.funclet_br(self, bx, target, mergeable_succ);
         }
 
-        // Pass the condition through llvm.expect for branch hinting.
-        let cond = bx.expect(cond, expected);
+        if bx.tcx().sess.opts.optimize != OptLevel::No {
+            // Pass the condition through llvm.expect for branch hinting.
+            cond = bx.expect(cond, expected);
+        }
 
         // Create the failure block and the conditional branch to it.
         let lltarget = helper.llbb_with_cleanup(self, target);
@@ -608,30 +610,40 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
         let location = self.get_caller_location(bx, terminator.source_info).immediate();
 
         // Put together the arguments to the panic entry point.
-        let (lang_item, args) = match msg {
+        let (lang_item, args, generic) = match msg {
             AssertKind::BoundsCheck { ref len, ref index } => {
                 let len = self.codegen_operand(bx, len).immediate();
                 let index = self.codegen_operand(bx, index).immediate();
                 // It's `fn panic_bounds_check(index: usize, len: usize)`,
                 // and `#[track_caller]` adds an implicit third argument.
-                (LangItem::PanicBoundsCheck, vec![index, len, location])
+                (LangItem::PanicBoundsCheck, vec![index, len, location], None)
             }
             AssertKind::MisalignedPointerDereference { ref required, ref found } => {
                 let required = self.codegen_operand(bx, required).immediate();
                 let found = self.codegen_operand(bx, found).immediate();
                 // It's `fn panic_misaligned_pointer_dereference(required: usize, found: usize)`,
                 // and `#[track_caller]` adds an implicit third argument.
-                (LangItem::PanicMisalignedPointerDereference, vec![required, found, location])
+                (LangItem::PanicMisalignedPointerDereference, vec![required, found, location], None)
+            }
+            AssertKind::OccupiedNiche { ref found, ref start, ref end } => {
+                let found = self.codegen_operand(bx, found);
+                let generic_arg = ty::GenericArg::from(found.layout.ty);
+                let found = found.immediate();
+                let start = self.codegen_operand(bx, start).immediate();
+                let end = self.codegen_operand(bx, end).immediate();
+                // It's `fn panic_occupied_niche<T>(found: T, start: T, end: T)`,
+                // and `#[track_caller]` adds an implicit fourth argument.
+                (LangItem::PanicOccupiedNiche, vec![found, start, end, location], Some(generic_arg))
             }
             _ => {
                 let msg = bx.const_str(msg.description());
                 // It's `pub fn panic(expr: &str)`, with the wide reference being passed
                 // as two arguments, and `#[track_caller]` adds an implicit third argument.
-                (LangItem::Panic, vec![msg.0, msg.1, location])
+                (LangItem::Panic, vec![msg.0, msg.1, location], None)
             }
         };
 
-        let (fn_abi, llfn) = common::build_langcall(bx, Some(span), lang_item);
+        let (fn_abi, llfn) = common::build_langcall(bx, Some(span), lang_item, generic);
 
         // Codegen the actual panic invoke/call.
         let merging_succ = helper.do_call(self, bx, fn_abi, llfn, &args, None, unwind, &[], false);
@@ -650,7 +662,7 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
         self.set_debug_loc(bx, terminator.source_info);
 
         // Obtain the panic entry point.
-        let (fn_abi, llfn) = common::build_langcall(bx, Some(span), reason.lang_item());
+        let (fn_abi, llfn) = common::build_langcall(bx, Some(span), reason.lang_item(), None);
 
         // Codegen the actual panic invoke/call.
         let merging_succ = helper.do_call(
@@ -711,8 +723,12 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
                 let msg = bx.const_str(&msg_str);
 
                 // Obtain the panic entry point.
-                let (fn_abi, llfn) =
-                    common::build_langcall(bx, Some(source_info.span), LangItem::PanicNounwind);
+                let (fn_abi, llfn) = common::build_langcall(
+                    bx,
+                    Some(source_info.span),
+                    LangItem::PanicNounwind,
+                    None,
+                );
 
                 // Codegen the actual panic invoke/call.
                 helper.do_call(
@@ -1586,7 +1602,7 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
 
         self.set_debug_loc(&mut bx, mir::SourceInfo::outermost(self.mir.span));
 
-        let (fn_abi, fn_ptr) = common::build_langcall(&bx, None, reason.lang_item());
+        let (fn_abi, fn_ptr) = common::build_langcall(&bx, None, reason.lang_item(), None);
         let fn_ty = bx.fn_decl_backend_type(&fn_abi);
 
         let llret = bx.call(fn_ty, None, Some(&fn_abi), fn_ptr, &[], funclet.as_ref());

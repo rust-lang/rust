@@ -1,4 +1,5 @@
 // compile-flags: -O
+// ignore-debug: niche checks in std interfere with the codegen we are looking for
 // aux-build:thread_local_aux.rs
 // ignore-windows FIXME(#84933)
 // ignore-wasm globals are used instead of thread locals

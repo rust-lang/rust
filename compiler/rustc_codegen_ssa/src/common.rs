@@ -2,7 +2,7 @@
 
 use rustc_hir::LangItem;
 use rustc_middle::mir;
-use rustc_middle::ty::{self, layout::TyAndLayout, Ty, TyCtxt};
+use rustc_middle::ty::{self, layout::TyAndLayout, GenericArg, Ty, TyCtxt};
 use rustc_span::Span;
 
 use crate::base;
@@ -120,10 +120,15 @@ pub fn build_langcall<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>>(
     bx: &Bx,
     span: Option<Span>,
     li: LangItem,
+    generic: Option<GenericArg<'tcx>>,
 ) -> (Bx::FnAbiOfResult, Bx::Value) {
     let tcx = bx.tcx();
     let def_id = tcx.require_lang_item(li, span);
-    let instance = ty::Instance::mono(tcx, def_id);
+    let instance = if let Some(arg) = generic {
+        ty::Instance::new(def_id, tcx.mk_args(&[arg]))
+    } else {
+        ty::Instance::mono(tcx, def_id)
+    };
     (bx.fn_abi_of_instance(instance, ty::List::empty()), bx.get_fn_addr(instance))
 }
 

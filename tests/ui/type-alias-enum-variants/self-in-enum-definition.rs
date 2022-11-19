@@ -1,3 +1,5 @@
+// compile-flags: -Cdebug-assertions=no
+
 #[repr(u8)]
 enum Alpha {
     V1 = 41,

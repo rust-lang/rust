@@ -561,6 +561,11 @@ impl<'mir, 'tcx> interpret::Machine<'mir, 'tcx> for CompileTimeInterpreter<'mir,
                     found: eval_to_int(found)?,
                 }
             }
+            OccupiedNiche { ref found, ref start, ref end } => OccupiedNiche {
+                found: eval_to_int(found)?,
+                start: eval_to_int(start)?,
+                end: eval_to_int(end)?,
+            },
         };
         Err(ConstEvalErrKind::AssertFailure(err).into())
     }

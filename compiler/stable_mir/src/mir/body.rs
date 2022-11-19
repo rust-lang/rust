@@ -149,6 +149,7 @@ pub enum AssertMessage {
     ResumedAfterReturn(CoroutineKind),
     ResumedAfterPanic(CoroutineKind),
     MisalignedPointerDereference { required: Operand, found: Operand },
+    OccupiedNiche { found: Operand, start: Operand, end: Operand },
 }
 
 #[derive(Clone, Debug, Eq, PartialEq)]

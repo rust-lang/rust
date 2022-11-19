@@ -812,6 +812,13 @@ impl<'tcx> Stable<'tcx> for mir::AssertMessage<'tcx> {
                     found: found.stable(tables),
                 }
             }
+            AssertKind::OccupiedNiche { found, start, end } => {
+                stable_mir::mir::AssertMessage::OccupiedNiche {
+                    found: found.stable(tables),
+                    start: start.stable(tables),
+                    end: end.stable(tables),
+                }
+            }
         }
     }
 }

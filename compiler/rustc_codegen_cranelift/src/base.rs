@@ -8,6 +8,7 @@ use rustc_index::IndexVec;
 use rustc_middle::ty::adjustment::PointerCoercion;
 use rustc_middle::ty::layout::FnAbiOf;
 use rustc_middle::ty::print::with_no_trimmed_paths;
+use rustc_middle::ty::GenericArg;
 
 use crate::constant::ConstantCx;
 use crate::debuginfo::FunctionDebugContext;
@@ -354,6 +355,7 @@ fn codegen_fn_body(fx: &mut FunctionCx<'_, '_, '_>, start_block: Block) {
                             rustc_hir::LangItem::PanicBoundsCheck,
                             &[index, len, location],
                             source_info.span,
+                            None,
                         );
                     }
                     AssertKind::MisalignedPointerDereference { ref required, ref found } => {
@@ -366,7 +368,24 @@ fn codegen_fn_body(fx: &mut FunctionCx<'_, '_, '_>, start_block: Block) {
                             rustc_hir::LangItem::PanicMisalignedPointerDereference,
                             &[required, found, location],
                             source_info.span,
+                            None,
                         );
+                    }
+                    AssertKind::OccupiedNiche { ref found, ref start, ref end } => {
+                        let found = codegen_operand(fx, found);
+                        let generic_arg = ty::GenericArg::from(found.layout().ty);
+                        let found = found.load_scalar(fx);
+                        let start = codegen_operand(fx, start).load_scalar(fx);
+                        let end = codegen_operand(fx, end).load_scalar(fx);
+                        let location = fx.get_caller_location(source_info).load_scalar(fx);
+
+                        codegen_panic_inner(
+                            fx,
+                            rustc_hir::LangItem::PanicOccupiedNiche,
+                            &[found, start, end, location],
+                            source_info.span,
+                            Some(generic_arg),
+                        )
                     }
                     _ => {
                         let msg_str = msg.description();
@@ -945,7 +964,7 @@ pub(crate) fn codegen_panic<'tcx>(
     let msg_len = fx.bcx.ins().iconst(fx.pointer_type, i64::try_from(msg_str.len()).unwrap());
     let args = [msg_ptr, msg_len, location];
 
-    codegen_panic_inner(fx, rustc_hir::LangItem::Panic, &args, source_info.span);
+    codegen_panic_inner(fx, rustc_hir::LangItem::Panic, &args, source_info.span, None);
 }
 
 pub(crate) fn codegen_panic_nounwind<'tcx>(
@@ -957,7 +976,7 @@ pub(crate) fn codegen_panic_nounwind<'tcx>(
     let msg_len = fx.bcx.ins().iconst(fx.pointer_type, i64::try_from(msg_str.len()).unwrap());
     let args = [msg_ptr, msg_len];
 
-    codegen_panic_inner(fx, rustc_hir::LangItem::PanicNounwind, &args, source_info.span);
+    codegen_panic_inner(fx, rustc_hir::LangItem::PanicNounwind, &args, source_info.span, None);
 }
 
 pub(crate) fn codegen_unwind_terminate<'tcx>(
@@ -967,7 +986,7 @@ pub(crate) fn codegen_unwind_terminate<'tcx>(
 ) {
     let args = [];
 
-    codegen_panic_inner(fx, reason.lang_item(), &args, source_info.span);
+    codegen_panic_inner(fx, reason.lang_item(), &args, source_info.span, None);
 }
 
 fn codegen_panic_inner<'tcx>(
@@ -975,10 +994,16 @@ fn codegen_panic_inner<'tcx>(
     lang_item: rustc_hir::LangItem,
     args: &[Value],
     span: Span,
+    generic: Option<GenericArg<'tcx>>,
 ) {
     let def_id = fx.tcx.require_lang_item(lang_item, Some(span));
 
-    let instance = Instance::mono(fx.tcx, def_id).polymorphize(fx.tcx);
+    let instance = if let Some(arg) = generic {
+        Instance::new(def_id, fx.tcx.mk_args(&[arg]))
+    } else {
+        Instance::mono(fx.tcx, def_id)
+    }
+    .polymorphize(fx.tcx);
     let symbol_name = fx.tcx.symbol_name(instance).name;
 
     fx.lib_call(
