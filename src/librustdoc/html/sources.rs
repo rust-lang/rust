@@ -287,8 +287,11 @@ pub(crate) fn print_src(
             }
         }
         SourceContext::Embedded { offset, needs_expansion } => {
-            extra =
-                if needs_expansion { Some(r#"<span class="expand">&varr;</span>"#) } else { None };
+            extra = if needs_expansion {
+                Some(r#"<button class="expand">&varr;</button>"#)
+            } else {
+                None
+            };
             for line_number in 1..=lines {
                 let line = line_number + offset;
                 writeln!(line_numbers, "<span>{line}</span>")

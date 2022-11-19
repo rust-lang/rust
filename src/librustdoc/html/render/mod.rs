@@ -2915,7 +2915,7 @@ fn render_call_locations(w: &mut Buffer, cx: &mut Context<'_>, item: &clean::Ite
         );
 
         if line_ranges.len() > 1 {
-            write!(w, r#"<span class="prev">&pr;</span> <span class="next">&sc;</span>"#);
+            write!(w, r#"<button class="prev">&pr;</button> <button class="next">&sc;</button>"#);
         }
 
         // Look for the example file in the source map if it exists, otherwise return a dummy span
