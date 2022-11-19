@@ -196,6 +196,7 @@ trait Foo {
     type Output;
 
     const CONST: usize = 42;
+    const CONST_2: i32;
 
     fn foo(&self);
     fn bar(&self);
@@ -213,6 +214,7 @@ trait Foo {
     type Output;
 
     const CONST: usize = 42;
+    const CONST_2: i32;
 
     fn foo(&self);
     fn bar(&self);
@@ -226,7 +228,7 @@ impl Foo for S {
 
     $0type Output;
 
-    const CONST: usize = 42;
+    const CONST_2: i32;
 
     fn foo(&self) {
         todo!()
@@ -658,6 +660,7 @@ trait Foo {
     type Output;
 
     const CONST: usize = 42;
+    const CONST_2: i32;
 
     fn valid(some: u32) -> bool { false }
     fn foo(some: u32) -> bool;
@@ -669,13 +672,16 @@ trait Foo {
     type Output;
 
     const CONST: usize = 42;
+    const CONST_2: i32;
 
     fn valid(some: u32) -> bool { false }
     fn foo(some: u32) -> bool;
 }
 struct S;
 impl Foo for S {
-    $0fn valid(some: u32) -> bool { false }
+    $0const CONST: usize = 42;
+
+    fn valid(some: u32) -> bool { false }
 }"#,
         )
     }
