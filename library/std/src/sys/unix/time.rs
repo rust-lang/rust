@@ -150,7 +150,7 @@ impl From<libc::timespec> for Timespec {
 }
 
 #[cfg(any(
-    all(target_os = "macos", any(not(target_arch = "aarch64"), miri)),
+    all(target_os = "macos", any(not(target_arch = "aarch64"))),
     target_os = "ios",
     target_os = "watchos"
 ))]
@@ -270,7 +270,7 @@ mod inner {
 }
 
 #[cfg(not(any(
-    all(target_os = "macos", any(not(target_arch = "aarch64"), miri)),
+    all(target_os = "macos", any(not(target_arch = "aarch64"))),
     target_os = "ios",
     target_os = "watchos"
 )))]
