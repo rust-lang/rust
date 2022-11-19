@@ -1393,6 +1393,12 @@ h3.variant {
 	background-color: var(--button-background-color);
 	border: 1px solid var(--border-color);
 	border-radius: 2px;
+	color: var(--settings-button-color);
+}
+
+#settings-menu > a:hover, #settings-menu > a:focus,
+#help-button > a:hover, #help-button > a:focus {
+	border-color: var(--settings-button-border-focus);
 }
 
 #copy-path {
