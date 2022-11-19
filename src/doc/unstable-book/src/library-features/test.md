@@ -77,7 +77,7 @@ Advice on writing benchmarks:
 
 ## Using cargo bench along stable rust
 
-To improve user experience when using `cargo bench` in a porject built with stable rust,
+To improve user experience when using `cargo bench` in a project built with stable rust,
 you can gate all the benchmarking under a seperate feature that you shoulld only call it
 with nightly. In this example we add a new feature to `Cargo.toml` called `bench`.
 
