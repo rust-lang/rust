@@ -7,7 +7,9 @@ use crate::sync::Once;
 
 /// A synchronization primitive which can be written to only once.
 ///
-/// This type is a thread-safe `OnceCell`.
+/// This type is a thread-safe [`OnceCell`], and can be used in statics.
+///
+/// [`OnceCell`]: crate::cell::OnceCell
 ///
 /// # Examples
 ///
@@ -33,7 +35,7 @@ use crate::sync::Once;
 #[unstable(feature = "once_cell", issue = "74465")]
 pub struct OnceLock<T> {
     once: Once,
-    // Whether or not the value is initialized is tracked by `state_and_queue`.
+    // Whether or not the value is initialized is tracked by `once.is_completed()`.
     value: UnsafeCell<MaybeUninit<T>>,
     /// `PhantomData` to make sure dropck understands we're dropping T in our Drop impl.
     ///
