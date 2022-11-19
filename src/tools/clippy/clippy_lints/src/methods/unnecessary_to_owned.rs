@@ -419,7 +419,7 @@ fn can_change_type<'a>(cx: &LateContext<'a>, mut expr: &'a Expr<'a>, mut ty: Ty<
 
                         if trait_predicates.any(|predicate| {
                             let predicate = EarlyBinder(predicate).subst(cx.tcx, new_subst);
-                            let obligation = Obligation::new(ObligationCause::dummy(), cx.param_env, predicate);
+                            let obligation = Obligation::new(cx.tcx, ObligationCause::dummy(), cx.param_env, predicate);
                             !cx.tcx.infer_ctxt().build().predicate_must_hold_modulo_regions(&obligation)
                         }) {
                             return false;

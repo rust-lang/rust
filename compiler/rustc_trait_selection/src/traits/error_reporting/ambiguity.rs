@@ -32,7 +32,7 @@ pub fn recompute_applicable_impls<'tcx>(
             impl_predicates
                 .predicates
                 .iter()
-                .map(|&predicate| Obligation::new(dummy_cause.clone(), param_env, predicate)),
+                .map(|&predicate| Obligation::new(tcx, dummy_cause.clone(), param_env, predicate)),
         );
 
         ocx.select_where_possible().is_empty()

@@ -1,5 +1,5 @@
 use rustc_middle::traits::ObligationCause;
-use rustc_middle::ty::{self, ToPredicate, Ty};
+use rustc_middle::ty::{self, Ty};
 
 use crate::traits::{Obligation, PredicateObligation};
 
@@ -28,12 +28,8 @@ impl<'tcx> InferCtxt<'tcx> {
         });
         let projection =
             ty::Binder::dummy(ty::ProjectionPredicate { projection_ty, term: ty_var.into() });
-        let obligation = Obligation::with_depth(
-            cause,
-            recursion_depth,
-            param_env,
-            projection.to_predicate(self.tcx),
-        );
+        let obligation =
+            Obligation::with_depth(self.tcx, cause, recursion_depth, param_env, projection);
         obligations.push(obligation);
         ty_var
     }

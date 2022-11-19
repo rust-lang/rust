@@ -2987,6 +2987,10 @@ impl<'test> TestCx<'test> {
             cmd.env("LLVM_BIN_DIR", llvm_bin_dir);
         }
 
+        if let Some(ref remote_test_client) = self.config.remote_test_client {
+            cmd.env("REMOTE_TEST_CLIENT", remote_test_client);
+        }
+
         // We don't want RUSTFLAGS set from the outside to interfere with
         // compiler flags set in the test cases:
         cmd.env_remove("RUSTFLAGS");

@@ -655,15 +655,40 @@ impl<'hir> LoweringContext<'_, 'hir> {
 
             hir::ExprKind::Closure(c)
         };
-        let generator = hir::Expr {
-            hir_id: self.lower_node_id(closure_node_id),
-            kind: generator_kind,
-            span: self.lower_span(span),
-        };
-
-        // `future::from_generator`:
+        let parent_has_track_caller = self
+            .attrs
+            .values()
+            .find(|attrs| attrs.into_iter().find(|attr| attr.has_name(sym::track_caller)).is_some())
+            .is_some();
         let unstable_span =
             self.mark_span_with_reason(DesugaringKind::Async, span, self.allow_gen_future.clone());
+
+        let hir_id = if parent_has_track_caller {
+            let generator_hir_id = self.lower_node_id(closure_node_id);
+            self.lower_attrs(
+                generator_hir_id,
+                &[Attribute {
+                    kind: AttrKind::Normal(ptr::P(NormalAttr {
+                        item: AttrItem {
+                            path: Path::from_ident(Ident::new(sym::track_caller, span)),
+                            args: MacArgs::Empty,
+                            tokens: None,
+                        },
+                        tokens: None,
+                    })),
+                    id: self.tcx.sess.parse_sess.attr_id_generator.mk_attr_id(),
+                    style: AttrStyle::Outer,
+                    span: unstable_span,
+                }],
+            );
+            generator_hir_id
+        } else {
+            self.lower_node_id(closure_node_id)
+        };
+
+        let generator = hir::Expr { hir_id, kind: generator_kind, span: self.lower_span(span) };
+
+        // `future::from_generator`:
         let gen_future = self.expr_lang_item_path(
             unstable_span,
             hir::LangItem::FromGenerator,

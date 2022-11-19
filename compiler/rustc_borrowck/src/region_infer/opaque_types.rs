@@ -7,9 +7,7 @@ use rustc_infer::infer::{DefiningAnchor, InferCtxt};
 use rustc_infer::traits::{Obligation, ObligationCause};
 use rustc_middle::ty::subst::{GenericArgKind, InternalSubsts};
 use rustc_middle::ty::visit::TypeVisitable;
-use rustc_middle::ty::{
-    self, OpaqueHiddenType, OpaqueTypeKey, ToPredicate, Ty, TyCtxt, TypeFoldable,
-};
+use rustc_middle::ty::{self, OpaqueHiddenType, OpaqueTypeKey, Ty, TyCtxt, TypeFoldable};
 use rustc_span::Span;
 use rustc_trait_selection::traits::error_reporting::TypeErrCtxtExt as _;
 use rustc_trait_selection::traits::ObligationCtxt;
@@ -256,8 +254,7 @@ impl<'tcx> InferCtxtExt<'tcx> for InferCtxt<'tcx> {
         // Require the hidden type to be well-formed with only the generics of the opaque type.
         // Defining use functions may have more bounds than the opaque type, which is ok, as long as the
         // hidden type is well formed even without those bounds.
-        let predicate = ty::Binder::dummy(ty::PredicateKind::WellFormed(definition_ty.into()))
-            .to_predicate(infcx.tcx);
+        let predicate = ty::Binder::dummy(ty::PredicateKind::WellFormed(definition_ty.into()));
 
         let id_substs = InternalSubsts::identity_for_item(self.tcx, def_id.to_def_id());
 
@@ -282,6 +279,7 @@ impl<'tcx> InferCtxtExt<'tcx> for InferCtxt<'tcx> {
         }
 
         ocx.register_obligation(Obligation::misc(
+            infcx.tcx,
             instantiated_ty.span,
             body_id,
             param_env,

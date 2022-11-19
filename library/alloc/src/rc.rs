@@ -293,6 +293,15 @@ struct RcBox<T: ?Sized> {
     value: T,
 }
 
+/// Calculate layout for `RcBox<T>` using the inner value's layout
+fn rcbox_layout_for_value_layout(layout: Layout) -> Layout {
+    // Calculate layout using the given value layout.
+    // Previously, layout was calculated on the expression
+    // `&*(ptr as *const RcBox<T>)`, but this created a misaligned
+    // reference (see #54908).
+    Layout::new::<RcBox<()>>().extend(layout).unwrap().0.pad_to_align()
+}
+
 /// A single-threaded reference-counting pointer. 'Rc' stands for 'Reference
 /// Counted'.
 ///
@@ -1334,11 +1343,7 @@ impl<T: ?Sized> Rc<T> {
         allocate: impl FnOnce(Layout) -> Result<NonNull<[u8]>, AllocError>,
         mem_to_rcbox: impl FnOnce(*mut u8) -> *mut RcBox<T>,
     ) -> *mut RcBox<T> {
-        // Calculate layout using the given value layout.
-        // Previously, layout was calculated on the expression
-        // `&*(ptr as *const RcBox<T>)`, but this created a misaligned
-        // reference (see #54908).
-        let layout = Layout::new::<RcBox<()>>().extend(value_layout).unwrap().0.pad_to_align();
+        let layout = rcbox_layout_for_value_layout(value_layout);
         unsafe {
             Rc::try_allocate_for_layout(value_layout, allocate, mem_to_rcbox)
                 .unwrap_or_else(|_| handle_alloc_error(layout))
@@ -1357,11 +1362,7 @@ impl<T: ?Sized> Rc<T> {
         allocate: impl FnOnce(Layout) -> Result<NonNull<[u8]>, AllocError>,
         mem_to_rcbox: impl FnOnce(*mut u8) -> *mut RcBox<T>,
     ) -> Result<*mut RcBox<T>, AllocError> {
-        // Calculate layout using the given value layout.
-        // Previously, layout was calculated on the expression
-        // `&*(ptr as *const RcBox<T>)`, but this created a misaligned
-        // reference (see #54908).
-        let layout = Layout::new::<RcBox<()>>().extend(value_layout).unwrap().0.pad_to_align();
+        let layout = rcbox_layout_for_value_layout(value_layout);
 
         // Allocate for the layout.
         let ptr = allocate(layout)?;
@@ -1428,7 +1429,7 @@ impl<T> Rc<[T]> {
         }
     }
 
-    /// Copy elements from slice into newly allocated Rc<\[T\]>
+    /// Copy elements from slice into newly allocated `Rc<[T]>`
     ///
     /// Unsafe because the caller must either take ownership or bind `T: Copy`
     #[cfg(not(no_global_oom_handling))]
@@ -1437,6 +1438,48 @@ impl<T> Rc<[T]> {
             let ptr = Self::allocate_for_slice(v.len());
             ptr::copy_nonoverlapping(v.as_ptr(), &mut (*ptr).value as *mut [T] as *mut T, v.len());
             Self::from_ptr(ptr)
+        }
+    }
+
+    /// Create an `Rc<[T]>` by reusing the underlying memory
+    /// of a `Vec<T>`. This will return the vector if the existing allocation
+    /// is not large enough.
+    #[cfg(not(no_global_oom_handling))]
+    fn try_from_vec_in_place(mut v: Vec<T>) -> Result<Rc<[T]>, Vec<T>> {
+        let layout_elements = Layout::array::<T>(v.len()).unwrap();
+        let layout_allocation = Layout::array::<T>(v.capacity()).unwrap();
+        let layout_rcbox = rcbox_layout_for_value_layout(layout_elements);
+        let mut ptr = NonNull::new(v.as_mut_ptr()).expect("`Vec<T>` stores `NonNull<T>`");
+        if layout_rcbox.size() > layout_allocation.size()
+            || layout_rcbox.align() > layout_allocation.align()
+        {
+            // Can't fit - calling `grow` would involve `realloc`
+            // (which copies the elements), followed by copying again.
+            return Err(v);
+        }
+        if layout_rcbox.size() < layout_allocation.size()
+            || layout_rcbox.align() < layout_allocation.align()
+        {
+            // We need to shrink the allocation so that it fits
+            // https://doc.rust-lang.org/nightly/std/alloc/trait.Allocator.html#memory-fitting
+            // SAFETY:
+            // - Vec allocates by requesting `Layout::array::<T>(capacity)`, so this capacity matches
+            // - `layout_rcbox` is smaller
+            // If this fails, the ownership has not been transferred
+            if let Ok(p) = unsafe { Global.shrink(ptr.cast(), layout_allocation, layout_rcbox) } {
+                ptr = p.cast();
+            } else {
+                return Err(v);
+            }
+        }
+        // Make sure the vec's memory isn't deallocated now
+        let v = mem::ManuallyDrop::new(v);
+        let ptr: *mut RcBox<[T]> = ptr::slice_from_raw_parts_mut(ptr.as_ptr(), v.len()) as _;
+        unsafe {
+            ptr::copy(ptr.cast::<T>(), &mut (*ptr).value as *mut [T] as *mut T, v.len());
+            ptr::write(&mut (*ptr).strong, Cell::new(1));
+            ptr::write(&mut (*ptr).weak, Cell::new(1));
+            Ok(Self::from_ptr(ptr))
         }
     }
 
@@ -1965,14 +2008,17 @@ impl<T> From<Vec<T>> for Rc<[T]> {
     /// assert_eq!(vec![1, 2, 3], *shared);
     /// ```
     #[inline]
-    fn from(mut v: Vec<T>) -> Rc<[T]> {
-        unsafe {
-            let rc = Rc::copy_from_slice(&v);
-
-            // Allow the Vec to free its memory, but not destroy its contents
-            v.set_len(0);
-
-            rc
+    fn from(v: Vec<T>) -> Rc<[T]> {
+        match Rc::try_from_vec_in_place(v) {
+            Ok(rc) => rc,
+            Err(mut v) => {
+                unsafe {
+                    let rc = Rc::copy_from_slice(&v);
+                    // Allow the Vec to free its memory, but not destroy its contents
+                    v.set_len(0);
+                    rc
+                }
+            }
         }
     }
 }

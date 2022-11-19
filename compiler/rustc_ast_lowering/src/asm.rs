@@ -11,7 +11,7 @@ use super::LoweringContext;
 
 use rustc_ast::ptr::P;
 use rustc_ast::*;
-use rustc_data_structures::fx::{FxHashMap, FxHashSet};
+use rustc_data_structures::fx::{FxHashMap, FxHashSet, FxIndexMap};
 use rustc_hir as hir;
 use rustc_hir::def::{DefKind, Res};
 use rustc_hir::definitions::DefPathData;
@@ -71,7 +71,7 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
             .emit();
         }
 
-        let mut clobber_abis = FxHashMap::default();
+        let mut clobber_abis = FxIndexMap::default();
         if let Some(asm_arch) = asm_arch {
             for (abi_name, abi_span) in &asm.clobber_abis {
                 match asm::InlineAsmClobberAbi::parse(asm_arch, &self.tcx.sess.target, *abi_name) {

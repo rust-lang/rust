@@ -180,6 +180,12 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriInterpCxExt<'mir, 'tcx> {
                 let result = this.gettimeofday(tv, tz)?;
                 this.write_scalar(Scalar::from_i32(result), dest)?;
             }
+            "clock_gettime" => {
+                let [clk_id, tp] =
+                    this.check_shim(abi, Abi::C { unwind: false }, link_name, args)?;
+                let result = this.clock_gettime(clk_id, tp)?;
+                this.write_scalar(result, dest)?;
+            }
 
             // Allocation
             "posix_memalign" => {

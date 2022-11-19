@@ -5,7 +5,7 @@ use rustc_hir::{ForeignItem, ForeignItemKind, HirId};
 use rustc_infer::infer::TyCtxtInferExt;
 use rustc_infer::traits::{ObligationCause, WellFormedLoc};
 use rustc_middle::ty::query::Providers;
-use rustc_middle::ty::{self, Region, ToPredicate, TyCtxt, TypeFoldable, TypeFolder};
+use rustc_middle::ty::{self, Region, TyCtxt, TypeFoldable, TypeFolder};
 use rustc_trait_selection::traits;
 
 pub fn provide(providers: &mut Providers) {
@@ -74,10 +74,10 @@ fn diagnostic_hir_wf_check<'tcx>(
             let errors = traits::fully_solve_obligation(
                 &infcx,
                 traits::Obligation::new(
+                    self.tcx,
                     cause,
                     self.param_env,
-                    ty::Binder::dummy(ty::PredicateKind::WellFormed(tcx_ty.into()))
-                        .to_predicate(self.tcx),
+                    ty::Binder::dummy(ty::PredicateKind::WellFormed(tcx_ty.into())),
                 ),
             );
             if !errors.is_empty() {

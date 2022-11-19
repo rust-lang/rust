@@ -147,6 +147,7 @@ impl<'tcx> NonConstOp<'tcx> for FnCallNonConst<'tcx> {
                 }
                 Adt(..) => {
                     let obligation = Obligation::new(
+                        tcx,
                         ObligationCause::dummy(),
                         param_env,
                         Binder::dummy(TraitPredicate {

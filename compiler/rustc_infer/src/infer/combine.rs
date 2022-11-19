@@ -37,7 +37,7 @@ use rustc_middle::traits::ObligationCause;
 use rustc_middle::ty::error::{ExpectedFound, TypeError};
 use rustc_middle::ty::relate::{self, Relate, RelateResult, TypeRelation};
 use rustc_middle::ty::subst::SubstsRef;
-use rustc_middle::ty::{self, InferConst, ToPredicate, Ty, TyCtxt, TypeVisitable};
+use rustc_middle::ty::{self, InferConst, Ty, TyCtxt, TypeVisitable};
 use rustc_middle::ty::{IntType, UintType};
 use rustc_span::{Span, DUMMY_SP};
 
@@ -347,10 +347,10 @@ impl<'infcx, 'tcx> CombineFields<'infcx, 'tcx> {
 
         if needs_wf {
             self.obligations.push(Obligation::new(
+                self.tcx(),
                 self.trace.cause.clone(),
                 self.param_env,
-                ty::Binder::dummy(ty::PredicateKind::WellFormed(b_ty.into()))
-                    .to_predicate(self.infcx.tcx),
+                ty::Binder::dummy(ty::PredicateKind::WellFormed(b_ty.into())),
             ));
         }
 
@@ -444,9 +444,10 @@ impl<'infcx, 'tcx> CombineFields<'infcx, 'tcx> {
             ty::PredicateKind::ConstEquate(b, a)
         };
         self.obligations.push(Obligation::new(
+            self.tcx(),
             self.trace.cause.clone(),
             self.param_env,
-            ty::Binder::dummy(predicate).to_predicate(self.tcx()),
+            ty::Binder::dummy(predicate),
         ));
     }
 }

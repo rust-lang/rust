@@ -2720,6 +2720,12 @@ pub enum IsAsync {
     NotAsync,
 }
 
+impl IsAsync {
+    pub fn is_async(self) -> bool {
+        self == IsAsync::Async
+    }
+}
+
 #[derive(Copy, Clone, PartialEq, Eq, Hash, Debug, Encodable, Decodable, HashStable_Generic)]
 pub enum Defaultness {
     Default { has_value: bool },
