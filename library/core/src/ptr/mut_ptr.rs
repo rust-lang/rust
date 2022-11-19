@@ -1588,6 +1588,8 @@ impl<T: ?Sized> *mut T {
     /// }
     /// # }
     /// ```
+    #[must_use]
+    #[inline]
     #[stable(feature = "align_offset", since = "1.36.0")]
     #[rustc_const_unstable(feature = "const_align_offset", issue = "90962")]
     pub const fn align_offset(self, align: usize) -> usize
@@ -1598,32 +1600,151 @@ impl<T: ?Sized> *mut T {
             panic!("align_offset: align is not a power-of-two");
         }
 
-        fn rt_impl<T>(p: *mut T, align: usize) -> usize {
+        #[cfg(bootstrap)]
+        {
+            fn rt_impl<T>(p: *mut T, align: usize) -> usize {
+                // SAFETY: `align` has been checked to be a power of 2 above
+                unsafe { align_offset(p, align) }
+            }
+
+            const fn ctfe_impl<T>(_: *mut T, _: usize) -> usize {
+                usize::MAX
+            }
+
+            // SAFETY:
+            // It is permissible for `align_offset` to always return `usize::MAX`,
+            // algorithm correctness can not depend on `align_offset` returning non-max values.
+            //
+            // As such the behaviour can't change after replacing `align_offset` with `usize::MAX`, only performance can.
+            unsafe { intrinsics::const_eval_select((self, align), ctfe_impl, rt_impl) }
+        }
+
+        #[cfg(not(bootstrap))]
+        {
             // SAFETY: `align` has been checked to be a power of 2 above
-            unsafe { align_offset(p, align) }
+            unsafe { align_offset(self, align) }
         }
-
-        const fn ctfe_impl<T>(_: *mut T, _: usize) -> usize {
-            usize::MAX
-        }
-
-        // SAFETY:
-        // It is permissible for `align_offset` to always return `usize::MAX`,
-        // algorithm correctness can not depend on `align_offset` returning non-max values.
-        //
-        // As such the behaviour can't change after replacing `align_offset` with `usize::MAX`, only performance can.
-        unsafe { intrinsics::const_eval_select((self, align), ctfe_impl, rt_impl) }
     }
 
     /// Returns whether the pointer is properly aligned for `T`.
+    ///
+    /// # Examples
+    ///
+    /// Basic usage:
+    /// ```
+    /// #![feature(pointer_is_aligned)]
+    /// #![feature(pointer_byte_offsets)]
+    ///
+    /// // On some platforms, the alignment of i32 is less than 4.
+    /// #[repr(align(4))]
+    /// struct AlignedI32(i32);
+    ///
+    /// let mut data = AlignedI32(42);
+    /// let ptr = &mut data as *mut AlignedI32;
+    ///
+    /// assert!(ptr.is_aligned());
+    /// assert!(!ptr.wrapping_byte_add(1).is_aligned());
+    /// ```
+    ///
+    /// # At compiletime
+    /// **Note: Alignment at compiletime is experimental and subject to change. See the
+    /// [tracking issue] for details.**
+    ///
+    /// At compiletime, the compiler may not know where a value will end up in memory.
+    /// Calling this function on a pointer created from a reference at compiletime will only
+    /// return `true` if the pointer is guaranteed to be aligned. This means that the pointer
+    /// is never aligned if cast to a type with a stricter alignment than the reference's
+    /// underlying allocation.
+    ///
+    #[cfg_attr(bootstrap, doc = "```ignore")]
+    #[cfg_attr(not(bootstrap), doc = "```")]
+    /// #![feature(pointer_is_aligned)]
+    /// #![feature(const_pointer_is_aligned)]
+    /// #![feature(const_mut_refs)]
+    ///
+    /// // On some platforms, the alignment of primitives is less than their size.
+    /// #[repr(align(4))]
+    /// struct AlignedI32(i32);
+    /// #[repr(align(8))]
+    /// struct AlignedI64(i64);
+    ///
+    /// const _: () = {
+    ///     let mut data = AlignedI32(42);
+    ///     let ptr = &mut data as *mut AlignedI32;
+    ///     assert!(ptr.is_aligned());
+    ///
+    ///     // At runtime either `ptr1` or `ptr2` would be aligned, but at compiletime neither is aligned.
+    ///     let ptr1 = ptr.cast::<AlignedI64>();
+    ///     let ptr2 = ptr.wrapping_add(1).cast::<AlignedI64>();
+    ///     assert!(!ptr1.is_aligned());
+    ///     assert!(!ptr2.is_aligned());
+    /// };
+    /// ```
+    ///
+    /// Due to this behavior, it is possible that a runtime pointer derived from a compiletime
+    /// pointer is aligned, even if the compiletime pointer wasn't aligned.
+    ///
+    #[cfg_attr(bootstrap, doc = "```ignore")]
+    #[cfg_attr(not(bootstrap), doc = "```")]
+    /// #![feature(pointer_is_aligned)]
+    /// #![feature(const_pointer_is_aligned)]
+    ///
+    /// // On some platforms, the alignment of primitives is less than their size.
+    /// #[repr(align(4))]
+    /// struct AlignedI32(i32);
+    /// #[repr(align(8))]
+    /// struct AlignedI64(i64);
+    ///
+    /// // At compiletime, neither `COMPTIME_PTR` nor `COMPTIME_PTR + 1` is aligned.
+    /// // Also, note that mutable references are not allowed in the final value of constants.
+    /// const COMPTIME_PTR: *mut AlignedI32 = (&AlignedI32(42) as *const AlignedI32).cast_mut();
+    /// const _: () = assert!(!COMPTIME_PTR.cast::<AlignedI64>().is_aligned());
+    /// const _: () = assert!(!COMPTIME_PTR.wrapping_add(1).cast::<AlignedI64>().is_aligned());
+    ///
+    /// // At runtime, either `runtime_ptr` or `runtime_ptr + 1` is aligned.
+    /// let runtime_ptr = COMPTIME_PTR;
+    /// assert_ne!(
+    ///     runtime_ptr.cast::<AlignedI64>().is_aligned(),
+    ///     runtime_ptr.wrapping_add(1).cast::<AlignedI64>().is_aligned(),
+    /// );
+    /// ```
+    ///
+    /// If a pointer is created from a fixed address, this function behaves the same during
+    /// runtime and compiletime.
+    ///
+    #[cfg_attr(bootstrap, doc = "```ignore")]
+    #[cfg_attr(not(bootstrap), doc = "```")]
+    /// #![feature(pointer_is_aligned)]
+    /// #![feature(const_pointer_is_aligned)]
+    ///
+    /// // On some platforms, the alignment of primitives is less than their size.
+    /// #[repr(align(4))]
+    /// struct AlignedI32(i32);
+    /// #[repr(align(8))]
+    /// struct AlignedI64(i64);
+    ///
+    /// const _: () = {
+    ///     let ptr = 40 as *mut AlignedI32;
+    ///     assert!(ptr.is_aligned());
+    ///
+    ///     // For pointers with a known address, runtime and compiletime behavior are identical.
+    ///     let ptr1 = ptr.cast::<AlignedI64>();
+    ///     let ptr2 = ptr.wrapping_add(1).cast::<AlignedI64>();
+    ///     assert!(ptr1.is_aligned());
+    ///     assert!(!ptr2.is_aligned());
+    /// };
+    /// ```
+    ///
+    /// [tracking issue]: https://github.com/rust-lang/rust/issues/104203
     #[must_use]
     #[inline]
     #[unstable(feature = "pointer_is_aligned", issue = "96284")]
-    pub fn is_aligned(self) -> bool
+    #[rustc_const_unstable(feature = "const_pointer_is_aligned", issue = "104203")]
+    pub const fn is_aligned(self) -> bool
     where
         T: Sized,
     {
-        self.is_aligned_to(core::mem::align_of::<T>())
+        self.is_aligned_to(mem::align_of::<T>())
     }
 
     /// Returns whether the pointer is aligned to `align`.
@@ -1634,16 +1755,123 @@ impl<T: ?Sized> *mut T {
     /// # Panics
     ///
     /// The function panics if `align` is not a power-of-two (this includes 0).
+    ///
+    /// # Examples
+    ///
+    /// Basic usage:
+    /// ```
+    /// #![feature(pointer_is_aligned)]
+    /// #![feature(pointer_byte_offsets)]
+    ///
+    /// // On some platforms, the alignment of i32 is less than 4.
+    /// #[repr(align(4))]
+    /// struct AlignedI32(i32);
+    ///
+    /// let mut data = AlignedI32(42);
+    /// let ptr = &mut data as *mut AlignedI32;
+    ///
+    /// assert!(ptr.is_aligned_to(1));
+    /// assert!(ptr.is_aligned_to(2));
+    /// assert!(ptr.is_aligned_to(4));
+    ///
+    /// assert!(ptr.wrapping_byte_add(2).is_aligned_to(2));
+    /// assert!(!ptr.wrapping_byte_add(2).is_aligned_to(4));
+    ///
+    /// assert_ne!(ptr.is_aligned_to(8), ptr.wrapping_add(1).is_aligned_to(8));
+    /// ```
+    ///
+    /// # At compiletime
+    /// **Note: Alignment at compiletime is experimental and subject to change. See the
+    /// [tracking issue] for details.**
+    ///
+    /// At compiletime, the compiler may not know where a value will end up in memory.
+    /// Calling this function on a pointer created from a reference at compiletime will only
+    /// return `true` if the pointer is guaranteed to be aligned. This means that the pointer
+    /// cannot be stricter aligned than the reference's underlying allocation.
+    ///
+    #[cfg_attr(bootstrap, doc = "```ignore")]
+    #[cfg_attr(not(bootstrap), doc = "```")]
+    /// #![feature(pointer_is_aligned)]
+    /// #![feature(const_pointer_is_aligned)]
+    /// #![feature(const_mut_refs)]
+    ///
+    /// // On some platforms, the alignment of i32 is less than 4.
+    /// #[repr(align(4))]
+    /// struct AlignedI32(i32);
+    ///
+    /// const _: () = {
+    ///     let mut data = AlignedI32(42);
+    ///     let ptr = &mut data as *mut AlignedI32;
+    ///
+    ///     assert!(ptr.is_aligned_to(1));
+    ///     assert!(ptr.is_aligned_to(2));
+    ///     assert!(ptr.is_aligned_to(4));
+    ///
+    ///     // At compiletime, we know for sure that the pointer isn't aligned to 8.
+    ///     assert!(!ptr.is_aligned_to(8));
+    ///     assert!(!ptr.wrapping_add(1).is_aligned_to(8));
+    /// };
+    /// ```
+    ///
+    /// Due to this behavior, it is possible that a runtime pointer derived from a compiletime
+    /// pointer is aligned, even if the compiletime pointer wasn't aligned.
+    ///
+    #[cfg_attr(bootstrap, doc = "```ignore")]
+    #[cfg_attr(not(bootstrap), doc = "```")]
+    /// #![feature(pointer_is_aligned)]
+    /// #![feature(const_pointer_is_aligned)]
+    ///
+    /// // On some platforms, the alignment of i32 is less than 4.
+    /// #[repr(align(4))]
+    /// struct AlignedI32(i32);
+    ///
+    /// // At compiletime, neither `COMPTIME_PTR` nor `COMPTIME_PTR + 1` is aligned.
+    /// // Also, note that mutable references are not allowed in the final value of constants.
+    /// const COMPTIME_PTR: *mut AlignedI32 = (&AlignedI32(42) as *const AlignedI32).cast_mut();
+    /// const _: () = assert!(!COMPTIME_PTR.is_aligned_to(8));
+    /// const _: () = assert!(!COMPTIME_PTR.wrapping_add(1).is_aligned_to(8));
+    ///
+    /// // At runtime, either `runtime_ptr` or `runtime_ptr + 1` is aligned.
+    /// let runtime_ptr = COMPTIME_PTR;
+    /// assert_ne!(
+    ///     runtime_ptr.is_aligned_to(8),
+    ///     runtime_ptr.wrapping_add(1).is_aligned_to(8),
+    /// );
+    /// ```
+    ///
+    /// If a pointer is created from a fixed address, this function behaves the same during
+    /// runtime and compiletime.
+    ///
+    #[cfg_attr(bootstrap, doc = "```ignore")]
+    #[cfg_attr(not(bootstrap), doc = "```")]
+    /// #![feature(pointer_is_aligned)]
+    /// #![feature(const_pointer_is_aligned)]
+    ///
+    /// const _: () = {
+    ///     let ptr = 40 as *mut u8;
+    ///     assert!(ptr.is_aligned_to(1));
+    ///     assert!(ptr.is_aligned_to(2));
+    ///     assert!(ptr.is_aligned_to(4));
+    ///     assert!(ptr.is_aligned_to(8));
+    ///     assert!(!ptr.is_aligned_to(16));
+    /// };
+    /// ```
+    ///
+    /// [tracking issue]: https://github.com/rust-lang/rust/issues/104203
     #[must_use]
     #[inline]
     #[unstable(feature = "pointer_is_aligned", issue = "96284")]
-    pub fn is_aligned_to(self, align: usize) -> bool {
+    #[rustc_const_unstable(feature = "const_pointer_is_aligned", issue = "104203")]
+    pub const fn is_aligned_to(self, align: usize) -> bool {
         if !align.is_power_of_two() {
             panic!("is_aligned_to: align is not a power-of-two");
         }
 
-        // Cast is needed for `T: !Sized`
-        self.cast::<u8>().addr() & align - 1 == 0
+        // We can't use the address of `self` in a `const fn`, so we use `align_offset` instead.
+        // The cast to `()` is used to
+        //   1. deal with fat pointers; and
+        //   2. ensure that `align_offset` doesn't actually try to compute an offset.
+        self.cast::<()>().align_offset(align) == 0
     }
 }
 

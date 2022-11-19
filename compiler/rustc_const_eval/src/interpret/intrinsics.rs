@@ -243,6 +243,11 @@ impl<'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
                 let discr_val = self.read_discriminant(&place.into())?.0;
                 self.write_scalar(discr_val, dest)?;
             }
+            sym::exact_div => {
+                let l = self.read_immediate(&args[0])?;
+                let r = self.read_immediate(&args[1])?;
+                self.exact_div(&l, &r, dest)?;
+            }
             sym::unchecked_shl
             | sym::unchecked_shr
             | sym::unchecked_add
