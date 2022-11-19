@@ -1324,13 +1324,8 @@ fn assemble_candidate_for_impl_trait_in_trait<'cx, 'tcx>(
 ) {
     let tcx = selcx.tcx();
     if tcx.def_kind(obligation.predicate.item_def_id) == DefKind::ImplTraitPlaceholder {
-        let trait_fn_def_id = if let Some((fn_def_id, _)) =
-            tcx.def_path(obligation.predicate.item_def_id).get_impl_trait_in_trait_data()
-        {
-            fn_def_id
-        } else {
-            tcx.impl_trait_in_trait_parent(obligation.predicate.item_def_id)
-        };
+        let (trait_fn_def_id, _) =
+            tcx.def_path(obligation.predicate.item_def_id).get_impl_trait_in_trait_data().unwrap();
         // If we are trying to project an RPITIT with trait's default `Self` parameter,
         // then we must be within a default trait body.
         if obligation.predicate.self_ty()
@@ -2238,7 +2233,8 @@ fn confirm_impl_trait_in_trait_candidate<'tcx>(
     let tcx = selcx.tcx();
     let mut obligations = data.nested;
 
-    let trait_fn_def_id = tcx.impl_trait_in_trait_parent(obligation.predicate.item_def_id);
+    let (trait_fn_def_id, _) =
+        tcx.def_path(obligation.predicate.item_def_id).get_impl_trait_in_trait_data().unwrap();
     let Ok(leaf_def) = assoc_def(selcx, data.impl_def_id, trait_fn_def_id) else {
         return Progress { term: tcx.ty_error().into(), obligations };
     };

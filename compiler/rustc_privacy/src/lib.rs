@@ -129,7 +129,8 @@ where
             projection.trait_ref_and_own_substs(tcx)
         } else {
             // HACK(RPITIT): Remove this when RPITITs are lowered to regular assoc tys
-            let def_id = tcx.impl_trait_in_trait_parent(projection.item_def_id);
+            let (def_id, _) =
+                tcx.def_path(projection.item_def_id).get_impl_trait_in_trait_data().unwrap();
             let trait_generics = tcx.generics_of(def_id);
             (
                 ty::TraitRef { def_id, substs: projection.substs.truncate_to(tcx, trait_generics) },

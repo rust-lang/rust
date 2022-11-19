@@ -1148,7 +1148,10 @@ impl<'tcx> ProjectionTy<'tcx> {
         match tcx.def_kind(self.item_def_id) {
             DefKind::AssocTy | DefKind::AssocConst => tcx.parent(self.item_def_id),
             DefKind::ImplTraitPlaceholder => {
-                tcx.parent(tcx.impl_trait_in_trait_parent(self.item_def_id))
+                let (fn_def_id, _) =
+                    tcx.def_path(self.item_def_id).get_impl_trait_in_trait_data().unwrap();
+
+                tcx.parent(fn_def_id)
             }
             kind => bug!("unexpected DefKind in ProjectionTy: {kind:?}"),
         }

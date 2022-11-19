@@ -1589,7 +1589,8 @@ fn check_return_position_impl_trait_in_trait_bounds<'tcx>(
             if let ty::GenericArgKind::Type(ty) = arg.unpack()
                 && let ty::Projection(proj) = ty.kind()
                 && tcx.def_kind(proj.item_def_id) == DefKind::ImplTraitPlaceholder
-                && tcx.impl_trait_in_trait_parent(proj.item_def_id) == fn_def_id.to_def_id()
+                && let (trait_fn_def_id, _) = tcx.def_path(proj.item_def_id).get_impl_trait_in_trait_data().unwrap()
+                && trait_fn_def_id == fn_def_id.to_def_id()
             {
                 let bounds = wfcx.tcx().explicit_item_bounds(proj.item_def_id);
                 let wf_obligations = bounds.iter().flat_map(|&(bound, bound_span)| {
