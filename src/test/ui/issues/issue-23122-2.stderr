@@ -10,7 +10,7 @@ note: required for `GetNext<<<<<<... as Next>::Next as Next>::Next as Next>::Nex
    |
 LL | impl<T: Next> Next for GetNext<T> {
    |               ^^^^     ^^^^^^^^^^
-   = note: the full type name has been written to '$TEST_BUILD_DIR/issues/issue-23122-2/issue-23122-2.long-type-2230235837754269907.txt'
+   = note: the full type name has been written to '$TEST_BUILD_DIR/issues/issue-23122-2/issue-23122-2.long-type-3976323088118947840.txt'
 
 error: aborting due to previous error
 
