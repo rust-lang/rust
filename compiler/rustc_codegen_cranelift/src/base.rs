@@ -380,6 +380,29 @@ fn codegen_fn_body(fx: &mut FunctionCx<'_, '_, '_>, start_block: Block) {
                             source_info.span,
                         );
                     }
+                    AssertKind::OccupiedNiche {
+                        ref found,
+                        ref start,
+                        ref end,
+                        ref type_name,
+                        ref offset,
+                        ref niche_ty,
+                    } => {
+                        let found = codegen_operand(fx, found).load_scalar(fx);
+                        let start = codegen_operand(fx, start).load_scalar(fx);
+                        let end = codegen_operand(fx, end).load_scalar(fx);
+                        let type_name = fx.anonymous_str(type_name);
+                        let offset = codegen_operand(fx, offset).load_scalar(fx);
+                        let niche_ty = fx.anonymous_str(niche_ty);
+                        let location = fx.get_caller_location(source_info).load_scalar(fx);
+
+                        codegen_panic_inner(
+                            fx,
+                            rustc_hir::LangItem::PanicOccupiedNiche,
+                            &[found, start, end, type_name, offset, niche_ty, location],
+                            source_info.span,
+                        )
+                    }
                     _ => {
                         let msg_str = msg.description();
                         codegen_panic(fx, msg_str, source_info);

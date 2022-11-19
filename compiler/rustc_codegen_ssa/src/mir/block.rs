@@ -624,6 +624,35 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
                 // and `#[track_caller]` adds an implicit third argument.
                 (LangItem::PanicMisalignedPointerDereference, vec![required, found, location])
             }
+            AssertKind::OccupiedNiche {
+                ref found,
+                ref start,
+                ref end,
+                ref type_name,
+                ref offset,
+                ref niche_ty,
+            } => {
+                let found = self.codegen_operand(bx, found).immediate();
+                let start = self.codegen_operand(bx, start).immediate();
+                let end = self.codegen_operand(bx, end).immediate();
+                let type_name = bx.const_str(type_name);
+                let offset = self.codegen_operand(bx, offset).immediate();
+                let niche_ty = bx.const_str(niche_ty);
+                (
+                    LangItem::PanicOccupiedNiche,
+                    vec![
+                        found,
+                        start,
+                        end,
+                        type_name.0,
+                        type_name.1,
+                        offset,
+                        niche_ty.0,
+                        niche_ty.1,
+                        location,
+                    ],
+                )
+            }
             _ => {
                 let msg = bx.const_str(msg.description());
                 // It's `pub fn panic(expr: &str)`, with the wide reference being passed

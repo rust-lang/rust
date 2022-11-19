@@ -77,14 +77,28 @@ pub enum UnwindAction {
 
 #[derive(Clone, Debug)]
 pub enum AssertMessage {
-    BoundsCheck { len: Operand, index: Operand },
+    BoundsCheck {
+        len: Operand,
+        index: Operand,
+    },
     Overflow(BinOp, Operand, Operand),
     OverflowNeg(Operand),
     DivisionByZero(Operand),
     RemainderByZero(Operand),
     ResumedAfterReturn(GeneratorKind),
     ResumedAfterPanic(GeneratorKind),
-    MisalignedPointerDereference { required: Operand, found: Operand },
+    MisalignedPointerDereference {
+        required: Operand,
+        found: Operand,
+    },
+    OccupiedNiche {
+        found: Operand,
+        start: Operand,
+        end: Operand,
+        type_name: String,
+        offset: Operand,
+        niche_ty: String,
+    },
 }
 
 #[derive(Clone, Debug)]

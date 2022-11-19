@@ -882,6 +882,7 @@ pub enum AssertKind<O> {
     ResumedAfterReturn(GeneratorKind),
     ResumedAfterPanic(GeneratorKind),
     MisalignedPointerDereference { required: O, found: O },
+    OccupiedNiche { found: O, start: O, end: O, type_name: String, offset: O, niche_ty: String },
 }
 
 #[derive(Clone, Debug, PartialEq, TyEncodable, TyDecodable, Hash, HashStable)]

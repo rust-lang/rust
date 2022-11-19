@@ -1,4 +1,4 @@
-// compile-flags: -Z print-type-sizes --crate-type=lib
+// compile-flags: -Z print-type-sizes --crate-type=lib -Zmir-enable-passes=-CheckNiches
 // build-pass
 // ignore-pass
 // ^-- needed because `--pass check` does not emit the output needed.

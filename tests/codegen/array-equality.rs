@@ -1,5 +1,6 @@
 // compile-flags: -O -Z merge-functions=disabled
 // only-x86_64
+// ignore-debug: array comparison sometimes transmutes references, so we have niche checks in std
 
 #![crate_type = "lib"]
 

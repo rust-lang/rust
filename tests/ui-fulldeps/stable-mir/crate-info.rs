@@ -181,6 +181,7 @@ fn main() {
     let args = vec![
         "rustc".to_string(),
         "--crate-type=lib".to_string(),
+        "-Zmir-enable-passes=-CheckNiches".to_string(),
         "--crate-name".to_string(),
         CRATE_NAME.to_string(),
         path.to_string(),

@@ -138,5 +138,5 @@ pub const MIRI_DEFAULT_ARGS: &[&str] = &[
     "-Zmir-emit-retag",
     "-Zmir-keep-place-mention",
     "-Zmir-opt-level=0",
-    "-Zmir-enable-passes=-CheckAlignment",
+    "-Zmir-enable-passes=-CheckAlignment,-CheckNiches",
 ];

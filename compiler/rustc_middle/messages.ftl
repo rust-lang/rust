@@ -15,6 +15,9 @@ middle_assert_generator_resume_after_return = generator resumed after completion
 middle_assert_misaligned_ptr_deref =
     misaligned pointer dereference: address must be a multiple of {$required} but is {$found}
 
+middle_assert_occupied_niche =
+    occupied niche: {$found} must be in {$start}..={$end}
+
 middle_assert_op_overflow =
     attempt to compute `{$left} {$op} {$right}`, which would overflow
 

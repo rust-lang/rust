@@ -623,6 +623,12 @@ macro_rules! make_mir_visitor {
                         self.visit_operand(required, location);
                         self.visit_operand(found, location);
                     }
+                    OccupiedNiche { found, start, end, type_name: _, offset, niche_ty: _ } => {
+                        self.visit_operand(found, location);
+                        self.visit_operand(start, location);
+                        self.visit_operand(end, location);
+                        self.visit_operand(offset, location);
+                    }
                 }
             }
 

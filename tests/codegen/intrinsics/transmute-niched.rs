@@ -1,6 +1,6 @@
 // revisions: OPT DBG
 // [OPT] compile-flags: -C opt-level=3 -C no-prepopulate-passes
-// [DBG] compile-flags: -C opt-level=0 -C no-prepopulate-passes
+// [DBG] compile-flags: -C opt-level=0 -C no-prepopulate-passes -Zmir-enable-passes=-CheckNiches
 // only-64bit (so I don't need to worry about usize)
 
 #![crate_type = "lib"]

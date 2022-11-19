@@ -3,7 +3,7 @@
 
 // Checks that storage markers are removed at opt-level=0.
 //
-// compile-flags: -C opt-level=0 -Coverflow-checks=off
+// compile-flags: -C opt-level=0 -Cdebug-assertions=off
 
 // EMIT_MIR remove_storage_markers.main.RemoveStorageMarkers.diff
 fn main() {

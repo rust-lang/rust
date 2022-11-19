@@ -1,4 +1,4 @@
-// compile-flags: -C opt-level=0 -C no-prepopulate-passes
+// compile-flags: -C opt-level=0 -C no-prepopulate-passes -Zmir-enable-passes=-CheckNiches
 
 #![crate_type = "lib"]
 

@@ -143,7 +143,7 @@ impl<O> AssertKind<O> {
             ResumedAfterReturn(GeneratorKind::Async(_)) => "`async fn` resumed after completion",
             ResumedAfterPanic(GeneratorKind::Gen) => "generator resumed after panicking",
             ResumedAfterPanic(GeneratorKind::Async(_)) => "`async fn` resumed after panicking",
-            BoundsCheck { .. } | MisalignedPointerDereference { .. } => {
+            BoundsCheck { .. } | MisalignedPointerDereference { .. } | OccupiedNiche { .. } => {
                 bug!("Unexpected AssertKind")
             }
         }
@@ -206,6 +206,13 @@ impl<O> AssertKind<O> {
                     "\"misaligned pointer dereference: address must be a multiple of {{}} but is {{}}\", {required:?}, {found:?}"
                 )
             }
+            OccupiedNiche { found, start, end, type_name, offset, niche_ty } => {
+                write!(
+                    f,
+                    "\"occupied niche: {{}} must be in {{}}..={{}} in a {{}} at offset {{}} with type {{}}\" {:?} {:?} {:?} {:?} {:?} {:?}",
+                    found, start, end, type_name, offset, niche_ty
+                )
+            }
             _ => write!(f, "\"{}\"", self.description()),
         }
     }
@@ -232,8 +239,8 @@ impl<O> AssertKind<O> {
             ResumedAfterReturn(GeneratorKind::Gen) => middle_assert_generator_resume_after_return,
             ResumedAfterPanic(GeneratorKind::Async(_)) => middle_assert_async_resume_after_panic,
             ResumedAfterPanic(GeneratorKind::Gen) => middle_assert_generator_resume_after_panic,
-
             MisalignedPointerDereference { .. } => middle_assert_misaligned_ptr_deref,
+            OccupiedNiche { .. } => middle_assert_occupied_niche,
         }
     }
 
@@ -269,6 +276,14 @@ impl<O> AssertKind<O> {
             MisalignedPointerDereference { required, found } => {
                 add!("required", format!("{required:#?}"));
                 add!("found", format!("{found:#?}"));
+            }
+            OccupiedNiche { found, start, end, type_name, offset, niche_ty } => {
+                add!("found", format!("{found:?}"));
+                add!("start", format!("{start:?}"));
+                add!("end", format!("{end:?}"));
+                add!("type_name", format!("{type_name}"));
+                add!("offset", format!("{offset:?}"));
+                add!("niche_ty", format!("{niche_ty}"));
             }
         }
     }
