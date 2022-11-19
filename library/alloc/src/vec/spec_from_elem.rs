@@ -10,7 +10,6 @@ pub(super) trait SpecFromElem: Sized {
     fn from_elem<A: Allocator>(elem: Self, n: usize, alloc: A) -> Vec<Self, A>;
 }
 
-#[inline]
 fn basic_from_elem<T: Clone, A: Allocator>(elem: T, n: usize, alloc: A) -> Vec<T, A> {
     let mut v = Vec::with_capacity_in(n, alloc);
     v.extend(iter::repeat_n(elem, n));
@@ -18,7 +17,6 @@ fn basic_from_elem<T: Clone, A: Allocator>(elem: T, n: usize, alloc: A) -> Vec<T
 }
 
 impl<T: Clone> SpecFromElem for T {
-    #[inline]
     default fn from_elem<A: Allocator>(elem: Self, n: usize, alloc: A) -> Vec<Self, A> {
         basic_from_elem(elem, n, alloc)
     }
