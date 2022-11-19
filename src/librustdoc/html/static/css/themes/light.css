@@ -2,6 +2,8 @@
 	--main-background-color: white;
 	--main-color: black;
 	--settings-input-color: #2196f3;
+	--settings-button-color: #000;
+	--settings-button-border-focus: #717171;
 	--sidebar-background-color: #F5F5F5;
 	--sidebar-background-color-hover: #E0E0E0;
 	--code-block-background-color: #F5F5F5;
@@ -95,15 +97,6 @@ kbd {
 	color: #000;
 	background-color: #fafbfc;
 	box-shadow: inset 0 -1px 0 #c6cbd1;
-}
-
-#settings-menu > a, #help-button > a {
-	color: #000;
-}
-
-#settings-menu > a:hover, #settings-menu > a:focus,
-#help-button > a:hover, #help-button > a:focus {
-	border-color: #717171;
 }
 
 .search-results .result-name span.alias {
