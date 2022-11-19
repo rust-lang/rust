@@ -252,24 +252,15 @@ pub(super) fn keyword(
     Some(HoverResult { markup, actions })
 }
 
+/// Returns missing types in a record pattern.
+/// Only makes sense when there's a rest pattern in the record pattern.
+/// i.e. `let S {a, ..} = S {a: 1, b: 2}`
 pub(super) fn struct_rest_pat(
     sema: &Semantics<'_, RootDatabase>,
     config: &HoverConfig,
-    expr_or_pat: &Either<ast::Expr, ast::Pat>,
-) -> Option<HoverResult> {
-    let pat = expr_or_pat.as_ref().right()?;
-
-    let mut ancestors = pat.syntax().ancestors();
-    let _record_pat_field_list = ancestors.next()?;
-    let record_pat = ancestors.next()?;
-    let pattern = sema
-        .find_nodes_at_offset_with_descend::<RecordPat>(
-            &record_pat,
-            record_pat.text_range().start(),
-        )
-        .next()?;
-
-    let missing_fields = sema.record_pattern_missing_fields(&pattern);
+    pattern: &RecordPat,
+) -> HoverResult {
+    let missing_fields = sema.record_pattern_missing_fields(pattern);
 
     // if there are no missing fields, the end result is a hover that shows ".."
     // should be left in to indicate that there are no more fields in the pattern
@@ -302,7 +293,7 @@ pub(super) fn struct_rest_pat(
         }
     };
     res.actions.push(HoverAction::goto_type_from_targets(sema.db, targets));
-    Some(res)
+    res
 }
 
 pub(super) fn try_for_lint(attr: &ast::Attr, token: &SyntaxToken) -> Option<HoverResult> {
