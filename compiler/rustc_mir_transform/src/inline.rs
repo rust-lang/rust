@@ -143,31 +143,40 @@ impl<'tcx> Inliner<'tcx> {
                 continue;
             }
 
-            let Some(callsite) = self.resolve_callsite(caller_body, bb, bb_data) else {
-                continue;
-            };
+            let span;
+            let _guard;
+            let (instance, new_blocks) =
+                if let Some(callsite) = self.resolve_callsite(caller_body, bb, bb_data) {
+                    span = trace_span!("process_blocks", %callsite.callee, ?bb);
+                    _guard = span.enter();
 
-            let span = trace_span!("process_blocks", %callsite.callee, ?bb);
-            let _guard = span.enter();
-
-            match self.try_inlining(caller_body, &callsite) {
-                Err(reason) => {
-                    debug!("not-inlined {} [{}]", callsite.callee, reason);
+                    match self.try_inlining(caller_body, &callsite) {
+                        Ok(new_blocks) => {
+                            debug!("inlined {}", callsite.callee);
+                            (callsite.callee, new_blocks)
+                        }
+                        Err(reason) => {
+                            debug!("not-inlined {} [{}]", callsite.callee, reason);
+                            continue;
+                        }
+                    }
+                } else if let Some((instance, new_blocks)) = self.try_inline_drop(caller_body, bb) {
+                    span = trace_span!("process_blocks", %instance, ?bb);
+                    _guard = span.enter();
+                    (instance, new_blocks)
+                } else {
                     continue;
-                }
-                Ok(new_blocks) => {
-                    debug!("inlined {}", callsite.callee);
-                    self.changed = true;
+                };
 
-                    let history_def_id = def_id_for_history(callsite.callee.def);
-                    if let Some(def_id) = history_def_id {
-                        self.history.push(def_id);
-                    }
-                    self.process_blocks(caller_body, new_blocks);
-                    if history_def_id.is_some() {
-                        self.history.pop();
-                    }
-                }
+            self.changed = true;
+
+            let history_def_id = def_id_for_history(instance.def);
+            if let Some(def_id) = history_def_id {
+                self.history.push(def_id);
+            }
+            self.process_blocks(caller_body, new_blocks);
+            if history_def_id.is_some() {
+                self.history.pop();
             }
         }
     }
@@ -185,43 +194,6 @@ impl<'tcx> Inliner<'tcx> {
         if let ty::InstanceDef::DropGlue(_, None) = callsite.callee.def {
             terminator.kind = TerminatorKind::Goto { target: callsite.target.unwrap() };
             return Ok(callsite.block..callsite.block);
-        }
-
-        if let ty::InstanceDef::DropGlue(_, Some(_)) = callsite.callee.def
-            && let TerminatorKind::Drop { place, target, unwind: Some(unwind) } = terminator.kind
-        {
-            let mut elaborator = DropShimElaborator {
-                body: &caller_body,
-                patch: MirPatch::new(&caller_body),
-                tcx: self.tcx,
-                param_env: self.param_env,
-            };
-            let mut expn_data = ExpnData::default(
-                ExpnKind::Inlined,
-                callsite.source_info.span,
-                self.tcx.sess.edition(),
-                None,
-                None,
-            );
-            expn_data.def_site = self.tcx.def_span(callsite.callee.def_id());
-            let expn_data =
-                self.tcx.with_stable_hashing_context(|hcx| LocalExpnId::fresh(expn_data, hcx));
-            let mut source_info = callsite.source_info;
-            source_info.span = source_info.span.fresh_expansion(expn_data);
-            elaborate_drops::elaborate_drop(
-                &mut elaborator,
-                source_info,
-                place,
-                (),
-                target,
-                elaborate_drops::Unwind::To(unwind),
-                callsite.block,
-            );
-            let patch = elaborator.patch;
-            let old_blocks = caller_body.basic_blocks.next_index();
-            patch.apply(caller_body);
-            let new_blocks = caller_body.basic_blocks.next_index();
-            return Ok(old_blocks..new_blocks);
         }
 
         let callee_attrs = self.tcx.codegen_fn_attrs(callsite.callee.def_id());
@@ -293,6 +265,76 @@ impl<'tcx> Inliner<'tcx> {
         let new_blocks = old_blocks..caller_body.basic_blocks.next_index();
 
         Ok(new_blocks)
+    }
+
+    #[instrument(level = "debug", skip(self, caller_body), ret)]
+    fn try_inline_drop(
+        &self,
+        caller_body: &mut Body<'tcx>,
+        block: BasicBlock,
+    ) -> Option<(ty::Instance<'tcx>, std::ops::Range<BasicBlock>)> {
+        let terminator = caller_body[block].terminator();
+        debug!(?terminator);
+        let TerminatorKind::Drop { place, target, unwind } = terminator.kind else {
+            return None;
+        };
+
+        let place_ty = place.ty(caller_body, self.tcx).ty;
+        let place_ty = self.tcx.try_normalize_erasing_regions(self.param_env, place_ty).ok()?;
+
+        let drop_in_place_def_id = self.tcx.require_lang_item(LangItem::DropInPlace, None);
+        let substs = self.tcx.intern_substs(&[place_ty.into()]);
+
+        let Ok(Some(instance)) = Instance::resolve(self.tcx, self.param_env, drop_in_place_def_id, substs) else {
+            return None;
+        };
+
+        if let Some(def_id) = def_id_for_history(instance.def) && self.history.contains(&def_id) {
+            return None;
+        }
+
+        if let ty::InstanceDef::DropGlue(_, None) = instance.def {
+            let terminator = caller_body[block].terminator_mut();
+            terminator.kind = TerminatorKind::Goto { target };
+            return Some((instance, block..block));
+        }
+
+        if let ty::InstanceDef::DropGlue(_, Some(_)) = instance.def {
+            let mut elaborator = DropShimElaborator {
+                body: &caller_body,
+                patch: MirPatch::new(&caller_body),
+                tcx: self.tcx,
+                param_env: self.param_env,
+            };
+            let mut expn_data = ExpnData::default(
+                ExpnKind::Inlined,
+                terminator.source_info.span,
+                self.tcx.sess.edition(),
+                None,
+                None,
+            );
+            expn_data.def_site = self.tcx.def_span(drop_in_place_def_id);
+            let expn_data =
+                self.tcx.with_stable_hashing_context(|hcx| LocalExpnId::fresh(expn_data, hcx));
+            let mut source_info = terminator.source_info;
+            source_info.span = source_info.span.fresh_expansion(expn_data);
+            elaborate_drops::elaborate_drop(
+                &mut elaborator,
+                source_info,
+                place,
+                (),
+                target,
+                elaborate_drops::Unwind::To(unwind.unwrap_or(target)),
+                block,
+            );
+            let patch = elaborator.patch;
+            let old_blocks = caller_body.basic_blocks.next_index();
+            patch.apply(caller_body);
+            let new_blocks = caller_body.basic_blocks.next_index();
+            return Some((instance, old_blocks..new_blocks));
+        }
+
+        None
     }
 
     fn check_mir_is_available(
@@ -396,32 +438,6 @@ impl<'tcx> Inliner<'tcx> {
                     fn_sig,
                     block: bb,
                     target,
-                    source_info: terminator.source_info,
-                });
-            }
-        } else if let TerminatorKind::Drop { ref place, target, .. } = terminator.kind {
-            let place_ty = place.ty(caller_body, self.tcx).ty;
-            let place_ty = self.tcx.try_normalize_erasing_regions(self.param_env, place_ty).ok()?;
-
-            let def_id = self.tcx.require_lang_item(LangItem::DropInPlace, None);
-            let substs = self.tcx.intern_substs(&[place_ty.into()]);
-
-            if let Ok(Some(instance)) = Instance::resolve(self.tcx, self.param_env, def_id, substs)
-            {
-                if let Some(def_id) = def_id_for_history(instance.def)
-                    && self.history.contains(&def_id)
-                {
-                    return None;
-                }
-
-                return Some(CallSite {
-                    callee: instance,
-                    fn_sig: self
-                        .tcx
-                        .bound_fn_sig(instance.def.def_id())
-                        .subst(self.tcx, self.tcx.intern_substs(&[place_ty.into()])),
-                    block: bb,
-                    target: Some(target),
                     source_info: terminator.source_info,
                 });
             }
