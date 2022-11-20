@@ -1189,7 +1189,7 @@ impl<A: Allocator + Clone> RawTableInner<A> {
 
     /// Searches for an element in the table. This uses dynamic dispatch to reduce the amount of
     /// code generated, but it is eliminated by LLVM optimizations.
-    #[inline]
+    #[inline(always)]
     fn find_inner(&self, hash: u64, eq: &mut dyn FnMut(usize) -> bool) -> Option<usize> {
         let h2_hash = h2(hash);
         let mut probe_seq = self.probe_seq(hash);
