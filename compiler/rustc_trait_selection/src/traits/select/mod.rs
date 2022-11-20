@@ -33,7 +33,7 @@ use crate::traits::ProjectionCacheKey;
 use rustc_data_structures::fx::FxHashMap;
 use rustc_data_structures::fx::{FxHashSet, FxIndexSet};
 use rustc_data_structures::stack::ensure_sufficient_stack;
-use rustc_errors::{Diagnostic, ErrorGuaranteed};
+use rustc_errors::Diagnostic;
 use rustc_hir as hir;
 use rustc_hir::def_id::DefId;
 use rustc_infer::infer::LateBoundRegionConversionTime;
@@ -42,6 +42,7 @@ use rustc_middle::mir::interpret::ErrorHandled;
 use rustc_middle::ty::abstract_const::NotConstEvaluatable;
 use rustc_middle::ty::fast_reject::{DeepRejectCtxt, TreatParams};
 use rustc_middle::ty::fold::BottomUpFolder;
+use rustc_middle::ty::print::{FmtPrinter, Print};
 use rustc_middle::ty::relate::TypeRelation;
 use rustc_middle::ty::SubstsRef;
 use rustc_middle::ty::{self, EarlyBinder, PolyProjectionPredicate, ToPolyTraitRef, ToPredicate};
@@ -1081,18 +1082,22 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
         it.for_each(|o| o.recursion_depth = cmp::max(min_depth, o.recursion_depth) + 1);
     }
 
-    fn check_recursion_depth<T: Display + TypeFoldable<'tcx>>(
+    fn check_recursion_depth<T>(
         &self,
         depth: usize,
         error_obligation: &Obligation<'tcx, T>,
-    ) -> Result<(), OverflowError> {
+    ) -> Result<(), OverflowError>
+    where
+        T: fmt::Display
+            + TypeFoldable<'tcx>
+            + Print<'tcx, FmtPrinter<'tcx, 'tcx>, Output = FmtPrinter<'tcx, 'tcx>>,
+        <T as Print<'tcx, FmtPrinter<'tcx, 'tcx>>>::Error: std::fmt::Debug,
+    {
         if !self.infcx.tcx.recursion_limit().value_within_limit(depth) {
             match self.query_mode {
                 TraitQueryMode::Standard => {
-                    if self.infcx.is_tainted_by_errors() {
-                        return Err(OverflowError::Error(
-                            ErrorGuaranteed::unchecked_claim_error_was_emitted(),
-                        ));
+                    if let Some(e) = self.infcx.tainted_by_errors() {
+                        return Err(OverflowError::Error(e));
                     }
                     self.infcx.err_ctxt().report_overflow_error(error_obligation, true);
                 }
@@ -1109,11 +1114,17 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
     /// The weird return type of this function allows it to be used with the `try` (`?`)
     /// operator within certain functions.
     #[inline(always)]
-    fn check_recursion_limit<T: Display + TypeFoldable<'tcx>, V: Display + TypeFoldable<'tcx>>(
+    fn check_recursion_limit<T: Display + TypeFoldable<'tcx>, V>(
         &self,
         obligation: &Obligation<'tcx, T>,
         error_obligation: &Obligation<'tcx, V>,
-    ) -> Result<(), OverflowError> {
+    ) -> Result<(), OverflowError>
+    where
+        V: fmt::Display
+            + TypeFoldable<'tcx>
+            + Print<'tcx, FmtPrinter<'tcx, 'tcx>, Output = FmtPrinter<'tcx, 'tcx>>,
+        <V as Print<'tcx, FmtPrinter<'tcx, 'tcx>>>::Error: std::fmt::Debug,
+    {
         self.check_recursion_depth(obligation.recursion_depth, error_obligation)
     }
 

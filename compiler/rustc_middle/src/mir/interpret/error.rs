@@ -144,7 +144,7 @@ impl fmt::Display for InvalidProgramInfo<'_> {
             AlreadyReported(ErrorGuaranteed { .. }) => {
                 write!(
                     f,
-                    "an error has already been reported elsewhere (this sould not usually be printed)"
+                    "an error has already been reported elsewhere (this should not usually be printed)"
                 )
             }
             Layout(ref err) => write!(f, "{err}"),

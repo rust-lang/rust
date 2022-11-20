@@ -368,11 +368,6 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriInterpCxExt<'mir, 'tcx> {
             }
 
             // Other
-            "exact_div" => {
-                let [num, denom] = check_arg_count(args)?;
-                this.exact_div(&this.read_immediate(num)?, &this.read_immediate(denom)?, dest)?;
-            }
-
             "breakpoint" => {
                 let [] = check_arg_count(args)?;
                 // normally this would raise a SIGTRAP, which aborts if no debugger is connected

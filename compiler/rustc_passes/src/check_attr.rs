@@ -353,7 +353,7 @@ impl CheckAttrVisitor<'_> {
                 attr.span,
                 OnlyHasEffectOn {
                     attr_name: attr.name_or_empty(),
-                    target_name: allowed_target.name().replace(" ", "_"),
+                    target_name: allowed_target.name().replace(' ', "_"),
                 },
             );
         }

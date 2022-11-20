@@ -1,5 +1,5 @@
 error[E0210]: type parameter `T` must be used as the type parameter for some local type (e.g., `MyStruct<T>`)
-  --> $DIR/issue-100191.rs:18:6
+  --> $DIR/issue-43037.rs:19:6
    |
 LL | impl<T> From<<A<T> as Z>::Assoc> for T {}
    |      ^ type parameter `T` must be used as the type parameter for some local type

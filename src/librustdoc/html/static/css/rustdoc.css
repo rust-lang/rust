@@ -384,8 +384,7 @@ img {
 
 .sidebar {
 	font-size: 0.875rem;
-	width: 200px;
-	min-width: 200px;
+	flex: 0 0 200px;
 	overflow-y: scroll;
 	position: sticky;
 	height: 100vh;
@@ -394,12 +393,7 @@ img {
 }
 
 .rustdoc.source .sidebar {
-	width: 50px;
-	min-width: 0px;
-	max-width: 300px;
-	flex-grow: 0;
-	flex-shrink: 0;
-	flex-basis: auto;
+	flex-basis: 50px;
 	border-right: 1px solid;
 	overflow-x: hidden;
 	/* The sidebar is by default hidden  */
@@ -420,7 +414,7 @@ img {
 
 .source-sidebar-expanded .source .sidebar {
 	overflow-y: auto;
-	width: 300px;
+	flex-basis: 300px;
 }
 
 .source-sidebar-expanded .source .sidebar > *:not(#sidebar-toggle) {
@@ -706,8 +700,6 @@ a {
 }
 
 .small-section-header {
-	display: flex;
-	justify-content: space-between;
 	position: relative;
 }
 
@@ -715,7 +707,7 @@ a {
 	display: initial;
 }
 
-.impl:hover > .anchor, .trait-impl:hover > .anchor {
+.impl:hover > .anchor, .trait-impl:hover > .anchor, .variant:hover > .anchor {
 	display: inline-block;
 	position: absolute;
 }
@@ -1234,12 +1226,6 @@ a.test-arrow:hover {
 	font-size: 1.25rem;
 }
 
-h3.variant {
-	font-weight: 600;
-	font-size: 1.125rem;
-	margin-bottom: 10px;
-}
-
 .sub-variant h4 {
 	font-size: 1rem;
 	font-weight: 400;
@@ -1392,6 +1378,12 @@ h3.variant {
 	background-color: var(--button-background-color);
 	border: 1px solid var(--border-color);
 	border-radius: 2px;
+	color: var(--settings-button-color);
+}
+
+#settings-menu > a:hover, #settings-menu > a:focus,
+#help-button > a:hover, #help-button > a:focus {
+	border-color: var(--settings-button-border-focus);
 }
 
 #copy-path {
@@ -1701,6 +1693,7 @@ in storage.js
 		z-index: 11;
 		/* Reduce height slightly to account for mobile topbar. */
 		height: calc(100vh - 45px);
+		width: 200px;
 	}
 
 	/* The source view uses a different design for the sidebar toggle, and doesn't have a topbar,
@@ -1908,6 +1901,7 @@ in storage.js
 	}
 }
 
+.variant,
 .implementors-toggle > summary,
 .impl,
 #implementors-list > .docblock,
@@ -1919,6 +1913,7 @@ in storage.js
 	margin-bottom: 0.75em;
 }
 
+.variants > .docblock,
 .impl-items > .rustdoc-toggle[open]:not(:last-child),
 .methods > .rustdoc-toggle[open]:not(:last-child),
 .implementors-toggle[open]:not(:last-child) {

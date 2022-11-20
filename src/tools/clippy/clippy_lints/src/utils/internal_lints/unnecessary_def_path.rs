@@ -6,7 +6,7 @@ use rustc_ast::ast::LitKind;
 use rustc_data_structures::fx::FxHashSet;
 use rustc_errors::Applicability;
 use rustc_hir as hir;
-use rustc_hir::def::{DefKind, Namespace, Res};
+use rustc_hir::def::{DefKind, Res};
 use rustc_hir::def_id::DefId;
 use rustc_hir::{Expr, ExprKind, Local, Mutability, Node};
 use rustc_lint::{LateContext, LateLintPass};
@@ -91,7 +91,7 @@ impl UnnecessaryDefPath {
     #[allow(clippy::too_many_lines)]
     fn check_call(&mut self, cx: &LateContext<'_>, func: &Expr<'_>, args: &[Expr<'_>], span: Span) {
         enum Item {
-            LangItem(Symbol),
+            LangItem(&'static str),
             DiagnosticItem(Symbol),
         }
         static PATHS: &[&[&str]] = &[
@@ -325,18 +325,9 @@ fn inherent_def_path_res(cx: &LateContext<'_>, segments: &[&str]) -> Option<DefI
     })
 }
 
-fn get_lang_item_name(cx: &LateContext<'_>, def_id: DefId) -> Option<Symbol> {
-    if let Some(lang_item) = cx.tcx.lang_items().items().iter().position(|id| *id == Some(def_id)) {
-        let lang_items = def_path_res(cx, &["rustc_hir", "lang_items", "LangItem"], Some(Namespace::TypeNS)).def_id();
-        let item_name = cx
-            .tcx
-            .adt_def(lang_items)
-            .variants()
-            .iter()
-            .nth(lang_item)
-            .unwrap()
-            .name;
-        Some(item_name)
+fn get_lang_item_name(cx: &LateContext<'_>, def_id: DefId) -> Option<&'static str> {
+    if let Some((lang_item, _)) = cx.tcx.lang_items().iter().find(|(_, id)| *id == def_id) {
+        Some(lang_item.variant_name())
     } else {
         None
     }

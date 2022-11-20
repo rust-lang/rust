@@ -79,22 +79,22 @@ pub fn check_path(cx: &LateContext<'_>, path: &[&str]) -> bool {
         SimplifiedTypeGen::StrSimplifiedType,
     ]
     .iter()
-    .flat_map(|&ty| cx.tcx.incoherent_impls(ty));
-    for item_def_id in lang_items.items().iter().flatten().chain(incoherent_impls) {
-        let lang_item_path = cx.get_def_path(*item_def_id);
+    .flat_map(|&ty| cx.tcx.incoherent_impls(ty).iter().copied());
+    for item_def_id in lang_items.iter().map(|(_, def_id)| def_id).chain(incoherent_impls) {
+        let lang_item_path = cx.get_def_path(item_def_id);
         if path_syms.starts_with(&lang_item_path) {
             if let [item] = &path_syms[lang_item_path.len()..] {
                 if matches!(
-                    cx.tcx.def_kind(*item_def_id),
+                    cx.tcx.def_kind(item_def_id),
                     DefKind::Mod | DefKind::Enum | DefKind::Trait
                 ) {
-                    for child in cx.tcx.module_children(*item_def_id) {
+                    for child in cx.tcx.module_children(item_def_id) {
                         if child.ident.name == *item {
                             return true;
                         }
                     }
                 } else {
-                    for child in cx.tcx.associated_item_def_ids(*item_def_id) {
+                    for child in cx.tcx.associated_item_def_ids(item_def_id) {
                         if cx.tcx.item_name(*child) == *item {
                             return true;
                         }

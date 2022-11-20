@@ -10,19 +10,18 @@ use crate::token::{self, CommentKind, Delimiter, Token};
 use crate::tokenstream::{DelimSpan, Spacing, TokenTree};
 use crate::tokenstream::{LazyAttrTokenStream, TokenStream};
 use crate::util::comments;
-
 use rustc_data_structures::sync::WorkerLocal;
 use rustc_index::bit_set::GrowableBitSet;
 use rustc_span::source_map::BytePos;
 use rustc_span::symbol::{sym, Ident, Symbol};
 use rustc_span::Span;
-
 use std::cell::Cell;
 use std::iter;
 #[cfg(debug_assertions)]
 use std::ops::BitXor;
 #[cfg(debug_assertions)]
 use std::sync::atomic::{AtomicU32, Ordering};
+use thin_vec::thin_vec;
 
 pub struct MarkedAttrs(GrowableBitSet<AttrId>);
 
@@ -471,12 +470,12 @@ impl MetaItem {
                         tokens.peek()
                     {
                         tokens.next();
-                        vec![PathSegment::from_ident(Ident::new(name, span))]
+                        thin_vec![PathSegment::from_ident(Ident::new(name, span))]
                     } else {
                         break 'arm Path::from_ident(Ident::new(name, span));
                     }
                 } else {
-                    vec![PathSegment::path_root(span)]
+                    thin_vec![PathSegment::path_root(span)]
                 };
                 loop {
                     if let Some(TokenTree::Token(Token { kind: token::Ident(name, _), span }, _)) =

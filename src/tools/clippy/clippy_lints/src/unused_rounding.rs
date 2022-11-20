@@ -1,5 +1,5 @@
 use clippy_utils::diagnostics::span_lint_and_sugg;
-use rustc_ast::ast::{Expr, ExprKind};
+use rustc_ast::ast::{Expr, ExprKind, MethodCall};
 use rustc_errors::Applicability;
 use rustc_lint::{EarlyContext, EarlyLintPass};
 use rustc_session::{declare_lint_pass, declare_tool_lint};
@@ -30,8 +30,8 @@ declare_clippy_lint! {
 declare_lint_pass!(UnusedRounding => [UNUSED_ROUNDING]);
 
 fn is_useless_rounding(expr: &Expr) -> Option<(&str, String)> {
-    if let ExprKind::MethodCall(name_ident, receiver, _, _) = &expr.kind
-        && let method_name = name_ident.ident.name.as_str()
+    if let ExprKind::MethodCall(box MethodCall { seg, receiver, .. }) = &expr.kind
+        && let method_name = seg.ident.name.as_str()
         && (method_name == "ceil" || method_name == "round" || method_name == "floor")
         && let ExprKind::Lit(token_lit) = &receiver.kind
         && token_lit.is_semantic_float() {

@@ -518,7 +518,7 @@ impl<'tcx> AstConv<'tcx> for ItemCtxt<'tcx> {
         ty
     }
 
-    fn set_tainted_by_errors(&self) {
+    fn set_tainted_by_errors(&self, _: ErrorGuaranteed) {
         // There's no obvious place to track this, so just let it go.
     }
 

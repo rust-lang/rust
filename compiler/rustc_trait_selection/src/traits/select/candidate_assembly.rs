@@ -304,6 +304,8 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
                 self.assemble_candidates_for_transmutability(obligation, &mut candidates);
             } else if lang_items.tuple_trait() == Some(def_id) {
                 self.assemble_candidate_for_tuple(obligation, &mut candidates);
+            } else if lang_items.pointer_sized() == Some(def_id) {
+                self.assemble_candidate_for_ptr_sized(obligation, &mut candidates);
             } else {
                 if lang_items.clone_trait() == Some(def_id) {
                     // Same builtin conditions as `Copy`, i.e., every type which has builtin support
@@ -780,7 +782,9 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
 
         match (source.kind(), target.kind()) {
             // Trait+Kx+'a -> Trait+Ky+'b (upcasts).
-            (&ty::Dynamic(ref data_a, ..), &ty::Dynamic(ref data_b, ..)) => {
+            (&ty::Dynamic(ref data_a, _, dyn_a), &ty::Dynamic(ref data_b, _, dyn_b))
+                if dyn_a == dyn_b =>
+            {
                 // Upcast coercions permit several things:
                 //
                 // 1. Dropping auto traits, e.g., `Foo + Send` to `Foo`
@@ -841,7 +845,7 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
             }
 
             // `T` -> `Trait`
-            (_, &ty::Dynamic(..)) => {
+            (_, &ty::Dynamic(_, _, ty::Dyn)) => {
                 candidates.vec.push(BuiltinUnsizeCandidate);
             }
 
@@ -1045,6 +1049,32 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
             | ty::Error(_)
             | ty::Infer(_)
             | ty::Placeholder(_) => {}
+        }
+    }
+
+    fn assemble_candidate_for_ptr_sized(
+        &mut self,
+        obligation: &TraitObligation<'tcx>,
+        candidates: &mut SelectionCandidateSet<'tcx>,
+    ) {
+        // The regions of a type don't affect the size of the type
+        let self_ty = self
+            .tcx()
+            .erase_regions(self.tcx().erase_late_bound_regions(obligation.predicate.self_ty()));
+
+        // But if there are inference variables, we have to wait until it's resolved.
+        if self_ty.has_non_region_infer() {
+            candidates.ambiguous = true;
+            return;
+        }
+
+        let usize_layout =
+            self.tcx().layout_of(ty::ParamEnv::empty().and(self.tcx().types.usize)).unwrap().layout;
+        if let Ok(layout) = self.tcx().layout_of(obligation.param_env.and(self_ty))
+            && layout.layout.size() == usize_layout.size()
+            && layout.layout.align().abi == usize_layout.align().abi
+        {
+            candidates.vec.push(BuiltinCandidate { has_nested: false });
         }
     }
 }
