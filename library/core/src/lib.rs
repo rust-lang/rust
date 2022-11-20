@@ -392,38 +392,8 @@ pub mod primitive;
 #[unstable(feature = "stdsimd", issue = "48556")]
 mod core_arch;
 
-#[doc = include_str!("../../stdarch/crates/core_arch/src/core_arch_docs.md")]
 #[stable(feature = "simd_arch", since = "1.27.0")]
-pub mod arch {
-    #[stable(feature = "simd_arch", since = "1.27.0")]
-    pub use crate::core_arch::arch::*;
-
-    /// Inline assembly.
-    ///
-    /// Refer to [rust by example] for a usage guide and the [reference] for
-    /// detailed information about the syntax and available options.
-    ///
-    /// [rust by example]: https://doc.rust-lang.org/nightly/rust-by-example/unsafe/asm.html
-    /// [reference]: https://doc.rust-lang.org/nightly/reference/inline-assembly.html
-    #[stable(feature = "asm", since = "1.59.0")]
-    #[rustc_builtin_macro]
-    pub macro asm("assembly template", $(operands,)* $(options($(option),*))?) {
-        /* compiler built-in */
-    }
-
-    /// Module-level inline assembly.
-    ///
-    /// Refer to [rust by example] for a usage guide and the [reference] for
-    /// detailed information about the syntax and available options.
-    ///
-    /// [rust by example]: https://doc.rust-lang.org/nightly/rust-by-example/unsafe/asm.html
-    /// [reference]: https://doc.rust-lang.org/nightly/reference/inline-assembly.html
-    #[stable(feature = "global_asm", since = "1.59.0")]
-    #[rustc_builtin_macro]
-    pub macro global_asm("assembly template", $(operands,)* $(options($(option),*))?) {
-        /* compiler built-in */
-    }
-}
+pub mod arch;
 
 // Pull in the `core_simd` crate directly into libcore. The contents of
 // `core_simd` are in a different repository: rust-lang/portable-simd.
