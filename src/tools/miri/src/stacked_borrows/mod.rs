@@ -488,7 +488,7 @@ impl<'tcx> Stack {
         &mut self,
         derived_from: ProvenanceExtra,
         new: Item,
-        global: &mut GlobalStateInner,
+        global: &GlobalStateInner,
         dcx: &mut DiagnosticCx<'_, '_, '_, '_, 'tcx>,
         exposed_tags: &FxHashSet<SbTag>,
     ) -> InterpResult<'tcx> {
@@ -658,9 +658,9 @@ impl Stacks {
             range.size.bytes()
         );
         let dcx = DiagnosticCxBuilder::read(&mut current_span, threads, tag, range);
-        let mut state = state.borrow_mut();
+        let state = state.borrow();
         self.for_each(range, dcx, |stack, dcx, exposed_tags| {
-            stack.access(AccessKind::Read, tag, &mut state, dcx, exposed_tags)
+            stack.access(AccessKind::Read, tag, &state, dcx, exposed_tags)
         })
     }
 
@@ -681,9 +681,9 @@ impl Stacks {
             range.size.bytes()
         );
         let dcx = DiagnosticCxBuilder::write(&mut current_span, threads, tag, range);
-        let mut state = state.borrow_mut();
+        let state = state.borrow();
         self.for_each(range, dcx, |stack, dcx, exposed_tags| {
-            stack.access(AccessKind::Write, tag, &mut state, dcx, exposed_tags)
+            stack.access(AccessKind::Write, tag, &state, dcx, exposed_tags)
         })
     }
 
@@ -904,7 +904,7 @@ trait EvalContextPrivExt<'mir: 'ecx, 'tcx: 'mir, 'ecx>: crate::MiriInterpCxExt<'
                         false
                     };
                     let item = Item::new(new_tag, perm, protected);
-                    let mut global = this.machine.stacked_borrows.as_ref().unwrap().borrow_mut();
+                    let global = this.machine.stacked_borrows.as_ref().unwrap().borrow();
                     let dcx = DiagnosticCxBuilder::retag(
                         &mut current_span, // FIXME avoid this `clone`
                         &this.machine.threads,
@@ -914,7 +914,7 @@ trait EvalContextPrivExt<'mir: 'ecx, 'tcx: 'mir, 'ecx>: crate::MiriInterpCxExt<'
                         alloc_range(base_offset, size),
                     );
                     stacked_borrows.for_each(range, dcx, |stack, dcx, exposed_tags| {
-                        stack.grant(orig_tag, item, &mut global, dcx, exposed_tags)
+                        stack.grant(orig_tag, item, &global, dcx, exposed_tags)
                     })
                 })?;
                 return Ok(Some(alloc_id));
@@ -932,7 +932,7 @@ trait EvalContextPrivExt<'mir: 'ecx, 'tcx: 'mir, 'ecx>: crate::MiriInterpCxExt<'
             .borrow_mut();
         let item = Item::new(new_tag, perm, protect.is_some());
         let range = alloc_range(base_offset, size);
-        let mut global = machine.stacked_borrows.as_ref().unwrap().borrow_mut();
+        let global = machine.stacked_borrows.as_ref().unwrap().borrow();
         // FIXME: can't share this with the current_span inside log_creation
         let current_span = &mut machine.current_span();
         let dcx = DiagnosticCxBuilder::retag(
@@ -944,7 +944,7 @@ trait EvalContextPrivExt<'mir: 'ecx, 'tcx: 'mir, 'ecx>: crate::MiriInterpCxExt<'
             alloc_range(base_offset, size),
         );
         stacked_borrows.for_each(range, dcx, |stack, dcx, exposed_tags| {
-            stack.grant(orig_tag, item, &mut global, dcx, exposed_tags)
+            stack.grant(orig_tag, item, &global, dcx, exposed_tags)
         })?;
 
         Ok(Some(alloc_id))
