@@ -270,6 +270,7 @@ declare_clippy_lint! {
     /// It is most likely that such a  method is a bug caused by a typo or by copy-pasting.
     ///
     /// ### Example
+
     /// ```rust
     /// struct A {
     ///     a: String,
@@ -281,7 +282,7 @@ declare_clippy_lint! {
     ///         &self.b
     ///     }
     /// }
-    /// // example code where clippy issues a warning
+
     /// ```
     /// Use instead:
     /// ```rust
@@ -296,7 +297,7 @@ declare_clippy_lint! {
     ///     }
     /// }
     /// ```
-    #[clippy::version = "1.66.0"]
+    #[clippy::version = "1.67.0"]
     pub MISNAMED_GETTERS,
     suspicious,
     "getter method returning the wrong field"
