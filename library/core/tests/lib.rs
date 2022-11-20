@@ -75,6 +75,7 @@
 #![feature(iter_is_partitioned)]
 #![feature(iter_next_chunk)]
 #![feature(iter_order_by)]
+#![feature(iter_repeat_n)]
 #![feature(iterator_try_collect)]
 #![feature(iterator_try_reduce)]
 #![feature(const_mut_refs)]
