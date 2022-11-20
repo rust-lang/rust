@@ -91,6 +91,26 @@ pub struct Stacks {
     modified_since_last_gc: bool,
 }
 
+/// The flavor of the protector.
+#[derive(Copy, Clone, Debug)]
+enum ProtectorKind {
+    /// Protected against aliasing violations from other pointers.
+    ///
+    /// Items protected like this cause UB when they are invalidated, *but* the pointer itself may
+    /// still be used to issue a deallocation.
+    ///
+    /// This is required for LLVM IR pointers that are `noalias` but *not* `dereferenceable`.
+    WeakProtector,
+
+    /// Protected against any kind of invalidation.
+    ///
+    /// Items protected like this cause UB when they are invalidated or the memory is deallocated.
+    /// This is strictly stronger protection than `WeakProtector`.
+    ///
+    /// This is required for LLVM IR pointers that are `dereferenceable` (and also allows `noalias`).
+    StrongProtector,
+}
+
 /// Extra global state, available to the memory access hooks.
 #[derive(Debug)]
 pub struct GlobalStateInner {
@@ -102,12 +122,12 @@ pub struct GlobalStateInner {
     base_ptr_tags: FxHashMap<AllocId, SbTag>,
     /// Next unused call ID (for protectors).
     next_call_id: CallId,
-    /// All currently protected tags.
+    /// All currently protected tags, and the status of their protection.
     /// An item is protected if its tag is in this set, *and* it has the "protected" bit set.
     /// We add tags to this when they are created with a protector in `reborrow`, and
     /// we remove tags from this when the call which is protecting them returns, in
     /// `GlobalStateInner::end_call`. See `Stack::item_popped` for more details.
-    protected_tags: FxHashSet<SbTag>,
+    protected_tags: FxHashMap<SbTag, ProtectorKind>,
     /// The pointer ids to trace
     tracked_pointer_tags: FxHashSet<SbTag>,
     /// The call ids to trace
@@ -189,7 +209,7 @@ impl GlobalStateInner {
             next_ptr_tag: SbTag(NonZeroU64::new(1).unwrap()),
             base_ptr_tags: FxHashMap::default(),
             next_call_id: NonZeroU64::new(1).unwrap(),
-            protected_tags: FxHashSet::default(),
+            protected_tags: FxHashMap::default(),
             tracked_pointer_tags,
             tracked_call_ids,
             retag_fields,
@@ -314,6 +334,7 @@ impl<'tcx> Stack {
         item: &Item,
         global: &GlobalStateInner,
         dcx: &mut DiagnosticCx<'_, '_, '_, '_, 'tcx>,
+        deallocation: bool,
     ) -> InterpResult<'tcx> {
         if !global.tracked_pointer_tags.is_empty() {
             dcx.check_tracked_tag_popped(item, global);
@@ -336,8 +357,11 @@ impl<'tcx> Stack {
         // 2. Most frames protect only one or two tags. So this duplicative global turns a search
         //    which ends up about linear in the number of protected tags in the program into a
         //    constant time check (and a slow linear, because the tags in the frames aren't contiguous).
-        if global.protected_tags.contains(&item.tag()) {
-            return Err(dcx.protector_error(item).into());
+        if let Some(&protector_kind) = global.protected_tags.get(&item.tag()) {
+            let allowed = deallocation && matches!(protector_kind, ProtectorKind::WeakProtector);
+            if !allowed {
+                return Err(dcx.protector_error(item, protector_kind).into());
+            }
         }
         Ok(())
     }
@@ -350,7 +374,7 @@ impl<'tcx> Stack {
         &mut self,
         access: AccessKind,
         tag: ProvenanceExtra,
-        global: &mut GlobalStateInner,
+        global: &GlobalStateInner,
         dcx: &mut DiagnosticCx<'_, '_, '_, '_, 'tcx>,
         exposed_tags: &FxHashSet<SbTag>,
     ) -> InterpResult<'tcx> {
@@ -377,7 +401,7 @@ impl<'tcx> Stack {
                 0
             };
             self.pop_items_after(first_incompatible_idx, |item| {
-                Stack::item_popped(&item, global, dcx)?;
+                Stack::item_popped(&item, global, dcx, /* deallocation */ false)?;
                 dcx.log_invalidation(item.tag());
                 Ok(())
             })?;
@@ -398,7 +422,7 @@ impl<'tcx> Stack {
                 0
             };
             self.disable_uniques_starting_at(first_incompatible_idx, |item| {
-                Stack::item_popped(&item, global, dcx)?;
+                Stack::item_popped(&item, global, dcx, /* deallocation */ false)?;
                 dcx.log_invalidation(item.tag());
                 Ok(())
             })?;
@@ -440,14 +464,15 @@ impl<'tcx> Stack {
         dcx: &mut DiagnosticCx<'_, '_, '_, '_, 'tcx>,
         exposed_tags: &FxHashSet<SbTag>,
     ) -> InterpResult<'tcx> {
-        // Step 1: Make sure there is a granting item.
-        self.find_granting(AccessKind::Write, tag, exposed_tags)
+        // Step 1: Make a write access.
+        // As part of this we do regular protector checking, i.e. even weakly protected items cause UB when popped.
+        self.access(AccessKind::Write, tag, global, dcx, exposed_tags)
             .map_err(|_| dcx.dealloc_error())?;
 
-        // Step 2: Consider all items removed. This checks for protectors.
+        // Step 2: Pretend we remove the remaining items, checking if any are strongly protected.
         for idx in (0..self.len()).rev() {
             let item = self.get(idx).unwrap();
-            Stack::item_popped(&item, global, dcx)?;
+            Stack::item_popped(&item, global, dcx, /* deallocation */ true)?;
         }
 
         Ok(())
@@ -698,7 +723,7 @@ trait EvalContextPrivExt<'mir: 'ecx, 'tcx: 'mir, 'ecx>: crate::MiriInterpCxExt<'
         kind: RefKind,
         retag_cause: RetagCause, // What caused this retag, for diagnostics only
         new_tag: SbTag,
-        protect: bool,
+        protect: Option<ProtectorKind>,
     ) -> InterpResult<'tcx, Option<AllocId>> {
         let this = self.eval_context_mut();
 
@@ -761,7 +786,7 @@ trait EvalContextPrivExt<'mir: 'ecx, 'tcx: 'mir, 'ecx>: crate::MiriInterpCxExt<'
                     );
                     let mut dcx = dcx.build(&mut stacked_borrows.history, base_offset);
                     dcx.log_creation();
-                    if protect {
+                    if protect.is_some() {
                         dcx.log_protector();
                     }
                 }
@@ -821,10 +846,16 @@ trait EvalContextPrivExt<'mir: 'ecx, 'tcx: 'mir, 'ecx>: crate::MiriInterpCxExt<'
             size.bytes()
         );
 
-        if protect {
+        if let Some(protect) = protect {
             // See comment in `Stack::item_popped` for why we store the tag twice.
             this.frame_mut().extra.stacked_borrows.as_mut().unwrap().protected_tags.push(new_tag);
-            this.machine.stacked_borrows.as_mut().unwrap().get_mut().protected_tags.insert(new_tag);
+            this.machine
+                .stacked_borrows
+                .as_mut()
+                .unwrap()
+                .get_mut()
+                .protected_tags
+                .insert(new_tag, protect);
         }
 
         // Update the stacks.
@@ -866,7 +897,7 @@ trait EvalContextPrivExt<'mir: 'ecx, 'tcx: 'mir, 'ecx>: crate::MiriInterpCxExt<'
                         Permission::SharedReadWrite
                     };
                     let protected = if frozen {
-                        protect
+                        protect.is_some()
                     } else {
                         // We do not protect inside UnsafeCell.
                         // This fixes https://github.com/rust-lang/rust/issues/55005.
@@ -899,7 +930,7 @@ trait EvalContextPrivExt<'mir: 'ecx, 'tcx: 'mir, 'ecx>: crate::MiriInterpCxExt<'
             .as_mut()
             .expect("we should have Stacked Borrows data")
             .borrow_mut();
-        let item = Item::new(new_tag, perm, protect);
+        let item = Item::new(new_tag, perm, protect.is_some());
         let range = alloc_range(base_offset, size);
         let mut global = machine.stacked_borrows.as_ref().unwrap().borrow_mut();
         // FIXME: can't share this with the current_span inside log_creation
@@ -926,7 +957,7 @@ trait EvalContextPrivExt<'mir: 'ecx, 'tcx: 'mir, 'ecx>: crate::MiriInterpCxExt<'
         val: &ImmTy<'tcx, Provenance>,
         kind: RefKind,
         retag_cause: RetagCause, // What caused this retag, for diagnostics only
-        protect: bool,
+        protect: Option<ProtectorKind>,
     ) -> InterpResult<'tcx, ImmTy<'tcx, Provenance>> {
         let this = self.eval_context_mut();
         // We want a place for where the ptr *points to*, so we get one.
@@ -996,7 +1027,7 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriInterpCxExt<'mir, 'tcx> {
                 place: &PlaceTy<'tcx, Provenance>,
                 ref_kind: RefKind,
                 retag_cause: RetagCause,
-                protector: bool,
+                protector: Option<ProtectorKind>,
             ) -> InterpResult<'tcx> {
                 let val = self.ecx.read_immediate(&self.ecx.place_to_op(place)?)?;
                 let val = self.ecx.retag_reference(&val, ref_kind, retag_cause, protector)?;
@@ -1015,13 +1046,13 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriInterpCxExt<'mir, 'tcx> {
             }
 
             fn visit_box(&mut self, place: &PlaceTy<'tcx, Provenance>) -> InterpResult<'tcx> {
-                // Boxes do not get a protector: protectors reflect that references outlive the call
-                // they were passed in to; that's just not the case for boxes.
+                // Boxes get a weak protectors, since they may be deallocated.
                 self.retag_place(
                     place,
                     RefKind::Unique { two_phase: false },
                     self.retag_cause,
-                    /*protector*/ false,
+                    /*protector*/
+                    (self.kind == RetagKind::FnEntry).then_some(ProtectorKind::WeakProtector),
                 )
             }
 
@@ -1046,7 +1077,9 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriInterpCxExt<'mir, 'tcx> {
                             place,
                             ref_kind,
                             self.retag_cause,
-                            /*protector*/ self.kind == RetagKind::FnEntry,
+                            /*protector*/
+                            (self.kind == RetagKind::FnEntry)
+                                .then_some(ProtectorKind::StrongProtector),
                         )?;
                     }
                     ty::RawPtr(tym) => {
@@ -1059,7 +1092,7 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriInterpCxExt<'mir, 'tcx> {
                                 place,
                                 RefKind::Raw { mutable: tym.mutbl == Mutability::Mut },
                                 self.retag_cause,
-                                /*protector*/ false,
+                                /*protector*/ None,
                             )?;
                         }
                     }
@@ -1110,12 +1143,12 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriInterpCxExt<'mir, 'tcx> {
         // (The pointer type does not matter, so we use a raw pointer.)
         let ptr_layout = this.layout_of(this.tcx.mk_mut_ptr(return_place.layout.ty))?;
         let val = ImmTy::from_immediate(return_place.to_ref(this), ptr_layout);
-        // Reborrow it.
+        // Reborrow it. With protection! That is part of the point.
         let val = this.retag_reference(
             &val,
             RefKind::Unique { two_phase: false },
             RetagCause::FnReturn,
-            /*protector*/ true,
+            /*protector*/ Some(ProtectorKind::StrongProtector),
         )?;
         // And use reborrowed pointer for return place.
         let return_place = this.ref_to_mplace(&val)?;
