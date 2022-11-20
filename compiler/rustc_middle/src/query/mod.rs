@@ -1648,6 +1648,8 @@ rustc_queries! {
     /// a generic type parameter will panic if you call this method on it:
     ///
     /// ```
+    /// use std::fmt::Debug;
+    ///
     /// pub trait Foo<T: Debug> {}
     /// ```
     ///
