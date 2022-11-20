@@ -1312,12 +1312,18 @@ impl<'o, 'tcx> dyn AstConv<'tcx> + 'o {
                 "additional use",
             );
             first_trait.label_with_exp_info(&mut err, "first non-auto trait", "first use");
+            let mut regular_traits = regular_traits
+                .iter()
+                .map(|t| t.trait_ref().print_only_trait_path().to_string());
+            let sug_trait_name = regular_traits
+                .filter_map(|name| name.strip_prefix("NewTrait")?.parse::<u32>().ok())
+                .max()
+                .map_or(std::borrow::Cow::from("NewTrait"), |max| std::borrow::Cow::from(format!("NewTrait{}", max + 1)));
             err.help(&format!(
                 "consider creating a new trait with all of these as supertraits and using that \
-                 trait here instead: `trait NewTrait: {} {{}}`",
+                 trait here instead: `trait {}: {} {{}}`",
+                sug_trait_name,
                 regular_traits
-                    .iter()
-                    .map(|t| t.trait_ref().print_only_trait_path().to_string())
                     .collect::<Vec<_>>()
                     .join(" + "),
             ));

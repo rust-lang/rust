@@ -1,0 +1,26 @@
+error[E0782]: trait objects must include the `dyn` keyword
+  --> $DIR/new-trait-with-all-as-supertraits-sug-name-clash.rs:6:13
+   |
+LL | fn foo() -> NewTrait + NewTrait2 {}
+   |             ^^^^^^^^^^^^^^^^^^^^
+   |
+help: add `dyn` keyword before this trait
+   |
+LL | fn foo() -> dyn NewTrait + NewTrait2 {}
+   |             +++
+
+error[E0225]: only auto traits can be used as additional traits in a trait object
+  --> $DIR/new-trait-with-all-as-supertraits-sug-name-clash.rs:6:24
+   |
+LL | fn foo() -> NewTrait + NewTrait2 {}
+   |             --------   ^^^^^^^^^ additional non-auto trait
+   |             |
+   |             first non-auto trait
+   |
+   = help: consider creating a new trait with all of these as supertraits and using that trait here instead: `trait NewTrait3: NewTrait + NewTrait2 {}`
+   = note: auto-traits like `Send` and `Sync` are traits that have special properties; for more information on them, visit <https://doc.rust-lang.org/reference/special-types-and-traits.html#auto-traits>
+
+error: aborting due to 2 previous errors
+
+Some errors have detailed explanations: E0225, E0782.
+For more information about an error, try `rustc --explain E0225`.
