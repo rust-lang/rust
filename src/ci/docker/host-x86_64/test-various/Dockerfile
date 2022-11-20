@@ -1,6 +1,7 @@
 FROM ubuntu:20.04
 
 RUN apt-get update && DEBIAN_FRONTEND=noninteractive apt-get install -y --no-install-recommends \
+  clang-11 \
   g++ \
   make \
   ninja-build \
@@ -67,7 +68,9 @@ ENV MUSL_TARGETS=x86_64-unknown-linux-musl \
 ENV MUSL_SCRIPT python3 /checkout/x.py --stage 2 test --host='' --target $MUSL_TARGETS
 
 COPY host-x86_64/test-various/uefi_qemu_test /uefi_qemu_test
-ENV UEFI_TARGETS=x86_64-unknown-uefi
+ENV UEFI_TARGETS=x86_64-unknown-uefi \
+    CC_x86_64_unknown_uefi=clang-11 \
+    CXX_x86_64_unknown_uefi=clang++-11
 ENV UEFI_SCRIPT python3 /checkout/x.py --stage 2 build --host='' --target $UEFI_TARGETS && \
   python3 -u /uefi_qemu_test/run.py
 
