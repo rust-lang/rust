@@ -109,6 +109,7 @@
 #![feature(utf8_chunks)]
 #![feature(is_ascii_octdigit)]
 #![deny(unsafe_op_in_unsafe_fn)]
+#![deny(fuzzy_provenance_casts)]
 
 extern crate test;
 

@@ -140,6 +140,7 @@ impl<T: ?Sized> *const T {
     /// assert_eq!(<*const u8>::from_bits(1), dangling);
     /// ```
     #[unstable(feature = "ptr_to_from_bits", issue = "91126")]
+    #[allow(fuzzy_provenance_casts)] // this is an unstable and semi-deprecated cast function
     pub fn from_bits(bits: usize) -> Self
     where
         T: Sized,

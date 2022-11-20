@@ -89,6 +89,7 @@
 // Lints:
 #![deny(rust_2021_incompatible_or_patterns)]
 #![deny(unsafe_op_in_unsafe_fn)]
+#![deny(fuzzy_provenance_casts)]
 #![warn(deprecated_in_future)]
 #![warn(missing_debug_implementations)]
 #![warn(missing_docs)]
@@ -162,6 +163,7 @@
 #![feature(slice_ptr_get)]
 #![feature(slice_split_at_unchecked)]
 #![feature(str_internals)]
+#![feature(strict_provenance)]
 #![feature(utf16_extra)]
 #![feature(utf16_extra_const)]
 #![feature(variant_count)]
