@@ -65,7 +65,7 @@ pub struct FrameExtra {
     /// incremental updates of the global list of protected tags stored in the
     /// `stacked_borrows::GlobalState` upon function return, and if we attempt to pop a protected
     /// tag, to identify which call is responsible for protecting the tag.
-    /// See `Stack::item_popped` for more explanation.
+    /// See `Stack::item_invalidated` for more explanation.
     ///
     /// This will contain one tag per reference passed to the function, so
     /// a size of 2 is enough for the vast majority of functions.
@@ -126,7 +126,7 @@ pub struct GlobalStateInner {
     /// An item is protected if its tag is in this set, *and* it has the "protected" bit set.
     /// We add tags to this when they are created with a protector in `reborrow`, and
     /// we remove tags from this when the call which is protecting them returns, in
-    /// `GlobalStateInner::end_call`. See `Stack::item_popped` for more details.
+    /// `GlobalStateInner::end_call`. See `Stack::item_invalidated` for more details.
     protected_tags: FxHashMap<SbTag, ProtectorKind>,
     /// The pointer ids to trace
     tracked_pointer_tags: FxHashSet<SbTag>,
@@ -292,6 +292,13 @@ impl Permission {
     }
 }
 
+/// Determines whether an item was invalidated by a conflicting access, or by deallocation.
+#[derive(Copy, Clone, Debug)]
+enum ItemInvalidationCause {
+    Conflict,
+    Dealloc,
+}
+
 /// Core per-location operations: access, dealloc, reborrow.
 impl<'tcx> Stack {
     /// Find the first write-incompatible item above the given one --
@@ -330,11 +337,11 @@ impl<'tcx> Stack {
     /// Within `provoking_access, the `AllocRange` refers the entire operation, and
     /// the `Size` refers to the specific location in the `AllocRange` that we are
     /// currently checking.
-    fn item_popped(
+    fn item_invalidated(
         item: &Item,
         global: &GlobalStateInner,
         dcx: &mut DiagnosticCx<'_, '_, '_, '_, 'tcx>,
-        deallocation: bool,
+        cause: ItemInvalidationCause,
     ) -> InterpResult<'tcx> {
         if !global.tracked_pointer_tags.is_empty() {
             dcx.check_tracked_tag_popped(item, global);
@@ -358,7 +365,10 @@ impl<'tcx> Stack {
         //    which ends up about linear in the number of protected tags in the program into a
         //    constant time check (and a slow linear, because the tags in the frames aren't contiguous).
         if let Some(&protector_kind) = global.protected_tags.get(&item.tag()) {
-            let allowed = deallocation && matches!(protector_kind, ProtectorKind::WeakProtector);
+            // The only way this is okay is if the protector is weak and we are deallocating with
+            // the right pointer.
+            let allowed = matches!(cause, ItemInvalidationCause::Dealloc)
+                && matches!(protector_kind, ProtectorKind::WeakProtector);
             if !allowed {
                 return Err(dcx.protector_error(item, protector_kind).into());
             }
@@ -401,7 +411,7 @@ impl<'tcx> Stack {
                 0
             };
             self.pop_items_after(first_incompatible_idx, |item| {
-                Stack::item_popped(&item, global, dcx, /* deallocation */ false)?;
+                Stack::item_invalidated(&item, global, dcx, ItemInvalidationCause::Conflict)?;
                 dcx.log_invalidation(item.tag());
                 Ok(())
             })?;
@@ -422,7 +432,7 @@ impl<'tcx> Stack {
                 0
             };
             self.disable_uniques_starting_at(first_incompatible_idx, |item| {
-                Stack::item_popped(&item, global, dcx, /* deallocation */ false)?;
+                Stack::item_invalidated(&item, global, dcx, ItemInvalidationCause::Conflict)?;
                 dcx.log_invalidation(item.tag());
                 Ok(())
             })?;
@@ -472,7 +482,7 @@ impl<'tcx> Stack {
         // Step 2: Pretend we remove the remaining items, checking if any are strongly protected.
         for idx in (0..self.len()).rev() {
             let item = self.get(idx).unwrap();
-            Stack::item_popped(&item, global, dcx, /* deallocation */ true)?;
+            Stack::item_invalidated(&item, global, dcx, ItemInvalidationCause::Dealloc)?;
         }
 
         Ok(())
@@ -847,7 +857,7 @@ trait EvalContextPrivExt<'mir: 'ecx, 'tcx: 'mir, 'ecx>: crate::MiriInterpCxExt<'
         );
 
         if let Some(protect) = protect {
-            // See comment in `Stack::item_popped` for why we store the tag twice.
+            // See comment in `Stack::item_invalidated` for why we store the tag twice.
             this.frame_mut().extra.stacked_borrows.as_mut().unwrap().protected_tags.push(new_tag);
             this.machine
                 .stacked_borrows

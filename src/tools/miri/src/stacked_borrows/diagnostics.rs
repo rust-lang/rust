@@ -288,7 +288,7 @@ impl<'span, 'history, 'ecx, 'mir, 'tcx> DiagnosticCx<'span, 'history, 'ecx, 'mir
             }
             Operation::Access(AccessOp { kind, range, .. }) =>
                 (*range, InvalidationCause::Access(*kind)),
-            _ => {
+            Operation::Dealloc(_) => {
                 // This can be reached, but never be relevant later since the entire allocation is
                 // gone now.
                 return;
