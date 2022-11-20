@@ -418,7 +418,7 @@ impl Options {
             ) {
                 Ok(p) => p,
                 Err(e) => {
-                    diag.struct_err(&e.to_string()).emit();
+                    diag.struct_err(e).emit();
                     return Err(1);
                 }
             };
@@ -561,7 +561,7 @@ impl Options {
             ) {
                 Ok(p) => p,
                 Err(e) => {
-                    diag.struct_err(&e.to_string()).emit();
+                    diag.struct_err(e).emit();
                     return Err(1);
                 }
             };

@@ -11,7 +11,6 @@ use rustc_target::abi::TargetDataLayoutErrors;
 use rustc_target::spec::{PanicStrategy, SplitDebuginfo, StackProtector, TargetTriple};
 use std::borrow::Cow;
 use std::fmt;
-use std::fmt::Write;
 use std::num::ParseIntError;
 use std::path::{Path, PathBuf};
 use std::process::ExitStatus;
@@ -191,23 +190,15 @@ impl From<Vec<Symbol>> for DiagnosticSymbolList {
 
 impl IntoDiagnosticArg for DiagnosticSymbolList {
     fn into_diagnostic_arg(self) -> DiagnosticArgValue<'static> {
-        // FIXME: replace the logic here with a real list formatter
-        let symbols = match &self.0[..] {
-            [symbol] => format!("`{symbol}`"),
-            [symbol, last] => {
-                format!("`{symbol}` and `{last}`",)
-            }
-            [symbols @ .., last] => {
-                let mut result = String::new();
-                for symbol in symbols {
-                    write!(result, "`{symbol}`, ").unwrap();
-                }
-                write!(result, "and `{last}`").unwrap();
-                result
-            }
-            [] => unreachable!(),
-        };
-        DiagnosticArgValue::Str(Cow::Owned(symbols))
+        DiagnosticArgValue::StrListSepByAnd(
+            self.0.into_iter().map(|sym| Cow::Owned(format!("`{sym}`"))).collect(),
+        )
+    }
+}
+
+impl<Id> IntoDiagnosticArg for hir::def::Res<Id> {
+    fn into_diagnostic_arg(self) -> DiagnosticArgValue<'static> {
+        DiagnosticArgValue::Str(Cow::Borrowed(self.descr()))
     }
 }
 

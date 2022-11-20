@@ -5,6 +5,7 @@
 //! This API is completely unstable and subject to change.
 
 #![doc(html_root_url = "https://doc.rust-lang.org/nightly/nightly-rustc/")]
+#![feature(is_terminal)]
 #![feature(once_cell)]
 #![feature(decl_macro)]
 #![recursion_limit = "256"]
@@ -27,7 +28,6 @@ use rustc_feature::find_gated_cfg;
 use rustc_interface::util::{self, collect_crate_types, get_codegen_backend};
 use rustc_interface::{interface, Queries};
 use rustc_lint::LintStore;
-use rustc_log::stdout_isatty;
 use rustc_metadata::locator;
 use rustc_save_analysis as save;
 use rustc_save_analysis::DumpHandler;
@@ -48,7 +48,7 @@ use std::default::Default;
 use std::env;
 use std::ffi::OsString;
 use std::fs;
-use std::io::{self, Read, Write};
+use std::io::{self, IsTerminal, Read, Write};
 use std::panic::{self, catch_unwind};
 use std::path::PathBuf;
 use std::process::{self, Command, Stdio};
@@ -515,7 +515,7 @@ fn handle_explain(registry: Registry, code: &str, output: ErrorOutputType) {
                 }
                 text.push('\n');
             }
-            if stdout_isatty() {
+            if io::stdout().is_terminal() {
                 show_content_with_pager(&text);
             } else {
                 print!("{}", text);

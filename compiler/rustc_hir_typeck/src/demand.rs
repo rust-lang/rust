@@ -154,7 +154,10 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             Err(e) => e,
         };
 
-        self.set_tainted_by_errors();
+        self.set_tainted_by_errors(self.tcx.sess.delay_span_bug(
+            expr.span,
+            "`TypeError` when attempting coercion but no error emitted",
+        ));
         let expr = expr.peel_drop_temps();
         let cause = self.misc(expr.span);
         let expr_ty = self.resolve_vars_with_obligations(checked_ty);

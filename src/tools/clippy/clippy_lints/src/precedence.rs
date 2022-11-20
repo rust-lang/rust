@@ -1,7 +1,7 @@
 use clippy_utils::diagnostics::span_lint_and_sugg;
 use clippy_utils::source::snippet_with_applicability;
 use if_chain::if_chain;
-use rustc_ast::ast::{BinOpKind, Expr, ExprKind, UnOp};
+use rustc_ast::ast::{BinOpKind, Expr, ExprKind, MethodCall, UnOp};
 use rustc_ast::token;
 use rustc_errors::Applicability;
 use rustc_lint::{EarlyContext, EarlyLintPass};
@@ -110,11 +110,11 @@ impl EarlyLintPass for Precedence {
             let mut arg = operand;
 
             let mut all_odd = true;
-            while let ExprKind::MethodCall(path_segment, receiver, _, _) = &arg.kind {
-                let path_segment_str = path_segment.ident.name.as_str();
+            while let ExprKind::MethodCall(box MethodCall { seg, receiver, .. }) = &arg.kind {
+                let seg_str = seg.ident.name.as_str();
                 all_odd &= ALLOWED_ODD_FUNCTIONS
                     .iter()
-                    .any(|odd_function| **odd_function == *path_segment_str);
+                    .any(|odd_function| **odd_function == *seg_str);
                 arg = receiver;
             }
 

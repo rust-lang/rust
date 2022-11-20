@@ -3,6 +3,7 @@ use crate::abi::{HasDataLayout, TyAbiInterface, TyAndLayout};
 use crate::spec::{self, HasTargetSpec};
 use rustc_span::Symbol;
 use std::fmt;
+use std::str::FromStr;
 
 mod aarch64;
 mod amdgpu;
@@ -734,6 +735,33 @@ impl<'a, Ty> FnAbi<'a, Ty> {
         }
 
         Ok(())
+    }
+}
+
+impl FromStr for Conv {
+    type Err = String;
+
+    fn from_str(s: &str) -> Result<Self, Self::Err> {
+        match s {
+            "C" => Ok(Conv::C),
+            "Rust" => Ok(Conv::Rust),
+            "RustCold" => Ok(Conv::Rust),
+            "ArmAapcs" => Ok(Conv::ArmAapcs),
+            "CCmseNonSecureCall" => Ok(Conv::CCmseNonSecureCall),
+            "Msp430Intr" => Ok(Conv::Msp430Intr),
+            "PtxKernel" => Ok(Conv::PtxKernel),
+            "X86Fastcall" => Ok(Conv::X86Fastcall),
+            "X86Intr" => Ok(Conv::X86Intr),
+            "X86Stdcall" => Ok(Conv::X86Stdcall),
+            "X86ThisCall" => Ok(Conv::X86ThisCall),
+            "X86VectorCall" => Ok(Conv::X86VectorCall),
+            "X86_64SysV" => Ok(Conv::X86_64SysV),
+            "X86_64Win64" => Ok(Conv::X86_64Win64),
+            "AmdGpuKernel" => Ok(Conv::AmdGpuKernel),
+            "AvrInterrupt" => Ok(Conv::AvrInterrupt),
+            "AvrNonBlockingInterrupt" => Ok(Conv::AvrNonBlockingInterrupt),
+            _ => Err(format!("'{}' is not a valid value for entry function call convetion.", s)),
+        }
     }
 }
 

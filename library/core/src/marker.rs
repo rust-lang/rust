@@ -809,6 +809,15 @@ pub trait Destruct {}
 #[cfg_attr(not(bootstrap), rustc_deny_explicit_impl)]
 pub trait Tuple {}
 
+/// A marker for things
+#[unstable(feature = "pointer_sized_trait", issue = "none")]
+#[cfg_attr(not(bootstrap), lang = "pointer_sized")]
+#[rustc_on_unimplemented(
+    message = "`{Self}` needs to be a pointer-sized type",
+    label = "`{Self}` needs to be a pointer-sized type"
+)]
+pub trait PointerSized {}
+
 /// Implementations of `Copy` for primitive types.
 ///
 /// Implementations that cannot be described in Rust

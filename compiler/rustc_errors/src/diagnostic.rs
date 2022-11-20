@@ -4,6 +4,7 @@ use crate::{
     SubdiagnosticMessage, Substitution, SubstitutionPart, SuggestionStyle,
 };
 use rustc_data_structures::fx::FxHashMap;
+use rustc_error_messages::fluent_value_from_str_list_sep_by_and;
 use rustc_error_messages::FluentValue;
 use rustc_lint_defs::{Applicability, LintExpectationId};
 use rustc_span::edition::LATEST_STABLE_EDITION;
@@ -34,6 +35,7 @@ pub type DiagnosticArgName<'source> = Cow<'source, str>;
 pub enum DiagnosticArgValue<'source> {
     Str(Cow<'source, str>),
     Number(usize),
+    StrListSepByAnd(Vec<Cow<'source, str>>),
 }
 
 /// Converts a value of a type into a `DiagnosticArg` (typically a field of an `IntoDiagnostic`
@@ -49,6 +51,9 @@ impl<'source> IntoDiagnosticArg for DiagnosticArgValue<'source> {
         match self {
             DiagnosticArgValue::Str(s) => DiagnosticArgValue::Str(Cow::Owned(s.into_owned())),
             DiagnosticArgValue::Number(n) => DiagnosticArgValue::Number(n),
+            DiagnosticArgValue::StrListSepByAnd(l) => DiagnosticArgValue::StrListSepByAnd(
+                l.into_iter().map(|s| Cow::Owned(s.into_owned())).collect(),
+            ),
         }
     }
 }
@@ -58,6 +63,7 @@ impl<'source> Into<FluentValue<'source>> for DiagnosticArgValue<'source> {
         match self {
             DiagnosticArgValue::Str(s) => From::from(s),
             DiagnosticArgValue::Number(n) => From::from(n),
+            DiagnosticArgValue::StrListSepByAnd(l) => fluent_value_from_str_list_sep_by_and(l),
         }
     }
 }

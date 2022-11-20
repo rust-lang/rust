@@ -19,8 +19,8 @@ use super::{
     collect_paths_for_type, document, ensure_trailing_slash, get_filtered_impls_for_reference,
     item_ty_to_section, notable_traits_button, notable_traits_json, render_all_impls,
     render_assoc_item, render_assoc_items, render_attributes_in_code, render_attributes_in_pre,
-    render_impl, render_rightside, render_stability_since_raw, AssocItemLink, Context,
-    ImplRenderingParameters,
+    render_impl, render_rightside, render_stability_since_raw,
+    render_stability_since_raw_with_extra, AssocItemLink, Context, ImplRenderingParameters,
 };
 use crate::clean;
 use crate::config::ModuleSorting;
@@ -1267,30 +1267,30 @@ fn item_enum(w: &mut Buffer, cx: &mut Context<'_>, it: &clean::Item, e: &clean::
             document_non_exhaustive_header(it)
         );
         document_non_exhaustive(w, it);
+        write!(w, "<div class=\"variants\">");
         for variant in e.variants() {
             let id = cx.derive_id(format!("{}.{}", ItemType::Variant, variant.name.unwrap()));
             write!(
                 w,
-                "<h3 id=\"{id}\" class=\"variant small-section-header\">\
-                    <a href=\"#{id}\" class=\"anchor field\"></a>\
-                    <code>{name}",
+                "<section id=\"{id}\" class=\"variant\">\
+                    <a href=\"#{id}\" class=\"anchor\"></a>",
                 id = id,
-                name = variant.name.unwrap()
             );
-            if let clean::VariantItem(clean::Variant::Tuple(ref s)) = *variant.kind {
-                w.write_str("(");
-                print_tuple_struct_fields(w, cx, s);
-                w.write_str(")");
-            }
-            w.write_str("</code>");
-            render_stability_since_raw(
+            render_stability_since_raw_with_extra(
                 w,
                 variant.stable_since(tcx),
                 variant.const_stability(tcx),
                 it.stable_since(tcx),
                 it.const_stable_since(tcx),
+                " rightside",
             );
-            w.write_str("</h3>");
+            write!(w, "<h3 class=\"code-header\">{name}", name = variant.name.unwrap());
+            if let clean::VariantItem(clean::Variant::Tuple(ref s)) = *variant.kind {
+                w.write_str("(");
+                print_tuple_struct_fields(w, cx, s);
+                w.write_str(")");
+            }
+            w.write_str("</h3></section>");
 
             use crate::clean::Variant;
 
@@ -1324,7 +1324,7 @@ fn item_enum(w: &mut Buffer, cx: &mut Context<'_>, it: &clean::Item, e: &clean::
                             write!(
                                 w,
                                 "<div class=\"sub-variant-field\">\
-                                 <span id=\"{id}\" class=\"variant small-section-header\">\
+                                 <span id=\"{id}\" class=\"small-section-header\">\
                                      <a href=\"#{id}\" class=\"anchor field\"></a>\
                                      <code>{f}:&nbsp;{t}</code>\
                                  </span>",
@@ -1343,6 +1343,7 @@ fn item_enum(w: &mut Buffer, cx: &mut Context<'_>, it: &clean::Item, e: &clean::
 
             document(w, cx, variant, Some(it), HeadingOffset::H4);
         }
+        write!(w, "</div>");
     }
     let def_id = it.item_id.expect_def_id();
     render_assoc_items(w, cx, it, def_id, AssocItemRender::All);

@@ -830,5 +830,5 @@ pub(super) fn should_generate_set_arg(field: &Field) -> bool {
 }
 
 pub(super) fn is_doc_comment(attr: &Attribute) -> bool {
-    attr.path.segments.last().unwrap().ident.to_string() == "doc"
+    attr.path.segments.last().unwrap().ident == "doc"
 }

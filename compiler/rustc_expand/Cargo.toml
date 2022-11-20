@@ -8,20 +8,21 @@ build = false
 doctest = false
 
 [dependencies]
-rustc_serialize = { path = "../rustc_serialize" }
-tracing = "0.1"
-rustc_span = { path = "../rustc_span" }
-rustc_ast_pretty = { path = "../rustc_ast_pretty" }
+crossbeam-channel = "0.5.0"
 rustc_ast_passes = { path = "../rustc_ast_passes" }
+rustc_ast = { path = "../rustc_ast" }
+rustc_ast_pretty = { path = "../rustc_ast_pretty" }
 rustc_attr = { path = "../rustc_attr" }
 rustc_data_structures = { path = "../rustc_data_structures" }
 rustc_errors = { path = "../rustc_errors" }
 rustc_feature = { path = "../rustc_feature" }
+rustc_lexer = { path = "../rustc_lexer" }
 rustc_lint_defs = { path = "../rustc_lint_defs" }
 rustc_macros = { path = "../rustc_macros" }
-rustc_lexer = { path = "../rustc_lexer" }
 rustc_parse = { path = "../rustc_parse" }
+rustc_serialize = { path = "../rustc_serialize" }
 rustc_session = { path = "../rustc_session" }
+rustc_span = { path = "../rustc_span" }
 smallvec = { version = "1.8.1", features = ["union", "may_dangle"] }
-rustc_ast = { path = "../rustc_ast" }
-crossbeam-channel = "0.5.0"
+thin-vec = "0.2.8"
+tracing = "0.1"
