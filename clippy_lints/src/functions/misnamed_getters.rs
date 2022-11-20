@@ -101,16 +101,14 @@ pub fn check_fn(
     }
 
     let Some(used_field) = used_field else {
-            if cfg!(debug_assertions) {
-                panic!("Struct doesn't contain the correct field");
-            } else {
-                // Don't ICE when possible
-                return;
-            }
-        };
+        // FIXME: This can be reached if the field access uses autoderef.
+        // `dec.all_fields()` should be replaced by something that uses autoderef.
+        return;
+    };
+
     let Some(correct_field) = correct_field else {
             return;
-        };
+    };
 
     if cx.tcx.type_of(used_field.did) == cx.tcx.type_of(correct_field.did) {
         let left_span = block_expr.span.until(used_ident.span);
