@@ -174,9 +174,9 @@ rustc-push)
     fi
     ;;
 many-seeds)
-    for SEED in $({ echo obase=16; seq 0 255; } | bc); do
+    for SEED in $(seq 0 255); do
         echo "Trying seed: $SEED"
-        MIRIFLAGS="$MIRIFLAGS -Zmiri-seed=$SEED" $@ || { echo "Failing seed: $SEED"; break; }
+        MIRIFLAGS="$MIRIFLAGS -Zlayout-seed=$SEED -Zmiri-seed=$SEED" $@ || { echo "Failing seed: $SEED"; break; }
     done
     exit 0
     ;;
