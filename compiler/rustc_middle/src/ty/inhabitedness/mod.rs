@@ -5,7 +5,7 @@
 //!
 //! # Example
 //! ```rust
-//! enum Void {}
+//! #![feature(never_type)]
 //! mod a {
 //!     pub mod b {
 //!         pub struct SecretlyUninhabited {
@@ -15,6 +15,7 @@
 //! }
 //!
 //! mod c {
+//!     enum Void {}
 //!     pub struct AlsoSecretlyUninhabited {
 //!         _priv: Void,
 //!     }
@@ -35,7 +36,7 @@
 //! `Foo`.
 //!
 //! # Example
-//! ```rust
+//! ```ignore(illustrative)
 //! let foo_result: Result<T, Foo> = ... ;
 //! let Ok(t) = foo_result;
 //! ```

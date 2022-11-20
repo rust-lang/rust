@@ -1727,3 +1727,11 @@ fn test_from_zero_sized_vec() {
     let queue = VecDeque::from(v);
     assert_eq!(queue.len(), 100);
 }
+
+#[test]
+fn test_resize_keeps_reserved_space_from_item() {
+    let v = Vec::<i32>::with_capacity(1234);
+    let mut d = VecDeque::new();
+    d.resize(1, v);
+    assert_eq!(d[0].capacity(), 1234);
+}

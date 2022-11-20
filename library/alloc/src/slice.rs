@@ -458,7 +458,7 @@ impl<T> [T] {
         hack::into_vec(self)
     }
 
-    /// Creates a vector by repeating a slice `n` times.
+    /// Creates a vector by copying a slice `n` times.
     ///
     /// # Panics
     ///
