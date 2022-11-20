@@ -1,6 +1,6 @@
 // stderr-per-bitwidth
-// normalize-stderr-test "alloc[0-9]+" -> "ALLOC_ID"
-// normalize-stderr-test "a[0-9]+\+0x" -> "A_ID+0x"
+// normalize-stderr-test "╾─*a(lloc)?[0-9]+(\+[a-z0-9]+)?─*╼" -> "╾ALLOC_ID$2╼"
+// normalize-stderr-test "alloc\d+" -> "allocN"
 // error-pattern: could not evaluate static initializer
 #![feature(
     slice_from_ptr_range,
@@ -30,7 +30,8 @@ pub static S6: &[bool] = unsafe { from_raw_parts((&D0) as *const _ as _, 4) }; /
 
 // Reading padding is not ok
 pub static S7: &[u16] = unsafe {
-    let ptr = (&D2 as *const Struct as *const u16).byte_add(1);
+    //~^ ERROR: it is undefined behavior to use this value
+    let ptr = (&D2 as *const Struct as *const u16).add(1);
 
     from_raw_parts(ptr, 4)
 };
@@ -65,11 +66,11 @@ pub static R6: &[bool] = unsafe {
 };
 pub static R7: &[u16] = unsafe {
     let ptr = (&D2 as *const Struct as *const u16).byte_add(1);
-    from_ptr_range(ptr..ptr.add(4))
+    from_ptr_range(ptr..ptr.add(4)) //~ inside `R7`
 };
 pub static R8: &[u64] = unsafe {
     let ptr = (&D4 as *const [u32; 2] as *const u32).byte_add(1).cast::<u64>();
-    from_ptr_range(ptr..ptr.add(1))
+    from_ptr_range(ptr..ptr.add(1)) //~ inside `R8`
 };
 
 // This is sneaky: &D0 and &D0 point to different objects
