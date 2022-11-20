@@ -28,13 +28,19 @@ use crate::slice;
 /// Pure rust memchr implementation, taken from rust-memchr
 pub mod memchr;
 
+#[unstable(
+    feature = "slice_internals",
+    issue = "none",
+    reason = "exposed from core to be reused in std;"
+)]
+pub mod sort;
+
 mod ascii;
 mod cmp;
 mod index;
 mod iter;
 mod raw;
 mod rotate;
-mod sort;
 mod specialize;
 
 #[stable(feature = "rust1", since = "1.0.0")]
