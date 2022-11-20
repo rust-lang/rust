@@ -1647,7 +1647,7 @@ impl Config {
                     compiler/ or library/"
             );
         }
-
+    }
 fn maybe_download_rustfmt(builder: &Builder<'_>) -> Option<PathBuf> {
     let RustfmtMetadata { date, version } = builder.config.stage0_metadata.rustfmt.as_ref()?;
     let channel = format!("{version}-{date}");
