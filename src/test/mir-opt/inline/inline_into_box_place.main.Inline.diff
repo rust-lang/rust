@@ -11,6 +11,15 @@
       let mut _6: ();                      // in scope 0 at $DIR/inline_into_box_place.rs:+1:42: +1:43
       let mut _7: *const std::vec::Vec<u32>; // in scope 0 at $DIR/inline_into_box_place.rs:+1:29: +1:43
 +     let mut _8: &mut std::vec::Vec<u32>; // in scope 0 at $DIR/inline_into_box_place.rs:+1:33: +1:43
++     let mut _10: ();                     // in scope 0 at $DIR/inline_into_box_place.rs:+2:1: +2:2
++     let mut _11: ();                     // in scope 0 at $DIR/inline_into_box_place.rs:+2:1: +2:2
++     let mut _12: &mut std::vec::Vec<u32>; // in scope 0 at $DIR/inline_into_box_place.rs:+2:1: +2:2
++     let mut _13: ();                     // in scope 0 at $DIR/inline_into_box_place.rs:+2:1: +2:2
++     let mut _14: &mut alloc::raw_vec::RawVec<u32>; // in scope 0 at $DIR/inline_into_box_place.rs:+2:1: +2:2
++     let mut _15: ();                     // in scope 0 at $DIR/inline_into_box_place.rs:+2:1: +2:2
++     let mut _16: *const std::vec::Vec<u32>; // in scope 0 at $DIR/inline_into_box_place.rs:+1:9: +1:11
++     let mut _17: *const std::vec::Vec<u32>; // in scope 0 at $DIR/inline_into_box_place.rs:+1:9: +1:11
++     let mut _18: *const std::vec::Vec<u32>; // in scope 0 at $DIR/inline_into_box_place.rs:+1:9: +1:11
       scope 1 {
           debug _x => _1;                  // in scope 1 at $DIR/inline_into_box_place.rs:+1:9: +1:11
       }
@@ -58,7 +67,12 @@
           StorageDead(_5);                 // scope 0 at $DIR/inline_into_box_place.rs:+1:42: +1:43
           _0 = const ();                   // scope 0 at $DIR/inline_into_box_place.rs:+0:11: +2:2
 -         drop(_1) -> [return: bb3, unwind: bb4]; // scope 0 at $DIR/inline_into_box_place.rs:+2:1: +2:2
-+         drop(_1) -> [return: bb2, unwind: bb3]; // scope 0 at $DIR/inline_into_box_place.rs:+2:1: +2:2
++         _16 = deref_copy (((_1.0: std::ptr::Unique<std::vec::Vec<u32>>).0: std::ptr::NonNull<std::vec::Vec<u32>>).0: *const std::vec::Vec<u32>); // scope 0 at $DIR/inline_into_box_place.rs:+2:1: +2:2
++         _12 = &mut (*_16);               // scope 0 at $DIR/inline_into_box_place.rs:+2:1: +2:2
++         _13 = <Vec<u32> as Drop>::drop(move _12) -> [return: bb6, unwind: bb5]; // scope 0 at $DIR/inline_into_box_place.rs:+2:1: +2:2
++                                          // mir::Constant
++                                          // + span: $DIR/inline_into_box_place.rs:9:1: 9:2
++                                          // + literal: Const { ty: for<'a> fn(&'a mut Vec<u32>) {<Vec<u32> as Drop>::drop}, val: Value(<ZST>) }
       }
   
 -     bb3: {
@@ -70,13 +84,36 @@
 -     bb4 (cleanup): {
 +     bb3 (cleanup): {
           resume;                          // scope 0 at $DIR/inline_into_box_place.rs:+0:1: +2:2
--     }
-- 
--     bb5 (cleanup): {
+      }
+  
++     bb4 (cleanup): {
++         _11 = alloc::alloc::box_free::<Vec<u32>, std::alloc::Global>(move (_1.0: std::ptr::Unique<std::vec::Vec<u32>>), move (_1.1: std::alloc::Global)) -> bb3; // scope 0 at $DIR/inline_into_box_place.rs:+2:1: +2:2
++                                          // mir::Constant
++                                          // + span: $DIR/inline_into_box_place.rs:9:1: 9:2
++                                          // + literal: Const { ty: unsafe fn(Unique<Vec<u32>>, std::alloc::Global) {alloc::alloc::box_free::<Vec<u32>, std::alloc::Global>}, val: Value(<ZST>) }
++     }
++ 
+      bb5 (cleanup): {
 -         _6 = alloc::alloc::box_free::<Vec<u32>, std::alloc::Global>(move (_5.0: std::ptr::Unique<std::vec::Vec<u32>>), move (_5.1: std::alloc::Global)) -> bb4; // scope 0 at $DIR/inline_into_box_place.rs:+1:42: +1:43
--                                          // mir::Constant
++         _17 = deref_copy (((_1.0: std::ptr::Unique<std::vec::Vec<u32>>).0: std::ptr::NonNull<std::vec::Vec<u32>>).0: *const std::vec::Vec<u32>); // scope 0 at $DIR/inline_into_box_place.rs:+2:1: +2:2
++         drop(((*_17).0: alloc::raw_vec::RawVec<u32>)) -> bb4; // scope 0 at $DIR/inline_into_box_place.rs:+2:1: +2:2
++     }
++ 
++     bb6: {
++         _18 = deref_copy (((_1.0: std::ptr::Unique<std::vec::Vec<u32>>).0: std::ptr::NonNull<std::vec::Vec<u32>>).0: *const std::vec::Vec<u32>); // scope 0 at $DIR/inline_into_box_place.rs:+2:1: +2:2
++         _14 = &mut ((*_18).0: alloc::raw_vec::RawVec<u32>); // scope 0 at $DIR/inline_into_box_place.rs:+2:1: +2:2
++         _15 = <alloc::raw_vec::RawVec<u32> as Drop>::drop(move _14) -> [return: bb7, unwind: bb4]; // scope 0 at $DIR/inline_into_box_place.rs:+2:1: +2:2
+                                           // mir::Constant
 -                                          // + span: $DIR/inline_into_box_place.rs:8:42: 8:43
--                                          // + literal: Const { ty: unsafe fn(Unique<Vec<u32>>, std::alloc::Global) {alloc::alloc::box_free::<Vec<u32>, std::alloc::Global>}, val: Value(<ZST>) }
++                                          // + span: $DIR/inline_into_box_place.rs:9:1: 9:2
++                                          // + literal: Const { ty: for<'a> fn(&'a mut alloc::raw_vec::RawVec<u32>) {<alloc::raw_vec::RawVec<u32> as Drop>::drop}, val: Value(<ZST>) }
++     }
++ 
++     bb7: {
++         _10 = alloc::alloc::box_free::<Vec<u32>, std::alloc::Global>(move (_1.0: std::ptr::Unique<std::vec::Vec<u32>>), move (_1.1: std::alloc::Global)) -> bb2; // scope 0 at $DIR/inline_into_box_place.rs:+2:1: +2:2
++                                          // mir::Constant
++                                          // + span: $DIR/inline_into_box_place.rs:9:1: 9:2
+                                           // + literal: Const { ty: unsafe fn(Unique<Vec<u32>>, std::alloc::Global) {alloc::alloc::box_free::<Vec<u32>, std::alloc::Global>}, val: Value(<ZST>) }
       }
   }
   

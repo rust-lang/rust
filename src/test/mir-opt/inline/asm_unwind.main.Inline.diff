@@ -6,15 +6,12 @@
       let _1: ();                          // in scope 0 at $DIR/asm_unwind.rs:+1:5: +1:10
 +     scope 1 (inlined foo) {              // at $DIR/asm_unwind.rs:21:5: 21:10
 +         let _2: D;                       // in scope 1 at $DIR/asm_unwind.rs:15:9: 15:11
-+         let mut _3: *mut D;              // in scope 1 at $DIR/asm_unwind.rs:17:1: 17:2
++         let mut _3: &mut D;              // in scope 1 at $DIR/asm_unwind.rs:17:1: 17:2
++         let mut _4: ();                  // in scope 1 at $DIR/asm_unwind.rs:17:1: 17:2
 +         scope 2 {
 +             debug _d => _2;              // in scope 2 at $DIR/asm_unwind.rs:15:9: 15:11
 +             scope 3 {
 +             }
-+         }
-+         scope 4 (inlined std::ptr::drop_in_place::<D> - shim(Some(D))) { // at $DIR/asm_unwind.rs:17:1: 17:2
-+             let mut _4: &mut D;          // in scope 4 at $SRC_DIR/core/src/ptr/mod.rs:LL:COL
-+             let mut _5: ();              // in scope 4 at $SRC_DIR/core/src/ptr/mod.rs:LL:COL
 +         }
 +     }
   
@@ -24,19 +21,17 @@
 -                                          // mir::Constant
 -                                          // + span: $DIR/asm_unwind.rs:21:5: 21:8
 -                                          // + literal: Const { ty: fn() {foo}, val: Value(<ZST>) }
++         StorageLive(_3);                 // scope 0 at $DIR/asm_unwind.rs:+1:5: +1:10
++         StorageLive(_4);                 // scope 0 at $DIR/asm_unwind.rs:+1:5: +1:10
 +         StorageLive(_2);                 // scope 1 at $DIR/asm_unwind.rs:15:9: 15:11
 +         asm!("", options(MAY_UNWIND)) -> [return: bb1, unwind: bb2]; // scope 3 at $DIR/asm_unwind.rs:16:14: 16:54
       }
   
       bb1: {
-+         StorageLive(_3);                 // scope 1 at $DIR/asm_unwind.rs:17:1: 17:2
-+         _3 = &raw mut _2;                // scope 1 at $DIR/asm_unwind.rs:17:1: 17:2
-+         StorageLive(_4);                 // scope 1 at $DIR/asm_unwind.rs:17:1: 17:2
-+         StorageLive(_5);                 // scope 1 at $DIR/asm_unwind.rs:17:1: 17:2
-+         _4 = &mut (*_3);                 // scope 4 at $SRC_DIR/core/src/ptr/mod.rs:LL:COL
-+         _5 = <D as Drop>::drop(move _4) -> bb4; // scope 4 at $SRC_DIR/core/src/ptr/mod.rs:LL:COL
++         _3 = &mut _2;                    // scope 1 at $DIR/asm_unwind.rs:17:1: 17:2
++         _4 = <D as Drop>::drop(move _3) -> bb4; // scope 1 at $DIR/asm_unwind.rs:17:1: 17:2
 +                                          // mir::Constant
-+                                          // + span: $SRC_DIR/core/src/ptr/mod.rs:LL:COL
++                                          // + span: $DIR/asm_unwind.rs:17:1: 17:2
 +                                          // + literal: Const { ty: for<'a> fn(&'a mut D) {<D as Drop>::drop}, val: Value(<ZST>) }
 +     }
 + 
@@ -49,10 +44,9 @@
 +     }
 + 
 +     bb4: {
-+         StorageDead(_5);                 // scope 1 at $DIR/asm_unwind.rs:17:1: 17:2
-+         StorageDead(_4);                 // scope 1 at $DIR/asm_unwind.rs:17:1: 17:2
-+         StorageDead(_3);                 // scope 1 at $DIR/asm_unwind.rs:17:1: 17:2
 +         StorageDead(_2);                 // scope 1 at $DIR/asm_unwind.rs:17:1: 17:2
++         StorageDead(_4);                 // scope 0 at $DIR/asm_unwind.rs:+1:5: +1:10
++         StorageDead(_3);                 // scope 0 at $DIR/asm_unwind.rs:+1:5: +1:10
           StorageDead(_1);                 // scope 0 at $DIR/asm_unwind.rs:+1:10: +1:11
           _0 = const ();                   // scope 0 at $DIR/asm_unwind.rs:+0:15: +2:2
           return;                          // scope 0 at $DIR/asm_unwind.rs:+2:2: +2:2

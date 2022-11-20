@@ -1,13 +1,16 @@
 //! Inlining pass for MIR functions
 use crate::deref_separator::deref_finder;
+use crate::shim::DropShimElaborator;
 use rustc_attr::InlineAttr;
 use rustc_hir::lang_items::LangItem;
 use rustc_index::bit_set::BitSet;
 use rustc_index::vec::Idx;
 use rustc_middle::middle::codegen_fn_attrs::{CodegenFnAttrFlags, CodegenFnAttrs};
+use rustc_middle::mir::patch::MirPatch;
 use rustc_middle::mir::visit::*;
 use rustc_middle::mir::*;
 use rustc_middle::ty::{self, Instance, InstanceDef, ParamEnv, Ty, TyCtxt};
+use rustc_mir_dataflow::elaborate_drops;
 use rustc_session::config::OptLevel;
 use rustc_span::def_id::DefId;
 use rustc_span::{hygiene::ExpnKind, ExpnData, LocalExpnId, Span};
@@ -66,6 +69,23 @@ impl<'tcx> MirPass<'tcx> for Inline {
             remove_dead_blocks(tcx, body);
             deref_finder(tcx, body);
         }
+    }
+}
+
+fn def_id_for_history(def: ty::InstanceDef<'_>) -> Option<DefId> {
+    if let ty::InstanceDef::DropGlue(drop_in_place_def_id, opt_ty) = def {
+        let ty = opt_ty?;
+        match ty.kind() {
+            // If `Ty` has a `DefId` of itself, use it instead of using `drop_in_place_def_id`.
+            ty::Foreign(def_id)
+            | ty::FnDef(def_id, ..)
+            | ty::Closure(def_id, ..)
+            | ty::Generator(def_id, ..) => Some(*def_id),
+            ty::Adt(def, _) => Some(def.did()),
+            _ => Some(drop_in_place_def_id),
+        }
+    } else {
+        Some(def.def_id())
     }
 }
 
@@ -139,16 +159,7 @@ impl<'tcx> Inliner<'tcx> {
                     debug!("inlined {}", callsite.callee);
                     self.changed = true;
 
-                    let history_def_id =
-                        if let ty::InstanceDef::DropGlue(_, opt_ty) = callsite.callee.def {
-                            if let Some(ty) = opt_ty && let ty::Adt(def, _) = ty.kind() {
-                                Some(def.did())
-                            } else {
-                                None
-                            }
-                        } else {
-                            Some(callsite.callee.def_id())
-                        };
+                    let history_def_id = def_id_for_history(callsite.callee.def);
                     if let Some(def_id) = history_def_id {
                         self.history.push(def_id);
                     }
@@ -169,10 +180,48 @@ impl<'tcx> Inliner<'tcx> {
         caller_body: &mut Body<'tcx>,
         callsite: &CallSite<'tcx>,
     ) -> Result<std::ops::Range<BasicBlock>, &'static str> {
+        let terminator = caller_body[callsite.block].terminator_mut();
+
         if let ty::InstanceDef::DropGlue(_, None) = callsite.callee.def {
-            let terminator = caller_body[callsite.block].terminator_mut();
             terminator.kind = TerminatorKind::Goto { target: callsite.target.unwrap() };
             return Ok(callsite.block..callsite.block);
+        }
+
+        if let ty::InstanceDef::DropGlue(_, Some(_)) = callsite.callee.def
+            && let TerminatorKind::Drop { place, target, unwind: Some(unwind) } = terminator.kind
+        {
+            let mut elaborator = DropShimElaborator {
+                body: &caller_body,
+                patch: MirPatch::new(&caller_body),
+                tcx: self.tcx,
+                param_env: self.param_env,
+            };
+            let mut expn_data = ExpnData::default(
+                ExpnKind::Inlined,
+                callsite.source_info.span,
+                self.tcx.sess.edition(),
+                None,
+                None,
+            );
+            expn_data.def_site = self.tcx.def_span(callsite.callee.def_id());
+            let expn_data =
+                self.tcx.with_stable_hashing_context(|hcx| LocalExpnId::fresh(expn_data, hcx));
+            let mut source_info = callsite.source_info;
+            source_info.span = source_info.span.fresh_expansion(expn_data);
+            elaborate_drops::elaborate_drop(
+                &mut elaborator,
+                source_info,
+                place,
+                (),
+                target,
+                elaborate_drops::Unwind::To(unwind),
+                callsite.block,
+            );
+            let patch = elaborator.patch;
+            let old_blocks = caller_body.basic_blocks.next_index();
+            patch.apply(caller_body);
+            let new_blocks = caller_body.basic_blocks.next_index();
+            return Ok(old_blocks..new_blocks);
         }
 
         let callee_attrs = self.tcx.codegen_fn_attrs(callsite.callee.def_id());
@@ -354,15 +403,17 @@ impl<'tcx> Inliner<'tcx> {
             let place_ty = place.ty(caller_body, self.tcx).ty;
             let place_ty = self.tcx.try_normalize_erasing_regions(self.param_env, place_ty).ok()?;
 
-            if let ty::Adt(def, _) = place_ty.kind() && self.history.contains(&def.did()) {
-                return None;
-            }
-
             let def_id = self.tcx.require_lang_item(LangItem::DropInPlace, None);
             let substs = self.tcx.intern_substs(&[place_ty.into()]);
 
             if let Ok(Some(instance)) = Instance::resolve(self.tcx, self.param_env, def_id, substs)
             {
+                if let Some(def_id) = def_id_for_history(instance.def)
+                    && self.history.contains(&def_id)
+                {
+                    return None;
+                }
+
                 return Some(CallSite {
                     callee: instance,
                     fn_sig: self
@@ -592,104 +643,6 @@ impl<'tcx> Inliner<'tcx> {
                     callsite_scope: caller_body.source_scopes[callsite.source_info.scope].clone(),
                     callsite,
                     cleanup_block: cleanup,
-                    in_cleanup_block: false,
-                    tcx: self.tcx,
-                    expn_data,
-                    always_live_locals: BitSet::new_filled(callee_body.local_decls.len()),
-                };
-
-                // Map all `Local`s, `SourceScope`s and `BasicBlock`s to new ones
-                // (or existing ones, in a few special cases) in the caller.
-                integrator.visit_body(&mut callee_body);
-
-                // If there are any locals without storage markers, give them storage only for the
-                // duration of the call.
-                for local in callee_body.vars_and_temps_iter() {
-                    if !callee_body.local_decls[local].internal
-                        && integrator.always_live_locals.contains(local)
-                    {
-                        let new_local = integrator.map_local(local);
-                        caller_body[callsite.block].statements.push(Statement {
-                            source_info: callsite.source_info,
-                            kind: StatementKind::StorageLive(new_local),
-                        });
-                    }
-                }
-                if let Some(block) = callsite.target {
-                    // To avoid repeated O(n) insert, push any new statements to the end and rotate
-                    // the slice once.
-                    let mut n = 0;
-                    for local in callee_body.vars_and_temps_iter().rev() {
-                        if !callee_body.local_decls[local].internal
-                            && integrator.always_live_locals.contains(local)
-                        {
-                            let new_local = integrator.map_local(local);
-                            caller_body[block].statements.push(Statement {
-                                source_info: callsite.source_info,
-                                kind: StatementKind::StorageDead(new_local),
-                            });
-                            n += 1;
-                        }
-                    }
-                    caller_body[block].statements.rotate_right(n);
-                }
-
-                // Insert all of the (mapped) parts of the callee body into the caller.
-                caller_body.local_decls.extend(callee_body.drain_vars_and_temps());
-                caller_body.source_scopes.extend(&mut callee_body.source_scopes.drain(..));
-                caller_body.var_debug_info.append(&mut callee_body.var_debug_info);
-                caller_body.basic_blocks_mut().extend(callee_body.basic_blocks_mut().drain(..));
-
-                caller_body[callsite.block].terminator = Some(Terminator {
-                    source_info: callsite.source_info,
-                    kind: TerminatorKind::Goto { target: integrator.map_block(START_BLOCK) },
-                });
-
-                // Copy only unevaluated constants from the callee_body into the caller_body.
-                // Although we are only pushing `ConstKind::Unevaluated` consts to
-                // `required_consts`, here we may not only have `ConstKind::Unevaluated`
-                // because we are calling `subst_and_normalize_erasing_regions`.
-                caller_body.required_consts.extend(
-                    callee_body.required_consts.iter().copied().filter(|&ct| match ct.literal {
-                        ConstantKind::Ty(_) => {
-                            bug!("should never encounter ty::UnevaluatedConst in `required_consts`")
-                        }
-                        ConstantKind::Val(..) | ConstantKind::Unevaluated(..) => true,
-                    }),
-                );
-            }
-            TerminatorKind::Drop { place, unwind, .. } => {
-                let place_ty = place.ty(caller_body, self.tcx).ty;
-                let local =
-                    self.new_call_temp(caller_body, callsite, self.tcx.mk_mut_ptr(place_ty));
-                caller_body[callsite.block].statements.push(Statement {
-                    source_info: callsite.source_info,
-                    kind: StatementKind::Assign(Box::new((
-                        Place::from(local),
-                        Rvalue::AddressOf(Mutability::Mut, place),
-                    ))),
-                });
-                let dest = self.new_call_temp(caller_body, callsite, self.tcx.mk_unit());
-
-                let mut expn_data = ExpnData::default(
-                    ExpnKind::Inlined,
-                    callsite.source_info.span,
-                    self.tcx.sess.edition(),
-                    None,
-                    None,
-                );
-                expn_data.def_site = callee_body.span;
-                let expn_data =
-                    self.tcx.with_stable_hashing_context(|hcx| LocalExpnId::fresh(expn_data, hcx));
-                let mut integrator = Integrator {
-                    args: &[local],
-                    new_locals: Local::new(caller_body.local_decls.len())..,
-                    new_scopes: SourceScope::new(caller_body.source_scopes.len())..,
-                    new_blocks: BasicBlock::new(caller_body.basic_blocks.len())..,
-                    destination: dest.into(),
-                    callsite_scope: caller_body.source_scopes[callsite.source_info.scope].clone(),
-                    callsite,
-                    cleanup_block: unwind,
                     in_cleanup_block: false,
                     tcx: self.tcx,
                     expn_data,
