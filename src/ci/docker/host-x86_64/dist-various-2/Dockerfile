@@ -61,6 +61,12 @@ ENV \
     AR_i686_unknown_freebsd=i686-unknown-freebsd12-ar \
     CC_i686_unknown_freebsd=i686-unknown-freebsd12-clang \
     CXX_i686_unknown_freebsd=i686-unknown-freebsd12-clang++ \
+    CC_aarch64_unknown_uefi=clang-11 \
+    CXX_aarch64_unknown_uefi=clang++-11 \
+    CC_i686_unknown_uefi=clang-11 \
+    CXX_i686_unknown_uefi=clang++-11 \
+    CC_x86_64_unknown_uefi=clang-11 \
+    CXX_x86_64_unknown_uefi=clang++-11 \
     CC=gcc-8 \
     CXX=g++-8
 
