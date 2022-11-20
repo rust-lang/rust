@@ -79,4 +79,4 @@ the constant doesn't use them in any way. This can cause
 [`ty::Const`]: https://doc.rust-lang.org/nightly/nightly-rustc/rustc_middle/ty/struct.Const.html
 [`ty::ConstKind`]: https://doc.rust-lang.org/nightly/nightly-rustc/rustc_middle/ty/enum.ConstKind.html
 [`ty::TyKind`]: https://doc.rust-lang.org/nightly/nightly-rustc/rustc_middle/ty/enum.TyKind.html
-[pcg-unused-substs]: https://github.com/rust-lang/project-const-generics/blob/master/design-docs/anon-const-substs.md#unused-substs
+[pcg-unused-substs]: https://github.com/rust-lang/project-const-generics/issues/33
