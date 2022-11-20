@@ -669,15 +669,12 @@ macro_rules! nonzero_signed_operations {
                 #[doc = concat!("let neg = ", stringify!($Ty), "::new(-1)?;")]
                 #[doc = concat!("let min = ", stringify!($Ty), "::new(",
                                 stringify!($Int), "::MIN)?;")]
-                #[doc = concat!("let min_plus = ", stringify!($Ty), "::new(",
-                                stringify!($Int), "::MIN + 1)?;")]
-                #[doc = concat!("let max = ", stringify!($Ty), "::new(",
+                #[doc = concat!("# let max = ", stringify!($Ty), "::new(",
                                 stringify!($Int), "::MAX)?;")]
                 ///
                 /// assert_eq!(pos, pos.wrapping_abs());
                 /// assert_eq!(pos, neg.wrapping_abs());
                 /// assert_eq!(min, min.wrapping_abs());
-                /// assert_eq!(max, min_plus.wrapping_abs());
                 /// # // FIXME: add once Neg is implemented?
                 /// # // assert_eq!(max, (-max).wrapping_abs());
                 /// # Some(())
