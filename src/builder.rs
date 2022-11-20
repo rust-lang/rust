@@ -467,7 +467,15 @@ impl<'a, 'gcc, 'tcx> BuilderMethods<'a, 'tcx> for Builder<'a, 'gcc, 'tcx> {
 
         try_block.end_with_jump(None, then);
 
-        self.block.add_try_catch(None, try_block, catch);
+        if self.cleanup_blocks.borrow().contains(&catch) {
+            self.block.add_try_finally(None, try_block, catch);
+        }
+        else {
+            // FIXME: FIXME: FIXME: Seems like bad (_URC_NO_REASON) return code, perhaps because the cleanup pad was created properly.
+            // FIXME: Wrong personality function: __gcc_personality_v0
+            println!("Try/catch in {:?}", self.current_func());
+            self.block.add_try_catch(None, try_block, catch);
+        }
 
         self.block.end_with_jump(None, then);
 
@@ -1202,12 +1210,15 @@ impl<'a, 'gcc, 'tcx> BuilderMethods<'a, 'tcx> for Builder<'a, 'gcc, 'tcx> {
     fn cleanup_landing_pad(&mut self, _ty: Type<'gcc>, pers_fn: RValue<'gcc>) -> RValue<'gcc> {
         self.set_personality_fn(pers_fn);
 
+        self.cleanup_blocks.borrow_mut().insert(self.block);
+
         // FIXME: we're probably not creating a real cleanup pad here.
-        // FIXME: FIXME: FIXME: It seems to be the actual problem:
+        // FIXME: It seems to be the actual problem:
         // libunwind finds a catch, so returns _URC_HANDLER_FOUND instead of _URC_CONTINUE_UNWIND.
         // TODO: can we generate a goto from the finally to the cleanup landing pad?
-        // TODO: TODO: TODO: add this block to a cleanup_blocks variable and generate a try/finally instead if
+        // TODO: add this block to a cleanup_blocks variable and generate a try/finally instead if
         // the catch block for it is a cleanup block.
+        // => NO, a cleanup is only called during unwinding.
         //
         // TODO: look at TRY_CATCH_IS_CLEANUP, CLEANUP_POINT_EXPR, WITH_CLEANUP_EXPR, CLEANUP_EH_ONLY.
         let eh_pointer_builtin = self.cx.context.get_target_builtin_function("__builtin_eh_pointer");
@@ -1223,13 +1234,14 @@ impl<'a, 'gcc, 'tcx> BuilderMethods<'a, 'tcx> for Builder<'a, 'gcc, 'tcx> {
         self.block.add_assignment(None, value.access_field(None, field1), ptr);
         self.block.add_assignment(None, value.access_field(None, field2), zero); // TODO: set the proper value here (the type of exception?).
 
+        /*
         // Resume.
         let param = self.context.new_parameter(None, ptr.get_type(), "exn");
         // TODO: should we call __builtin_unwind_resume instead?
         // FIXME: should probably not called resume because it could be executed (I believe) in
         // normal (no exception) cases
         let unwind_resume = self.context.new_function(None, FunctionType::Extern, self.type_void(), &[param], "_Unwind_Resume", false);
-        self.block.add_eval(None, self.context.new_call(None, unwind_resume, &[ptr]));
+        self.block.add_eval(None, self.context.new_call(None, unwind_resume, &[ptr]));*/
 
         value.to_rvalue()
     }

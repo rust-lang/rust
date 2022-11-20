@@ -25,14 +25,7 @@ pub fn get_fn<'gcc, 'tcx>(cx: &CodegenCx<'gcc, 'tcx>, instance: Instance<'tcx>, 
     let sym = tcx.symbol_name(instance).name;
 
     if let Some(&func) = cx.function_instances.borrow().get(&instance) {
-        if sym == "rust_eh_personality" {
-            println!("Cached");
-        }
         return func;
-    }
-
-    if sym == "rust_eh_personality" {
-        println!("Not cached");
     }
 
     let fn_abi = cx.fn_abi_of_instance(instance, ty::List::empty());
@@ -179,9 +172,6 @@ pub fn get_fn<'gcc, 'tcx>(cx: &CodegenCx<'gcc, 'tcx>, instance: Instance<'tcx>, 
         };
 
     //if !dont_cache {
-    if sym == "rust_eh_personality" {
-        println!("Caching here");
-    }
         cx.function_instances.borrow_mut().insert(instance, func);
     //}
 

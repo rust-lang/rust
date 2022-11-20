@@ -120,6 +120,8 @@ pub struct CodegenCx<'gcc, 'tcx> {
     /// they can be dereferenced later.
     /// FIXME(antoyo): fix the rustc API to avoid having this hack.
     pub structs_as_pointer: RefCell<FxHashSet<RValue<'gcc>>>,
+
+    pub cleanup_blocks: RefCell<FxHashSet<Block<'gcc>>>,
 }
 
 impl<'gcc, 'tcx> CodegenCx<'gcc, 'tcx> {
@@ -250,6 +252,7 @@ impl<'gcc, 'tcx> CodegenCx<'gcc, 'tcx> {
             rust_try_fn: Cell::new(None),
             pointee_infos: Default::default(),
             structs_as_pointer: Default::default(),
+            cleanup_blocks: Default::default(),
         }
     }
 
