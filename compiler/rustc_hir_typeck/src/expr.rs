@@ -5,6 +5,7 @@
 use crate::cast;
 use crate::coercion::CoerceMany;
 use crate::coercion::DynamicCoerceMany;
+use crate::errors::TypeMismatchFruTypo;
 use crate::errors::{AddressOfTemporaryTaken, ReturnStmtOutsideOfFnBody, StructExprNonExhaustive};
 use crate::errors::{
     FieldMultiplySpecifiedInInitializer, FunctionalRecordUpdateOnNonStruct,
@@ -1616,10 +1617,16 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                 self.demand_coerce_diag(&field.expr, ty, field_type, None, AllowTwoPhase::No);
 
             if let Some(mut diag) = diag {
-                if idx == ast_fields.len() - 1 && remaining_fields.is_empty() {
-                    self.suggest_fru_from_range(field, variant, substs, &mut diag);
+                if idx == ast_fields.len() - 1 {
+                    if remaining_fields.is_empty() {
+                        self.suggest_fru_from_range(field, variant, substs, &mut diag);
+                        diag.emit();
+                    } else {
+                        diag.stash(field.span, StashKey::MaybeFruTypo);
+                    }
+                } else {
+                    diag.emit();
                 }
-                diag.emit();
             }
         }
 
@@ -1877,19 +1884,39 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                 .map(|adt| adt.did())
                 != range_def_id
         {
-            let instead = self
+            // Suppress any range expr type mismatches
+            if let Some(mut diag) = self
+                .tcx
+                .sess
+                .diagnostic()
+                .steal_diagnostic(last_expr_field.span, StashKey::MaybeFruTypo)
+            {
+                diag.delay_as_bug();
+            }
+
+            // Use a (somewhat arbitrary) filtering heuristic to avoid printing
+            // expressions that are either too long, or have control character
+            //such as newlines in them.
+            let expr = self
                 .tcx
                 .sess
                 .source_map()
                 .span_to_snippet(range_end.expr.span)
-                .map(|s| format!(" from `{s}`"))
-                .unwrap_or_default();
-            err.span_suggestion(
-                range_start.span.shrink_to_hi(),
-                &format!("to set the remaining fields{instead}, separate the last named field with a comma"),
-                ",",
-                Applicability::MaybeIncorrect,
-            );
+                .ok()
+                .filter(|s| s.len() < 25 && !s.contains(|c: char| c.is_control()));
+
+            let fru_span = self
+                .tcx
+                .sess
+                .source_map()
+                .span_extend_while(range_start.span, |c| c.is_whitespace())
+                .unwrap_or(range_start.span).shrink_to_hi().to(range_end.span);
+
+            err.subdiagnostic(TypeMismatchFruTypo {
+                expr_span: range_start.span,
+                fru_span,
+                expr,
+            });
         }
     }
 
