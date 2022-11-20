@@ -2,7 +2,6 @@ use crate::traits::{ObligationCause, ObligationCauseCode};
 use crate::ty::diagnostics::suggest_constraining_type_param;
 use crate::ty::print::{FmtPrinter, Printer};
 use crate::ty::{self, BoundRegionKind, Region, Ty, TyCtxt};
-use hir::def::DefKind;
 use rustc_errors::Applicability::{MachineApplicable, MaybeIncorrect};
 use rustc_errors::{pluralize, Diagnostic, MultiSpan};
 use rustc_hir as hir;
@@ -436,7 +435,7 @@ impl<'tcx> TyCtxt<'tcx> {
                         diag.note("an associated type was expected, but a different one was found");
                     }
                     (ty::Param(p), ty::Projection(proj)) | (ty::Projection(proj), ty::Param(p))
-                        if self.def_kind(proj.item_def_id) != DefKind::ImplTraitPlaceholder =>
+                        if self.def_path(proj.item_def_id).get_impl_trait_in_trait_data().is_none() =>
                     {
                         let generics = self.generics_of(body_owner_def_id);
                         let p_span = self.def_span(generics.type_param(p, self).def_id);
@@ -546,7 +545,7 @@ impl<T> Trait<T> for X {
                             diag.span_label(p_span, "this type parameter");
                         }
                     }
-                    (ty::Projection(proj_ty), _) if self.def_kind(proj_ty.item_def_id) != DefKind::ImplTraitPlaceholder => {
+                    (ty::Projection(proj_ty), _) if self.def_path(proj_ty.item_def_id).get_impl_trait_in_trait_data().is_none() => {
                         self.expected_projection(
                             diag,
                             proj_ty,
@@ -555,7 +554,7 @@ impl<T> Trait<T> for X {
                             cause.code(),
                         );
                     }
-                    (_, ty::Projection(proj_ty)) if self.def_kind(proj_ty.item_def_id) != DefKind::ImplTraitPlaceholder => {
+                    (_, ty::Projection(proj_ty)) if self.def_path(proj_ty.item_def_id).get_impl_trait_in_trait_data().is_none() => {
                         let msg = format!(
                             "consider constraining the associated type `{}` to `{}`",
                             values.found, values.expected,

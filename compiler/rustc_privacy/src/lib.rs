@@ -123,8 +123,10 @@ where
         projection: ty::ProjectionTy<'tcx>,
     ) -> ControlFlow<V::BreakTy> {
         let tcx = self.def_id_visitor.tcx();
-        let (trait_ref, assoc_substs) = if tcx.def_kind(projection.item_def_id)
-            != DefKind::ImplTraitPlaceholder
+        let (trait_ref, assoc_substs) = if tcx
+            .def_path(projection.item_def_id)
+            .get_impl_trait_in_trait_data()
+            .is_none()
         {
             projection.trait_ref_and_own_substs(tcx)
         } else {
@@ -590,7 +592,6 @@ impl<'tcx> EmbargoVisitor<'tcx> {
             | DefKind::ForeignTy
             | DefKind::Fn
             | DefKind::OpaqueTy
-            | DefKind::ImplTraitPlaceholder
             | DefKind::AssocFn
             | DefKind::Trait
             | DefKind::TyParam

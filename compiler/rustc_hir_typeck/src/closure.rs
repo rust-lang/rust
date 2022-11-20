@@ -2,7 +2,6 @@
 
 use super::{check_fn, Expectation, FnCtxt, GeneratorTypes};
 
-use hir::def::DefKind;
 use rustc_hir as hir;
 use rustc_hir::def_id::LocalDefId;
 use rustc_hir::lang_items::LangItem;
@@ -681,7 +680,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                 .find_map(|(p, s)| get_future_output(p, s))?,
             ty::Error(_) => return None,
             ty::Projection(proj)
-                if self.tcx.def_kind(proj.item_def_id) == DefKind::ImplTraitPlaceholder =>
+                if self.tcx.def_path(proj.item_def_id).get_impl_trait_in_trait_data().is_some() =>
             {
                 self.tcx
                     .bound_explicit_item_bounds(proj.item_def_id)

@@ -1323,9 +1323,9 @@ fn assemble_candidate_for_impl_trait_in_trait<'cx, 'tcx>(
     candidate_set: &mut ProjectionCandidateSet<'tcx>,
 ) {
     let tcx = selcx.tcx();
-    if tcx.def_kind(obligation.predicate.item_def_id) == DefKind::ImplTraitPlaceholder {
-        let (trait_fn_def_id, _) =
-            tcx.def_path(obligation.predicate.item_def_id).get_impl_trait_in_trait_data().unwrap();
+    if let Some((trait_fn_def_id, _)) =
+        tcx.def_path(obligation.predicate.item_def_id).get_impl_trait_in_trait_data()
+    {
         // If we are trying to project an RPITIT with trait's default `Self` parameter,
         // then we must be within a default trait body.
         if obligation.predicate.self_ty()
@@ -1536,7 +1536,12 @@ fn assemble_candidates_from_impls<'cx, 'tcx>(
     candidate_set: &mut ProjectionCandidateSet<'tcx>,
 ) {
     // Can't assemble candidate from impl for RPITIT
-    if selcx.tcx().def_kind(obligation.predicate.item_def_id) == DefKind::ImplTraitPlaceholder {
+    if selcx
+        .tcx()
+        .def_path(obligation.predicate.item_def_id)
+        .get_impl_trait_in_trait_data()
+        .is_some()
+    {
         return;
     }
 

@@ -561,9 +561,6 @@ fn check_item_type<'tcx>(tcx: TyCtxt<'tcx>, id: hir::ItemId) {
             check_union(tcx, id.owner_id.def_id);
         }
         DefKind::OpaqueTy => {
-            check_opaque(tcx, id);
-        }
-        DefKind::ImplTraitPlaceholder => {
             if let Some((fn_def_id, _)) =
                 tcx.def_path(id.owner_id.to_def_id()).get_impl_trait_in_trait_data()
             {
@@ -575,6 +572,8 @@ fn check_item_type<'tcx>(tcx: TyCtxt<'tcx>, id: hir::ItemId) {
                 {
                     check_opaque(tcx, id);
                 }
+            } else {
+                check_opaque(tcx, id);
             }
         }
         DefKind::TyAlias => {

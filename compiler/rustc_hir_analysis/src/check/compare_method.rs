@@ -582,7 +582,7 @@ impl<'tcx> TypeFolder<'tcx> for ImplTraitInTraitCollector<'_, 'tcx> {
 
     fn fold_ty(&mut self, ty: Ty<'tcx>) -> Ty<'tcx> {
         if let ty::Projection(proj) = ty.kind()
-            && self.tcx().def_kind(proj.item_def_id) == DefKind::ImplTraitPlaceholder
+            && self.tcx().def_path(proj.item_def_id).get_impl_trait_in_trait_data().is_some()
         {
             if let Some((ty, _)) = self.types.get(&proj.item_def_id) {
                 return *ty;

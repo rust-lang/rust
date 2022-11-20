@@ -171,7 +171,6 @@ fn mark_used_by_default_parameters<'tcx>(
         | DefKind::AnonConst
         | DefKind::InlineConst
         | DefKind::OpaqueTy
-        | DefKind::ImplTraitPlaceholder
         | DefKind::Field
         | DefKind::LifetimeParam
         | DefKind::GlobalAsm

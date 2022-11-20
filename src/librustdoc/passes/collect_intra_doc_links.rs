@@ -1807,8 +1807,8 @@ fn resolution_failure(
                                 }
                                 return;
                             }
-                            Trait | TyAlias | ForeignTy | OpaqueTy | ImplTraitPlaceholder
-                            | TraitAlias | TyParam | Static(_) => "associated item",
+                            Trait | TyAlias | ForeignTy | OpaqueTy | TraitAlias | TyParam
+                            | Static(_) => "associated item",
                             Impl | GlobalAsm => unreachable!("not a path"),
                         }
                     } else {

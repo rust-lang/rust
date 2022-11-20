@@ -1,5 +1,4 @@
 use crate::constrained_generic_params::{identify_constrained_generic_params, Parameter};
-use hir::def::DefKind;
 use rustc_ast as ast;
 use rustc_data_structures::fx::{FxHashMap, FxHashSet, FxIndexSet};
 use rustc_errors::{pluralize, struct_span_err, Applicability, DiagnosticBuilder, ErrorGuaranteed};
@@ -1588,8 +1587,7 @@ fn check_return_position_impl_trait_in_trait_bounds<'tcx>(
         for arg in fn_output.walk() {
             if let ty::GenericArgKind::Type(ty) = arg.unpack()
                 && let ty::Projection(proj) = ty.kind()
-                && tcx.def_kind(proj.item_def_id) == DefKind::ImplTraitPlaceholder
-                && let (trait_fn_def_id, _) = tcx.def_path(proj.item_def_id).get_impl_trait_in_trait_data().unwrap()
+                && let Some((trait_fn_def_id, _)) = tcx.def_path(proj.item_def_id).get_impl_trait_in_trait_data()
                 && trait_fn_def_id == fn_def_id.to_def_id()
             {
                 let bounds = wfcx.tcx().explicit_item_bounds(proj.item_def_id);

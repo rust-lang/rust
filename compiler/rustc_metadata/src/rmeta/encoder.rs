@@ -820,7 +820,6 @@ fn should_encode_visibility(def_kind: DefKind) -> bool {
         | DefKind::Use
         | DefKind::ForeignMod
         | DefKind::OpaqueTy
-        | DefKind::ImplTraitPlaceholder
         | DefKind::Impl
         | DefKind::Field => true,
         DefKind::TyParam
@@ -853,7 +852,6 @@ fn should_encode_stability(def_kind: DefKind) -> bool {
         | DefKind::ForeignMod
         | DefKind::TyAlias
         | DefKind::OpaqueTy
-        | DefKind::ImplTraitPlaceholder
         | DefKind::Enum
         | DefKind::Union
         | DefKind::Impl
@@ -942,7 +940,6 @@ fn should_encode_variances(def_kind: DefKind) -> bool {
         | DefKind::ForeignMod
         | DefKind::TyAlias
         | DefKind::OpaqueTy
-        | DefKind::ImplTraitPlaceholder
         | DefKind::Impl
         | DefKind::Trait
         | DefKind::TraitAlias
@@ -979,7 +976,6 @@ fn should_encode_generics(def_kind: DefKind) -> bool {
         | DefKind::AnonConst
         | DefKind::InlineConst
         | DefKind::OpaqueTy
-        | DefKind::ImplTraitPlaceholder
         | DefKind::Impl
         | DefKind::Field
         | DefKind::TyParam
@@ -1008,7 +1004,6 @@ fn should_encode_type(tcx: TyCtxt<'_>, def_id: LocalDefId, def_kind: DefKind) ->
         | DefKind::Const
         | DefKind::Static(..)
         | DefKind::TyAlias
-        | DefKind::OpaqueTy
         | DefKind::ForeignTy
         | DefKind::Impl
         | DefKind::AssocFn
@@ -1019,7 +1014,7 @@ fn should_encode_type(tcx: TyCtxt<'_>, def_id: LocalDefId, def_kind: DefKind) ->
         | DefKind::AnonConst
         | DefKind::InlineConst => true,
 
-        DefKind::ImplTraitPlaceholder => {
+        DefKind::OpaqueTy => {
             if let Some((fn_def_id, _)) =
                 tcx.def_path(def_id.to_def_id()).get_impl_trait_in_trait_data()
             {
@@ -1033,7 +1028,7 @@ fn should_encode_type(tcx: TyCtxt<'_>, def_id: LocalDefId, def_kind: DefKind) ->
                     }
                 }
             } else {
-                bug!();
+                true
             }
         }
 
@@ -1076,7 +1071,6 @@ fn should_encode_const(def_kind: DefKind) -> bool {
         | DefKind::Static(..)
         | DefKind::TyAlias
         | DefKind::OpaqueTy
-        | DefKind::ImplTraitPlaceholder
         | DefKind::ForeignTy
         | DefKind::Impl
         | DefKind::AssocFn
@@ -1117,7 +1111,7 @@ fn should_encode_trait_impl_trait_tys<'tcx>(tcx: TyCtxt<'tcx>, def_id: DefId) ->
     tcx.fn_sig(trait_item_def_id).skip_binder().output().walk().any(|arg| {
         if let ty::GenericArgKind::Type(ty) = arg.unpack()
             && let ty::Projection(data) = ty.kind()
-            && tcx.def_kind(data.item_def_id) == DefKind::ImplTraitPlaceholder
+            && tcx.def_path(data.item_def_id).get_impl_trait_in_trait_data().is_some()
         {
             true
         } else {

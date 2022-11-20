@@ -102,7 +102,7 @@ impl Target {
             DefKind::ForeignMod => Target::ForeignMod,
             DefKind::GlobalAsm => Target::GlobalAsm,
             DefKind::TyAlias => Target::TyAlias,
-            DefKind::OpaqueTy | DefKind::ImplTraitPlaceholder => Target::OpaqueTy,
+            DefKind::OpaqueTy => Target::OpaqueTy,
             DefKind::Enum => Target::Enum,
             DefKind::Struct => Target::Struct,
             DefKind::Union => Target::Union,

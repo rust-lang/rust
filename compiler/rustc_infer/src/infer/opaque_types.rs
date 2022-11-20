@@ -1,7 +1,6 @@
 use crate::errors::OpaqueHiddenTypeDiag;
 use crate::infer::{DefiningAnchor, InferCtxt, InferOk};
 use crate::traits;
-use hir::def::DefKind;
 use hir::def_id::{DefId, LocalDefId};
 use hir::{HirId, OpaqueTyOrigin};
 use rustc_data_structures::sync::Lrc;
@@ -556,8 +555,10 @@ impl<'tcx> InferCtxt<'tcx> {
                     // FIXME(RPITIT): Don't replace RPITITs with inference vars.
                     ty::Projection(projection_ty)
                         if !projection_ty.has_escaping_bound_vars()
-                            && tcx.def_kind(projection_ty.item_def_id)
-                                != DefKind::ImplTraitPlaceholder =>
+                            && tcx
+                                .def_path(projection_ty.item_def_id)
+                                .get_impl_trait_in_trait_data()
+                                .is_none() =>
                     {
                         self.infer_projection(
                             param_env,

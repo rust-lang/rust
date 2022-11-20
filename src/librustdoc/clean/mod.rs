@@ -414,7 +414,7 @@ fn clean_projection<'tcx>(
     cx: &mut DocContext<'tcx>,
     def_id: Option<DefId>,
 ) -> Type {
-    if cx.tcx.def_kind(ty.item_def_id) == DefKind::ImplTraitPlaceholder {
+    if cx.tcx.def_path(ty.item_def_id).get_impl_trait_in_trait_data().is_some() {
         let bounds = cx
             .tcx
             .explicit_item_bounds(ty.item_def_id)

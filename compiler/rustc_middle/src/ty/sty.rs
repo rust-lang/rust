@@ -1147,7 +1147,7 @@ impl<'tcx> ProjectionTy<'tcx> {
     pub fn trait_def_id(&self, tcx: TyCtxt<'tcx>) -> DefId {
         match tcx.def_kind(self.item_def_id) {
             DefKind::AssocTy | DefKind::AssocConst => tcx.parent(self.item_def_id),
-            DefKind::ImplTraitPlaceholder => {
+            DefKind::OpaqueTy => {
                 let (fn_def_id, _) =
                     tcx.def_path(self.item_def_id).get_impl_trait_in_trait_data().unwrap();
 
