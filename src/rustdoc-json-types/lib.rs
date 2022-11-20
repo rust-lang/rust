@@ -413,6 +413,7 @@ pub enum Abi {
     Other(String),
 }
 
+/// Represents a function (including methods and other associated functions)
 #[derive(Clone, Debug, PartialEq, Eq, Hash, Serialize, Deserialize)]
 pub struct Function {
     pub decl: FnDecl,
