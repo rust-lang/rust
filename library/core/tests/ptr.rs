@@ -677,7 +677,7 @@ fn align_offset_issue_103361() {
     #[cfg(target_pointer_width = "16")]
     const SIZE: usize = 1 << 13;
     struct HugeSize([u8; SIZE - 1]);
-    let _ = (SIZE as *const HugeSize).align_offset(SIZE);
+    let _ = ptr::invalid::<HugeSize>(SIZE).align_offset(SIZE);
 }
 
 #[test]

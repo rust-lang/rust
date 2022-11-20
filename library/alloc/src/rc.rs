@@ -1091,10 +1091,11 @@ impl<T: ?Sized> Rc<T> {
     ///
     /// # Safety
     ///
-    /// Any other `Rc` or [`Weak`] pointers to the same allocation must not be dereferenced
-    /// for the duration of the returned borrow.
-    /// This is trivially the case if no such pointers exist,
-    /// for example immediately after `Rc::new`.
+    /// If any other `Rc` or [`Weak`] pointers to the same allocation exist, then
+    /// they must be must not be dereferenced or have active borrows for the duration
+    /// of the returned borrow, and their inner type must be exactly the same as the
+    /// inner type of this Rc (including lifetimes). This is trivially the case if no
+    /// such pointers exist, for example immediately after `Rc::new`.
     ///
     /// # Examples
     ///
@@ -1108,6 +1109,38 @@ impl<T: ?Sized> Rc<T> {
     ///     Rc::get_mut_unchecked(&mut x).push_str("foo")
     /// }
     /// assert_eq!(*x, "foo");
+    /// ```
+    /// Other `Rc` pointers to the same allocation must be to the same type.
+    /// ```no_run
+    /// #![feature(get_mut_unchecked)]
+    ///
+    /// use std::rc::Rc;
+    ///
+    /// let x: Rc<str> = Rc::from("Hello, world!");
+    /// let mut y: Rc<[u8]> = x.clone().into();
+    /// unsafe {
+    ///     // this is Undefined Behavior, because x's inner type is str, not [u8]
+    ///     Rc::get_mut_unchecked(&mut y).fill(0xff); // 0xff is invalid in UTF-8
+    /// }
+    /// println!("{}", &*x); // Invalid UTF-8 in a str
+    /// ```
+    /// Other `Rc` pointers to the same allocation must be to the exact same type, including lifetimes.
+    /// ```no_run
+    /// #![feature(get_mut_unchecked)]
+    ///
+    /// use std::rc::Rc;
+    ///
+    /// let x: Rc<&str> = Rc::new("Hello, world!");
+    /// {
+    ///     let s = String::from("Oh, no!");
+    ///     let mut y: Rc<&str> = x.clone().into();
+    ///     unsafe {
+    ///         // this is Undefined Behavior, because x's inner type
+    ///         // is &'long str, not &'short str
+    ///         *Rc::get_mut_unchecked(&mut y) = &s;
+    ///     }
+    /// }
+    /// println!("{}", &*x); // Use-after-free
     /// ```
     #[inline]
     #[unstable(feature = "get_mut_unchecked", issue = "63292")]

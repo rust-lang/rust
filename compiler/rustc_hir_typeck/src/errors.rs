@@ -1,4 +1,5 @@
 //! Errors emitted by `rustc_hir_analysis`.
+use rustc_errors::{AddToDiagnostic, Applicability, Diagnostic, MultiSpan, SubdiagnosticMessage};
 use rustc_macros::{Diagnostic, Subdiagnostic};
 use rustc_middle::ty::Ty;
 use rustc_span::{symbol::Ident, Span};
@@ -132,4 +133,42 @@ pub struct OpMethodGenericParams {
     #[primary_span]
     pub span: Span,
     pub method_name: String,
+}
+
+pub struct TypeMismatchFruTypo {
+    /// Span of the LHS of the range
+    pub expr_span: Span,
+    /// Span of the `..RHS` part of the range
+    pub fru_span: Span,
+    /// Rendered expression of the RHS of the range
+    pub expr: Option<String>,
+}
+
+impl AddToDiagnostic for TypeMismatchFruTypo {
+    fn add_to_diagnostic_with<F>(self, diag: &mut Diagnostic, _: F)
+    where
+        F: Fn(&mut Diagnostic, SubdiagnosticMessage) -> SubdiagnosticMessage,
+    {
+        diag.set_arg("expr", self.expr.as_deref().unwrap_or("NONE"));
+
+        // Only explain that `a ..b` is a range if it's split up
+        if self.expr_span.between(self.fru_span).is_empty() {
+            diag.span_note(
+                self.expr_span.to(self.fru_span),
+                rustc_errors::fluent::hir_typeck_fru_note,
+            );
+        } else {
+            let mut multispan: MultiSpan = vec![self.expr_span, self.fru_span].into();
+            multispan.push_span_label(self.expr_span, rustc_errors::fluent::hir_typeck_fru_expr);
+            multispan.push_span_label(self.fru_span, rustc_errors::fluent::hir_typeck_fru_expr2);
+            diag.span_note(multispan, rustc_errors::fluent::hir_typeck_fru_note);
+        }
+
+        diag.span_suggestion(
+            self.expr_span.shrink_to_hi(),
+            rustc_errors::fluent::hir_typeck_fru_suggestion,
+            ", ",
+            Applicability::MaybeIncorrect,
+        );
+    }
 }
