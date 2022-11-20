@@ -6,6 +6,8 @@ use rustc_lint::LateContext;
 use rustc_middle::ty;
 use rustc_span::Span;
 
+use std::iter;
+
 use super::MISNAMED_GETTERS;
 
 pub fn check_fn(
@@ -75,39 +77,35 @@ pub fn check_fn(
         }
     };
 
-    let ty = cx.typeck_results().expr_ty_adjusted(self_data);
-
-    let def = {
-        let mut kind = ty.kind();
-        loop {
-            match kind {
-                ty::Adt(def, _) => break def,
-                ty::Ref(_, ty, _) => kind = ty.kind(),
-                // We don't do tuples because the function name cannot be a number
-                _ => return,
-            }
-        }
-    };
-
     let mut used_field = None;
     let mut correct_field = None;
-    for f in def.all_fields() {
-        if f.name.as_str() == name {
-            correct_field = Some(f);
-        }
-        if f.name == used_ident.name {
-            used_field = Some(f);
+    let typeck_results = cx.typeck_results();
+    for adjusted_type in iter::once(typeck_results.expr_ty(self_data))
+        .chain(typeck_results.expr_adjustments(self_data).iter().map(|adj| adj.target))
+    {
+        let ty::Adt(def,_) = adjusted_type.kind() else {
+            continue;
+        };
+
+        for f in def.all_fields() {
+            if f.name.as_str() == name {
+                correct_field = Some(f);
+            }
+            if f.name == used_ident.name {
+                used_field = Some(f);
+            }
         }
     }
 
     let Some(used_field) = used_field else {
-        // FIXME: This can be reached if the field access uses autoderef.
-        // `dec.all_fields()` should be replaced by something that uses autoderef on the unajusted type of `self_data`
+        // Can happen if the field access is a tuple. We don't lint those because the getter name could not start with a number.
         return;
     };
 
     let Some(correct_field) = correct_field else {
-            return;
+        // There is no field corresponding to the getter name.
+        // FIXME: This can be a false positive if the correct field is reachable trought deeper autodereferences than used_field is
+        return;
     };
 
     if cx.tcx.type_of(used_field.did) == cx.tcx.type_of(correct_field.did) {

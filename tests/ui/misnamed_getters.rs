@@ -85,15 +85,37 @@ impl B {
     }
 }
 
-struct C {
-    inner: Box<A>,
+struct D {
+    d: u8,
+    inner: A,
 }
-impl C {
-    unsafe fn a(&self) -> &u8 {
-        &self.inner.b
+
+impl core::ops::Deref for D {
+    type Target = A;
+    fn deref(&self) -> &A {
+        &self.inner
     }
-    unsafe fn a_mut(&mut self) -> &mut u8 {
-        &mut self.inner.b
+}
+
+impl core::ops::DerefMut for D {
+    fn deref_mut(&mut self) -> &mut A {
+        &mut self.inner
+    }
+}
+
+impl D {
+    fn a(&self) -> &u8 {
+        &self.b
+    }
+    fn a_mut(&mut self) -> &mut u8 {
+        &mut self.b
+    }
+
+    fn d(&self) -> &u8 {
+        &self.b
+    }
+    fn d_mut(&mut self) -> &mut u8 {
+        &mut self.b
     }
 }
 

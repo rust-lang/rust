@@ -127,22 +127,40 @@ LL | |     }
    | |_____^
 
 error: getter function appears to return the wrong field
-  --> $DIR/misnamed_getters.rs:92:5
+  --> $DIR/misnamed_getters.rs:107:5
    |
-LL | /     unsafe fn a(&self) -> &u8 {
-LL | |         &self.inner.b
-   | |         ------------- help: consider using: `&self.inner.a`
+LL | /     fn a(&self) -> &u8 {
+LL | |         &self.b
+   | |         ------- help: consider using: `&self.a`
 LL | |     }
    | |_____^
 
 error: getter function appears to return the wrong field
-  --> $DIR/misnamed_getters.rs:95:5
+  --> $DIR/misnamed_getters.rs:110:5
    |
-LL | /     unsafe fn a_mut(&mut self) -> &mut u8 {
-LL | |         &mut self.inner.b
-   | |         ----------------- help: consider using: `&mut self.inner.a`
+LL | /     fn a_mut(&mut self) -> &mut u8 {
+LL | |         &mut self.b
+   | |         ----------- help: consider using: `&mut self.a`
 LL | |     }
    | |_____^
 
-error: aborting due to 16 previous errors
+error: getter function appears to return the wrong field
+  --> $DIR/misnamed_getters.rs:114:5
+   |
+LL | /     fn d(&self) -> &u8 {
+LL | |         &self.b
+   | |         ------- help: consider using: `&self.d`
+LL | |     }
+   | |_____^
+
+error: getter function appears to return the wrong field
+  --> $DIR/misnamed_getters.rs:117:5
+   |
+LL | /     fn d_mut(&mut self) -> &mut u8 {
+LL | |         &mut self.b
+   | |         ----------- help: consider using: `&mut self.d`
+LL | |     }
+   | |_____^
+
+error: aborting due to 18 previous errors
 
