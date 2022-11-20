@@ -11,6 +11,8 @@ use std::hash;
 use std::ops::Range;
 use std::ptr;
 
+use either::{Left, Right};
+
 use rustc_ast::Mutability;
 use rustc_data_structures::intern::Interned;
 use rustc_span::DUMMY_SP;
@@ -503,11 +505,11 @@ impl<Prov: Provenance, Extra> Allocation<Prov, Extra> {
         // `to_bits_or_ptr_internal` is the right method because we just want to store this data
         // as-is into memory.
         let (bytes, provenance) = match val.to_bits_or_ptr_internal(range.size)? {
-            Err(val) => {
-                let (provenance, offset) = val.into_parts();
+            Right(ptr) => {
+                let (provenance, offset) = ptr.into_parts();
                 (u128::from(offset.bytes()), Some(provenance))
             }
-            Ok(data) => (data, None),
+            Left(data) => (data, None),
         };
 
         let endian = cx.data_layout().endian;
