@@ -48,10 +48,10 @@ Update and activate the rustup toolchain 'miri' to the commit given in the
 `rustup-toolchain-install-master` must be installed for this to work. Any extra
 flags are passed to `rustup-toolchain-install-master`.
 
-./miri rustc-pull:
-Pull and merge Miri changes from the rustc repo. The fetched commit is stored in
-the `rust-version` file, so the next `./miri toolchain` will install the rustc
-we just pulled.
+./miri rustc-pull <commit>:
+Pull and merge Miri changes from the rustc repo. Defaults to fetching the latest
+rustc commit. The fetched commit is stored in the `rust-version` file, so the
+next `./miri toolchain` will install the rustc that just got pulled.
 
 ./miri rustc-push <github user> <branch>:
 Push Miri changes back to the rustc repo. This will pull a copy of the rustc
@@ -113,18 +113,17 @@ toolchain)
     ;;
 rustc-pull)
     cd "$MIRIDIR"
-    FETCH_COMMIT=$(git ls-remote https://github.com/rust-lang/rust/ HEAD | cut -f 1)
-    # We can't pull from a commit with josh
-    # (https://github.com/josh-project/josh/issues/1034), so we just hope that
-    # nothing gets merged into rustc *during* this pull.
-    git fetch http://localhost:8000/rust-lang/rust.git$JOSH_FILTER.git master
-    # Just verify that `master` didn't move.
-    if [[ $FETCH_COMMIT != $(git ls-remote https://github.com/rust-lang/rust/ HEAD | cut -f 1) ]]; then
-        echo "Looks like something got merged into Rust *while we were pulling*. Aborting. Please try again."
+    FETCH_COMMIT="$1"
+    if [ -z "$FETCH_COMMIT" ]; then
+        FETCH_COMMIT=$(git ls-remote https://github.com/rust-lang/rust/ HEAD | cut -f 1)
     fi
-    echo "$FETCH_COMMIT" > rust-version # do this *before* merging as merging will fail in case of conflicts
+    # Update rust-version file. As a separate commit, since making it part of
+    # the merge has confused the heck out of josh in the past.
+    echo "$FETCH_COMMIT" > rust-version
+    git commit rust-version -m "Preparing for merge from rustc"
+    # Fetch given rustc commit and note down which one that was
+    git fetch http://localhost:8000/rust-lang/rust.git@$FETCH_COMMIT$JOSH_FILTER.git
     git merge FETCH_HEAD --no-ff -m "Merge from rustc"
-    git commit rust-version --amend -m "Merge from rustc"
     exit 0
     ;;
 rustc-push)
@@ -157,16 +156,27 @@ rustc-push)
     fi
     git fetch https://github.com/rust-lang/rust $BASE
     git push https://github.com/$USER/rust $BASE:refs/heads/$BRANCH -f
+    echo
     # Do the actual push.
     cd "$MIRIDIR"
     echo "Pushing Miri changes..."
     git push http://localhost:8000/$USER/rust.git$JOSH_FILTER.git HEAD:$BRANCH
-    exit 0
+    # Do a round-trip check to make sure the push worked as expected.
+    echo
+    git fetch http://localhost:8000/$USER/rust.git@$JOSH_FILTER.git $BRANCH &>/dev/null
+    if [[ $(git rev-parse HEAD) != $(git rev-parse FETCH_HEAD) ]]; then
+        echo "ERROR: Josh created a non-roundtrip push! Do NOT merge this into rustc!"
+        exit 1
+    else
+        echo "Confirmed that the push round-trips back to Miri properly. Please create a rustc PR:"
+        echo "    https://github.com/$USER/rust/pull/new/$BRANCH"
+        exit 0
+    fi
     ;;
 many-seeds)
-    for SEED in $({ echo obase=16; seq 0 255; } | bc); do
+    for SEED in $(seq 0 255); do
         echo "Trying seed: $SEED"
-        MIRIFLAGS="$MIRIFLAGS -Zmiri-seed=$SEED" $@ || { echo "Failing seed: $SEED"; break; }
+        MIRIFLAGS="$MIRIFLAGS -Zlayout-seed=$SEED -Zmiri-seed=$SEED" $@ || { echo "Failing seed: $SEED"; break; }
     done
     exit 0
     ;;
