@@ -74,7 +74,7 @@ pub fn check(build: &mut Build) {
     let mut cmd_finder = Finder::new();
     // If we've got a git directory we're gonna need git to update
     // submodules and learn about various other aspects.
-    if build.rust_info.is_managed_git_subrepository() {
+    if build.rust_info().is_managed_git_subrepository() {
         cmd_finder.must_have("git");
     }
 
@@ -155,7 +155,15 @@ than building it.
             continue;
         }
 
-        if !build.config.dry_run {
+        // Some environments don't want or need these tools, such as when testing Miri.
+        // FIXME: it would be better to refactor this code to split necessary setup from pure sanity
+        // checks, and have a regular flag for skipping the latter. Also see
+        // <https://github.com/rust-lang/rust/pull/103569#discussion_r1008741742>.
+        if env::var_os("BOOTSTRAP_SKIP_TARGET_SANITY").is_some() {
+            continue;
+        }
+
+        if !build.config.dry_run() {
             cmd_finder.must_have(build.cc(*target));
             if let Some(ar) = build.ar(*target) {
                 cmd_finder.must_have(ar);
@@ -164,7 +172,7 @@ than building it.
     }
 
     for host in &build.hosts {
-        if !build.config.dry_run {
+        if !build.config.dry_run() {
             cmd_finder.must_have(build.cxx(*host).unwrap());
         }
     }
@@ -210,6 +218,14 @@ than building it.
                             be specified in config.toml"
                 ),
             }
+        }
+
+        // Some environments don't want or need these tools, such as when testing Miri.
+        // FIXME: it would be better to refactor this code to split necessary setup from pure sanity
+        // checks, and have a regular flag for skipping the latter. Also see
+        // <https://github.com/rust-lang/rust/pull/103569#discussion_r1008741742>.
+        if env::var_os("BOOTSTRAP_SKIP_TARGET_SANITY").is_some() {
+            continue;
         }
 
         if need_cmake && target.contains("msvc") {

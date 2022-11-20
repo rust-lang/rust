@@ -755,11 +755,11 @@ impl<'a, 'gcc, 'tcx> BuilderMethods<'a, 'tcx> for Builder<'a, 'gcc, 'tcx> {
         OperandRef { val, layout: place.layout }
     }
 
-    fn write_operand_repeatedly(mut self, cg_elem: OperandRef<'tcx, RValue<'gcc>>, count: u64, dest: PlaceRef<'tcx, RValue<'gcc>>) -> Self {
+    fn write_operand_repeatedly(&mut self, cg_elem: OperandRef<'tcx, RValue<'gcc>>, count: u64, dest: PlaceRef<'tcx, RValue<'gcc>>) {
         let zero = self.const_usize(0);
         let count = self.const_usize(count);
-        let start = dest.project_index(&mut self, zero).llval;
-        let end = dest.project_index(&mut self, count).llval;
+        let start = dest.project_index(self, zero).llval;
+        let end = dest.project_index(self, count).llval;
 
         let header_bb = self.append_sibling_block("repeat_loop_header");
         let body_bb = self.append_sibling_block("repeat_loop_body");
@@ -778,14 +778,13 @@ impl<'a, 'gcc, 'tcx> BuilderMethods<'a, 'tcx> for Builder<'a, 'gcc, 'tcx> {
 
         self.switch_to_block(body_bb);
         let align = dest.align.restrict_for_offset(dest.layout.field(self.cx(), 0).size);
-        cg_elem.val.store(&mut self, PlaceRef::new_sized_aligned(current_val, cg_elem.layout, align));
+        cg_elem.val.store(self, PlaceRef::new_sized_aligned(current_val, cg_elem.layout, align));
 
         let next = self.inbounds_gep(self.backend_type(cg_elem.layout), current.to_rvalue(), &[self.const_usize(1)]);
         self.llbb().add_assignment(None, current, next);
         self.br(header_bb);
 
         self.switch_to_block(next_bb);
-        self
     }
 
     fn range_metadata(&mut self, _load: RValue<'gcc>, _range: WrappingRange) {

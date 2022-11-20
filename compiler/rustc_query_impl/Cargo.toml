@@ -21,7 +21,7 @@ rustc_serialize = { path = "../rustc_serialize" }
 rustc_session = { path = "../rustc_session" }
 rustc_span = { path = "../rustc_span" }
 rustc_target = { path = "../rustc_target" }
-thin-vec = "0.2.8"
+thin-vec = "0.2.9"
 tracing = "0.1"
 
 [features]

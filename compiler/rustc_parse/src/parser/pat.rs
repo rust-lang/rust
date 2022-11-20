@@ -420,7 +420,7 @@ impl<'a> Parser<'a> {
                 err.span_label(self_.token.span, format!("expected {}", expected));
                 err
             });
-            PatKind::Lit(self.mk_expr(lo, ExprKind::Lit(lit)))
+            PatKind::Lit(self.mk_expr(lo, ExprKind::Lit(lit.token_lit)))
         } else {
             // Try to parse everything else as literal with optional minus
             match self.parse_literal_maybe_minus() {
@@ -889,7 +889,7 @@ impl<'a> Parser<'a> {
     }
 
     /// Parse a struct ("record") pattern (e.g. `Foo { ... }` or `Foo::Bar { ... }`).
-    fn parse_pat_struct(&mut self, qself: Option<QSelf>, path: Path) -> PResult<'a, PatKind> {
+    fn parse_pat_struct(&mut self, qself: Option<P<QSelf>>, path: Path) -> PResult<'a, PatKind> {
         if qself.is_some() {
             // Feature gate the use of qualified paths in patterns
             self.sess.gated_spans.gate(sym::more_qualified_paths, path.span);
@@ -906,7 +906,11 @@ impl<'a> Parser<'a> {
     }
 
     /// Parse tuple struct or tuple variant pattern (e.g. `Foo(...)` or `Foo::Bar(...)`).
-    fn parse_pat_tuple_struct(&mut self, qself: Option<QSelf>, path: Path) -> PResult<'a, PatKind> {
+    fn parse_pat_tuple_struct(
+        &mut self,
+        qself: Option<P<QSelf>>,
+        path: Path,
+    ) -> PResult<'a, PatKind> {
         let (fields, _) = self.parse_paren_comma_seq(|p| {
             p.parse_pat_allow_top_alt(
                 None,

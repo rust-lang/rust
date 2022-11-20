@@ -1,3 +1,6 @@
+#![deny(rustc::untranslatable_diagnostic)]
+#![deny(rustc::diagnostic_outside_of_impl)]
+
 use rustc_data_structures::graph::scc::Sccs;
 use rustc_index::vec::IndexVec;
 use rustc_middle::mir::ConstraintCategory;
@@ -92,10 +95,13 @@ pub struct OutlivesConstraint<'tcx> {
     pub span: Span,
 
     /// What caused this constraint?
-    pub category: ConstraintCategory,
+    pub category: ConstraintCategory<'tcx>,
 
     /// Variance diagnostic information
     pub variance_info: VarianceDiagInfo<'tcx>,
+
+    /// If this constraint is promoted from closure requirements.
+    pub from_closure: bool,
 }
 
 impl<'tcx> fmt::Debug for OutlivesConstraint<'tcx> {

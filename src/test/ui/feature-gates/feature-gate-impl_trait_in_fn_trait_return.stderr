@@ -1,0 +1,15 @@
+error[E0562]: `impl Trait` only allowed in function and inherent method return types, not in `Fn` trait return
+  --> $DIR/feature-gate-impl_trait_in_fn_trait_return.rs:1:24
+   |
+LL | fn f() -> impl Fn() -> impl Sized { || () }
+   |                        ^^^^^^^^^^
+
+error[E0562]: `impl Trait` only allowed in function and inherent method return types, not in `Fn` trait return
+  --> $DIR/feature-gate-impl_trait_in_fn_trait_return.rs:3:32
+   |
+LL | fn g() -> &'static dyn Fn() -> impl Sized { &|| () }
+   |                                ^^^^^^^^^^
+
+error: aborting due to 2 previous errors
+
+For more information about this error, try `rustc --explain E0562`.

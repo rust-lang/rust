@@ -551,6 +551,7 @@ pub(crate) fn make_test(
                 false,
                 Some(80),
                 false,
+                false,
             )
             .supports_color();
 
@@ -563,6 +564,7 @@ pub(crate) fn make_test(
                 false,
                 false,
                 None,
+                false,
                 false,
             );
 
@@ -747,6 +749,7 @@ fn check_if_attr_is_complete(source: &str, edition: Edition) -> bool {
                 false,
                 false,
                 None,
+                false,
                 false,
             );
 
@@ -1290,7 +1293,7 @@ impl<'a, 'hir, 'tcx> intravisit::Visitor<'hir> for HirCollector<'a, 'hir, 'tcx> 
     }
 
     fn visit_variant(&mut self, v: &'hir hir::Variant<'_>) {
-        self.visit_testable(v.ident.to_string(), v.id, v.span, |this| {
+        self.visit_testable(v.ident.to_string(), v.hir_id, v.span, |this| {
             intravisit::walk_variant(this, v);
         });
     }

@@ -126,7 +126,7 @@ impl<'a, 'hir> intravisit::Visitor<'hir> for HirIdValidator<'a, 'hir> {
 
     fn visit_item(&mut self, i: &'hir hir::Item<'hir>) {
         let mut inner_visitor = self.new_visitor(self.hir_map);
-        inner_visitor.check(i.def_id, |this| intravisit::walk_item(this, i));
+        inner_visitor.check(i.owner_id, |this| intravisit::walk_item(this, i));
     }
 
     fn visit_id(&mut self, hir_id: HirId) {
@@ -148,16 +148,16 @@ impl<'a, 'hir> intravisit::Visitor<'hir> for HirIdValidator<'a, 'hir> {
 
     fn visit_foreign_item(&mut self, i: &'hir hir::ForeignItem<'hir>) {
         let mut inner_visitor = self.new_visitor(self.hir_map);
-        inner_visitor.check(i.def_id, |this| intravisit::walk_foreign_item(this, i));
+        inner_visitor.check(i.owner_id, |this| intravisit::walk_foreign_item(this, i));
     }
 
     fn visit_trait_item(&mut self, i: &'hir hir::TraitItem<'hir>) {
         let mut inner_visitor = self.new_visitor(self.hir_map);
-        inner_visitor.check(i.def_id, |this| intravisit::walk_trait_item(this, i));
+        inner_visitor.check(i.owner_id, |this| intravisit::walk_trait_item(this, i));
     }
 
     fn visit_impl_item(&mut self, i: &'hir hir::ImplItem<'hir>) {
         let mut inner_visitor = self.new_visitor(self.hir_map);
-        inner_visitor.check(i.def_id, |this| intravisit::walk_impl_item(this, i));
+        inner_visitor.check(i.owner_id, |this| intravisit::walk_impl_item(this, i));
     }
 }

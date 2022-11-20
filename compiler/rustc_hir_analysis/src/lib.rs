@@ -106,7 +106,7 @@ use rustc_middle::middle;
 use rustc_middle::ty::query::Providers;
 use rustc_middle::ty::{self, Ty, TyCtxt};
 use rustc_middle::util;
-use rustc_session::config::EntryFnType;
+use rustc_session::{config::EntryFnType, parse::feature_err};
 use rustc_span::{symbol::sym, Span, DUMMY_SP};
 use rustc_target::spec::abi::Abi;
 use rustc_trait_selection::traits::error_reporting::TypeErrCtxtExt as _;
@@ -118,20 +118,40 @@ use astconv::AstConv;
 use bounds::Bounds;
 
 fn require_c_abi_if_c_variadic(tcx: TyCtxt<'_>, decl: &hir::FnDecl<'_>, abi: Abi, span: Span) {
-    match (decl.c_variadic, abi) {
-        // The function has the correct calling convention, or isn't a "C-variadic" function.
-        (false, _) | (true, Abi::C { .. }) | (true, Abi::Cdecl { .. }) => {}
-        // The function is a "C-variadic" function with an incorrect calling convention.
-        (true, _) => {
-            let mut err = struct_span_err!(
-                tcx.sess,
-                span,
-                E0045,
-                "C-variadic function must have C or cdecl calling convention"
-            );
-            err.span_label(span, "C-variadics require C or cdecl calling convention").emit();
-        }
+    const ERROR_HEAD: &str = "C-variadic function must have a compatible calling convention";
+    const CONVENTIONS_UNSTABLE: &str = "`C`, `cdecl`, `win64`, `sysv64` or `efiapi`";
+    const CONVENTIONS_STABLE: &str = "`C` or `cdecl`";
+    const UNSTABLE_EXPLAIN: &str =
+        "using calling conventions other than `C` or `cdecl` for varargs functions is unstable";
+
+    if !decl.c_variadic || matches!(abi, Abi::C { .. } | Abi::Cdecl { .. }) {
+        return;
     }
+
+    let extended_abi_support = tcx.features().extended_varargs_abi_support;
+    let conventions = match (extended_abi_support, abi.supports_varargs()) {
+        // User enabled additional ABI support for varargs and function ABI matches those ones.
+        (true, true) => return,
+
+        // Using this ABI would be ok, if the feature for additional ABI support was enabled.
+        // Return CONVENTIONS_STABLE, because we want the other error to look the same.
+        (false, true) => {
+            feature_err(
+                &tcx.sess.parse_sess,
+                sym::extended_varargs_abi_support,
+                span,
+                UNSTABLE_EXPLAIN,
+            )
+            .emit();
+            CONVENTIONS_STABLE
+        }
+
+        (false, false) => CONVENTIONS_STABLE,
+        (true, false) => CONVENTIONS_UNSTABLE,
+    };
+
+    let mut err = struct_span_err!(tcx.sess, span, E0045, "{}, like {}", ERROR_HEAD, conventions);
+    err.span_label(span, ERROR_HEAD).emit();
 }
 
 fn require_same_types<'tcx>(
@@ -153,7 +173,7 @@ fn require_same_types<'tcx>(
     match &errors[..] {
         [] => true,
         errors => {
-            infcx.err_ctxt().report_fulfillment_errors(errors, None, false);
+            infcx.err_ctxt().report_fulfillment_errors(errors, None);
             false
         }
     }
@@ -316,7 +336,7 @@ fn check_main_fn_ty(tcx: TyCtxt<'_>, main_def_id: DefId) {
         ocx.register_bound(cause, param_env, norm_return_ty, term_did);
         let errors = ocx.select_all_or_error();
         if !errors.is_empty() {
-            infcx.err_ctxt().report_fulfillment_errors(&errors, None, false);
+            infcx.err_ctxt().report_fulfillment_errors(&errors, None);
             error = true;
         }
         // now we can take the return type of the given main function
@@ -381,7 +401,7 @@ fn check_start_fn_ty(tcx: TyCtxt<'_>, start_def_id: DefId) {
                         error = true;
                     }
                     if let hir::IsAsync::Async = sig.header.asyncness {
-                        let span = tcx.def_span(it.def_id);
+                        let span = tcx.def_span(it.owner_id);
                         struct_span_err!(
                             tcx.sess,
                             span,

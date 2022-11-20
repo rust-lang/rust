@@ -399,7 +399,7 @@ mod tests {
 
         //Test partial_cmp
         let compare = l.partial_cmp(&r);
-        assert_eq!(compare, o, "Invalid comparison\n l: {:?}\n r: {:?}", l, r);
+        assert_eq!(compare, o, "Invalid comparison\n l: {l:?}\n r: {r:?}");
         let alt_compare = r.partial_cmp(&l);
         assert_eq!(
             alt_compare,

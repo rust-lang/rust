@@ -30,7 +30,7 @@ use rustc_hir::def::{CtorKind, DefKind, Res};
 use rustc_hir::def_id::DefId;
 use rustc_hir::intravisit::Visitor;
 use rustc_hir::lang_items::LangItem;
-use rustc_hir::{Closure, ExprKind, HirId, QPath};
+use rustc_hir::{ExprKind, HirId, QPath};
 use rustc_hir_analysis::astconv::AstConv as _;
 use rustc_hir_analysis::check::ty_kind_suggestion;
 use rustc_infer::infer;
@@ -80,14 +80,14 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         // coercions from ! to `expected`.
         if ty.is_never() {
             if let Some(adjustments) = self.typeck_results.borrow().adjustments().get(expr.hir_id) {
-                self.tcx().sess.delay_span_bug(
+                let reported = self.tcx().sess.delay_span_bug(
                     expr.span,
                     "expression with never type wound up being adjusted",
                 );
                 return if let [Adjustment { kind: Adjust::NeverToAny, target }] = &adjustments[..] {
                     target.to_owned()
                 } else {
-                    self.tcx().ty_error()
+                    self.tcx().ty_error_with_guaranteed(reported)
                 };
             }
 
@@ -103,8 +103,16 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         }
 
         if let Some(mut err) = self.demand_suptype_diag(expr.span, expected_ty, ty) {
-            let expr = expr.peel_drop_temps();
-            self.suggest_deref_ref_or_into(&mut err, expr, expected_ty, ty, None);
+            // FIXME(compiler-errors): We probably should fold some of the
+            // `suggest_` functions from  `emit_coerce_suggestions` into here,
+            // since some of those aren't necessarily just coerce suggestions.
+            let _ = self.suggest_deref_ref_or_into(
+                &mut err,
+                expr.peel_drop_temps(),
+                expected_ty,
+                ty,
+                None,
+            ) || self.suggest_option_to_bool(&mut err, expr, ty, expected_ty);
             extend_err(&mut err);
             err.emit();
         }
@@ -220,7 +228,6 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
 
         // Hide the outer diverging and has_errors flags.
         let old_diverges = self.diverges.replace(Diverges::Maybe);
-        let old_has_errors = self.has_errors.replace(false);
 
         let ty = ensure_sufficient_stack(|| match &expr.kind {
             hir::ExprKind::Path(
@@ -259,7 +266,6 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
 
         // Combine the diverging and has_error flags.
         self.diverges.set(self.diverges.get() | old_diverges);
-        self.has_errors.set(self.has_errors.get() | old_has_errors);
 
         debug!("type of {} is...", self.tcx.hir().node_to_string(expr.hir_id));
         debug!("... {:?}, expected is {:?}", ty, expected);
@@ -318,9 +324,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             ExprKind::Match(discrim, arms, match_src) => {
                 self.check_match(expr, &discrim, arms, expected, match_src)
             }
-            ExprKind::Closure(&Closure { capture_clause, fn_decl, body, movability, .. }) => {
-                self.check_expr_closure(expr, capture_clause, &fn_decl, body, movability, expected)
-            }
+            ExprKind::Closure(closure) => self.check_expr_closure(closure, expr.span, expected),
             ExprKind::Block(body, _) => self.check_block_with_expected(&body, expected),
             ExprKind::Call(callee, args) => self.check_call(expr, &callee, args, expected),
             ExprKind::MethodCall(segment, receiver, args, _) => {
@@ -398,8 +402,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                         {
                             err.subdiagnostic(ExprParenthesesNeeded::surrounding(*sp));
                         }
-                        err.emit();
-                        oprnd_t = tcx.ty_error();
+                        oprnd_t = tcx.ty_error_with_guaranteed(err.emit());
                     }
                 }
                 hir::UnOp::Not => {
@@ -524,12 +527,14 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             self.resolve_ty_and_res_fully_qualified_call(qpath, expr.hir_id, expr.span);
         let ty = match res {
             Res::Err => {
-                self.set_tainted_by_errors();
-                tcx.ty_error()
+                let e =
+                    self.tcx.sess.delay_span_bug(qpath.span(), "`Res::Err` but no error emitted");
+                self.set_tainted_by_errors(e);
+                tcx.ty_error_with_guaranteed(e)
             }
             Res::Def(DefKind::Ctor(_, CtorKind::Fictive), _) => {
-                report_unexpected_variant_res(tcx, res, qpath, expr.span);
-                tcx.ty_error()
+                let e = report_unexpected_variant_res(tcx, res, qpath, expr.span);
+                tcx.ty_error_with_guaranteed(e)
             }
             _ => self.instantiate_value_path(segs, opt_ty, res, expr.span, expr.hir_id).0,
         };
@@ -840,10 +845,12 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             return_expr_ty,
         );
 
-        if self.return_type_has_opaque {
+        if let Some(fn_sig) = self.body_fn_sig()
+            && fn_sig.output().has_opaque_types()
+        {
             // Point any obligations that were registered due to opaque type
             // inference at the return expression.
-            self.select_obligations_where_possible(false, |errors| {
+            self.select_obligations_where_possible(|errors| {
                 self.point_at_return_for_opaque_ty_error(errors, span, return_expr_ty);
             });
         }
@@ -1097,12 +1104,8 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
 
             // If the assignment expression itself is ill-formed, don't
             // bother emitting another error
-            if lhs_ty.references_error() || rhs_ty.references_error() {
-                err.delay_as_bug()
-            } else {
-                err.emit();
-            }
-            return self.tcx.ty_error();
+            let reported = err.emit_unless(lhs_ty.references_error() || rhs_ty.references_error());
+            return self.tcx.ty_error_with_guaranteed(reported);
         }
 
         let lhs_ty = self.check_expr_with_needs(&lhs, Needs::MutPlace);
@@ -1272,7 +1275,15 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         } else {
             // Defer other checks until we're done type checking.
             let mut deferred_cast_checks = self.deferred_cast_checks.borrow_mut();
-            match cast::CastCheck::new(self, e, t_expr, t_cast, t.span, expr.span) {
+            match cast::CastCheck::new(
+                self,
+                e,
+                t_expr,
+                t_cast,
+                t.span,
+                expr.span,
+                self.param_env.constness(),
+            ) {
                 Ok(cast_check) => {
                     debug!(
                         "check_expr_cast: deferring cast from {:?} to {:?}: {:?}",
@@ -1953,7 +1964,11 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         expr_span: Span,
     ) {
         if variant.is_recovered() {
-            self.set_tainted_by_errors();
+            self.set_tainted_by_errors(
+                self.tcx
+                    .sess
+                    .delay_span_bug(expr_span, "parser recovered but no error was emitted"),
+            );
             return;
         }
         let mut err = self.err_ctxt().type_error_struct_with_diag(
@@ -2730,7 +2745,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                 Some((index_ty, element_ty)) => {
                     // two-phase not needed because index_ty is never mutable
                     self.demand_coerce(idx, idx_t, index_ty, None, AllowTwoPhase::No);
-                    self.select_obligations_where_possible(false, |errors| {
+                    self.select_obligations_where_possible(|errors| {
                         self.point_at_index_if_possible(errors, idx.span)
                     });
                     element_ty
@@ -2769,8 +2784,8 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                             );
                         }
                     }
-                    err.emit();
-                    self.tcx.ty_error()
+                    let reported = err.emit();
+                    self.tcx.ty_error_with_guaranteed(reported)
                 }
             }
         }

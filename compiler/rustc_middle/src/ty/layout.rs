@@ -189,8 +189,8 @@ pub enum LayoutError<'tcx> {
     NormalizationFailure(Ty<'tcx>, NormalizationError<'tcx>),
 }
 
-impl<'a> IntoDiagnostic<'a, !> for LayoutError<'a> {
-    fn into_diagnostic(self, handler: &'a Handler) -> DiagnosticBuilder<'a, !> {
+impl IntoDiagnostic<'_, !> for LayoutError<'_> {
+    fn into_diagnostic(self, handler: &Handler) -> DiagnosticBuilder<'_, !> {
         let mut diag = handler.struct_fatal("");
 
         match self {
@@ -830,7 +830,7 @@ where
                 } else {
                     match mt {
                         hir::Mutability::Not => {
-                            if ty.is_freeze(tcx.at(DUMMY_SP), cx.param_env()) {
+                            if ty.is_freeze(tcx, cx.param_env()) {
                                 PointerKind::Frozen
                             } else {
                                 PointerKind::SharedMutable
@@ -841,7 +841,7 @@ where
                             // noalias, as another pointer to the structure can be obtained, that
                             // is not based-on the original reference. We consider all !Unpin
                             // types to be potentially self-referential here.
-                            if ty.is_unpin(tcx.at(DUMMY_SP), cx.param_env()) {
+                            if ty.is_unpin(tcx, cx.param_env()) {
                                 PointerKind::UniqueBorrowed
                             } else {
                                 PointerKind::UniqueBorrowedPinned
@@ -1126,8 +1126,8 @@ impl<'tcx> fmt::Display for FnAbiError<'tcx> {
     }
 }
 
-impl<'tcx> IntoDiagnostic<'tcx, !> for FnAbiError<'tcx> {
-    fn into_diagnostic(self, handler: &'tcx Handler) -> DiagnosticBuilder<'tcx, !> {
+impl IntoDiagnostic<'_, !> for FnAbiError<'_> {
+    fn into_diagnostic(self, handler: &Handler) -> DiagnosticBuilder<'_, !> {
         handler.struct_fatal(self.to_string())
     }
 }

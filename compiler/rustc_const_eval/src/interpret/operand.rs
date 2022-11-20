@@ -4,8 +4,9 @@
 use rustc_hir::def::Namespace;
 use rustc_middle::ty::layout::{LayoutOf, PrimitiveExt, TyAndLayout};
 use rustc_middle::ty::print::{FmtPrinter, PrettyPrinter};
-use rustc_middle::ty::{ConstInt, DelaySpanBugEmitted, Ty};
+use rustc_middle::ty::{ConstInt, Ty, ValTree};
 use rustc_middle::{mir, ty};
+use rustc_span::Span;
 use rustc_target::abi::{self, Abi, Align, HasDataLayout, Size, TagEncoding};
 use rustc_target::abi::{VariantIdx, Variants};
 
@@ -280,7 +281,7 @@ impl<'tcx, Prov: Provenance> OpTy<'tcx, Prov> {
         layout: TyAndLayout<'tcx>,
         cx: &impl HasDataLayout,
     ) -> InterpResult<'tcx, Self> {
-        assert!(!layout.is_unsized());
+        assert!(layout.is_sized());
         self.offset_with_meta(offset, MemPlaceMeta::None, layout, cx)
     }
 }
@@ -376,7 +377,7 @@ impl<'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
 
     /// Read an immediate from a place, asserting that that is possible with the given layout.
     ///
-    /// If this suceeds, the `ImmTy` is never `Uninit`.
+    /// If this succeeds, the `ImmTy` is never `Uninit`.
     #[inline(always)]
     pub fn read_immediate(
         &self,
@@ -527,14 +528,14 @@ impl<'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
             Copy(place) | Move(place) => self.eval_place_to_op(place, layout)?,
 
             Constant(ref constant) => {
-                let val =
+                let c =
                     self.subst_from_current_frame_and_normalize_erasing_regions(constant.literal)?;
 
                 // This can still fail:
                 // * During ConstProp, with `TooGeneric` or since the `required_consts` were not all
                 //   checked yet.
                 // * During CTFE, since promoteds in `const`/`static` initializer bodies can fail.
-                self.const_to_op(&val, layout)?
+                self.eval_mir_constant(&c, Some(constant.span), layout)?
             }
         };
         trace!("{:?}: {:?}", mir_op, *op);
@@ -549,9 +550,35 @@ impl<'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
         ops.iter().map(|op| self.eval_operand(op, None)).collect()
     }
 
-    pub fn const_to_op(
+    fn eval_ty_constant(
+        &self,
+        val: ty::Const<'tcx>,
+        span: Option<Span>,
+    ) -> InterpResult<'tcx, ValTree<'tcx>> {
+        Ok(match val.kind() {
+            ty::ConstKind::Param(_) | ty::ConstKind::Placeholder(..) => {
+                throw_inval!(TooGeneric)
+            }
+            ty::ConstKind::Error(reported) => {
+                throw_inval!(AlreadyReported(reported))
+            }
+            ty::ConstKind::Unevaluated(uv) => {
+                let instance = self.resolve(uv.def, uv.substs)?;
+                let cid = GlobalId { instance, promoted: None };
+                self.ctfe_query(span, |tcx| tcx.eval_to_valtree(self.param_env.and(cid)))?
+                    .unwrap_or_else(|| bug!("unable to create ValTree for {uv:?}"))
+            }
+            ty::ConstKind::Bound(..) | ty::ConstKind::Infer(..) => {
+                span_bug!(self.cur_span(), "unexpected ConstKind in ctfe: {val:?}")
+            }
+            ty::ConstKind::Value(valtree) => valtree,
+        })
+    }
+
+    pub fn eval_mir_constant(
         &self,
         val: &mir::ConstantKind<'tcx>,
+        span: Option<Span>,
         layout: Option<TyAndLayout<'tcx>>,
     ) -> InterpResult<'tcx, OpTy<'tcx, M::Provenance>> {
         // FIXME(const_prop): normalization needed b/c const prop lint in
@@ -563,44 +590,20 @@ impl<'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
         let val = self.tcx.normalize_erasing_regions(self.param_env, *val);
         match val {
             mir::ConstantKind::Ty(ct) => {
-                match ct.kind() {
-                    ty::ConstKind::Param(_) | ty::ConstKind::Placeholder(..) => {
-                        throw_inval!(TooGeneric)
-                    }
-                    ty::ConstKind::Error(DelaySpanBugEmitted { reported, .. }) => {
-                        throw_inval!(AlreadyReported(reported))
-                    }
-                    ty::ConstKind::Unevaluated(uv) => {
-                        // NOTE: We evaluate to a `ValTree` here as a check to ensure
-                        // we're working with valid constants, even though we never need it.
-                        let instance = self.resolve(uv.def, uv.substs)?;
-                        let cid = GlobalId { instance, promoted: None };
-                        let _valtree = self
-                            .tcx
-                            .eval_to_valtree(self.param_env.and(cid))?
-                            .unwrap_or_else(|| bug!("unable to create ValTree for {uv:?}"));
-
-                        Ok(self.eval_to_allocation(cid)?.into())
-                    }
-                    ty::ConstKind::Bound(..) | ty::ConstKind::Infer(..) => {
-                        span_bug!(self.cur_span(), "unexpected ConstKind in ctfe: {ct:?}")
-                    }
-                    ty::ConstKind::Value(valtree) => {
-                        let ty = ct.ty();
-                        let const_val = self.tcx.valtree_to_const_val((ty, valtree));
-                        self.const_val_to_op(const_val, ty, layout)
-                    }
-                }
+                let ty = ct.ty();
+                let valtree = self.eval_ty_constant(ct, span)?;
+                let const_val = self.tcx.valtree_to_const_val((ty, valtree));
+                self.const_val_to_op(const_val, ty, layout)
             }
             mir::ConstantKind::Val(val, ty) => self.const_val_to_op(val, ty, layout),
             mir::ConstantKind::Unevaluated(uv, _) => {
                 let instance = self.resolve(uv.def, uv.substs)?;
-                Ok(self.eval_to_allocation(GlobalId { instance, promoted: uv.promoted })?.into())
+                Ok(self.eval_global(GlobalId { instance, promoted: uv.promoted }, span)?.into())
             }
         }
     }
 
-    pub(crate) fn const_val_to_op(
+    pub(super) fn const_val_to_op(
         &self,
         val_val: ConstValue<'tcx>,
         ty: Ty<'tcx>,

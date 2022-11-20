@@ -4,6 +4,10 @@ use crate::ops::Deref;
 
 /// A value which is initialized on the first access.
 ///
+/// For a thread-safe version of this struct, see [`std::sync::LazyLock`].
+///
+/// [`std::sync::LazyLock`]: ../../std/sync/struct.LazyLock.html
+///
 /// # Examples
 ///
 /// ```

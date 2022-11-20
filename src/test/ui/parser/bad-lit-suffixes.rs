@@ -1,3 +1,5 @@
+#![feature(rustc_attrs)]
+
 extern
     "C"suffix //~ ERROR suffixes on string literals are invalid
     fn foo() {}
@@ -24,3 +26,19 @@ fn main() {
     1.0suffix; //~ ERROR invalid suffix `suffix` for float literal
     1.0e10suffix; //~ ERROR invalid suffix `suffix` for float literal
 }
+
+#[rustc_dummy = "string"suffix]
+//~^ ERROR unexpected expression: `"string"suffix`
+fn f() {}
+
+#[must_use = "string"suffix]
+//~^ ERROR unexpected expression: `"string"suffix`
+fn g() {}
+
+#[link(name = "string"suffix)]
+//~^ ERROR suffixes on string literals are invalid
+extern "C" {}
+
+#[rustc_layout_scalar_valid_range_start(0suffix)]
+//~^ ERROR invalid suffix `suffix` for number literal
+struct S;

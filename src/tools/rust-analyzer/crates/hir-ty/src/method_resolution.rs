@@ -22,10 +22,10 @@ use crate::{
     from_foreign_def_id,
     infer::{unify::InferenceTable, Adjust, Adjustment, AutoBorrow, OverloadedDeref, PointerCast},
     primitive::{FloatTy, IntTy, UintTy},
-    static_lifetime,
+    static_lifetime, to_chalk_trait_id,
     utils::all_super_traits,
     AdtId, Canonical, CanonicalVarKinds, DebruijnIndex, ForeignDefId, InEnvironment, Interner,
-    Scalar, TraitEnvironment, TraitRefExt, Ty, TyBuilder, TyExt, TyKind,
+    Scalar, Substitution, TraitEnvironment, TraitRef, TraitRefExt, Ty, TyBuilder, TyExt, TyKind,
 };
 
 /// This is used as a key for indexing impls.
@@ -624,52 +624,76 @@ pub(crate) fn iterate_method_candidates<T>(
     slot
 }
 
+/// Looks up the impl method that actually runs for the trait method `func`.
+///
+/// Returns `func` if it's not a method defined in a trait or the lookup failed.
 pub fn lookup_impl_method(
-    self_ty: &Ty,
     db: &dyn HirDatabase,
     env: Arc<TraitEnvironment>,
-    trait_: TraitId,
+    func: FunctionId,
+    fn_subst: Substitution,
+) -> FunctionId {
+    let trait_id = match func.lookup(db.upcast()).container {
+        ItemContainerId::TraitId(id) => id,
+        _ => return func,
+    };
+    let trait_params = db.generic_params(trait_id.into()).type_or_consts.len();
+    let fn_params = fn_subst.len(Interner) - trait_params;
+    let trait_ref = TraitRef {
+        trait_id: to_chalk_trait_id(trait_id),
+        substitution: Substitution::from_iter(Interner, fn_subst.iter(Interner).skip(fn_params)),
+    };
+
+    let name = &db.function_data(func).name;
+    lookup_impl_method_for_trait_ref(trait_ref, db, env, name).unwrap_or(func)
+}
+
+fn lookup_impl_method_for_trait_ref(
+    trait_ref: TraitRef,
+    db: &dyn HirDatabase,
+    env: Arc<TraitEnvironment>,
     name: &Name,
 ) -> Option<FunctionId> {
-    let self_ty_fp = TyFingerprint::for_trait_impl(self_ty)?;
-    let trait_impls = db.trait_impls_in_deps(env.krate);
-    let impls = trait_impls.for_trait_and_self_ty(trait_, self_ty_fp);
-    let mut table = InferenceTable::new(db, env.clone());
-    find_matching_impl(impls, &mut table, &self_ty).and_then(|data| {
-        data.items.iter().find_map(|it| match it {
-            AssocItemId::FunctionId(f) => (db.function_data(*f).name == *name).then(|| *f),
-            _ => None,
-        })
+    let self_ty = trait_ref.self_type_parameter(Interner);
+    let self_ty_fp = TyFingerprint::for_trait_impl(&self_ty)?;
+    let impls = db.trait_impls_in_deps(env.krate);
+    let impls = impls.for_trait_and_self_ty(trait_ref.hir_trait_id(), self_ty_fp);
+
+    let table = InferenceTable::new(db, env);
+
+    let impl_data = find_matching_impl(impls, table, trait_ref)?;
+    impl_data.items.iter().find_map(|it| match it {
+        AssocItemId::FunctionId(f) => (db.function_data(*f).name == *name).then(|| *f),
+        _ => None,
     })
 }
 
 fn find_matching_impl(
     mut impls: impl Iterator<Item = ImplId>,
-    table: &mut InferenceTable<'_>,
-    self_ty: &Ty,
+    mut table: InferenceTable<'_>,
+    actual_trait_ref: TraitRef,
 ) -> Option<Arc<ImplData>> {
     let db = table.db;
     loop {
         let impl_ = impls.next()?;
         let r = table.run_in_snapshot(|table| {
             let impl_data = db.impl_data(impl_);
-            let substs =
+            let impl_substs =
                 TyBuilder::subst_for_def(db, impl_, None).fill_with_inference_vars(table).build();
-            let impl_ty = db.impl_self_ty(impl_).substitute(Interner, &substs);
+            let trait_ref = db
+                .impl_trait(impl_)
+                .expect("non-trait method in find_matching_impl")
+                .substitute(Interner, &impl_substs);
 
-            table
-                .unify(self_ty, &impl_ty)
-                .then(|| {
-                    let wh_goals =
-                        crate::chalk_db::convert_where_clauses(db, impl_.into(), &substs)
-                            .into_iter()
-                            .map(|b| b.cast(Interner));
+            if !table.unify(&trait_ref, &actual_trait_ref) {
+                return None;
+            }
 
-                    let goal = crate::Goal::all(Interner, wh_goals);
-
-                    table.try_obligation(goal).map(|_| impl_data)
-                })
-                .flatten()
+            let wcs = crate::chalk_db::convert_where_clauses(db, impl_.into(), &impl_substs)
+                .into_iter()
+                .map(|b| b.cast(Interner));
+            let goal = crate::Goal::all(Interner, wcs);
+            table.try_obligation(goal).map(|_| impl_data)
         });
         if r.is_some() {
             break r;
@@ -1111,24 +1135,6 @@ pub fn resolve_indexing_op(
     }
     None
 }
-/// Returns the receiver type for the try branch trait call.
-pub fn resolve_branch_op(
-    db: &dyn HirDatabase,
-    env: Arc<TraitEnvironment>,
-    ty: Canonical<Ty>,
-    try_trait: TraitId,
-) -> Option<ReceiverAdjustments> {
-    let mut table = InferenceTable::new(db, env.clone());
-    let ty = table.instantiate_canonical(ty);
-    let (deref_chain, adj) = autoderef_method_receiver(&mut table, ty);
-    for (ty, adj) in deref_chain.into_iter().zip(adj) {
-        let goal = generic_implements_goal(db, env.clone(), try_trait, &ty);
-        if db.trait_solve(env.krate, goal.cast(Interner)).is_some() {
-            return Some(adj);
-        }
-    }
-    None
-}
 
 macro_rules! check_that {
     ($cond:expr) => {
@@ -1232,7 +1238,7 @@ fn is_valid_fn_candidate(
             let expected_receiver =
                 sig.map(|s| s.params()[0].clone()).substitute(Interner, &fn_subst);
 
-            check_that!(table.unify(&receiver_ty, &expected_receiver));
+            check_that!(table.unify(receiver_ty, &expected_receiver));
         }
 
         if let ItemContainerId::ImplId(impl_id) = container {

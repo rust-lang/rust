@@ -29,6 +29,7 @@ store.register_group(true, "clippy::pedantic", Some("clippy_pedantic"), vec![
     LintId::of(eta_reduction::REDUNDANT_CLOSURE_FOR_METHOD_CALLS),
     LintId::of(excessive_bools::FN_PARAMS_EXCESSIVE_BOOLS),
     LintId::of(excessive_bools::STRUCT_EXCESSIVE_BOOLS),
+    LintId::of(format_args::UNINLINED_FORMAT_ARGS),
     LintId::of(functions::MUST_USE_CANDIDATE),
     LintId::of(functions::TOO_MANY_LINES),
     LintId::of(if_not_else::IF_NOT_ELSE),

@@ -3,7 +3,6 @@ goto: "file://" + |DOC_PATH| + "/test_docs/index.html"
 // Set the theme to dark.
 local-storage: {
     "rustdoc-theme": "dark",
-    "rustdoc-preferred-dark-theme": "dark",
     "rustdoc-use-system-theme": "false",
 }
 // We reload the page so the local storage settings are being used.

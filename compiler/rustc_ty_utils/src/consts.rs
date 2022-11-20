@@ -33,7 +33,7 @@ pub(crate) fn destructure_const<'tcx>(
             // construct the consts for the elements of the array/slice
             let field_consts = branches
                 .iter()
-                .map(|b| tcx.mk_const(ty::ConstS { kind: ty::ConstKind::Value(*b), ty: *inner_ty }))
+                .map(|b| tcx.mk_const(ty::ConstKind::Value(*b), *inner_ty))
                 .collect::<Vec<_>>();
             debug!(?field_consts);
 
@@ -52,10 +52,7 @@ pub(crate) fn destructure_const<'tcx>(
 
             for (field, field_valtree) in iter::zip(fields, branches) {
                 let field_ty = field.ty(tcx, substs);
-                let field_const = tcx.mk_const(ty::ConstS {
-                    kind: ty::ConstKind::Value(*field_valtree),
-                    ty: field_ty,
-                });
+                let field_const = tcx.mk_const(ty::ConstKind::Value(*field_valtree), field_ty);
                 field_consts.push(field_const);
             }
             debug!(?field_consts);
@@ -65,10 +62,7 @@ pub(crate) fn destructure_const<'tcx>(
         ty::Tuple(elem_tys) => {
             let fields = iter::zip(*elem_tys, branches)
                 .map(|(elem_ty, elem_valtree)| {
-                    tcx.mk_const(ty::ConstS {
-                        kind: ty::ConstKind::Value(*elem_valtree),
-                        ty: elem_ty,
-                    })
+                    tcx.mk_const(ty::ConstKind::Value(*elem_valtree), elem_ty)
                 })
                 .collect::<Vec<_>>();
 
@@ -241,7 +235,9 @@ impl<'a, 'tcx> AbstractConstBuilder<'a, 'tcx> {
                     neg,
                 }) {
                     Ok(c) => c,
-                    Err(LitToConstError::Reported) => self.tcx.const_error(node.ty),
+                    Err(LitToConstError::Reported(guar)) => {
+                        self.tcx.const_error_with_guaranteed(node.ty, guar)
+                    }
                     Err(LitToConstError::TypeError) => {
                         bug!("encountered type error in lit_to_const")
                     }
@@ -261,17 +257,13 @@ impl<'a, 'tcx> AbstractConstBuilder<'a, 'tcx> {
                 let uneval =
                     ty::UnevaluatedConst::new(ty::WithOptConstParam::unknown(def_id), substs);
 
-                let constant = self
-                    .tcx
-                    .mk_const(ty::ConstS { kind: ty::ConstKind::Unevaluated(uneval), ty: node.ty });
+                let constant = self.tcx.mk_const(ty::ConstKind::Unevaluated(uneval), node.ty);
 
                 self.nodes.push(Node::Leaf(constant))
             }
 
             ExprKind::ConstParam { param, .. } => {
-                let const_param = self
-                    .tcx
-                    .mk_const(ty::ConstS { kind: ty::ConstKind::Param(*param), ty: node.ty });
+                let const_param = self.tcx.mk_const(ty::ConstKind::Param(*param), node.ty);
                 self.nodes.push(Node::Leaf(const_param))
             }
 

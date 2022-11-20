@@ -19,7 +19,6 @@ use rustc_span::lev_distance::find_best_match_for_name;
 use rustc_span::source_map::{Span, Spanned};
 use rustc_span::symbol::{kw, sym, Ident};
 use rustc_span::{BytePos, DUMMY_SP};
-use rustc_trait_selection::autoderef::Autoderef;
 use rustc_trait_selection::traits::{ObligationCause, Pattern};
 use ty::VariantDef;
 
@@ -400,6 +399,16 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                     .insert(lt.hir_id.local_id);
                 pat_ty = tcx.mk_imm_ref(tcx.lifetimes.re_static, tcx.mk_slice(tcx.types.u8));
             }
+        }
+
+        if self.tcx.features().string_deref_patterns && let hir::ExprKind::Lit(Spanned { node: ast::LitKind::Str(..), .. }) = lt.kind {
+            let tcx = self.tcx;
+            let expected = self.resolve_vars_if_possible(expected);
+            pat_ty = match expected.kind() {
+                ty::Adt(def, _) if Some(def.did()) == tcx.lang_items().string() => expected,
+                ty::Str => tcx.mk_static_str(),
+                _ => pat_ty,
+            };
         }
 
         // Somewhat surprising: in this case, the subtyping relation goes the
@@ -840,12 +849,13 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         let (res, opt_ty, segments) = path_resolution;
         match res {
             Res::Err => {
-                self.set_tainted_by_errors();
-                return tcx.ty_error();
+                let e = tcx.sess.delay_span_bug(qpath.span(), "`Res::Err` but no error emitted");
+                self.set_tainted_by_errors(e);
+                return tcx.ty_error_with_guaranteed(e);
             }
             Res::Def(DefKind::AssocFn | DefKind::Ctor(_, CtorKind::Fictive | CtorKind::Fn), _) => {
-                report_unexpected_variant_res(tcx, res, qpath, pat.span);
-                return tcx.ty_error();
+                let e = report_unexpected_variant_res(tcx, res, qpath, pat.span);
+                return tcx.ty_error_with_guaranteed(e);
             }
             Res::SelfCtor(..)
             | Res::Def(
@@ -986,9 +996,9 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         ti: TopInfo<'tcx>,
     ) -> Ty<'tcx> {
         let tcx = self.tcx;
-        let on_error = || {
+        let on_error = |e| {
             for pat in subpats {
-                self.check_pat(pat, tcx.ty_error(), def_bm, ti);
+                self.check_pat(pat, tcx.ty_error_with_guaranteed(e), def_bm, ti);
             }
         };
         let report_unexpected_res = |res: Res| {
@@ -1015,36 +1025,39 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                     err.span_label(pat.span, "not a tuple variant or struct");
                 }
             }
-            err.emit();
-            on_error();
+            let e = err.emit();
+            on_error(e);
+            e
         };
 
         // Resolve the path and check the definition for errors.
         let (res, opt_ty, segments) =
             self.resolve_ty_and_res_fully_qualified_call(qpath, pat.hir_id, pat.span);
         if res == Res::Err {
-            self.set_tainted_by_errors();
-            on_error();
-            return self.tcx.ty_error();
+            let e = tcx.sess.delay_span_bug(pat.span, "`Res:Err` but no error emitted");
+            self.set_tainted_by_errors(e);
+            on_error(e);
+            return tcx.ty_error_with_guaranteed(e);
         }
 
         // Type-check the path.
         let (pat_ty, res) =
             self.instantiate_value_path(segments, opt_ty, res, pat.span, pat.hir_id);
         if !pat_ty.is_fn() {
-            report_unexpected_res(res);
-            return tcx.ty_error();
+            let e = report_unexpected_res(res);
+            return tcx.ty_error_with_guaranteed(e);
         }
 
         let variant = match res {
             Res::Err => {
-                self.set_tainted_by_errors();
-                on_error();
-                return tcx.ty_error();
+                let e = tcx.sess.delay_span_bug(pat.span, "`Res::Err` but no error emitted");
+                self.set_tainted_by_errors(e);
+                on_error(e);
+                return tcx.ty_error_with_guaranteed(e);
             }
             Res::Def(DefKind::AssocConst | DefKind::AssocFn, _) => {
-                report_unexpected_res(res);
-                return tcx.ty_error();
+                let e = report_unexpected_res(res);
+                return tcx.ty_error_with_guaranteed(e);
             }
             Res::Def(DefKind::Ctor(_, CtorKind::Fn), _) => tcx.expect_variant_res(res),
             _ => bug!("unexpected pattern resolution: {:?}", res),
@@ -1083,9 +1096,9 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             }
         } else {
             // Pattern has wrong number of fields.
-            self.e0023(pat.span, res, qpath, subpats, &variant.fields, expected, had_err);
-            on_error();
-            return tcx.ty_error();
+            let e = self.e0023(pat.span, res, qpath, subpats, &variant.fields, expected, had_err);
+            on_error(e);
+            return tcx.ty_error_with_guaranteed(e);
         }
         pat_ty
     }
@@ -1099,7 +1112,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         fields: &'tcx [ty::FieldDef],
         expected: Ty<'tcx>,
         had_err: bool,
-    ) {
+    ) -> ErrorGuaranteed {
         let subpats_ending = pluralize!(subpats.len());
         let fields_ending = pluralize!(fields.len());
 
@@ -1246,7 +1259,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             }
         }
 
-        err.emit();
+        err.emit()
     }
 
     fn check_pat_tuple(
@@ -1278,12 +1291,12 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         let element_tys = tcx.mk_type_list(element_tys_iter);
         let pat_ty = tcx.mk_ty(ty::Tuple(element_tys));
         if let Some(mut err) = self.demand_eqtype_pat_diag(span, expected, pat_ty, ti) {
-            err.emit();
+            let reported = err.emit();
             // Walk subpatterns with an expected type of `err` in this case to silence
             // further errors being emitted when using the bindings. #50333
-            let element_tys_iter = (0..max_len).map(|_| tcx.ty_error());
+            let element_tys_iter = (0..max_len).map(|_| tcx.ty_error_with_guaranteed(reported));
             for (_, elem) in elements.iter().enumerate_and_adjust(max_len, ddpos) {
-                self.check_pat(elem, tcx.ty_error(), def_bm, ti);
+                self.check_pat(elem, tcx.ty_error_with_guaranteed(reported), def_bm, ti);
             }
             tcx.mk_tup(element_tys_iter)
         } else {
@@ -2132,7 +2145,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             && let ty::Array(..) | ty::Slice(..) = ty.kind()
         {
             err.help("the semantics of slice patterns changed recently; see issue #62254");
-        } else if Autoderef::new(&self.infcx, self.param_env, self.body_id, span, expected_ty, span)
+        } else if self.autoderef(span, expected_ty)
             .any(|(ty, _)| matches!(ty.kind(), ty::Slice(..) | ty::Array(..)))
             && let (Some(span), true) = (ti.span, ti.origin_expr)
             && let Ok(snippet) = self.tcx.sess.source_map().span_to_snippet(span)

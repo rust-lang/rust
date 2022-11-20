@@ -183,7 +183,6 @@ pub enum AttributeKind {
     OptimizeNone = 24,
     ReturnsTwice = 25,
     ReadNone = 26,
-    InaccessibleMemOnly = 27,
     SanitizeHWAddress = 28,
     WillReturn = 29,
     StackProtectReq = 30,
@@ -588,6 +587,15 @@ pub enum ChecksumKind {
     MD5,
     SHA1,
     SHA256,
+}
+
+/// LLVMRustMemoryEffects
+#[derive(Copy, Clone)]
+#[repr(C)]
+pub enum MemoryEffects {
+    None,
+    ReadOnly,
+    InaccessibleMemOnly,
 }
 
 extern "C" {
@@ -1175,6 +1183,7 @@ extern "C" {
     pub fn LLVMRustCreateUWTableAttr(C: &Context, async_: bool) -> &Attribute;
     pub fn LLVMRustCreateAllocSizeAttr(C: &Context, size_arg: u32) -> &Attribute;
     pub fn LLVMRustCreateAllocKindAttr(C: &Context, size_arg: u64) -> &Attribute;
+    pub fn LLVMRustCreateMemoryEffectsAttr(C: &Context, effects: MemoryEffects) -> &Attribute;
 
     // Operations on functions
     pub fn LLVMRustGetOrInsertFunction<'a>(
@@ -2201,6 +2210,7 @@ extern "C" {
     ) -> &'a DILocation;
     pub fn LLVMRustDIBuilderCreateOpDeref() -> u64;
     pub fn LLVMRustDIBuilderCreateOpPlusUconst() -> u64;
+    pub fn LLVMRustDIBuilderCreateOpLLVMFragment() -> u64;
 
     #[allow(improper_ctypes)]
     pub fn LLVMRustWriteTypeToString(Type: &Type, s: &RustString);

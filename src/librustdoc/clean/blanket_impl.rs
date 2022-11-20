@@ -20,7 +20,7 @@ impl<'a, 'tcx> BlanketImplFinder<'a, 'tcx> {
         trace!("get_blanket_impls({:?})", ty);
         let mut impls = Vec::new();
         for trait_def_id in cx.tcx.all_traits() {
-            if !cx.cache.access_levels.is_public(trait_def_id)
+            if !cx.cache.effective_visibilities.is_directly_public(cx.tcx, trait_def_id)
                 || cx.generated_synthetics.get(&(ty.0, trait_def_id)).is_some()
             {
                 continue;
@@ -76,6 +76,7 @@ impl<'a, 'tcx> BlanketImplFinder<'a, 'tcx> {
                 for predicate in predicates {
                     debug!("testing predicate {:?}", predicate);
                     let obligation = traits::Obligation::new(
+                        infcx.tcx,
                         traits::ObligationCause::dummy(),
                         param_env,
                         predicate,
@@ -97,7 +98,6 @@ impl<'a, 'tcx> BlanketImplFinder<'a, 'tcx> {
                 impls.push(Item {
                     name: None,
                     attrs: Default::default(),
-                    visibility: Inherited,
                     item_id: ItemId::Blanket { impl_id: impl_def_id, for_: item_def_id },
                     kind: Box::new(ImplItem(Box::new(Impl {
                         unsafety: hir::Unsafety::Normal,
@@ -128,6 +128,7 @@ impl<'a, 'tcx> BlanketImplFinder<'a, 'tcx> {
                         ))),
                     }))),
                     cfg: None,
+                    inline_stmt_id: None,
                 });
             }
         }

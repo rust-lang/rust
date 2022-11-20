@@ -12,7 +12,6 @@ pub mod error_reporting;
 mod fulfill;
 pub mod misc;
 mod object_safety;
-mod on_unimplemented;
 pub mod outlives_bounds;
 mod project;
 pub mod query;
@@ -58,7 +57,6 @@ pub use self::object_safety::astconv_object_safety_violations;
 pub use self::object_safety::is_vtable_safe_method;
 pub use self::object_safety::MethodViolationCode;
 pub use self::object_safety::ObjectSafetyViolation;
-pub use self::on_unimplemented::{OnUnimplementedDirective, OnUnimplementedNote};
 pub use self::project::{normalize, normalize_projection_type, normalize_to};
 pub use self::select::{EvaluationCache, SelectionCache, SelectionContext};
 pub use self::select::{EvaluationResult, IntercrateAmbiguityCause, OverflowError};
@@ -117,14 +115,12 @@ pub enum TraitQueryMode {
 }
 
 /// Creates predicate obligations from the generic bounds.
+#[instrument(level = "debug", skip(cause, param_env))]
 pub fn predicates_for_generics<'tcx>(
     cause: impl Fn(usize, Span) -> ObligationCause<'tcx>,
     param_env: ty::ParamEnv<'tcx>,
     generic_bounds: ty::InstantiatedPredicates<'tcx>,
 ) -> impl Iterator<Item = PredicateObligation<'tcx>> {
-    let generic_bounds = generic_bounds;
-    debug!("predicates_for_generics(generic_bounds={:?})", generic_bounds);
-
     std::iter::zip(generic_bounds.predicates, generic_bounds.spans).enumerate().map(
         move |(idx, (predicate, span))| Obligation {
             cause: cause(idx, span),
@@ -140,6 +136,7 @@ pub fn predicates_for_generics<'tcx>(
 /// `bound` or is not known to meet bound (note that this is
 /// conservative towards *no impl*, which is the opposite of the
 /// `evaluate` methods).
+#[instrument(level = "debug", skip(infcx, param_env, span), ret)]
 pub fn type_known_to_meet_bound_modulo_regions<'tcx>(
     infcx: &InferCtxt<'tcx>,
     param_env: ty::ParamEnv<'tcx>,
@@ -147,12 +144,6 @@ pub fn type_known_to_meet_bound_modulo_regions<'tcx>(
     def_id: DefId,
     span: Span,
 ) -> bool {
-    debug!(
-        "type_known_to_meet_bound_modulo_regions(ty={:?}, bound={:?})",
-        ty,
-        infcx.tcx.def_path_str(def_id)
-    );
-
     let trait_ref =
         ty::Binder::dummy(ty::TraitRef { def_id, substs: infcx.tcx.mk_substs_trait(ty, &[]) });
     let obligation = Obligation {
@@ -163,12 +154,7 @@ pub fn type_known_to_meet_bound_modulo_regions<'tcx>(
     };
 
     let result = infcx.predicate_must_hold_modulo_regions(&obligation);
-    debug!(
-        "type_known_to_meet_ty={:?} bound={} => {:?}",
-        ty,
-        infcx.tcx.def_path_str(def_id),
-        result
-    );
+    debug!(?result);
 
     if result && ty.has_non_region_infer() {
         // Because of inference "guessing", selection can sometimes claim
@@ -190,21 +176,9 @@ pub fn type_known_to_meet_bound_modulo_regions<'tcx>(
         // *definitively* show that it implements `Copy`. Otherwise,
         // assume it is move; linear is always ok.
         match &errors[..] {
-            [] => {
-                debug!(
-                    "type_known_to_meet_bound_modulo_regions: ty={:?} bound={} success",
-                    ty,
-                    infcx.tcx.def_path_str(def_id)
-                );
-                true
-            }
+            [] => true,
             errors => {
-                debug!(
-                    ?ty,
-                    bound = %infcx.tcx.def_path_str(def_id),
-                    ?errors,
-                    "type_known_to_meet_bound_modulo_regions"
-                );
+                debug!(?errors);
                 false
             }
         }
@@ -238,7 +212,7 @@ fn do_normalize_predicates<'tcx>(
     let predicates = match fully_normalize(&infcx, cause, elaborated_env, predicates) {
         Ok(predicates) => predicates,
         Err(errors) => {
-            let reported = infcx.err_ctxt().report_fulfillment_errors(&errors, None, false);
+            let reported = infcx.err_ctxt().report_fulfillment_errors(&errors, None);
             return Err(reported);
         }
     };
@@ -390,6 +364,7 @@ pub fn normalize_param_env_or_error<'tcx>(
 }
 
 /// Normalize a type and process all resulting obligations, returning any errors
+#[instrument(skip_all)]
 pub fn fully_normalize<'tcx, T>(
     infcx: &InferCtxt<'tcx>,
     cause: ObligationCause<'tcx>,
@@ -399,28 +374,18 @@ pub fn fully_normalize<'tcx, T>(
 where
     T: TypeFoldable<'tcx>,
 {
-    debug!("fully_normalize_with_fulfillcx(value={:?})", value);
-    let selcx = &mut SelectionContext::new(infcx);
-    let Normalized { value: normalized_value, obligations } =
-        project::normalize(selcx, param_env, cause, value);
-    debug!(
-        "fully_normalize: normalized_value={:?} obligations={:?}",
-        normalized_value, obligations
-    );
-
-    let mut fulfill_cx = FulfillmentContext::new();
-    for obligation in obligations {
-        fulfill_cx.register_predicate_obligation(infcx, obligation);
-    }
-
-    debug!("fully_normalize: select_all_or_error start");
-    let errors = fulfill_cx.select_all_or_error(infcx);
+    let ocx = ObligationCtxt::new(infcx);
+    debug!(?value);
+    let normalized_value = ocx.normalize(cause, param_env, value);
+    debug!(?normalized_value);
+    debug!("select_all_or_error start");
+    let errors = ocx.select_all_or_error();
     if !errors.is_empty() {
         return Err(errors);
     }
-    debug!("fully_normalize: select_all_or_error complete");
+    debug!("select_all_or_error complete");
     let resolved_value = infcx.resolve_vars_if_possible(normalized_value);
-    debug!("fully_normalize: resolved_value={:?}", resolved_value);
+    debug!(?resolved_value);
     Ok(resolved_value)
 }
 
@@ -475,7 +440,7 @@ pub fn impossible_predicates<'tcx>(
     let ocx = ObligationCtxt::new(&infcx);
     let predicates = ocx.normalize(ObligationCause::dummy(), param_env, predicates);
     for predicate in predicates {
-        let obligation = Obligation::new(ObligationCause::dummy(), param_env, predicate);
+        let obligation = Obligation::new(tcx, ObligationCause::dummy(), param_env, predicate);
         ocx.register_obligation(obligation);
     }
     let errors = ocx.select_all_or_error();
@@ -565,6 +530,7 @@ fn is_impossible_method<'tcx>(
     let predicates_for_trait = predicates.predicates.iter().filter_map(|(pred, span)| {
         if pred.visit_with(&mut visitor).is_continue() {
             Some(Obligation::new(
+                tcx,
                 ObligationCause::dummy_with_span(*span),
                 param_env,
                 ty::EarlyBinder(*pred).subst(tcx, impl_trait_ref.substs),
@@ -933,25 +899,13 @@ pub fn vtable_trait_upcasting_coercion_new_vptr_slot<'tcx>(
         def_id: unsize_trait_did,
         substs: tcx.mk_substs_trait(source, &[target.into()]),
     };
-    let obligation = Obligation::new(
-        ObligationCause::dummy(),
-        ty::ParamEnv::reveal_all(),
-        ty::Binder::dummy(ty::TraitPredicate {
-            trait_ref,
-            constness: ty::BoundConstness::NotConst,
-            polarity: ty::ImplPolarity::Positive,
-        }),
-    );
 
-    let infcx = tcx.infer_ctxt().build();
-    let mut selcx = SelectionContext::new(&infcx);
-    let implsrc = selcx.select(&obligation).unwrap();
-
-    let Some(ImplSource::TraitUpcasting(implsrc_traitcasting)) = implsrc else {
-        bug!();
-    };
-
-    implsrc_traitcasting.vtable_vptr_slot
+    match tcx.codegen_select_candidate((ty::ParamEnv::reveal_all(), ty::Binder::dummy(trait_ref))) {
+        Ok(ImplSource::TraitUpcasting(implsrc_traitcasting)) => {
+            implsrc_traitcasting.vtable_vptr_slot
+        }
+        otherwise => bug!("expected TraitUpcasting candidate, got {otherwise:?}"),
+    }
 }
 
 pub fn provide(providers: &mut ty::query::Providers) {

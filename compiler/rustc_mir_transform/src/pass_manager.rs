@@ -96,45 +96,48 @@ fn run_passes_inner<'tcx>(
     phase_change: Option<MirPhase>,
     validate_each: bool,
 ) {
-    let validate = validate_each & tcx.sess.opts.unstable_opts.validate_mir;
+    let validate = validate_each & tcx.sess.opts.unstable_opts.validate_mir & !body.should_skip();
     let overridden_passes = &tcx.sess.opts.unstable_opts.mir_enable_passes;
     trace!(?overridden_passes);
 
-    for pass in passes {
-        let name = pass.name();
+    if !body.should_skip() {
+        for pass in passes {
+            let name = pass.name();
 
-        let overridden =
-            overridden_passes.iter().rev().find(|(s, _)| s == &*name).map(|(_name, polarity)| {
-                trace!(
-                    pass = %name,
-                    "{} as requested by flag",
-                    if *polarity { "Running" } else { "Not running" },
-                );
-                *polarity
-            });
-        if !overridden.unwrap_or_else(|| pass.is_enabled(&tcx.sess)) {
-            continue;
+            let overridden = overridden_passes.iter().rev().find(|(s, _)| s == &*name).map(
+                |(_name, polarity)| {
+                    trace!(
+                        pass = %name,
+                        "{} as requested by flag",
+                        if *polarity { "Running" } else { "Not running" },
+                    );
+                    *polarity
+                },
+            );
+            if !overridden.unwrap_or_else(|| pass.is_enabled(&tcx.sess)) {
+                continue;
+            }
+
+            let dump_enabled = pass.is_mir_dump_enabled();
+
+            if dump_enabled {
+                dump_mir_for_pass(tcx, body, &name, false);
+            }
+            if validate {
+                validate_body(tcx, body, format!("before pass {}", name));
+            }
+
+            pass.run_pass(tcx, body);
+
+            if dump_enabled {
+                dump_mir_for_pass(tcx, body, &name, true);
+            }
+            if validate {
+                validate_body(tcx, body, format!("after pass {}", name));
+            }
+
+            body.pass_count += 1;
         }
-
-        let dump_enabled = pass.is_mir_dump_enabled();
-
-        if dump_enabled {
-            dump_mir_for_pass(tcx, body, &name, false);
-        }
-        if validate {
-            validate_body(tcx, body, format!("before pass {}", name));
-        }
-
-        pass.run_pass(tcx, body);
-
-        if dump_enabled {
-            dump_mir_for_pass(tcx, body, &name, true);
-        }
-        if validate {
-            validate_body(tcx, body, format!("after pass {}", name));
-        }
-
-        body.pass_count += 1;
     }
 
     if let Some(new_phase) = phase_change {

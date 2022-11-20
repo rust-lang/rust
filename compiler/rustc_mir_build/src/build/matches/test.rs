@@ -240,6 +240,39 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
             }
 
             TestKind::Eq { value, ty } => {
+                let tcx = self.tcx;
+                if let ty::Adt(def, _) = ty.kind() && Some(def.did()) == tcx.lang_items().string() {
+                    if !tcx.features().string_deref_patterns {
+                        bug!("matching on `String` went through without enabling string_deref_patterns");
+                    }
+                    let re_erased = tcx.lifetimes.re_erased;
+                    let ref_string = self.temp(tcx.mk_imm_ref(re_erased, ty), test.span);
+                    let ref_str_ty = tcx.mk_imm_ref(re_erased, tcx.types.str_);
+                    let ref_str = self.temp(ref_str_ty, test.span);
+                    let deref = tcx.require_lang_item(LangItem::Deref, None);
+                    let method = trait_method(tcx, deref, sym::deref, ty, &[]);
+                    let eq_block = self.cfg.start_new_block();
+                    self.cfg.push_assign(block, source_info, ref_string, Rvalue::Ref(re_erased, BorrowKind::Shared, place));
+                    self.cfg.terminate(
+                        block,
+                        source_info,
+                        TerminatorKind::Call {
+                            func: Operand::Constant(Box::new(Constant {
+                                span: test.span,
+                                user_ty: None,
+                                literal: method,
+                            })),
+                            args: vec![Operand::Move(ref_string)],
+                            destination: ref_str,
+                            target: Some(eq_block),
+                            cleanup: None,
+                            from_hir_call: false,
+                            fn_span: source_info.span
+                        }
+                    );
+                    self.non_scalar_compare(eq_block, make_target_blocks, source_info, value, ref_str, ref_str_ty);
+                    return;
+                }
                 if !ty.is_scalar() {
                     // Use `PartialEq::eq` instead of `BinOp::Eq`
                     // (the binop can only handle primitives)

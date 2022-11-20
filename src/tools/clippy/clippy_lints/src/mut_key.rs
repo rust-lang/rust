@@ -89,7 +89,7 @@ impl<'tcx> LateLintPass<'tcx> for MutableKeyType {
 
     fn check_impl_item(&mut self, cx: &LateContext<'tcx>, item: &'tcx hir::ImplItem<'tcx>) {
         if let hir::ImplItemKind::Fn(ref sig, ..) = item.kind {
-            if trait_ref_of_method(cx, item.def_id.def_id).is_none() {
+            if trait_ref_of_method(cx, item.owner_id.def_id).is_none() {
                 check_sig(cx, item.hir_id(), sig.decl);
             }
         }
@@ -136,12 +136,14 @@ fn check_ty<'tcx>(cx: &LateContext<'tcx>, span: Span, ty: Ty<'tcx>) {
 /// [`Hash`] or [`Ord`].
 fn is_interior_mutable_type<'tcx>(cx: &LateContext<'tcx>, ty: Ty<'tcx>, span: Span) -> bool {
     match *ty.kind() {
-        Ref(_, inner_ty, mutbl) => mutbl == hir::Mutability::Mut || is_interior_mutable_type(cx, inner_ty, span),
+        Ref(_, inner_ty, mutbl) => {
+            mutbl == hir::Mutability::Mut || is_interior_mutable_type(cx, inner_ty, span)
+        }
         Slice(inner_ty) => is_interior_mutable_type(cx, inner_ty, span),
         Array(inner_ty, size) => {
             size.try_eval_usize(cx.tcx, cx.param_env).map_or(true, |u| u != 0)
                 && is_interior_mutable_type(cx, inner_ty, span)
-        },
+        }
         Tuple(fields) => fields.iter().any(|ty| is_interior_mutable_type(cx, ty, span)),
         Adt(def, substs) => {
             // Special case for collections in `std` who's impl of `Hash` or `Ord` delegates to
@@ -167,9 +169,9 @@ fn is_interior_mutable_type<'tcx>(cx: &LateContext<'tcx>, ty: Ty<'tcx>, span: Sp
             } else {
                 !ty.has_escaping_bound_vars()
                     && cx.tcx.layout_of(cx.param_env.and(ty)).is_ok()
-                    && !ty.is_freeze(cx.tcx.at(span), cx.param_env)
+                    && !ty.is_freeze(cx.tcx, cx.param_env)
             }
-        },
+        }
         _ => false,
     }
 }

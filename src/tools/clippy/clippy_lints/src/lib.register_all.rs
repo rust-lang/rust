@@ -72,7 +72,6 @@ store.register_group(true, "clippy::all", Some("clippy_all"), vec![
     LintId::of(format::USELESS_FORMAT),
     LintId::of(format_args::FORMAT_IN_FORMAT_ARGS),
     LintId::of(format_args::TO_STRING_IN_FORMAT_ARGS),
-    LintId::of(format_args::UNINLINED_FORMAT_ARGS),
     LintId::of(format_args::UNUSED_FORMAT_SPECS),
     LintId::of(format_impl::PRINT_IN_FORMAT_IMPL),
     LintId::of(format_impl::RECURSIVE_FORMAT_IMPL),

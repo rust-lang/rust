@@ -7,16 +7,16 @@ use rustc_data_structures::{
 use rustc_middle::ty::{self, Ty};
 
 impl<'tcx> FnCtxt<'_, 'tcx> {
-    /// Performs type inference fallback, returning true if any fallback
-    /// occurs.
-    pub(super) fn type_inference_fallback(&self) -> bool {
+    /// Performs type inference fallback, setting `FnCtxt::fallback_has_occurred`
+    /// if fallback has occurred.
+    pub(super) fn type_inference_fallback(&self) {
         debug!(
             "type-inference-fallback start obligations: {:#?}",
             self.fulfillment_cx.borrow_mut().pending_obligations()
         );
 
         // All type checking constraints were added, try to fallback unsolved variables.
-        self.select_obligations_where_possible(false, |_| {});
+        self.select_obligations_where_possible(|_| {});
 
         debug!(
             "type-inference-fallback post selection obligations: {:#?}",
@@ -26,18 +26,17 @@ impl<'tcx> FnCtxt<'_, 'tcx> {
         // Check if we have any unsolved variables. If not, no need for fallback.
         let unsolved_variables = self.unsolved_variables();
         if unsolved_variables.is_empty() {
-            return false;
+            return;
         }
 
         let diverging_fallback = self.calculate_diverging_fallback(&unsolved_variables);
 
-        let mut fallback_has_occurred = false;
         // We do fallback in two passes, to try to generate
         // better error messages.
         // The first time, we do *not* replace opaque types.
         for ty in unsolved_variables {
             debug!("unsolved_variable = {:?}", ty);
-            fallback_has_occurred |= self.fallback_if_possible(ty, &diverging_fallback);
+            self.fallback_if_possible(ty, &diverging_fallback);
         }
 
         // We now see if we can make progress. This might cause us to
@@ -63,9 +62,7 @@ impl<'tcx> FnCtxt<'_, 'tcx> {
         // If we had tried to fallback the opaque inference variable to `MyType`,
         // we will generate a confusing type-check error that does not explicitly
         // refer to opaque types.
-        self.select_obligations_where_possible(fallback_has_occurred, |_| {});
-
-        fallback_has_occurred
+        self.select_obligations_where_possible(|_| {});
     }
 
     // Tries to apply a fallback to `ty` if it is an unsolved variable.
@@ -81,12 +78,13 @@ impl<'tcx> FnCtxt<'_, 'tcx> {
     // Fallback becomes very dubious if we have encountered
     // type-checking errors.  In that case, fallback to Error.
     //
-    // The return value indicates whether fallback has occurred.
+    // Sets `FnCtxt::fallback_has_occurred` if fallback is performed
+    // during this call.
     fn fallback_if_possible(
         &self,
         ty: Ty<'tcx>,
         diverging_fallback: &FxHashMap<Ty<'tcx>, Ty<'tcx>>,
-    ) -> bool {
+    ) {
         // Careful: we do NOT shallow-resolve `ty`. We know that `ty`
         // is an unsolved variable, and we determine its fallback
         // based solely on how it was created, not what other type
@@ -106,12 +104,12 @@ impl<'tcx> FnCtxt<'_, 'tcx> {
         // type, `?T` is not considered unsolved, but `?I` is. The
         // same is true for float variables.)
         let fallback = match ty.kind() {
-            _ if self.is_tainted_by_errors() => self.tcx.ty_error(),
+            _ if let Some(e) = self.tainted_by_errors() => self.tcx.ty_error_with_guaranteed(e),
             ty::Infer(ty::IntVar(_)) => self.tcx.types.i32,
             ty::Infer(ty::FloatVar(_)) => self.tcx.types.f64,
             _ => match diverging_fallback.get(&ty) {
                 Some(&fallback_ty) => fallback_ty,
-                None => return false,
+                None => return,
             },
         };
         debug!("fallback_if_possible(ty={:?}): defaulting to `{:?}`", ty, fallback);
@@ -122,7 +120,7 @@ impl<'tcx> FnCtxt<'_, 'tcx> {
             .map(|origin| origin.span)
             .unwrap_or(rustc_span::DUMMY_SP);
         self.demand_eqtype(span, ty, fallback);
-        true
+        self.fallback_has_occurred.set(true);
     }
 
     /// The "diverging fallback" system is rather complicated. This is

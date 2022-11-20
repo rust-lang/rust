@@ -4913,22 +4913,6 @@ fn foo() -> NotResult<(), Short> {
                 ```
             "#]],
     );
-    check_hover_range(
-        r#"
-//- minicore: try
-use core::ops::ControlFlow;
-fn foo() -> ControlFlow<()> {
-    $0ControlFlow::Break(())?$0;
-    ControlFlow::Continue(())
-}
-"#,
-        expect![[r#"
-            ```text
-            Try Target Type: ControlFlow<(), {unknown}>
-            Propagated as:          ControlFlow<(), ()>
-            ```
-        "#]],
-    );
 }
 
 #[test]
@@ -4944,9 +4928,9 @@ fn foo() -> Option<()> {
 }
 "#,
         expect![[r#"
-            ```rust
-            i32
-            ```"#]],
+                ```rust
+                <Option<i32> as Try>::Output
+                ```"#]],
     );
 }
 

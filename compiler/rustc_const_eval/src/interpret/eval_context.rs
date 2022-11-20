@@ -5,7 +5,7 @@ use std::mem;
 use rustc_hir::{self as hir, def_id::DefId, definitions::DefPathData};
 use rustc_index::vec::IndexVec;
 use rustc_middle::mir;
-use rustc_middle::mir::interpret::{InterpError, InvalidProgramInfo};
+use rustc_middle::mir::interpret::{ErrorHandled, InterpError, InvalidProgramInfo};
 use rustc_middle::ty::layout::{
     self, FnAbiError, FnAbiOfHelpers, FnAbiRequest, LayoutError, LayoutOf, LayoutOfHelpers,
     TyAndLayout,
@@ -23,7 +23,7 @@ use super::{
     MemPlaceMeta, Memory, MemoryKind, Operand, Place, PlaceTy, PointerArithmetic, Provenance,
     Scalar, StackPopJump,
 };
-use crate::transform::validate::equal_up_to_regions;
+use crate::util;
 
 pub struct InterpCx<'mir, 'tcx, M: Machine<'mir, 'tcx>> {
     /// Stores the `Machine` instance.
@@ -354,8 +354,8 @@ pub(super) fn mir_assign_valid_types<'tcx>(
     // Type-changing assignments can happen when subtyping is used. While
     // all normal lifetimes are erased, higher-ranked types with their
     // late-bound lifetimes are still around and can lead to type
-    // differences. So we compare ignoring lifetimes.
-    if equal_up_to_regions(tcx, param_env, src.ty, dest.ty) {
+    // differences.
+    if util::is_subtype(tcx, param_env, src.ty, dest.ty) {
         // Make sure the layout is equal, too -- just to be safe. Miri really
         // needs layout equality. For performance reason we skip this check when
         // the types are equal. Equal types *can* have different layouts when
@@ -468,7 +468,7 @@ impl<'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
 
     #[inline]
     pub fn type_is_freeze(&self, ty: Ty<'tcx>) -> bool {
-        ty.is_freeze(self.tcx, self.param_env)
+        ty.is_freeze(*self.tcx, self.param_env)
     }
 
     pub fn load_mir(
@@ -572,7 +572,7 @@ impl<'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
         metadata: &MemPlaceMeta<M::Provenance>,
         layout: &TyAndLayout<'tcx>,
     ) -> InterpResult<'tcx, Option<(Size, Align)>> {
-        if !layout.is_unsized() {
+        if layout.is_sized() {
             return Ok(Some((layout.size, layout.align.abi)));
         }
         match layout.ty.kind() {
@@ -598,7 +598,7 @@ impl<'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
                 // the last field).  Can't have foreign types here, how would we
                 // adjust alignment and size for them?
                 let field = layout.field(self, layout.fields.count() - 1);
-                let Some((unsized_size, unsized_align)) = self.size_and_align_of(metadata, &field)? else {
+                let Some((unsized_size, mut unsized_align)) = self.size_and_align_of(metadata, &field)? else {
                     // A field with an extern type. We don't know the actual dynamic size
                     // or the alignment.
                     return Ok(None);
@@ -613,6 +613,13 @@ impl<'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
 
                 // Return the sum of sizes and max of aligns.
                 let size = sized_size + unsized_size; // `Size` addition
+
+                // Packed types ignore the alignment of their fields.
+                if let ty::Adt(def, _) = layout.ty.kind() {
+                    if def.repr().packed() {
+                        unsized_align = sized_align;
+                    }
+                }
 
                 // Choose max of two known alignments (combined value must
                 // be aligned according to more restrictive of the two).
@@ -689,12 +696,7 @@ impl<'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
         for ct in &body.required_consts {
             let span = ct.span;
             let ct = self.subst_from_current_frame_and_normalize_erasing_regions(ct.literal)?;
-            self.const_to_op(&ct, None).map_err(|err| {
-                // If there was an error, set the span of the current frame to this constant.
-                // Avoiding doing this when evaluation succeeds.
-                self.frame_mut().loc = Err(span);
-                err
-            })?;
+            self.eval_mir_constant(&ct, Some(span), None)?;
         }
 
         // Most locals are initially dead.
@@ -905,9 +907,32 @@ impl<'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
         Ok(())
     }
 
-    pub fn eval_to_allocation(
+    /// Call a query that can return `ErrorHandled`. If `span` is `Some`, point to that span when an error occurs.
+    pub fn ctfe_query<T>(
+        &self,
+        span: Option<Span>,
+        query: impl FnOnce(TyCtxtAt<'tcx>) -> Result<T, ErrorHandled>,
+    ) -> InterpResult<'tcx, T> {
+        // Use a precise span for better cycle errors.
+        query(self.tcx.at(span.unwrap_or_else(|| self.cur_span()))).map_err(|err| {
+            match err {
+                ErrorHandled::Reported(err) => {
+                    if let Some(span) = span {
+                        // To make it easier to figure out where this error comes from, also add a note at the current location.
+                        self.tcx.sess.span_note_without_error(span, "erroneous constant used");
+                    }
+                    err_inval!(AlreadyReported(err))
+                }
+                ErrorHandled::TooGeneric => err_inval!(TooGeneric),
+            }
+            .into()
+        })
+    }
+
+    pub fn eval_global(
         &self,
         gid: GlobalId<'tcx>,
+        span: Option<Span>,
     ) -> InterpResult<'tcx, MPlaceTy<'tcx, M::Provenance>> {
         // For statics we pick `ParamEnv::reveal_all`, because statics don't have generics
         // and thus don't care about the parameter environment. While we could just use
@@ -920,8 +945,7 @@ impl<'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
             self.param_env
         };
         let param_env = param_env.with_const();
-        // Use a precise span for better cycle errors.
-        let val = self.tcx.at(self.cur_span()).eval_to_allocation_raw(param_env.and(gid))?;
+        let val = self.ctfe_query(span, |tcx| tcx.eval_to_allocation_raw(param_env.and(gid)))?;
         self.raw_const_to_mplace(val)
     }
 

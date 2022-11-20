@@ -22,9 +22,26 @@ assert-position: (
 )
 assert-position: (
     "//*[@id='method.create_an_iterator_from_read']//*[@class='notable-traits']",
-    {"x": 951},
+    {"x": 955},
 )
-
+// The tooltip should be below the `i`
+// Also, clicking the tooltip should bring its text into the DOM
+assert-count: ("//*[@class='notable popover']", 0)
+click: "//*[@id='method.create_an_iterator_from_read']//*[@class='notable-traits']"
+assert-count: ("//*[@class='notable popover']", 1)
+compare-elements-position-near: (
+    "//*[@id='method.create_an_iterator_from_read']//*[@class='notable-traits']",
+    "//*[@class='notable popover']",
+    {"y": 30}
+)
+compare-elements-position-false: (
+    "//*[@id='method.create_an_iterator_from_read']//*[@class='notable-traits']",
+    "//*[@class='notable popover']",
+    ("x")
+)
+click: "//*[@id='method.create_an_iterator_from_read']//*[@class='notable-traits']"
+move-cursor-to: "//h1"
+assert-count: ("//*[@class='notable popover']", 0)
 
 // Now only the `i` should be on the next line.
 size: (1055, 600)
@@ -55,7 +72,7 @@ assert-position: (
 )
 assert-position: (
     "//*[@id='method.create_an_iterator_from_read']//*[@class='notable-traits']",
-    {"x": 519},
+    {"x": 523},
 )
 
 // Checking on mobile now.
@@ -79,13 +96,156 @@ assert-position: (
 )
 assert-position: (
     "//*[@id='method.create_an_iterator_from_read']//*[@class='notable-traits']",
-    {"x": 289},
+    {"x": 293},
+)
+// The tooltip should STILL be below `i`
+click: "//*[@id='method.create_an_iterator_from_read']//*[@class='notable-traits']"
+assert-count: ("//*[@class='notable popover']", 1)
+compare-elements-position-near: (
+    "//*[@id='method.create_an_iterator_from_read']//*[@class='notable-traits']",
+    "//*[@class='notable popover']",
+    {"y": 30}
+)
+compare-elements-position-false: (
+    "//*[@id='method.create_an_iterator_from_read']//*[@class='notable-traits']",
+    "//*[@class='notable popover']",
+    ("x")
+)
+assert-position: (
+    "//*[@class='notable popover']",
+    {"x": 0}
+)
+click: "//*[@id='method.create_an_iterator_from_read']//*[@class='notable-traits']"
+move-cursor-to: "//h1"
+assert-count: ("//*[@class='notable popover']", 0)
+
+// Now check the colors.
+define-function: (
+    "check-colors",
+    (theme, header_color, content_color, type_color, trait_color),
+    [
+        ("goto", "file://" + |DOC_PATH| + "/test_docs/struct.NotableStructWithLongName.html"),
+        // This is needed to ensure that the text color is computed.
+        ("show-text", true),
+
+        // Setting the theme.
+        ("local-storage", {"rustdoc-theme": |theme|, "rustdoc-use-system-theme": "false"}),
+        // We reload the page so the local storage settings are being used.
+        ("reload"),
+
+        ("move-cursor-to", "//*[@id='method.create_an_iterator_from_read']//*[@class='notable-traits']"),
+        ("assert-count", (".notable.popover", 1)),
+
+        ("assert-css", (
+             ".notable.popover h3",
+             {"color": |header_color|},
+             ALL,
+        )),
+        ("assert-css", (
+             ".notable.popover pre",
+             {"color": |content_color|},
+             ALL,
+        )),
+        ("assert-css", (
+             ".notable.popover pre a.struct",
+             {"color": |type_color|},
+             ALL,
+        )),
+        ("assert-css", (
+             ".notable.popover pre a.trait",
+             {"color": |trait_color|},
+             ALL,
+        )),
+    ]
 )
 
-// Checking on very small mobile. The `i` should be on its own line.
-size: (365, 600)
-compare-elements-position-false: (
-    "//*[@id='method.create_an_iterator_from_read']//a[text()='NotableStructWithLongName']",
-    "//*[@id='method.create_an_iterator_from_read']//*[@class='notable-traits']",
-    ("y", "x"),
+call-function: (
+    "check-colors",
+    {
+        "theme": "ayu",
+        "content_color": "rgb(230, 225, 207)",
+        "header_color": "rgb(255, 255, 255)",
+        "type_color": "rgb(255, 160, 165)",
+        "trait_color": "rgb(57, 175, 215)",
+    },
 )
+
+call-function: (
+    "check-colors",
+    {
+        "theme": "dark",
+        "content_color": "rgb(221, 221, 221)",
+        "header_color": "rgb(221, 221, 221)",
+        "type_color": "rgb(45, 191, 184)",
+        "trait_color": "rgb(183, 140, 242)",
+    },
+)
+
+call-function: (
+    "check-colors",
+    {
+        "theme": "light",
+        "content_color": "rgb(0, 0, 0)",
+        "header_color": "rgb(0, 0, 0)",
+        "type_color": "rgb(173, 55, 138)",
+        "trait_color": "rgb(110, 79, 201)",
+    },
+)
+
+reload:
+
+// Check that pressing escape works
+click: "//*[@id='method.create_an_iterator_from_read']//*[@class='notable-traits']"
+move-cursor-to: "//*[@class='notable popover']"
+assert-count: ("//*[@class='notable popover']", 1)
+press-key: "Escape"
+assert-count: ("//*[@class='notable popover']", 0)
+
+// Check that clicking outside works.
+click: "//*[@id='method.create_an_iterator_from_read']//*[@class='notable-traits']"
+assert-count: ("//*[@class='notable popover']", 1)
+click: ".search-input"
+assert-count: ("//*[@class='notable popover']", 0)
+
+// Check that pressing tab over and over works.
+click: "//*[@id='method.create_an_iterator_from_read']//*[@class='notable-traits']"
+move-cursor-to: "//*[@class='notable popover']"
+assert-count: ("//*[@class='notable popover']", 1)
+press-key: "Tab"
+press-key: "Tab"
+press-key: "Tab"
+press-key: "Tab"
+press-key: "Tab"
+press-key: "Tab"
+press-key: "Tab"
+assert-count: ("//*[@class='notable popover']", 0)
+assert: "#method\.create_an_iterator_from_read .notable-traits:focus"
+
+// Now we check that the focus isn't given back to the wrong item when opening
+// another popover.
+store-window-property: (scroll, "scrollY")
+click: "#method\.create_an_iterator_from_read .fnname"
+// We ensure that the scroll position changed.
+assert-window-property-false: {"scrollY": |scroll|}
+// Store the new position.
+store-window-property: (scroll, "scrollY")
+click: "//*[@id='method.create_an_iterator_from_read']//*[@class='notable-traits']"
+wait-for: "//*[@class='notable popover']"
+click: "#settings-menu a"
+click: ".search-input"
+// We ensure we didn't come back to the previous focused item.
+assert-window-property-false: {"scrollY": |scroll|}
+
+// Same but with Escape handling.
+store-window-property: (scroll, "scrollY")
+click: "#method\.create_an_iterator_from_read .fnname"
+// We ensure that the scroll position changed.
+assert-window-property-false: {"scrollY": |scroll|}
+// Store the new position.
+store-window-property: (scroll, "scrollY")
+click: "//*[@id='method.create_an_iterator_from_read']//*[@class='notable-traits']"
+wait-for: "//*[@class='notable popover']"
+click: "#settings-menu a"
+press-key: "Escape"
+// We ensure we didn't come back to the previous focused item.
+assert-window-property-false: {"scrollY": |scroll|}

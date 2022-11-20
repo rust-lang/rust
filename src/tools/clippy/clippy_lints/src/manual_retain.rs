@@ -1,6 +1,6 @@
 use clippy_utils::diagnostics::span_lint_and_sugg;
 use clippy_utils::source::snippet;
-use clippy_utils::ty::is_type_diagnostic_item;
+use clippy_utils::ty::{is_type_diagnostic_item, is_type_lang_item};
 use clippy_utils::{get_parent_expr, match_def_path, paths, SpanlessEq};
 use clippy_utils::{meets_msrv, msrvs};
 use rustc_errors::Applicability;
@@ -92,7 +92,7 @@ fn check_into_iter(
         && match_def_path(cx, filter_def_id, &paths::CORE_ITER_FILTER)
         && let hir::ExprKind::MethodCall(_, struct_expr, [], _) = &into_iter_expr.kind
         && let Some(into_iter_def_id) = cx.typeck_results().type_dependent_def_id(into_iter_expr.hir_id)
-        && cx.tcx.lang_items().require(hir::LangItem::IntoIterIntoIter).ok() == Some(into_iter_def_id)
+        && Some(into_iter_def_id) == cx.tcx.lang_items().into_iter_fn()
         && match_acceptable_type(cx, left_expr, msrv)
         && SpanlessEq::new(cx).eq_expr(left_expr, struct_expr) {
         suggest(cx, parent_expr, left_expr, target_expr);
@@ -140,7 +140,7 @@ fn check_to_owned(
         && let Some(chars_expr_def_id) = cx.typeck_results().type_dependent_def_id(chars_expr.hir_id)
         && match_def_path(cx, chars_expr_def_id, &paths::STR_CHARS)
         && let ty = cx.typeck_results().expr_ty(str_expr).peel_refs()
-        && is_type_diagnostic_item(cx, ty, sym::String)
+        && is_type_lang_item(cx, ty, hir::LangItem::String)
         && SpanlessEq::new(cx).eq_expr(left_expr, str_expr) {
         suggest(cx, parent_expr, left_expr, filter_expr);
     }

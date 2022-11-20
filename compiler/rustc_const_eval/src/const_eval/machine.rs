@@ -1,11 +1,15 @@
 use rustc_hir::def::DefKind;
+use rustc_hir::LangItem;
 use rustc_middle::mir;
+use rustc_middle::mir::interpret::PointerArithmetic;
+use rustc_middle::ty::layout::FnAbiOf;
 use rustc_middle::ty::{self, Ty, TyCtxt};
 use std::borrow::Borrow;
-use std::collections::hash_map::Entry;
 use std::hash::Hash;
+use std::ops::ControlFlow;
 
-use rustc_data_structures::fx::FxHashMap;
+use rustc_data_structures::fx::FxIndexMap;
+use rustc_data_structures::fx::IndexEntry;
 use std::fmt;
 
 use rustc_ast::Mutability;
@@ -17,57 +21,11 @@ use rustc_target::abi::{Align, Size};
 use rustc_target::spec::abi::Abi as CallAbi;
 
 use crate::interpret::{
-    self, compile_time_machine, AllocId, ConstAllocation, Frame, ImmTy, InterpCx, InterpResult,
-    OpTy, PlaceTy, Pointer, Scalar, StackPopUnwind,
+    self, compile_time_machine, AllocId, ConstAllocation, FnVal, Frame, ImmTy, InterpCx,
+    InterpResult, OpTy, PlaceTy, Pointer, Scalar, StackPopUnwind,
 };
 
 use super::error::*;
-
-impl<'mir, 'tcx> InterpCx<'mir, 'tcx, CompileTimeInterpreter<'mir, 'tcx>> {
-    /// "Intercept" a function call to a panic-related function
-    /// because we have something special to do for it.
-    /// If this returns successfully (`Ok`), the function should just be evaluated normally.
-    fn hook_special_const_fn(
-        &mut self,
-        instance: ty::Instance<'tcx>,
-        args: &[OpTy<'tcx>],
-    ) -> InterpResult<'tcx, Option<ty::Instance<'tcx>>> {
-        // All `#[rustc_do_not_const_check]` functions should be hooked here.
-        let def_id = instance.def_id();
-
-        if Some(def_id) == self.tcx.lang_items().panic_display()
-            || Some(def_id) == self.tcx.lang_items().begin_panic_fn()
-        {
-            // &str or &&str
-            assert!(args.len() == 1);
-
-            let mut msg_place = self.deref_operand(&args[0])?;
-            while msg_place.layout.ty.is_ref() {
-                msg_place = self.deref_operand(&msg_place.into())?;
-            }
-
-            let msg = Symbol::intern(self.read_str(&msg_place)?);
-            let span = self.find_closest_untracked_caller_location();
-            let (file, line, col) = self.location_triple_for_span(span);
-            return Err(ConstEvalErrKind::Panic { msg, file, line, col }.into());
-        } else if Some(def_id) == self.tcx.lang_items().panic_fmt() {
-            // For panic_fmt, call const_panic_fmt instead.
-            if let Some(const_panic_fmt) = self.tcx.lang_items().const_panic_fmt() {
-                return Ok(Some(
-                    ty::Instance::resolve(
-                        *self.tcx,
-                        ty::ParamEnv::reveal_all(),
-                        const_panic_fmt,
-                        self.tcx.intern_substs(&[]),
-                    )
-                    .unwrap()
-                    .unwrap(),
-                ));
-            }
-        }
-        Ok(None)
-    }
-}
 
 /// Extra machine state for CTFE, and the Machine instance
 pub struct CompileTimeInterpreter<'mir, 'tcx> {
@@ -107,18 +65,18 @@ impl<'mir, 'tcx> CompileTimeInterpreter<'mir, 'tcx> {
     }
 }
 
-impl<K: Hash + Eq, V> interpret::AllocMap<K, V> for FxHashMap<K, V> {
+impl<K: Hash + Eq, V> interpret::AllocMap<K, V> for FxIndexMap<K, V> {
     #[inline(always)]
     fn contains_key<Q: ?Sized + Hash + Eq>(&mut self, k: &Q) -> bool
     where
         K: Borrow<Q>,
     {
-        FxHashMap::contains_key(self, k)
+        FxIndexMap::contains_key(self, k)
     }
 
     #[inline(always)]
     fn insert(&mut self, k: K, v: V) -> Option<V> {
-        FxHashMap::insert(self, k, v)
+        FxIndexMap::insert(self, k, v)
     }
 
     #[inline(always)]
@@ -126,7 +84,7 @@ impl<K: Hash + Eq, V> interpret::AllocMap<K, V> for FxHashMap<K, V> {
     where
         K: Borrow<Q>,
     {
-        FxHashMap::remove(self, k)
+        FxIndexMap::remove(self, k)
     }
 
     #[inline(always)]
@@ -148,8 +106,8 @@ impl<K: Hash + Eq, V> interpret::AllocMap<K, V> for FxHashMap<K, V> {
     #[inline(always)]
     fn get_mut_or<E>(&mut self, k: K, vacant: impl FnOnce() -> Result<V, E>) -> Result<&mut V, E> {
         match self.entry(k) {
-            Entry::Occupied(e) => Ok(e.into_mut()),
-            Entry::Vacant(e) => {
+            IndexEntry::Occupied(e) => Ok(e.into_mut()),
+            IndexEntry::Vacant(e) => {
                 let v = vacant()?;
                 Ok(e.insert(v))
             }
@@ -191,6 +149,125 @@ impl interpret::MayLeak for ! {
 }
 
 impl<'mir, 'tcx: 'mir> CompileTimeEvalContext<'mir, 'tcx> {
+    /// "Intercept" a function call, because we have something special to do for it.
+    /// All `#[rustc_do_not_const_check]` functions should be hooked here.
+    /// If this returns `Some` function, which may be `instance` or a different function with
+    /// compatible arguments, then evaluation should continue with that function.
+    /// If this returns `None`, the function call has been handled and the function has returned.
+    fn hook_special_const_fn(
+        &mut self,
+        instance: ty::Instance<'tcx>,
+        args: &[OpTy<'tcx>],
+        dest: &PlaceTy<'tcx>,
+        ret: Option<mir::BasicBlock>,
+    ) -> InterpResult<'tcx, Option<ty::Instance<'tcx>>> {
+        let def_id = instance.def_id();
+
+        if Some(def_id) == self.tcx.lang_items().panic_display()
+            || Some(def_id) == self.tcx.lang_items().begin_panic_fn()
+        {
+            // &str or &&str
+            assert!(args.len() == 1);
+
+            let mut msg_place = self.deref_operand(&args[0])?;
+            while msg_place.layout.ty.is_ref() {
+                msg_place = self.deref_operand(&msg_place.into())?;
+            }
+
+            let msg = Symbol::intern(self.read_str(&msg_place)?);
+            let span = self.find_closest_untracked_caller_location();
+            let (file, line, col) = self.location_triple_for_span(span);
+            return Err(ConstEvalErrKind::Panic { msg, file, line, col }.into());
+        } else if Some(def_id) == self.tcx.lang_items().panic_fmt() {
+            // For panic_fmt, call const_panic_fmt instead.
+            let const_def_id = self.tcx.require_lang_item(LangItem::ConstPanicFmt, None);
+            let new_instance = ty::Instance::resolve(
+                *self.tcx,
+                ty::ParamEnv::reveal_all(),
+                const_def_id,
+                instance.substs,
+            )
+            .unwrap()
+            .unwrap();
+
+            return Ok(Some(new_instance));
+        } else if Some(def_id) == self.tcx.lang_items().align_offset_fn() {
+            // For align_offset, we replace the function call if the pointer has no address.
+            match self.align_offset(instance, args, dest, ret)? {
+                ControlFlow::Continue(()) => return Ok(Some(instance)),
+                ControlFlow::Break(()) => return Ok(None),
+            }
+        }
+        Ok(Some(instance))
+    }
+
+    /// `align_offset(ptr, target_align)` needs special handling in const eval, because the pointer
+    /// may not have an address.
+    ///
+    /// If `ptr` does have a known address, then we return `CONTINUE` and the function call should
+    /// proceed as normal.
+    ///
+    /// If `ptr` doesn't have an address, but its underlying allocation's alignment is at most
+    /// `target_align`, then we call the function again with an dummy address relative to the
+    /// allocation.
+    ///
+    /// If `ptr` doesn't have an address and `target_align` is stricter than the underlying
+    /// allocation's alignment, then we return `usize::MAX` immediately.
+    fn align_offset(
+        &mut self,
+        instance: ty::Instance<'tcx>,
+        args: &[OpTy<'tcx>],
+        dest: &PlaceTy<'tcx>,
+        ret: Option<mir::BasicBlock>,
+    ) -> InterpResult<'tcx, ControlFlow<()>> {
+        assert_eq!(args.len(), 2);
+
+        let ptr = self.read_pointer(&args[0])?;
+        let target_align = self.read_scalar(&args[1])?.to_machine_usize(self)?;
+
+        if !target_align.is_power_of_two() {
+            throw_ub_format!("`align_offset` called with non-power-of-two align: {}", target_align);
+        }
+
+        match self.ptr_try_get_alloc_id(ptr) {
+            Ok((alloc_id, offset, _extra)) => {
+                let (_size, alloc_align, _kind) = self.get_alloc_info(alloc_id);
+
+                if target_align <= alloc_align.bytes() {
+                    // Extract the address relative to the allocation base that is definitely
+                    // sufficiently aligned and call `align_offset` again.
+                    let addr = ImmTy::from_uint(offset.bytes(), args[0].layout).into();
+                    let align = ImmTy::from_uint(target_align, args[1].layout).into();
+                    let fn_abi = self.fn_abi_of_instance(instance, ty::List::empty())?;
+
+                    // We replace the entire entire function call with a "tail call".
+                    // Note that this happens before the frame of the original function
+                    // is pushed on the stack.
+                    self.eval_fn_call(
+                        FnVal::Instance(instance),
+                        (CallAbi::Rust, fn_abi),
+                        &[addr, align],
+                        /* with_caller_location = */ false,
+                        dest,
+                        ret,
+                        StackPopUnwind::NotAllowed,
+                    )?;
+                    Ok(ControlFlow::BREAK)
+                } else {
+                    // Not alignable in const, return `usize::MAX`.
+                    let usize_max = Scalar::from_machine_usize(self.machine_usize_max(), self);
+                    self.write_scalar(usize_max, dest)?;
+                    self.return_to_block(ret)?;
+                    Ok(ControlFlow::BREAK)
+                }
+            }
+            Err(_addr) => {
+                // The pointer has an address, continue with function call.
+                Ok(ControlFlow::CONTINUE)
+            }
+        }
+    }
+
     /// See documentation on the `ptr_guaranteed_cmp` intrinsic.
     fn guaranteed_cmp(&mut self, a: Scalar, b: Scalar) -> InterpResult<'tcx, u8> {
         Ok(match (a, b) {
@@ -271,8 +348,8 @@ impl<'mir, 'tcx> interpret::Machine<'mir, 'tcx> for CompileTimeInterpreter<'mir,
         instance: ty::Instance<'tcx>,
         _abi: CallAbi,
         args: &[OpTy<'tcx>],
-        _dest: &PlaceTy<'tcx>,
-        _ret: Option<mir::BasicBlock>,
+        dest: &PlaceTy<'tcx>,
+        ret: Option<mir::BasicBlock>,
         _unwind: StackPopUnwind, // unwinding is not supported in consts
     ) -> InterpResult<'tcx, Option<(&'mir mir::Body<'tcx>, ty::Instance<'tcx>)>> {
         debug!("find_mir_or_eval_fn: {:?}", instance);
@@ -291,7 +368,11 @@ impl<'mir, 'tcx> interpret::Machine<'mir, 'tcx> for CompileTimeInterpreter<'mir,
                 }
             }
 
-            if let Some(new_instance) = ecx.hook_special_const_fn(instance, args)? {
+            let Some(new_instance) = ecx.hook_special_const_fn(instance, args, dest, ret)? else {
+                return Ok(None);
+            };
+
+            if new_instance != instance {
                 // We call another const fn instead.
                 // However, we return the *original* instance to make backtraces work out
                 // (and we hope this does not confuse the FnAbi checks too much).
@@ -300,13 +381,14 @@ impl<'mir, 'tcx> interpret::Machine<'mir, 'tcx> for CompileTimeInterpreter<'mir,
                     new_instance,
                     _abi,
                     args,
-                    _dest,
-                    _ret,
+                    dest,
+                    ret,
                     _unwind,
                 )?
                 .map(|(body, _instance)| (body, instance)));
             }
         }
+
         // This is a const fn. Call it.
         Ok(Some((ecx.load_mir(instance.def, None)?, instance)))
     }

@@ -5,6 +5,7 @@ use crate::prelude::*;
 
 use rustc_ast::expand::allocator::{AllocatorKind, AllocatorTy, ALLOCATOR_METHODS};
 use rustc_session::config::OomStrategy;
+use rustc_span::symbol::sym;
 
 /// Returns whether an allocator shim was created
 pub(crate) fn codegen(
@@ -23,7 +24,7 @@ pub(crate) fn codegen(
             module,
             unwind_context,
             kind,
-            tcx.lang_items().oom().is_some(),
+            tcx.alloc_error_handler_kind(()).unwrap(),
             tcx.sess.opts.unstable_opts.oom,
         );
         true
@@ -36,7 +37,7 @@ fn codegen_inner(
     module: &mut impl Module,
     unwind_context: &mut UnwindContext,
     kind: AllocatorKind,
-    has_alloc_error_handler: bool,
+    alloc_error_handler_kind: AllocatorKind,
     oom_strategy: OomStrategy,
 ) {
     let usize_ty = module.target_config().pointer_type();
@@ -108,12 +109,12 @@ fn codegen_inner(
         returns: vec![],
     };
 
-    let callee_name = if has_alloc_error_handler { "__rg_oom" } else { "__rdl_oom" };
+    let callee_name = alloc_error_handler_kind.fn_name(sym::oom);
 
     let func_id =
         module.declare_function("__rust_alloc_error_handler", Linkage::Export, &sig).unwrap();
 
-    let callee_func_id = module.declare_function(callee_name, Linkage::Import, &sig).unwrap();
+    let callee_func_id = module.declare_function(&callee_name, Linkage::Import, &sig).unwrap();
 
     let mut ctx = Context::new();
     ctx.func.signature = sig;

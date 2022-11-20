@@ -22,6 +22,7 @@ use rustc_ast::token::{self, Delimiter, Nonterminal, Token, TokenKind};
 use rustc_ast::tokenstream::AttributesData;
 use rustc_ast::tokenstream::{self, DelimSpan, Spacing};
 use rustc_ast::tokenstream::{TokenStream, TokenTree};
+use rustc_ast::util::case::Case;
 use rustc_ast::AttrId;
 use rustc_ast::DUMMY_NODE_ID;
 use rustc_ast::{self as ast, AnonConst, AttrStyle, AttrVec, Const, Extern};
@@ -104,6 +105,7 @@ macro_rules! maybe_whole {
 macro_rules! maybe_recover_from_interpolated_ty_qpath {
     ($self: expr, $allow_qpath_recovery: expr) => {
         if $allow_qpath_recovery
+                    && $self.may_recover()
                     && $self.look_ahead(1, |t| t == &token::ModSep)
                     && let token::Interpolated(nt) = &$self.token.kind
                     && let token::NtTy(ty) = &**nt
@@ -113,6 +115,12 @@ macro_rules! maybe_recover_from_interpolated_ty_qpath {
                     return $self.maybe_recover_from_bad_qpath_stage_2($self.prev_token.span, ty);
                 }
     };
+}
+
+#[derive(Clone, Copy)]
+pub enum Recovery {
+    Allowed,
+    Forbidden,
 }
 
 #[derive(Clone)]
@@ -152,12 +160,15 @@ pub struct Parser<'a> {
     /// This allows us to recover when the user forget to add braces around
     /// multiple statements in the closure body.
     pub current_closure: Option<ClosureSpans>,
+    /// Whether the parser is allowed to do recovery.
+    /// This is disabled when parsing macro arguments, see #103534
+    pub recovery: Recovery,
 }
 
-// This type is used a lot, e.g. it's cloned when matching many declarative macro rules. Make sure
+// This type is used a lot, e.g. it's cloned when matching many declarative macro rules with nonterminals. Make sure
 // it doesn't unintentionally get bigger.
 #[cfg(all(target_arch = "x86_64", target_pointer_width = "64"))]
-rustc_data_structures::static_assert_size!(Parser<'_>, 328);
+rustc_data_structures::static_assert_size!(Parser<'_>, 336);
 
 /// Stores span information about a closure.
 #[derive(Clone)]
@@ -483,12 +494,29 @@ impl<'a> Parser<'a> {
                 inner_attr_ranges: Default::default(),
             },
             current_closure: None,
+            recovery: Recovery::Allowed,
         };
 
         // Make parser point to the first token.
         parser.bump();
 
         parser
+    }
+
+    pub fn recovery(mut self, recovery: Recovery) -> Self {
+        self.recovery = recovery;
+        self
+    }
+
+    /// Whether the parser is allowed to recover from broken code.
+    ///
+    /// If this returns false, recovering broken code into valid code (especially if this recovery does lookahead)
+    /// is not allowed. All recovery done by the parser must be gated behind this check.
+    ///
+    /// Technically, this only needs to restrict eager recovery by doing lookahead at more tokens.
+    /// But making the distinction is very subtle, and simply forbidding all recovery is a lot simpler to uphold.
+    fn may_recover(&self) -> bool {
+        matches!(self.recovery, Recovery::Allowed)
     }
 
     pub fn unexpected<T>(&mut self) -> PResult<'a, T> {
@@ -609,6 +637,20 @@ impl<'a> Parser<'a> {
         self.token.is_keyword(kw)
     }
 
+    fn check_keyword_case(&mut self, kw: Symbol, case: Case) -> bool {
+        if self.check_keyword(kw) {
+            return true;
+        }
+
+        if case == Case::Insensitive
+        && let Some((ident, /* is_raw */ false)) = self.token.ident()
+        && ident.as_str().to_lowercase() == kw.as_str().to_lowercase() {
+            true
+        } else {
+            false
+        }
+    }
+
     /// If the next token is the given keyword, eats it and returns `true`.
     /// Otherwise, returns `false`. An expectation is also added for diagnostics purposes.
     // Public for rustfmt usage.
@@ -619,6 +661,33 @@ impl<'a> Parser<'a> {
         } else {
             false
         }
+    }
+
+    /// Eats a keyword, optionally ignoring the case.
+    /// If the case differs (and is ignored) an error is issued.
+    /// This is useful for recovery.
+    fn eat_keyword_case(&mut self, kw: Symbol, case: Case) -> bool {
+        if self.eat_keyword(kw) {
+            return true;
+        }
+
+        if case == Case::Insensitive
+        && let Some((ident, /* is_raw */ false)) = self.token.ident()
+        && ident.as_str().to_lowercase() == kw.as_str().to_lowercase() {
+            self
+                .struct_span_err(ident.span, format!("keyword `{kw}` is written in a wrong case"))
+                .span_suggestion(
+                    ident.span,
+                    "write it in the correct case",
+                    kw,
+                    Applicability::MachineApplicable
+                ).emit();
+
+            self.bump();
+            return true;
+        }
+
+        false
     }
 
     fn eat_keyword_noexpect(&mut self, kw: Symbol) -> bool {
@@ -1100,8 +1169,8 @@ impl<'a> Parser<'a> {
     }
 
     /// Parses asyncness: `async` or nothing.
-    fn parse_asyncness(&mut self) -> Async {
-        if self.eat_keyword(kw::Async) {
+    fn parse_asyncness(&mut self, case: Case) -> Async {
+        if self.eat_keyword_case(kw::Async, case) {
             let span = self.prev_token.uninterpolated_span();
             Async::Yes { span, closure_id: DUMMY_NODE_ID, return_impl_trait_id: DUMMY_NODE_ID }
         } else {
@@ -1110,8 +1179,8 @@ impl<'a> Parser<'a> {
     }
 
     /// Parses unsafety: `unsafe` or nothing.
-    fn parse_unsafety(&mut self) -> Unsafe {
-        if self.eat_keyword(kw::Unsafe) {
+    fn parse_unsafety(&mut self, case: Case) -> Unsafe {
+        if self.eat_keyword_case(kw::Unsafe, case) {
             Unsafe::Yes(self.prev_token.uninterpolated_span())
         } else {
             Unsafe::No
@@ -1119,10 +1188,10 @@ impl<'a> Parser<'a> {
     }
 
     /// Parses constness: `const` or nothing.
-    fn parse_constness(&mut self) -> Const {
+    fn parse_constness(&mut self, case: Case) -> Const {
         // Avoid const blocks to be parsed as const items
         if self.look_ahead(1, |t| t != &token::OpenDelim(Delimiter::Brace))
-            && self.eat_keyword(kw::Const)
+            && self.eat_keyword_case(kw::Const, case)
         {
             Const::Yes(self.prev_token.uninterpolated_span())
         } else {
@@ -1377,8 +1446,8 @@ impl<'a> Parser<'a> {
     }
 
     /// Parses `extern string_literal?`.
-    fn parse_extern(&mut self) -> Extern {
-        if self.eat_keyword(kw::Extern) {
+    fn parse_extern(&mut self, case: Case) -> Extern {
+        if self.eat_keyword_case(kw::Extern, case) {
             let mut extern_span = self.prev_token.span;
             let abi = self.parse_abi();
             if let Some(abi) = abi {

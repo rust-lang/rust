@@ -101,7 +101,7 @@ pub const unsafe fn unreachable_unchecked() -> ! {
     // SAFETY: the safety contract for `intrinsics::unreachable` must
     // be upheld by the caller.
     unsafe {
-        intrinsics::assert_unsafe_precondition!(() => false);
+        intrinsics::assert_unsafe_precondition!("hint::unreachable_unchecked must never be reached", () => false);
         intrinsics::unreachable()
     }
 }
@@ -220,7 +220,7 @@ pub fn spin_loop() {
 ///
 /// [`std::convert::identity`]: crate::convert::identity
 #[inline]
-#[stable(feature = "bench_black_box", since = "CURRENT_RUSTC_VERSION")]
+#[stable(feature = "bench_black_box", since = "1.66.0")]
 #[rustc_const_unstable(feature = "const_black_box", issue = "none")]
 pub const fn black_box<T>(dummy: T) -> T {
     crate::intrinsics::black_box(dummy)

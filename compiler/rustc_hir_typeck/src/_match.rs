@@ -1,10 +1,10 @@
 use crate::coercion::{AsCoercionSite, CoerceMany};
 use crate::{Diverges, Expectation, FnCtxt, Needs};
-use rustc_errors::{Applicability, MultiSpan};
+use rustc_errors::{Applicability, Diagnostic, MultiSpan};
 use rustc_hir::{self as hir, ExprKind};
 use rustc_infer::infer::type_variable::{TypeVariableOrigin, TypeVariableOriginKind};
 use rustc_infer::traits::Obligation;
-use rustc_middle::ty::{self, ToPredicate, Ty};
+use rustc_middle::ty::{self, Ty};
 use rustc_span::Span;
 use rustc_trait_selection::traits::query::evaluate_obligation::InferCtxtExt;
 use rustc_trait_selection::traits::{
@@ -137,55 +137,13 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                 Some(&arm.body),
                 arm_ty,
                 Some(&mut |err| {
-                    let Some(ret) = self
-                        .tcx
-                        .hir()
-                        .find_by_def_id(self.body_id.owner.def_id)
-                        .and_then(|owner| owner.fn_decl())
-                        .map(|decl| decl.output.span())
-                    else { return; };
-                    let Expectation::IsLast(stmt) = orig_expected else {
-                        return
-                    };
-                    let can_coerce_to_return_ty = match self.ret_coercion.as_ref() {
-                        Some(ret_coercion) if self.in_tail_expr => {
-                            let ret_ty = ret_coercion.borrow().expected_ty();
-                            let ret_ty = self.inh.infcx.shallow_resolve(ret_ty);
-                            self.can_coerce(arm_ty, ret_ty)
-                                && prior_arm.map_or(true, |(_, t, _)| self.can_coerce(t, ret_ty))
-                                // The match arms need to unify for the case of `impl Trait`.
-                                && !matches!(ret_ty.kind(), ty::Opaque(..))
-                        }
-                        _ => false,
-                    };
-                    if !can_coerce_to_return_ty {
-                        return;
-                    }
-
-                    let semi_span = expr.span.shrink_to_hi().with_hi(stmt.hi());
-                    let mut ret_span: MultiSpan = semi_span.into();
-                    ret_span.push_span_label(
-                        expr.span,
-                        "this could be implicitly returned but it is a statement, not a \
-                            tail expression",
-                    );
-                    ret_span
-                        .push_span_label(ret, "the `match` arms can conform to this return type");
-                    ret_span.push_span_label(
-                        semi_span,
-                        "the `match` is a statement because of this semicolon, consider \
-                            removing it",
-                    );
-                    err.span_note(
-                        ret_span,
-                        "you might have meant to return the `match` expression",
-                    );
-                    err.tool_only_span_suggestion(
-                        semi_span,
-                        "remove this semicolon",
-                        "",
-                        Applicability::MaybeIncorrect,
-                    );
+                    self.suggest_removing_semicolon_for_coerce(
+                        err,
+                        expr,
+                        orig_expected,
+                        arm_ty,
+                        prior_arm,
+                    )
                 }),
                 false,
             );
@@ -217,6 +175,71 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         self.diverges.set(scrut_diverges | all_arms_diverge);
 
         coercion.complete(self)
+    }
+
+    fn suggest_removing_semicolon_for_coerce(
+        &self,
+        diag: &mut Diagnostic,
+        expr: &hir::Expr<'tcx>,
+        expectation: Expectation<'tcx>,
+        arm_ty: Ty<'tcx>,
+        prior_arm: Option<(Option<hir::HirId>, Ty<'tcx>, Span)>,
+    ) {
+        let hir = self.tcx.hir();
+
+        // First, check that we're actually in the tail of a function.
+        let hir::Node::Expr(hir::Expr { kind: hir::ExprKind::Block(block, _), .. }) =
+            hir.get(self.body_id) else { return; };
+        let Some(hir::Stmt { kind: hir::StmtKind::Semi(last_expr), .. })
+            = block.innermost_block().stmts.last() else {  return; };
+        if last_expr.hir_id != expr.hir_id {
+            return;
+        }
+
+        // Next, make sure that we have no type expectation.
+        let Some(ret) = hir
+            .find_by_def_id(self.body_id.owner.def_id)
+            .and_then(|owner| owner.fn_decl())
+            .map(|decl| decl.output.span()) else { return; };
+        let Expectation::IsLast(stmt) = expectation else {
+            return;
+        };
+
+        let can_coerce_to_return_ty = match self.ret_coercion.as_ref() {
+            Some(ret_coercion) => {
+                let ret_ty = ret_coercion.borrow().expected_ty();
+                let ret_ty = self.inh.infcx.shallow_resolve(ret_ty);
+                self.can_coerce(arm_ty, ret_ty)
+                    && prior_arm.map_or(true, |(_, ty, _)| self.can_coerce(ty, ret_ty))
+                    // The match arms need to unify for the case of `impl Trait`.
+                    && !matches!(ret_ty.kind(), ty::Opaque(..))
+            }
+            _ => false,
+        };
+        if !can_coerce_to_return_ty {
+            return;
+        }
+
+        let semi_span = expr.span.shrink_to_hi().with_hi(stmt.hi());
+        let mut ret_span: MultiSpan = semi_span.into();
+        ret_span.push_span_label(
+            expr.span,
+            "this could be implicitly returned but it is a statement, not a \
+                            tail expression",
+        );
+        ret_span.push_span_label(ret, "the `match` arms can conform to this return type");
+        ret_span.push_span_label(
+            semi_span,
+            "the `match` is a statement because of this semicolon, consider \
+                            removing it",
+        );
+        diag.span_note(ret_span, "you might have meant to return the `match` expression");
+        diag.tool_only_span_suggestion(
+            semi_span,
+            "remove this semicolon",
+            "",
+            Applicability::MaybeIncorrect,
+        );
     }
 
     /// When the previously checked expression (the scrutinee) diverges,
@@ -491,11 +514,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                     ..
                 } = self.type_var_origin(expected)? else { return None; };
 
-                let sig = *self
-                    .typeck_results
-                    .borrow()
-                    .liberated_fn_sigs()
-                    .get(hir::HirId::make_owner(self.body_id.owner.def_id))?;
+                let sig = self.body_fn_sig()?;
 
                 let substs = sig.output().walk().find_map(|arg| {
                     if let ty::GenericArgKind::Type(ty) = arg.unpack()
@@ -519,23 +538,24 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                         .bound_explicit_item_bounds(rpit_def_id)
                         .subst_iter_copied(self.tcx, substs)
                     {
-                        let pred = match pred.kind().skip_binder() {
+                        let pred = pred.kind().rebind(match pred.kind().skip_binder() {
                             ty::PredicateKind::Trait(mut trait_pred) => {
                                 assert_eq!(trait_pred.trait_ref.self_ty(), opaque_ty);
                                 trait_pred.trait_ref.substs =
                                     self.tcx.mk_substs_trait(ty, &trait_pred.trait_ref.substs[1..]);
-                                pred.kind().rebind(trait_pred).to_predicate(self.tcx)
+                                ty::PredicateKind::Trait(trait_pred)
                             }
                             ty::PredicateKind::Projection(mut proj_pred) => {
                                 assert_eq!(proj_pred.projection_ty.self_ty(), opaque_ty);
                                 proj_pred.projection_ty.substs = self
                                     .tcx
                                     .mk_substs_trait(ty, &proj_pred.projection_ty.substs[1..]);
-                                pred.kind().rebind(proj_pred).to_predicate(self.tcx)
+                                ty::PredicateKind::Projection(proj_pred)
                             }
                             _ => continue,
-                        };
+                        });
                         if !self.predicate_must_hold_modulo_regions(&Obligation::new(
+                            self.tcx,
                             ObligationCause::misc(span, self.body_id),
                             self.param_env,
                             pred,

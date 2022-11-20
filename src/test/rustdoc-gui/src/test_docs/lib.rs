@@ -416,3 +416,20 @@ pub trait TraitWithoutGenerics {
 
     fn foo();
 }
+
+pub mod trait_members {
+    pub trait TraitMembers {
+        /// Some type
+        type Type;
+        /// Some function
+        fn function();
+        /// Some other function
+        fn function2();
+    }
+    pub struct HasTrait;
+    impl TraitMembers for HasTrait {
+        type Type = u8;
+        fn function() {}
+        fn function2() {}
+    }
+}

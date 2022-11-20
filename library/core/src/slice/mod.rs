@@ -653,7 +653,10 @@ impl<T> [T] {
         let ptr = this.as_mut_ptr();
         // SAFETY: caller has to guarantee that `a < self.len()` and `b < self.len()`
         unsafe {
-            assert_unsafe_precondition!([T](a: usize, b: usize, this: &mut [T]) => a < this.len() && b < this.len());
+            assert_unsafe_precondition!(
+                "slice::swap_unchecked requires that the indices are within the slice",
+                [T](a: usize, b: usize, this: &mut [T]) => a < this.len() && b < this.len()
+            );
             ptr::swap(ptr.add(a), ptr.add(b));
         }
     }
@@ -969,7 +972,10 @@ impl<T> [T] {
         let this = self;
         // SAFETY: Caller must guarantee that `N` is nonzero and exactly divides the slice length
         let new_len = unsafe {
-            assert_unsafe_precondition!([T](this: &[T], N: usize) => N != 0 && this.len() % N == 0);
+            assert_unsafe_precondition!(
+                "slice::as_chunks_unchecked requires `N != 0` and the slice to split exactly into `N`-element chunks",
+                [T](this: &[T], N: usize) => N != 0 && this.len() % N == 0
+            );
             exact_div(self.len(), N)
         };
         // SAFETY: We cast a slice of `new_len * N` elements into
@@ -1109,7 +1115,10 @@ impl<T> [T] {
         let this = &*self;
         // SAFETY: Caller must guarantee that `N` is nonzero and exactly divides the slice length
         let new_len = unsafe {
-            assert_unsafe_precondition!([T](this: &[T], N: usize) => N != 0 && this.len() % N == 0);
+            assert_unsafe_precondition!(
+                "slice::as_chunks_unchecked_mut requires `N != 0` and the slice to split exactly into `N`-element chunks",
+                [T](this: &[T], N: usize) => N != 0 && this.len() % N == 0
+            );
             exact_div(this.len(), N)
         };
         // SAFETY: We cast a slice of `new_len * N` elements into
@@ -1685,7 +1694,10 @@ impl<T> [T] {
         // `[ptr; mid]` and `[mid; len]` are not overlapping, so returning a mutable reference
         // is fine.
         unsafe {
-            assert_unsafe_precondition!((mid: usize, len: usize) => mid <= len);
+            assert_unsafe_precondition!(
+                "slice::split_at_mut_unchecked requires the index to be within the slice",
+                (mid: usize, len: usize) => mid <= len
+            );
             (from_raw_parts_mut(ptr, mid), from_raw_parts_mut(ptr.add(mid), len - mid))
         }
     }
@@ -3512,8 +3524,8 @@ impl<T> [T] {
         }
     }
 
-    /// Transmute the slice to a slice of another type, ensuring alignment of the types is
-    /// maintained.
+    /// Transmute the mutable slice to a mutable slice of another type, ensuring alignment of the
+    /// types is maintained.
     ///
     /// This method splits the slice into three distinct slices: prefix, correctly aligned middle
     /// slice of a new type, and the suffix slice. The method may make the middle slice the greatest
@@ -3655,7 +3667,8 @@ impl<T> [T] {
         unsafe { self.align_to() }
     }
 
-    /// Split a slice into a prefix, a middle of aligned SIMD types, and a suffix.
+    /// Split a mutable slice into a mutable prefix, a middle of aligned SIMD types,
+    /// and a mutable suffix.
     ///
     /// This is a safe wrapper around [`slice::align_to_mut`], so has the same weak
     /// postconditions as that method.  You're only assured that
@@ -3739,9 +3752,9 @@ impl<T> [T] {
     /// [`is_sorted`]: slice::is_sorted
     #[unstable(feature = "is_sorted", reason = "new API", issue = "53485")]
     #[must_use]
-    pub fn is_sorted_by<F>(&self, mut compare: F) -> bool
+    pub fn is_sorted_by<'a, F>(&'a self, mut compare: F) -> bool
     where
-        F: FnMut(&T, &T) -> Option<Ordering>,
+        F: FnMut(&'a T, &'a T) -> Option<Ordering>,
     {
         self.iter().is_sorted_by(|a, b| compare(*a, *b))
     }
@@ -3765,9 +3778,9 @@ impl<T> [T] {
     #[inline]
     #[unstable(feature = "is_sorted", reason = "new API", issue = "53485")]
     #[must_use]
-    pub fn is_sorted_by_key<F, K>(&self, f: F) -> bool
+    pub fn is_sorted_by_key<'a, F, K>(&'a self, f: F) -> bool
     where
-        F: FnMut(&T) -> K,
+        F: FnMut(&'a T) -> K,
         K: PartialOrd,
     {
         self.iter().is_sorted_by_key(f)

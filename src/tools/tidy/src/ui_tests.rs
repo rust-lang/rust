@@ -2,43 +2,50 @@
 //! - the number of entries in each directory must be less than `ENTRY_LIMIT`
 //! - there are no stray `.stderr` files
 
+use ignore::Walk;
+use ignore::WalkBuilder;
 use std::fs;
 use std::path::Path;
 
 const ENTRY_LIMIT: usize = 1000;
 // FIXME: The following limits should be reduced eventually.
-const ROOT_ENTRY_LIMIT: usize = 948;
-const ISSUES_ENTRY_LIMIT: usize = 2117;
+const ROOT_ENTRY_LIMIT: usize = 939;
+const ISSUES_ENTRY_LIMIT: usize = 2085;
 
 fn check_entries(path: &Path, bad: &mut bool) {
-    let dirs = walkdir::WalkDir::new(&path.join("test/ui"))
-        .into_iter()
-        .filter_entry(|e| e.file_type().is_dir());
-    for dir in dirs {
-        if let Ok(dir) = dir {
-            let dir_path = dir.path();
+    for dir in Walk::new(&path.join("test/ui")) {
+        if let Ok(entry) = dir {
+            if entry.file_type().map(|ft| ft.is_dir()).unwrap_or(false) {
+                let dir_path = entry.path();
+                // Use special values for these dirs.
+                let is_root = path.join("test/ui") == dir_path;
+                let is_issues_dir = path.join("test/ui/issues") == dir_path;
+                let limit = if is_root {
+                    ROOT_ENTRY_LIMIT
+                } else if is_issues_dir {
+                    ISSUES_ENTRY_LIMIT
+                } else {
+                    ENTRY_LIMIT
+                };
 
-            // Use special values for these dirs.
-            let is_root = path.join("test/ui") == dir_path;
-            let is_issues_dir = path.join("test/ui/issues") == dir_path;
-            let limit = if is_root {
-                ROOT_ENTRY_LIMIT
-            } else if is_issues_dir {
-                ISSUES_ENTRY_LIMIT
-            } else {
-                ENTRY_LIMIT
-            };
+                let count = WalkBuilder::new(&dir_path)
+                    .max_depth(Some(1))
+                    .build()
+                    .into_iter()
+                    .collect::<Vec<_>>()
+                    .len()
+                    - 1; // remove the dir itself
 
-            let count = std::fs::read_dir(dir_path).unwrap().count();
-            if count > limit {
-                tidy_error!(
-                    bad,
-                    "following path contains more than {} entries, \
-                    you should move the test to some relevant subdirectory (current: {}): {}",
-                    limit,
-                    count,
-                    dir_path.display()
-                );
+                if count > limit {
+                    tidy_error!(
+                        bad,
+                        "following path contains more than {} entries, \
+                            you should move the test to some relevant subdirectory (current: {}): {}",
+                        limit,
+                        count,
+                        dir_path.display()
+                    );
+                }
             }
         }
     }

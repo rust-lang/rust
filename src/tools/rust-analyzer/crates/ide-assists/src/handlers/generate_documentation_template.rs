@@ -139,40 +139,44 @@ fn make_example_for_fn(ast_func: &ast::Fn, ctx: &AssistContext<'_>) -> Option<St
 
     let mut example = String::new();
 
+    let use_path = build_path(ast_func, ctx)?;
     let is_unsafe = ast_func.unsafe_token().is_some();
     let param_list = ast_func.param_list()?;
     let ref_mut_params = ref_mut_params(&param_list);
     let self_name = self_name(ast_func);
 
-    format_to!(example, "use {};\n\n", build_path(ast_func, ctx)?);
+    format_to!(example, "use {use_path};\n\n");
     if let Some(self_name) = &self_name {
-        if let Some(mtbl) = is_ref_mut_self(ast_func) {
-            let mtbl = if mtbl == true { " mut" } else { "" };
-            format_to!(example, "let{} {} = ;\n", mtbl, self_name);
+        if let Some(mut_) = is_ref_mut_self(ast_func) {
+            let mut_ = if mut_ == true { "mut " } else { "" };
+            format_to!(example, "let {mut_}{self_name} = ;\n");
         }
     }
     for param_name in &ref_mut_params {
-        format_to!(example, "let mut {} = ;\n", param_name);
+        format_to!(example, "let mut {param_name} = ;\n");
     }
     // Call the function, check result
     let function_call = function_call(ast_func, &param_list, self_name.as_deref(), is_unsafe)?;
     if returns_a_value(ast_func, ctx) {
         if count_parameters(&param_list) < 3 {
-            format_to!(example, "assert_eq!({}, );\n", function_call);
+            format_to!(example, "assert_eq!({function_call}, );\n");
         } else {
-            format_to!(example, "let result = {};\n", function_call);
+            format_to!(example, "let result = {function_call};\n");
             example.push_str("assert_eq!(result, );\n");
         }
     } else {
-        format_to!(example, "{};\n", function_call);
+        format_to!(example, "{function_call};\n");
     }
     // Check the mutated values
-    if is_ref_mut_self(ast_func) == Some(true) {
-        format_to!(example, "assert_eq!({}, );", self_name?);
+    if let Some(self_name) = &self_name {
+        if is_ref_mut_self(ast_func) == Some(true) {
+            format_to!(example, "assert_eq!({self_name}, );");
+        }
     }
     for param_name in &ref_mut_params {
-        format_to!(example, "assert_eq!({}, );", param_name);
+        format_to!(example, "assert_eq!({param_name}, );");
     }
+
     Some(example)
 }
 
@@ -189,7 +193,8 @@ fn introduction_builder(ast_func: &ast::Fn, ctx: &AssistContext<'_>) -> Option<S
         let intro_for_new = || {
             let is_new = name == "new";
             if is_new && ret_ty == self_ty {
-                Some(format!("Creates a new [`{}`].", linkable_self_ty?))
+                let self_ty = linkable_self_ty?;
+                Some(format!("Creates a new [`{self_ty}`]."))
             } else {
                 None
             }
@@ -214,7 +219,9 @@ fn introduction_builder(ast_func: &ast::Fn, ctx: &AssistContext<'_>) -> Option<S
                 } else {
                     ""
                 };
-                Some(format!("Returns{reference} the {what} of this [`{}`].", linkable_self_ty?))
+
+                let self_ty = linkable_self_ty?;
+                Some(format!("Returns{reference} the {what} of this [`{self_ty}`]."))
             }
             _ => None,
         };
@@ -228,7 +235,9 @@ fn introduction_builder(ast_func: &ast::Fn, ctx: &AssistContext<'_>) -> Option<S
             if what == "len" {
                 what = "length".into()
             };
-            Some(format!("Sets the {what} of this [`{}`].", linkable_self_ty?))
+
+            let self_ty = linkable_self_ty?;
+            Some(format!("Sets the {what} of this [`{self_ty}`]."))
         };
 
         if let Some(intro) = intro_for_new() {
@@ -404,7 +413,7 @@ fn arguments_from_params(param_list: &ast::ParamList) -> String {
         // instance `TuplePat`) could be managed later.
         Some(ast::Pat::IdentPat(ident_pat)) => match ident_pat.name() {
             Some(name) => match is_a_ref_mut_param(&param) {
-                true => format!("&mut {}", name),
+                true => format!("&mut {name}"),
                 false => name.to_string(),
             },
             None => "_".to_string(),
@@ -424,14 +433,15 @@ fn function_call(
     let name = ast_func.name()?;
     let arguments = arguments_from_params(param_list);
     let function_call = if param_list.self_param().is_some() {
-        format!("{}.{}({})", self_name?, name, arguments)
+        let self_ = self_name?;
+        format!("{self_}.{name}({arguments})")
     } else if let Some(implementation) = self_partial_type(ast_func) {
-        format!("{}::{}({})", implementation, name, arguments)
+        format!("{implementation}::{name}({arguments})")
     } else {
-        format!("{}({})", name, arguments)
+        format!("{name}({arguments})")
     };
     match is_unsafe {
-        true => Some(format!("unsafe {{ {} }}", function_call)),
+        true => Some(format!("unsafe {{ {function_call} }}")),
         false => Some(function_call),
     }
 }
@@ -469,8 +479,8 @@ fn build_path(ast_func: &ast::Fn, ctx: &AssistContext<'_>) -> Option<String> {
         .unwrap_or_else(|| "*".into());
     let module_def: ModuleDef = ctx.sema.to_def(ast_func)?.module(ctx.db()).into();
     match module_def.canonical_path(ctx.db()) {
-        Some(path) => Some(format!("{}::{}::{}", crate_name, path, leaf)),
-        None => Some(format!("{}::{}", crate_name, leaf)),
+        Some(path) => Some(format!("{crate_name}::{path}::{leaf}")),
+        None => Some(format!("{crate_name}::{leaf}")),
     }
 }
 

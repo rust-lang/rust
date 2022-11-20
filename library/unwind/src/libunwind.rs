@@ -36,8 +36,11 @@ pub const unwinder_private_data_size: usize = 20;
 #[cfg(all(target_arch = "arm", any(target_os = "ios", target_os = "watchos")))]
 pub const unwinder_private_data_size: usize = 5;
 
-#[cfg(all(target_arch = "aarch64", target_pointer_width = "64"))]
+#[cfg(all(target_arch = "aarch64", target_pointer_width = "64", not(target_os = "windows")))]
 pub const unwinder_private_data_size: usize = 2;
+
+#[cfg(all(target_arch = "aarch64", target_pointer_width = "64", target_os = "windows"))]
+pub const unwinder_private_data_size: usize = 6;
 
 #[cfg(all(target_arch = "aarch64", target_pointer_width = "32"))]
 pub const unwinder_private_data_size: usize = 5;
@@ -90,7 +93,10 @@ pub type _Unwind_Exception_Cleanup_Fn =
 // rustc_codegen_ssa::src::back::symbol_export, rustc_middle::middle::exported_symbols
 // and RFC 2841
 #[cfg_attr(
-    all(feature = "llvm-libunwind", any(target_os = "fuchsia", target_os = "linux")),
+    any(
+        all(feature = "llvm-libunwind", any(target_os = "fuchsia", target_os = "linux")),
+        all(target_os = "windows", target_env = "gnu", target_abi = "llvm")
+    ),
     link(name = "unwind", kind = "static", modifiers = "-bundle")
 )]
 extern "C-unwind" {

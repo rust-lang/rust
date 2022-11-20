@@ -19,7 +19,12 @@ impl IndexRange {
     #[inline]
     pub const unsafe fn new_unchecked(start: usize, end: usize) -> Self {
         // SAFETY: comparisons on usize are pure
-        unsafe { assert_unsafe_precondition!((start: usize, end: usize) => start <= end) };
+        unsafe {
+            assert_unsafe_precondition!(
+               "IndexRange::new_unchecked requires `start <= end`",
+                (start: usize, end: usize) => start <= end
+            )
+        };
         IndexRange { start, end }
     }
 

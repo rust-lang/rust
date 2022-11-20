@@ -266,7 +266,7 @@ impl<'mir, 'tcx> interpret::Machine<'mir, 'tcx> for ConstPropMachine<'mir, 'tcx>
         _tcx: TyCtxt<'tcx>,
         _machine: &Self,
         _alloc_id: AllocId,
-        alloc: ConstAllocation<'tcx, Self::Provenance, Self::AllocExtra>,
+        alloc: ConstAllocation<'tcx>,
         _static_def_id: Option<DefId>,
         is_write: bool,
     ) -> InterpResult<'tcx> {
@@ -385,7 +385,7 @@ impl<'mir, 'tcx> ConstPropagator<'mir, 'tcx> {
             // I don't know how return types can seem to be unsized but this happens in the
             // `type/type-unsatisfiable.rs` test.
             .filter(|ret_layout| {
-                !ret_layout.is_unsized() && ret_layout.size < Size::from_bytes(MAX_ALLOC_LIMIT)
+                ret_layout.is_sized() && ret_layout.size < Size::from_bytes(MAX_ALLOC_LIMIT)
             })
             .unwrap_or_else(|| ecx.layout_of(tcx.types.unit).unwrap());
 
@@ -471,7 +471,8 @@ impl<'mir, 'tcx> ConstPropagator<'mir, 'tcx> {
             return None;
         }
 
-        self.ecx.const_to_op(&c.literal, None).ok()
+        // No span, we don't want errors to be shown.
+        self.ecx.eval_mir_constant(&c.literal, None, None).ok()
     }
 
     /// Returns the value, if any, of evaluating `place`.
@@ -633,7 +634,7 @@ impl<'mir, 'tcx> ConstPropagator<'mir, 'tcx> {
         }
         if !rvalue
             .ty(&self.ecx.frame().body.local_decls, *self.ecx.tcx)
-            .is_sized(self.ecx.tcx, self.param_env)
+            .is_sized(*self.ecx.tcx, self.param_env)
         {
             // the interpreter doesn't support unsized locals (only unsized arguments),
             // but rustc does (in a kinda broken way), so we have to skip them here

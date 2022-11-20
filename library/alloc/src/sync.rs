@@ -333,6 +333,15 @@ struct ArcInner<T: ?Sized> {
     data: T,
 }
 
+/// Calculate layout for `ArcInner<T>` using the inner value's layout
+fn arcinner_layout_for_value_layout(layout: Layout) -> Layout {
+    // Calculate layout using the given value layout.
+    // Previously, layout was calculated on the expression
+    // `&*(ptr as *const ArcInner<T>)`, but this created a misaligned
+    // reference (see #54908).
+    Layout::new::<ArcInner<()>>().extend(layout).unwrap().0.pad_to_align()
+}
+
 unsafe impl<T: ?Sized + Sync + Send> Send for ArcInner<T> {}
 unsafe impl<T: ?Sized + Sync + Send> Sync for ArcInner<T> {}
 
@@ -1117,8 +1126,8 @@ impl<T: ?Sized> Arc<T> {
         drop(Weak { ptr: self.ptr });
     }
 
-    /// Returns `true` if the two `Arc`s point to the same allocation
-    /// (in a vein similar to [`ptr::eq`]).
+    /// Returns `true` if the two `Arc`s point to the same allocation in a vein similar to
+    /// [`ptr::eq`]. See [that function][`ptr::eq`] for caveats when comparing `dyn Trait` pointers.
     ///
     /// # Examples
     ///
@@ -1154,11 +1163,7 @@ impl<T: ?Sized> Arc<T> {
         allocate: impl FnOnce(Layout) -> Result<NonNull<[u8]>, AllocError>,
         mem_to_arcinner: impl FnOnce(*mut u8) -> *mut ArcInner<T>,
     ) -> *mut ArcInner<T> {
-        // Calculate layout using the given value layout.
-        // Previously, layout was calculated on the expression
-        // `&*(ptr as *const ArcInner<T>)`, but this created a misaligned
-        // reference (see #54908).
-        let layout = Layout::new::<ArcInner<()>>().extend(value_layout).unwrap().0.pad_to_align();
+        let layout = arcinner_layout_for_value_layout(value_layout);
         unsafe {
             Arc::try_allocate_for_layout(value_layout, allocate, mem_to_arcinner)
                 .unwrap_or_else(|_| handle_alloc_error(layout))
@@ -1176,11 +1181,7 @@ impl<T: ?Sized> Arc<T> {
         allocate: impl FnOnce(Layout) -> Result<NonNull<[u8]>, AllocError>,
         mem_to_arcinner: impl FnOnce(*mut u8) -> *mut ArcInner<T>,
     ) -> Result<*mut ArcInner<T>, AllocError> {
-        // Calculate layout using the given value layout.
-        // Previously, layout was calculated on the expression
-        // `&*(ptr as *const ArcInner<T>)`, but this created a misaligned
-        // reference (see #54908).
-        let layout = Layout::new::<ArcInner<()>>().extend(value_layout).unwrap().0.pad_to_align();
+        let layout = arcinner_layout_for_value_layout(value_layout);
 
         let ptr = allocate(layout)?;
 
@@ -1246,7 +1247,7 @@ impl<T> Arc<[T]> {
         }
     }
 
-    /// Copy elements from slice into newly allocated Arc<\[T\]>
+    /// Copy elements from slice into newly allocated `Arc<[T]>`
     ///
     /// Unsafe because the caller must either take ownership or bind `T: Copy`.
     #[cfg(not(no_global_oom_handling))]
@@ -2069,9 +2070,9 @@ impl<T: ?Sized> Weak<T> {
         }
     }
 
-    /// Returns `true` if the two `Weak`s point to the same allocation (similar to
-    /// [`ptr::eq`]), or if both don't point to any allocation
-    /// (because they were created with `Weak::new()`).
+    /// Returns `true` if the two `Weak`s point to the same allocation similar to [`ptr::eq`], or if
+    /// both don't point to any allocation (because they were created with `Weak::new()`). See [that
+    /// function][`ptr::eq`] for caveats when comparing `dyn Trait` pointers.
     ///
     /// # Notes
     ///
@@ -2573,12 +2574,10 @@ impl<T> From<Vec<T>> for Arc<[T]> {
     #[inline]
     fn from(mut v: Vec<T>) -> Arc<[T]> {
         unsafe {
-            let arc = Arc::copy_from_slice(&v);
-
+            let rc = Arc::copy_from_slice(&v);
             // Allow the Vec to free its memory, but not destroy its contents
             v.set_len(0);
-
-            arc
+            rc
         }
     }
 }

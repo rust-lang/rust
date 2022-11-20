@@ -658,7 +658,7 @@ pub(crate) fn handle_parent_module(
 
         // check if invoked at the crate root
         let file_id = from_proto::file_id(&snap, &params.text_document.uri)?;
-        let crate_id = match snap.analysis.crate_for(file_id)?.first() {
+        let crate_id = match snap.analysis.crates_for(file_id)?.first() {
             Some(&crate_id) => crate_id,
             None => return Ok(None),
         };
@@ -1782,7 +1782,15 @@ fn run_rustfmt(
 ) -> Result<Option<Vec<lsp_types::TextEdit>>> {
     let file_id = from_proto::file_id(snap, &text_document.uri)?;
     let file = snap.analysis.file_text(file_id)?;
-    let crate_ids = snap.analysis.crate_for(file_id)?;
+
+    // find the edition of the package the file belongs to
+    // (if it belongs to multiple we'll just pick the first one and pray)
+    let edition = snap
+        .analysis
+        .relevant_crates_for(file_id)?
+        .into_iter()
+        .find_map(|crate_id| snap.cargo_target_for_crate_root(crate_id))
+        .map(|(ws, target)| ws[ws[target].package].edition);
 
     let line_index = snap.file_line_index(file_id)?;
 
@@ -1808,9 +1816,7 @@ fn run_rustfmt(
                     );
                 }
             }
-            if let Some(&crate_id) = crate_ids.first() {
-                // Assume all crates are in the same edition
-                let edition = snap.analysis.crate_edition(crate_id)?;
+            if let Some(edition) = edition {
                 cmd.arg("--edition");
                 cmd.arg(edition.to_string());
             }

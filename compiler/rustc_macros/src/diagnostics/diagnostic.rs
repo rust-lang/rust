@@ -69,6 +69,8 @@ impl<'a> DiagnosticDerive<'a> {
                     for @Self
                 where G: rustc_errors::EmissionGuarantee
             {
+
+                #[track_caller]
                 fn into_diagnostic(
                     self,
                     #handler: &'__diagnostic_handler_sess rustc_errors::Handler
@@ -133,6 +135,7 @@ impl<'a> LintDiagnosticDerive<'a> {
         let diag = &builder.diag;
         structure.gen_impl(quote! {
             gen impl<'__a> rustc_errors::DecorateLint<'__a, ()> for @Self {
+                #[track_caller]
                 fn decorate_lint<'__b>(
                     self,
                     #diag: &'__b mut rustc_errors::DiagnosticBuilder<'__a, ()>

@@ -4,8 +4,14 @@ use crate::mem;
 
 /// A cell which can be written to only once.
 ///
-/// Unlike `RefCell`, a `OnceCell` only provides shared `&T` references to its value.
-/// Unlike `Cell`, a `OnceCell` doesn't require copying or replacing the value to access it.
+/// Unlike [`RefCell`], a `OnceCell` only provides shared `&T` references to its value.
+/// Unlike [`Cell`], a `OnceCell` doesn't require copying or replacing the value to access it.
+///
+/// For a thread-safe version of this struct, see [`std::sync::OnceLock`].
+///
+/// [`RefCell`]: crate::cell::RefCell
+/// [`Cell`]: crate::cell::Cell
+/// [`std::sync::OnceLock`]: ../../std/sync/struct.OnceLock.html
 ///
 /// # Examples
 ///

@@ -10,7 +10,7 @@
 // This test checks to avoid that regression.
 
 #![cfg_attr(unix, feature(rustc_private))]
-#![cfg_attr(windows, allow(unused_imports))]
+#![cfg_attr(not(unix), allow(unused_imports))]
 
 #[cfg(unix)]
 extern crate libc;

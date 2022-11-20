@@ -365,11 +365,14 @@ impl<'a, 'll, 'tcx> BuilderMethods<'a, 'tcx> for Builder<'a, 'll, 'tcx> {
                 Int(I64) => "llvm.ssub.with.overflow.i64",
                 Int(I128) => "llvm.ssub.with.overflow.i128",
 
-                Uint(U8) => "llvm.usub.with.overflow.i8",
-                Uint(U16) => "llvm.usub.with.overflow.i16",
-                Uint(U32) => "llvm.usub.with.overflow.i32",
-                Uint(U64) => "llvm.usub.with.overflow.i64",
-                Uint(U128) => "llvm.usub.with.overflow.i128",
+                Uint(_) => {
+                    // Emit sub and icmp instead of llvm.usub.with.overflow. LLVM considers these
+                    // to be the canonical form. It will attempt to reform llvm.usub.with.overflow
+                    // in the backend if profitable.
+                    let sub = self.sub(lhs, rhs);
+                    let cmp = self.icmp(IntPredicate::IntULT, lhs, rhs);
+                    return (sub, cmp);
+                }
 
                 _ => unreachable!(),
             },
@@ -553,15 +556,15 @@ impl<'a, 'll, 'tcx> BuilderMethods<'a, 'tcx> for Builder<'a, 'll, 'tcx> {
     }
 
     fn write_operand_repeatedly(
-        mut self,
+        &mut self,
         cg_elem: OperandRef<'tcx, &'ll Value>,
         count: u64,
         dest: PlaceRef<'tcx, &'ll Value>,
-    ) -> Self {
+    ) {
         let zero = self.const_usize(0);
         let count = self.const_usize(count);
-        let start = dest.project_index(&mut self, zero).llval;
-        let end = dest.project_index(&mut self, count).llval;
+        let start = dest.project_index(self, zero).llval;
+        let end = dest.project_index(self, count).llval;
 
         let header_bb = self.append_sibling_block("repeat_loop_header");
         let body_bb = self.append_sibling_block("repeat_loop_body");
@@ -589,7 +592,7 @@ impl<'a, 'll, 'tcx> BuilderMethods<'a, 'tcx> for Builder<'a, 'll, 'tcx> {
         body_bx.br(header_bb);
         header_bx.add_incoming_to_phi(current, next, body_bb);
 
-        Self::build(self.cx, next_bb)
+        *self = Self::build(self.cx, next_bb);
     }
 
     fn range_metadata(&mut self, load: &'ll Value, range: WrappingRange) {

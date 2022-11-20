@@ -206,7 +206,6 @@ fn copy_third_party_objects(
     }
 
     if target == "x86_64-fortanix-unknown-sgx"
-        || target.contains("pc-windows-gnullvm")
         || builder.config.llvm_libunwind(target) == LlvmLibunwind::InTree
             && (target.contains("linux") || target.contains("fuchsia"))
     {
@@ -299,7 +298,9 @@ pub fn std_cargo(builder: &Builder<'_>, target: TargetSelection, stage: u32, car
 
     // Determine if we're going to compile in optimized C intrinsics to
     // the `compiler-builtins` crate. These intrinsics live in LLVM's
-    // `compiler-rt` repository.
+    // `compiler-rt` repository, but our `src/llvm-project` submodule isn't
+    // always checked out, so we need to conditionally look for this. (e.g. if
+    // an external LLVM is used we skip the LLVM submodule checkout).
     //
     // Note that this shouldn't affect the correctness of `compiler-builtins`,
     // but only its speed. Some intrinsics in C haven't been translated to Rust
@@ -310,15 +311,8 @@ pub fn std_cargo(builder: &Builder<'_>, target: TargetSelection, stage: u32, car
     // If `compiler-rt` is available ensure that the `c` feature of the
     // `compiler-builtins` crate is enabled and it's configured to learn where
     // `compiler-rt` is located.
-    let compiler_builtins_c_feature = if builder.config.optimized_compiler_builtins {
-        if !builder.is_rust_llvm(target) {
-            panic!(
-                "need a managed LLVM submodule for optimized intrinsics support; unset `llvm-config` or `optimized-compiler-builtins`"
-            );
-        }
-
-        builder.update_submodule(&Path::new("src").join("llvm-project"));
-        let compiler_builtins_root = builder.src.join("src/llvm-project/compiler-rt");
+    let compiler_builtins_root = builder.src.join("src/llvm-project/compiler-rt");
+    let compiler_builtins_c_feature = if compiler_builtins_root.exists() {
         // Note that `libprofiler_builtins/build.rs` also computes this so if
         // you're changing something here please also change that.
         cargo.env("RUST_COMPILER_RT_ROOT", &compiler_builtins_root);
@@ -452,7 +446,7 @@ fn copy_sanitizers(
 ) -> Vec<PathBuf> {
     let runtimes: Vec<native::SanitizerRuntime> = builder.ensure(native::Sanitizers { target });
 
-    if builder.config.dry_run {
+    if builder.config.dry_run() {
         return Vec::new();
     }
 
@@ -769,10 +763,10 @@ pub fn rustc_cargo_env(builder: &Builder<'_>, cargo: &mut Cargo, target: TargetS
 
     cargo.env("CFG_LIBDIR_RELATIVE", libdir_relative);
 
-    if let Some(ref ver_date) = builder.rust_info.commit_date() {
+    if let Some(ref ver_date) = builder.rust_info().commit_date() {
         cargo.env("CFG_VER_DATE", ver_date);
     }
-    if let Some(ref ver_hash) = builder.rust_info.sha() {
+    if let Some(ref ver_hash) = builder.rust_info().sha() {
         cargo.env("CFG_VER_HASH", ver_hash);
     }
     if !builder.unstable_features() {
@@ -991,7 +985,7 @@ impl Step for CodegenBackend {
             compiler.stage, backend, &compiler.host, target
         ));
         let files = run_cargo(builder, cargo, vec![], &tmp_stamp, vec![], false);
-        if builder.config.dry_run {
+        if builder.config.dry_run() {
             return;
         }
         let mut files = files.into_iter().filter(|f| {
@@ -1039,7 +1033,7 @@ fn copy_codegen_backends_to_sysroot(
     let dst = builder.sysroot_codegen_backends(target_compiler);
     t!(fs::create_dir_all(&dst), dst);
 
-    if builder.config.dry_run {
+    if builder.config.dry_run() {
         return;
     }
 
@@ -1127,6 +1121,7 @@ impl Step for Sysroot {
     fn run(self, builder: &Builder<'_>) -> Interned<PathBuf> {
         let compiler = self.compiler;
         let host_dir = builder.out.join(&compiler.host.triple);
+
         let sysroot = if builder.download_rustc() {
             host_dir.join("ci-rustc-sysroot")
         } else {
@@ -1143,9 +1138,15 @@ impl Step for Sysroot {
                 "Cross-compiling is not yet supported with `download-rustc`",
             );
 
-            // #102002, cleanup stage1 and stage0-sysroot folders when using download-rustc so people don't use old versions of the toolchain by accident.
-            let _ = fs::remove_dir_all(host_dir.join("stage1"));
-            let _ = fs::remove_dir_all(host_dir.join("stage0-sysroot"));
+            // #102002, cleanup old toolchain folders when using download-rustc so people don't use them by accident.
+            for stage in 0..=2 {
+                if stage != compiler.stage {
+                    let dir = sysroot_dir(stage);
+                    if !dir.ends_with("ci-rustc-sysroot") {
+                        let _ = fs::remove_dir_all(dir);
+                    }
+                }
+            }
 
             // Copy the compiler into the correct sysroot.
             let ci_rustc_dir =
@@ -1336,7 +1337,7 @@ impl Step for Assemble {
 
         if builder.config.rust_codegen_backends.contains(&INTERNER.intern_str("llvm")) {
             let llvm_config_bin = builder.ensure(native::Llvm { target: target_compiler.host });
-            if !builder.config.dry_run {
+            if !builder.config.dry_run() {
                 let llvm_bin_dir = output(Command::new(llvm_config_bin).arg("--bindir"));
                 let llvm_bin_dir = Path::new(llvm_bin_dir.trim());
 
@@ -1406,7 +1407,7 @@ pub fn run_cargo(
     additional_target_deps: Vec<(PathBuf, DependencyType)>,
     is_check: bool,
 ) -> Vec<PathBuf> {
-    if builder.config.dry_run {
+    if builder.config.dry_run() {
         return Vec::new();
     }
 
@@ -1546,7 +1547,7 @@ pub fn stream_cargo(
     cb: &mut dyn FnMut(CargoMessage<'_>),
 ) -> bool {
     let mut cargo = Command::from(cargo);
-    if builder.config.dry_run {
+    if builder.config.dry_run() {
         return true;
     }
     // Instruct Cargo to give us json messages on stdout, critically leaving

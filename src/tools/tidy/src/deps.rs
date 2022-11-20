@@ -23,6 +23,7 @@ const LICENSES: &[&str] = &[
     "MIT OR Apache-2.0 OR Zlib",                // tinyvec_macros
     "MIT OR Zlib OR Apache-2.0",                // miniz_oxide
     "(MIT OR Apache-2.0) AND Unicode-DFS-2016", // unicode_ident
+    "Unicode-DFS-2016",                         // tinystr and icu4x
 ];
 
 /// These are exceptions to Rust's permissive licensing policy, and
@@ -109,12 +110,14 @@ const PERMITTED_RUSTC_DEPENDENCIES: &[&str] = &[
     "datafrog",
     "difference",
     "digest",
+    "displaydoc",
     "dlmalloc",
     "either",
     "ena",
     "env_logger",
     "expect-test",
     "fallible-iterator", // dependency of `thorin`
+    "fastrand",
     "filetime",
     "fixedbitset",
     "flate2",
@@ -130,6 +133,11 @@ const PERMITTED_RUSTC_DEPENDENCIES: &[&str] = &[
     "hashbrown",
     "hermit-abi",
     "humantime",
+    "icu_list",
+    "icu_locid",
+    "icu_provider",
+    "icu_provider_adapters",
+    "icu_provider_macros",
     "if_chain",
     "indexmap",
     "instant",
@@ -142,6 +150,7 @@ const PERMITTED_RUSTC_DEPENDENCIES: &[&str] = &[
     "libc",
     "libloading",
     "libz-sys",
+    "litemap",
     "lock_api",
     "log",
     "matchers",
@@ -250,9 +259,16 @@ const PERMITTED_RUSTC_DEPENDENCIES: &[&str] = &[
     "winapi-i686-pc-windows-gnu",
     "winapi-util",
     "winapi-x86_64-pc-windows-gnu",
+    "writeable",
     // this is a false-positive: it's only used by rustfmt, but because it's enabled through a
     // feature, tidy thinks it's used by rustc as well.
     "yansi-term",
+    "yoke",
+    "yoke-derive",
+    "zerofrom",
+    "zerofrom-derive",
+    "zerovec",
+    "zerovec-derive",
 ];
 
 const PERMITTED_CRANELIFT_DEPENDENCIES: &[&str] = &[

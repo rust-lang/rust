@@ -388,6 +388,8 @@ impl<'hir> GenericArgs<'hir> {
     }
 
     #[inline]
+    /// This function returns the number of type and const generic params.
+    /// It should only be used for diagnostics.
     pub fn num_generic_params(&self) -> usize {
         self.args.iter().filter(|arg| !matches!(arg, GenericArg::Lifetime(_))).count()
     }
@@ -485,6 +487,7 @@ pub enum GenericParamKind<'hir> {
 #[derive(Debug, HashStable_Generic)]
 pub struct GenericParam<'hir> {
     pub hir_id: HirId,
+    pub def_id: LocalDefId,
     pub name: ParamName,
     pub span: Span,
     pub pure_wrt_drop: bool,
@@ -919,6 +922,7 @@ pub struct Crate<'hir> {
 
 #[derive(Debug, HashStable_Generic)]
 pub struct Closure<'hir> {
+    pub def_id: LocalDefId,
     pub binder: ClosureBinder,
     pub capture_clause: CaptureBy,
     pub bound_generic_params: &'hir [GenericParam<'hir>],
@@ -1613,7 +1617,7 @@ pub enum ArrayLen {
 impl ArrayLen {
     pub fn hir_id(&self) -> HirId {
         match self {
-            &ArrayLen::Infer(hir_id, _) | &ArrayLen::Body(AnonConst { hir_id, body: _ }) => hir_id,
+            &ArrayLen::Infer(hir_id, _) | &ArrayLen::Body(AnonConst { hir_id, .. }) => hir_id,
         }
     }
 }
@@ -1625,10 +1629,11 @@ impl ArrayLen {
 /// explicit discriminant values for enum variants.
 ///
 /// You can check if this anon const is a default in a const param
-/// `const N: usize = { ... }` with `tcx.hir().opt_const_param_default_param_hir_id(..)`
+/// `const N: usize = { ... }` with `tcx.hir().opt_const_param_default_param_def_id(..)`
 #[derive(Copy, Clone, PartialEq, Eq, Encodable, Debug, HashStable_Generic)]
 pub struct AnonConst {
     pub hir_id: HirId,
+    pub def_id: LocalDefId,
     pub body: BodyId,
 }
 
@@ -2207,14 +2212,14 @@ pub struct FnSig<'hir> {
 // so it can fetched later.
 #[derive(Copy, Clone, PartialEq, Eq, Encodable, Decodable, Debug, HashStable_Generic)]
 pub struct TraitItemId {
-    pub def_id: OwnerId,
+    pub owner_id: OwnerId,
 }
 
 impl TraitItemId {
     #[inline]
     pub fn hir_id(&self) -> HirId {
         // Items are always HIR owners.
-        HirId::make_owner(self.def_id.def_id)
+        HirId::make_owner(self.owner_id.def_id)
     }
 }
 
@@ -2225,7 +2230,7 @@ impl TraitItemId {
 #[derive(Debug, HashStable_Generic)]
 pub struct TraitItem<'hir> {
     pub ident: Ident,
-    pub def_id: OwnerId,
+    pub owner_id: OwnerId,
     pub generics: &'hir Generics<'hir>,
     pub kind: TraitItemKind<'hir>,
     pub span: Span,
@@ -2236,11 +2241,11 @@ impl TraitItem<'_> {
     #[inline]
     pub fn hir_id(&self) -> HirId {
         // Items are always HIR owners.
-        HirId::make_owner(self.def_id.def_id)
+        HirId::make_owner(self.owner_id.def_id)
     }
 
     pub fn trait_item_id(&self) -> TraitItemId {
-        TraitItemId { def_id: self.def_id }
+        TraitItemId { owner_id: self.owner_id }
     }
 }
 
@@ -2271,14 +2276,14 @@ pub enum TraitItemKind<'hir> {
 // so it can fetched later.
 #[derive(Copy, Clone, PartialEq, Eq, Encodable, Decodable, Debug, HashStable_Generic)]
 pub struct ImplItemId {
-    pub def_id: OwnerId,
+    pub owner_id: OwnerId,
 }
 
 impl ImplItemId {
     #[inline]
     pub fn hir_id(&self) -> HirId {
         // Items are always HIR owners.
-        HirId::make_owner(self.def_id.def_id)
+        HirId::make_owner(self.owner_id.def_id)
     }
 }
 
@@ -2286,7 +2291,7 @@ impl ImplItemId {
 #[derive(Debug, HashStable_Generic)]
 pub struct ImplItem<'hir> {
     pub ident: Ident,
-    pub def_id: OwnerId,
+    pub owner_id: OwnerId,
     pub generics: &'hir Generics<'hir>,
     pub kind: ImplItemKind<'hir>,
     pub defaultness: Defaultness,
@@ -2298,11 +2303,11 @@ impl ImplItem<'_> {
     #[inline]
     pub fn hir_id(&self) -> HirId {
         // Items are always HIR owners.
-        HirId::make_owner(self.def_id.def_id)
+        HirId::make_owner(self.owner_id.def_id)
     }
 
     pub fn impl_item_id(&self) -> ImplItemId {
-        ImplItemId { def_id: self.def_id }
+        ImplItemId { owner_id: self.owner_id }
     }
 }
 
@@ -2417,6 +2422,30 @@ impl<'hir> Ty<'hir> {
             final_ty = &ty;
         }
         final_ty
+    }
+
+    pub fn find_self_aliases(&self) -> Vec<Span> {
+        use crate::intravisit::Visitor;
+        struct MyVisitor(Vec<Span>);
+        impl<'v> Visitor<'v> for MyVisitor {
+            fn visit_ty(&mut self, t: &'v Ty<'v>) {
+                if matches!(
+                    &t.kind,
+                    TyKind::Path(QPath::Resolved(
+                        _,
+                        Path { res: crate::def::Res::SelfTyAlias { .. }, .. },
+                    ))
+                ) {
+                    self.0.push(t.span);
+                    return;
+                }
+                crate::intravisit::walk_ty(self, t);
+            }
+        }
+
+        let mut my_visitor = MyVisitor(vec![]);
+        my_visitor.visit_ty(self);
+        my_visitor.0
     }
 }
 
@@ -2691,6 +2720,12 @@ pub enum IsAsync {
     NotAsync,
 }
 
+impl IsAsync {
+    pub fn is_async(self) -> bool {
+        self == IsAsync::Async
+    }
+}
+
 #[derive(Copy, Clone, PartialEq, Eq, Hash, Debug, Encodable, Decodable, HashStable_Generic)]
 pub enum Defaultness {
     Default { has_value: bool },
@@ -2772,7 +2807,8 @@ pub struct Variant<'hir> {
     /// Name of the variant.
     pub ident: Ident,
     /// Id of the variant (not the constructor, see `VariantData::ctor_hir_id()`).
-    pub id: HirId,
+    pub hir_id: HirId,
+    pub def_id: LocalDefId,
     /// Fields and constructor id of the variant.
     pub data: VariantData<'hir>,
     /// Explicit discriminant (e.g., `Foo = 1`).
@@ -2839,6 +2875,7 @@ pub struct FieldDef<'hir> {
     pub vis_span: Span,
     pub ident: Ident,
     pub hir_id: HirId,
+    pub def_id: LocalDefId,
     pub ty: &'hir Ty<'hir>,
 }
 
@@ -2860,11 +2897,11 @@ pub enum VariantData<'hir> {
     /// A tuple variant.
     ///
     /// E.g., `Bar(..)` as in `enum Foo { Bar(..) }`.
-    Tuple(&'hir [FieldDef<'hir>], HirId),
+    Tuple(&'hir [FieldDef<'hir>], HirId, LocalDefId),
     /// A unit variant.
     ///
     /// E.g., `Bar = ..` as in `enum Foo { Bar = .. }`.
-    Unit(HirId),
+    Unit(HirId, LocalDefId),
 }
 
 impl<'hir> VariantData<'hir> {
@@ -2876,11 +2913,19 @@ impl<'hir> VariantData<'hir> {
         }
     }
 
+    /// Return the `LocalDefId` of this variant's constructor, if it has one.
+    pub fn ctor_def_id(&self) -> Option<LocalDefId> {
+        match *self {
+            VariantData::Struct(_, _) => None,
+            VariantData::Tuple(_, _, def_id) | VariantData::Unit(_, def_id) => Some(def_id),
+        }
+    }
+
     /// Return the `HirId` of this variant's constructor, if it has one.
     pub fn ctor_hir_id(&self) -> Option<HirId> {
         match *self {
             VariantData::Struct(_, _) => None,
-            VariantData::Tuple(_, hir_id) | VariantData::Unit(hir_id) => Some(hir_id),
+            VariantData::Tuple(_, hir_id, _) | VariantData::Unit(hir_id, _) => Some(hir_id),
         }
     }
 }
@@ -2890,14 +2935,14 @@ impl<'hir> VariantData<'hir> {
 // so it can fetched later.
 #[derive(Copy, Clone, PartialEq, Eq, Encodable, Decodable, Debug, Hash, HashStable_Generic)]
 pub struct ItemId {
-    pub def_id: OwnerId,
+    pub owner_id: OwnerId,
 }
 
 impl ItemId {
     #[inline]
     pub fn hir_id(&self) -> HirId {
         // Items are always HIR owners.
-        HirId::make_owner(self.def_id.def_id)
+        HirId::make_owner(self.owner_id.def_id)
     }
 }
 
@@ -2907,7 +2952,7 @@ impl ItemId {
 #[derive(Debug, HashStable_Generic)]
 pub struct Item<'hir> {
     pub ident: Ident,
-    pub def_id: OwnerId,
+    pub owner_id: OwnerId,
     pub kind: ItemKind<'hir>,
     pub span: Span,
     pub vis_span: Span,
@@ -2917,11 +2962,11 @@ impl Item<'_> {
     #[inline]
     pub fn hir_id(&self) -> HirId {
         // Items are always HIR owners.
-        HirId::make_owner(self.def_id.def_id)
+        HirId::make_owner(self.owner_id.def_id)
     }
 
     pub fn item_id(&self) -> ItemId {
-        ItemId { def_id: self.def_id }
+        ItemId { owner_id: self.owner_id }
     }
 }
 
@@ -3134,14 +3179,14 @@ pub enum AssocItemKind {
 // so it can fetched later.
 #[derive(Copy, Clone, PartialEq, Eq, Encodable, Decodable, Debug, HashStable_Generic)]
 pub struct ForeignItemId {
-    pub def_id: OwnerId,
+    pub owner_id: OwnerId,
 }
 
 impl ForeignItemId {
     #[inline]
     pub fn hir_id(&self) -> HirId {
         // Items are always HIR owners.
-        HirId::make_owner(self.def_id.def_id)
+        HirId::make_owner(self.owner_id.def_id)
     }
 }
 
@@ -3162,7 +3207,7 @@ pub struct ForeignItemRef {
 pub struct ForeignItem<'hir> {
     pub ident: Ident,
     pub kind: ForeignItemKind<'hir>,
-    pub def_id: OwnerId,
+    pub owner_id: OwnerId,
     pub span: Span,
     pub vis_span: Span,
 }
@@ -3171,11 +3216,11 @@ impl ForeignItem<'_> {
     #[inline]
     pub fn hir_id(&self) -> HirId {
         // Items are always HIR owners.
-        HirId::make_owner(self.def_id.def_id)
+        HirId::make_owner(self.owner_id.def_id)
     }
 
     pub fn foreign_item_id(&self) -> ForeignItemId {
-        ForeignItemId { def_id: self.def_id }
+        ForeignItemId { owner_id: self.owner_id }
     }
 }
 
@@ -3267,10 +3312,10 @@ impl<'hir> OwnerNode<'hir> {
 
     pub fn def_id(self) -> OwnerId {
         match self {
-            OwnerNode::Item(Item { def_id, .. })
-            | OwnerNode::TraitItem(TraitItem { def_id, .. })
-            | OwnerNode::ImplItem(ImplItem { def_id, .. })
-            | OwnerNode::ForeignItem(ForeignItem { def_id, .. }) => *def_id,
+            OwnerNode::Item(Item { owner_id, .. })
+            | OwnerNode::TraitItem(TraitItem { owner_id, .. })
+            | OwnerNode::ImplItem(ImplItem { owner_id, .. })
+            | OwnerNode::ForeignItem(ForeignItem { owner_id, .. }) => *owner_id,
             OwnerNode::Crate(..) => crate::CRATE_HIR_ID.owner,
         }
     }
@@ -3506,7 +3551,7 @@ impl<'hir> Node<'hir> {
     /// Get the fields for the tuple-constructor,
     /// if this node is a tuple constructor, otherwise None
     pub fn tuple_fields(&self) -> Option<&'hir [FieldDef<'hir>]> {
-        if let Node::Ctor(&VariantData::Tuple(fields, _)) = self { Some(fields) } else { None }
+        if let Node::Ctor(&VariantData::Tuple(fields, _, _)) = self { Some(fields) } else { None }
     }
 }
 
@@ -3522,7 +3567,7 @@ mod size_asserts {
     static_assert_size!(FnDecl<'_>, 40);
     static_assert_size!(ForeignItem<'_>, 72);
     static_assert_size!(ForeignItemKind<'_>, 40);
-    static_assert_size!(GenericArg<'_>, 24);
+    static_assert_size!(GenericArg<'_>, 32);
     static_assert_size!(GenericBound<'_>, 48);
     static_assert_size!(Generics<'_>, 56);
     static_assert_size!(Impl<'_>, 80);

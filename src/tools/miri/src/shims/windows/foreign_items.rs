@@ -273,6 +273,25 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriInterpCxExt<'mir, 'tcx> {
                 let result = this.InitOnceComplete(ptr, flags, context)?;
                 this.write_scalar(result, dest)?;
             }
+            "SleepConditionVariableSRW" => {
+                let [condvar, lock, timeout, flags] =
+                    this.check_shim(abi, Abi::System { unwind: false }, link_name, args)?;
+
+                let result = this.SleepConditionVariableSRW(condvar, lock, timeout, flags, dest)?;
+                this.write_scalar(result, dest)?;
+            }
+            "WakeConditionVariable" => {
+                let [condvar] =
+                    this.check_shim(abi, Abi::System { unwind: false }, link_name, args)?;
+
+                this.WakeConditionVariable(condvar)?;
+            }
+            "WakeAllConditionVariable" => {
+                let [condvar] =
+                    this.check_shim(abi, Abi::System { unwind: false }, link_name, args)?;
+
+                this.WakeAllConditionVariable(condvar)?;
+            }
 
             // Dynamic symbol loading
             "GetProcAddress" => {
@@ -416,13 +435,6 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriInterpCxExt<'mir, 'tcx> {
                 this.read_scalar(console)?.to_machine_isize(this)?;
                 this.deref_operand(mode)?;
                 // Indicate an error.
-                this.write_null(dest)?;
-            }
-            "GetFileInformationByHandleEx" if this.frame_in_std() => {
-                #[allow(non_snake_case)]
-                let [_hFile, _FileInformationClass, _lpFileInformation, _dwBufferSize] =
-                    this.check_shim(abi, Abi::System { unwind: false }, link_name, args)?;
-                // Just make it fail.
                 this.write_null(dest)?;
             }
             "GetFileType" if this.frame_in_std() => {

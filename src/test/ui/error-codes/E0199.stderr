@@ -3,6 +3,12 @@ error[E0199]: implementing the trait `Bar` is not unsafe
    |
 LL | unsafe impl Bar for Foo { }
    | ^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+help: remove `unsafe` from this trait implementation
+   |
+LL - unsafe impl Bar for Foo { }
+LL + impl Bar for Foo { }
+   |
 
 error: aborting due to previous error
 

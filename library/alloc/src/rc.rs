@@ -293,6 +293,15 @@ struct RcBox<T: ?Sized> {
     value: T,
 }
 
+/// Calculate layout for `RcBox<T>` using the inner value's layout
+fn rcbox_layout_for_value_layout(layout: Layout) -> Layout {
+    // Calculate layout using the given value layout.
+    // Previously, layout was calculated on the expression
+    // `&*(ptr as *const RcBox<T>)`, but this created a misaligned
+    // reference (see #54908).
+    Layout::new::<RcBox<()>>().extend(layout).unwrap().0.pad_to_align()
+}
+
 /// A single-threaded reference-counting pointer. 'Rc' stands for 'Reference
 /// Counted'.
 ///
@@ -1110,8 +1119,8 @@ impl<T: ?Sized> Rc<T> {
 
     #[inline]
     #[stable(feature = "ptr_eq", since = "1.17.0")]
-    /// Returns `true` if the two `Rc`s point to the same allocation
-    /// (in a vein similar to [`ptr::eq`]).
+    /// Returns `true` if the two `Rc`s point to the same allocation in a vein similar to
+    /// [`ptr::eq`]. See [that function][`ptr::eq`] for caveats when comparing `dyn Trait` pointers.
     ///
     /// # Examples
     ///
@@ -1334,11 +1343,7 @@ impl<T: ?Sized> Rc<T> {
         allocate: impl FnOnce(Layout) -> Result<NonNull<[u8]>, AllocError>,
         mem_to_rcbox: impl FnOnce(*mut u8) -> *mut RcBox<T>,
     ) -> *mut RcBox<T> {
-        // Calculate layout using the given value layout.
-        // Previously, layout was calculated on the expression
-        // `&*(ptr as *const RcBox<T>)`, but this created a misaligned
-        // reference (see #54908).
-        let layout = Layout::new::<RcBox<()>>().extend(value_layout).unwrap().0.pad_to_align();
+        let layout = rcbox_layout_for_value_layout(value_layout);
         unsafe {
             Rc::try_allocate_for_layout(value_layout, allocate, mem_to_rcbox)
                 .unwrap_or_else(|_| handle_alloc_error(layout))
@@ -1357,11 +1362,7 @@ impl<T: ?Sized> Rc<T> {
         allocate: impl FnOnce(Layout) -> Result<NonNull<[u8]>, AllocError>,
         mem_to_rcbox: impl FnOnce(*mut u8) -> *mut RcBox<T>,
     ) -> Result<*mut RcBox<T>, AllocError> {
-        // Calculate layout using the given value layout.
-        // Previously, layout was calculated on the expression
-        // `&*(ptr as *const RcBox<T>)`, but this created a misaligned
-        // reference (see #54908).
-        let layout = Layout::new::<RcBox<()>>().extend(value_layout).unwrap().0.pad_to_align();
+        let layout = rcbox_layout_for_value_layout(value_layout);
 
         // Allocate for the layout.
         let ptr = allocate(layout)?;
@@ -1428,7 +1429,7 @@ impl<T> Rc<[T]> {
         }
     }
 
-    /// Copy elements from slice into newly allocated Rc<\[T\]>
+    /// Copy elements from slice into newly allocated `Rc<[T]>`
     ///
     /// Unsafe because the caller must either take ownership or bind `T: Copy`
     #[cfg(not(no_global_oom_handling))]
@@ -1968,10 +1969,8 @@ impl<T> From<Vec<T>> for Rc<[T]> {
     fn from(mut v: Vec<T>) -> Rc<[T]> {
         unsafe {
             let rc = Rc::copy_from_slice(&v);
-
             // Allow the Vec to free its memory, but not destroy its contents
             v.set_len(0);
-
             rc
         }
     }
@@ -2419,9 +2418,9 @@ impl<T: ?Sized> Weak<T> {
         }
     }
 
-    /// Returns `true` if the two `Weak`s point to the same allocation (similar to
-    /// [`ptr::eq`]), or if both don't point to any allocation
-    /// (because they were created with `Weak::new()`).
+    /// Returns `true` if the two `Weak`s point to the same allocation similar to [`ptr::eq`], or if
+    /// both don't point to any allocation (because they were created with `Weak::new()`). See [that
+    /// function][`ptr::eq`] for caveats when comparing `dyn Trait` pointers.
     ///
     /// # Notes
     ///

@@ -43,7 +43,6 @@
 #![feature(type_alias_impl_trait)]
 #![feature(associated_type_bounds)]
 #![feature(rustc_attrs)]
-#![cfg_attr(bootstrap, feature(half_open_range_patterns))]
 #![feature(control_flow_enum)]
 #![feature(associated_type_defaults)]
 #![feature(trusted_step)]

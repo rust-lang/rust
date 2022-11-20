@@ -10,8 +10,8 @@ use super::{
 use crate::errors::{
     AssignmentElseNotAllowed, CompoundAssignmentExpressionInLet, ConstLetMutuallyExclusive,
     DocCommentDoesNotDocumentAnything, ExpectedStatementAfterOuterAttr, InvalidCurlyInLetElse,
-    InvalidExpressionInLetElse, InvalidVariableDeclaration, InvalidVariableDeclarationSub,
-    WrapExpressionInParentheses,
+    InvalidExpressionInLetElse, InvalidIdentiferStartsWithNumber, InvalidVariableDeclaration,
+    InvalidVariableDeclarationSub, WrapExpressionInParentheses,
 };
 use crate::maybe_whole;
 
@@ -19,7 +19,7 @@ use rustc_ast as ast;
 use rustc_ast::ptr::P;
 use rustc_ast::token::{self, Delimiter, TokenKind};
 use rustc_ast::util::classify;
-use rustc_ast::{AttrStyle, AttrVec, Attribute, LocalKind, MacCall, MacCallStmt, MacStmtStyle};
+use rustc_ast::{AttrStyle, AttrVec, LocalKind, MacCall, MacCallStmt, MacStmtStyle};
 use rustc_ast::{Block, BlockCheckMode, Expr, ExprKind, HasAttrs, Local, Stmt};
 use rustc_ast::{StmtKind, DUMMY_NODE_ID};
 use rustc_errors::{Applicability, DiagnosticBuilder, ErrorGuaranteed, PResult};
@@ -101,7 +101,7 @@ impl<'a> Parser<'a> {
             self.mk_stmt(lo.to(item.span), StmtKind::Item(P(item)))
         } else if self.eat(&token::Semi) {
             // Do not attempt to parse an expression if we're done here.
-            self.error_outer_attrs(&attrs.take_for_recovery());
+            self.error_outer_attrs(attrs);
             self.mk_stmt(lo, StmtKind::Empty)
         } else if self.token != token::CloseDelim(Delimiter::Brace) {
             // Remainder are line-expr stmts.
@@ -120,7 +120,7 @@ impl<'a> Parser<'a> {
             }
             self.mk_stmt(lo.to(e.span), StmtKind::Expr(e))
         } else {
-            self.error_outer_attrs(&attrs.take_for_recovery());
+            self.error_outer_attrs(attrs);
             return Ok(None);
         }))
     }
@@ -199,8 +199,10 @@ impl<'a> Parser<'a> {
 
     /// Error on outer attributes in this context.
     /// Also error if the previous token was a doc comment.
-    fn error_outer_attrs(&self, attrs: &[Attribute]) {
-        if let [.., last] = attrs {
+    fn error_outer_attrs(&self, attrs: AttrWrapper) {
+        if !attrs.is_empty()
+        && let attrs = attrs.take_for_recovery(self.sess)
+        && let attrs @ [.., last] = &*attrs {
             if last.is_doc_comment() {
                 self.sess.emit_err(DocCommentDoesNotDocumentAnything {
                     span: last.span,
@@ -262,6 +264,7 @@ impl<'a> Parser<'a> {
             self.bump();
         }
 
+        self.report_invalid_identifier_error()?;
         let (pat, colon) = self.parse_pat_before_ty(None, RecoverComma::Yes, "`let` bindings")?;
 
         let (err, ty) = if colon {
@@ -351,6 +354,17 @@ impl<'a> Parser<'a> {
         };
         let hi = if self.token == token::Semi { self.token.span } else { self.prev_token.span };
         Ok(P(ast::Local { ty, pat, kind, id: DUMMY_NODE_ID, span: lo.to(hi), attrs, tokens: None }))
+    }
+
+    /// report error for `let 1x = 123`
+    pub fn report_invalid_identifier_error(&mut self) -> PResult<'a, ()> {
+        if let token::Literal(lit) = self.token.uninterpolate().kind &&
+            rustc_ast::Lit::from_token(&self.token).is_none() &&
+            (lit.kind == token::LitKind::Integer || lit.kind == token::LitKind::Float) &&
+            self.look_ahead(1, |t| matches!(t.kind, token::Eq) || matches!(t.kind, token::Colon ) ) {
+                return Err(self.sess.create_err(InvalidIdentiferStartsWithNumber { span: self.token.span }));
+        }
+        Ok(())
     }
 
     fn check_let_else_init_bool_expr(&self, init: &ast::Expr) {

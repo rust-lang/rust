@@ -69,11 +69,6 @@ RUST_CONFIGURE_ARGS="$RUST_CONFIGURE_ARGS --set rust.codegen-units-std=1"
 # space required for CI artifacts.
 RUST_CONFIGURE_ARGS="$RUST_CONFIGURE_ARGS --dist-compression-formats=xz"
 
-# Enable the `c` feature for compiler_builtins, but only when the `compiler-rt` source is available.
-if [ "$EXTERNAL_LLVM" = "" ]; then
-  RUST_CONFIGURE_ARGS="$RUST_CONFIGURE_ARGS --set build.optimized-compiler-builtins"
-fi
-
 if [ "$DIST_SRC" = "" ]; then
   RUST_CONFIGURE_ARGS="$RUST_CONFIGURE_ARGS --disable-dist-src"
 fi
@@ -128,6 +123,10 @@ else
   # (And PGO is its own can of worms).
   if [ "$NO_DOWNLOAD_CI_LLVM" = "" ]; then
     RUST_CONFIGURE_ARGS="$RUST_CONFIGURE_ARGS --set llvm.download-ci-llvm=if-available"
+  else
+    # When building for CI we want to use the static C++ Standard library
+    # included with LLVM, since a dynamic libstdcpp may not be available.
+    RUST_CONFIGURE_ARGS="$RUST_CONFIGURE_ARGS --set llvm.static-libstdcpp"
   fi
 fi
 

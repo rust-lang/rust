@@ -2,6 +2,12 @@
 //!
 //! [rustc dev guide]: https://rustc-dev-guide.rust-lang.org/traits/resolution.html#selection
 
+// FIXME: The `map` field in ProvisionalEvaluationCache should be changed to
+// a `FxIndexMap` to avoid query instability, but right now it causes a perf regression. This would be
+// fixed or at least lightened by the addition of the `drain_filter` method to `FxIndexMap`
+// Relevant: https://github.com/rust-lang/rust/pull/103723 and https://github.com/bluss/indexmap/issues/242
+#![allow(rustc::potential_query_instability)]
+
 use self::EvaluationResult::*;
 use self::SelectionCandidate::*;
 
@@ -24,9 +30,10 @@ use crate::traits::error_reporting::TypeErrCtxtExt;
 use crate::traits::project::ProjectAndUnifyResult;
 use crate::traits::project::ProjectionCacheKeyExt;
 use crate::traits::ProjectionCacheKey;
-use rustc_data_structures::fx::{FxHashMap, FxHashSet, FxIndexSet};
+use rustc_data_structures::fx::FxHashMap;
+use rustc_data_structures::fx::{FxHashSet, FxIndexSet};
 use rustc_data_structures::stack::ensure_sufficient_stack;
-use rustc_errors::{Diagnostic, ErrorGuaranteed};
+use rustc_errors::Diagnostic;
 use rustc_hir as hir;
 use rustc_hir::def_id::DefId;
 use rustc_infer::infer::LateBoundRegionConversionTime;
@@ -35,6 +42,7 @@ use rustc_middle::mir::interpret::ErrorHandled;
 use rustc_middle::ty::abstract_const::NotConstEvaluatable;
 use rustc_middle::ty::fast_reject::{DeepRejectCtxt, TreatParams};
 use rustc_middle::ty::fold::BottomUpFolder;
+use rustc_middle::ty::print::{FmtPrinter, Print};
 use rustc_middle::ty::relate::TypeRelation;
 use rustc_middle::ty::SubstsRef;
 use rustc_middle::ty::{self, EarlyBinder, PolyProjectionPredicate, ToPolyTraitRef, ToPredicate};
@@ -294,9 +302,6 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
                 assert!(self.query_mode == TraitQueryMode::Canonical);
                 return Err(SelectionError::Overflow(OverflowError::Canonical));
             }
-            Err(SelectionError::Ambiguous(_)) => {
-                return Ok(None);
-            }
             Err(e) => {
                 return Err(e);
             }
@@ -441,7 +446,7 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
                 ty::PredicateKind::Trait(t) => {
                     let t = bound_predicate.rebind(t);
                     debug_assert!(!t.has_escaping_bound_vars());
-                    let obligation = obligation.with(t);
+                    let obligation = obligation.with(self.tcx(), t);
                     self.evaluate_trait_predicate_recursively(previous_stack, obligation)
                 }
 
@@ -592,7 +597,7 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
 
                 ty::PredicateKind::Projection(data) => {
                     let data = bound_predicate.rebind(data);
-                    let project_obligation = obligation.with(data);
+                    let project_obligation = obligation.with(self.tcx(), data);
                     match project::poly_project_and_unify_type(self, &project_obligation) {
                         ProjectAndUnifyResult::Holds(mut subobligations) => {
                             'compute_res: {
@@ -723,12 +728,6 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
                         }
                         (Err(ErrorHandled::Reported(_)), _)
                         | (_, Err(ErrorHandled::Reported(_))) => Ok(EvaluatedToErr),
-                        (Err(ErrorHandled::Linted), _) | (_, Err(ErrorHandled::Linted)) => {
-                            span_bug!(
-                                obligation.cause.span(),
-                                "ConstEquate: const_eval_resolve returned an unexpected error"
-                            )
-                        }
                         (Err(ErrorHandled::TooGeneric), _) | (_, Err(ErrorHandled::TooGeneric)) => {
                             if c1.has_non_region_infer() || c2.has_non_region_infer() {
                                 Ok(EvaluatedToAmbig)
@@ -931,7 +930,6 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
 
         match self.candidate_from_obligation(stack) {
             Ok(Some(c)) => self.evaluate_candidate(stack, &c),
-            Err(SelectionError::Ambiguous(_)) => Ok(EvaluatedToAmbig),
             Ok(None) => Ok(EvaluatedToAmbig),
             Err(Overflow(OverflowError::Canonical)) => Err(OverflowError::Canonical),
             Err(ErrorReporting) => Err(OverflowError::ErrorReporting),
@@ -956,7 +954,7 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
 
     fn coinductive_predicate(&self, predicate: ty::Predicate<'tcx>) -> bool {
         let result = match predicate.kind().skip_binder() {
-            ty::PredicateKind::Trait(ref data) => self.tcx().trait_is_auto(data.def_id()),
+            ty::PredicateKind::Trait(ref data) => self.tcx().trait_is_coinductive(data.def_id()),
             ty::PredicateKind::WellFormed(_) => true,
             _ => false,
         };
@@ -1084,18 +1082,22 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
         it.for_each(|o| o.recursion_depth = cmp::max(min_depth, o.recursion_depth) + 1);
     }
 
-    fn check_recursion_depth<T: Display + TypeFoldable<'tcx>>(
+    fn check_recursion_depth<T>(
         &self,
         depth: usize,
         error_obligation: &Obligation<'tcx, T>,
-    ) -> Result<(), OverflowError> {
+    ) -> Result<(), OverflowError>
+    where
+        T: fmt::Display
+            + TypeFoldable<'tcx>
+            + Print<'tcx, FmtPrinter<'tcx, 'tcx>, Output = FmtPrinter<'tcx, 'tcx>>,
+        <T as Print<'tcx, FmtPrinter<'tcx, 'tcx>>>::Error: std::fmt::Debug,
+    {
         if !self.infcx.tcx.recursion_limit().value_within_limit(depth) {
             match self.query_mode {
                 TraitQueryMode::Standard => {
-                    if self.infcx.is_tainted_by_errors() {
-                        return Err(OverflowError::Error(
-                            ErrorGuaranteed::unchecked_claim_error_was_emitted(),
-                        ));
+                    if let Some(e) = self.infcx.tainted_by_errors() {
+                        return Err(OverflowError::Error(e));
                     }
                     self.infcx.err_ctxt().report_overflow_error(error_obligation, true);
                 }
@@ -1112,11 +1114,17 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
     /// The weird return type of this function allows it to be used with the `try` (`?`)
     /// operator within certain functions.
     #[inline(always)]
-    fn check_recursion_limit<T: Display + TypeFoldable<'tcx>, V: Display + TypeFoldable<'tcx>>(
+    fn check_recursion_limit<T: Display + TypeFoldable<'tcx>, V>(
         &self,
         obligation: &Obligation<'tcx, T>,
         error_obligation: &Obligation<'tcx, V>,
-    ) -> Result<(), OverflowError> {
+    ) -> Result<(), OverflowError>
+    where
+        V: fmt::Display
+            + TypeFoldable<'tcx>
+            + Print<'tcx, FmtPrinter<'tcx, 'tcx>, Output = FmtPrinter<'tcx, 'tcx>>,
+        <V as Print<'tcx, FmtPrinter<'tcx, 'tcx>>>::Error: std::fmt::Debug,
+    {
         self.check_recursion_depth(obligation.recursion_depth, error_obligation)
     }
 
@@ -1132,12 +1140,13 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
 
     /// filter_impls filters constant trait obligations and candidates that have a positive impl
     /// for a negative goal and a negative impl for a positive goal
-    #[instrument(level = "debug", skip(self))]
+    #[instrument(level = "debug", skip(self, candidates))]
     fn filter_impls(
         &mut self,
         candidates: Vec<SelectionCandidate<'tcx>>,
         obligation: &TraitObligation<'tcx>,
     ) -> Vec<SelectionCandidate<'tcx>> {
+        trace!("{candidates:#?}");
         let tcx = self.tcx();
         let mut result = Vec::with_capacity(candidates.len());
 
@@ -1177,6 +1186,7 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
             }
         }
 
+        trace!("{result:#?}");
         result
     }
 
@@ -1973,6 +1983,7 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
     /// Bar<i32> where struct Bar<T> { x: T, y: u32 } -> [i32, u32]
     /// Zed<i32> where enum Zed { A(T), B(u32) } -> [i32, u32]
     /// ```
+    #[instrument(level = "debug", skip(self), ret)]
     fn constituent_types_for_ty(
         &self,
         t: ty::Binder<'tcx, Ty<'tcx>>,

@@ -26,19 +26,23 @@ declare_lint! {
     ///
     /// ### Example
     ///
-    /// ```
+    /// ```rust
+    /// trait Duh {}
+    ///
+    /// impl Duh for i32 {}
+    ///
     /// trait Trait {
-    ///     type Assoc: Send;
+    ///     type Assoc: Duh;
     /// }
     ///
     /// struct Struct;
     ///
-    /// impl Trait for Struct {
-    ///     type Assoc = i32;
+    /// impl<F: Duh> Trait for F {
+    ///     type Assoc = F;
     /// }
     ///
     /// fn test() -> impl Trait<Assoc = impl Sized> {
-    ///     Struct
+    ///     42
     /// }
     /// ```
     ///
@@ -61,7 +65,7 @@ declare_lint_pass!(OpaqueHiddenInferredBound => [OPAQUE_HIDDEN_INFERRED_BOUND]);
 impl<'tcx> LateLintPass<'tcx> for OpaqueHiddenInferredBound {
     fn check_item(&mut self, cx: &LateContext<'tcx>, item: &'tcx hir::Item<'tcx>) {
         let hir::ItemKind::OpaqueTy(_) = &item.kind else { return; };
-        let def_id = item.def_id.def_id.to_def_id();
+        let def_id = item.owner_id.def_id.to_def_id();
         let infcx = &cx.tcx.infer_ctxt().build();
         // For every projection predicate in the opaque type's explicit bounds,
         // check that the type that we're assigning actually satisfies the bounds
@@ -104,6 +108,7 @@ impl<'tcx> LateLintPass<'tcx> for OpaqueHiddenInferredBound {
                 // then we must've taken advantage of the hack in `project_and_unify_types` where
                 // we replace opaques with inference vars. Emit a warning!
                 if !infcx.predicate_must_hold_modulo_regions(&traits::Obligation::new(
+                    cx.tcx,
                     traits::ObligationCause::dummy(),
                     cx.param_env,
                     assoc_pred,
@@ -150,8 +155,9 @@ struct OpaqueHiddenInferredBoundLint<'tcx> {
 }
 
 #[derive(Subdiagnostic)]
-#[suggestion_verbose(
+#[suggestion(
     lint_opaque_hidden_inferred_bound_sugg,
+    style = "verbose",
     applicability = "machine-applicable",
     code = " + {trait_ref}"
 )]

@@ -77,6 +77,8 @@ impl VisitTags for FrameData<'_> {
 pub enum MiriMemoryKind {
     /// `__rust_alloc` memory.
     Rust,
+    /// `miri_alloc` memory.
+    Miri,
     /// `malloc` memory.
     C,
     /// Windows `HeapAlloc` memory.
@@ -110,7 +112,7 @@ impl MayLeak for MiriMemoryKind {
     fn may_leak(self) -> bool {
         use self::MiriMemoryKind::*;
         match self {
-            Rust | C | WinHeap | Runtime => false,
+            Rust | Miri | C | WinHeap | Runtime => false,
             Machine | Global | ExternStatic | Tls => true,
         }
     }
@@ -121,6 +123,7 @@ impl fmt::Display for MiriMemoryKind {
         use self::MiriMemoryKind::*;
         match self {
             Rust => write!(f, "Rust heap"),
+            Miri => write!(f, "Miri bare-metal heap"),
             C => write!(f, "C heap"),
             WinHeap => write!(f, "Windows heap"),
             Machine => write!(f, "machine-managed memory"),
@@ -133,7 +136,7 @@ impl fmt::Display for MiriMemoryKind {
 }
 
 /// Pointer provenance.
-#[derive(Debug, Clone, Copy)]
+#[derive(Clone, Copy)]
 pub enum Provenance {
     Concrete {
         alloc_id: AllocId,
@@ -176,35 +179,30 @@ static_assert_size!(Pointer<Provenance>, 24);
 #[cfg(all(target_arch = "x86_64", target_pointer_width = "64"))]
 static_assert_size!(Scalar<Provenance>, 32);
 
-impl interpret::Provenance for Provenance {
-    /// We use absolute addresses in the `offset` of a `Pointer<Provenance>`.
-    const OFFSET_IS_ADDR: bool = true;
-
-    /// We cannot err on partial overwrites, it happens too often in practice (due to unions).
-    const ERR_ON_PARTIAL_PTR_OVERWRITE: bool = false;
-
-    fn fmt(ptr: &Pointer<Self>, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        let (prov, addr) = ptr.into_parts(); // address is absolute
-        write!(f, "{:#x}", addr.bytes())?;
-
-        match prov {
+impl fmt::Debug for Provenance {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        match self {
             Provenance::Concrete { alloc_id, sb } => {
                 // Forward `alternate` flag to `alloc_id` printing.
                 if f.alternate() {
-                    write!(f, "[{:#?}]", alloc_id)?;
+                    write!(f, "[{alloc_id:#?}]")?;
                 } else {
-                    write!(f, "[{:?}]", alloc_id)?;
+                    write!(f, "[{alloc_id:?}]")?;
                 }
                 // Print Stacked Borrows tag.
-                write!(f, "{:?}", sb)?;
+                write!(f, "{sb:?}")?;
             }
             Provenance::Wildcard => {
                 write!(f, "[wildcard]")?;
             }
         }
-
         Ok(())
     }
+}
+
+impl interpret::Provenance for Provenance {
+    /// We use absolute addresses in the `offset` of a `Pointer<Provenance>`.
+    const OFFSET_IS_ADDR: bool = true;
 
     fn get_alloc_id(self) -> Option<AllocId> {
         match self {
@@ -276,10 +274,14 @@ pub struct PrimitiveLayouts<'tcx> {
     pub i8: TyAndLayout<'tcx>,
     pub i16: TyAndLayout<'tcx>,
     pub i32: TyAndLayout<'tcx>,
+    pub i64: TyAndLayout<'tcx>,
+    pub i128: TyAndLayout<'tcx>,
     pub isize: TyAndLayout<'tcx>,
     pub u8: TyAndLayout<'tcx>,
     pub u16: TyAndLayout<'tcx>,
     pub u32: TyAndLayout<'tcx>,
+    pub u64: TyAndLayout<'tcx>,
+    pub u128: TyAndLayout<'tcx>,
     pub usize: TyAndLayout<'tcx>,
     pub bool: TyAndLayout<'tcx>,
     pub mut_raw_ptr: TyAndLayout<'tcx>,   // *mut ()
@@ -296,15 +298,41 @@ impl<'mir, 'tcx: 'mir> PrimitiveLayouts<'tcx> {
             i8: layout_cx.layout_of(tcx.types.i8)?,
             i16: layout_cx.layout_of(tcx.types.i16)?,
             i32: layout_cx.layout_of(tcx.types.i32)?,
+            i64: layout_cx.layout_of(tcx.types.i64)?,
+            i128: layout_cx.layout_of(tcx.types.i128)?,
             isize: layout_cx.layout_of(tcx.types.isize)?,
             u8: layout_cx.layout_of(tcx.types.u8)?,
             u16: layout_cx.layout_of(tcx.types.u16)?,
             u32: layout_cx.layout_of(tcx.types.u32)?,
+            u64: layout_cx.layout_of(tcx.types.u64)?,
+            u128: layout_cx.layout_of(tcx.types.u128)?,
             usize: layout_cx.layout_of(tcx.types.usize)?,
             bool: layout_cx.layout_of(tcx.types.bool)?,
             mut_raw_ptr: layout_cx.layout_of(mut_raw_ptr)?,
             const_raw_ptr: layout_cx.layout_of(const_raw_ptr)?,
         })
+    }
+
+    pub fn uint(&self, size: Size) -> Option<TyAndLayout<'tcx>> {
+        match size.bits() {
+            8 => Some(self.u8),
+            16 => Some(self.u16),
+            32 => Some(self.u32),
+            64 => Some(self.u64),
+            128 => Some(self.u128),
+            _ => None,
+        }
+    }
+
+    pub fn int(&self, size: Size) -> Option<TyAndLayout<'tcx>> {
+        match size.bits() {
+            8 => Some(self.i8),
+            16 => Some(self.i16),
+            32 => Some(self.i32),
+            64 => Some(self.i64),
+            128 => Some(self.i128),
+            _ => None,
+        }
     }
 }
 

@@ -93,6 +93,7 @@ case $HOST_TARGET in
     ;;
   i686-pc-windows-msvc)
     MIRI_TEST_TARGET=x86_64-unknown-linux-gnu run_tests
+    MIRI_TEST_TARGET=x86_64-pc-windows-gnu run_tests
     ;;
   *)
     echo "FATAL: unknown OS"

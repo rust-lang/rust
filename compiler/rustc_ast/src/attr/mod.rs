@@ -10,19 +10,18 @@ use crate::token::{self, CommentKind, Delimiter, Token};
 use crate::tokenstream::{DelimSpan, Spacing, TokenTree};
 use crate::tokenstream::{LazyAttrTokenStream, TokenStream};
 use crate::util::comments;
-
 use rustc_data_structures::sync::WorkerLocal;
 use rustc_index::bit_set::GrowableBitSet;
 use rustc_span::source_map::BytePos;
 use rustc_span::symbol::{sym, Ident, Symbol};
 use rustc_span::Span;
-
 use std::cell::Cell;
 use std::iter;
 #[cfg(debug_assertions)]
 use std::ops::BitXor;
 #[cfg(debug_assertions)]
 use std::sync::atomic::{AtomicU32, Ordering};
+use thin_vec::thin_vec;
 
 pub struct MarkedAttrs(GrowableBitSet<AttrId>);
 
@@ -471,12 +470,12 @@ impl MetaItem {
                         tokens.peek()
                     {
                         tokens.next();
-                        vec![PathSegment::from_ident(Ident::new(name, span))]
+                        thin_vec![PathSegment::from_ident(Ident::new(name, span))]
                     } else {
                         break 'arm Path::from_ident(Ident::new(name, span));
                     }
                 } else {
-                    vec![PathSegment::path_root(span)]
+                    thin_vec![PathSegment::path_root(span)]
                 };
                 loop {
                     if let Some(TokenTree::Token(Token { kind: token::Ident(name, _), span }, _)) =
@@ -533,7 +532,7 @@ impl MetaItemKind {
             MetaItemKind::NameValue(lit) => {
                 let expr = P(ast::Expr {
                     id: ast::DUMMY_NODE_ID,
-                    kind: ast::ExprKind::Lit(lit.clone()),
+                    kind: ast::ExprKind::Lit(lit.token_lit.clone()),
                     span: lit.span,
                     attrs: ast::AttrVec::new(),
                     tokens: None,
@@ -605,7 +604,7 @@ impl MetaItemKind {
                 MetaItemKind::name_value_from_tokens(&mut inner_tokens.into_trees())
             }
             Some(TokenTree::Token(token, _)) => {
-                Lit::from_token(&token).ok().map(MetaItemKind::NameValue)
+                Lit::from_token(&token).map(MetaItemKind::NameValue)
             }
             _ => None,
         }
@@ -618,8 +617,10 @@ impl MetaItemKind {
                 MetaItemKind::list_from_tokens(tokens.clone())
             }
             MacArgs::Delimited(..) => None,
-            MacArgs::Eq(_, MacArgsEq::Ast(expr)) => match &expr.kind {
-                ast::ExprKind::Lit(lit) => Some(MetaItemKind::NameValue(lit.clone())),
+            MacArgs::Eq(_, MacArgsEq::Ast(expr)) => match expr.kind {
+                ast::ExprKind::Lit(token_lit) => Some(MetaItemKind::NameValue(
+                    Lit::from_token_lit(token_lit, expr.span).expect("token_lit in from_mac_args"),
+                )),
                 _ => None,
             },
             MacArgs::Eq(_, MacArgsEq::Hir(lit)) => Some(MetaItemKind::NameValue(lit.clone())),
@@ -668,7 +669,7 @@ impl NestedMetaItem {
     {
         match tokens.peek() {
             Some(TokenTree::Token(token, _))
-                if let Ok(lit) = Lit::from_token(token) =>
+                if let Some(lit) = Lit::from_token(token) =>
             {
                 tokens.next();
                 return Some(NestedMetaItem::Literal(lit));

@@ -44,7 +44,7 @@ use rustc_middle::ty::print::with_no_trimmed_paths;
 #[derive(Debug)]
 pub enum GeneratorInteriorOrUpvar {
     // span of interior type
-    Interior(Span),
+    Interior(Span, Option<(Option<Span>, Span, Option<hir::HirId>, Option<Span>)>),
     // span of upvar
     Upvar(Span),
 }
@@ -283,7 +283,6 @@ pub trait TypeErrCtxtExt<'tcx> {
         &self,
         err: &mut Diagnostic,
         interior_or_upvar_span: GeneratorInteriorOrUpvar,
-        interior_extra_info: Option<(Option<Span>, Span, Option<hir::HirId>, Option<Span>)>,
         is_async: bool,
         outer_generator: Option<DefId>,
         trait_pred: ty::TraitPredicate<'tcx>,
@@ -302,7 +301,7 @@ pub trait TypeErrCtxtExt<'tcx> {
         obligated_types: &mut Vec<Ty<'tcx>>,
         seen_requirements: &mut FxHashSet<DefId>,
     ) where
-        T: fmt::Display;
+        T: fmt::Display + ToPredicate<'tcx, T>;
 
     /// Suggest to await before try: future? => future.await?
     fn suggest_await_before_try(
@@ -335,7 +334,7 @@ pub trait TypeErrCtxtExt<'tcx> {
     );
 }
 
-fn predicate_constraint(generics: &hir::Generics<'_>, pred: String) -> (Span, String) {
+fn predicate_constraint(generics: &hir::Generics<'_>, pred: ty::Predicate<'_>) -> (Span, String) {
     (
         generics.tail_span_for_predicate_suggestion(),
         format!("{} {}", generics.add_where_or_trailing_comma(), pred),
@@ -417,7 +416,7 @@ fn suggest_restriction<'tcx>(
             },
             // `fn foo(t: impl Trait)`
             //                       ^ suggest `where <T as Trait>::A: Bound`
-            predicate_constraint(hir_generics, trait_pred.to_predicate(tcx).to_string()),
+            predicate_constraint(hir_generics, trait_pred.to_predicate(tcx)),
         ];
         sugg.extend(ty_spans.into_iter().map(|s| (s, type_param_name.to_string())));
 
@@ -441,9 +440,7 @@ fn suggest_restriction<'tcx>(
                 .find(|p| !matches!(p.kind, hir::GenericParamKind::Type { synthetic: true, .. })),
             super_traits,
         ) {
-            (_, None) => {
-                predicate_constraint(hir_generics, trait_pred.to_predicate(tcx).to_string())
-            }
+            (_, None) => predicate_constraint(hir_generics, trait_pred.to_predicate(tcx)),
             (None, Some((ident, []))) => (
                 ident.span.shrink_to_hi(),
                 format!(": {}", trait_pred.print_modifiers_and_trait_path()),
@@ -714,7 +711,6 @@ impl<'tcx> TypeErrCtxtExt<'tcx> for TypeErrCtxt<'_, 'tcx> {
                     obligation.cause.body_id,
                     span,
                     base_ty,
-                    span,
                 );
                 if let Some(steps) = autoderef.find_map(|(ty, steps)| {
                     // Re-add the `&`
@@ -1019,7 +1015,7 @@ impl<'tcx> TypeErrCtxtExt<'tcx> for TypeErrCtxt<'_, 'tcx> {
         let mut never_suggest_borrow: Vec<_> =
             [LangItem::Copy, LangItem::Clone, LangItem::Unpin, LangItem::Sized]
                 .iter()
-                .filter_map(|lang_item| self.tcx.lang_items().require(*lang_item).ok())
+                .filter_map(|lang_item| self.tcx.lang_items().get(*lang_item))
                 .collect();
 
         if let Some(def_id) = self.tcx.get_diagnostic_item(sym::Send) {
@@ -1117,7 +1113,7 @@ impl<'tcx> TypeErrCtxtExt<'tcx> for TypeErrCtxt<'_, 'tcx> {
                         err.span_suggestions(
                             span.shrink_to_lo(),
                             "consider borrowing here",
-                            ["&".to_string(), "&mut ".to_string()].into_iter(),
+                            ["&".to_string(), "&mut ".to_string()],
                             Applicability::MaybeIncorrect,
                         );
                     } else {
@@ -1164,7 +1160,7 @@ impl<'tcx> TypeErrCtxtExt<'tcx> for TypeErrCtxt<'_, 'tcx> {
 
         for predicate in predicates.iter() {
             if !self.predicate_must_hold_modulo_regions(
-                &obligation.with(predicate.with_self_ty(self.tcx, self_ref_ty)),
+                &obligation.with(self.tcx, predicate.with_self_ty(self.tcx, self_ref_ty)),
             ) {
                 return;
             }
@@ -1525,7 +1521,7 @@ impl<'tcx> TypeErrCtxtExt<'tcx> for TypeErrCtxt<'_, 'tcx> {
                         let self_ty_satisfies_dyn_predicates = |self_ty| {
                             predicates.iter().all(|predicate| {
                                 let pred = predicate.with_self_ty(self.tcx, self_ty);
-                                let obl = Obligation::new(cause.clone(), param_env, pred);
+                                let obl = Obligation::new(self.tcx, cause.clone(), param_env, pred);
                                 self.predicate_may_hold(&obl)
                             })
                         };
@@ -2004,17 +2000,11 @@ impl<'tcx> TypeErrCtxtExt<'tcx> for TypeErrCtxt<'_, 'tcx> {
             .as_local()
             .and_then(|def_id| hir.maybe_body_owned_by(def_id))
             .map(|body_id| hir.body(body_id));
-        let is_async = match generator_did.as_local() {
-            Some(_) => generator_body
-                .and_then(|body| body.generator_kind())
-                .map(|generator_kind| matches!(generator_kind, hir::GeneratorKind::Async(..)))
-                .unwrap_or(false),
-            None => self
-                .tcx
-                .generator_kind(generator_did)
-                .map(|generator_kind| matches!(generator_kind, hir::GeneratorKind::Async(..)))
-                .unwrap_or(false),
-        };
+        let is_async = self
+            .tcx
+            .generator_kind(generator_did)
+            .map(|generator_kind| matches!(generator_kind, hir::GeneratorKind::Async(..)))
+            .unwrap_or(false);
         let mut visitor = AwaitsVisitor::default();
         if let Some(body) = generator_body {
             visitor.visit_body(body);
@@ -2044,61 +2034,60 @@ impl<'tcx> TypeErrCtxtExt<'tcx> for TypeErrCtxt<'_, 'tcx> {
             eq
         };
 
-        let mut interior_or_upvar_span = None;
-        let mut interior_extra_info = None;
-
         // Get the typeck results from the infcx if the generator is the function we are currently
         // type-checking; otherwise, get them by performing a query.  This is needed to avoid
         // cycles. If we can't use resolved types because the generator comes from another crate,
         // we still provide a targeted error but without all the relevant spans.
-        let generator_data: Option<GeneratorData<'tcx, '_>> = match &self.typeck_results {
-            Some(t) if t.hir_owner.to_def_id() == generator_did_root => {
-                Some(GeneratorData::Local(&t))
-            }
+        let generator_data = match &self.typeck_results {
+            Some(t) if t.hir_owner.to_def_id() == generator_did_root => GeneratorData::Local(&t),
             _ if generator_did.is_local() => {
-                Some(GeneratorData::Local(self.tcx.typeck(generator_did.expect_local())))
+                GeneratorData::Local(self.tcx.typeck(generator_did.expect_local()))
             }
-            _ => self
-                .tcx
-                .generator_diagnostic_data(generator_did)
-                .as_ref()
-                .map(|generator_diag_data| GeneratorData::Foreign(generator_diag_data)),
+            _ if let Some(generator_diag_data) = self.tcx.generator_diagnostic_data(generator_did) => {
+                GeneratorData::Foreign(generator_diag_data)
+            }
+            _ => return false,
         };
 
-        if let Some(generator_data) = generator_data.as_ref() {
-            interior_or_upvar_span =
-                generator_data.try_get_upvar_span(&self, generator_did, ty_matches);
+        let mut interior_or_upvar_span = None;
 
-            // The generator interior types share the same binders
-            if let Some(cause) =
-                generator_data.get_generator_interior_types().skip_binder().iter().find(
-                    |ty::GeneratorInteriorTypeCause { ty, .. }| {
-                        ty_matches(generator_data.get_generator_interior_types().rebind(*ty))
-                    },
-                )
-            {
-                let from_awaited_ty = generator_data.get_from_await_ty(visitor, hir, ty_matches);
-                let ty::GeneratorInteriorTypeCause { span, scope_span, yield_span, expr, .. } =
-                    cause;
+        let from_awaited_ty = generator_data.get_from_await_ty(visitor, hir, ty_matches);
+        debug!(?from_awaited_ty);
 
-                interior_or_upvar_span = Some(GeneratorInteriorOrUpvar::Interior(*span));
-                interior_extra_info = Some((*scope_span, *yield_span, *expr, from_awaited_ty));
-            }
+        // The generator interior types share the same binders
+        if let Some(cause) =
+            generator_data.get_generator_interior_types().skip_binder().iter().find(
+                |ty::GeneratorInteriorTypeCause { ty, .. }| {
+                    ty_matches(generator_data.get_generator_interior_types().rebind(*ty))
+                },
+            )
+        {
+            let ty::GeneratorInteriorTypeCause { span, scope_span, yield_span, expr, .. } = cause;
 
-            if interior_or_upvar_span.is_none() && generator_data.is_foreign() {
-                interior_or_upvar_span = Some(GeneratorInteriorOrUpvar::Interior(span));
-            }
+            interior_or_upvar_span = Some(GeneratorInteriorOrUpvar::Interior(
+                *span,
+                Some((*scope_span, *yield_span, *expr, from_awaited_ty)),
+            ));
         }
 
+        if interior_or_upvar_span.is_none() {
+            interior_or_upvar_span =
+                generator_data.try_get_upvar_span(&self, generator_did, ty_matches);
+        }
+
+        if interior_or_upvar_span.is_none() && generator_data.is_foreign() {
+            interior_or_upvar_span = Some(GeneratorInteriorOrUpvar::Interior(span, None));
+        }
+
+        debug!(?interior_or_upvar_span);
         if let Some(interior_or_upvar_span) = interior_or_upvar_span {
-            let typeck_results = generator_data.and_then(|generator_data| match generator_data {
+            let typeck_results = match generator_data {
                 GeneratorData::Local(typeck_results) => Some(typeck_results),
                 GeneratorData::Foreign(_) => None,
-            });
+            };
             self.note_obligation_cause_for_async_await(
                 err,
                 interior_or_upvar_span,
-                interior_extra_info,
                 is_async,
                 outer_generator,
                 trait_ref,
@@ -2120,7 +2109,6 @@ impl<'tcx> TypeErrCtxtExt<'tcx> for TypeErrCtxt<'_, 'tcx> {
         &self,
         err: &mut Diagnostic,
         interior_or_upvar_span: GeneratorInteriorOrUpvar,
-        interior_extra_info: Option<(Option<Span>, Span, Option<hir::HirId>, Option<Span>)>,
         is_async: bool,
         outer_generator: Option<DefId>,
         trait_pred: ty::TraitPredicate<'tcx>,
@@ -2242,7 +2230,7 @@ impl<'tcx> TypeErrCtxtExt<'tcx> for TypeErrCtxt<'_, 'tcx> {
             }
         };
         match interior_or_upvar_span {
-            GeneratorInteriorOrUpvar::Interior(interior_span) => {
+            GeneratorInteriorOrUpvar::Interior(interior_span, interior_extra_info) => {
                 if let Some((scope_span, yield_span, expr, from_awaited_ty)) = interior_extra_info {
                     if let Some(await_span) = from_awaited_ty {
                         // The type causing this obligation is one being awaited at await_span.
@@ -2407,7 +2395,8 @@ impl<'tcx> TypeErrCtxtExt<'tcx> for TypeErrCtxt<'_, 'tcx> {
             | ObligationCauseCode::CheckAssociatedTypeBounds { .. }
             | ObligationCauseCode::LetElse
             | ObligationCauseCode::BinOp { .. }
-            | ObligationCauseCode::AscribeUserTypeProvePredicate(..) => {}
+            | ObligationCauseCode::AscribeUserTypeProvePredicate(..)
+            | ObligationCauseCode::RustCall => {}
             ObligationCauseCode::SliceOrArrayElem => {
                 err.note("slice and array elements must have `Sized` type");
             }
@@ -2445,12 +2434,12 @@ impl<'tcx> TypeErrCtxtExt<'tcx> for TypeErrCtxt<'_, 'tcx> {
                             (Ok(l), Ok(r)) => l.line == r.line,
                             _ => true,
                         };
-                    if !ident.span.overlaps(span) && !same_line {
+                    if !ident.span.is_dummy() && !ident.span.overlaps(span) && !same_line {
                         multispan.push_span_label(ident.span, "required by a bound in this");
                     }
                 }
                 let descr = format!("required by a bound in `{}`", item_name);
-                if span != DUMMY_SP {
+                if !span.is_dummy() {
                     let msg = format!("required by this bound in `{}`", item_name);
                     multispan.push_span_label(span, msg);
                     err.span_note(multispan, &descr);
@@ -2713,7 +2702,7 @@ impl<'tcx> TypeErrCtxtExt<'tcx> for TypeErrCtxt<'_, 'tcx> {
 
                 obligated_types.push(ty);
 
-                let parent_predicate = parent_trait_ref.to_predicate(tcx);
+                let parent_predicate = parent_trait_ref;
                 if !self.is_recursive_obligation(obligated_types, &data.parent_code) {
                     // #74711: avoid a stack overflow
                     ensure_sufficient_stack(|| {
@@ -2744,9 +2733,10 @@ impl<'tcx> TypeErrCtxtExt<'tcx> for TypeErrCtxt<'_, 'tcx> {
                     self.resolve_vars_if_possible(data.derived.parent_trait_pred);
                 parent_trait_pred.remap_constness_diag(param_env);
                 let parent_def_id = parent_trait_pred.def_id();
+                let (self_ty, file) =
+                    self.tcx.short_ty_string(parent_trait_pred.skip_binder().self_ty());
                 let msg = format!(
-                    "required for `{}` to implement `{}`",
-                    parent_trait_pred.skip_binder().self_ty(),
+                    "required for `{self_ty}` to implement `{}`",
                     parent_trait_pred.print_modifiers_and_trait_path()
                 );
                 let mut is_auto_trait = false;
@@ -2775,7 +2765,13 @@ impl<'tcx> TypeErrCtxtExt<'tcx> for TypeErrCtxt<'_, 'tcx> {
                     _ => err.note(&msg),
                 };
 
-                let mut parent_predicate = parent_trait_pred.to_predicate(tcx);
+                if let Some(file) = file {
+                    err.note(&format!(
+                        "the full type name has been written to '{}'",
+                        file.display(),
+                    ));
+                }
+                let mut parent_predicate = parent_trait_pred;
                 let mut data = &data.derived;
                 let mut count = 0;
                 seen_requirements.insert(parent_def_id);
@@ -2815,11 +2811,18 @@ impl<'tcx> TypeErrCtxtExt<'tcx> for TypeErrCtxt<'_, 'tcx> {
                         count,
                         pluralize!(count)
                     ));
+                    let (self_ty, file) =
+                        self.tcx.short_ty_string(parent_trait_pred.skip_binder().self_ty());
                     err.note(&format!(
-                        "required for `{}` to implement `{}`",
-                        parent_trait_pred.skip_binder().self_ty(),
+                        "required for `{self_ty}` to implement `{}`",
                         parent_trait_pred.print_modifiers_and_trait_path()
                     ));
+                    if let Some(file) = file {
+                        err.note(&format!(
+                            "the full type name has been written to '{}'",
+                            file.display(),
+                        ));
+                    }
                 }
                 // #74711: avoid a stack overflow
                 ensure_sufficient_stack(|| {
@@ -2835,7 +2838,7 @@ impl<'tcx> TypeErrCtxtExt<'tcx> for TypeErrCtxt<'_, 'tcx> {
             }
             ObligationCauseCode::DerivedObligation(ref data) => {
                 let parent_trait_ref = self.resolve_vars_if_possible(data.parent_trait_pred);
-                let parent_predicate = parent_trait_ref.to_predicate(tcx);
+                let parent_predicate = parent_trait_ref;
                 // #74711: avoid a stack overflow
                 ensure_sufficient_stack(|| {
                     self.note_obligation_cause_code(
@@ -3079,9 +3082,10 @@ impl<'tcx> TypeErrCtxtExt<'tcx> for TypeErrCtxt<'_, 'tcx> {
                         ..*tr
                     });
                     let field_obl = Obligation::new(
+                        self.tcx,
                         obligation.cause.clone(),
                         obligation.param_env,
-                        trait_pred.to_predicate(self.tcx),
+                        trait_pred,
                     );
                     self.predicate_must_hold_modulo_regions(&field_obl)
                 })

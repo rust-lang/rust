@@ -87,7 +87,7 @@ fn test_posix_realpath_errors() {
     assert_eq!(e.kind(), ErrorKind::NotFound);
 }
 
-#[cfg(any(target_os = "linux"))]
+#[cfg(target_os = "linux")]
 fn test_posix_fadvise() {
     use std::convert::TryInto;
     use std::io::Write;
@@ -115,7 +115,7 @@ fn test_posix_fadvise() {
     assert_eq!(result, 0);
 }
 
-#[cfg(any(target_os = "linux"))]
+#[cfg(target_os = "linux")]
 fn test_sync_file_range() {
     use std::io::Write;
 
@@ -181,17 +181,25 @@ fn test_thread_local_errno() {
 }
 
 /// Tests whether clock support exists at all
-#[cfg(any(target_os = "linux"))]
 fn test_clocks() {
     let mut tp = std::mem::MaybeUninit::<libc::timespec>::uninit();
     let is_error = unsafe { libc::clock_gettime(libc::CLOCK_REALTIME, tp.as_mut_ptr()) };
     assert_eq!(is_error, 0);
-    let is_error = unsafe { libc::clock_gettime(libc::CLOCK_REALTIME_COARSE, tp.as_mut_ptr()) };
-    assert_eq!(is_error, 0);
     let is_error = unsafe { libc::clock_gettime(libc::CLOCK_MONOTONIC, tp.as_mut_ptr()) };
     assert_eq!(is_error, 0);
-    let is_error = unsafe { libc::clock_gettime(libc::CLOCK_MONOTONIC_COARSE, tp.as_mut_ptr()) };
-    assert_eq!(is_error, 0);
+    #[cfg(target_os = "linux")]
+    {
+        let is_error = unsafe { libc::clock_gettime(libc::CLOCK_REALTIME_COARSE, tp.as_mut_ptr()) };
+        assert_eq!(is_error, 0);
+        let is_error =
+            unsafe { libc::clock_gettime(libc::CLOCK_MONOTONIC_COARSE, tp.as_mut_ptr()) };
+        assert_eq!(is_error, 0);
+    }
+    #[cfg(all(target_os = "macos", target_arch = "aarch64"))]
+    {
+        let is_error = unsafe { libc::clock_gettime(libc::CLOCK_UPTIME_RAW, tp.as_mut_ptr()) };
+        assert_eq!(is_error, 0);
+    }
 }
 
 fn test_posix_gettimeofday() {
@@ -283,9 +291,6 @@ fn test_posix_mkstemp() {
 }
 
 fn main() {
-    #[cfg(any(target_os = "linux"))]
-    test_posix_fadvise();
-
     test_posix_gettimeofday();
     test_posix_mkstemp();
 
@@ -293,13 +298,14 @@ fn main() {
     test_posix_realpath_noalloc();
     test_posix_realpath_errors();
 
-    #[cfg(any(target_os = "linux"))]
-    test_sync_file_range();
-
     test_thread_local_errno();
 
-    #[cfg(any(target_os = "linux"))]
+    test_isatty();
     test_clocks();
 
-    test_isatty();
+    #[cfg(target_os = "linux")]
+    {
+        test_posix_fadvise();
+        test_sync_file_range();
+    }
 }

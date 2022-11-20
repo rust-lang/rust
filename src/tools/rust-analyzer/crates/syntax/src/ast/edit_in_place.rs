@@ -645,7 +645,7 @@ impl ast::RecordPatFieldList {
 }
 
 fn get_or_insert_comma_after(syntax: &SyntaxNode) -> SyntaxToken {
-    let comma = match syntax
+    match syntax
         .siblings_with_tokens(Direction::Next)
         .filter_map(|it| it.into_token())
         .find(|it| it.kind() == T![,])
@@ -656,8 +656,7 @@ fn get_or_insert_comma_after(syntax: &SyntaxNode) -> SyntaxToken {
             ted::insert(Position::after(syntax), &comma);
             comma
         }
-    };
-    comma
+    }
 }
 
 impl ast::StmtList {

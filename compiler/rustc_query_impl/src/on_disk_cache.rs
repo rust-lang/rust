@@ -1,8 +1,9 @@
 use crate::QueryCtxt;
-use rustc_data_structures::fx::{FxHashMap, FxHashSet, FxIndexSet};
+use rustc_data_structures::fx::{FxHashMap, FxIndexSet};
 use rustc_data_structures::memmap::Mmap;
 use rustc_data_structures::sync::{HashMapExt, Lock, Lrc, RwLock};
 use rustc_data_structures::unhash::UnhashMap;
+use rustc_data_structures::unord::UnordSet;
 use rustc_hir::def_id::{CrateNum, DefId, DefIndex, LocalDefId, StableCrateId, LOCAL_CRATE};
 use rustc_hir::definitions::DefPathHash;
 use rustc_index::vec::{Idx, IndexVec};
@@ -118,12 +119,11 @@ pub type EncodedDepNodeIndex = Vec<(SerializedDepNodeIndex, AbsoluteBytePos)>;
 struct SourceFileIndex(u32);
 
 #[derive(Copy, Clone, Debug, Hash, Eq, PartialEq, Encodable, Decodable)]
-pub struct AbsoluteBytePos(u32);
+pub struct AbsoluteBytePos(u64);
 
 impl AbsoluteBytePos {
     fn new(pos: usize) -> AbsoluteBytePos {
-        debug_assert!(pos <= u32::MAX as usize);
-        AbsoluteBytePos(pos as u32)
+        AbsoluteBytePos(pos.try_into().expect("Incremental cache file size overflowed u64."))
     }
 
     fn to_usize(self) -> usize {
@@ -792,7 +792,7 @@ impl<'a, 'tcx> Decodable<CacheDecoder<'a, 'tcx>> for DefId {
     }
 }
 
-impl<'a, 'tcx> Decodable<CacheDecoder<'a, 'tcx>> for &'tcx FxHashSet<LocalDefId> {
+impl<'a, 'tcx> Decodable<CacheDecoder<'a, 'tcx>> for &'tcx UnordSet<LocalDefId> {
     fn decode(d: &mut CacheDecoder<'a, 'tcx>) -> Self {
         RefDecodable::decode(d)
     }
@@ -1062,7 +1062,7 @@ pub fn encode_query_results<'a, 'tcx, CTX, Q>(
     query_result_index: &mut EncodedDepNodeIndex,
 ) where
     CTX: QueryContext + 'tcx,
-    Q: super::QueryDescription<CTX>,
+    Q: super::QueryConfig<CTX>,
     Q::Value: Encodable<CacheEncoder<'a, 'tcx>>,
 {
     let _timer = tcx

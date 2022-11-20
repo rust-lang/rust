@@ -4,15 +4,13 @@ use rustc_hir::def_id::LocalDefId;
 use rustc_hir::OpaqueTyOrigin;
 use rustc_infer::infer::TyCtxtInferExt as _;
 use rustc_infer::infer::{DefiningAnchor, InferCtxt};
-use rustc_infer::traits::{Obligation, ObligationCause, TraitEngine};
+use rustc_infer::traits::{Obligation, ObligationCause};
 use rustc_middle::ty::subst::{GenericArgKind, InternalSubsts};
 use rustc_middle::ty::visit::TypeVisitable;
-use rustc_middle::ty::{
-    self, OpaqueHiddenType, OpaqueTypeKey, ToPredicate, Ty, TyCtxt, TypeFoldable,
-};
+use rustc_middle::ty::{self, OpaqueHiddenType, OpaqueTypeKey, Ty, TyCtxt, TypeFoldable};
 use rustc_span::Span;
 use rustc_trait_selection::traits::error_reporting::TypeErrCtxtExt as _;
-use rustc_trait_selection::traits::TraitEngineExt as _;
+use rustc_trait_selection::traits::ObligationCtxt;
 
 use super::RegionInferenceContext;
 
@@ -221,8 +219,8 @@ impl<'tcx> InferCtxtExt<'tcx> for InferCtxt<'tcx> {
         instantiated_ty: OpaqueHiddenType<'tcx>,
         origin: OpaqueTyOrigin,
     ) -> Ty<'tcx> {
-        if self.is_tainted_by_errors() {
-            return self.tcx.ty_error();
+        if let Some(e) = self.tainted_by_errors() {
+            return self.tcx.ty_error_with_guaranteed(e);
         }
 
         let definition_ty = instantiated_ty
@@ -252,50 +250,45 @@ impl<'tcx> InferCtxtExt<'tcx> for InferCtxt<'tcx> {
         // type-alias-impl-trait/issue-67844-nested-opaque.rs
         let infcx =
             self.tcx.infer_ctxt().with_opaque_type_inference(DefiningAnchor::Bubble).build();
+        let ocx = ObligationCtxt::new(&infcx);
         // Require the hidden type to be well-formed with only the generics of the opaque type.
         // Defining use functions may have more bounds than the opaque type, which is ok, as long as the
         // hidden type is well formed even without those bounds.
-        let predicate = ty::Binder::dummy(ty::PredicateKind::WellFormed(definition_ty.into()))
-            .to_predicate(infcx.tcx);
-        let mut fulfillment_cx = <dyn TraitEngine<'tcx>>::new(infcx.tcx);
+        let predicate = ty::Binder::dummy(ty::PredicateKind::WellFormed(definition_ty.into()));
 
         let id_substs = InternalSubsts::identity_for_item(self.tcx, def_id.to_def_id());
 
         // Require that the hidden type actually fulfills all the bounds of the opaque type, even without
         // the bounds that the function supplies.
-        match infcx.register_hidden_type(
-            OpaqueTypeKey { def_id, substs: id_substs },
-            ObligationCause::misc(instantiated_ty.span, body_id),
+        let opaque_ty = self.tcx.mk_opaque(def_id.to_def_id(), id_substs);
+        if let Err(err) = ocx.eq(
+            &ObligationCause::misc(instantiated_ty.span, body_id),
             param_env,
+            opaque_ty,
             definition_ty,
-            origin,
         ) {
-            Ok(infer_ok) => {
-                for obligation in infer_ok.obligations {
-                    fulfillment_cx.register_predicate_obligation(&infcx, obligation);
-                }
-            }
-            Err(err) => {
-                infcx
-                    .err_ctxt()
-                    .report_mismatched_types(
-                        &ObligationCause::misc(instantiated_ty.span, body_id),
-                        self.tcx.mk_opaque(def_id.to_def_id(), id_substs),
-                        definition_ty,
-                        err,
-                    )
-                    .emit();
-            }
+            infcx
+                .err_ctxt()
+                .report_mismatched_types(
+                    &ObligationCause::misc(instantiated_ty.span, body_id),
+                    opaque_ty,
+                    definition_ty,
+                    err,
+                )
+                .emit();
         }
 
-        fulfillment_cx.register_predicate_obligation(
-            &infcx,
-            Obligation::misc(instantiated_ty.span, body_id, param_env, predicate),
-        );
+        ocx.register_obligation(Obligation::misc(
+            infcx.tcx,
+            instantiated_ty.span,
+            body_id,
+            param_env,
+            predicate,
+        ));
 
         // Check that all obligations are satisfied by the implementation's
         // version.
-        let errors = fulfillment_cx.select_all_or_error(&infcx);
+        let errors = ocx.select_all_or_error();
 
         // This is still required for many(half of the tests in ui/type-alias-impl-trait)
         // tests to pass
@@ -304,8 +297,8 @@ impl<'tcx> InferCtxtExt<'tcx> for InferCtxt<'tcx> {
         if errors.is_empty() {
             definition_ty
         } else {
-            infcx.err_ctxt().report_fulfillment_errors(&errors, None, false);
-            self.tcx.ty_error()
+            let reported = infcx.err_ctxt().report_fulfillment_errors(&errors, None);
+            self.tcx.ty_error_with_guaranteed(reported)
         }
     }
 }

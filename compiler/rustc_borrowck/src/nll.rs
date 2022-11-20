@@ -1,3 +1,5 @@
+#![deny(rustc::untranslatable_diagnostic)]
+#![deny(rustc::diagnostic_outside_of_impl)]
 //! The entry point of the NLL borrow checker.
 
 use rustc_data_structures::vec_map::VecMap;
@@ -242,7 +244,6 @@ pub(crate) fn compute_regions<'cx, 'tcx>(
         mut liveness_constraints,
         outlives_constraints,
         member_constraints,
-        closure_bounds_mapping,
         universe_causes,
         type_tests,
     } = constraints;
@@ -264,7 +265,6 @@ pub(crate) fn compute_regions<'cx, 'tcx>(
         universal_region_relations,
         outlives_constraints,
         member_constraints,
-        closure_bounds_mapping,
         universe_causes,
         type_tests,
         liveness_constraints,
@@ -303,7 +303,10 @@ pub(crate) fn compute_regions<'cx, 'tcx>(
 
     if !nll_errors.is_empty() {
         // Suppress unhelpful extra errors in `infer_opaque_types`.
-        infcx.set_tainted_by_errors();
+        infcx.set_tainted_by_errors(infcx.tcx.sess.delay_span_bug(
+            body.span,
+            "`compute_regions` tainted `infcx` with errors but did not emit any errors",
+        ));
     }
 
     let remapped_opaque_tys = regioncx.infer_opaque_types(&infcx, opaque_type_values);

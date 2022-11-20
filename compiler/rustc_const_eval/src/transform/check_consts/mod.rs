@@ -62,7 +62,7 @@ impl<'mir, 'tcx> ConstCx<'mir, 'tcx> {
     }
 
     fn is_async(&self) -> bool {
-        self.tcx.asyncness(self.def_id()) == hir::IsAsync::Async
+        self.tcx.asyncness(self.def_id()).is_async()
     }
 }
 

@@ -5,7 +5,9 @@
 //! This API is completely unstable and subject to change.
 
 #![doc(html_root_url = "https://doc.rust-lang.org/nightly/nightly-rustc/")]
+#![feature(is_terminal)]
 #![feature(once_cell)]
+#![feature(decl_macro)]
 #![recursion_limit = "256"]
 #![allow(rustc::potential_query_instability)]
 #![deny(rustc::untranslatable_diagnostic)]
@@ -26,7 +28,6 @@ use rustc_feature::find_gated_cfg;
 use rustc_interface::util::{self, collect_crate_types, get_codegen_backend};
 use rustc_interface::{interface, Queries};
 use rustc_lint::LintStore;
-use rustc_log::stdout_isatty;
 use rustc_metadata::locator;
 use rustc_save_analysis as save;
 use rustc_save_analysis::DumpHandler;
@@ -47,7 +48,7 @@ use std::default::Default;
 use std::env;
 use std::ffi::OsString;
 use std::fs;
-use std::io::{self, Read, Write};
+use std::io::{self, IsTerminal, Read, Write};
 use std::panic::{self, catch_unwind};
 use std::path::PathBuf;
 use std::process::{self, Command, Stdio};
@@ -514,7 +515,7 @@ fn handle_explain(registry: Registry, code: &str, output: ErrorOutputType) {
                 }
                 text.push('\n');
             }
-            if stdout_isatty() {
+            if io::stdout().is_terminal() {
                 show_content_with_pager(&text);
             } else {
                 print!("{}", text);
@@ -736,26 +737,58 @@ fn print_crate_info(
             // Any output here interferes with Cargo's parsing of other printed output
             NativeStaticLibs => {}
             LinkArgs => {}
+            SplitDebuginfo => {
+                use rustc_target::spec::SplitDebuginfo::{Off, Packed, Unpacked};
+
+                for split in &[Off, Packed, Unpacked] {
+                    let stable = sess.target.options.supported_split_debuginfo.contains(split);
+                    let unstable_ok = sess.unstable_options();
+                    if stable || unstable_ok {
+                        println!("{}", split);
+                    }
+                }
+            }
         }
     }
     Compilation::Stop
 }
 
 /// Prints version information
-pub fn version(binary: &str, matches: &getopts::Matches) {
+///
+/// NOTE: this is a macro to support drivers built at a different time than the main `rustc_driver` crate.
+pub macro version($binary: literal, $matches: expr) {
+    fn unw(x: Option<&str>) -> &str {
+        x.unwrap_or("unknown")
+    }
+    $crate::version_at_macro_invocation(
+        $binary,
+        $matches,
+        unw(option_env!("CFG_VERSION")),
+        unw(option_env!("CFG_VER_HASH")),
+        unw(option_env!("CFG_VER_DATE")),
+        unw(option_env!("CFG_RELEASE")),
+    )
+}
+
+#[doc(hidden)] // use the macro instead
+pub fn version_at_macro_invocation(
+    binary: &str,
+    matches: &getopts::Matches,
+    version: &str,
+    commit_hash: &str,
+    commit_date: &str,
+    release: &str,
+) {
     let verbose = matches.opt_present("verbose");
 
-    println!("{} {}", binary, util::version_str().unwrap_or("unknown version"));
+    println!("{} {}", binary, version);
 
     if verbose {
-        fn unw(x: Option<&str>) -> &str {
-            x.unwrap_or("unknown")
-        }
         println!("binary: {}", binary);
-        println!("commit-hash: {}", unw(util::commit_hash_str()));
-        println!("commit-date: {}", unw(util::commit_date_str()));
+        println!("commit-hash: {}", commit_hash);
+        println!("commit-date: {}", commit_date);
         println!("host: {}", config::host_triple());
-        println!("release: {}", unw(util::release_str()));
+        println!("release: {}", release);
 
         let debug_flags = matches.opt_strs("Z");
         let backend_name = debug_flags.iter().find_map(|x| x.strip_prefix("codegen-backend="));
@@ -1071,7 +1104,7 @@ pub fn handle_options(args: &[String]) -> Option<getopts::Matches> {
     }
 
     if matches.opt_present("version") {
-        version("rustc", &matches);
+        version!("rustc", &matches);
         return None;
     }
 
@@ -1200,6 +1233,7 @@ pub fn report_ice(info: &panic::PanicInfo<'_>, bug_report_url: &str) {
         false,
         None,
         false,
+        false,
     ));
     let handler = rustc_errors::Handler::with_emitter(true, None, emitter);
 
@@ -1215,7 +1249,7 @@ pub fn report_ice(info: &panic::PanicInfo<'_>, bug_report_url: &str) {
         format!("we would appreciate a bug report: {}", bug_report_url).into(),
         format!(
             "rustc {} running on {}",
-            util::version_str().unwrap_or("unknown_version"),
+            util::version_str!().unwrap_or("unknown_version"),
             config::host_triple()
         )
         .into(),

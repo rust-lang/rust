@@ -1,3 +1,5 @@
+#![deny(rustc::untranslatable_diagnostic)]
+#![deny(rustc::diagnostic_outside_of_impl)]
 use rustc_index::vec::IndexVec;
 use rustc_infer::infer::{InferCtxt, NllRegionVariableOrigin};
 use rustc_middle::mir::visit::{MutVisitor, TyContext};

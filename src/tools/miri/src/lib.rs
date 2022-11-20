@@ -3,7 +3,6 @@
 #![feature(never_type)]
 #![feature(try_blocks)]
 #![feature(io_error_more)]
-#![feature(int_log)]
 #![feature(variant_count)]
 #![feature(yeet_expr)]
 #![feature(is_some_and)]
@@ -38,6 +37,8 @@
     clippy::cast_lossless,
     clippy::cast_possible_truncation,
 )]
+// Needed for rustdoc from bootstrap (with `-Znormalize-docs`).
+#![recursion_limit = "256"]
 
 extern crate rustc_apfloat;
 extern crate rustc_ast;
@@ -45,6 +46,7 @@ extern crate rustc_ast;
 extern crate rustc_middle;
 extern crate rustc_const_eval;
 extern crate rustc_data_structures;
+extern crate rustc_errors;
 extern crate rustc_hir;
 extern crate rustc_index;
 extern crate rustc_session;
@@ -98,8 +100,8 @@ pub use crate::eval::{
 pub use crate::helpers::{CurrentSpan, EvalContextExt as _};
 pub use crate::intptrcast::ProvenanceMode;
 pub use crate::machine::{
-    AllocExtra, FrameData, MiriInterpCx, MiriInterpCxExt, MiriMachine, MiriMemoryKind, Provenance,
-    ProvenanceExtra, PAGE_SIZE, STACK_ADDR, STACK_SIZE,
+    AllocExtra, FrameData, MiriInterpCx, MiriInterpCxExt, MiriMachine, MiriMemoryKind,
+    PrimitiveLayouts, Provenance, ProvenanceExtra, PAGE_SIZE, STACK_ADDR, STACK_SIZE,
 };
 pub use crate::mono_hash_map::MonoHashMap;
 pub use crate::operator::EvalContextExt as _;

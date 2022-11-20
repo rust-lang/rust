@@ -1,5 +1,4 @@
 //@compile-flags: -Coverflow-checks=off
-#![feature(int_log)]
 #![allow(arithmetic_overflow)]
 
 pub fn main() {

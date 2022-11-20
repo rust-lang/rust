@@ -48,7 +48,8 @@ impl JsonRenderer<'_> {
             .map(rustc_ast_pretty::pprust::attribute_to_string)
             .collect();
         let span = item.span(self.tcx);
-        let clean::Item { name, attrs: _, kind: _, visibility, item_id, cfg: _ } = item;
+        let visibility = item.visibility(self.tcx);
+        let clean::Item { name, attrs: _, kind: _, item_id, cfg: _, .. } = item;
         let inner = match *item.kind {
             clean::KeywordItem => return None,
             clean::StrippedItem(ref inner) => {
@@ -99,13 +100,12 @@ impl JsonRenderer<'_> {
         }
     }
 
-    fn convert_visibility(&self, v: clean::Visibility) -> Visibility {
-        use clean::Visibility::*;
+    fn convert_visibility(&self, v: Option<ty::Visibility<DefId>>) -> Visibility {
         match v {
-            Public => Visibility::Public,
-            Inherited => Visibility::Default,
-            Restricted(did) if did.is_crate_root() => Visibility::Crate,
-            Restricted(did) => Visibility::Restricted {
+            None => Visibility::Default,
+            Some(ty::Visibility::Public) => Visibility::Public,
+            Some(ty::Visibility::Restricted(did)) if did.is_crate_root() => Visibility::Crate,
+            Some(ty::Visibility::Restricted(did)) => Visibility::Restricted {
                 parent: from_item_id(did.into(), self.tcx),
                 path: self.tcx.def_path(did).to_string_no_crate_verbose(),
             },
@@ -283,7 +283,7 @@ fn from_clean_item(item: clean::Item, tcx: TyCtxt<'_>) -> ItemEnum {
             ItemEnum::AssocConst { type_: ty.into_tcx(tcx), default: Some(default.expr(tcx)) }
         }
         TyAssocTypeItem(g, b) => ItemEnum::AssocType {
-            generics: (*g).into_tcx(tcx),
+            generics: g.into_tcx(tcx),
             bounds: b.into_tcx(tcx),
             default: None,
         },
@@ -485,7 +485,7 @@ impl FromWithTcx<clean::Type> for Type {
             BareFunction(f) => Type::FunctionPointer(Box::new((*f).into_tcx(tcx))),
             Tuple(t) => Type::Tuple(t.into_tcx(tcx)),
             Slice(t) => Type::Slice(Box::new((*t).into_tcx(tcx))),
-            Array(t, s) => Type::Array { type_: Box::new((*t).into_tcx(tcx)), len: s },
+            Array(t, s) => Type::Array { type_: Box::new((*t).into_tcx(tcx)), len: s.to_string() },
             ImplTrait(g) => Type::ImplTrait(g.into_tcx(tcx)),
             Infer => Type::Infer,
             RawPointer(mutability, type_) => Type::RawPointer {
@@ -674,7 +674,7 @@ impl FromWithTcx<clean::Variant> for Variant {
 impl FromWithTcx<clean::Discriminant> for Discriminant {
     fn from_tcx(disr: clean::Discriminant, tcx: TyCtxt<'_>) -> Self {
         Discriminant {
-            // expr is only none if going throught the inlineing path, which gets
+            // expr is only none if going through the inlineing path, which gets
             // `rustc_middle` types, not `rustc_hir`, but because JSON never inlines
             // the expr is always some.
             expr: disr.expr(tcx).unwrap(),

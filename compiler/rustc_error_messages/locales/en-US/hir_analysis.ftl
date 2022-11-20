@@ -93,7 +93,7 @@ hir_analysis_expected_default_return_type = expected `()` because of default ret
 hir_analysis_expected_return_type = expected `{$expected}` because of return type
 
 hir_analysis_unconstrained_opaque_type = unconstrained opaque type
-    .note = `{$name}` must be used in combination with a concrete type within the same module
+    .note = `{$name}` must be used in combination with a concrete type within the same {$what}
 
 hir_analysis_missing_type_params =
     the type {$parameterCount ->
@@ -137,3 +137,19 @@ hir_analysis_expected_used_symbol = expected `used`, `used(compiler)` or `used(l
 hir_analysis_missing_parentheses_in_range = can't call method `{$method_name}` on type `{$ty_str}`
 
 hir_analysis_add_missing_parentheses_in_range = you must surround the range in parentheses to call its `{$func_name}` function
+
+hir_analysis_const_impl_for_non_const_trait =
+    const `impl` for trait `{$trait_name}` which is not marked with `#[const_trait]`
+    .suggestion = mark `{$trait_name}` as const
+    .note = marking a trait with `#[const_trait]` ensures all default method bodies are `const`
+    .adding = adding a non-const method body in the future would be a breaking change
+
+hir_analysis_const_bound_for_non_const_trait =
+    ~const can only be applied to `#[const_trait]` traits
+
+hir_analysis_self_in_impl_self =
+    `Self` is not valid in the self type of an impl block
+    .note = replace `Self` with a different type
+
+hir_analysis_op_trait_generic_params =
+    `{$method_name}` must not have any generic parameters

@@ -25,7 +25,6 @@ store.register_group(true, "clippy::style", Some("clippy_style"), vec![
     LintId::of(enum_variants::MODULE_INCEPTION),
     LintId::of(eta_reduction::REDUNDANT_CLOSURE),
     LintId::of(float_literal::EXCESSIVE_PRECISION),
-    LintId::of(format_args::UNINLINED_FORMAT_ARGS),
     LintId::of(from_over_into::FROM_OVER_INTO),
     LintId::of(from_str_radix_10::FROM_STR_RADIX_10),
     LintId::of(functions::DOUBLE_MUST_USE),

@@ -276,7 +276,7 @@ pub fn explain_lint_level_source(
 
 /// The innermost function for emitting lints.
 ///
-/// If you are loocking to implement a lint, look for higher level functions,
+/// If you are looking to implement a lint, look for higher level functions,
 /// for example:
 /// - [`TyCtxt::emit_spanned_lint`]
 /// - [`TyCtxt::struct_span_lint_hir`]

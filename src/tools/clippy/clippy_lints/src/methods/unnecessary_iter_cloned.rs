@@ -5,7 +5,7 @@ use clippy_utils::source::snippet_opt;
 use clippy_utils::ty::{get_associated_type, get_iterator_item_ty, implements_trait};
 use clippy_utils::{fn_def_id, get_parent_expr};
 use rustc_errors::Applicability;
-use rustc_hir::{def_id::DefId, Expr, ExprKind, LangItem};
+use rustc_hir::{def_id::DefId, Expr, ExprKind};
 use rustc_lint::LateContext;
 use rustc_span::{sym, Symbol};
 
@@ -100,5 +100,5 @@ pub fn check_for_loop_iter(
 
 /// Returns true if the named method is `IntoIterator::into_iter`.
 pub fn is_into_iter(cx: &LateContext<'_>, callee_def_id: DefId) -> bool {
-    cx.tcx.lang_items().require(LangItem::IntoIterIntoIter) == Ok(callee_def_id)
+    Some(callee_def_id) == cx.tcx.lang_items().into_iter_fn()
 }

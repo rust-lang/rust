@@ -1,0 +1,11 @@
+error[E0658]: use of unstable library feature 'data'
+  --> $DIR/assoc-inherent-unstable.rs:4:13
+   |
+LL | type Data = aux::Owner::Data;
+   |             ^^^^^^^^^^^^^^^^
+   |
+   = help: add `#![feature(data)]` to the crate attributes to enable
+
+error: aborting due to previous error
+
+For more information about this error, try `rustc --explain E0658`.

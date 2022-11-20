@@ -548,6 +548,7 @@ pub enum PrintRequest {
     NativeStaticLibs,
     StackProtectorStrategies,
     LinkArgs,
+    SplitDebuginfo,
 }
 
 pub enum Input {
@@ -738,7 +739,7 @@ impl Default for Options {
             actually_rustdoc: false,
             trimmed_def_paths: TrimmedDefPaths::default(),
             cli_forced_codegen_units: None,
-            cli_forced_thinlto_off: false,
+            cli_forced_local_thinlto_off: false,
             remap_path_prefix: Vec::new(),
             real_rust_source_base_dir: None,
             edition: DEFAULT_EDITION,
@@ -794,6 +795,7 @@ impl UnstableOptions {
             report_delayed_bugs: self.report_delayed_bugs,
             macro_backtrace: self.macro_backtrace,
             deduplicate_diagnostics: self.deduplicate_diagnostics,
+            track_diagnostics: self.track_diagnostics,
         }
     }
 }
@@ -1720,7 +1722,7 @@ fn should_override_cgus_and_disable_thinlto(
     error_format: ErrorOutputType,
     mut codegen_units: Option<usize>,
 ) -> (bool, Option<usize>) {
-    let mut disable_thinlto = false;
+    let mut disable_local_thinlto = false;
     // Issue #30063: if user requests LLVM-related output to one
     // particular path, disable codegen-units.
     let incompatible: Vec<_> = output_types
@@ -1745,12 +1747,12 @@ fn should_override_cgus_and_disable_thinlto(
                     }
                     early_warn(error_format, "resetting to default -C codegen-units=1");
                     codegen_units = Some(1);
-                    disable_thinlto = true;
+                    disable_local_thinlto = true;
                 }
             }
             _ => {
                 codegen_units = Some(1);
-                disable_thinlto = true;
+                disable_local_thinlto = true;
             }
         }
     }
@@ -1759,7 +1761,7 @@ fn should_override_cgus_and_disable_thinlto(
         early_error(error_format, "value for codegen units must be a positive non-zero integer");
     }
 
-    (disable_thinlto, codegen_units)
+    (disable_local_thinlto, codegen_units)
 }
 
 fn check_thread_count(unstable_opts: &UnstableOptions, error_format: ErrorOutputType) {
@@ -1788,34 +1790,50 @@ fn collect_print_requests(
         cg.target_feature = String::new();
     }
 
-    prints.extend(matches.opt_strs("print").into_iter().map(|s| match &*s {
-        "crate-name" => PrintRequest::CrateName,
-        "file-names" => PrintRequest::FileNames,
-        "sysroot" => PrintRequest::Sysroot,
-        "target-libdir" => PrintRequest::TargetLibdir,
-        "cfg" => PrintRequest::Cfg,
-        "calling-conventions" => PrintRequest::CallingConventions,
-        "target-list" => PrintRequest::TargetList,
-        "target-cpus" => PrintRequest::TargetCPUs,
-        "target-features" => PrintRequest::TargetFeatures,
-        "relocation-models" => PrintRequest::RelocationModels,
-        "code-models" => PrintRequest::CodeModels,
-        "tls-models" => PrintRequest::TlsModels,
-        "native-static-libs" => PrintRequest::NativeStaticLibs,
-        "stack-protector-strategies" => PrintRequest::StackProtectorStrategies,
-        "target-spec-json" => {
-            if unstable_opts.unstable_options {
-                PrintRequest::TargetSpec
-            } else {
+    const PRINT_REQUESTS: &[(&str, PrintRequest)] = &[
+        ("crate-name", PrintRequest::CrateName),
+        ("file-names", PrintRequest::FileNames),
+        ("sysroot", PrintRequest::Sysroot),
+        ("target-libdir", PrintRequest::TargetLibdir),
+        ("cfg", PrintRequest::Cfg),
+        ("calling-conventions", PrintRequest::CallingConventions),
+        ("target-list", PrintRequest::TargetList),
+        ("target-cpus", PrintRequest::TargetCPUs),
+        ("target-features", PrintRequest::TargetFeatures),
+        ("relocation-models", PrintRequest::RelocationModels),
+        ("code-models", PrintRequest::CodeModels),
+        ("tls-models", PrintRequest::TlsModels),
+        ("native-static-libs", PrintRequest::NativeStaticLibs),
+        ("stack-protector-strategies", PrintRequest::StackProtectorStrategies),
+        ("target-spec-json", PrintRequest::TargetSpec),
+        ("link-args", PrintRequest::LinkArgs),
+        ("split-debuginfo", PrintRequest::SplitDebuginfo),
+    ];
+
+    prints.extend(matches.opt_strs("print").into_iter().map(|req| {
+        match PRINT_REQUESTS.iter().find(|&&(name, _)| name == req) {
+            Some((_, PrintRequest::TargetSpec)) => {
+                if unstable_opts.unstable_options {
+                    PrintRequest::TargetSpec
+                } else {
+                    early_error(
+                        error_format,
+                        "the `-Z unstable-options` flag must also be passed to \
+                     enable the target-spec-json print option",
+                    );
+                }
+            }
+            Some(&(_, print_request)) => print_request,
+            None => {
+                let prints =
+                    PRINT_REQUESTS.iter().map(|(name, _)| format!("`{name}`")).collect::<Vec<_>>();
+                let prints = prints.join(", ");
                 early_error(
                     error_format,
-                    "the `-Z unstable-options` flag must also be passed to \
-                     enable the target-spec-json print option",
+                    &format!("unknown print request `{req}`. Valid print requests are: {prints}"),
                 );
             }
         }
-        "link-args" => PrintRequest::LinkArgs,
-        req => early_error(error_format, &format!("unknown print request `{req}`")),
     }));
 
     prints
@@ -2249,7 +2267,7 @@ pub fn build_session_options(matches: &getopts::Matches) -> Options {
     let output_types = parse_output_types(&unstable_opts, matches, error_format);
 
     let mut cg = CodegenOptions::build(matches, error_format);
-    let (disable_thinlto, mut codegen_units) = should_override_cgus_and_disable_thinlto(
+    let (disable_local_thinlto, mut codegen_units) = should_override_cgus_and_disable_thinlto(
         &output_types,
         matches,
         error_format,
@@ -2431,7 +2449,7 @@ pub fn build_session_options(matches: &getopts::Matches) -> Options {
     let sysroot = match &sysroot_opt {
         Some(s) => s,
         None => {
-            tmp_buf = crate::filesearch::get_or_default_sysroot();
+            tmp_buf = crate::filesearch::get_or_default_sysroot().expect("Failed finding sysroot");
             &tmp_buf
         }
     };
@@ -2492,7 +2510,7 @@ pub fn build_session_options(matches: &getopts::Matches) -> Options {
         actually_rustdoc: false,
         trimmed_def_paths: TrimmedDefPaths::default(),
         cli_forced_codegen_units: codegen_units,
-        cli_forced_thinlto_off: disable_thinlto,
+        cli_forced_local_thinlto_off: disable_local_thinlto,
         remap_path_prefix,
         real_rust_source_base_dir,
         edition,

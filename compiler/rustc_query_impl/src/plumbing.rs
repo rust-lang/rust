@@ -17,8 +17,7 @@ use rustc_middle::ty::{self, TyCtxt};
 use rustc_query_system::dep_graph::{DepNodeParams, HasDepContext};
 use rustc_query_system::ich::StableHashingContext;
 use rustc_query_system::query::{
-    force_query, QueryConfig, QueryContext, QueryDescription, QueryJobId, QueryMap,
-    QuerySideEffects, QueryStackFrame,
+    force_query, QueryConfig, QueryContext, QueryJobId, QueryMap, QuerySideEffects, QueryStackFrame,
 };
 use rustc_query_system::{LayoutOfDepth, QueryOverflow, Value};
 use rustc_serialize::Decodable;
@@ -340,7 +339,7 @@ pub(crate) fn create_query_frame<
 
 fn try_load_from_on_disk_cache<'tcx, Q>(tcx: TyCtxt<'tcx>, dep_node: DepNode)
 where
-    Q: QueryDescription<QueryCtxt<'tcx>>,
+    Q: QueryConfig<QueryCtxt<'tcx>>,
     Q::Key: DepNodeParams<TyCtxt<'tcx>>,
 {
     debug_assert!(tcx.dep_graph.is_green(&dep_node));
@@ -365,7 +364,7 @@ where
 
 fn force_from_dep_node<'tcx, Q>(tcx: TyCtxt<'tcx>, dep_node: DepNode) -> bool
 where
-    Q: QueryDescription<QueryCtxt<'tcx>>,
+    Q: QueryConfig<QueryCtxt<'tcx>>,
     Q::Key: DepNodeParams<TyCtxt<'tcx>>,
     Q::Value: Value<TyCtxt<'tcx>>,
 {
@@ -398,12 +397,9 @@ where
     }
 }
 
-pub(crate) fn query_callback<'tcx, Q: QueryConfig>(
-    is_anon: bool,
-    is_eval_always: bool,
-) -> DepKindStruct<'tcx>
+pub(crate) fn query_callback<'tcx, Q>(is_anon: bool, is_eval_always: bool) -> DepKindStruct<'tcx>
 where
-    Q: QueryDescription<QueryCtxt<'tcx>>,
+    Q: QueryConfig<QueryCtxt<'tcx>>,
     Q::Key: DepNodeParams<TyCtxt<'tcx>>,
 {
     let fingerprint_style = Q::Key::fingerprint_style();
@@ -458,14 +454,12 @@ macro_rules! define_queries {
             })*
         }
 
-        $(impl<'tcx> QueryConfig for queries::$name<'tcx> {
+        $(impl<'tcx> QueryConfig<QueryCtxt<'tcx>> for queries::$name<'tcx> {
             type Key = query_keys::$name<'tcx>;
             type Value = query_values::$name<'tcx>;
             type Stored = query_stored::$name<'tcx>;
             const NAME: &'static str = stringify!($name);
-        }
 
-        impl<'tcx> QueryDescription<QueryCtxt<'tcx>> for queries::$name<'tcx> {
             #[inline]
             fn cache_on_disk(tcx: TyCtxt<'tcx>, key: &Self::Key) -> bool {
                 ::rustc_middle::query::cached::$name(tcx, key)
@@ -662,12 +656,15 @@ macro_rules! define_queries_struct {
             local_providers: Box<Providers>,
             extern_providers: Box<ExternProviders>,
             query_structs: Vec<$crate::plumbing::QueryStruct<'tcx>>,
-
             pub on_disk_cache: Option<OnDiskCache<'tcx>>,
-
             jobs: AtomicU64,
 
-            $($(#[$attr])*  $name: QueryState<<queries::$name<'tcx> as QueryConfig>::Key>,)*
+            $(
+                $(#[$attr])*
+                $name: QueryState<
+                    <queries::$name<'tcx> as QueryConfig<QueryCtxt<'tcx>>>::Key
+                >,
+            )*
         }
 
         impl<'tcx> Queries<'tcx> {
@@ -704,7 +701,7 @@ macro_rules! define_queries_struct {
                 &'tcx self,
                 tcx: TyCtxt<'tcx>,
                 span: Span,
-                key: <queries::$name<'tcx> as QueryConfig>::Key,
+                key: <queries::$name<'tcx> as QueryConfig<QueryCtxt<'tcx>>>::Key,
                 mode: QueryMode,
             ) -> Option<query_stored::$name<'tcx>> {
                 let qcx = QueryCtxt { tcx, queries: self };

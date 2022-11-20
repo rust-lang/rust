@@ -26,7 +26,7 @@ use rustc_hir::intravisit::{self, Visitor};
 use rustc_hir::Node;
 use rustc_hir_pretty::{enum_def_to_string, fn_to_string, ty_to_string};
 use rustc_middle::hir::nested_filter;
-use rustc_middle::middle::privacy::AccessLevels;
+use rustc_middle::middle::privacy::EffectiveVisibilities;
 use rustc_middle::ty::{self, print::with_no_trimmed_paths, DefIdTree, TyCtxt};
 use rustc_middle::{bug, span_bug};
 use rustc_session::config::{CrateType, Input, OutputType};
@@ -54,7 +54,7 @@ use rls_data::{
 pub struct SaveContext<'tcx> {
     tcx: TyCtxt<'tcx>,
     maybe_typeck_results: Option<&'tcx ty::TypeckResults<'tcx>>,
-    access_levels: &'tcx AccessLevels,
+    effective_visibilities: &'tcx EffectiveVisibilities,
     span_utils: SpanUtils<'tcx>,
     config: Config,
     impl_counter: Cell<u32>,
@@ -141,7 +141,7 @@ impl<'tcx> SaveContext<'tcx> {
     }
 
     pub fn get_extern_item_data(&self, item: &hir::ForeignItem<'_>) -> Option<Data> {
-        let def_id = item.def_id.to_def_id();
+        let def_id = item.owner_id.to_def_id();
         let qualname = format!("::{}", self.tcx.def_path_str(def_id));
         let attrs = self.tcx.hir().attrs(item.hir_id());
         match item.kind {
@@ -205,7 +205,7 @@ impl<'tcx> SaveContext<'tcx> {
     }
 
     pub fn get_item_data(&self, item: &hir::Item<'_>) -> Option<Data> {
-        let def_id = item.def_id.to_def_id();
+        let def_id = item.owner_id.to_def_id();
         let attrs = self.tcx.hir().attrs(item.hir_id());
         match item.kind {
             hir::ItemKind::Fn(ref sig, ref generics, _) => {
@@ -297,7 +297,7 @@ impl<'tcx> SaveContext<'tcx> {
                     children: m
                         .item_ids
                         .iter()
-                        .map(|i| id_from_def_id(i.def_id.to_def_id()))
+                        .map(|i| id_from_def_id(i.owner_id.to_def_id()))
                         .collect(),
                     decl_id: None,
                     docs: self.docs_for_attrs(attrs),
@@ -319,7 +319,7 @@ impl<'tcx> SaveContext<'tcx> {
                     qualname,
                     value,
                     parent: None,
-                    children: def.variants.iter().map(|v| id_from_hir_id(v.id, self)).collect(),
+                    children: def.variants.iter().map(|v| id_from_hir_id(v.hir_id, self)).collect(),
                     decl_id: None,
                     docs: self.docs_for_attrs(attrs),
                     sig: sig::item_signature(item, self),
@@ -363,7 +363,7 @@ impl<'tcx> SaveContext<'tcx> {
                             parent: None,
                             children: items
                                 .iter()
-                                .map(|i| id_from_def_id(i.id.def_id.to_def_id()))
+                                .map(|i| id_from_def_id(i.id.owner_id.to_def_id()))
                                 .collect(),
                             docs: String::new(),
                             sig: None,
@@ -968,16 +968,16 @@ pub fn process_crate<'l, 'tcx, H: SaveHandler>(
             info!("Dumping crate {}", cratename);
 
             // Privacy checking must be done outside of type inference; use a
-            // fallback in case the access levels couldn't have been correctly computed.
-            let access_levels = match tcx.sess.compile_status() {
-                Ok(..) => tcx.privacy_access_levels(()),
-                Err(..) => tcx.arena.alloc(AccessLevels::default()),
+            // fallback in case effective visibilities couldn't have been correctly computed.
+            let effective_visibilities = match tcx.sess.compile_status() {
+                Ok(..) => tcx.effective_visibilities(()),
+                Err(..) => tcx.arena.alloc(EffectiveVisibilities::default()),
             };
 
             let save_ctxt = SaveContext {
                 tcx,
                 maybe_typeck_results: None,
-                access_levels: &access_levels,
+                effective_visibilities: &effective_visibilities,
                 span_utils: SpanUtils::new(&tcx.sess),
                 config: find_config(config),
                 impl_counter: Cell::new(0),

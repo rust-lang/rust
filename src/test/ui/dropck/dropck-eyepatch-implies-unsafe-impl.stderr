@@ -8,6 +8,12 @@ LL | |     // (unsafe to access self.1  due to #[may_dangle] on A)
 LL | |     fn drop(&mut self) { println!("drop {} {:?}", self.0, self.2); }
 LL | | }
    | |_^
+   |
+   = note: the trait `Drop` enforces invariants that the compiler can't check. Review the trait documentation and make sure this implementation upholds those invariants before adding the `unsafe` keyword
+help: add `unsafe` to this trait implementation
+   |
+LL | unsafe impl<#[may_dangle] A, B: fmt::Debug> Drop for Pt<A, B> {
+   | ++++++
 
 error[E0569]: requires an `unsafe impl` declaration due to `#[may_dangle]` attribute
   --> $DIR/dropck-eyepatch-implies-unsafe-impl.rs:27:1
@@ -19,6 +25,12 @@ LL | |     // (unsafe to access self.1 due to #[may_dangle] on 'a)
 LL | |     fn drop(&mut self) { println!("drop {} {:?}", self.0, self.2); }
 LL | | }
    | |_^
+   |
+   = note: the trait `Drop` enforces invariants that the compiler can't check. Review the trait documentation and make sure this implementation upholds those invariants before adding the `unsafe` keyword
+help: add `unsafe` to this trait implementation
+   |
+LL | unsafe impl<#[may_dangle] 'a, 'b, B: fmt::Debug> Drop for Pr<'a, 'b, B> {
+   | ++++++
 
 error: aborting due to 2 previous errors
 

@@ -10,11 +10,15 @@ foreach ($arg in $args) {
     $xpy_args += """$arg"""
 }
 
+function Get-Application($app) {
+    return Get-Command $app -ErrorAction SilentlyContinue -CommandType Application
+}
+
 foreach ($python in "py", "python3", "python", "python2") {
     # NOTE: this only tests that the command exists in PATH, not that it's actually
     # executable. The latter is not possible in a portable way, see
     # https://github.com/PowerShell/PowerShell/issues/12625.
-    if (Get-Command $python -ErrorAction SilentlyContinue) {
+    if (Get-Application $python) {
         if ($python -eq "py") {
             # Use python3, not python2
             $xpy_args = @("-3") + $xpy_args
@@ -22,6 +26,13 @@ foreach ($python in "py", "python3", "python", "python2") {
         $process = Start-Process -NoNewWindow -Wait -PassThru $python $xpy_args
         Exit $process.ExitCode
     }
+}
+
+$found = (Get-Application "python*" | Where-Object {$_.name -match '^python[2-3]\.[0-9]+(\.exe)?$'})
+if (($null -ne $found) -and ($found.Length -ge 1)) {
+    $python = $found[0]
+    $process = Start-Process -NoNewWindow -Wait -PassThru $python $xpy_args
+    Exit $process.ExitCode
 }
 
 Write-Error "${PSCommandPath}: error: did not find python installed"

@@ -194,6 +194,7 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
                     &mut obligations,
                 );
                 obligations.push(Obligation::with_depth(
+                    self.tcx(),
                     obligation.cause.clone(),
                     obligation.recursion_depth + 1,
                     obligation.param_env,
@@ -482,11 +483,7 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
                 super_trait,
                 &mut nested,
             );
-            nested.push(Obligation::new(
-                obligation.cause.clone(),
-                obligation.param_env,
-                normalized_super_trait,
-            ));
+            nested.push(obligation.with(tcx, normalized_super_trait));
         }
 
         let assoc_types: Vec<_> = tcx
@@ -555,13 +552,13 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
                             GenericParamDefKind::Const { .. } => {
                                 let bound_var = ty::BoundVariableKind::Const;
                                 bound_vars.push(bound_var);
-                                tcx.mk_const(ty::ConstS {
-                                    ty: tcx.type_of(param.def_id),
-                                    kind: ty::ConstKind::Bound(
+                                tcx.mk_const(
+                                    ty::ConstKind::Bound(
                                         ty::INNERMOST,
                                         ty::BoundVar::from_usize(bound_vars.len() - 1),
                                     ),
-                                })
+                                    tcx.type_of(param.def_id),
+                                )
                                 .into()
                             }
                         });
@@ -581,11 +578,7 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
                     subst_bound,
                     &mut nested,
                 );
-                nested.push(Obligation::new(
-                    obligation.cause.clone(),
-                    obligation.param_env,
-                    normalized_bound,
-                ));
+                nested.push(obligation.with(tcx, normalized_bound));
             }
         }
 
@@ -644,9 +637,10 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
             self.tcx().mk_substs_trait(output_ty, &[]),
         ));
         nested.push(Obligation::new(
+            self.infcx.tcx,
             cause,
             obligation.param_env,
-            tr.to_poly_trait_predicate().to_predicate(self.tcx()),
+            tr.to_poly_trait_predicate(),
         ));
 
         Ok(ImplSourceFnPointerData { fn_ty: self_ty, nested })
@@ -727,11 +721,9 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
         // FIXME: Chalk
 
         if !self.tcx().sess.opts.unstable_opts.chalk {
-            nested.push(Obligation::new(
-                obligation.cause.clone(),
-                obligation.param_env,
-                ty::Binder::dummy(ty::PredicateKind::ClosureKind(closure_def_id, substs, kind))
-                    .to_predicate(self.tcx()),
+            nested.push(obligation.with(
+                self.tcx(),
+                ty::Binder::dummy(ty::PredicateKind::ClosureKind(closure_def_id, substs, kind)),
             ));
         }
 
@@ -860,10 +852,11 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
                 );
                 let outlives = ty::OutlivesPredicate(r_a, r_b);
                 nested.push(Obligation::with_depth(
+                    tcx,
                     cause,
                     obligation.recursion_depth + 1,
                     obligation.param_env,
-                    obligation.predicate.rebind(outlives).to_predicate(tcx),
+                    obligation.predicate.rebind(outlives),
                 ));
             }
             _ => bug!(),
@@ -919,7 +912,9 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
         let mut nested = vec![];
         match (source.kind(), target.kind()) {
             // Trait+Kx+'a -> Trait+Ky+'b (auto traits and lifetime subtyping).
-            (&ty::Dynamic(ref data_a, r_a, ty::Dyn), &ty::Dynamic(ref data_b, r_b, ty::Dyn)) => {
+            (&ty::Dynamic(ref data_a, r_a, dyn_a), &ty::Dynamic(ref data_b, r_b, dyn_b))
+                if dyn_a == dyn_b =>
+            {
                 // See `assemble_candidates_for_unsizing` for more info.
                 // We already checked the compatibility of auto traits within `assemble_candidates_for_unsizing`.
                 let iter = data_a
@@ -938,7 +933,7 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
                             .map(ty::Binder::dummy),
                     );
                 let existential_predicates = tcx.mk_poly_existential_predicates(iter);
-                let source_trait = tcx.mk_dynamic(existential_predicates, r_b, ty::Dyn);
+                let source_trait = tcx.mk_dynamic(existential_predicates, r_b, dyn_a);
 
                 // Require that the traits involved in this upcast are **equal**;
                 // only the **lifetime bound** is changed.
@@ -957,10 +952,11 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
                 );
                 let outlives = ty::OutlivesPredicate(r_a, r_b);
                 nested.push(Obligation::with_depth(
+                    tcx,
                     cause,
                     obligation.recursion_depth + 1,
                     obligation.param_env,
-                    obligation.predicate.rebind(outlives).to_predicate(tcx),
+                    obligation.predicate.rebind(outlives),
                 ));
             }
 
@@ -979,6 +975,7 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
 
                 let predicate_to_obligation = |predicate| {
                     Obligation::with_depth(
+                        tcx,
                         cause.clone(),
                         obligation.recursion_depth + 1,
                         obligation.param_env,
@@ -1145,7 +1142,7 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
                 }));
             }
 
-            _ => bug!(),
+            _ => bug!("source: {source}, target: {target}"),
         };
 
         Ok(ImplSourceBuiltinData { nested })
@@ -1255,20 +1252,19 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
                         obligation.param_env,
                         cause.clone(),
                         obligation.recursion_depth + 1,
-                        self_ty
-                            .rebind(ty::TraitPredicate {
-                                trait_ref: ty::TraitRef {
-                                    def_id: self.tcx().require_lang_item(LangItem::Destruct, None),
-                                    substs: self.tcx().mk_substs_trait(nested_ty, &[]),
-                                },
-                                constness: ty::BoundConstness::ConstIfConst,
-                                polarity: ty::ImplPolarity::Positive,
-                            })
-                            .to_predicate(tcx),
+                        self_ty.rebind(ty::TraitPredicate {
+                            trait_ref: ty::TraitRef {
+                                def_id: self.tcx().require_lang_item(LangItem::Destruct, None),
+                                substs: self.tcx().mk_substs_trait(nested_ty, &[]),
+                            },
+                            constness: ty::BoundConstness::ConstIfConst,
+                            polarity: ty::ImplPolarity::Positive,
+                        }),
                         &mut nested,
                     );
 
                     nested.push(Obligation::with_depth(
+                        tcx,
                         cause.clone(),
                         obligation.recursion_depth + 1,
                         obligation.param_env,
@@ -1280,18 +1276,17 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
                 // since it's either not `const Drop` (and we raise an error during selection),
                 // or it's an ADT (and we need to check for a custom impl during selection)
                 _ => {
-                    let predicate = self_ty
-                        .rebind(ty::TraitPredicate {
-                            trait_ref: ty::TraitRef {
-                                def_id: self.tcx().require_lang_item(LangItem::Destruct, None),
-                                substs: self.tcx().mk_substs_trait(nested_ty, &[]),
-                            },
-                            constness: ty::BoundConstness::ConstIfConst,
-                            polarity: ty::ImplPolarity::Positive,
-                        })
-                        .to_predicate(tcx);
+                    let predicate = self_ty.rebind(ty::TraitPredicate {
+                        trait_ref: ty::TraitRef {
+                            def_id: self.tcx().require_lang_item(LangItem::Destruct, None),
+                            substs: self.tcx().mk_substs_trait(nested_ty, &[]),
+                        },
+                        constness: ty::BoundConstness::ConstIfConst,
+                        polarity: ty::ImplPolarity::Positive,
+                    });
 
                     nested.push(Obligation::with_depth(
+                        tcx,
                         cause.clone(),
                         obligation.recursion_depth + 1,
                         obligation.param_env,

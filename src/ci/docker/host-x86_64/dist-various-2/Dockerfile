@@ -118,6 +118,9 @@ ENV TARGETS=$TARGETS,armv7-unknown-linux-gnueabi
 ENV TARGETS=$TARGETS,armv7-unknown-linux-musleabi
 ENV TARGETS=$TARGETS,i686-unknown-freebsd
 ENV TARGETS=$TARGETS,x86_64-unknown-none
+ENV TARGETS=$TARGETS,aarch64-unknown-uefi
+ENV TARGETS=$TARGETS,i686-unknown-uefi
+ENV TARGETS=$TARGETS,x86_64-unknown-uefi
 
 # As per https://bugs.launchpad.net/ubuntu/+source/gcc-defaults/+bug/1300211
 # we need asm in the search path for gcc-8 (for gnux32) but not in the search path of the
@@ -128,7 +131,5 @@ RUN ln -s /usr/include/asm-generic /usr/local/include/asm
 ENV RUST_CONFIGURE_ARGS --enable-extended --enable-lld --disable-docs \
   --set target.wasm32-wasi.wasi-root=/wasm32-wasi \
   --musl-root-armv7=/musl-armv7
-
-ENV EXTERNAL_LLVM 1
 
 ENV SCRIPT python3 ../x.py dist --host='' --target $TARGETS

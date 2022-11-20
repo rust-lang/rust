@@ -1,0 +1,57 @@
+error[E0495]: cannot infer an appropriate lifetime for lifetime parameter `'a` due to conflicting requirements
+  --> $DIR/async-associated-types.rs:19:43
+   |
+LL |     async fn foo(&'a self, key: &'b T) -> (&'a U, &'b T) {
+   |                                           ^^^^^^^^^^^^^^
+   |
+note: first, the lifetime cannot outlive the lifetime `'a` as defined here...
+  --> $DIR/async-associated-types.rs:16:6
+   |
+LL | impl<'a, 'b, T: Debug + Sized + 'b, U: 'a> MyTrait<'a, 'b, T> for U {
+   |      ^^
+note: ...so that the types are compatible
+  --> $DIR/async-associated-types.rs:19:43
+   |
+LL |     async fn foo(&'a self, key: &'b T) -> (&'a U, &'b T) {
+   |                                           ^^^^^^^^^^^^^^
+   = note: expected `(&'a U, &'b T)`
+              found `(&U, &T)`
+   = note: but, the lifetime must be valid for the static lifetime...
+note: ...so that the types are compatible
+  --> $DIR/async-associated-types.rs:19:43
+   |
+LL |     async fn foo(&'a self, key: &'b T) -> (&'a U, &'b T) {
+   |                                           ^^^^^^^^^^^^^^
+   = note: expected `MyTrait<'static, 'static, T>`
+              found `MyTrait<'_, '_, T>`
+
+error[E0495]: cannot infer an appropriate lifetime for lifetime parameter `'b` due to conflicting requirements
+  --> $DIR/async-associated-types.rs:19:43
+   |
+LL |     async fn foo(&'a self, key: &'b T) -> (&'a U, &'b T) {
+   |                                           ^^^^^^^^^^^^^^
+   |
+note: first, the lifetime cannot outlive the lifetime `'b` as defined here...
+  --> $DIR/async-associated-types.rs:16:10
+   |
+LL | impl<'a, 'b, T: Debug + Sized + 'b, U: 'a> MyTrait<'a, 'b, T> for U {
+   |          ^^
+note: ...so that the types are compatible
+  --> $DIR/async-associated-types.rs:19:43
+   |
+LL |     async fn foo(&'a self, key: &'b T) -> (&'a U, &'b T) {
+   |                                           ^^^^^^^^^^^^^^
+   = note: expected `(&'a U, &'b T)`
+              found `(&U, &T)`
+   = note: but, the lifetime must be valid for the static lifetime...
+note: ...so that the types are compatible
+  --> $DIR/async-associated-types.rs:19:43
+   |
+LL |     async fn foo(&'a self, key: &'b T) -> (&'a U, &'b T) {
+   |                                           ^^^^^^^^^^^^^^
+   = note: expected `MyTrait<'static, 'static, T>`
+              found `MyTrait<'_, '_, T>`
+
+error: aborting due to 2 previous errors
+
+For more information about this error, try `rustc --explain E0495`.

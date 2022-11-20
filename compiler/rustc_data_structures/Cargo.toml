@@ -23,9 +23,9 @@ rustc_macros = { path = "../rustc_macros" }
 rustc_serialize = { path = "../rustc_serialize" }
 smallvec = { version = "1.8.1", features = ["const_generics", "union", "may_dangle"] }
 stable_deref_trait = "1.0.0"
-stacker = "0.1.14"
+stacker = "0.1.15"
 tempfile = "3.2"
-thin-vec = "0.2.8"
+thin-vec = "0.2.9"
 tracing = "0.1"
 
 [dependencies.parking_lot]

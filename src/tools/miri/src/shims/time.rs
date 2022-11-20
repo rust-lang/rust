@@ -22,21 +22,44 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriInterpCxExt<'mir, 'tcx> {
 
         let this = self.eval_context_mut();
 
-        this.assert_target_os("linux", "clock_gettime");
+        this.assert_target_os_is_unix("clock_gettime");
 
         let clk_id = this.read_scalar(clk_id_op)?.to_i32()?;
 
-        // Linux has two main kinds of clocks. REALTIME clocks return the actual time since the
-        // Unix epoch, including effects which may cause time to move backwards such as NTP.
-        // Linux further distinguishes regular and "coarse" clocks, but the "coarse" version
-        // is just specified to be "faster and less precise", so we implement both the same way.
-        let absolute_clocks =
-            [this.eval_libc_i32("CLOCK_REALTIME")?, this.eval_libc_i32("CLOCK_REALTIME_COARSE")?];
-        // The second kind is MONOTONIC clocks for which 0 is an arbitrary time point, but they are
-        // never allowed to go backwards. We don't need to do any additonal monotonicity
-        // enforcement because std::time::Instant already guarantees that it is monotonic.
-        let relative_clocks =
-            [this.eval_libc_i32("CLOCK_MONOTONIC")?, this.eval_libc_i32("CLOCK_MONOTONIC_COARSE")?];
+        let absolute_clocks;
+        let mut relative_clocks;
+
+        match this.tcx.sess.target.os.as_ref() {
+            "linux" => {
+                // Linux has two main kinds of clocks. REALTIME clocks return the actual time since the
+                // Unix epoch, including effects which may cause time to move backwards such as NTP.
+                // Linux further distinguishes regular and "coarse" clocks, but the "coarse" version
+                // is just specified to be "faster and less precise", so we implement both the same way.
+                absolute_clocks = vec![
+                    this.eval_libc_i32("CLOCK_REALTIME")?,
+                    this.eval_libc_i32("CLOCK_REALTIME_COARSE")?,
+                ];
+                // The second kind is MONOTONIC clocks for which 0 is an arbitrary time point, but they are
+                // never allowed to go backwards. We don't need to do any additonal monotonicity
+                // enforcement because std::time::Instant already guarantees that it is monotonic.
+                relative_clocks = vec![
+                    this.eval_libc_i32("CLOCK_MONOTONIC")?,
+                    this.eval_libc_i32("CLOCK_MONOTONIC_COARSE")?,
+                ];
+            }
+            "macos" => {
+                absolute_clocks = vec![this.eval_libc_i32("CLOCK_REALTIME")?];
+                relative_clocks = vec![this.eval_libc_i32("CLOCK_MONOTONIC")?];
+                // Some clocks only seem to exist in the aarch64 version of the target.
+                if this.tcx.sess.target.arch == "aarch64" {
+                    // `CLOCK_UPTIME_RAW` supposed to not increment while the system is asleep... but
+                    // that's not really something a program running inside Miri can tell, anyway.
+                    // We need to support it because std uses it.
+                    relative_clocks.push(this.eval_libc_i32("CLOCK_UPTIME_RAW")?);
+                }
+            }
+            target => throw_unsup_format!("`clock_gettime` is not supported on target OS {target}"),
+        }
 
         let duration = if absolute_clocks.contains(&clk_id) {
             this.check_no_isolation("`clock_gettime` with `REALTIME` clocks")?;
@@ -44,6 +67,7 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriInterpCxExt<'mir, 'tcx> {
         } else if relative_clocks.contains(&clk_id) {
             this.machine.clock.now().duration_since(this.machine.clock.anchor())
         } else {
+            // Unsupported clock.
             let einval = this.eval_libc("EINVAL")?;
             this.set_last_error(einval)?;
             return Ok(Scalar::from_i32(-1));

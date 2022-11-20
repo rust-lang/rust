@@ -1,7 +1,7 @@
 use clippy_utils::diagnostics::span_lint_and_sugg;
 use clippy_utils::macros::{root_macro_call_first_node, FormatArgsExpn};
 use clippy_utils::source::snippet_with_applicability;
-use clippy_utils::ty::is_type_diagnostic_item;
+use clippy_utils::ty::{is_type_diagnostic_item, is_type_lang_item};
 use rustc_errors::Applicability;
 use rustc_hir as hir;
 use rustc_lint::LateContext;
@@ -33,7 +33,7 @@ pub(super) fn check<'tcx>(
                     if (method_name.ident.name == sym::as_str || method_name.ident.name == sym::as_ref) && {
                         let arg_type = cx.typeck_results().expr_ty(receiver);
                         let base_type = arg_type.peel_refs();
-                        *base_type.kind() == ty::Str || is_type_diagnostic_item(cx, base_type, sym::String)
+                        *base_type.kind() == ty::Str || is_type_lang_item(cx, base_type, hir::LangItem::String)
                     } {
                         receiver
                     } else {
@@ -50,7 +50,7 @@ pub(super) fn check<'tcx>(
     // converted to string.
     fn requires_to_string(cx: &LateContext<'_>, arg: &hir::Expr<'_>) -> bool {
         let arg_ty = cx.typeck_results().expr_ty(arg);
-        if is_type_diagnostic_item(cx, arg_ty, sym::String) {
+        if is_type_lang_item(cx, arg_ty, hir::LangItem::String) {
             return false;
         }
         if let ty::Ref(_, ty, ..) = arg_ty.kind() {

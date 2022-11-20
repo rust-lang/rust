@@ -15,7 +15,6 @@ use rustc_hir::def::{CtorKind, CtorOf, DefKind, Res};
 use rustc_hir::def_id::{CrateNum, DefId, DefIndex, CRATE_DEF_INDEX, LOCAL_CRATE};
 use rustc_hir::definitions::{DefKey, DefPath, DefPathData, DefPathHash};
 use rustc_hir::diagnostic_items::DiagnosticItems;
-use rustc_hir::lang_items;
 use rustc_index::vec::{Idx, IndexVec};
 use rustc_middle::metadata::ModChild;
 use rustc_middle::middle::exported_symbols::{ExportedSymbol, SymbolExportInfo};
@@ -773,7 +772,15 @@ impl<'a, 'tcx> CrateMetadataRef<'a> {
     }
 
     fn opt_item_name(self, item_index: DefIndex) -> Option<Symbol> {
-        self.def_key(item_index).disambiguated_data.data.get_opt_name()
+        let def_key = self.def_key(item_index);
+        def_key.disambiguated_data.data.get_opt_name().or_else(|| {
+            if def_key.disambiguated_data.data == DefPathData::Ctor {
+                let parent_index = def_key.parent.expect("no parent for a constructor");
+                self.def_key(parent_index).disambiguated_data.data.get_opt_name()
+            } else {
+                None
+            }
+        })
     }
 
     fn item_name(self, item_index: DefIndex) -> Symbol {
@@ -905,7 +912,13 @@ impl<'a, 'tcx> CrateMetadataRef<'a> {
                 .get(self, item_id)
                 .unwrap_or_else(LazyArray::empty)
                 .decode(self)
-                .map(|index| self.get_variant(&self.def_kind(index), index, did))
+                .filter_map(|index| {
+                    let kind = self.def_kind(index);
+                    match kind {
+                        DefKind::Ctor(..) => None,
+                        _ => Some(self.get_variant(&kind, index, did)),
+                    }
+                })
                 .collect()
         } else {
             std::iter::once(self.get_variant(&kind, item_id, did)).collect()
@@ -953,7 +966,7 @@ impl<'a, 'tcx> CrateMetadataRef<'a> {
     }
 
     /// Iterates over the language items in the given crate.
-    fn get_lang_items(self, tcx: TyCtxt<'tcx>) -> &'tcx [(DefId, usize)] {
+    fn get_lang_items(self, tcx: TyCtxt<'tcx>) -> &'tcx [(DefId, LangItem)] {
         tcx.arena.alloc_from_iter(
             self.root
                 .lang_items
@@ -1029,50 +1042,27 @@ impl<'a, 'tcx> CrateMetadataRef<'a> {
 
                 callback(ModChild { ident, res, vis, span, macro_rules });
 
-                // For non-re-export structs and variants add their constructors to children.
-                // Re-export lists automatically contain constructors when necessary.
-                match kind {
-                    DefKind::Struct => {
-                        if let Some((ctor_def_id, ctor_kind)) =
-                            self.get_ctor_def_id_and_kind(child_index)
-                        {
-                            let ctor_res =
-                                Res::Def(DefKind::Ctor(CtorOf::Struct, ctor_kind), ctor_def_id);
-                            let vis = self.get_visibility(ctor_def_id.index);
-                            callback(ModChild {
-                                ident,
-                                res: ctor_res,
-                                vis,
-                                span,
-                                macro_rules: false,
-                            });
+                // For non-reexport variants add their fictive constructors to children.
+                // Braced variants, unlike structs, generate unusable names in value namespace,
+                // they are reserved for possible future use. It's ok to use the variant's id as
+                // a ctor id since an error will be reported on any use of such resolution anyway.
+                // Reexport lists automatically contain such constructors when necessary.
+                if kind == DefKind::Variant && self.get_ctor_def_id_and_kind(child_index).is_none()
+                {
+                    let ctor_res =
+                        Res::Def(DefKind::Ctor(CtorOf::Variant, CtorKind::Fictive), def_id);
+                    let mut vis = vis;
+                    if vis.is_public() {
+                        // For non-exhaustive variants lower the constructor visibility to
+                        // within the crate. We only need this for fictive constructors,
+                        // for other constructors correct visibilities
+                        // were already encoded in metadata.
+                        let mut attrs = self.get_item_attrs(def_id.index, sess);
+                        if attrs.any(|item| item.has_name(sym::non_exhaustive)) {
+                            vis = ty::Visibility::Restricted(self.local_def_id(CRATE_DEF_INDEX));
                         }
                     }
-                    DefKind::Variant => {
-                        // Braced variants, unlike structs, generate unusable names in
-                        // value namespace, they are reserved for possible future use.
-                        // It's ok to use the variant's id as a ctor id since an
-                        // error will be reported on any use of such resolution anyway.
-                        let (ctor_def_id, ctor_kind) = self
-                            .get_ctor_def_id_and_kind(child_index)
-                            .unwrap_or((def_id, CtorKind::Fictive));
-                        let ctor_res =
-                            Res::Def(DefKind::Ctor(CtorOf::Variant, ctor_kind), ctor_def_id);
-                        let mut vis = self.get_visibility(ctor_def_id.index);
-                        if ctor_def_id == def_id && vis.is_public() {
-                            // For non-exhaustive variants lower the constructor visibility to
-                            // within the crate. We only need this for fictive constructors,
-                            // for other constructors correct visibilities
-                            // were already encoded in metadata.
-                            let mut attrs = self.get_item_attrs(def_id.index, sess);
-                            if attrs.any(|item| item.has_name(sym::non_exhaustive)) {
-                                let crate_def_id = self.local_def_id(CRATE_DEF_INDEX);
-                                vis = ty::Visibility::Restricted(crate_def_id);
-                            }
-                        }
-                        callback(ModChild { ident, res: ctor_res, vis, span, macro_rules: false });
-                    }
-                    _ => {}
+                    callback(ModChild { ident, res: ctor_res, vis, span, macro_rules: false });
                 }
             }
         }
@@ -1328,7 +1318,7 @@ impl<'a, 'tcx> CrateMetadataRef<'a> {
         )
     }
 
-    fn get_missing_lang_items(self, tcx: TyCtxt<'tcx>) -> &'tcx [lang_items::LangItem] {
+    fn get_missing_lang_items(self, tcx: TyCtxt<'tcx>) -> &'tcx [LangItem] {
         tcx.arena.alloc_from_iter(self.root.lang_items_missing.decode(self))
     }
 
@@ -1772,6 +1762,10 @@ impl CrateMetadata {
 
     pub(crate) fn has_global_allocator(&self) -> bool {
         self.root.has_global_allocator
+    }
+
+    pub(crate) fn has_alloc_error_handler(&self) -> bool {
+        self.root.has_alloc_error_handler
     }
 
     pub(crate) fn has_default_lib_allocator(&self) -> bool {

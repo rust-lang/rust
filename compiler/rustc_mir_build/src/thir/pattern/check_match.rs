@@ -79,7 +79,10 @@ impl<'tcx> Visitor<'tcx> for MatchVisitor<'_, '_, 'tcx> {
         intravisit::walk_local(self, loc);
         let els = loc.els;
         if let Some(init) = loc.init && els.is_some() {
-            self.check_let(&loc.pat, init, loc.span);
+            // Build a span without the else { ... } as we don't want to underline
+            // the entire else block in the IDE setting.
+            let span = loc.span.with_hi(init.span.hi());
+            self.check_let(&loc.pat, init, span);
         }
 
         let (msg, sp) = match loc.source {
@@ -507,7 +510,7 @@ impl<'p, 'tcx> MatchVisitor<'_, 'p, 'tcx> {
                                 _ => "aren't",
                             },
                         ),
-                        " else { todo!() }".to_string(),
+                        " else { todo!() }",
                         Applicability::HasPlaceholders,
                     );
                 }
@@ -630,11 +633,6 @@ fn irrefutable_let_patterns(
     count: usize,
     span: Span,
 ) {
-    let span = match source {
-        LetSource::LetElse(span) => span,
-        _ => span,
-    };
-
     macro_rules! emit_diag {
         (
             $lint:expr,
@@ -680,7 +678,7 @@ fn irrefutable_let_patterns(
                 "removing the guard and adding a `let` inside the match arm"
             );
         }
-        LetSource::LetElse(..) => {
+        LetSource::LetElse => {
             emit_diag!(
                 lint,
                 "`let...else`",
@@ -1004,8 +1002,8 @@ fn maybe_point_at_variant<'a, 'p: 'a, 'tcx: 'a>(
 }
 
 /// Check if a by-value binding is by-value. That is, check if the binding's type is not `Copy`.
-fn is_binding_by_move(cx: &MatchVisitor<'_, '_, '_>, hir_id: HirId, span: Span) -> bool {
-    !cx.typeck_results.node_type(hir_id).is_copy_modulo_regions(cx.tcx.at(span), cx.param_env)
+fn is_binding_by_move(cx: &MatchVisitor<'_, '_, '_>, hir_id: HirId) -> bool {
+    !cx.typeck_results.node_type(hir_id).is_copy_modulo_regions(cx.tcx, cx.param_env)
 }
 
 /// Check that there are no borrow or move conflicts in `binding @ subpat` patterns.
@@ -1031,7 +1029,7 @@ fn check_borrow_conflicts_in_at_patterns(cx: &MatchVisitor<'_, '_, '_>, pat: &Pa
 
     // Get the binding move, extract the mutability if by-ref.
     let mut_outer = match typeck_results.extract_binding_mode(sess, pat.hir_id, pat.span) {
-        Some(ty::BindByValue(_)) if is_binding_by_move(cx, pat.hir_id, pat.span) => {
+        Some(ty::BindByValue(_)) if is_binding_by_move(cx, pat.hir_id) => {
             // We have `x @ pat` where `x` is by-move. Reject all borrows in `pat`.
             let mut conflicts_ref = Vec::new();
             sub.each_binding(|_, hir_id, span, _| {
@@ -1070,7 +1068,7 @@ fn check_borrow_conflicts_in_at_patterns(cx: &MatchVisitor<'_, '_, '_>, pat: &Pa
                 (Mutability::Mut, Mutability::Mut) => conflicts_mut_mut.push((span, name)), // 2x `ref mut`.
                 _ => conflicts_mut_ref.push((span, name)), // `ref` + `ref mut` in either direction.
             },
-            Some(ty::BindByValue(_)) if is_binding_by_move(cx, hir_id, span) => {
+            Some(ty::BindByValue(_)) if is_binding_by_move(cx, hir_id) => {
                 conflicts_move.push((span, name)) // `ref mut?` + by-move conflict.
             }
             Some(ty::BindByValue(_)) | None => {} // `ref mut?` + by-copy is fine.
@@ -1127,7 +1125,7 @@ pub enum LetSource {
     GenericLet,
     IfLet,
     IfLetGuard,
-    LetElse(Span),
+    LetElse,
     WhileLet,
 }
 
@@ -1156,8 +1154,8 @@ fn let_source_parent(tcx: TyCtxt<'_>, parent: HirId, pat_id: Option<HirId>) -> L
     let parent_parent = hir.get_parent_node(parent);
     let parent_parent_node = hir.get(parent_parent);
     match parent_parent_node {
-        hir::Node::Stmt(hir::Stmt { kind: hir::StmtKind::Local(_), span, .. }) => {
-            return LetSource::LetElse(*span);
+        hir::Node::Stmt(hir::Stmt { kind: hir::StmtKind::Local(_), .. }) => {
+            return LetSource::LetElse;
         }
         hir::Node::Arm(hir::Arm { guard: Some(hir::Guard::If(_)), .. }) => {
             return LetSource::IfLetGuard;

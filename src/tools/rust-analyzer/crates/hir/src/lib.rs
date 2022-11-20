@@ -81,12 +81,11 @@ use crate::db::{DefDatabase, HirDatabase};
 pub use crate::{
     attrs::{HasAttrs, Namespace},
     diagnostics::{
-        AnyDiagnostic, BreakOutsideOfLoop, InactiveCode, IncorrectCase, IncorrectTryExpr,
-        InvalidDeriveTarget, MacroError, MalformedDerive, MismatchedArgCount, MissingFields,
-        MissingMatchArms, MissingUnsafe, NoSuchField, NotImplemented,
-        ReplaceFilterMapNextWithFindMap, TypeMismatch, UnimplementedBuiltinMacro,
-        UnresolvedExternCrate, UnresolvedImport, UnresolvedMacroCall, UnresolvedModule,
-        UnresolvedProcMacro,
+        AnyDiagnostic, BreakOutsideOfLoop, InactiveCode, IncorrectCase, InvalidDeriveTarget,
+        MacroError, MalformedDerive, MismatchedArgCount, MissingFields, MissingMatchArms,
+        MissingUnsafe, NoSuchField, ReplaceFilterMapNextWithFindMap, TypeMismatch,
+        UnimplementedBuiltinMacro, UnresolvedExternCrate, UnresolvedImport, UnresolvedMacroCall,
+        UnresolvedModule, UnresolvedProcMacro,
     },
     has_source::HasSource,
     semantics::{PathResolution, Semantics, SemanticsScope, TypeInfo, VisibleTraits},
@@ -1283,44 +1282,29 @@ impl DefWithBody {
         let infer = db.infer(self.into());
         let source_map = Lazy::new(|| db.body_with_source_map(self.into()).1);
         for d in &infer.diagnostics {
-            match *d {
+            match d {
                 hir_ty::InferenceDiagnostic::NoSuchField { expr } => {
-                    let field = source_map.field_syntax(expr);
+                    let field = source_map.field_syntax(*expr);
                     acc.push(NoSuchField { field }.into())
                 }
-                hir_ty::InferenceDiagnostic::BreakOutsideOfLoop { expr, is_break } => {
+                &hir_ty::InferenceDiagnostic::BreakOutsideOfLoop { expr, is_break } => {
                     let expr = source_map
                         .expr_syntax(expr)
                         .expect("break outside of loop in synthetic syntax");
                     acc.push(BreakOutsideOfLoop { expr, is_break }.into())
                 }
                 hir_ty::InferenceDiagnostic::MismatchedArgCount { call_expr, expected, found } => {
-                    match source_map.expr_syntax(call_expr) {
+                    match source_map.expr_syntax(*call_expr) {
                         Ok(source_ptr) => acc.push(
                             MismatchedArgCount {
                                 call_expr: source_ptr,
-                                expected: expected,
-                                found: found,
+                                expected: *expected,
+                                found: *found,
                             }
                             .into(),
                         ),
                         Err(SyntheticSyntax) => (),
                     }
-                }
-                hir_ty::InferenceDiagnostic::IncorrectTryTarget { expr } => {
-                    let expr = source_map.expr_syntax(expr).expect("try in synthetic syntax");
-                    acc.push(IncorrectTryExpr { expr }.into())
-                }
-                hir_ty::InferenceDiagnostic::DoesNotImplement { expr, trait_, ref ty } => {
-                    let expr = source_map.expr_syntax(expr).expect("try in synthetic syntax");
-                    acc.push(
-                        NotImplemented {
-                            expr,
-                            trait_,
-                            ty: Type::new(db, DefWithBodyId::from(self), ty.clone()),
-                        }
-                        .into(),
-                    )
                 }
             }
         }
@@ -3011,7 +2995,17 @@ impl Type {
         let callee = match self.ty.kind(Interner) {
             TyKind::Closure(id, _) => Callee::Closure(*id),
             TyKind::Function(_) => Callee::FnPtr,
-            _ => Callee::Def(self.ty.callable_def(db)?),
+            TyKind::FnDef(..) => Callee::Def(self.ty.callable_def(db)?),
+            _ => {
+                let ty = hir_ty::replace_errors_with_variables(&self.ty);
+                let sig = hir_ty::callable_sig_from_fnonce(&ty, self.env.clone(), db)?;
+                return Some(Callable {
+                    ty: self.clone(),
+                    sig,
+                    callee: Callee::Other,
+                    is_bound_method: false,
+                });
+            }
         };
 
         let sig = self.ty.callable_sig(db)?;
@@ -3480,6 +3474,7 @@ enum Callee {
     Def(CallableDefId),
     Closure(ClosureId),
     FnPtr,
+    Other,
 }
 
 pub enum CallableKind {
@@ -3488,6 +3483,8 @@ pub enum CallableKind {
     TupleEnumVariant(Variant),
     Closure,
     FnPtr,
+    /// Some other type that implements `FnOnce`.
+    Other,
 }
 
 impl Callable {
@@ -3499,6 +3496,7 @@ impl Callable {
             Def(CallableDefId::EnumVariantId(it)) => CallableKind::TupleEnumVariant(it.into()),
             Closure(_) => CallableKind::Closure,
             FnPtr => CallableKind::FnPtr,
+            Other => CallableKind::Other,
         }
     }
     pub fn receiver_param(&self, db: &dyn HirDatabase) -> Option<ast::SelfParam> {

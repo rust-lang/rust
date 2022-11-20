@@ -133,7 +133,7 @@ def test_cargo_miri_test():
     test("`cargo miri test`",
         cargo_miri("test"),
         default_ref, "test.stderr-empty.ref",
-        env={'MIRIFLAGS': "-Zmiri-permissive-provenance -Zmiri-seed=feed"},
+        env={'MIRIFLAGS': "-Zmiri-permissive-provenance -Zmiri-seed=4242"},
     )
     test("`cargo miri test` (no isolation, no doctests)",
         cargo_miri("test") + ["--bins", "--tests"], # no `--lib`, we disabled that in `Cargo.toml`

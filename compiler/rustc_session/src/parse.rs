@@ -97,6 +97,7 @@ pub fn feature_err<'a>(
 ///
 /// This variant allows you to control whether it is a library or language feature.
 /// Almost always, you want to use this for a language feature. If so, prefer `feature_err`.
+#[track_caller]
 pub fn feature_err_issue<'a>(
     sess: &'a ParseSess,
     feature: Symbol,
@@ -332,6 +333,7 @@ impl ParseSess {
         self.proc_macro_quoted_spans.lock().clone()
     }
 
+    #[track_caller]
     pub fn create_err<'a>(
         &'a self,
         err: impl IntoDiagnostic<'a>,
@@ -339,10 +341,12 @@ impl ParseSess {
         err.into_diagnostic(&self.span_diagnostic)
     }
 
+    #[track_caller]
     pub fn emit_err<'a>(&'a self, err: impl IntoDiagnostic<'a>) -> ErrorGuaranteed {
         self.create_err(err).emit()
     }
 
+    #[track_caller]
     pub fn create_warning<'a>(
         &'a self,
         warning: impl IntoDiagnostic<'a, ()>,
@@ -350,6 +354,7 @@ impl ParseSess {
         warning.into_diagnostic(&self.span_diagnostic)
     }
 
+    #[track_caller]
     pub fn emit_warning<'a>(&'a self, warning: impl IntoDiagnostic<'a, ()>) {
         self.create_warning(warning).emit()
     }
@@ -377,6 +382,7 @@ impl ParseSess {
     }
 
     #[rustc_lint_diagnostics]
+    #[track_caller]
     pub fn struct_err(
         &self,
         msg: impl Into<DiagnosticMessage>,

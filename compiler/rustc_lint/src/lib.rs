@@ -36,6 +36,7 @@
 #![feature(let_chains)]
 #![feature(min_specialization)]
 #![feature(never_type)]
+#![feature(rustc_attrs)]
 #![recursion_limit = "256"]
 
 #[macro_use]
@@ -212,7 +213,7 @@ macro_rules! late_lint_mod_passes {
                 TypeLimits: TypeLimits::new(),
                 NonSnakeCase: NonSnakeCase,
                 InvalidNoMangleItems: InvalidNoMangleItems,
-                // Depends on access levels
+                // Depends on effective visibilities
                 UnreachablePub: UnreachablePub,
                 ExplicitOutlivesRequirements: ExplicitOutlivesRequirements,
                 InvalidValue: InvalidValue,

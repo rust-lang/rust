@@ -451,16 +451,16 @@ macro_rules! tool_check_step {
 }
 
 tool_check_step!(Rustdoc, "src/tools/rustdoc", "src/librustdoc", SourceType::InTree);
-// Clippy and Rustfmt are hybrids. They are external tools, but use a git subtree instead
+// Clippy, miri and Rustfmt are hybrids. They are external tools, but use a git subtree instead
 // of a submodule. Since the SourceType only drives the deny-warnings
 // behavior, treat it as in-tree so that any new warnings in clippy will be
 // rejected.
 tool_check_step!(Clippy, "src/tools/clippy", SourceType::InTree);
-// Miri on the other hand is treated as out of tree, since InTree also causes it to
-// be run as part of `check`, which can fail on platforms which libffi-sys has no support for.
-tool_check_step!(Miri, "src/tools/miri", SourceType::Submodule);
+tool_check_step!(Miri, "src/tools/miri", SourceType::InTree);
+tool_check_step!(CargoMiri, "src/tools/miri/cargo-miri", SourceType::InTree);
 tool_check_step!(Rls, "src/tools/rls", SourceType::InTree);
 tool_check_step!(Rustfmt, "src/tools/rustfmt", SourceType::InTree);
+tool_check_step!(MiroptTestTools, "src/tools/miropt-test-tools", SourceType::InTree);
 
 tool_check_step!(Bootstrap, "src/bootstrap", SourceType::InTree, false);
 

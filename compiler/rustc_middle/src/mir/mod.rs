@@ -10,7 +10,7 @@ use crate::ty::codec::{TyDecoder, TyEncoder};
 use crate::ty::fold::{FallibleTypeFolder, TypeFoldable};
 use crate::ty::print::{FmtPrinter, Printer};
 use crate::ty::visit::{TypeVisitable, TypeVisitor};
-use crate::ty::{self, List, Ty, TyCtxt};
+use crate::ty::{self, DefIdTree, List, Ty, TyCtxt};
 use crate::ty::{AdtDef, InstanceDef, ScalarInt, UserTypeAnnotationIndex};
 use crate::ty::{GenericArg, InternalSubsts, SubstsRef};
 
@@ -136,6 +136,48 @@ impl MirPhase {
             MirPhase::Runtime(runtime_phase) => {
                 1 + BUILT_PHASE_COUNT + ANALYSIS_PHASE_COUNT + (*runtime_phase as usize)
             }
+        }
+    }
+
+    /// Parses an `MirPhase` from a pair of strings. Panics if this isn't possible for any reason.
+    pub fn parse(dialect: String, phase: Option<String>) -> Self {
+        match &*dialect.to_ascii_lowercase() {
+            "built" => {
+                assert!(phase.is_none(), "Cannot specify a phase for `Built` MIR");
+                MirPhase::Built
+            }
+            "analysis" => Self::Analysis(AnalysisPhase::parse(phase)),
+            "runtime" => Self::Runtime(RuntimePhase::parse(phase)),
+            _ => panic!("Unknown MIR dialect {}", dialect),
+        }
+    }
+}
+
+impl AnalysisPhase {
+    pub fn parse(phase: Option<String>) -> Self {
+        let Some(phase) = phase else {
+            return Self::Initial;
+        };
+
+        match &*phase.to_ascii_lowercase() {
+            "initial" => Self::Initial,
+            "post_cleanup" | "post-cleanup" | "postcleanup" => Self::PostCleanup,
+            _ => panic!("Unknown analysis phase {}", phase),
+        }
+    }
+}
+
+impl RuntimePhase {
+    pub fn parse(phase: Option<String>) -> Self {
+        let Some(phase) = phase else {
+            return Self::Initial;
+        };
+
+        match &*phase.to_ascii_lowercase() {
+            "initial" => Self::Initial,
+            "post_cleanup" | "post-cleanup" | "postcleanup" => Self::PostCleanup,
+            "optimized" => Self::Optimized,
+            _ => panic!("Unknown runtime phase {}", phase),
         }
     }
 }
@@ -293,6 +335,13 @@ pub struct Body<'tcx> {
     /// potentially allow things like `[u8; std::mem::size_of::<T>() * 0]` due to this.
     pub is_polymorphic: bool,
 
+    /// The phase at which this MIR should be "injected" into the compilation process.
+    ///
+    /// Everything that comes before this `MirPhase` should be skipped.
+    ///
+    /// This is only `Some` if the function that this body comes from was annotated with `rustc_custom_mir`.
+    pub injection_phase: Option<MirPhase>,
+
     pub tainted_by_errors: Option<ErrorGuaranteed>,
 }
 
@@ -339,6 +388,7 @@ impl<'tcx> Body<'tcx> {
             span,
             required_consts: Vec::new(),
             is_polymorphic: false,
+            injection_phase: None,
             tainted_by_errors,
         };
         body.is_polymorphic = body.has_non_region_param();
@@ -366,6 +416,7 @@ impl<'tcx> Body<'tcx> {
             required_consts: Vec::new(),
             var_debug_info: Vec::new(),
             is_polymorphic: false,
+            injection_phase: None,
             tainted_by_errors: None,
         };
         body.is_polymorphic = body.has_non_region_param();
@@ -507,6 +558,14 @@ impl<'tcx> Body<'tcx> {
     #[inline]
     pub fn generator_kind(&self) -> Option<GeneratorKind> {
         self.generator.as_ref().map(|generator| generator.generator_kind)
+    }
+
+    #[inline]
+    pub fn should_skip(&self) -> bool {
+        let Some(injection_phase) = self.injection_phase else {
+            return false;
+        };
+        injection_phase > self.phase
     }
 }
 
@@ -1012,6 +1071,18 @@ pub enum VarDebugInfoContents<'tcx> {
     /// based on a `Local`, not a `Static`, and contains no indexing.
     Place(Place<'tcx>),
     Const(Constant<'tcx>),
+    /// The user variable's data is split across several fragments,
+    /// each described by a `VarDebugInfoFragment`.
+    /// See DWARF 5's "2.6.1.2 Composite Location Descriptions"
+    /// and LLVM's `DW_OP_LLVM_fragment` for more details on
+    /// the underlying debuginfo feature this relies on.
+    Composite {
+        /// Type of the original user variable.
+        ty: Ty<'tcx>,
+        /// All the parts of the original user variable, which ended
+        /// up in disjoint places, due to optimizations.
+        fragments: Vec<VarDebugInfoFragment<'tcx>>,
+    },
 }
 
 impl<'tcx> Debug for VarDebugInfoContents<'tcx> {
@@ -1019,7 +1090,48 @@ impl<'tcx> Debug for VarDebugInfoContents<'tcx> {
         match self {
             VarDebugInfoContents::Const(c) => write!(fmt, "{}", c),
             VarDebugInfoContents::Place(p) => write!(fmt, "{:?}", p),
+            VarDebugInfoContents::Composite { ty, fragments } => {
+                write!(fmt, "{:?}{{ ", ty)?;
+                for f in fragments.iter() {
+                    write!(fmt, "{:?}, ", f)?;
+                }
+                write!(fmt, "}}")
+            }
         }
+    }
+}
+
+#[derive(Clone, TyEncodable, TyDecodable, HashStable, TypeFoldable, TypeVisitable)]
+pub struct VarDebugInfoFragment<'tcx> {
+    /// Where in the composite user variable this fragment is,
+    /// represented as a "projection" into the composite variable.
+    /// At lower levels, this corresponds to a byte/bit range.
+    // NOTE(eddyb) there's an unenforced invariant that this contains
+    // only `Field`s, and not into `enum` variants or `union`s.
+    // FIXME(eddyb) support this for `enum`s by either using DWARF's
+    // more advanced control-flow features (unsupported by LLVM?)
+    // to match on the discriminant, or by using custom type debuginfo
+    // with non-overlapping variants for the composite variable.
+    pub projection: Vec<PlaceElem<'tcx>>,
+
+    /// Where the data for this fragment can be found.
+    // NOTE(eddyb) There's an unenforced invariant that this `Place` is
+    // contains no indexing (with a non-constant index).
+    pub contents: Place<'tcx>,
+}
+
+impl Debug for VarDebugInfoFragment<'_> {
+    fn fmt(&self, fmt: &mut Formatter<'_>) -> fmt::Result {
+        for elem in self.projection.iter() {
+            match elem {
+                ProjectionElem::Field(field, _) => {
+                    write!(fmt, ".{:?}", field.index())?;
+                }
+                _ => bug!("unsupported fragment projection `{:?}`", elem),
+            }
+        }
+
+        write!(fmt, " => {:?}", self.contents)
     }
 }
 
@@ -1185,6 +1297,11 @@ impl<'tcx> BasicBlockData<'tcx> {
 
     pub fn visitable(&self, index: usize) -> &dyn MirVisitable<'tcx> {
         if index < self.statements.len() { &self.statements[index] } else { &self.terminator }
+    }
+
+    /// Does the block have no statements and an unreachable terminator?
+    pub fn is_empty_unreachable(&self) -> bool {
+        self.statements.is_empty() && matches!(self.terminator().kind, TerminatorKind::Unreachable)
     }
 }
 
@@ -1477,7 +1594,7 @@ impl<'tcx> Place<'tcx> {
     /// If MirPhase >= Derefered and if projection contains Deref,
     /// It's guaranteed to be in the first place
     pub fn has_deref(&self) -> bool {
-        // To make sure this is not accidently used in wrong mir phase
+        // To make sure this is not accidentally used in wrong mir phase
         debug_assert!(
             self.projection.is_empty() || !self.projection[1..].contains(&PlaceElem::Deref)
         );
@@ -1893,6 +2010,7 @@ impl BorrowKind {
         }
     }
 
+    // FIXME: won't be used after diagnostic migration
     pub fn describe_mutability(&self) -> &str {
         match *self {
             BorrowKind::Shared | BorrowKind::Shallow | BorrowKind::Unique => "immutable",
@@ -2186,8 +2304,10 @@ impl<'tcx> ConstantKind<'tcx> {
                 // FIXME: We might want to have a `try_eval`-like function on `Unevaluated`
                 match tcx.const_eval_resolve(param_env, uneval, None) {
                     Ok(val) => Self::Val(val, ty),
-                    Err(ErrorHandled::TooGeneric | ErrorHandled::Linted) => self,
-                    Err(_) => Self::Ty(tcx.const_error(ty)),
+                    Err(ErrorHandled::TooGeneric) => self,
+                    Err(ErrorHandled::Reported(guar)) => {
+                        Self::Ty(tcx.const_error_with_guaranteed(ty, guar))
+                    }
                 }
             }
         }
@@ -2403,16 +2523,12 @@ impl<'tcx> ConstantKind<'tcx> {
             ExprKind::Path(QPath::Resolved(_, &Path { res: Res::Def(ConstParam, def_id), .. })) => {
                 // Find the name and index of the const parameter by indexing the generics of
                 // the parent item and construct a `ParamConst`.
-                let hir_id = tcx.hir().local_def_id_to_hir_id(def_id.expect_local());
-                let item_id = tcx.hir().get_parent_node(hir_id);
-                let item_def_id = tcx.hir().local_def_id(item_id);
-                let generics = tcx.generics_of(item_def_id.to_def_id());
+                let item_def_id = tcx.parent(def_id);
+                let generics = tcx.generics_of(item_def_id);
                 let index = generics.param_def_id_to_index[&def_id];
-                let name = tcx.hir().name(hir_id);
-                let ty_const = tcx.mk_const(ty::ConstS {
-                    kind: ty::ConstKind::Param(ty::ParamConst::new(index, name)),
-                    ty,
-                });
+                let name = tcx.item_name(def_id);
+                let ty_const =
+                    tcx.mk_const(ty::ConstKind::Param(ty::ParamConst::new(index, name)), ty);
                 debug!(?ty_const);
 
                 return Self::Ty(ty_const);
@@ -2904,7 +3020,7 @@ fn pretty_print_const_value<'tcx>(
 /// `Location` represents the position of the start of the statement; or, if
 /// `statement_index` equals the number of statements, then the start of the
 /// terminator.
-#[derive(Copy, Clone, PartialEq, Eq, Hash, Ord, PartialOrd, HashStable, TyEncodable, TyDecodable)]
+#[derive(Copy, Clone, PartialEq, Eq, Hash, Ord, PartialOrd, HashStable)]
 pub struct Location {
     /// The block that the location is within.
     pub block: BasicBlock,

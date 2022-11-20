@@ -68,7 +68,7 @@ impl<'tcx> fmt::Debug for ty::adjustment::Adjustment<'tcx> {
 impl fmt::Debug for ty::BoundRegionKind {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         match *self {
-            ty::BrAnon(n) => write!(f, "BrAnon({:?})", n),
+            ty::BrAnon(n, span) => write!(f, "BrAnon({n:?}, {span:?})"),
             ty::BrNamed(did, name) => {
                 if did.is_crate_root() {
                     write!(f, "BrNamed({})", name)
@@ -240,7 +240,6 @@ TrivialTypeTraversalAndLiftImpls! {
     Field,
     interpret::Scalar,
     rustc_target::abi::Size,
-    ty::DelaySpanBugEmitted,
     rustc_type_ir::DebruijnIndex,
     ty::BoundVar,
     ty::Placeholder<ty::BoundVar>,
@@ -806,7 +805,7 @@ impl<'tcx> TypeSuperFoldable<'tcx> for ty::Const<'tcx> {
         let ty = self.ty().try_fold_with(folder)?;
         let kind = self.kind().try_fold_with(folder)?;
         if ty != self.ty() || kind != self.kind() {
-            Ok(folder.tcx().mk_const(ty::ConstS { ty, kind }))
+            Ok(folder.tcx().mk_const(kind, ty))
         } else {
             Ok(self)
         }

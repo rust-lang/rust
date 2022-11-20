@@ -77,9 +77,11 @@ impl f64 {
     /// ```
     /// let f = 3.3_f64;
     /// let g = -3.3_f64;
+    /// let h = -3.7_f64;
     ///
     /// assert_eq!(f.round(), 3.0);
     /// assert_eq!(g.round(), -3.0);
+    /// assert_eq!(h.round(), -4.0);
     /// ```
     #[rustc_allow_incoherent_impl]
     #[must_use = "method returns a new number and does not mutate the original value"]
@@ -275,7 +277,7 @@ impl f64 {
     /// This result is not an element of the function's codomain, but it is the
     /// closest floating point number in the real numbers and thus fulfills the
     /// property `self == self.div_euclid(rhs) * rhs + self.rem_euclid(rhs)`
-    /// approximatively.
+    /// approximately.
     ///
     /// # Examples
     ///
@@ -880,7 +882,9 @@ impl f64 {
     #[stable(feature = "rust1", since = "1.0.0")]
     #[inline]
     pub fn asinh(self) -> f64 {
-        (self.abs() + ((self * self) + 1.0).sqrt()).ln().copysign(self)
+        let ax = self.abs();
+        let ix = 1.0 / ax;
+        (ax + (ax / (Self::hypot(1.0, ix) + ix))).ln_1p().copysign(self)
     }
 
     /// Inverse hyperbolic cosine function.
@@ -900,7 +904,11 @@ impl f64 {
     #[stable(feature = "rust1", since = "1.0.0")]
     #[inline]
     pub fn acosh(self) -> f64 {
-        if self < 1.0 { Self::NAN } else { (self + ((self * self) - 1.0).sqrt()).ln() }
+        if self < 1.0 {
+            Self::NAN
+        } else {
+            (self + ((self - 1.0).sqrt() * (self + 1.0).sqrt())).ln()
+        }
     }
 
     /// Inverse hyperbolic tangent function.

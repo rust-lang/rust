@@ -4,7 +4,7 @@
 	font-style: normal;
 	font-weight: 400;
 	src: local('Fira Sans'),
-		url("FiraSans-Regular.woff2") format("woff2");
+		url("FiraSans-Regular-018c141bf0843ffd.woff2") format("woff2");
 	font-display: swap;
 }
 @font-face {
@@ -12,7 +12,7 @@
 	font-style: normal;
 	font-weight: 500;
 	src: local('Fira Sans Medium'),
-		url("FiraSans-Medium.woff2") format("woff2");
+		url("FiraSans-Medium-8f9a781e4970d388.woff2") format("woff2");
 	font-display: swap;
 }
 
@@ -22,7 +22,7 @@
 	font-style: normal;
 	font-weight: 400;
 	src: local('Source Serif 4'),
-		url("SourceSerif4-Regular.ttf.woff2") format("woff2");
+		url("SourceSerif4-Regular-1f7d512b176f0f72.ttf.woff2") format("woff2");
 	font-display: swap;
 }
 @font-face {
@@ -30,7 +30,7 @@
 	font-style: italic;
 	font-weight: 400;
 	src: local('Source Serif 4 Italic'),
-		url("SourceSerif4-It.ttf.woff2") format("woff2");
+		url("SourceSerif4-It-d034fe4ef9d0fa00.ttf.woff2") format("woff2");
 	font-display: swap;
 }
 @font-face {
@@ -38,7 +38,7 @@
 	font-style: normal;
 	font-weight: 700;
 	src: local('Source Serif 4 Bold'),
-		url("SourceSerif4-Bold.ttf.woff2") format("woff2");
+		url("SourceSerif4-Bold-124a1ca42af929b6.ttf.woff2") format("woff2");
 	font-display: swap;
 }
 
@@ -49,28 +49,28 @@
 	font-weight: 400;
 	/* Avoid using locally installed font because bad versions are in circulation:
 	 * see https://github.com/rust-lang/rust/issues/24355 */
-	src: url("SourceCodePro-Regular.ttf.woff2") format("woff2");
+	src: url("SourceCodePro-Regular-562dcc5011b6de7d.ttf.woff2") format("woff2");
 	font-display: swap;
 }
 @font-face {
 	font-family: 'Source Code Pro';
 	font-style: italic;
 	font-weight: 400;
-	src: url("SourceCodePro-It.ttf.woff2") format("woff2");
+	src: url("SourceCodePro-It-1cc31594bf4f1f79.ttf.woff2") format("woff2");
 	font-display: swap;
 }
 @font-face {
 	font-family: 'Source Code Pro';
 	font-style: normal;
 	font-weight: 600;
-	src: url("SourceCodePro-Semibold.ttf.woff2") format("woff2");
+	src: url("SourceCodePro-Semibold-d899c5a5c4aeb14a.ttf.woff2") format("woff2");
 	font-display: swap;
 }
 
 /* Avoid using legacy CJK serif fonts in Windows like Batang. */
 @font-face {
 	font-family: 'NanumBarunGothic';
-	src: url("NanumBarunGothic.ttf.woff2") format("woff2");
+	src: url("NanumBarunGothic-0f09457c7a19b7c6.ttf.woff2") format("woff2");
 	font-display: swap;
 	unicode-range: U+AC00-D7AF, U+1100-11FF, U+3130-318F, U+A960-A97F, U+D7B0-D7FF;
 }
@@ -159,12 +159,8 @@ h1.fqn {
 .main-heading {
 	display: flex;
 	flex-wrap: wrap;
-	justify-content: space-between;
 	padding-bottom: 6px;
 	margin-bottom: 15px;
-}
-#toggle-all-docs {
-	text-decoration: none;
 }
 /* The only headings that get underlines are:
 	 Markdown-generated headings within the top-doc
@@ -209,7 +205,7 @@ ul.all-items {
 	font-family: "Fira Sans", Arial, NanumBarunGothic, sans-serif;
 }
 
-a#toggle-all-docs,
+#toggle-all-docs,
 a.anchor,
 .small-section-header a,
 #source-sidebar a,
@@ -221,10 +217,7 @@ h1 a,
 .search-results a,
 .module-item .stab,
 .import-item .stab,
-.result-name .primitive > i, .result-name .keyword > i,
-.method .where,
-.fn .where,
-.where.fmt-newline {
+.result-name .primitive > i, .result-name .keyword > i {
 	color: var(--main-color);
 }
 
@@ -292,15 +285,21 @@ p:last-child {
 	margin: 0;
 }
 
-summary {
-	outline: none;
-}
-
 /* Fix some style changes due to normalize.css 8 */
 
 button {
 	/* Buttons on Safari have different default padding than other platforms. Make them the same. */
 	padding: 1px 6px;
+}
+
+button#toggle-all-docs {
+	padding: 0;
+	background: none;
+	border: none;
+	cursor: pointer;
+	/* iOS button gradient: https://stackoverflow.com/q/5438567 */
+	-webkit-appearance: none;
+	opacity: 1;
 }
 
 /* end tweaks for normalize.css 8 */
@@ -364,7 +363,8 @@ img {
 	overflow: visible;
 }
 
-.sub-logo-container {
+.sub-logo-container, .logo-container {
+	/* zero text boxes so that computed line height = image height exactly */
 	line-height: 0;
 }
 
@@ -374,14 +374,17 @@ img {
 	object-fit: contain;
 }
 
+.rust-logo {
+	filter: var(--rust-logo-filter);
+}
+
 .sidebar, .mobile-topbar, .sidebar-menu-toggle {
 	background-color: var(--sidebar-background-color);
 }
 
 .sidebar {
 	font-size: 0.875rem;
-	width: 200px;
-	min-width: 200px;
+	flex: 0 0 200px;
 	overflow-y: scroll;
 	position: sticky;
 	height: 100vh;
@@ -390,12 +393,7 @@ img {
 }
 
 .rustdoc.source .sidebar {
-	width: 50px;
-	min-width: 0px;
-	max-width: 300px;
-	flex-grow: 0;
-	flex-shrink: 0;
-	flex-basis: auto;
+	flex-basis: 50px;
 	border-right: 1px solid;
 	overflow-x: hidden;
 	/* The sidebar is by default hidden  */
@@ -416,7 +414,7 @@ img {
 
 .source-sidebar-expanded .source .sidebar {
 	overflow-y: auto;
-	width: 300px;
+	flex-basis: 300px;
 }
 
 .source-sidebar-expanded .source .sidebar > *:not(#sidebar-toggle) {
@@ -462,10 +460,9 @@ img {
 }
 
 .sidebar .logo-container {
-	display: flex;
 	margin-top: 10px;
 	margin-bottom: 10px;
-	justify-content: center;
+	text-align: center;
 }
 
 .version {
@@ -497,9 +494,7 @@ ul.block, .block li {
 .sidebar h2 {
 	overflow-wrap: anywhere;
 	padding: 0;
-	margin: 0;
-	margin-top: 0.7rem;
-	margin-bottom: 0.7rem;
+	margin: 0.7rem 0;
 }
 
 .sidebar h3 {
@@ -549,45 +544,45 @@ ul.block, .block li {
 	margin-bottom: 0px;
 }
 
-pre.example-line-numbers {
-	overflow: initial;
-	border: 1px solid;
-	padding: 13px 8px;
-	text-align: right;
-	border-top-left-radius: 5px;
-	border-bottom-left-radius: 5px;
-}
-
-.src-line-numbers {
-	text-align: right;
-}
-.rustdoc:not(.source) .example-wrap > pre:not(.example-line-numbers) {
-	width: 100%;
+.rustdoc .example-wrap > pre {
+	margin: 0;
+	flex-grow: 1;
 	overflow-x: auto;
 }
 
-.rustdoc:not(.source) .example-wrap > pre.src-line-numbers {
-	width: auto;
-	overflow-x: visible;
-}
-
-.rustdoc .example-wrap > pre {
-	margin: 0;
-}
-
-.search-loading {
-	text-align: center;
-}
-
-.content > .example-wrap pre.src-line-numbers {
-	position: relative;
+.rustdoc .example-wrap > pre.example-line-numbers,
+.rustdoc .example-wrap > pre.src-line-numbers {
+	flex-grow: 0;
+	overflow: initial;
+	text-align: right;
 	-webkit-user-select: none;
 	-moz-user-select: none;
 	-ms-user-select: none;
 	user-select: none;
 }
-.src-line-numbers span {
-	cursor: pointer;
+
+.example-line-numbers {
+	border: 1px solid;
+	padding: 13px 8px;
+	border-top-left-radius: 5px;
+	border-bottom-left-radius: 5px;
+	border-color: var(--example-line-numbers-border-color);
+}
+
+.src-line-numbers a, .src-line-numbers span {
+	color: var(--src-line-numbers-span-color);
+}
+.src-line-numbers :target {
+	background-color: transparent;
+	border-right: none;
+	padding-right: 0;
+}
+.src-line-numbers .line-highlighted {
+	background-color: var(--src-line-number-highlighted-background-color);
+}
+
+.search-loading {
+	text-align: center;
 }
 
 .docblock-short {
@@ -677,7 +672,6 @@ pre, .rustdoc.source .example-wrap {
 }
 
 #main-content > .item-info {
-	margin-top: 0;
 	margin-left: 0;
 }
 
@@ -688,13 +682,16 @@ nav.sub {
 	display: flex;
 	align-items: center;
 }
-nav.sub form {
+.search-form {
+	position: relative;
+	display: flex;
+	height: 34px;
 	flex-grow: 1;
 }
 .source nav.sub {
 	margin: 0 0 15px 0;
 }
-.source nav.sub form {
+.source .search-form {
 	margin-left: 32px;
 }
 
@@ -703,8 +700,6 @@ a {
 }
 
 .small-section-header {
-	display: flex;
-	justify-content: space-between;
 	position: relative;
 }
 
@@ -712,7 +707,7 @@ a {
 	display: initial;
 }
 
-.impl:hover > .anchor, .trait-impl:hover > .anchor {
+.impl:hover > .anchor, .trait-impl:hover > .anchor, .variant:hover > .anchor {
 	display: inline-block;
 	position: absolute;
 }
@@ -785,11 +780,6 @@ table,
 	padding-right: 1.25rem;
 }
 
-.search-container {
-	position: relative;
-	display: flex;
-	height: 34px;
-}
 .search-results-title {
 	margin-top: 0;
 	white-space: nowrap;
@@ -801,7 +791,6 @@ table,
 	align-items: baseline;
 }
 #crate-search-div {
-	display: inline-block;
 	/* ensures that 100% in properties of #crate-search-div:after
 	are relative to the size of this div */
 	position: relative;
@@ -810,10 +799,8 @@ table,
 }
 #crate-search {
 	min-width: 115px;
-	padding: 0;
 	/* keep these two in sync with "@-moz-document url-prefix()" below */
-	padding-left: 4px;
-	padding-right: 23px;
+	padding: 0 23px 0 4px;
 	/* prevents the <select> from overflowing the containing div in case it's shrunk */
 	max-width: 100%;
 	/* contents can overflow because of max-width limit, then show ellipsis */
@@ -830,6 +817,9 @@ table,
 	color: inherit;
 	line-height: 1.5;
 	font-weight: 500;
+}
+#crate-search:hover, #crate-search:focus {
+	border-color: var(--crate-search-hover-border);
 }
 /* cancel stylistic differences in padding in firefox
 for "appearance: none"-style (or equivalent) <select>s */
@@ -854,8 +844,13 @@ so that we can apply CSS-filters to change the arrow color in themes */
 	background-repeat: no-repeat;
 	background-size: 20px;
 	background-position: calc(100% - 2px) 56%;
-	/* image is black color, themes should apply a "filter" property to change the color */
-	background-image: /* AUTOREPLACE: */url("down-arrow.svg");
+	/* image is black color */
+	background-image: url("down-arrow-927217e04c7463ac.svg");
+	/* changes the arrow image color */
+	filter: var(--crate-search-div-filter);
+}
+#crate-search-div:hover::after, #crate-search-div:focus-within::after {
+	filter: var(--crate-search-div-hover-filter);
 }
 #crate-search > option {
 	font-size: 1rem;
@@ -865,17 +860,12 @@ so that we can apply CSS-filters to change the arrow color in themes */
 	   -webkit-appearance: textfield for search inputs. That
 	   causes rounded corners and no border on iOS Safari. */
 	-webkit-appearance: none;
-	/* Override Normalize.css: we have margins and do
-	 not want to overflow - the `moz` attribute is necessary
-	 until Firefox 29, too early to drop at this point */
-	-moz-box-sizing: border-box !important;
-	box-sizing: border-box !important;
 	outline: none;
 	border: 1px solid var(--border-color);
 	border-radius: 2px;
 	padding: 8px;
 	font-size: 1rem;
-	width: 100%;
+	flex-grow: 1;
 	background-color: var(--button-background-color);
 	color: var(--search-color);
 }
@@ -885,40 +875,30 @@ so that we can apply CSS-filters to change the arrow color in themes */
 
 .search-results {
 	display: none;
-	padding-bottom: 2em;
 }
 
 .search-results.active {
 	display: block;
-	/* prevent overhanging tabs from moving the first result */
-	clear: both;
 }
 
-.search-results .desc > span {
+.search-results > a {
+	display: flex;
+	/* A little margin ensures the browser's outlining of focused links has room to display. */
+	margin-left: 2px;
+	margin-right: 2px;
+	border-bottom: 1px solid var(--search-result-border-color);
+	gap: 1em;
+}
+
+.search-results > a > div {
+	flex: 1;
+}
+
+.search-results > a > div.desc {
 	white-space: nowrap;
 	text-overflow: ellipsis;
 	overflow: hidden;
 	display: block;
-}
-
-.search-results > a {
-	display: block;
-	/* A little margin ensures the browser's outlining of focused links has room to display. */
-	margin-left: 2px;
-	margin-right: 2px;
-	border-bottom: 1px solid #aaa3;
-}
-
-.search-results > a > div {
-	display: flex;
-	flex-flow: row wrap;
-}
-
-.search-results .result-name, .search-results div.desc {
-	width: 50%;
-}
-.search-results .result-name {
-	padding-right: 1em;
 }
 
 .search-results a:hover,
@@ -927,7 +907,6 @@ so that we can apply CSS-filters to change the arrow color in themes */
 }
 
 .popover {
-	font-size: 1rem;
 	position: absolute;
 	right: 0;
 	z-index: 2;
@@ -935,14 +914,14 @@ so that we can apply CSS-filters to change the arrow color in themes */
 	margin-top: 7px;
 	border-radius: 3px;
 	border: 1px solid var(--border-color);
-	font-size: 1rem;
+	--popover-arrow-offset: 11px;
 }
 
 /* This rule is to draw the little arrow connecting the settings menu to the gear icon. */
 .popover::before {
 	content: '';
 	position: absolute;
-	right: 11px;
+	right: var(--popover-arrow-offset);
 	border: solid var(--border-color);
 	border-width: 1px 1px 0 0;
 	display: inline-block;
@@ -959,10 +938,7 @@ so that we can apply CSS-filters to change the arrow color in themes */
 /* use larger max-width for help popover, but not for help.html */
 #help.popover {
 	max-width: 600px;
-}
-
-#help.popover::before {
-	right: 48px;
+	--popover-arrow-offset: 48px;
 }
 
 #help dt {
@@ -1060,7 +1036,6 @@ so that we can apply CSS-filters to change the arrow color in themes */
 
 .rightside {
 	padding-left: 12px;
-	padding-right: 2px;
 	float: right;
 }
 
@@ -1102,7 +1077,7 @@ pre.rust .bool-val {
 pre.rust .self {
 	color: var(--code-highlight-self-color);
 }
-pre.rust .attribute {
+pre.rust .attr {
 	color: var(--code-highlight-attribute-color);
 }
 pre.rust .macro,
@@ -1176,6 +1151,8 @@ pre.rust .doccomment {
 	width: max-content;
 	top: -2px;
 	z-index: 1;
+	background-color: var(--tooltip-background-color);
+	color: var(--tooltip-color);
 }
 
 .example-wrap .tooltip::before {
@@ -1184,10 +1161,10 @@ pre.rust .doccomment {
 	top: 50%;
 	left: 16px;
 	margin-top: -5px;
-	border-width: 5px;
-	border-style: solid;
 	display: none;
 	z-index: 1;
+	border: 5px solid transparent;
+	border-right-color: var(--tooltip-background-color);
 }
 
 .example-wrap.ignore .tooltip::after {
@@ -1224,6 +1201,12 @@ a.test-arrow {
 	top: 5px;
 	right: 5px;
 	z-index: 1;
+	color: var(--test-arrow-color);
+	background-color: var(--test-arrow-background-color);
+}
+a.test-arrow:hover {
+	color: var(--test-arrow-hover-color);
+	background-color: var(--test-arrow-hover-background-color);
 }
 .example-wrap:hover .test-arrow {
 	visibility: visible;
@@ -1243,12 +1226,6 @@ a.test-arrow {
 	font-size: 1.25rem;
 }
 
-h3.variant {
-	font-weight: 600;
-	font-size: 1.125rem;
-	margin-bottom: 10px;
-}
-
 .sub-variant h4 {
 	font-size: 1rem;
 	font-weight: 400;
@@ -1265,59 +1242,40 @@ h3.variant {
 	margin-left: 24px;
 }
 
-:target > code, :target > .code-header {
-	opacity: 1;
-}
-
 :target {
 	padding-right: 3px;
+	background-color: var(--target-background-color);
+	border-right: 3px solid var(--target-border-color);
 }
 
-.notable-traits-tooltip {
-	display: inline-block;
-	cursor: pointer;
+.notable-traits {
+	color: inherit;
+	margin-right: 15px;
+	position: relative;
 }
 
-.notable-traits:hover .notable-traits-tooltiptext,
-.notable-traits .notable-traits-tooltiptext.force-tooltip {
-	display: inline-block;
-}
-
-.notable-traits .notable-traits-tooltiptext {
-	display: none;
-	padding: 5px 3px 3px 3px;
-	border-radius: 6px;
-	margin-left: 5px;
-	z-index: 10;
-	font-size: 1rem;
-	cursor: default;
+/* placeholder thunk so that the mouse can easily travel from "(i)" to popover
+	the resulting "hover tunnel" is a stepped triangle, approximating
+	https://bjk5.com/post/44698559168/breaking-down-amazons-mega-dropdown */
+.notable-traits:hover::after {
 	position: absolute;
-	border: 1px solid;
+	top: calc(100% - 10px);
+	left: -15px;
+	right: -15px;
+	height: 20px;
+	content: "\00a0";
 }
 
-.notable-traits-tooltip::after {
-	/* The margin on the tooltip does not capture hover events,
-	   this extends the area of hover enough so that mouse hover is not
-	   lost when moving the mouse to the tooltip */
-	content: "\00a0\00a0\00a0";
+.notable .docblock {
+	margin: 0.25em 0.5em;
 }
 
-.notable-traits .notable, .notable-traits .docblock {
-	margin: 0;
-}
-
-.notable-traits .notable {
-	margin: 0;
-	margin-bottom: 13px;
-	font-size: 1.1875rem;
-	font-weight: 600;
-	display: block;
-}
-
-.notable-traits .docblock code.content {
+.notable .docblock pre, .notable .docblock code {
+	background: transparent;
 	margin: 0;
 	padding: 0;
 	font-size: 1.25rem;
+	white-space: pre-wrap;
 }
 
 .search-failed {
@@ -1358,12 +1316,6 @@ h3.variant {
 #titles > button > div.count {
 	display: inline-block;
 	font-size: 1rem;
-}
-
-.notable-traits {
-	cursor: pointer;
-	z-index: 2;
-	margin-left: 5px;
 }
 
 #sidebar-toggle {
@@ -1426,6 +1378,12 @@ h3.variant {
 	background-color: var(--button-background-color);
 	border: 1px solid var(--border-color);
 	border-radius: 2px;
+	color: var(--settings-button-color);
+}
+
+#settings-menu > a:hover, #settings-menu > a:focus,
+#help-button > a:hover, #help-button > a:focus {
+	border-color: var(--settings-button-border-focus);
 }
 
 #copy-path {
@@ -1538,6 +1496,8 @@ details.rustdoc-toggle > summary.hideme {
 
 details.rustdoc-toggle > summary {
 	list-style: none;
+	/* focus outline is shown on `::before` instead of this */
+	outline: none;
 }
 details.rustdoc-toggle > summary::-webkit-details-marker,
 details.rustdoc-toggle > summary::marker {
@@ -1585,6 +1545,15 @@ details.rustdoc-toggle > summary:hover::before {
 	opacity: 1;
 }
 
+details.rustdoc-toggle > summary:focus-visible::before {
+	/* The SVG is black, and gets turned white using a filter in the dark themes.
+	   Do the same with the outline.
+	   The dotted 1px style is copied from Firefox's focus ring style.
+	*/
+	outline: 1px dotted #000;
+	outline-offset: 1px;
+}
+
 details.rustdoc-toggle.top-doc > summary,
 details.rustdoc-toggle.top-doc > summary::before,
 details.rustdoc-toggle.non-exhaustive > summary,
@@ -1626,11 +1595,11 @@ details.rustdoc-toggle[open] > summary.hideme > span {
 
 details.rustdoc-toggle[open] > summary::before,
 details.rustdoc-toggle[open] > summary.hideme::before {
-	background-image: /* AUTOREPLACE: */url("toggle-minus.svg");
+	background-image: url("toggle-minus-31bbd6e4c77f5c96.svg");
 }
 
 details.rustdoc-toggle > summary::before {
-	background-image: /* AUTOREPLACE: */url("toggle-plus.svg");
+	background-image: url("toggle-plus-1092eb4930d581b0.svg");
 }
 
 details.rustdoc-toggle[open] > summary::before,
@@ -1678,7 +1647,6 @@ in storage.js
 	}
 
 	.rustdoc {
-		padding-top: 0px;
 		/* Sidebar should overlay main content, rather than pushing main content to the right.
 		   Turn off `display: flex` on the body element. */
 		display: block;
@@ -1720,12 +1688,12 @@ in storage.js
 		/* Hide the sidebar offscreen while not in use. Doing this instead of display: none means
 		   the sidebar stays visible for screen readers, which is useful for navigation. */
 		left: -1000px;
-		margin-left: 0;
 		margin: 0;
 		padding: 0;
 		z-index: 11;
 		/* Reduce height slightly to account for mobile topbar. */
 		height: calc(100vh - 45px);
+		width: 200px;
 	}
 
 	/* The source view uses a different design for the sidebar toggle, and doesn't have a topbar,
@@ -1766,16 +1734,10 @@ in storage.js
 		white-space: nowrap;
 	}
 
-	.mobile-topbar .logo-container {
-		max-height: 45px;
-	}
-
 	.mobile-topbar .logo-container > img {
 		max-width: 35px;
 		max-height: 35px;
-		margin-left: 20px;
-		margin-top: 5px;
-		margin-bottom: 5px;
+		margin: 5px 0 5px 20px;
 	}
 
 	.mobile-topbar {
@@ -1801,7 +1763,6 @@ in storage.js
 
 	.sidebar-elems {
 		margin-top: 1em;
-		background-color: var(--sidebar-background-color);
 	}
 
 	.content {
@@ -1814,21 +1775,6 @@ in storage.js
 
 	#titles > button > div.count {
 		display: block;
-	}
-
-	/* Because of ios, we need to actually have a full height sidebar title so the
-	 * actual sidebar can show up. But then we need to make it transparent so we don't
-	 * hide content. The filler just allows to create the background for the sidebar
-	 * title. But because of the absolute position, I had to lower the z-index.
-	 */
-	#sidebar-filler {
-		position: fixed;
-		left: 45px;
-		width: calc(100% - 45px);
-		top: 0;
-		height: 45px;
-		z-index: -1;
-		border-bottom: 1px solid;
 	}
 
 	#main-content > details.rustdoc-toggle > summary::before,
@@ -1863,37 +1809,22 @@ in storage.js
 		border-bottom: 1px solid;
 	}
 
-	.notable-traits .notable-traits-tooltiptext {
-		left: 0;
-		top: 100%;
-	}
-
 	/* We don't display the help button on mobile devices. */
 	#help-button {
 		display: none;
 	}
 
 	/* Display an alternating layout on tablets and phones */
-	.item-table {
+	.item-table, .item-row, .item-left, .item-right,
+	.search-results > a, .search-results > a > div {
 		display: block;
-	}
-	.item-row {
-		display: flex;
-		flex-flow: column wrap;
-	}
-	.item-left, .item-right {
-		width: 100%;
 	}
 
 	/* Display an alternating layout on tablets and phones */
 	.search-results > a {
-		border-bottom: 1px solid #aaa9;
 		padding: 5px 0px;
 	}
-	.search-results .result-name, .search-results div.desc {
-		width: 100%;
-	}
-	.search-results div.desc, .item-right {
+	.search-results > a > div.desc, .item-right {
 		padding-left: 2em;
 	}
 
@@ -1953,7 +1884,7 @@ in storage.js
 		flex-direction: column;
 	}
 
-	nav.sub form {
+	.search-form {
 		align-self: stretch;
 	}
 
@@ -1970,24 +1901,28 @@ in storage.js
 	}
 }
 
-.method-toggle > summary,
+.variant,
 .implementors-toggle > summary,
 .impl,
 #implementors-list > .docblock,
 .impl-items > section,
-.methods > section
+.impl-items > .rustdoc-toggle > summary,
+.methods > section,
+.methods > .rustdoc-toggle > summary
 {
 	margin-bottom: 0.75em;
 }
 
-.method-toggle[open]:not(:last-child),
+.variants > .docblock,
+.impl-items > .rustdoc-toggle[open]:not(:last-child),
+.methods > .rustdoc-toggle[open]:not(:last-child),
 .implementors-toggle[open]:not(:last-child) {
 	margin-bottom: 2em;
 }
 
-#trait-implementations-list .method-toggle:not(:last-child),
-#synthetic-implementations-list .method-toggle:not(:last-child),
-#blanket-implementations-list .method-toggle:not(:last-child) {
+#trait-implementations-list .impl-items > .rustdoc-toggle:not(:last-child),
+#synthetic-implementations-list .impl-items > .rustdoc-toggle:not(:last-child),
+#blanket-implementations-list .impl-items > .rustdoc-toggle:not(:last-child) {
 	margin-bottom: 1em;
 }
 
@@ -2000,7 +1935,6 @@ in storage.js
 	font-size: 12px;
 	position: relative;
 	bottom: 1px;
-	background: transparent;
 	border-width: 1px;
 	border-style: solid;
 	border-radius: 50px;
@@ -2024,49 +1958,36 @@ in storage.js
 	padding-bottom: 0;
 }
 
-.scraped-example:not(.expanded) .code-wrapper pre.src-line-numbers {
-	overflow-x: hidden;
-}
-
-.scraped-example .code-wrapper .prev {
-	position: absolute;
-	top: 0.25em;
-	right: 2.25em;
-	z-index: 100;
-	cursor: pointer;
-}
-
-.scraped-example .code-wrapper .next {
-	position: absolute;
-	top: 0.25em;
-	right: 1.25em;
-	z-index: 100;
-	cursor: pointer;
-}
-
+.scraped-example .code-wrapper .next,
+.scraped-example .code-wrapper .prev,
 .scraped-example .code-wrapper .expand {
 	position: absolute;
 	top: 0.25em;
-	right: 0.25em;
-	z-index: 100;
+	z-index: 1;
 	cursor: pointer;
 }
-
-.scraped-example:not(.expanded) .code-wrapper:before {
-	content: " ";
-	width: 100%;
-	height: 5px;
-	position: absolute;
-	z-index: 100;
-	top: 0;
+.scraped-example .code-wrapper .prev {
+	right: 2.25em;
+}
+.scraped-example .code-wrapper .next {
+	right: 1.25em;
+}
+.scraped-example .code-wrapper .expand {
+	right: 0.25em;
 }
 
+.scraped-example:not(.expanded) .code-wrapper:before,
 .scraped-example:not(.expanded) .code-wrapper:after {
 	content: " ";
 	width: 100%;
 	height: 5px;
 	position: absolute;
-	z-index: 100;
+	z-index: 1;
+}
+.scraped-example:not(.expanded) .code-wrapper:before {
+	top: 0;
+}
+.scraped-example:not(.expanded) .code-wrapper:after {
 	bottom: 0;
 }
 
@@ -2075,6 +1996,7 @@ in storage.js
 	padding: 14px 0;
 }
 
+.scraped-example .code-wrapper .src-line-numbers a,
 .scraped-example .code-wrapper .src-line-numbers span {
 	padding: 0 14px;
 }

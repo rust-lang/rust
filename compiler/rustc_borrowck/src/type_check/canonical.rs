@@ -28,7 +28,7 @@ impl<'a, 'tcx> TypeChecker<'a, 'tcx> {
     pub(super) fn fully_perform_op<R: fmt::Debug, Op>(
         &mut self,
         locations: Locations,
-        category: ConstraintCategory,
+        category: ConstraintCategory<'tcx>,
         op: Op,
     ) -> Fallible<R>
     where
@@ -85,15 +85,14 @@ impl<'a, 'tcx> TypeChecker<'a, 'tcx> {
         &mut self,
         trait_ref: ty::TraitRef<'tcx>,
         locations: Locations,
-        category: ConstraintCategory,
+        category: ConstraintCategory<'tcx>,
     ) {
         self.prove_predicate(
             ty::Binder::dummy(ty::PredicateKind::Trait(ty::TraitPredicate {
                 trait_ref,
                 constness: ty::BoundConstness::NotConst,
                 polarity: ty::ImplPolarity::Positive,
-            }))
-            .to_predicate(self.tcx()),
+            })),
             locations,
             category,
         );
@@ -122,14 +121,13 @@ impl<'a, 'tcx> TypeChecker<'a, 'tcx> {
 
     pub(super) fn prove_predicates(
         &mut self,
-        predicates: impl IntoIterator<Item = impl ToPredicate<'tcx>>,
+        predicates: impl IntoIterator<
+            Item = impl ToPredicate<'tcx, ty::Predicate<'tcx>> + std::fmt::Debug,
+        >,
         locations: Locations,
-        category: ConstraintCategory,
+        category: ConstraintCategory<'tcx>,
     ) {
         for predicate in predicates {
-            let predicate = predicate.to_predicate(self.tcx());
-            debug!("prove_predicates(predicate={:?}, locations={:?})", predicate, locations,);
-
             self.prove_predicate(predicate, locations, category);
         }
     }
@@ -137,11 +135,12 @@ impl<'a, 'tcx> TypeChecker<'a, 'tcx> {
     #[instrument(skip(self), level = "debug")]
     pub(super) fn prove_predicate(
         &mut self,
-        predicate: ty::Predicate<'tcx>,
+        predicate: impl ToPredicate<'tcx, ty::Predicate<'tcx>> + std::fmt::Debug,
         locations: Locations,
-        category: ConstraintCategory,
+        category: ConstraintCategory<'tcx>,
     ) {
         let param_env = self.param_env;
+        let predicate = predicate.to_predicate(self.tcx());
         self.fully_perform_op(
             locations,
             category,
@@ -164,7 +163,7 @@ impl<'a, 'tcx> TypeChecker<'a, 'tcx> {
         &mut self,
         value: T,
         location: impl NormalizeLocation,
-        category: ConstraintCategory,
+        category: ConstraintCategory<'tcx>,
     ) -> T
     where
         T: type_op::normalize::Normalizable<'tcx> + fmt::Display + Copy + 'tcx,

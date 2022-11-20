@@ -52,8 +52,8 @@ pub use inherited::{Inherited, InheritedBuilder};
 use crate::check::check_fn;
 use crate::coercion::DynamicCoerceMany;
 use crate::gather_locals::GatherLocalsVisitor;
-use rustc_data_structures::fx::FxHashSet;
-use rustc_errors::{struct_span_err, MultiSpan};
+use rustc_data_structures::unord::UnordSet;
+use rustc_errors::{struct_span_err, ErrorGuaranteed, MultiSpan};
 use rustc_hir as hir;
 use rustc_hir::def::Res;
 use rustc_hir::intravisit::Visitor;
@@ -174,7 +174,7 @@ fn has_typeck_results(tcx: TyCtxt<'_>, def_id: DefId) -> bool {
     }
 }
 
-fn used_trait_imports(tcx: TyCtxt<'_>, def_id: LocalDefId) -> &FxHashSet<LocalDefId> {
+fn used_trait_imports(tcx: TyCtxt<'_>, def_id: LocalDefId) -> &UnordSet<LocalDefId> {
     &*tcx.typeck(def_id).used_trait_imports
 }
 
@@ -209,6 +209,7 @@ fn diagnostic_only_typeck<'tcx>(tcx: TyCtxt<'tcx>, def_id: LocalDefId) -> &ty::T
     typeck_with_fallback(tcx, def_id, fallback)
 }
 
+#[instrument(level = "debug", skip(tcx, fallback), ret)]
 fn typeck_with_fallback<'tcx>(
     tcx: TyCtxt<'tcx>,
     def_id: LocalDefId,
@@ -250,7 +251,7 @@ fn typeck_with_fallback<'tcx>(
                 param_env,
                 fn_sig,
             );
-            check_fn(&inh, param_env, fn_sig, decl, id, body, None, true).0
+            check_fn(&inh, param_env, fn_sig, decl, def_id, body, None).0
         } else {
             let fcx = FnCtxt::new(&inh, param_env, body.value.hir_id);
             let expected_type = body_ty
@@ -316,12 +317,12 @@ fn typeck_with_fallback<'tcx>(
             fcx
         };
 
-        let fallback_has_occurred = fcx.type_inference_fallback();
+        fcx.type_inference_fallback();
 
         // Even though coercion casts provide type hints, we check casts after fallback for
         // backwards compatibility. This makes fallback a stronger type hint than a cast coercion.
         fcx.check_casts();
-        fcx.select_obligations_where_possible(fallback_has_occurred, |_| {});
+        fcx.select_obligations_where_possible(|_| {});
 
         // Closure and generator analysis may run after fallback
         // because they don't constrain other type variables.
@@ -343,7 +344,7 @@ fn typeck_with_fallback<'tcx>(
 
         fcx.select_all_obligations_or_error();
 
-        if !fcx.infcx.is_tainted_by_errors() {
+        if let None = fcx.infcx.tainted_by_errors() {
             fcx.check_transmutes();
         }
 
@@ -427,7 +428,12 @@ impl<'tcx> EnclosingBreakables<'tcx> {
     }
 }
 
-fn report_unexpected_variant_res(tcx: TyCtxt<'_>, res: Res, qpath: &hir::QPath<'_>, span: Span) {
+fn report_unexpected_variant_res(
+    tcx: TyCtxt<'_>,
+    res: Res,
+    qpath: &hir::QPath<'_>,
+    span: Span,
+) -> ErrorGuaranteed {
     struct_span_err!(
         tcx.sess,
         span,
@@ -436,7 +442,7 @@ fn report_unexpected_variant_res(tcx: TyCtxt<'_>, res: Res, qpath: &hir::QPath<'
         res.descr(),
         rustc_hir_pretty::qpath_to_string(qpath),
     )
-    .emit();
+    .emit()
 }
 
 /// Controls whether the arguments are tupled. This is used for the call
@@ -458,7 +464,7 @@ fn report_unexpected_variant_res(tcx: TyCtxt<'_>, res: Res, qpath: &hir::QPath<'
 /// # fn f(x: (isize, isize)) {}
 /// f((1, 2));
 /// ```
-#[derive(Clone, Eq, PartialEq)]
+#[derive(Copy, Clone, Eq, PartialEq)]
 enum TupleArgumentsFlag {
     DontTupleArguments,
     TupleArguments,

@@ -277,8 +277,9 @@ pub struct RegisterConflict<'a> {
 pub struct SubTupleBinding<'a> {
     #[primary_span]
     #[label]
-    #[suggestion_verbose(
+    #[suggestion(
         ast_lowering_sub_tuple_binding_suggestion,
+        style = "verbose",
         code = "..",
         applicability = "maybe-incorrect"
     )]

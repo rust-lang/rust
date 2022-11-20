@@ -4,21 +4,24 @@
 
 use itertools::Itertools;
 use rustc_data_structures::fx::{FxHashMap, FxHashSet};
-use rustc_errors::{pluralize, Applicability, MultiSpan};
+use rustc_errors::MultiSpan;
 use rustc_hir as hir;
 use rustc_hir::def::{CtorOf, DefKind, Res};
 use rustc_hir::def_id::{DefId, LocalDefId};
 use rustc_hir::intravisit::{self, Visitor};
 use rustc_hir::{Node, PatKind, TyKind};
 use rustc_middle::middle::codegen_fn_attrs::CodegenFnAttrFlags;
-use rustc_middle::middle::privacy::AccessLevel;
+use rustc_middle::middle::privacy::Level;
 use rustc_middle::ty::query::Providers;
 use rustc_middle::ty::{self, DefIdTree, TyCtxt};
 use rustc_session::lint;
 use rustc_span::symbol::{sym, Symbol};
 use std::mem;
 
-use crate::errors::UselessAssignment;
+use crate::errors::{
+    ChangeFieldsToBeOfUnitType, IgnoredDerivedImpls, MultipleDeadCodes, ParentInfo,
+    UselessAssignment,
+};
 
 // Any local node that may call something in its body block should be
 // explored. For example, if it's a live Node::Item that is a
@@ -280,8 +283,8 @@ impl<'tcx> MarkSymbolVisitor<'tcx> {
     }
 
     fn visit_node(&mut self, node: Node<'tcx>) {
-        if let Node::ImplItem(hir::ImplItem { def_id, .. }) = node
-            && self.should_ignore_item(def_id.to_def_id())
+        if let Node::ImplItem(hir::ImplItem { owner_id, .. }) = node
+            && self.should_ignore_item(owner_id.to_def_id())
         {
             return;
         }
@@ -293,7 +296,7 @@ impl<'tcx> MarkSymbolVisitor<'tcx> {
         match node {
             Node::Item(item) => match item.kind {
                 hir::ItemKind::Struct(..) | hir::ItemKind::Union(..) => {
-                    let def = self.tcx.adt_def(item.def_id);
+                    let def = self.tcx.adt_def(item.owner_id);
                     self.repr_has_repr_c = def.repr().c();
                     self.repr_has_repr_simd = def.repr().simd();
 
@@ -306,7 +309,7 @@ impl<'tcx> MarkSymbolVisitor<'tcx> {
                 intravisit::walk_trait_item(self, trait_item);
             }
             Node::ImplItem(impl_item) => {
-                let item = self.tcx.local_parent(impl_item.def_id.def_id);
+                let item = self.tcx.local_parent(impl_item.owner_id.def_id);
                 if self.tcx.impl_trait_ref(item).is_none() {
                     //// If it's a type whose items are live, then it's live, too.
                     //// This is done to handle the case where, for example, the static
@@ -359,7 +362,7 @@ impl<'tcx> Visitor<'tcx> for MarkSymbolVisitor<'tcx> {
         let has_repr_c = self.repr_has_repr_c;
         let has_repr_simd = self.repr_has_repr_simd;
         let live_fields = def.fields().iter().filter_map(|f| {
-            let def_id = tcx.hir().local_def_id(f.hir_id);
+            let def_id = f.def_id;
             if has_repr_c || (f.is_positional() && has_repr_simd) {
                 return Some(def_id);
             }
@@ -470,11 +473,6 @@ fn has_allow_dead_code_or_lang_attr_helper(
         return true;
     }
 
-    // (To be) stable attribute for #[lang = "oom"]
-    if tcx.sess.contains_name(attrs, sym::alloc_error_handler) {
-        return true;
-    }
-
     let def_id = tcx.hir().local_def_id(id);
     if tcx.def_kind(def_id).has_codegen_attrs() {
         let cg_attrs = tcx.codegen_fn_attrs(def_id);
@@ -517,38 +515,34 @@ fn check_item<'tcx>(
 ) {
     let allow_dead_code = has_allow_dead_code_or_lang_attr(tcx, id.hir_id());
     if allow_dead_code {
-        worklist.push(id.def_id.def_id);
+        worklist.push(id.owner_id.def_id);
     }
 
-    match tcx.def_kind(id.def_id) {
+    match tcx.def_kind(id.owner_id) {
         DefKind::Enum => {
             let item = tcx.hir().item(id);
             if let hir::ItemKind::Enum(ref enum_def, _) = item.kind {
-                let hir = tcx.hir();
                 if allow_dead_code {
-                    worklist.extend(
-                        enum_def.variants.iter().map(|variant| hir.local_def_id(variant.id)),
-                    );
+                    worklist.extend(enum_def.variants.iter().map(|variant| variant.def_id));
                 }
 
                 for variant in enum_def.variants {
-                    if let Some(ctor_hir_id) = variant.data.ctor_hir_id() {
-                        struct_constructors
-                            .insert(hir.local_def_id(ctor_hir_id), hir.local_def_id(variant.id));
+                    if let Some(ctor_def_id) = variant.data.ctor_def_id() {
+                        struct_constructors.insert(ctor_def_id, variant.def_id);
                     }
                 }
             }
         }
         DefKind::Impl => {
-            let of_trait = tcx.impl_trait_ref(id.def_id);
+            let of_trait = tcx.impl_trait_ref(id.owner_id);
 
             if of_trait.is_some() {
-                worklist.push(id.def_id.def_id);
+                worklist.push(id.owner_id.def_id);
             }
 
             // get DefIds from another query
             let local_def_ids = tcx
-                .associated_item_def_ids(id.def_id)
+                .associated_item_def_ids(id.owner_id)
                 .iter()
                 .filter_map(|def_id| def_id.as_local());
 
@@ -566,12 +560,12 @@ fn check_item<'tcx>(
             if let hir::ItemKind::Struct(ref variant_data, _) = item.kind
                 && let Some(ctor_hir_id) = variant_data.ctor_hir_id()
             {
-                struct_constructors.insert(tcx.hir().local_def_id(ctor_hir_id), item.def_id.def_id);
+                struct_constructors.insert(tcx.hir().local_def_id(ctor_hir_id), item.owner_id.def_id);
             }
         }
         DefKind::GlobalAsm => {
             // global_asm! is always live.
-            worklist.push(id.def_id.def_id);
+            worklist.push(id.owner_id.def_id);
         }
         _ => {}
     }
@@ -579,12 +573,12 @@ fn check_item<'tcx>(
 
 fn check_trait_item<'tcx>(tcx: TyCtxt<'tcx>, worklist: &mut Vec<LocalDefId>, id: hir::TraitItemId) {
     use hir::TraitItemKind::{Const, Fn};
-    if matches!(tcx.def_kind(id.def_id), DefKind::AssocConst | DefKind::AssocFn) {
+    if matches!(tcx.def_kind(id.owner_id), DefKind::AssocConst | DefKind::AssocFn) {
         let trait_item = tcx.hir().trait_item(id);
         if matches!(trait_item.kind, Const(_, Some(_)) | Fn(_, hir::TraitFn::Provided(_)))
             && has_allow_dead_code_or_lang_attr(tcx, trait_item.hir_id())
         {
-            worklist.push(trait_item.def_id.def_id);
+            worklist.push(trait_item.owner_id.def_id);
         }
     }
 }
@@ -594,23 +588,23 @@ fn check_foreign_item<'tcx>(
     worklist: &mut Vec<LocalDefId>,
     id: hir::ForeignItemId,
 ) {
-    if matches!(tcx.def_kind(id.def_id), DefKind::Static(_) | DefKind::Fn)
+    if matches!(tcx.def_kind(id.owner_id), DefKind::Static(_) | DefKind::Fn)
         && has_allow_dead_code_or_lang_attr(tcx, id.hir_id())
     {
-        worklist.push(id.def_id.def_id);
+        worklist.push(id.owner_id.def_id);
     }
 }
 
 fn create_and_seed_worklist<'tcx>(
     tcx: TyCtxt<'tcx>,
 ) -> (Vec<LocalDefId>, FxHashMap<LocalDefId, LocalDefId>) {
-    let access_levels = &tcx.privacy_access_levels(());
+    let effective_visibilities = &tcx.effective_visibilities(());
     // see `MarkSymbolVisitor::struct_constructors`
     let mut struct_constructors = Default::default();
-    let mut worklist = access_levels
+    let mut worklist = effective_visibilities
         .iter()
         .filter_map(|(&id, effective_vis)| {
-            effective_vis.is_public_at_level(AccessLevel::Reachable).then_some(id)
+            effective_vis.is_public_at_level(Level::Reachable).then_some(id)
         })
         // Seed entry point
         .chain(tcx.entry_fn(()).and_then(|(def_id, _)| def_id.as_local()))
@@ -698,99 +692,89 @@ impl<'tcx> DeadVisitor<'tcx> {
         parent_item: Option<LocalDefId>,
         is_positional: bool,
     ) {
-        if let Some(&first_id) = dead_codes.first() {
-            let tcx = self.tcx;
-            let names: Vec<_> = dead_codes
-                .iter()
-                .map(|&def_id| tcx.item_name(def_id.to_def_id()).to_string())
-                .collect();
-            let spans: Vec<_> = dead_codes
-                .iter()
-                .map(|&def_id| match tcx.def_ident_span(def_id) {
-                    Some(s) => s.with_ctxt(tcx.def_span(def_id).ctxt()),
-                    None => tcx.def_span(def_id),
+        let Some(&first_id) = dead_codes.first() else {
+            return;
+        };
+        let tcx = self.tcx;
+        let names: Vec<_> =
+            dead_codes.iter().map(|&def_id| tcx.item_name(def_id.to_def_id())).collect();
+        let spans: Vec<_> = dead_codes
+            .iter()
+            .map(|&def_id| match tcx.def_ident_span(def_id) {
+                Some(s) => s.with_ctxt(tcx.def_span(def_id).ctxt()),
+                None => tcx.def_span(def_id),
+            })
+            .collect();
+
+        let descr = tcx.def_kind(first_id).descr(first_id.to_def_id());
+        let num = dead_codes.len();
+        let multiple = num > 6;
+        let name_list = names.into();
+
+        let lint = if is_positional {
+            lint::builtin::UNUSED_TUPLE_STRUCT_FIELDS
+        } else {
+            lint::builtin::DEAD_CODE
+        };
+
+        let parent_info = if let Some(parent_item) = parent_item {
+            let parent_descr = tcx.def_kind(parent_item).descr(parent_item.to_def_id());
+            Some(ParentInfo {
+                num,
+                descr,
+                parent_descr,
+                span: tcx.def_ident_span(parent_item).unwrap(),
+            })
+        } else {
+            None
+        };
+
+        let encl_def_id = parent_item.unwrap_or(first_id);
+        let ignored_derived_impls =
+            if let Some(ign_traits) = self.ignored_derived_traits.get(&encl_def_id) {
+                let trait_list = ign_traits
+                    .iter()
+                    .map(|(trait_id, _)| self.tcx.item_name(*trait_id))
+                    .collect::<Vec<_>>();
+                let trait_list_len = trait_list.len();
+                Some(IgnoredDerivedImpls {
+                    name: self.tcx.item_name(encl_def_id.to_def_id()),
+                    trait_list: trait_list.into(),
+                    trait_list_len,
                 })
-                .collect();
-
-            let descr = tcx.def_kind(first_id).descr(first_id.to_def_id());
-            let span_len = dead_codes.len();
-            let names = match &names[..] {
-                _ if span_len > 6 => String::new(),
-                [name] => format!("`{name}` "),
-                [names @ .., last] => {
-                    format!(
-                        "{} and `{last}` ",
-                        names.iter().map(|name| format!("`{name}`")).join(", ")
-                    )
-                }
-                [] => unreachable!(),
+            } else {
+                None
             };
-            let msg = format!(
-                "{these}{descr}{s} {names}{are} never {participle}",
-                these = if span_len > 6 { "multiple " } else { "" },
-                s = pluralize!(span_len),
-                are = pluralize!("is", span_len),
-            );
 
-            tcx.struct_span_lint_hir(
-                if is_positional {
-                    lint::builtin::UNUSED_TUPLE_STRUCT_FIELDS
-                } else {
-                    lint::builtin::DEAD_CODE
-                },
-                tcx.hir().local_def_id_to_hir_id(first_id),
-                MultiSpan::from_spans(spans.clone()),
-                msg,
-                |err| {
-                    if is_positional {
-                        err.multipart_suggestion(
-                            &format!(
-                                "consider changing the field{s} to be of unit type to \
-                                      suppress this warning while preserving the field \
-                                      numbering, or remove the field{s}",
-                                s = pluralize!(span_len)
-                            ),
-                            spans.iter().map(|sp| (*sp, "()".to_string())).collect(),
-                            // "HasPlaceholders" because applying this fix by itself isn't
-                            // enough: All constructor calls have to be adjusted as well
-                            Applicability::HasPlaceholders,
-                        );
-                    }
+        let diag = if is_positional {
+            MultipleDeadCodes::UnusedTupleStructFields {
+                multiple,
+                num,
+                descr,
+                participle,
+                name_list,
+                change_fields_suggestion: ChangeFieldsToBeOfUnitType { num, spans: spans.clone() },
+                parent_info,
+                ignored_derived_impls,
+            }
+        } else {
+            MultipleDeadCodes::DeadCodes {
+                multiple,
+                num,
+                descr,
+                participle,
+                name_list,
+                parent_info,
+                ignored_derived_impls,
+            }
+        };
 
-                    if let Some(parent_item) = parent_item {
-                        let parent_descr = tcx.def_kind(parent_item).descr(parent_item.to_def_id());
-                        err.span_label(
-                            tcx.def_ident_span(parent_item).unwrap(),
-                            format!("{descr}{s} in this {parent_descr}", s = pluralize!(span_len)),
-                        );
-                    }
-
-                    let encl_def_id = parent_item.unwrap_or(first_id);
-                    if let Some(ign_traits) = self.ignored_derived_traits.get(&encl_def_id) {
-                        let traits_str = ign_traits
-                            .iter()
-                            .map(|(trait_id, _)| format!("`{}`", self.tcx.item_name(*trait_id)))
-                            .collect::<Vec<_>>()
-                            .join(" and ");
-                        let plural_s = pluralize!(ign_traits.len());
-                        let article = if ign_traits.len() > 1 { "" } else { "a " };
-                        let is_are = if ign_traits.len() > 1 { "these are" } else { "this is" };
-                        let msg = format!(
-                            "`{}` has {}derived impl{} for the trait{} {}, but {} \
-                            intentionally ignored during dead code analysis",
-                            self.tcx.item_name(encl_def_id.to_def_id()),
-                            article,
-                            plural_s,
-                            plural_s,
-                            traits_str,
-                            is_are
-                        );
-                        err.note(&msg);
-                    }
-                    err
-                },
-            );
-        }
+        self.tcx.emit_spanned_lint(
+            lint,
+            tcx.hir().local_def_id_to_hir_id(first_id),
+            MultiSpan::from_spans(spans),
+            diag,
+        );
     }
 
     fn warn_dead_fields_and_variants(
@@ -861,19 +845,19 @@ fn check_mod_deathness(tcx: TyCtxt<'_>, module: LocalDefId) {
     let module_items = tcx.hir_module_items(module);
 
     for item in module_items.items() {
-        if !live_symbols.contains(&item.def_id.def_id) {
-            let parent = tcx.local_parent(item.def_id.def_id);
+        if !live_symbols.contains(&item.owner_id.def_id) {
+            let parent = tcx.local_parent(item.owner_id.def_id);
             if parent != module && !live_symbols.contains(&parent) {
                 // We already have diagnosed something.
                 continue;
             }
-            visitor.check_definition(item.def_id.def_id);
+            visitor.check_definition(item.owner_id.def_id);
             continue;
         }
 
-        let def_kind = tcx.def_kind(item.def_id);
+        let def_kind = tcx.def_kind(item.owner_id);
         if let DefKind::Struct | DefKind::Union | DefKind::Enum = def_kind {
-            let adt = tcx.adt_def(item.def_id);
+            let adt = tcx.adt_def(item.owner_id);
             let mut dead_variants = Vec::new();
 
             for variant in adt.variants() {
@@ -917,7 +901,7 @@ fn check_mod_deathness(tcx: TyCtxt<'_>, module: LocalDefId) {
             }
 
             visitor.warn_dead_fields_and_variants(
-                item.def_id.def_id,
+                item.owner_id.def_id,
                 "constructed",
                 dead_variants,
                 false,
@@ -926,11 +910,11 @@ fn check_mod_deathness(tcx: TyCtxt<'_>, module: LocalDefId) {
     }
 
     for impl_item in module_items.impl_items() {
-        visitor.check_definition(impl_item.def_id.def_id);
+        visitor.check_definition(impl_item.owner_id.def_id);
     }
 
     for foreign_item in module_items.foreign_items() {
-        visitor.check_definition(foreign_item.def_id.def_id);
+        visitor.check_definition(foreign_item.owner_id.def_id);
     }
 
     // We do not warn trait items.

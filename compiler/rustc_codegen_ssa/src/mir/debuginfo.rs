@@ -14,6 +14,8 @@ use super::operand::{OperandRef, OperandValue};
 use super::place::PlaceRef;
 use super::{FunctionCx, LocalRef};
 
+use std::ops::Range;
+
 pub struct FunctionDebugContext<S, L> {
     pub scopes: IndexVec<mir::SourceScope, DebugScope<S, L>>,
 }
@@ -25,13 +27,17 @@ pub enum VariableKind {
 }
 
 /// Like `mir::VarDebugInfo`, but within a `mir::Local`.
-#[derive(Copy, Clone)]
+#[derive(Clone)]
 pub struct PerLocalVarDebugInfo<'tcx, D> {
     pub name: Symbol,
     pub source_info: mir::SourceInfo,
 
     /// `DIVariable` returned by `create_dbg_var`.
     pub dbg_var: Option<D>,
+
+    /// Byte range in the `dbg_var` covered by this fragment,
+    /// if this is a fragment of a composite `VarDebugInfo`.
+    pub fragment: Option<Range<Size>>,
 
     /// `.place.projection` from `mir::VarDebugInfo`.
     pub projection: &'tcx ty::List<mir::PlaceElem<'tcx>>,
@@ -145,7 +151,7 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
             Some(per_local) => &per_local[local],
             None => return,
         };
-        let whole_local_var = vars.iter().find(|var| var.projection.is_empty()).copied();
+        let whole_local_var = vars.iter().find(|var| var.projection.is_empty()).cloned();
         let has_proj = || vars.iter().any(|var| !var.projection.is_empty());
 
         let fallback_var = if self.mir.local_kind(local) == mir::LocalKind::Arg {
@@ -187,6 +193,7 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
                     name,
                     source_info: decl.source_info,
                     dbg_var,
+                    fragment: None,
                     projection: ty::List::empty(),
                 })
             }
@@ -199,7 +206,7 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
         let name = if bx.sess().fewer_names() {
             None
         } else {
-            Some(match whole_local_var.or(fallback_var) {
+            Some(match whole_local_var.or(fallback_var.clone()) {
                 Some(var) if var.name != kw::Empty => var.name.to_string(),
                 _ => format!("{:?}", local),
             })
@@ -249,7 +256,7 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
             LocalRef::UnsizedPlace(_) => return,
         };
 
-        let vars = vars.iter().copied().chain(fallback_var);
+        let vars = vars.iter().cloned().chain(fallback_var);
 
         for var in vars {
             let Some(dbg_var) = var.dbg_var else { continue };
@@ -312,9 +319,16 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
                 bx.store(place.llval, alloca.llval, alloca.align);
 
                 // Point the debug info to `*alloca` for the current variable
-                bx.dbg_var_addr(dbg_var, dbg_loc, alloca.llval, Size::ZERO, &[Size::ZERO]);
+                bx.dbg_var_addr(dbg_var, dbg_loc, alloca.llval, Size::ZERO, &[Size::ZERO], None);
             } else {
-                bx.dbg_var_addr(dbg_var, dbg_loc, base.llval, direct_offset, &indirect_offsets);
+                bx.dbg_var_addr(
+                    dbg_var,
+                    dbg_loc,
+                    base.llval,
+                    direct_offset,
+                    &indirect_offsets,
+                    None,
+                );
             }
         }
     }
@@ -382,6 +396,10 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
                         let ty = self.monomorphize(c.ty());
                         (ty, VariableKind::LocalVariable)
                     }
+                    mir::VarDebugInfoContents::Composite { ty, fragments: _ } => {
+                        let ty = self.monomorphize(ty);
+                        (ty, VariableKind::LocalVariable)
+                    }
                 };
 
                 self.cx.create_dbg_var(var.name, var_ty, dbg_scope, var_kind, span)
@@ -393,6 +411,7 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
                         name: var.name,
                         source_info: var.source_info,
                         dbg_var,
+                        fragment: None,
                         projection: place.projection,
                     });
                 }
@@ -407,8 +426,46 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
                                 bx,
                             );
 
-                            bx.dbg_var_addr(dbg_var, dbg_loc, base.llval, Size::ZERO, &[]);
+                            bx.dbg_var_addr(dbg_var, dbg_loc, base.llval, Size::ZERO, &[], None);
                         }
+                    }
+                }
+                mir::VarDebugInfoContents::Composite { ty, ref fragments } => {
+                    let var_ty = self.monomorphize(ty);
+                    let var_layout = self.cx.layout_of(var_ty);
+                    for fragment in fragments {
+                        let mut fragment_start = Size::ZERO;
+                        let mut fragment_layout = var_layout;
+
+                        for elem in &fragment.projection {
+                            match *elem {
+                                mir::ProjectionElem::Field(field, _) => {
+                                    let i = field.index();
+                                    fragment_start += fragment_layout.fields.offset(i);
+                                    fragment_layout = fragment_layout.field(self.cx, i);
+                                }
+                                _ => span_bug!(
+                                    var.source_info.span,
+                                    "unsupported fragment projection `{:?}`",
+                                    elem,
+                                ),
+                            }
+                        }
+
+                        let place = fragment.contents;
+                        per_local[place.local].push(PerLocalVarDebugInfo {
+                            name: var.name,
+                            source_info: var.source_info,
+                            dbg_var,
+                            fragment: if fragment_layout.size == var_layout.size {
+                                // Fragment covers entire variable, so as far as
+                                // DWARF is concerned, it's not really a fragment.
+                                None
+                            } else {
+                                Some(fragment_start..fragment_start + fragment_layout.size)
+                            },
+                            projection: place.projection,
+                        });
                     }
                 }
             }

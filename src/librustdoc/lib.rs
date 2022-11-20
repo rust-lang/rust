@@ -8,6 +8,7 @@
 #![feature(box_patterns)]
 #![feature(control_flow_enum)]
 #![feature(drain_filter)]
+#![feature(is_terminal)]
 #![feature(let_chains)]
 #![feature(test)]
 #![feature(never_type)]
@@ -69,7 +70,7 @@ extern crate jemalloc_sys;
 
 use std::default::Default;
 use std::env::{self, VarError};
-use std::io;
+use std::io::{self, IsTerminal};
 use std::process;
 
 use rustc_driver::abort_on_err;
@@ -179,7 +180,7 @@ fn init_logging() {
     let color_logs = match std::env::var("RUSTDOC_LOG_COLOR").as_deref() {
         Ok("always") => true,
         Ok("never") => false,
-        Ok("auto") | Err(VarError::NotPresent) => atty::is(atty::Stream::Stdout),
+        Ok("auto") | Err(VarError::NotPresent) => io::stdout().is_terminal(),
         Ok(value) => early_error(
             ErrorOutputType::default(),
             &format!("invalid log color value '{}': expected one of always, never, or auto", value),
@@ -469,9 +470,6 @@ fn opts() -> Vec<RustcOptGroup> {
         stable("json", |o| {
             o.optopt("", "json", "Configure the structure of JSON diagnostics", "CONFIG")
         }),
-        unstable("disable-minification", |o| {
-            o.optflagmulti("", "disable-minification", "Disable minification applied on JS files")
-        }),
         stable("allow", |o| o.optmulti("A", "allow", "Set lint allowed", "LINT")),
         stable("warn", |o| o.optmulti("W", "warn", "Set lint warnings", "LINT")),
         stable("force-warn", |o| o.optmulti("", "force-warn", "Set lint force-warn", "LINT")),
@@ -610,6 +608,7 @@ fn opts() -> Vec<RustcOptGroup> {
             )
         }),
         // deprecated / removed options
+        unstable("disable-minification", |o| o.optflagmulti("", "disable-minification", "removed")),
         stable("plugin-path", |o| {
             o.optmulti(
                 "",

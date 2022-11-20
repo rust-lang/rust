@@ -753,6 +753,67 @@ impl SourceMap {
         }
     }
 
+    /// Given a 'Span', tries to tell if it's wrapped by "<>" or "()"
+    /// the algorithm searches if the next character is '>' or ')' after skipping white space
+    /// then searches the previous charactoer to match '<' or '(' after skipping white space
+    /// return true if wrapped by '<>' or '()'
+    pub fn span_wrapped_by_angle_or_parentheses(&self, span: Span) -> bool {
+        self.span_to_source(span, |src, start_index, end_index| {
+            if src.get(start_index..end_index).is_none() {
+                return Ok(false);
+            }
+            // test the right side to match '>' after skipping white space
+            let end_src = &src[end_index..];
+            let mut i = 0;
+            let mut found_right_parentheses = false;
+            let mut found_right_angle = false;
+            while let Some(cc) = end_src.chars().nth(i) {
+                if cc == ' ' {
+                    i = i + 1;
+                } else if cc == '>' {
+                    // found > in the right;
+                    found_right_angle = true;
+                    break;
+                } else if cc == ')' {
+                    found_right_parentheses = true;
+                    break;
+                } else {
+                    // failed to find '>' return false immediately
+                    return Ok(false);
+                }
+            }
+            // test the left side to match '<' after skipping white space
+            i = start_index;
+            let start_src = &src[0..start_index];
+            while let Some(cc) = start_src.chars().nth(i) {
+                if cc == ' ' {
+                    if i == 0 {
+                        return Ok(false);
+                    }
+                    i = i - 1;
+                } else if cc == '<' {
+                    // found < in the left
+                    if !found_right_angle {
+                        // skip something like "(< )>"
+                        return Ok(false);
+                    }
+                    break;
+                } else if cc == '(' {
+                    if !found_right_parentheses {
+                        // skip something like "<(>)"
+                        return Ok(false);
+                    }
+                    break;
+                } else {
+                    // failed to find '<' return false immediately
+                    return Ok(false);
+                }
+            }
+            return Ok(true);
+        })
+        .map_or(false, |is_accessible| is_accessible)
+    }
+
     /// Given a `Span`, tries to get a shorter span ending just after the first occurrence of `char`
     /// `c`.
     pub fn span_through_char(&self, sp: Span, c: char) -> Span {
@@ -855,7 +916,8 @@ impl SourceMap {
     /// Returns a new span representing the next character after the end-point of this span.
     /// Special cases:
     /// - if span is a dummy one, returns the same span
-    /// - if next_point reached the end of source, return span with lo = hi
+    /// - if next_point reached the end of source, return a span exceeding the end of source,
+    ///   which means sm.span_to_snippet(next_point) will get `Err`
     /// - respect multi-byte characters
     pub fn next_point(&self, sp: Span) -> Span {
         if sp.is_dummy() {
@@ -864,9 +926,6 @@ impl SourceMap {
         let start_of_next_point = sp.hi().0;
 
         let width = self.find_width_of_character_at_span(sp, true);
-        if width == 0 {
-            return Span::new(sp.hi(), sp.hi(), sp.ctxt(), None);
-        }
         // If the width is 1, then the next span should only contain the next char besides current ending.
         // However, in the case of a multibyte character, where the width != 1, the next span should
         // span multiple bytes to include the whole character.
@@ -938,7 +997,7 @@ impl SourceMap {
         // Ensure indexes are also not malformed.
         if start_index > end_index || end_index > source_len - 1 {
             debug!("find_width_of_character_at_span: source indexes are malformed");
-            return 0;
+            return 1;
         }
 
         let src = local_begin.sf.external_src.borrow();

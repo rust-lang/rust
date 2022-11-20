@@ -29,5 +29,11 @@ for SEARCH_PYTHON in py python3 python python2; do
         exec "$python" $extra_arg "$xpy" "$@"
     fi
 done
+
+python=$(bash -c "compgen -c python" | grep '^python[2-3]\.[0-9]\+$' | head -n1)
+if ! [ "$python" = "" ]; then
+    exec "$python" "$xpy" "$@"
+fi
+
 echo "$0: error: did not find python installed" >&2
 exit 1

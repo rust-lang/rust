@@ -73,8 +73,8 @@ impl MonikerResult {
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub struct PackageInformation {
     pub name: String,
-    pub repo: String,
-    pub version: String,
+    pub repo: Option<String>,
+    pub version: Option<String>,
 }
 
 pub(crate) fn crate_for_file(db: &RootDatabase, file_id: FileId) -> Option<Crate> {
@@ -256,18 +256,18 @@ pub(crate) fn def_to_moniker(
             let (name, repo, version) = match krate.origin(db) {
                 CrateOrigin::CratesIo { repo, name } => (
                     name.unwrap_or(krate.display_name(db)?.canonical_name().to_string()),
-                    repo?,
-                    krate.version(db)?,
+                    repo,
+                    krate.version(db),
                 ),
                 CrateOrigin::Lang(lang) => (
                     krate.display_name(db)?.canonical_name().to_string(),
-                    "https://github.com/rust-lang/rust/".to_string(),
-                    match lang {
+                    Some("https://github.com/rust-lang/rust/".to_string()),
+                    Some(match lang {
                         LangCrateOrigin::Other => {
                             "https://github.com/rust-lang/rust/library/".into()
                         }
                         lang => format!("https://github.com/rust-lang/rust/library/{lang}",),
-                    },
+                    }),
                 ),
             };
             PackageInformation { name, repo, version }
@@ -315,7 +315,7 @@ pub mod module {
 }
 "#,
             "foo::module::func",
-            r#"PackageInformation { name: "foo", repo: "https://a.b/foo.git", version: "0.1.0" }"#,
+            r#"PackageInformation { name: "foo", repo: Some("https://a.b/foo.git"), version: Some("0.1.0") }"#,
             MonikerKind::Import,
         );
         check_moniker(
@@ -331,7 +331,7 @@ pub mod module {
 }
 "#,
             "foo::module::func",
-            r#"PackageInformation { name: "foo", repo: "https://a.b/foo.git", version: "0.1.0" }"#,
+            r#"PackageInformation { name: "foo", repo: Some("https://a.b/foo.git"), version: Some("0.1.0") }"#,
             MonikerKind::Export,
         );
     }
@@ -348,7 +348,7 @@ pub mod module {
 }
 "#,
             "foo::module::MyTrait::func",
-            r#"PackageInformation { name: "foo", repo: "https://a.b/foo.git", version: "0.1.0" }"#,
+            r#"PackageInformation { name: "foo", repo: Some("https://a.b/foo.git"), version: Some("0.1.0") }"#,
             MonikerKind::Export,
         );
     }
@@ -365,7 +365,7 @@ pub mod module {
 }
 "#,
             "foo::module::MyTrait::MY_CONST",
-            r#"PackageInformation { name: "foo", repo: "https://a.b/foo.git", version: "0.1.0" }"#,
+            r#"PackageInformation { name: "foo", repo: Some("https://a.b/foo.git"), version: Some("0.1.0") }"#,
             MonikerKind::Export,
         );
     }
@@ -382,7 +382,7 @@ pub mod module {
 }
 "#,
             "foo::module::MyTrait::MyType",
-            r#"PackageInformation { name: "foo", repo: "https://a.b/foo.git", version: "0.1.0" }"#,
+            r#"PackageInformation { name: "foo", repo: Some("https://a.b/foo.git"), version: Some("0.1.0") }"#,
             MonikerKind::Export,
         );
     }
@@ -405,7 +405,7 @@ pub mod module {
 }
 "#,
             "foo::module::MyStruct::MyTrait::func",
-            r#"PackageInformation { name: "foo", repo: "https://a.b/foo.git", version: "0.1.0" }"#,
+            r#"PackageInformation { name: "foo", repo: Some("https://a.b/foo.git"), version: Some("0.1.0") }"#,
             MonikerKind::Export,
         );
     }
@@ -425,7 +425,7 @@ pub struct St {
 }
 "#,
             "foo::St::a",
-            r#"PackageInformation { name: "foo", repo: "https://a.b/foo.git", version: "0.1.0" }"#,
+            r#"PackageInformation { name: "foo", repo: Some("https://a.b/foo.git"), version: Some("0.1.0") }"#,
             MonikerKind::Import,
         );
     }

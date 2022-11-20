@@ -566,10 +566,7 @@ impl<'tcx> TyCtxt<'tcx> {
                     ))
                 },
                 consts: &mut |c, ty: Ty<'tcx>| {
-                    self.mk_const(ty::ConstS {
-                        kind: ty::ConstKind::Bound(ty::INNERMOST, shift_bv(c)),
-                        ty,
-                    })
+                    self.mk_const(ty::ConstKind::Bound(ty::INNERMOST, shift_bv(c)), ty)
                 },
             },
         )
@@ -601,7 +598,7 @@ impl<'tcx> TyCtxt<'tcx> {
             .replace_late_bound_regions(sig, |_| {
                 let br = ty::BoundRegion {
                     var: ty::BoundVar::from_u32(counter),
-                    kind: ty::BrAnon(counter),
+                    kind: ty::BrAnon(counter, None),
                 };
                 let r = self.mk_region(ty::ReLateBound(ty::INNERMOST, br));
                 counter += 1;
@@ -609,7 +606,7 @@ impl<'tcx> TyCtxt<'tcx> {
             })
             .0;
         let bound_vars = self.mk_bound_variable_kinds(
-            (0..counter).map(|i| ty::BoundVariableKind::Region(ty::BrAnon(i))),
+            (0..counter).map(|i| ty::BoundVariableKind::Region(ty::BrAnon(i, None))),
         );
         Binder::bind_with_vars(inner, bound_vars)
     }
@@ -629,7 +626,9 @@ impl<'tcx> TyCtxt<'tcx> {
                 let index = entry.index();
                 let var = ty::BoundVar::from_usize(index);
                 let kind = entry
-                    .or_insert_with(|| ty::BoundVariableKind::Region(ty::BrAnon(index as u32)))
+                    .or_insert_with(|| {
+                        ty::BoundVariableKind::Region(ty::BrAnon(index as u32, None))
+                    })
                     .expect_region();
                 let br = ty::BoundRegion { var, kind };
                 self.tcx.mk_region(ty::ReLateBound(ty::INNERMOST, br))
@@ -648,7 +647,7 @@ impl<'tcx> TyCtxt<'tcx> {
                 let index = entry.index();
                 let var = ty::BoundVar::from_usize(index);
                 let () = entry.or_insert_with(|| ty::BoundVariableKind::Const).expect_const();
-                self.tcx.mk_const(ty::ConstS { ty, kind: ty::ConstKind::Bound(ty::INNERMOST, var) })
+                self.tcx.mk_const(ty::ConstKind::Bound(ty::INNERMOST, var), ty)
             }
         }
 
@@ -732,10 +731,7 @@ impl<'tcx> TypeFolder<'tcx> for Shifter<'tcx> {
                 ct
             } else {
                 let debruijn = debruijn.shifted_in(self.amount);
-                self.tcx.mk_const(ty::ConstS {
-                    kind: ty::ConstKind::Bound(debruijn, bound_ct),
-                    ty: ct.ty(),
-                })
+                self.tcx.mk_const(ty::ConstKind::Bound(debruijn, bound_ct), ct.ty())
             }
         } else {
             ct.super_fold_with(self)

@@ -4,11 +4,10 @@ use crate::clean::render_macro_matchers::render_macro_matcher;
 use crate::clean::{
     clean_doc_module, clean_middle_const, clean_middle_region, clean_middle_ty, inline, Crate,
     ExternalCrate, Generic, GenericArg, GenericArgs, ImportSource, Item, ItemKind, Lifetime, Path,
-    PathSegment, Primitive, PrimitiveType, Type, TypeBinding, Visibility,
+    PathSegment, Primitive, PrimitiveType, Term, Type, TypeBinding, TypeBindingKind,
 };
 use crate::core::DocContext;
-use crate::formats::item_type::ItemType;
-use crate::visit_lib::LibEmbargoVisitor;
+use crate::html::format::visibility_to_src_with_space;
 
 use rustc_ast as ast;
 use rustc_ast::tokenstream::TokenTree;
@@ -22,7 +21,7 @@ use rustc_middle::ty::{self, DefIdTree, TyCtxt};
 use rustc_span::symbol::{kw, sym, Symbol};
 use std::fmt::Write as _;
 use std::mem;
-use thin_vec::ThinVec;
+use thin_vec::{thin_vec, ThinVec};
 
 #[cfg(test)]
 mod tests;
@@ -32,7 +31,7 @@ pub(crate) fn krate(cx: &mut DocContext<'_>) -> Crate {
 
     for &cnum in cx.tcx.crates(()) {
         // Analyze doc-reachability for extern items
-        LibEmbargoVisitor::new(cx).visit_lib(cnum);
+        crate::visit_lib::lib_embargo_visit_item(cx, cnum.as_def_id());
     }
 
     // Clean the crate, translating the entire librustc_ast AST to one that is
@@ -114,12 +113,12 @@ fn external_generic_args<'tcx>(
                 ty::Tuple(tys) => tys.iter().map(|t| clean_middle_ty(t, cx, None)).collect::<Vec<_>>().into(),
                 _ => return GenericArgs::AngleBracketed { args: args.into(), bindings },
             };
-        let output = None;
-        // FIXME(#20299) return type comes from a projection now
-        // match types[1].kind {
-        //     ty::Tuple(ref v) if v.is_empty() => None, // -> ()
-        //     _ => Some(types[1].clean(cx))
-        // };
+        let output = bindings.into_iter().next().and_then(|binding| match binding.kind {
+            TypeBindingKind::Equality { term: Term::Type(ty) } if ty != Type::Tuple(Vec::new()) => {
+                Some(Box::new(ty))
+            }
+            _ => None,
+        });
         GenericArgs::Parenthesized { inputs, output }
     } else {
         GenericArgs::AngleBracketed { args: args.into(), bindings: bindings.into() }
@@ -137,7 +136,7 @@ pub(super) fn external_path<'tcx>(
     let name = cx.tcx.item_name(did);
     Path {
         res: Res::Def(def_kind, did),
-        segments: vec![PathSegment {
+        segments: thin_vec![PathSegment {
             name,
             args: external_generic_args(cx, did, has_self, bindings, substs),
         }],
@@ -243,19 +242,13 @@ pub(crate) fn print_const(cx: &DocContext<'_>, n: ty::Const<'_>) -> String {
 
             s
         }
-        _ => {
-            let mut s = n.to_string();
-            // array lengths are obviously usize
-            if s.ends_with("_usize") {
-                let n = s.len() - "_usize".len();
-                s.truncate(n);
-                if s.ends_with(": ") {
-                    let n = s.len() - ": ".len();
-                    s.truncate(n);
-                }
-            }
-            s
+        // array lengths are obviously usize
+        ty::ConstKind::Value(ty::ValTree::Leaf(scalar))
+            if *n.ty().kind() == ty::Uint(ty::UintTy::Usize) =>
+        {
+            scalar.to_string()
         }
+        _ => n.to_string(),
     }
 }
 
@@ -504,9 +497,6 @@ pub(crate) fn register_res(cx: &mut DocContext<'_>, res: Res) -> DefId {
         return did;
     }
     inline::record_extern_fqn(cx, did, kind);
-    if let ItemType::Trait = kind {
-        inline::record_extern_trait(cx, did);
-    }
     did
 }
 
@@ -588,7 +578,7 @@ pub(super) fn display_macro_source(
     name: Symbol,
     def: &ast::MacroDef,
     def_id: DefId,
-    vis: Visibility,
+    vis: ty::Visibility<DefId>,
 ) -> String {
     let tts: Vec<_> = def.body.inner_tokens().into_trees().collect();
     // Extract the spans of all matchers. They represent the "interface" of the macro.
@@ -600,14 +590,14 @@ pub(super) fn display_macro_source(
         if matchers.len() <= 1 {
             format!(
                 "{}macro {}{} {{\n    ...\n}}",
-                vis.to_src_with_space(cx.tcx, def_id),
+                visibility_to_src_with_space(Some(vis), cx.tcx, def_id),
                 name,
                 matchers.map(|matcher| render_macro_matcher(cx.tcx, matcher)).collect::<String>(),
             )
         } else {
             format!(
                 "{}macro {} {{\n{}}}",
-                vis.to_src_with_space(cx.tcx, def_id),
+                visibility_to_src_with_space(Some(vis), cx.tcx, def_id),
                 name,
                 render_macro_arms(cx.tcx, matchers, ","),
             )

@@ -127,7 +127,7 @@ impl VisitTags for Operand<Provenance> {
 
 impl VisitTags for Allocation<Provenance, AllocExtra> {
     fn visit_tags(&self, visit: &mut dyn FnMut(SbTag)) {
-        for (_size, prov) in self.provenance().iter() {
+        for prov in self.provenance().provenances() {
             prov.visit_tags(visit);
         }
 

@@ -11,9 +11,9 @@ use syntax::SmolStr;
 
 use crate::{
     db::HirDatabase, from_assoc_type_id, from_chalk_trait_id, from_foreign_def_id,
-    from_placeholder_idx, to_chalk_trait_id, AdtId, AliasEq, AliasTy, Binders, CallableDefId,
-    CallableSig, FnPointer, ImplTraitId, Interner, Lifetime, ProjectionTy, QuantifiedWhereClause,
-    Substitution, TraitRef, Ty, TyBuilder, TyKind, WhereClause,
+    from_placeholder_idx, to_chalk_trait_id, utils::generics, AdtId, AliasEq, AliasTy, Binders,
+    CallableDefId, CallableSig, FnPointer, ImplTraitId, Interner, Lifetime, ProjectionTy,
+    QuantifiedWhereClause, Substitution, TraitRef, Ty, TyBuilder, TyKind, WhereClause,
 };
 
 pub trait TyExt {
@@ -338,10 +338,13 @@ pub trait ProjectionTyExt {
 
 impl ProjectionTyExt for ProjectionTy {
     fn trait_ref(&self, db: &dyn HirDatabase) -> TraitRef {
-        TraitRef {
-            trait_id: to_chalk_trait_id(self.trait_(db)),
-            substitution: self.substitution.clone(),
-        }
+        // FIXME: something like `Split` trait from chalk-solve might be nice.
+        let generics = generics(db.upcast(), from_assoc_type_id(self.associated_ty_id).into());
+        let substitution = Substitution::from_iter(
+            Interner,
+            self.substitution.iter(Interner).skip(generics.len_self()),
+        );
+        TraitRef { trait_id: to_chalk_trait_id(self.trait_(db)), substitution }
     }
 
     fn trait_(&self, db: &dyn HirDatabase) -> TraitId {

@@ -146,7 +146,9 @@ fn prune_stacktrace<'tcx>(
     }
 }
 
-/// Emit a custom diagnostic without going through the miri-engine machinery
+/// Emit a custom diagnostic without going through the miri-engine machinery.
+///
+/// Returns `Some` if this was regular program termination with a given exit code, `None` otherwise.
 pub fn report_error<'tcx, 'mir>(
     ecx: &InterpCx<'mir, 'tcx, MiriMachine<'mir, 'tcx>>,
     e: InterpErrorInfo<'tcx>,
@@ -155,106 +157,102 @@ pub fn report_error<'tcx, 'mir>(
 
     let mut msg = vec![];
 
-    let (title, helps) = match &e.kind() {
-        MachineStop(info) => {
-            let info = info.downcast_ref::<TerminationInfo>().expect("invalid MachineStop payload");
-            use TerminationInfo::*;
-            let title = match info {
-                Exit(code) => return Some(*code),
-                Abort(_) => Some("abnormal termination"),
-                UnsupportedInIsolation(_) | Int2PtrWithStrictProvenance =>
-                    Some("unsupported operation"),
-                StackedBorrowsUb { .. } => Some("Undefined Behavior"),
-                Deadlock => Some("deadlock"),
-                MultipleSymbolDefinitions { .. } | SymbolShimClashing { .. } => None,
-            };
-            #[rustfmt::skip]
-            let helps = match info {
-                UnsupportedInIsolation(_) =>
-                    vec![
-                        (None, format!("pass the flag `-Zmiri-disable-isolation` to disable isolation;")),
-                        (None, format!("or pass `-Zmiri-isolation-error=warn` to configure Miri to return an error code from isolated operations (if supported for that operation) and continue with a warning")),
-                    ],
-                StackedBorrowsUb { help, history, .. } => {
-                    let url = "https://github.com/rust-lang/unsafe-code-guidelines/blob/master/wip/stacked-borrows.md";
-                    msg.extend(help.clone());
-                    let mut helps = vec![
-                        (None, format!("this indicates a potential bug in the program: it performed an invalid operation, but the Stacked Borrows rules it violated are still experimental")),
-                        (None, format!("see {url} for further information")),
-                    ];
-                    if let Some(TagHistory {created, invalidated, protected}) = history.clone() {
-                        helps.push((Some(created.1), created.0));
-                        if let Some((msg, span)) = invalidated {
-                            helps.push((Some(span), msg));
-                        }
-                        if let Some((protector_msg, protector_span)) = protected {
-                            helps.push((Some(protector_span), protector_msg));
-                        }
+    let (title, helps) = if let MachineStop(info) = e.kind() {
+        let info = info.downcast_ref::<TerminationInfo>().expect("invalid MachineStop payload");
+        use TerminationInfo::*;
+        let title = match info {
+            Exit(code) => return Some(*code),
+            Abort(_) => Some("abnormal termination"),
+            UnsupportedInIsolation(_) | Int2PtrWithStrictProvenance =>
+                Some("unsupported operation"),
+            StackedBorrowsUb { .. } => Some("Undefined Behavior"),
+            Deadlock => Some("deadlock"),
+            MultipleSymbolDefinitions { .. } | SymbolShimClashing { .. } => None,
+        };
+        #[rustfmt::skip]
+        let helps = match info {
+            UnsupportedInIsolation(_) =>
+                vec![
+                    (None, format!("pass the flag `-Zmiri-disable-isolation` to disable isolation;")),
+                    (None, format!("or pass `-Zmiri-isolation-error=warn` to configure Miri to return an error code from isolated operations (if supported for that operation) and continue with a warning")),
+                ],
+            StackedBorrowsUb { help, history, .. } => {
+                let url = "https://github.com/rust-lang/unsafe-code-guidelines/blob/master/wip/stacked-borrows.md";
+                msg.extend(help.clone());
+                let mut helps = vec![
+                    (None, format!("this indicates a potential bug in the program: it performed an invalid operation, but the Stacked Borrows rules it violated are still experimental")),
+                    (None, format!("see {url} for further information")),
+                ];
+                if let Some(TagHistory {created, invalidated, protected}) = history.clone() {
+                    helps.push((Some(created.1), created.0));
+                    if let Some((msg, span)) = invalidated {
+                        helps.push((Some(span), msg));
                     }
-                    helps
+                    if let Some((protector_msg, protector_span)) = protected {
+                        helps.push((Some(protector_span), protector_msg));
+                    }
                 }
-                MultipleSymbolDefinitions { first, first_crate, second, second_crate, .. } =>
-                    vec![
-                        (Some(*first), format!("it's first defined here, in crate `{first_crate}`")),
-                        (Some(*second), format!("then it's defined here again, in crate `{second_crate}`")),
-                    ],
-                SymbolShimClashing { link_name, span } =>
-                    vec![(Some(*span), format!("the `{link_name}` symbol is defined here"))],
-                Int2PtrWithStrictProvenance =>
-                    vec![(None, format!("use Strict Provenance APIs (https://doc.rust-lang.org/nightly/std/ptr/index.html#strict-provenance, https://crates.io/crates/sptr) instead"))],
-                _ => vec![],
-            };
-            (title, helps)
-        }
-        _ => {
-            #[rustfmt::skip]
-            let title = match e.kind() {
-                Unsupported(_) =>
-                    "unsupported operation",
-                UndefinedBehavior(_) =>
-                    "Undefined Behavior",
-                ResourceExhaustion(_) =>
-                    "resource exhaustion",
-                InvalidProgram(
-                    InvalidProgramInfo::AlreadyReported(_) |
-                    InvalidProgramInfo::Layout(..) |
-                    InvalidProgramInfo::ReferencedConstant
-                ) =>
-                    "post-monomorphization error",
-                kind =>
-                    bug!("This error should be impossible in Miri: {kind:?}"),
-            };
-            #[rustfmt::skip]
-            let helps = match e.kind() {
-                Unsupported(
-                    UnsupportedOpInfo::ThreadLocalStatic(_) |
-                    UnsupportedOpInfo::ReadExternStatic(_) |
-                    UnsupportedOpInfo::PartialPointerOverwrite(_) | // we make memory uninit instead
-                    UnsupportedOpInfo::ReadPointerAsBytes
-                ) =>
-                    panic!("Error should never be raised by Miri: {kind:?}", kind = e.kind()),
-                Unsupported(
-                    UnsupportedOpInfo::Unsupported(_) |
-                    UnsupportedOpInfo::PartialPointerCopy(_)
-                ) =>
-                    vec![(None, format!("this is likely not a bug in the program; it indicates that the program performed an operation that the interpreter does not support"))],
-                UndefinedBehavior(UndefinedBehaviorInfo::AlignmentCheckFailed { .. })
-                    if ecx.machine.check_alignment == AlignmentCheck::Symbolic
-                =>
-                    vec![
-                        (None, format!("this usually indicates that your program performed an invalid operation and caused Undefined Behavior")),
-                        (None, format!("but due to `-Zmiri-symbolic-alignment-check`, alignment errors can also be false positives")),
-                    ],
-                UndefinedBehavior(_) =>
-                    vec![
-                        (None, format!("this indicates a bug in the program: it performed an invalid operation, and caused Undefined Behavior")),
-                        (None, format!("see https://doc.rust-lang.org/nightly/reference/behavior-considered-undefined.html for further information")),
-                    ],
-                InvalidProgram(_) | ResourceExhaustion(_) | MachineStop(_) =>
-                    vec![],
-            };
-            (Some(title), helps)
-        }
+                helps
+            }
+            MultipleSymbolDefinitions { first, first_crate, second, second_crate, .. } =>
+                vec![
+                    (Some(*first), format!("it's first defined here, in crate `{first_crate}`")),
+                    (Some(*second), format!("then it's defined here again, in crate `{second_crate}`")),
+                ],
+            SymbolShimClashing { link_name, span } =>
+                vec![(Some(*span), format!("the `{link_name}` symbol is defined here"))],
+            Int2PtrWithStrictProvenance =>
+                vec![(None, format!("use Strict Provenance APIs (https://doc.rust-lang.org/nightly/std/ptr/index.html#strict-provenance, https://crates.io/crates/sptr) instead"))],
+            _ => vec![],
+        };
+        (title, helps)
+    } else {
+        #[rustfmt::skip]
+        let title = match e.kind() {
+            UndefinedBehavior(_) =>
+                "Undefined Behavior",
+            ResourceExhaustion(_) =>
+                "resource exhaustion",
+            Unsupported(
+                // We list only the ones that can actually happen.
+                UnsupportedOpInfo::Unsupported(_)
+            ) =>
+                "unsupported operation",
+            InvalidProgram(
+                // We list only the ones that can actually happen.
+                InvalidProgramInfo::AlreadyReported(_) |
+                InvalidProgramInfo::Layout(..)
+            ) =>
+                "post-monomorphization error",
+            kind =>
+                bug!("This error should be impossible in Miri: {kind:?}"),
+        };
+        #[rustfmt::skip]
+        let helps = match e.kind() {
+            Unsupported(_) =>
+                vec![(None, format!("this is likely not a bug in the program; it indicates that the program performed an operation that the interpreter does not support"))],
+            UndefinedBehavior(UndefinedBehaviorInfo::AlignmentCheckFailed { .. })
+                if ecx.machine.check_alignment == AlignmentCheck::Symbolic
+            =>
+                vec![
+                    (None, format!("this usually indicates that your program performed an invalid operation and caused Undefined Behavior")),
+                    (None, format!("but due to `-Zmiri-symbolic-alignment-check`, alignment errors can also be false positives")),
+                ],
+            UndefinedBehavior(_) =>
+                vec![
+                    (None, format!("this indicates a bug in the program: it performed an invalid operation, and caused Undefined Behavior")),
+                    (None, format!("see https://doc.rust-lang.org/nightly/reference/behavior-considered-undefined.html for further information")),
+                ],
+            InvalidProgram(
+                InvalidProgramInfo::AlreadyReported(rustc_errors::ErrorGuaranteed { .. })
+            ) => {
+                // This got already reported. No point in reporting it again.
+                return None;
+            }
+            _ =>
+                vec![],
+        };
+        (Some(title), helps)
     };
 
     let stacktrace = ecx.generate_stacktrace();
@@ -263,7 +261,7 @@ pub fn report_error<'tcx, 'mir>(
     msg.insert(0, e.to_string());
     report_msg(
         DiagLevel::Error,
-        &if let Some(title) = title { format!("{}: {}", title, msg[0]) } else { msg[0].clone() },
+        &if let Some(title) = title { format!("{title}: {}", msg[0]) } else { msg[0].clone() },
         msg,
         vec![],
         helps,

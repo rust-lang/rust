@@ -28,9 +28,9 @@ fn implied_outlives_bounds<'tcx>(
     &'tcx Canonical<'tcx, canonical::QueryResponse<'tcx, Vec<OutlivesBound<'tcx>>>>,
     NoSolution,
 > {
-    tcx.infer_ctxt().enter_canonical_trait_query(&goal, |infcx, _fulfill_cx, key| {
+    tcx.infer_ctxt().enter_canonical_trait_query(&goal, |ocx, key| {
         let (param_env, ty) = key.into_parts();
-        compute_implied_outlives_bounds(&infcx, param_env, ty)
+        compute_implied_outlives_bounds(&ocx.infcx, param_env, ty)
     })
 }
 

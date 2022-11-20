@@ -1,8 +1,7 @@
 use crate::mir::interpret::LitToConstInput;
 use crate::mir::ConstantKind;
-use crate::ty::{self, InternalSubsts, ParamEnv, ParamEnvAnd, Ty, TyCtxt};
+use crate::ty::{self, DefIdTree, InternalSubsts, ParamEnv, ParamEnvAnd, Ty, TyCtxt};
 use rustc_data_structures::intern::Interned;
-use rustc_errors::ErrorGuaranteed;
 use rustc_hir as hir;
 use rustc_hir::def_id::{DefId, LocalDefId};
 use rustc_macros::HashStable;
@@ -77,13 +76,13 @@ impl<'tcx> Const<'tcx> {
 
         match Self::try_eval_lit_or_param(tcx, ty, expr) {
             Some(v) => v,
-            None => tcx.mk_const(ty::ConstS {
-                kind: ty::ConstKind::Unevaluated(ty::UnevaluatedConst {
+            None => tcx.mk_const(
+                ty::ConstKind::Unevaluated(ty::UnevaluatedConst {
                     def: def.to_global(),
                     substs: InternalSubsts::identity_for_item(tcx, def.did.to_def_id()),
                 }),
                 ty,
-            }),
+            ),
         }
     }
 
@@ -132,16 +131,11 @@ impl<'tcx> Const<'tcx> {
             ExprKind::Path(QPath::Resolved(_, &Path { res: Res::Def(ConstParam, def_id), .. })) => {
                 // Find the name and index of the const parameter by indexing the generics of
                 // the parent item and construct a `ParamConst`.
-                let hir_id = tcx.hir().local_def_id_to_hir_id(def_id.expect_local());
-                let item_id = tcx.hir().get_parent_node(hir_id);
-                let item_def_id = tcx.hir().local_def_id(item_id);
-                let generics = tcx.generics_of(item_def_id.to_def_id());
+                let item_def_id = tcx.parent(def_id);
+                let generics = tcx.generics_of(item_def_id);
                 let index = generics.param_def_id_to_index[&def_id];
-                let name = tcx.hir().name(hir_id);
-                Some(tcx.mk_const(ty::ConstS {
-                    kind: ty::ConstKind::Param(ty::ParamConst::new(index, name)),
-                    ty,
-                }))
+                let name = tcx.item_name(def_id);
+                Some(tcx.mk_const(ty::ConstKind::Param(ty::ParamConst::new(index, name)), ty))
             }
             _ => None,
         }
@@ -150,7 +144,7 @@ impl<'tcx> Const<'tcx> {
     /// Interns the given value as a constant.
     #[inline]
     pub fn from_value(tcx: TyCtxt<'tcx>, val: ty::ValTree<'tcx>, ty: Ty<'tcx>) -> Self {
-        tcx.mk_const(ConstS { kind: ConstKind::Value(val), ty })
+        tcx.mk_const(ConstKind::Value(val), ty)
     }
 
     /// Panics if self.kind != ty::ConstKind::Value
@@ -228,7 +222,7 @@ impl<'tcx> Const<'tcx> {
         if let Some(val) = self.kind().try_eval_for_typeck(tcx, param_env) {
             match val {
                 Ok(val) => Const::from_value(tcx, val, self.ty()),
-                Err(ErrorGuaranteed { .. }) => tcx.const_error(self.ty()),
+                Err(guar) => tcx.const_error_with_guaranteed(self.ty(), guar),
             }
         } else {
             // Either the constant isn't evaluatable or ValTree creation failed.
@@ -243,7 +237,7 @@ impl<'tcx> Const<'tcx> {
         if let Some(val) = self.kind().try_eval_for_mir(tcx, param_env) {
             match val {
                 Ok(const_val) => ConstantKind::from_value(const_val, self.ty()),
-                Err(ErrorGuaranteed { .. }) => ConstantKind::Ty(tcx.const_error(self.ty())),
+                Err(guar) => ConstantKind::Ty(tcx.const_error_with_guaranteed(self.ty(), guar)),
             }
         } else {
             ConstantKind::Ty(self)
@@ -272,9 +266,9 @@ impl<'tcx> Const<'tcx> {
 pub fn const_param_default<'tcx>(tcx: TyCtxt<'tcx>, def_id: DefId) -> Const<'tcx> {
     let default_def_id = match tcx.hir().get_by_def_id(def_id.expect_local()) {
         hir::Node::GenericParam(hir::GenericParam {
-            kind: hir::GenericParamKind::Const { ty: _, default: Some(ac) },
+            kind: hir::GenericParamKind::Const { default: Some(ac), .. },
             ..
-        }) => tcx.hir().local_def_id(ac.hir_id),
+        }) => ac.def_id,
         _ => span_bug!(
             tcx.def_span(def_id),
             "`const_param_default` expected a generic parameter with a constant"

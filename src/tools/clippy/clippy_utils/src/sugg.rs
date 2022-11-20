@@ -207,6 +207,7 @@ impl<'a> Sugg<'a> {
             | ast::ExprKind::InlineAsm(..)
             | ast::ExprKind::ConstBlock(..)
             | ast::ExprKind::Lit(..)
+            | ast::ExprKind::IncludedBytes(..)
             | ast::ExprKind::Loop(..)
             | ast::ExprKind::MacCall(..)
             | ast::ExprKind::MethodCall(..)

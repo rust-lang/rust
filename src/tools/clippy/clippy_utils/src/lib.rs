@@ -87,10 +87,10 @@ use rustc_hir::hir_id::{HirIdMap, HirIdSet};
 use rustc_hir::intravisit::{walk_expr, FnKind, Visitor};
 use rustc_hir::LangItem::{OptionNone, ResultErr, ResultOk};
 use rustc_hir::{
-    def, Arm, ArrayLen, BindingAnnotation, Block, BlockCheckMode, Body, Closure, Constness, Destination, Expr,
-    ExprKind, FnDecl, HirId, Impl, ImplItem, ImplItemKind, IsAsync, Item, ItemKind, LangItem, Local, MatchSource,
-    Mutability, Node, Param, Pat, PatKind, Path, PathSegment, PrimTy, QPath, Stmt, StmtKind, TraitItem, TraitItemKind,
-    TraitRef, TyKind, UnOp,
+    def, Arm, ArrayLen, BindingAnnotation, Block, BlockCheckMode, Body, Closure, Constness,
+    Destination, Expr, ExprKind, FnDecl, HirId, Impl, ImplItem, ImplItemKind, Item, ItemKind,
+    LangItem, Local, MatchSource, Mutability, Node, Param, Pat, PatKind, Path, PathSegment, PrimTy,
+    QPath, Stmt, StmtKind, TraitItem, TraitItemKind, TraitRef, TyKind, UnOp,
 };
 use rustc_lexer::{tokenize, TokenKind};
 use rustc_lint::{LateContext, Level, Lint, LintContext};
@@ -247,7 +247,7 @@ pub fn in_constant(cx: &LateContext<'_>, id: HirId) -> bool {
 /// For example, use this to check whether a function call or a pattern is `Some(..)`.
 pub fn is_res_lang_ctor(cx: &LateContext<'_>, res: Res, lang_item: LangItem) -> bool {
     if let Res::Def(DefKind::Ctor(..), id) = res
-        && let Ok(lang_id) = cx.tcx.lang_items().require(lang_item)
+        && let Some(lang_id) = cx.tcx.lang_items().get(lang_item)
         && let Some(id) = cx.tcx.opt_parent(id)
     {
         id == lang_id
@@ -303,7 +303,7 @@ pub fn is_lang_item_or_ctor(cx: &LateContext<'_>, did: DefId, item: LangItem) ->
         _ => did,
     };
 
-    cx.tcx.lang_items().require(item).map_or(false, |id| id == did)
+    cx.tcx.lang_items().get(item) == Some(did)
 }
 
 pub fn is_unit_expr(expr: &Expr<'_>) -> bool {
@@ -432,6 +432,16 @@ pub fn match_qpath(path: &QPath<'_>, segments: &[&str]) -> bool {
 /// Please use `is_path_diagnostic_item` if the target is a diagnostic item.
 pub fn is_expr_path_def_path(cx: &LateContext<'_>, expr: &Expr<'_>, segments: &[&str]) -> bool {
     path_def_id(cx, expr).map_or(false, |id| match_def_path(cx, id, segments))
+}
+
+/// If `maybe_path` is a path node which resolves to an item, resolves it to a `DefId` and checks if
+/// it matches the given lang item.
+pub fn is_path_lang_item<'tcx>(
+    cx: &LateContext<'_>,
+    maybe_path: &impl MaybePath<'tcx>,
+    lang_item: LangItem,
+) -> bool {
+    path_def_id(cx, maybe_path).map_or(false, |id| cx.tcx.lang_items().get(lang_item) == Some(id))
 }
 
 /// If `maybe_path` is a path node which resolves to an item, resolves it to a `DefId` and checks if
@@ -760,7 +770,6 @@ pub fn can_mut_borrow_both(cx: &LateContext<'_>, e1: &Expr<'_>, e2: &Expr<'_>) -
 /// constructor from the std library
 fn is_default_equivalent_ctor(cx: &LateContext<'_>, def_id: DefId, path: &QPath<'_>) -> bool {
     let std_types_symbols = &[
-        sym::String,
         sym::Vec,
         sym::VecDeque,
         sym::LinkedList,
@@ -777,7 +786,7 @@ fn is_default_equivalent_ctor(cx: &LateContext<'_>, def_id: DefId, path: &QPath<
                 if let Some(adt) = cx.tcx.type_of(impl_did).ty_adt_def() {
                     return std_types_symbols
                         .iter()
-                        .any(|&symbol| cx.tcx.is_diagnostic_item(symbol, adt.did()));
+                        .any(|&symbol| cx.tcx.is_diagnostic_item(symbol, adt.did()) || Some(adt.did()) == cx.tcx.lang_items().string());
                 }
             }
         }
@@ -834,7 +843,7 @@ fn is_default_equivalent_from(cx: &LateContext<'_>, from_func: &Expr<'_>, arg: &
             ExprKind::Lit(hir::Lit {
                 node: LitKind::Str(ref sym, _),
                 ..
-            }) => return sym.is_empty() && is_path_diagnostic_item(cx, ty, sym::String),
+            }) => return sym.is_empty() && is_path_lang_item(cx, ty, LangItem::String),
             ExprKind::Array([]) => return is_path_diagnostic_item(cx, ty, sym::Vec),
             ExprKind::Repeat(_, ArrayLen::Body(len)) => {
                 if let ExprKind::Lit(ref const_lit) = cx.tcx.hir().body(len.body).value.kind &&
@@ -1861,7 +1870,7 @@ pub fn if_sequence<'tcx>(mut expr: &'tcx Expr<'tcx>) -> (Vec<&'tcx Expr<'tcx>>, 
 
 /// Checks if the given function kind is an async function.
 pub fn is_async_fn(kind: FnKind<'_>) -> bool {
-    matches!(kind, FnKind::ItemFn(_, _, header) if header.asyncness == IsAsync::Async)
+    matches!(kind, FnKind::ItemFn(_, _, header) if header.asyncness.is_async())
 }
 
 /// Peels away all the compiler generated code surrounding the body of an async function,
@@ -2281,7 +2290,7 @@ fn with_test_item_names(tcx: TyCtxt<'_>, module: LocalDefId, f: impl Fn(&[Symbol
         Entry::Vacant(entry) => {
             let mut names = Vec::new();
             for id in tcx.hir().module_items(module) {
-                if matches!(tcx.def_kind(id.def_id), DefKind::Const)
+                if matches!(tcx.def_kind(id.owner_id), DefKind::Const)
                     && let item = tcx.hir().item(id)
                     && let ItemKind::Const(ty, _body) = item.kind {
                     if let TyKind::Path(QPath::Resolved(_, path)) = ty.kind {

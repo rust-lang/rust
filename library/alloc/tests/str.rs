@@ -1590,11 +1590,27 @@ fn test_bool_from_str() {
     assert_eq!("not even a boolean".parse::<bool>().ok(), None);
 }
 
-fn check_contains_all_substrings(s: &str) {
-    assert!(s.contains(""));
-    for i in 0..s.len() {
-        for j in i + 1..=s.len() {
-            assert!(s.contains(&s[i..j]));
+fn check_contains_all_substrings(haystack: &str) {
+    let mut modified_needle = String::new();
+
+    for i in 0..haystack.len() {
+        // check different haystack lengths since we special-case short haystacks.
+        let haystack = &haystack[0..i];
+        assert!(haystack.contains(""));
+        for j in 0..haystack.len() {
+            for k in j + 1..=haystack.len() {
+                let needle = &haystack[j..k];
+                assert!(haystack.contains(needle));
+                modified_needle.clear();
+                modified_needle.push_str(needle);
+                modified_needle.replace_range(0..1, "\0");
+                assert!(!haystack.contains(&modified_needle));
+
+                modified_needle.clear();
+                modified_needle.push_str(needle);
+                modified_needle.replace_range(needle.len() - 1..needle.len(), "\0");
+                assert!(!haystack.contains(&modified_needle));
+            }
         }
     }
 }

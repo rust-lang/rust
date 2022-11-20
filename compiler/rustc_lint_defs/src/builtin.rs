@@ -605,7 +605,7 @@ declare_lint! {
     ///
     /// ### Example
     ///
-    /// ```
+    /// ```rust
     /// #[warn(unused_tuple_struct_fields)]
     /// struct S(i32, i32, i32);
     /// let s = S(1, 2, 3);
@@ -1154,7 +1154,7 @@ declare_lint! {
     ///
     /// ### Example
     ///
-    /// ```compile_fail
+    /// ```rust,compile_fail
     /// #[repr(packed)]
     /// pub struct Foo {
     ///     field1: u64,
@@ -1983,73 +1983,6 @@ declare_lint! {
 }
 
 declare_lint! {
-    /// The `proc_macro_derive_resolution_fallback` lint detects proc macro
-    /// derives using inaccessible names from parent modules.
-    ///
-    /// ### Example
-    ///
-    /// ```rust,ignore (proc-macro)
-    /// // foo.rs
-    /// #![crate_type = "proc-macro"]
-    ///
-    /// extern crate proc_macro;
-    ///
-    /// use proc_macro::*;
-    ///
-    /// #[proc_macro_derive(Foo)]
-    /// pub fn foo1(a: TokenStream) -> TokenStream {
-    ///     drop(a);
-    ///     "mod __bar { static mut BAR: Option<Something> = None; }".parse().unwrap()
-    /// }
-    /// ```
-    ///
-    /// ```rust,ignore (needs-dependency)
-    /// // bar.rs
-    /// #[macro_use]
-    /// extern crate foo;
-    ///
-    /// struct Something;
-    ///
-    /// #[derive(Foo)]
-    /// struct Another;
-    ///
-    /// fn main() {}
-    /// ```
-    ///
-    /// This will produce:
-    ///
-    /// ```text
-    /// warning: cannot find type `Something` in this scope
-    ///  --> src/main.rs:8:10
-    ///   |
-    /// 8 | #[derive(Foo)]
-    ///   |          ^^^ names from parent modules are not accessible without an explicit import
-    ///   |
-    ///   = note: `#[warn(proc_macro_derive_resolution_fallback)]` on by default
-    ///   = warning: this was previously accepted by the compiler but is being phased out; it will become a hard error in a future release!
-    ///   = note: for more information, see issue #50504 <https://github.com/rust-lang/rust/issues/50504>
-    /// ```
-    ///
-    /// ### Explanation
-    ///
-    /// If a proc-macro generates a module, the compiler unintentionally
-    /// allowed items in that module to refer to items in the crate root
-    /// without importing them. This is a [future-incompatible] lint to
-    /// transition this to a hard error in the future. See [issue #50504] for
-    /// more details.
-    ///
-    /// [issue #50504]: https://github.com/rust-lang/rust/issues/50504
-    /// [future-incompatible]: ../index.md#future-incompatible-lints
-    pub PROC_MACRO_DERIVE_RESOLUTION_FALLBACK,
-    Deny,
-    "detects proc macro derives using inaccessible names from parent modules",
-    @future_incompatible = FutureIncompatibleInfo {
-        reference: "issue #83583 <https://github.com/rust-lang/rust/issues/83583>",
-        reason: FutureIncompatibilityReason::FutureReleaseErrorReportNow,
-    };
-}
-
-declare_lint! {
     /// The `macro_use_extern_crate` lint detects the use of the
     /// [`macro_use` attribute].
     ///
@@ -2615,7 +2548,7 @@ declare_lint! {
     ///
     /// ### Example
     ///
-    /// ```compile_fail
+    /// ```rust,compile_fail
     /// # #![allow(unused)]
     /// enum E {
     ///     A,
@@ -3287,7 +3220,6 @@ declare_lint_pass! {
         UNSTABLE_NAME_COLLISIONS,
         IRREFUTABLE_LET_PATTERNS,
         WHERE_CLAUSES_OBJECT_SAFETY,
-        PROC_MACRO_DERIVE_RESOLUTION_FALLBACK,
         MACRO_USE_EXTERN_CRATE,
         MACRO_EXPANDED_MACRO_EXPORTS_ACCESSED_BY_ABSOLUTE_PATHS,
         ILL_FORMED_ATTRIBUTE_INPUT,
@@ -3986,7 +3918,7 @@ declare_lint! {
     ///
     /// ### Example
     ///
-    /// ```
+    /// ```rust
     /// #![allow(test_unstable_lint)]
     /// ```
     ///

@@ -192,7 +192,7 @@ fn init_late_loggers(tcx: TyCtxt<'_>) {
             if log::Level::from_str(&var).is_ok() {
                 env::set_var(
                     "RUSTC_LOG",
-                    &format!(
+                    format!(
                         "rustc_middle::mir::interpret={0},rustc_const_eval::interpret={0}",
                         var
                     ),
@@ -216,76 +216,28 @@ fn init_late_loggers(tcx: TyCtxt<'_>) {
     }
 }
 
-/// Returns the "default sysroot" that Miri will use for host things if no `--sysroot` flag is set.
-/// Should be a compile-time constant.
-fn host_sysroot() -> Option<String> {
-    if option_env!("RUSTC_STAGE").is_some() {
-        // This is being built as part of rustc, and gets shipped with rustup.
-        // We can rely on the sysroot computation in librustc_session.
-        return None;
-    }
-    // For builds outside rustc, we need to ensure that we got a sysroot
-    // that gets used as a default.  The sysroot computation in librustc_session would
-    // end up somewhere in the build dir (see `get_or_default_sysroot`).
-    // Taken from PR <https://github.com/Manishearth/rust-clippy/pull/911>.
-    let home = option_env!("RUSTUP_HOME").or(option_env!("MULTIRUST_HOME"));
-    let toolchain = option_env!("RUSTUP_TOOLCHAIN").or(option_env!("MULTIRUST_TOOLCHAIN"));
-    Some(match (home, toolchain) {
-        (Some(home), Some(toolchain)) => {
-            // Check that at runtime, we are still in this toolchain (if there is any toolchain).
-            if let Some(toolchain_runtime) =
-                env::var_os("RUSTUP_TOOLCHAIN").or_else(|| env::var_os("MULTIRUST_TOOLCHAIN"))
-            {
-                if toolchain_runtime != toolchain {
-                    show_error!(
-                        "This Miri got built with local toolchain `{toolchain}`, but now is being run under a different toolchain. \n\
-                        Make sure to run Miri in the toolchain it got built with, e.g. via `cargo +{toolchain} miri`."
-                    )
-                }
-            }
-            format!("{}/toolchains/{}", home, toolchain)
-        }
-        _ => option_env!("RUST_SYSROOT")
-            .unwrap_or_else(|| {
-                show_error!(
-                    "To build Miri without rustup, set the `RUST_SYSROOT` env var at build time",
-                )
-            })
-            .to_owned(),
-    })
-}
-
 /// Execute a compiler with the given CLI arguments and callbacks.
 fn run_compiler(
     mut args: Vec<String>,
     target_crate: bool,
     callbacks: &mut (dyn rustc_driver::Callbacks + Send),
 ) -> ! {
-    // Make sure we use the right default sysroot. The default sysroot is wrong,
-    // because `get_or_default_sysroot` in `librustc_session` bases that on `current_exe`.
-    //
-    // Make sure we always call `host_sysroot` as that also does some sanity-checks
-    // of the environment we were built in and whether it matches what we are running in.
-    let host_default_sysroot = host_sysroot();
-    // Now see if we even need to set something.
-    let sysroot_flag = "--sysroot";
-    if !args.iter().any(|e| e == sysroot_flag) {
-        // No sysroot was set, let's see if we have a custom default we want to configure.
-        let default_sysroot = if target_crate {
+    if target_crate {
+        // Miri needs a custom sysroot for target crates.
+        // If no `--sysroot` is given, the `MIRI_SYSROOT` env var is consulted to find where
+        // that sysroot lives, and that is passed to rustc.
+        let sysroot_flag = "--sysroot";
+        if !args.iter().any(|e| e == sysroot_flag) {
             // Using the built-in default here would be plain wrong, so we *require*
             // the env var to make sure things make sense.
-            Some(env::var("MIRI_SYSROOT").unwrap_or_else(|_| {
+            let miri_sysroot = env::var("MIRI_SYSROOT").unwrap_or_else(|_| {
                 show_error!(
                     "Miri was invoked in 'target' mode without `MIRI_SYSROOT` or `--sysroot` being set"
-                )
-            }))
-        } else {
-            host_default_sysroot
-        };
-        if let Some(sysroot) = default_sysroot {
-            // We need to overwrite the default that librustc_session would compute.
+                    )
+            });
+
             args.push(sysroot_flag.to_owned());
-            args.push(sysroot);
+            args.push(miri_sysroot);
         }
     }
 
@@ -330,7 +282,7 @@ fn main() {
         } else if crate_kind == "host" {
             false
         } else {
-            panic!("invalid `MIRI_BE_RUSTC` value: {:?}", crate_kind)
+            panic!("invalid `MIRI_BE_RUSTC` value: {crate_kind:?}")
         };
 
         // We cannot use `rustc_driver::main` as we need to adjust the CLI arguments.
@@ -442,10 +394,9 @@ fn main() {
             if miri_config.seed.is_some() {
                 show_error!("Cannot specify -Zmiri-seed multiple times!");
             }
-            let seed = u64::from_str_radix(param, 16)
-                        .unwrap_or_else(|_| show_error!(
-                            "-Zmiri-seed should only contain valid hex digits [0-9a-fA-F] and must fit into a u64 (max 16 characters)"
-                        ));
+            let seed = param.parse::<u64>().unwrap_or_else(|_| {
+                show_error!("-Zmiri-seed must be an integer that fits into u64")
+            });
             miri_config.seed = Some(seed);
         } else if let Some(_param) = arg.strip_prefix("-Zmiri-env-exclude=") {
             show_error!(

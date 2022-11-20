@@ -83,7 +83,7 @@ pub fn escape_for_toml(s: &str) -> String {
     // We want to surround this string in quotes `"`. So we first escape all quotes,
     // and also all backslashes (that are used to escape quotes).
     let s = s.replace('\\', r#"\\"#).replace('"', r#"\""#);
-    format!("\"{}\"", s)
+    format!("\"{s}\"")
 }
 
 /// Returns the path to the `miri` binary
@@ -175,7 +175,7 @@ pub fn ask_to_run(mut cmd: Command, ask: bool, text: &str) {
     let is_ci = env::var_os("CI").is_some() || env::var_os("TF_BUILD").is_some();
     if ask && !is_ci {
         let mut buf = String::new();
-        print!("I will run `{:?}` to {}. Proceed? [Y/n] ", cmd, text);
+        print!("I will run `{cmd:?}` to {text}. Proceed? [Y/n] ");
         io::stdout().flush().unwrap();
         io::stdin().read_line(&mut buf).unwrap();
         match buf.trim().to_lowercase().as_ref() {
@@ -185,10 +185,10 @@ pub fn ask_to_run(mut cmd: Command, ask: bool, text: &str) {
             a => show_error!("invalid answer `{}`", a),
         };
     } else {
-        eprintln!("Running `{:?}` to {}.", cmd, text);
+        eprintln!("Running `{cmd:?}` to {text}.");
     }
 
-    if cmd.status().unwrap_or_else(|_| panic!("failed to execute {:?}", cmd)).success().not() {
+    if cmd.status().unwrap_or_else(|_| panic!("failed to execute {cmd:?}")).success().not() {
         show_error!("failed to {}", text);
     }
 }
@@ -276,12 +276,12 @@ pub fn debug_cmd(prefix: &str, verbose: usize, cmd: &Command) {
         // Print only what has been changed for this `cmd`.
         for (var, val) in cmd.get_envs() {
             if let Some(val) = val {
-                writeln!(out, "{}={:?} \\", var.to_string_lossy(), val).unwrap();
+                writeln!(out, "{}={val:?} \\", var.to_string_lossy()).unwrap();
             } else {
                 writeln!(out, "--unset={}", var.to_string_lossy()).unwrap();
             }
         }
     }
     write!(out, "{cmd:?}").unwrap();
-    eprintln!("{}", out);
+    eprintln!("{out}");
 }

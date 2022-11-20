@@ -14,14 +14,21 @@ pub struct FulfillmentContext<'tcx> {
     obligations: FxIndexSet<PredicateObligation<'tcx>>,
 
     relationships: FxHashMap<ty::TyVid, ty::FoundRelationships>,
+
+    usable_in_snapshot: bool,
 }
 
 impl FulfillmentContext<'_> {
-    pub(crate) fn new() -> Self {
+    pub(super) fn new() -> Self {
         FulfillmentContext {
             obligations: FxIndexSet::default(),
             relationships: FxHashMap::default(),
+            usable_in_snapshot: false,
         }
+    }
+
+    pub(crate) fn new_in_snapshot() -> Self {
+        FulfillmentContext { usable_in_snapshot: true, ..Self::new() }
     }
 }
 
@@ -41,7 +48,9 @@ impl<'tcx> TraitEngine<'tcx> for FulfillmentContext<'tcx> {
         infcx: &InferCtxt<'tcx>,
         obligation: PredicateObligation<'tcx>,
     ) {
-        assert!(!infcx.is_in_snapshot());
+        if !self.usable_in_snapshot {
+            assert!(!infcx.is_in_snapshot());
+        }
         let obligation = infcx.resolve_vars_if_possible(obligation);
 
         super::relationships::update(self, infcx, &obligation);
@@ -72,7 +81,9 @@ impl<'tcx> TraitEngine<'tcx> for FulfillmentContext<'tcx> {
     }
 
     fn select_where_possible(&mut self, infcx: &InferCtxt<'tcx>) -> Vec<FulfillmentError<'tcx>> {
-        assert!(!infcx.is_in_snapshot());
+        if !self.usable_in_snapshot {
+            assert!(!infcx.is_in_snapshot());
+        }
 
         let mut errors = Vec::new();
         let mut next_round = FxIndexSet::default();

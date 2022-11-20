@@ -106,7 +106,7 @@ impl<'tcx> LateLintPass<'tcx> for UseSelf {
             if !is_from_proc_macro(cx, item); // expensive, should be last check
             then {
                 StackItem::Check {
-                    impl_id: item.def_id.def_id,
+                    impl_id: item.owner_id.def_id,
                     in_body: 0,
                     types_to_skip: std::iter::once(self_ty.hir_id).collect(),
                 }
@@ -143,7 +143,7 @@ impl<'tcx> LateLintPass<'tcx> for UseSelf {
                 // trait, not in the impl of the trait.
                 let trait_method = cx
                     .tcx
-                    .associated_item(impl_item.def_id)
+                    .associated_item(impl_item.owner_id)
                     .trait_item_def_id
                     .expect("impl method matches a trait method");
                 let trait_method_sig = cx.tcx.fn_sig(trait_method);

@@ -163,7 +163,7 @@ fn shallow_lint_levels_on(tcx: TyCtxt<'_>, owner: hir::OwnerId) -> ShallowLintLe
         // Otherwise, we need to visit the attributes in source code order, so we fetch HIR and do
         // a standard visit.
         // FIXME(#102522) Just iterate on attrs once that iteration order matches HIR's.
-        _ => match tcx.hir().expect_owner(owner) {
+        _ => match tcx.hir().owner(owner) {
             hir::OwnerNode::Item(item) => levels.visit_item(item),
             hir::OwnerNode::ForeignItem(item) => levels.visit_foreign_item(item),
             hir::OwnerNode::TraitItem(item) => levels.visit_trait_item(item),
@@ -320,7 +320,7 @@ impl<'tcx> Visitor<'tcx> for LintLevelsBuilder<'_, LintLevelQueryMap<'tcx>> {
     }
 
     fn visit_variant(&mut self, v: &'tcx hir::Variant<'tcx>) {
-        self.add_id(v.id);
+        self.add_id(v.hir_id);
         intravisit::walk_variant(self, v);
     }
 
@@ -392,7 +392,7 @@ impl<'tcx> Visitor<'tcx> for LintLevelsBuilder<'_, QueryMapExpectationsWrapper<'
     }
 
     fn visit_variant(&mut self, v: &'tcx hir::Variant<'tcx>) {
-        self.add_id(v.id);
+        self.add_id(v.hir_id);
         intravisit::walk_variant(self, v);
     }
 
@@ -1073,6 +1073,7 @@ impl<'s, P: LintLevelsProvider> LintLevelsBuilder<'s, P> {
     /// Return value of the `decorate` closure is ignored, see [`struct_lint_level`] for a detailed explanation.
     ///
     /// [`struct_lint_level`]: rustc_middle::lint::struct_lint_level#decorate-signature
+    #[rustc_lint_diagnostics]
     pub(crate) fn struct_lint(
         &self,
         lint: &'static Lint,

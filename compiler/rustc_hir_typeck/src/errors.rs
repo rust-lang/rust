@@ -113,8 +113,9 @@ pub struct MissingParentheseInRange {
 }
 
 #[derive(Subdiagnostic)]
-#[multipart_suggestion_verbose(
+#[multipart_suggestion(
     hir_analysis_add_missing_parentheses_in_range,
+    style = "verbose",
     applicability = "maybe-incorrect"
 )]
 pub struct AddMissingParenthesesInRange {
@@ -123,4 +124,12 @@ pub struct AddMissingParenthesesInRange {
     pub left: Span,
     #[suggestion_part(code = ")")]
     pub right: Span,
+}
+
+#[derive(Diagnostic)]
+#[diag(hir_analysis_op_trait_generic_params)]
+pub struct OpMethodGenericParams {
+    #[primary_span]
+    pub span: Span,
+    pub method_name: String,
 }
