@@ -40,7 +40,7 @@
     {%- endif -%}
     <script defer src="{{static_root_path|safe}}{{files.main_js}}"></script> {#- -#}
     {%- if layout.scrape_examples_extension -%}
-    <script defer src="{{page.root_path|safe}}{{files.scrape_examples_js}}"></script> {#- -#}
+    <script defer src="{{static_root_path|safe}}{{files.scrape_examples_js}}"></script> {#- -#}
     {%- endif -%}
     <noscript> {#- -#}
         <link rel="stylesheet" {# -#}

@@ -1965,6 +1965,12 @@ in storage.js
 	top: 0.25em;
 	z-index: 1;
 	cursor: pointer;
+	padding: 0;
+	background: none;
+	border: none;
+	/* iOS button gradient: https://stackoverflow.com/q/5438567 */
+	-webkit-appearance: none;
+	opacity: 1;
 }
 .scraped-example .code-wrapper .prev {
 	right: 2.25em;
