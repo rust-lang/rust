@@ -64,6 +64,9 @@
 	--target-border-color: #bb7410;
 	--tooltip-background-color: #000;
 	--tooltip-color: #fff;
+	--kbd-color: #000;
+	--kbd-background: #fafbfc;
+	--kbd-box-shadow-color: #c6cbd1;
 	--rust-logo-filter: drop-shadow(1px 0 0px #fff)
 		drop-shadow(0 1px 0 #fff)
 		drop-shadow(-1px 0 0 #fff)
@@ -98,12 +101,6 @@ details.rustdoc-toggle > summary::before {
 
 #titles > button > div.count {
 	color: #888;
-}
-
-kbd {
-	color: #000;
-	background-color: #fafbfc;
-	box-shadow: inset 0 -1px 0 #c6cbd1;
 }
 
 .search-results .result-name span.alias {

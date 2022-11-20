@@ -2,6 +2,8 @@
 //! into a place.
 //! All high-level functions to write to memory work on places as destinations.
 
+use either::{Either, Left, Right};
+
 use rustc_ast::Mutability;
 use rustc_middle::mir;
 use rustc_middle::ty;
@@ -252,36 +254,36 @@ impl<'tcx, Prov: Provenance> MPlaceTy<'tcx, Prov> {
 // These are defined here because they produce a place.
 impl<'tcx, Prov: Provenance> OpTy<'tcx, Prov> {
     #[inline(always)]
-    pub fn try_as_mplace(&self) -> Result<MPlaceTy<'tcx, Prov>, ImmTy<'tcx, Prov>> {
+    pub fn as_mplace_or_imm(&self) -> Either<MPlaceTy<'tcx, Prov>, ImmTy<'tcx, Prov>> {
         match **self {
             Operand::Indirect(mplace) => {
-                Ok(MPlaceTy { mplace, layout: self.layout, align: self.align.unwrap() })
+                Left(MPlaceTy { mplace, layout: self.layout, align: self.align.unwrap() })
             }
-            Operand::Immediate(imm) => Err(ImmTy::from_immediate(imm, self.layout)),
+            Operand::Immediate(imm) => Right(ImmTy::from_immediate(imm, self.layout)),
         }
     }
 
     #[inline(always)]
     #[cfg_attr(debug_assertions, track_caller)] // only in debug builds due to perf (see #98980)
     pub fn assert_mem_place(&self) -> MPlaceTy<'tcx, Prov> {
-        self.try_as_mplace().unwrap()
+        self.as_mplace_or_imm().left().unwrap()
     }
 }
 
 impl<'tcx, Prov: Provenance> PlaceTy<'tcx, Prov> {
     /// A place is either an mplace or some local.
     #[inline]
-    pub fn try_as_mplace(&self) -> Result<MPlaceTy<'tcx, Prov>, (usize, mir::Local)> {
+    pub fn as_mplace_or_local(&self) -> Either<MPlaceTy<'tcx, Prov>, (usize, mir::Local)> {
         match **self {
-            Place::Ptr(mplace) => Ok(MPlaceTy { mplace, layout: self.layout, align: self.align }),
-            Place::Local { frame, local } => Err((frame, local)),
+            Place::Ptr(mplace) => Left(MPlaceTy { mplace, layout: self.layout, align: self.align }),
+            Place::Local { frame, local } => Right((frame, local)),
         }
     }
 
     #[inline(always)]
     #[cfg_attr(debug_assertions, track_caller)] // only in debug builds due to perf (see #98980)
     pub fn assert_mem_place(&self) -> MPlaceTy<'tcx, Prov> {
-        self.try_as_mplace().unwrap()
+        self.as_mplace_or_local().left().unwrap()
     }
 }
 
@@ -569,9 +571,9 @@ where
     }
 
     pub fn write_uninit(&mut self, dest: &PlaceTy<'tcx, M::Provenance>) -> InterpResult<'tcx> {
-        let mplace = match dest.try_as_mplace() {
-            Ok(mplace) => mplace,
-            Err((frame, local)) => {
+        let mplace = match dest.as_mplace_or_local() {
+            Left(mplace) => mplace,
+            Right((frame, local)) => {
                 match M::access_local_mut(self, frame, local)? {
                     Operand::Immediate(local) => {
                         *local = Immediate::Uninit;
@@ -639,7 +641,7 @@ where
         // Let us see if the layout is simple so we take a shortcut,
         // avoid force_allocation.
         let src = match self.read_immediate_raw(src)? {
-            Ok(src_val) => {
+            Right(src_val) => {
                 // FIXME(const_prop): Const-prop can possibly evaluate an
                 // unsized copy operation when it thinks that the type is
                 // actually sized, due to a trivially false where-clause
@@ -669,7 +671,7 @@ where
                     )
                 };
             }
-            Err(mplace) => mplace,
+            Left(mplace) => mplace,
         };
         // Slow path, this does not fit into an immediate. Just memcpy.
         trace!("copy_op: {:?} <- {:?}: {}", *dest, src, dest.layout.ty);

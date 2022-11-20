@@ -1,6 +1,8 @@
 //! Functions concerning immediate values and operands, and reading from operands.
 //! All high-level functions to read from memory work on operands as sources.
 
+use either::{Either, Left, Right};
+
 use rustc_hir::def::Namespace;
 use rustc_middle::ty::layout::{LayoutOf, PrimitiveExt, TyAndLayout};
 use rustc_middle::ty::print::{FmtPrinter, PrettyPrinter};
@@ -261,9 +263,9 @@ impl<'tcx, Prov: Provenance> OpTy<'tcx, Prov> {
         layout: TyAndLayout<'tcx>,
         cx: &impl HasDataLayout,
     ) -> InterpResult<'tcx, Self> {
-        match self.try_as_mplace() {
-            Ok(mplace) => Ok(mplace.offset_with_meta(offset, meta, layout, cx)?.into()),
-            Err(imm) => {
+        match self.as_mplace_or_imm() {
+            Left(mplace) => Ok(mplace.offset_with_meta(offset, meta, layout, cx)?.into()),
+            Right(imm) => {
                 assert!(
                     matches!(*imm, Immediate::Uninit),
                     "Scalar/ScalarPair cannot be offset into"
@@ -353,8 +355,8 @@ impl<'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
 
     /// Try returning an immediate for the operand. If the layout does not permit loading this as an
     /// immediate, return where in memory we can find the data.
-    /// Note that for a given layout, this operation will either always fail or always
-    /// succeed!  Whether it succeeds depends on whether the layout can be represented
+    /// Note that for a given layout, this operation will either always return Left or Right!
+    /// succeed!  Whether it returns Left depends on whether the layout can be represented
     /// in an `Immediate`, not on which data is stored there currently.
     ///
     /// This is an internal function that should not usually be used; call `read_immediate` instead.
@@ -362,16 +364,16 @@ impl<'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
     pub fn read_immediate_raw(
         &self,
         src: &OpTy<'tcx, M::Provenance>,
-    ) -> InterpResult<'tcx, Result<ImmTy<'tcx, M::Provenance>, MPlaceTy<'tcx, M::Provenance>>> {
-        Ok(match src.try_as_mplace() {
-            Ok(ref mplace) => {
+    ) -> InterpResult<'tcx, Either<MPlaceTy<'tcx, M::Provenance>, ImmTy<'tcx, M::Provenance>>> {
+        Ok(match src.as_mplace_or_imm() {
+            Left(ref mplace) => {
                 if let Some(val) = self.read_immediate_from_mplace_raw(mplace)? {
-                    Ok(val)
+                    Right(val)
                 } else {
-                    Err(*mplace)
+                    Left(*mplace)
                 }
             }
-            Err(val) => Ok(val),
+            Right(val) => Right(val),
         })
     }
 
@@ -390,7 +392,7 @@ impl<'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
         ) {
             span_bug!(self.cur_span(), "primitive read not possible for type: {:?}", op.layout.ty);
         }
-        let imm = self.read_immediate_raw(op)?.unwrap();
+        let imm = self.read_immediate_raw(op)?.right().unwrap();
         if matches!(*imm, Immediate::Uninit) {
             throw_ub!(InvalidUninitBytes(None));
         }
@@ -432,9 +434,9 @@ impl<'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
         // Basically we just transmute this place into an array following simd_size_and_type.
         // This only works in memory, but repr(simd) types should never be immediates anyway.
         assert!(op.layout.ty.is_simd());
-        match op.try_as_mplace() {
-            Ok(mplace) => self.mplace_to_simd(&mplace),
-            Err(imm) => match *imm {
+        match op.as_mplace_or_imm() {
+            Left(mplace) => self.mplace_to_simd(&mplace),
+            Right(imm) => match *imm {
                 Immediate::Uninit => {
                     throw_ub!(InvalidUninitBytes(None))
                 }

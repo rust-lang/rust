@@ -64,6 +64,9 @@
 	--target-border-color: #ad7c37;
 	--tooltip-background-color: #fdffd3;
 	--tooltip-color: #fff;
+	--kbd-color: #000;
+	--kbd-background: #fafbfc;
+	--kbd-box-shadow-color: #c6cbd1;
 	--rust-logo-filter: initial;
 	/* match border-color; uses https://codepen.io/sosuke/pen/Pjoqqp */
 	--crate-search-div-filter: invert(100%) sepia(0%) saturate(4223%) hue-rotate(289deg)
@@ -91,12 +94,6 @@ body.source .example-wrap pre.rust a {
 
 #titles > button > div.count {
 	color: #888;
-}
-
-kbd {
-	color: #000;
-	background-color: #fafbfc;
-	box-shadow: inset 0 -1px 0 #c6cbd1;
 }
 
 .search-results .result-name span.alias {

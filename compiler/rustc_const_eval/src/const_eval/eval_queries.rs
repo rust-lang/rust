@@ -1,10 +1,7 @@
-use super::{CompileTimeEvalContext, CompileTimeInterpreter, ConstEvalErr};
-use crate::interpret::eval_nullary_intrinsic;
-use crate::interpret::{
-    intern_const_alloc_recursive, Allocation, ConstAlloc, ConstValue, CtfeValidationMode, GlobalId,
-    Immediate, InternKind, InterpCx, InterpError, InterpResult, MPlaceTy, MemoryKind, OpTy,
-    RefTracking, StackPopCleanup,
-};
+use std::borrow::Cow;
+use std::convert::TryInto;
+
+use either::{Left, Right};
 
 use rustc_hir::def::DefKind;
 use rustc_middle::mir;
@@ -16,8 +13,14 @@ use rustc_middle::ty::print::with_no_trimmed_paths;
 use rustc_middle::ty::{self, TyCtxt};
 use rustc_span::source_map::Span;
 use rustc_target::abi::{self, Abi};
-use std::borrow::Cow;
-use std::convert::TryInto;
+
+use super::{CompileTimeEvalContext, CompileTimeInterpreter, ConstEvalErr};
+use crate::interpret::eval_nullary_intrinsic;
+use crate::interpret::{
+    intern_const_alloc_recursive, Allocation, ConstAlloc, ConstValue, CtfeValidationMode, GlobalId,
+    Immediate, InternKind, InterpCx, InterpError, InterpResult, MPlaceTy, MemoryKind, OpTy,
+    RefTracking, StackPopCleanup,
+};
 
 const NOTE_ON_UNDEFINED_BEHAVIOR_ERROR: &str = "The rules on what exactly is undefined behavior aren't clear, \
      so this check might be overzealous. Please open an issue on the rustc \
@@ -135,14 +138,14 @@ pub(super) fn op_to_const<'tcx>(
         _ => false,
     };
     let immediate = if try_as_immediate {
-        Err(ecx.read_immediate(op).expect("normalization works on validated constants"))
+        Right(ecx.read_immediate(op).expect("normalization works on validated constants"))
     } else {
         // It is guaranteed that any non-slice scalar pair is actually ByRef here.
         // When we come back from raw const eval, we are always by-ref. The only way our op here is
         // by-val is if we are in destructure_mir_constant, i.e., if this is (a field of) something that we
         // "tried to make immediate" before. We wouldn't do that for non-slice scalar pairs or
         // structs containing such.
-        op.try_as_mplace()
+        op.as_mplace_or_imm()
     };
 
     debug!(?immediate);
@@ -168,9 +171,9 @@ pub(super) fn op_to_const<'tcx>(
         }
     };
     match immediate {
-        Ok(ref mplace) => to_const_value(mplace),
+        Left(ref mplace) => to_const_value(mplace),
         // see comment on `let try_as_immediate` above
-        Err(imm) => match *imm {
+        Right(imm) => match *imm {
             _ if imm.layout.is_zst() => ConstValue::ZeroSized,
             Immediate::Scalar(x) => ConstValue::Scalar(x),
             Immediate::ScalarPair(a, b) => {

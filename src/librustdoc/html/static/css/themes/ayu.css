@@ -69,6 +69,9 @@ Original by Dempfi (https://github.com/dempfi/ayu)
 	--target-border-color: rgba(255, 180, 76, 0.85);
 	--tooltip-background-color: #314559;
 	--tooltip-color: #c5c5c5;
+	--kbd-color: #c5c5c5;
+	--kbd-background: #314559;
+	--kbd-box-shadow-color: #5c6773;
 	--rust-logo-filter: drop-shadow(1px 0 0px #fff)
 		drop-shadow(0 1px 0 #fff)
 		drop-shadow(-1px 0 0 #fff)
@@ -194,12 +197,6 @@ pre.rust .kw {}
 #titles > button:hover, #titles > button.selected {}
 pre.rust .self, pre.rust .bool-val, pre.rust .prelude-val, pre.rust .attribute {}
 pre.rust .kw-2, pre.rust .prelude-ty {}
-
-kbd {
-	color: #c5c5c5;
-	background-color: #314559;
-	box-shadow: inset 0 -1px 0 #5c6773;
-}
 
 #settings-menu > a img {
 	filter: invert(100);
