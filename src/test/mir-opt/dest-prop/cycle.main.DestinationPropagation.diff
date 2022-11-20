@@ -44,6 +44,7 @@
           nop;                             // scope 3 at $DIR/cycle.rs:+6:10: +6:11
           StorageDead(_6);                 // scope 3 at $DIR/cycle.rs:+6:11: +6:12
           StorageDead(_5);                 // scope 3 at $DIR/cycle.rs:+6:12: +6:13
+          nop;                             // scope 0 at $DIR/cycle.rs:+0:11: +7:2
           StorageDead(_3);                 // scope 2 at $DIR/cycle.rs:+7:1: +7:2
           StorageDead(_2);                 // scope 1 at $DIR/cycle.rs:+7:1: +7:2
           StorageDead(_1);                 // scope 0 at $DIR/cycle.rs:+7:1: +7:2
