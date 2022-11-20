@@ -2,20 +2,15 @@
 
 <!-- toc -->
 
-The Rust compiler uses LLVM as its primary codegen backend today, and naturally
-we want to at least occasionally update this dependency! Currently we do not
-have a strict policy about when to update LLVM or what it can be updated to, but
-a few guidelines are applied:
+<!-- date-check: Aug 2022 -->
+There is no formal policy about when to update LLVM or what it can be updated to,
+but a few guidelines are applied:
 
-* We try to always support the latest released version of LLVM
-* We try to support the "last few" versions of LLVM (how many is changing over
-  time)
-* We allow moving to arbitrary commits during development.
-* Strongly prefer to upstream all patches to LLVM before including them in
-  rustc.
-
-This policy may change over time (or may actually start to exist as a formal
-policy!), but for now these are rough guidelines!
+* We try to always support the latest released version
+* We try to support the last few versions
+  (and the number changes over time)
+* We allow moving to arbitrary commits during development
+* We strongly prefer to upstream all patches to LLVM before including them in rustc
 
 ## Why update LLVM?
 
