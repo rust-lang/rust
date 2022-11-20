@@ -723,12 +723,9 @@ function loadCss(cssUrl) {
         });
     };
 
-    (function() {
-        // To avoid checking on "rustdoc-line-numbers" value on every loop...
-        if (getSettingValue("line-numbers") === "true") {
-            window.rustdoc_add_line_numbers_to_examples();
-        }
-    }());
+    if (getSettingValue("line-numbers") === "true") {
+        window.rustdoc_add_line_numbers_to_examples();
+    }
 
     let oldSidebarScrollPosition = null;
 
