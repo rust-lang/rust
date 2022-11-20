@@ -10,7 +10,7 @@ use rustc_middle::mir::patch::MirPatch;
 use rustc_middle::mir::visit::*;
 use rustc_middle::mir::*;
 use rustc_middle::ty::{self, Instance, InstanceDef, ParamEnv, Ty, TyCtxt};
-use rustc_mir_dataflow::elaborate_drops;
+use rustc_mir_dataflow::elaborate_drops::{self, Unwind};
 use rustc_session::config::OptLevel;
 use rustc_span::def_id::DefId;
 use rustc_span::{hygiene::ExpnKind, ExpnData, LocalExpnId, Span};
@@ -31,6 +31,7 @@ const LANDINGPAD_PENALTY: usize = 50;
 const RESUME_PENALTY: usize = 45;
 
 const UNKNOWN_SIZE_COST: usize = 10;
+const MAX_FIELDS: usize = 5;
 
 pub struct Inline;
 
@@ -275,12 +276,26 @@ impl<'tcx> Inliner<'tcx> {
     ) -> Option<(ty::Instance<'tcx>, std::ops::Range<BasicBlock>)> {
         let terminator = caller_body[block].terminator();
         debug!(?terminator);
-        let TerminatorKind::Drop { place, target, unwind } = terminator.kind else {
+        let TerminatorKind::Drop { place, target, unwind: Some(unwind) } = terminator.kind else {
             return None;
         };
 
         let place_ty = place.ty(caller_body, self.tcx).ty;
         let place_ty = self.tcx.try_normalize_erasing_regions(self.param_env, place_ty).ok()?;
+        debug!(?place_ty);
+
+        if let Some(adt) = place_ty.ty_adt_def() {
+            if adt.repr().pack.is_some() {
+                return None;
+            }
+            if adt.all_fields().count() > MAX_FIELDS {
+                return None;
+            }
+        }
+
+        if let ty::Generator(..) = place_ty.kind() {
+            return None;
+        }
 
         let drop_in_place_def_id = self.tcx.require_lang_item(LangItem::DropInPlace, None);
         let substs = self.tcx.intern_substs(&[place_ty.into()]);
@@ -288,6 +303,7 @@ impl<'tcx> Inliner<'tcx> {
         let Ok(Some(instance)) = Instance::resolve(self.tcx, self.param_env, drop_in_place_def_id, substs) else {
             return None;
         };
+        debug!(?instance);
 
         if let Some(def_id) = def_id_for_history(instance.def) && self.history.contains(&def_id) {
             return None;
@@ -324,7 +340,7 @@ impl<'tcx> Inliner<'tcx> {
                 place,
                 (),
                 target,
-                elaborate_drops::Unwind::To(unwind.unwrap_or(target)),
+                Unwind::To(unwind),
                 block,
             );
             let patch = elaborator.patch;
