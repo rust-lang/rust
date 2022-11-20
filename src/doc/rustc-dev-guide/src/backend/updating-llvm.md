@@ -19,18 +19,13 @@ policy!), but for now these are rough guidelines!
 
 ## Why update LLVM?
 
-There are a few reasons nowadays that we want to update LLVM in one way or
-another:
+There are two reasons we would want to update LLVM:
 
 * A bug could have been fixed! Often we find bugs in the compiler and fix
   them upstream in LLVM. We'll want to pull fixes back to the compiler itself as
   they're merged upstream.
 
-* A new feature may be available in LLVM that we want to use in rustc,
-  but we don't want to wait for a full LLVM release to test it out.
-
-* LLVM itself may have a new release and we'd like to update to this LLVM
-  release.
+* LLVM itself may have a new release.
 
 Each of these reasons has a different strategy for updating LLVM, and we'll go
 over them in detail here.
@@ -57,59 +52,67 @@ the branch we're already using. The steps for this are:
    src/llvm-project` typically.
 10. Wait for PR to be merged
 
-The tl;dr; is that we can cherry-pick bugfixes at any time and pull them back
-into the rust-lang/llvm-project branch that we're using, and getting it into the
-compiler is just updating the submodule via a PR!
-
-Example PRs look like:
+An example PR:
 [#59089](https://github.com/rust-lang/rust/pull/59089)
 
-## Feature updates
+## New LLVM Release Updates
 
-> Note that this information is as of the time of this writing, <!--
-date-check --> October 2021. The process for updating LLVM changes with
-practically all LLVM updates, so this may be out of date!
+<!-- date-check: Aug 2022 -->
 
-Unlike bugfixes, updating to pick up a new feature of LLVM typically requires a
-lot more work. This is where we can't reasonably cherry-pick commits backwards
-so we need to do a full update. There's a lot of stuff to do here, so let's go
-through each in detail.
+Unlike bugfixes,
+updating to a new release of LLVM typically requires a lot more work.
+This is where we can't reasonably cherry-pick commits backwards,
+so we need to do a full update.
+There's a lot of stuff to do here,
+so let's go through each in detail.
 
-1. Create a new branch in the [rust-lang/llvm-project repository]. This branch
-   should be named `rustc/a.b-yyyy-mm-dd` where `a.b` is the current version
-   number of LLVM in-tree at the time of the branch and the remaining part is
-   today's date. Move this branch to the commit in LLVM that you'd like, which
-   for this is probably the current LLVM HEAD.
+1. LLVM announces that its latest release version has branched.
+   This will show up as a branch in the [llvm/llvm-project repository],
+   typically named `release/$N.x`,
+   where `$N` is the version of LLVM that's being released.
 
-2. Apply Rust-specific patches to the llvm-project repository. All features and
-   bugfixes are upstream, but there's often some weird build-related patches
-   that don't make sense to upstream which we have on our repositories. These
-   patches are around the latest patches in the rust-lang/llvm-project branch
-   that rustc is currently using.
+1. Create a new branch in the [rust-lang/llvm-project repository]
+   from this `release/$N.x` branch,
+   and name it `rustc/a.b-yyyy-mm-dd`,
+   where `a.b` is the current version number of LLVM in-tree
+   at the time of the branch,
+   and the remaining part is the current date.
 
-3. Build the new LLVM in the `rust` repository. To do this you'll want to update
-   the `src/llvm-project` repository to your branch and the revision you've
-   created. It's also typically a good idea to update `.gitmodules` with the new
-   branch name of the LLVM submodule. Make sure you've committed changes to
-   `src/llvm-project` to ensure submodule updates aren't reverted. Some commands
-   you should execute are:
+2. Apply Rust-specific patches to the llvm-project repository.
+   All features and bugfixes are upstream,
+   but there's often some weird build-related patches
+   that don't make sense to upstream.
+   These patches are typically the latest patches in the
+   rust-lang/llvm-project branch that rustc is currently using.
+
+3. Build the new LLVM in the `rust` repository.
+   To do this,
+   you'll want to update the `src/llvm-project` repository to your branch,
+   and the revision you've created.
+   It's also typically a good idea to update `.gitmodules` with the new
+   branch name of the LLVM submodule.
+   Make sure you've committed changes to
+   `src/llvm-project` to ensure submodule updates aren't reverted.
+   Some commands you should execute are:
 
    * `./x.py build src/llvm` - test that LLVM still builds
    * `./x.py build src/tools/lld` - same for LLD
    * `./x.py build` - build the rest of rustc
 
-   You'll likely need to update [`llvm-wrapper/*.cpp`][`llvm-wrapper`] to compile
-   with updated LLVM bindings. Note that you should use `#ifdef` and such to ensure
+   You'll likely need to update [`llvm-wrapper/*.cpp`][`llvm-wrapper`]
+   to compile with updated LLVM bindings.
+   Note that you should use `#ifdef` and such to ensure
    that the bindings still compile on older LLVM versions.
 
    Note that `profile = "compiler"` and other defaults set by `./x.py setup`
-   download LLVM from CI instead of building it from source. You should
-   disable this temporarily to make sure your changes are being used, by setting
+   download LLVM from CI instead of building it from source.
+   You should disable this temporarily to make sure your changes are being used.
+   This is done by having the following setting in `config.toml`:
+
    ```toml
    [llvm]
    download-ci-llvm = false
    ```
-   in config.toml.
 
 4. Test for regressions across other platforms. LLVM often has at least one bug
    for non-tier-1 architectures, so it's good to do some more testing before
@@ -122,7 +125,7 @@ through each in detail.
    * macOS
    * Windows
 
-   and afterwards run some docker containers that CI also does:
+   Afterwards, run some docker containers that CI also does:
 
    * `./src/ci/docker/run.sh wasm32`
    * `./src/ci/docker/run.sh arm-android`
@@ -135,16 +138,39 @@ through each in detail.
    and then you can send a PR to `rust-lang/rust`. You'll change at least
    `src/llvm-project` and will likely also change [`llvm-wrapper`] as well.
 
-For prior art, previous LLVM updates look like
-[#62474](https://github.com/rust-lang/rust/pull/62474)
-[#62592](https://github.com/rust-lang/rust/pull/62592)
-[#67759](https://github.com/rust-lang/rust/pull/67759)
-[#73526](https://github.com/rust-lang/rust/pull/73526)
-[#81451](https://github.com/rust-lang/rust/pull/81451). Note that sometimes it's
-easiest to land [`llvm-wrapper`] compatibility as a PR before actually updating
-`src/llvm-project`. This way while you're working through LLVM issues others
-interested in trying out the new LLVM can benefit from work you've done to
-update the C++ bindings.
+   > For prior art, here are some previous LLVM updates:
+   > - [LLVM 11](https://github.com/rust-lang/rust/pull/73526)
+   > - [LLVM 12](https://github.com/rust-lang/rust/pull/81451)
+   > - [LLVM 13](https://github.com/rust-lang/rust/pull/87570)
+   > - [LLVM 14](https://github.com/rust-lang/rust/pull/93577)
+   > - [LLVM 15](https://github.com/rust-lang/rust/pull/99464)
+
+   Note that sometimes it's easiest to land [`llvm-wrapper`] compatibility as a PR
+   before actually updating `src/llvm-project`.
+   This way,
+   while you're working through LLVM issues,
+   others interested in trying out the new LLVM can benefit from work you've done
+   to update the C++ bindings.
+
+3. Over the next few months,
+   LLVM will continually push commits to its `release/a.b` branch.
+   We will often want to have those bug fixes as well.
+   The merge process for that is to use `git merge` itself to merge LLVM's
+   `release/a.b` branch with the branch created in step 2.
+   This is typically
+   done multiple times when necessary while LLVM's release branch is baking.
+
+4. LLVM then announces the release of version `a.b`.
+
+5. After LLVM's official release,
+   we follow the process of creating a new branch on the
+   rust-lang/llvm-project repository again,
+   this time with a new date.
+   It is only then that the PR to update Rust to use that version is merged.
+
+   The commit history of `rust-lang/llvm-project`
+   should look much cleaner as a `git rebase` is done,
+   where just a few Rust-specific commits are stacked on top of stock LLVM's release branch.
 
 ### Caveats and gotchas
 
@@ -158,35 +184,6 @@ keep in mind while going through them:
 * Creating branches is a privileged operation on GitHub, so you'll need someone
   with write access to create the branches for you most likely.
 
-## New LLVM Release Updates
-
-Updating to a new release of LLVM is very similar to the "feature updates"
-section above. The release process for LLVM is often months-long though and we
-like to ensure compatibility ASAP. The main tweaks to the "feature updates"
-section above is generally around branch naming. The sequence of events
-typically looks like:
-
-1. LLVM announces that its latest release version has branched. This will show
-   up as a branch in the [llvm/llvm-project repository] typically named
-   `release/$N.x` where `$N` is the version of LLVM that's being released.
-
-2. We then follow the "feature updates" section above to create a new branch of
-   LLVM in our rust-lang/llvm-project repository. This follows the same naming
-   convention of branches as usual, except that `a.b` is the new version. This
-   update is eventually landed in the rust-lang/rust repository.
-
-3. Over the next few months, LLVM will continually push commits to its
-   `release/a.b` branch. Often those are bug fixes we'd like to have as well.
-   The merge process for that is to use `git merge` itself to merge LLVM's
-   `release/a.b` branch with the branch created in step 2. This is typically
-   done multiple times when necessary while LLVM's release branch is baking.
-
-4. LLVM then announces the release of version `a.b`.
-
-5. After LLVM's official release, we follow the "feature update" section again
-   to create a new branch in the rust-lang/llvm-project repository, this time
-   with a new date. The commit history should look much cleaner as just a few
-   Rust-specific commits stacked on top of stock LLVM's release branch.
 
 [rust-lang/llvm-project repository]: https://github.com/rust-lang/llvm-project
 [llvm/llvm-project repository]: https://github.com/llvm/llvm-project
