@@ -275,7 +275,7 @@ if #[cfg(not(all(target_os = "ios", target_arch = "arm")))] {
 } // cfg_if!
 
 cfg_if::cfg_if! {
-if #[cfg(all(windows, target_arch = "x86_64", target_env = "gnu"))] {
+if #[cfg(all(windows, any(target_arch = "aarch64", target_arch = "x86_64"), target_env = "gnu"))] {
     // We declare these as opaque types. This is fine since you just need to
     // pass them to _GCC_specific_handler and forget about them.
     pub enum EXCEPTION_RECORD {}
