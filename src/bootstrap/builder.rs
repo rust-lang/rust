@@ -1345,7 +1345,13 @@ impl<'a> Builder<'a> {
             let my_out = match mode {
                 // This is the intended out directory for compiler documentation.
                 Mode::Rustc | Mode::ToolRustc => self.compiler_doc_out(target),
-                Mode::Std => out_dir.join(target.triple).join("doc"),
+                Mode::Std => {
+                    if self.config.cmd.json() {
+                        out_dir.join(target.triple).join("json-doc")
+                    } else {
+                        out_dir.join(target.triple).join("doc")
+                    }
+                }
                 _ => panic!("doc mode {:?} not expected", mode),
             };
             let rustdoc = self.rustdoc(compiler);
