@@ -1729,7 +1729,7 @@ impl<'tcx> InferCtxtPrivExt<'tcx> for TypeErrCtxt<'_, 'tcx> {
                 ty::Bool => Some(0),
                 ty::Char => Some(1),
                 ty::Str => Some(2),
-                ty::Adt(def, _) if tcx.is_diagnostic_item(sym::String, def.did()) => Some(2),
+                ty::Adt(def, _) if Some(def.did()) == tcx.lang_items().string() => Some(2),
                 ty::Int(..)
                 | ty::Uint(..)
                 | ty::Float(..)

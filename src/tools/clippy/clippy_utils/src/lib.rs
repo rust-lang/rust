@@ -435,6 +435,16 @@ pub fn is_expr_path_def_path(cx: &LateContext<'_>, expr: &Expr<'_>, segments: &[
 }
 
 /// If `maybe_path` is a path node which resolves to an item, resolves it to a `DefId` and checks if
+/// it matches the given lang item.
+pub fn is_path_lang_item<'tcx>(
+    cx: &LateContext<'_>,
+    maybe_path: &impl MaybePath<'tcx>,
+    lang_item: LangItem,
+) -> bool {
+    path_def_id(cx, maybe_path).map_or(false, |id| cx.tcx.lang_items().get(lang_item) == Some(id))
+}
+
+/// If `maybe_path` is a path node which resolves to an item, resolves it to a `DefId` and checks if
 /// it matches the given diagnostic item.
 pub fn is_path_diagnostic_item<'tcx>(
     cx: &LateContext<'_>,
@@ -760,7 +770,6 @@ pub fn can_mut_borrow_both(cx: &LateContext<'_>, e1: &Expr<'_>, e2: &Expr<'_>) -
 /// constructor from the std library
 fn is_default_equivalent_ctor(cx: &LateContext<'_>, def_id: DefId, path: &QPath<'_>) -> bool {
     let std_types_symbols = &[
-        sym::String,
         sym::Vec,
         sym::VecDeque,
         sym::LinkedList,
@@ -777,7 +786,7 @@ fn is_default_equivalent_ctor(cx: &LateContext<'_>, def_id: DefId, path: &QPath<
                 if let Some(adt) = cx.tcx.type_of(impl_did).ty_adt_def() {
                     return std_types_symbols
                         .iter()
-                        .any(|&symbol| cx.tcx.is_diagnostic_item(symbol, adt.did()));
+                        .any(|&symbol| cx.tcx.is_diagnostic_item(symbol, adt.did()) || Some(adt.did()) == cx.tcx.lang_items().string());
                 }
             }
         }
@@ -834,7 +843,7 @@ fn is_default_equivalent_from(cx: &LateContext<'_>, from_func: &Expr<'_>, arg: &
             ExprKind::Lit(hir::Lit {
                 node: LitKind::Str(ref sym, _),
                 ..
-            }) => return sym.is_empty() && is_path_diagnostic_item(cx, ty, sym::String),
+            }) => return sym.is_empty() && is_path_lang_item(cx, ty, LangItem::String),
             ExprKind::Array([]) => return is_path_diagnostic_item(cx, ty, sym::Vec),
             ExprKind::Repeat(_, ArrayLen::Body(len)) => {
                 if let ExprKind::Lit(ref const_lit) = cx.tcx.hir().body(len.body).value.kind &&

@@ -450,7 +450,7 @@ fn check_fn_args<'cx, 'tcx: 'cx>(
                                 substs.type_at(0),
                             ),
                         ),
-                        Some(sym::String) => (
+                        _ if Some(adt.did()) == cx.tcx.lang_items().string() => (
                             [("clone", ".to_owned()"), ("as_str", "")].as_slice(),
                             DerefTy::Str,
                         ),
