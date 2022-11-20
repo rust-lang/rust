@@ -1158,7 +1158,8 @@ impl<'hir> LoweringContext<'_, 'hir> {
                     // If this is the simple case, then we only insert one statement that is
                     // `let <pat> = <pat>;`. We re-use the original argument's pattern so that
                     // `HirId`s are densely assigned.
-                    let expr = this.expr_ident(expr_ident_hir_id, desugared_span, ident, new_parameter_id);
+                    let expr =
+                        this.expr_ident(expr_ident_hir_id, desugared_span, ident, new_parameter_id);
                     let stmt = this.stmt_let_pat(
                         stmt_attrs,
                         desugared_span,
@@ -1200,7 +1201,8 @@ impl<'hir> LoweringContext<'_, 'hir> {
 
                     // Construct the `let <pat> = __argN;` statement. We re-use the original
                     // parameter's pattern so that `HirId`s are densely assigned.
-                    let pattern_expr = this.expr_ident(expr_ident_hir_id, desugared_span, ident, move_id);
+                    let pattern_expr =
+                        this.expr_ident(expr_ident_hir_id, desugared_span, ident, move_id);
                     let pattern_stmt = this.stmt_let_pat(
                         stmt_attrs,
                         desugared_span,

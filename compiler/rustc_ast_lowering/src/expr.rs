@@ -867,7 +867,12 @@ impl<'hir> LoweringContext<'_, 'hir> {
             }
         };
 
-        let loop_block = self.block_all_with_hirid(block_hir_id, span, arena_vec![self; inner_match_stmt, yield_stmt], None);
+        let loop_block = self.block_all_with_hirid(
+            block_hir_id,
+            span,
+            arena_vec![self; inner_match_stmt, yield_stmt],
+            None,
+        );
 
         // loop { .. }
         let loop_expr = self.arena.alloc(hir::Expr {
@@ -1114,7 +1119,10 @@ impl<'hir> LoweringContext<'_, 'hir> {
             .alloc_from_iter(std::iter::once(destructure_let).chain(assignments.into_iter()));
 
         // Wrap everything in a block.
-        hir::ExprKind::Block(&self.block_all_with_hirid(block_hir_id, whole_span, stmts, None), None)
+        hir::ExprKind::Block(
+            &self.block_all_with_hirid(block_hir_id, whole_span, stmts, None),
+            None,
+        )
     }
 
     /// If the given expression is a path to a tuple struct, returns that path.
@@ -1558,7 +1566,8 @@ impl<'hir> LoweringContext<'_, 'hir> {
         };
         let match_stmt = self.stmt_expr_with_hirid(stmt_hir_id, for_span, match_expr);
 
-        let loop_block = self.block_all_with_hirid(block_hir_id, for_span, arena_vec![self; match_stmt], None);
+        let loop_block =
+            self.block_all_with_hirid(block_hir_id, for_span, arena_vec![self; match_stmt], None);
 
         // `[opt_ident]: loop { ... }`
         let kind = hir::ExprKind::Loop(
@@ -1595,7 +1604,12 @@ impl<'hir> LoweringContext<'_, 'hir> {
         // surrounding scope of the `match` since the `match` is not a terminating scope.
         //
         // Also, add the attributes to the outer returned expr node.
-        self.expr_drop_temps_mut_with_hirid(drop_temps_hir_id, for_span, match_expr, e.attrs.clone())
+        self.expr_drop_temps_mut_with_hirid(
+            drop_temps_hir_id,
+            for_span,
+            match_expr,
+            e.attrs.clone(),
+        )
     }
 
     /// Desugar `ExprKind::Try` from: `<expr>?` into:
@@ -1775,7 +1789,7 @@ impl<'hir> LoweringContext<'_, 'hir> {
         self.expr_with_hirid(hir_id, span, hir::ExprKind::DropTemps(expr), attrs)
     }
 
-  /*   pub(super) fn expr_drop_temps(
+    /*   pub(super) fn expr_drop_temps(
         &mut self,
         span: Span,
         expr: &'hir hir::Expr<'hir>,
@@ -1784,7 +1798,7 @@ impl<'hir> LoweringContext<'_, 'hir> {
         self.arena.alloc(self.expr_drop_temps_mut(span, expr, attrs))
     } */
 
-/*     pub(super) fn expr_drop_temps_mut(
+    /*     pub(super) fn expr_drop_temps_mut(
         &mut self,
         span: Span,
         expr: &'hir hir::Expr<'hir>,
@@ -1924,9 +1938,7 @@ impl<'hir> LoweringContext<'_, 'hir> {
         self.expr_with_hirid(hir_id, span, expr_path, attrs)
     }
 
-    fn expr_unsafe(&mut self,
-        hir_id: hir::HirId,
-        expr: &'hir hir::Expr<'hir>) -> hir::Expr<'hir> {
+    fn expr_unsafe(&mut self, hir_id: hir::HirId, expr: &'hir hir::Expr<'hir>) -> hir::Expr<'hir> {
         let span = expr.span;
         self.expr(
             span,
@@ -1998,22 +2010,15 @@ impl<'hir> LoweringContext<'_, 'hir> {
         expr: &'hir hir::Expr<'hir>,
         span: Span,
     ) -> hir::ExprField<'hir> {
-        hir::ExprField {
-            hir_id,
-            ident,
-            span: self.lower_span(span),
-            expr,
-            is_shorthand: false,
-        }
+        hir::ExprField { hir_id, ident, span: self.lower_span(span), expr, is_shorthand: false }
     }
 
-    fn arm(&mut self, hir_id: hir::HirId, pat: &'hir hir::Pat<'hir>, expr: &'hir hir::Expr<'hir>) -> hir::Arm<'hir> {
-        hir::Arm {
-            hir_id,
-            pat,
-            guard: None,
-            span: self.lower_span(expr.span),
-            body: expr,
-        }
+    fn arm(
+        &mut self,
+        hir_id: hir::HirId,
+        pat: &'hir hir::Pat<'hir>,
+        expr: &'hir hir::Expr<'hir>,
+    ) -> hir::Arm<'hir> {
+        hir::Arm { hir_id, pat, guard: None, span: self.lower_span(expr.span), body: expr }
     }
 }
