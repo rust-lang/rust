@@ -33,6 +33,7 @@ use super::FnCtxt;
 use crate::type_error_struct;
 use rustc_errors::{struct_span_err, Applicability, DelayDm, DiagnosticBuilder, ErrorGuaranteed};
 use rustc_hir as hir;
+use rustc_macros::{TypeFoldable, TypeVisitable};
 use rustc_middle::mir::Mutability;
 use rustc_middle::ty::adjustment::AllowTwoPhase;
 use rustc_middle::ty::cast::{CastKind, CastTy};
@@ -67,7 +68,7 @@ pub struct CastCheck<'tcx> {
 /// The kind of pointer and associated metadata (thin, length or vtable) - we
 /// only allow casts between fat pointers if their metadata have the same
 /// kind.
-#[derive(Copy, Clone, PartialEq, Eq)]
+#[derive(Debug, Copy, Clone, PartialEq, Eq, TypeVisitable, TypeFoldable)]
 enum PointerKind<'tcx> {
     /// No metadata attached, ie pointer to sized type or foreign type
     Thin,
@@ -76,11 +77,11 @@ enum PointerKind<'tcx> {
     /// Slice
     Length,
     /// The unsize info of this projection
-    OfProjection(&'tcx ty::ProjectionTy<'tcx>),
+    OfProjection(ty::ProjectionTy<'tcx>),
     /// The unsize info of this opaque ty
     OfOpaque(DefId, SubstsRef<'tcx>),
     /// The unsize info of this parameter
-    OfParam(&'tcx ty::ParamTy),
+    OfParam(ty::ParamTy),
 }
 
 impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
@@ -118,9 +119,9 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             // Pointers to foreign types are thin, despite being unsized
             ty::Foreign(..) => Some(PointerKind::Thin),
             // We should really try to normalize here.
-            ty::Projection(ref pi) => Some(PointerKind::OfProjection(pi)),
+            ty::Projection(pi) => Some(PointerKind::OfProjection(pi)),
             ty::Opaque(def_id, substs) => Some(PointerKind::OfOpaque(def_id, substs)),
-            ty::Param(ref p) => Some(PointerKind::OfParam(p)),
+            ty::Param(p) => Some(PointerKind::OfParam(p)),
             // Insufficient type information.
             ty::Placeholder(..) | ty::Bound(..) | ty::Infer(_) => None,
 
@@ -909,7 +910,7 @@ impl<'a, 'tcx> CastCheck<'tcx> {
         }
 
         // vtable kinds must match
-        if cast_kind == expr_kind {
+        if fcx.tcx.erase_regions(cast_kind) == fcx.tcx.erase_regions(expr_kind) {
             Ok(CastKind::PtrPtrCast)
         } else {
             Err(CastError::DifferingKinds)
