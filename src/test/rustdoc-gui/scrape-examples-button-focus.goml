@@ -1,0 +1,14 @@
+goto: "file://" + |DOC_PATH| + "/scrape_examples/fn.test.html"
+store-property: (smallOffsetHeight, ".scraped-example-list > .scraped-example pre", "offsetHeight")
+assert-property-false: (".scraped-example-list > .scraped-example pre", {
+	"scrollHeight": |smallOffsetHeight|
+})
+focus: ".scraped-example-list > .scraped-example .expand"
+press-key: "Enter"
+assert-property-false: (".scraped-example-list > .scraped-example pre", {
+	"offsetHeight": |smallOffsetHeight|
+})
+store-property: (fullOffsetHeight, ".scraped-example-list > .scraped-example pre", "offsetHeight")
+assert-property: (".scraped-example-list > .scraped-example pre", {
+	"scrollHeight": |fullOffsetHeight|
+})
