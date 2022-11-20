@@ -75,7 +75,7 @@ pub fn check_fn(
         }
     };
 
-    let ty = cx.typeck_results().expr_ty(self_data);
+    let ty = cx.typeck_results().expr_ty_adjusted(self_data);
 
     let def = {
         let mut kind = ty.kind();
@@ -102,7 +102,7 @@ pub fn check_fn(
 
     let Some(used_field) = used_field else {
         // FIXME: This can be reached if the field access uses autoderef.
-        // `dec.all_fields()` should be replaced by something that uses autoderef.
+        // `dec.all_fields()` should be replaced by something that uses autoderef on the unajusted type of `self_data`
         return;
     };
 
