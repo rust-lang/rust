@@ -22,7 +22,7 @@ impl DynAsyncCounter for MyCounter {
         Box::pin(async {
             self.count += 1;
             self.count
-        }) as dyn* Future<Output = _> // FIXME(dyn-star): coercion doesn't work here yet
+        })
     }
 }
 
