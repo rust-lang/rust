@@ -99,6 +99,12 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
                 BreakableTarget::Return,
                 source_info,
             ),
+            ExprKind::Become { value } => this.break_scope(
+                block,
+                Some(&this.thir[value]),
+                BreakableTarget::Become,
+                source_info,
+            ),
             _ => {
                 assert!(
                     statement_scope.is_some(),

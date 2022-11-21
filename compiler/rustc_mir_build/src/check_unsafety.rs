@@ -316,6 +316,7 @@ impl<'a, 'tcx> Visitor<'a, 'tcx> for UnsafetyVisitor<'a, 'tcx> {
             | ExprKind::Closure { .. }
             | ExprKind::Continue { .. }
             | ExprKind::Return { .. }
+            | ExprKind::Become { .. }
             | ExprKind::Yield { .. }
             | ExprKind::Loop { .. }
             | ExprKind::Let { .. }
