@@ -54,7 +54,8 @@ pub(crate) fn codegen_set_discriminant<'tcx>(
                 let niche_value = match niche_type {
                     types::I128 => {
                         let lsb = fx.bcx.ins().iconst(types::I64, niche_value as u64 as i64);
-                        let msb = fx.bcx.ins().iconst(types::I64, (niche_value >> 64) as u64 as i64);
+                        let msb =
+                            fx.bcx.ins().iconst(types::I64, (niche_value >> 64) as u64 as i64);
                         fx.bcx.ins().iconcat(lsb, msb)
                     }
                     ty => fx.bcx.ins().iconst(ty, niche_value as i64),
