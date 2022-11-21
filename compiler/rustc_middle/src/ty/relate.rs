@@ -649,7 +649,7 @@ pub fn super_relate_consts<'tcx, R: TypeRelation<'tcx>>(
     if is_match { Ok(a) } else { Err(TypeError::ConstMismatch(expected_found(relation, a, b))) }
 }
 
-impl<'tcx> Relate<'tcx> for &'tcx ty::List<ty::Binder<'tcx, ty::ExistentialPredicate<'tcx>>> {
+impl<'tcx> Relate<'tcx> for &'tcx ty::List<ty::PolyExistentialPredicate<'tcx>> {
     fn relate<R: TypeRelation<'tcx>>(
         relation: &mut R,
         a: Self,
