@@ -9,7 +9,6 @@ use rustc_ast::Mutability;
 use rustc_errors::Applicability;
 use rustc_hir as hir;
 use rustc_infer::infer::type_variable::{TypeVariableOrigin, TypeVariableOriginKind};
-use rustc_middle::ty;
 use rustc_middle::ty::{Adt, Array, Ref, Ty};
 use rustc_session::lint::builtin::RUST_2021_PRELUDE_COLLISIONS;
 use rustc_span::symbol::kw::{Empty, Underscore};
@@ -232,10 +231,9 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                     kind: TypeVariableOriginKind::MiscVariable,
                     span,
                 });
-                let params = self.tcx.mk_substs(std::iter::once(ty::GenericArg::from(any_type)));
                 if !self
                     .infcx
-                    .type_implements_trait(trait_def_id, self_ty, params, self.param_env)
+                    .type_implements_trait(trait_def_id, [self_ty, any_type], self.param_env)
                     .may_apply()
                 {
                     return;

@@ -1119,8 +1119,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                     .infcx
                     .type_implements_trait(
                         self.tcx.lang_items().sized_trait().unwrap(),
-                        lhs_deref_ty,
-                        ty::List::empty(),
+                        [lhs_deref_ty],
                         self.param_env,
                     )
                     .may_apply();

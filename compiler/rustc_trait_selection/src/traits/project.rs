@@ -1712,7 +1712,7 @@ fn assemble_candidates_from_impls<'cx, 'tcx>(
                                 selcx.tcx(),
                                 ty::Binder::dummy(selcx.tcx().at(obligation.cause.span).mk_trait_ref(
                                     LangItem::Sized,
-                                    self_ty, [],
+                                    [self_ty],
                                 ))
                                 .without_const(),
                             ),
@@ -1966,11 +1966,9 @@ fn confirm_pointee_candidate<'cx, 'tcx>(
         )
     });
     if check_is_sized {
-        let sized_predicate = ty::Binder::dummy(tcx.at(obligation.cause.span).mk_trait_ref(
-            LangItem::Sized,
-            self_ty,
-            [],
-        ))
+        let sized_predicate = ty::Binder::dummy(
+            tcx.at(obligation.cause.span).mk_trait_ref(LangItem::Sized, [self_ty]),
+        )
         .without_const();
         obligations.push(obligation.with(tcx, sized_predicate));
     }

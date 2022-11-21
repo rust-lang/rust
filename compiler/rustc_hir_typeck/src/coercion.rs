@@ -630,8 +630,7 @@ impl<'f, 'tcx> Coerce<'f, 'tcx> {
             cause,
             coerce_unsized_did,
             0,
-            coerce_source,
-            [coerce_target.into()]
+            [coerce_source, coerce_target]
         )];
 
         let mut has_unsized_tuple_coercion = false;
@@ -1086,8 +1085,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             self.infcx
                 .type_implements_trait(
                     self.tcx.lang_items().deref_mut_trait()?,
-                    expr_ty,
-                    ty::List::empty(),
+                    [expr_ty],
                     self.param_env,
                 )
                 .may_apply()

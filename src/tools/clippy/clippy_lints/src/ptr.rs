@@ -692,7 +692,7 @@ fn matches_preds<'tcx>(
     let infcx = cx.tcx.infer_ctxt().build();
     preds.iter().all(|&p| match cx.tcx.erase_late_bound_regions(p) {
         ExistentialPredicate::Trait(p) => infcx
-            .type_implements_trait(p.def_id, ty, p.substs, cx.param_env)
+            .type_implements_trait(p.def_id, [ty.into()].into_iter().chain(p.substs.iter()), cx.param_env)
             .must_apply_modulo_regions(),
         ExistentialPredicate::Projection(p) => infcx.predicate_must_hold_modulo_regions(&Obligation::new(
             cx.tcx,
@@ -704,7 +704,7 @@ fn matches_preds<'tcx>(
             )),
         )),
         ExistentialPredicate::AutoTrait(p) => infcx
-            .type_implements_trait(p, ty, List::empty(), cx.param_env)
+            .type_implements_trait(p, [ty], cx.param_env)
             .must_apply_modulo_regions(),
     })
 }

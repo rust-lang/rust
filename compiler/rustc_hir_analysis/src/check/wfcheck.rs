@@ -1782,7 +1782,7 @@ fn receiver_is_implemented<'tcx>(
     receiver_ty: Ty<'tcx>,
 ) -> bool {
     let tcx = wfcx.tcx();
-    let trait_ref = ty::Binder::dummy(tcx.mk_trait_ref(receiver_trait_def_id, receiver_ty, []));
+    let trait_ref = ty::Binder::dummy(tcx.mk_trait_ref(receiver_trait_def_id, [receiver_ty]));
 
     let obligation = traits::Obligation::new(tcx, cause, wfcx.param_env, trait_ref.without_const());
 

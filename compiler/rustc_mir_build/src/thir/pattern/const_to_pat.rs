@@ -232,8 +232,7 @@ impl<'tcx> ConstToPat<'tcx> {
             ObligationCause::misc(self.span, self.id),
             partial_eq_trait_id,
             0,
-            ty,
-            [ty.into()],
+            [ty, ty],
         );
         // FIXME: should this call a `predicate_must_hold` variant instead?
 

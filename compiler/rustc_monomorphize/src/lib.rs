@@ -28,7 +28,7 @@ fn custom_coerce_unsize_info<'tcx>(
     target_ty: Ty<'tcx>,
 ) -> CustomCoerceUnsized {
     let trait_ref =
-        ty::Binder::dummy(tcx.mk_trait_ref(LangItem::CoerceUnsized, source_ty, [target_ty.into()]));
+        ty::Binder::dummy(tcx.mk_trait_ref(LangItem::CoerceUnsized, [source_ty, target_ty]));
 
     match tcx.codegen_select_candidate((ty::ParamEnv::reveal_all(), trait_ref)) {
         Ok(traits::ImplSource::UserDefined(traits::ImplSourceUserDefinedData {

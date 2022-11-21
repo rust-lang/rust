@@ -70,13 +70,13 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                     self.probe(|_| {
                         let trait_ref = tcx.mk_trait_ref(
                             fn_once,
-                            ty,
-                            [self
-                                .next_ty_var(TypeVariableOrigin {
+                            [
+                                ty,
+                                self.next_ty_var(TypeVariableOrigin {
                                     kind: TypeVariableOriginKind::MiscVariable,
                                     span,
-                                })
-                                .into()],
+                                }),
+                            ],
                         );
                         let poly_trait_ref = ty::Binder::dummy(trait_ref);
                         let obligation = Obligation::misc(

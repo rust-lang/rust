@@ -719,7 +719,7 @@ impl<'tcx> PolyExistentialPredicate<'tcx> {
                 self.rebind(p.with_self_ty(tcx, self_ty)).to_predicate(tcx)
             }
             ExistentialPredicate::AutoTrait(did) => {
-                let trait_ref = self.rebind(tcx.mk_trait_ref(did, self_ty, []));
+                let trait_ref = self.rebind(tcx.mk_trait_ref(did, [self_ty]));
                 trait_ref.without_const().to_predicate(tcx)
             }
         }
@@ -812,7 +812,10 @@ impl<'tcx> TraitRef<'tcx> {
     }
 
     pub fn with_self_type(self, tcx: TyCtxt<'tcx>, self_ty: Ty<'tcx>) -> Self {
-        tcx.mk_trait_ref(self.def_id, self_ty, self.substs.iter().skip(1))
+        tcx.mk_trait_ref(
+            self.def_id,
+            [self_ty.into()].into_iter().chain(self.substs.iter().skip(1)),
+        )
     }
 
     /// Returns a `TraitRef` of the form `P0: Foo<P1..Pn>` where `Pi`
@@ -910,7 +913,7 @@ impl<'tcx> ExistentialTraitRef<'tcx> {
         // otherwise the escaping vars would be captured by the binder
         // debug_assert!(!self_ty.has_escaping_bound_vars());
 
-        tcx.mk_trait_ref(self.def_id, self_ty, self.substs.iter())
+        tcx.mk_trait_ref(self.def_id, [self_ty.into()].into_iter().chain(self.substs.iter()))
     }
 }
 

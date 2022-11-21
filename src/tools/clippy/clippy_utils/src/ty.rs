@@ -178,7 +178,7 @@ pub fn implements_trait_with_env<'tcx>(
     };
     let ty_params = tcx.mk_substs(ty_params.into_iter().map(|arg| arg.unwrap_or_else(|| infcx.next_ty_var(orig).into())));
     infcx
-        .type_implements_trait(trait_id, ty, ty_params, param_env)
+        .type_implements_trait(trait_id, [ty.into()].into_iter().chain(ty_params), param_env)
         .must_apply_modulo_regions()
 }
 

@@ -2820,17 +2820,17 @@ impl<'tcx> TyCtxt<'tcx> {
     pub fn mk_trait_ref(
         self,
         trait_def_id: DefId,
-        self_ty: Ty<'tcx>,
-        rest: impl IntoIterator<Item = GenericArg<'tcx>, IntoIter: ExactSizeIterator>,
+        substs: impl IntoIterator<Item = impl Into<GenericArg<'tcx>>>,
     ) -> ty::TraitRef<'tcx> {
-        let rest = rest.into_iter();
+        let substs = substs.into_iter().map(Into::into);
+        let n = self.generics_of(trait_def_id).count();
         debug_assert_eq!(
-            self.generics_of(trait_def_id).count() - 1,
-            rest.len(),
-            "wrong number of generic parameters for {trait_def_id:?} on self type {self_ty:?}: {:?} \nDid you accidentally include the self-type in the params list?",
-            rest.collect::<Vec<_>>(),
+            (n, Some(n)),
+            substs.size_hint(),
+            "wrong number of generic parameters for {trait_def_id:?}: {:?} \nDid you accidentally include the self-type in the params list?",
+            substs.collect::<Vec<_>>(),
         );
-        let substs = self.mk_substs_trait(self_ty, rest);
+        let substs = self.mk_substs(substs);
         ty::TraitRef::new(trait_def_id, substs)
     }
 
@@ -2994,11 +2994,10 @@ impl<'tcx> TyCtxtAt<'tcx> {
     pub fn mk_trait_ref(
         self,
         trait_lang_item: LangItem,
-        self_ty: Ty<'tcx>,
-        rest: impl IntoIterator<Item = ty::GenericArg<'tcx>, IntoIter: ExactSizeIterator>,
+        substs: impl IntoIterator<Item = impl Into<ty::GenericArg<'tcx>>>,
     ) -> ty::TraitRef<'tcx> {
         let trait_def_id = self.require_lang_item(trait_lang_item, Some(self.span));
-        self.tcx.mk_trait_ref(trait_def_id, self_ty, rest)
+        self.tcx.mk_trait_ref(trait_def_id, substs)
     }
 }
 

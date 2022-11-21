@@ -1095,7 +1095,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                 self.param_env,
                 ty::Binder::dummy(self.tcx.mk_trait_ref(
                     into_def_id,
-                    expr_ty, [expected_ty.into()]
+                    [expr_ty, expected_ty]
                 ))
                 .to_poly_trait_predicate(),
             ))
