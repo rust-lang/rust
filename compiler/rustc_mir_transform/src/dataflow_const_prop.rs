@@ -2,6 +2,7 @@
 //!
 //! Currently, this pass only propagates scalar values.
 
+use rustc_const_eval::const_eval::CheckAlignment;
 use rustc_const_eval::interpret::{ConstValue, ImmTy, Immediate, InterpCx, Scalar};
 use rustc_data_structures::fx::FxHashMap;
 use rustc_middle::mir::visit::{MutVisitor, Visitor};
@@ -448,7 +449,7 @@ impl<'mir, 'tcx> rustc_const_eval::interpret::Machine<'mir, 'tcx> for DummyMachi
     type MemoryKind = !;
     const PANIC_ON_ALLOC_FAIL: bool = true;
 
-    fn enforce_alignment(_ecx: &InterpCx<'mir, 'tcx, Self>) -> bool {
+    fn enforce_alignment(_ecx: &InterpCx<'mir, 'tcx, Self>) -> CheckAlignment {
         unimplemented!()
     }
 

@@ -6,6 +6,7 @@ use std::cell::Cell;
 use either::Right;
 
 use rustc_ast::Mutability;
+use rustc_const_eval::const_eval::CheckAlignment;
 use rustc_data_structures::fx::FxHashSet;
 use rustc_hir::def::DefKind;
 use rustc_index::bit_set::BitSet;
@@ -186,10 +187,10 @@ impl<'mir, 'tcx> interpret::Machine<'mir, 'tcx> for ConstPropMachine<'mir, 'tcx>
     type MemoryKind = !;
 
     #[inline(always)]
-    fn enforce_alignment(_ecx: &InterpCx<'mir, 'tcx, Self>) -> bool {
+    fn enforce_alignment(_ecx: &InterpCx<'mir, 'tcx, Self>) -> CheckAlignment {
         // We do not check for alignment to avoid having to carry an `Align`
         // in `ConstValue::ByRef`.
-        false
+        CheckAlignment::No
     }
 
     #[inline(always)]

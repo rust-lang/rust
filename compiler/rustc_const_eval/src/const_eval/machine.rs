@@ -47,14 +47,34 @@ pub struct CompileTimeInterpreter<'mir, 'tcx> {
     pub(super) can_access_statics: bool,
 
     /// Whether to check alignment during evaluation.
-    pub(super) check_alignment: bool,
+    pub(super) check_alignment: CheckAlignment,
+}
+
+#[derive(Copy, Clone)]
+pub enum CheckAlignment {
+    /// Ignore alignment when following relocations.
+    /// This is mainly used in interning.
+    No,
+    /// Hard error when dereferencing a misaligned pointer.
+    Error,
+    /// Emit a future incompat lint when dereferencing a misaligned pointer.
+    FutureIncompat,
+}
+
+impl CheckAlignment {
+    pub fn should_check(&self) -> bool {
+        match self {
+            CheckAlignment::No => false,
+            CheckAlignment::Error | CheckAlignment::FutureIncompat => true,
+        }
+    }
 }
 
 impl<'mir, 'tcx> CompileTimeInterpreter<'mir, 'tcx> {
     pub(crate) fn new(
         const_eval_limit: Limit,
         can_access_statics: bool,
-        check_alignment: bool,
+        check_alignment: CheckAlignment,
     ) -> Self {
         CompileTimeInterpreter {
             steps_remaining: const_eval_limit.0,
@@ -309,7 +329,7 @@ impl<'mir, 'tcx> interpret::Machine<'mir, 'tcx> for CompileTimeInterpreter<'mir,
     const PANIC_ON_ALLOC_FAIL: bool = false; // will be raised as a proper error
 
     #[inline(always)]
-    fn enforce_alignment(ecx: &InterpCx<'mir, 'tcx, Self>) -> bool {
+    fn enforce_alignment(ecx: &InterpCx<'mir, 'tcx, Self>) -> CheckAlignment {
         ecx.machine.check_alignment
     }
 

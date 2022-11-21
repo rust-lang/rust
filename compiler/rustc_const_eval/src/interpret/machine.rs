@@ -13,6 +13,8 @@ use rustc_span::def_id::DefId;
 use rustc_target::abi::Size;
 use rustc_target::spec::abi::Abi as CallAbi;
 
+use crate::const_eval::CheckAlignment;
+
 use super::{
     AllocId, AllocRange, Allocation, ConstAllocation, Frame, ImmTy, InterpCx, InterpResult,
     MemoryKind, OpTy, Operand, PlaceTy, Pointer, Provenance, Scalar, StackPopUnwind,
@@ -122,7 +124,7 @@ pub trait Machine<'mir, 'tcx>: Sized {
     const PANIC_ON_ALLOC_FAIL: bool;
 
     /// Whether memory accesses should be alignment-checked.
-    fn enforce_alignment(ecx: &InterpCx<'mir, 'tcx, Self>) -> bool;
+    fn enforce_alignment(ecx: &InterpCx<'mir, 'tcx, Self>) -> CheckAlignment;
 
     /// Whether, when checking alignment, we should look at the actual address and thus support
     /// custom alignment logic based on whatever the integer address happens to be.
