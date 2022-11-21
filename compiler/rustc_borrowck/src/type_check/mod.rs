@@ -1564,10 +1564,7 @@ impl<'a, 'tcx> TypeChecker<'a, 'tcx> {
                 }
             }
             None => {
-                if !self
-                    .tcx()
-                    .conservative_is_privately_uninhabited(self.param_env.and(sig.output()))
-                {
+                if !sig.output().is_privately_uninhabited(self.tcx(), self.param_env) {
                     span_mirbug!(self, term, "call to converging function {:?} w/o dest", sig);
                 }
             }

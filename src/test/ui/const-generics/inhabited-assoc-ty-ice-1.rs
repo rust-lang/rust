@@ -2,7 +2,7 @@
 #![feature(generic_const_exprs)]
 #![allow(incomplete_features)]
 
-// This tests that the `conservative_is_privately_uninhabited` fn doesn't cause
+// This tests that the inhabited check doesn't cause
 // ICEs by trying to evaluate `T::ASSOC` with an incorrect `ParamEnv`.
 
 trait Foo {

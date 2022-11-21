@@ -12,7 +12,7 @@ pub(super) fn sanity_check_layout<'tcx>(
     layout: &TyAndLayout<'tcx>,
 ) {
     // Type-level uninhabitedness should always imply ABI uninhabitedness.
-    if cx.tcx.conservative_is_privately_uninhabited(cx.param_env.and(layout.ty)) {
+    if layout.ty.is_privately_uninhabited(cx.tcx, cx.param_env) {
         assert!(layout.abi.is_uninhabited());
     }
 

@@ -217,7 +217,7 @@ impl<'a, 'tcx> DropRangeVisitor<'a, 'tcx> {
         let ty = self.tcx.erase_regions(ty);
         let m = self.tcx.parent_module(expr.hir_id).to_def_id();
         let param_env = self.tcx.param_env(m.expect_local());
-        if self.tcx.is_ty_uninhabited_from(m, ty, param_env) {
+        if !ty.is_inhabited_from(self.tcx, m, param_env) {
             // This function will not return. We model this fact as an infinite loop.
             self.drop_ranges.add_control_edge(self.expr_index + 1, self.expr_index + 1);
         }

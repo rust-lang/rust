@@ -1284,20 +1284,19 @@ impl<'a, 'tcx> Liveness<'a, 'tcx> {
     fn check_is_ty_uninhabited(&mut self, expr: &Expr<'_>, succ: LiveNode) -> LiveNode {
         let ty = self.typeck_results.expr_ty(expr);
         let m = self.ir.tcx.parent_module(expr.hir_id).to_def_id();
-        if self.ir.tcx.is_ty_uninhabited_from(m, ty, self.param_env) {
-            match self.ir.lnks[succ] {
-                LiveNodeKind::ExprNode(succ_span, succ_id) => {
-                    self.warn_about_unreachable(expr.span, ty, succ_span, succ_id, "expression");
-                }
-                LiveNodeKind::VarDefNode(succ_span, succ_id) => {
-                    self.warn_about_unreachable(expr.span, ty, succ_span, succ_id, "definition");
-                }
-                _ => {}
-            };
-            self.exit_ln
-        } else {
-            succ
+        if ty.is_inhabited_from(self.ir.tcx, m, self.param_env) {
+            return succ;
         }
+        match self.ir.lnks[succ] {
+            LiveNodeKind::ExprNode(succ_span, succ_id) => {
+                self.warn_about_unreachable(expr.span, ty, succ_span, succ_id, "expression");
+            }
+            LiveNodeKind::VarDefNode(succ_span, succ_id) => {
+                self.warn_about_unreachable(expr.span, ty, succ_span, succ_id, "definition");
+            }
+            _ => {}
+        };
+        self.exit_ln
     }
 
     fn warn_about_unreachable(

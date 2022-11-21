@@ -2078,17 +2078,6 @@ rustc_queries! {
         desc { "normalizing opaque types in `{:?}`", key }
     }
 
-    /// Checks whether a type is definitely uninhabited. This is
-    /// conservative: for some types that are uninhabited we return `false`,
-    /// but we only return `true` for types that are definitely uninhabited.
-    /// `ty.conservative_is_privately_uninhabited` implies that any value of type `ty`
-    /// will be `Abi::Uninhabited`. (Note that uninhabited types may have nonzero
-    /// size, to account for partial initialisation. See #49298 for details.)
-    query conservative_is_privately_uninhabited(key: ty::ParamEnvAnd<'tcx, Ty<'tcx>>) -> bool {
-        desc { "conservatively checking if `{}` is privately uninhabited", key.value }
-        remap_env_constness
-    }
-
     query limits(key: ()) -> Limits {
         desc { "looking up limits" }
     }
