@@ -175,9 +175,9 @@ impl GenericArgs {
     }
 
     pub fn span(&self) -> Span {
-        match *self {
-            AngleBracketed(ref data) => data.span,
-            Parenthesized(ref data) => data.span,
+        match self {
+            AngleBracketed(data) => data.span,
+            Parenthesized(data) => data.span,
         }
     }
 }
@@ -312,8 +312,8 @@ pub enum GenericBound {
 impl GenericBound {
     pub fn span(&self) -> Span {
         match self {
-            GenericBound::Trait(ref t, ..) => t.span,
-            GenericBound::Outlives(ref l) => l.ident.span,
+            GenericBound::Trait(t, ..) => t.span,
+            GenericBound::Outlives(l) => l.ident.span,
         }
     }
 }
@@ -1115,23 +1115,23 @@ impl Expr {
     /// If this is not the case, name resolution does not resolve `N` when using
     /// `min_const_generics` as more complex expressions are not supported.
     pub fn is_potential_trivial_const_param(&self) -> bool {
-        let this = if let ExprKind::Block(ref block, None) = self.kind {
-            if block.stmts.len() == 1 {
-                if let StmtKind::Expr(ref expr) = block.stmts[0].kind { expr } else { self }
-            } else {
-                self
-            }
+        let this = if let ExprKind::Block(block, None) = &self.kind
+            && block.stmts.len() == 1
+            && let StmtKind::Expr(expr) = &block.stmts[0].kind
+        {
+            expr
         } else {
             self
         };
 
-        if let ExprKind::Path(None, ref path) = this.kind {
-            if path.segments.len() == 1 && path.segments[0].args.is_none() {
-                return true;
-            }
+        if let ExprKind::Path(None, path) = &this.kind
+            && path.segments.len() == 1
+            && path.segments[0].args.is_none()
+        {
+            true
+        } else {
+            false
         }
-
-        false
     }
 
     pub fn to_bound(&self) -> Option<GenericBound> {
@@ -2393,9 +2393,9 @@ pub enum FnRetTy {
 
 impl FnRetTy {
     pub fn span(&self) -> Span {
-        match *self {
-            FnRetTy::Default(span) => span,
-            FnRetTy::Ty(ref ty) => ty.span,
+        match self {
+            &FnRetTy::Default(span) => span,
+            FnRetTy::Ty(ty) => ty.span,
         }
     }
 }
@@ -2657,8 +2657,8 @@ pub enum VariantData {
 impl VariantData {
     /// Return the fields of this variant.
     pub fn fields(&self) -> &[FieldDef] {
-        match *self {
-            VariantData::Struct(ref fields, ..) | VariantData::Tuple(ref fields, _) => fields,
+        match self {
+            VariantData::Struct(fields, ..) | VariantData::Tuple(fields, _) => fields,
             _ => &[],
         }
     }

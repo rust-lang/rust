@@ -44,16 +44,16 @@ impl MarkedAttrs {
 impl NestedMetaItem {
     /// Returns the `MetaItem` if `self` is a `NestedMetaItem::MetaItem`.
     pub fn meta_item(&self) -> Option<&MetaItem> {
-        match *self {
-            NestedMetaItem::MetaItem(ref item) => Some(item),
+        match self {
+            NestedMetaItem::MetaItem(item) => Some(item),
             _ => None,
         }
     }
 
     /// Returns the `Lit` if `self` is a `NestedMetaItem::Literal`s.
     pub fn literal(&self) -> Option<&Lit> {
-        match *self {
-            NestedMetaItem::Literal(ref lit) => Some(lit),
+        match self {
+            NestedMetaItem::Literal(lit) => Some(lit),
             _ => None,
         }
     }
@@ -116,18 +116,18 @@ impl NestedMetaItem {
 impl Attribute {
     #[inline]
     pub fn has_name(&self, name: Symbol) -> bool {
-        match self.kind {
-            AttrKind::Normal(ref normal) => normal.item.path == name,
+        match &self.kind {
+            AttrKind::Normal(normal) => normal.item.path == name,
             AttrKind::DocComment(..) => false,
         }
     }
 
     /// For a single-segment attribute, returns its name; otherwise, returns `None`.
     pub fn ident(&self) -> Option<Ident> {
-        match self.kind {
-            AttrKind::Normal(ref normal) => {
-                if normal.item.path.segments.len() == 1 {
-                    Some(normal.item.path.segments[0].ident)
+        match &self.kind {
+            AttrKind::Normal(normal) => {
+                if let [ident] = &*normal.item.path.segments {
+                    Some(ident.ident)
                 } else {
                     None
                 }
@@ -140,17 +140,15 @@ impl Attribute {
     }
 
     pub fn value_str(&self) -> Option<Symbol> {
-        match self.kind {
-            AttrKind::Normal(ref normal) => {
-                normal.item.meta_kind().and_then(|kind| kind.value_str())
-            }
+        match &self.kind {
+            AttrKind::Normal(normal) => normal.item.meta_kind().and_then(|kind| kind.value_str()),
             AttrKind::DocComment(..) => None,
         }
     }
 
     pub fn meta_item_list(&self) -> Option<Vec<NestedMetaItem>> {
-        match self.kind {
-            AttrKind::Normal(ref normal) => match normal.item.meta_kind() {
+        match &self.kind {
+            AttrKind::Normal(normal) => match normal.item.meta_kind() {
                 Some(MetaItemKind::List(list)) => Some(list),
                 _ => None,
             },
@@ -191,8 +189,8 @@ impl MetaItem {
     }
 
     pub fn meta_item_list(&self) -> Option<&[NestedMetaItem]> {
-        match self.kind {
-            MetaItemKind::List(ref l) => Some(&l[..]),
+        match &self.kind {
+            MetaItemKind::List(l) => Some(&**l),
             _ => None,
         }
     }
@@ -268,9 +266,9 @@ impl Attribute {
     /// * `#[doc = "doc"]` returns `Some("doc")`.
     /// * `#[doc(...)]` returns `None`.
     pub fn doc_str(&self) -> Option<Symbol> {
-        match self.kind {
-            AttrKind::DocComment(.., data) => Some(data),
-            AttrKind::Normal(ref normal) if normal.item.path == sym::doc => {
+        match &self.kind {
+            AttrKind::DocComment(.., data) => Some(*data),
+            AttrKind::Normal(normal) if normal.item.path == sym::doc => {
                 normal.item.meta_kind().and_then(|kind| kind.value_str())
             }
             _ => None,
@@ -282,8 +280,8 @@ impl Attribute {
     }
 
     pub fn get_normal_item(&self) -> &AttrItem {
-        match self.kind {
-            AttrKind::Normal(ref normal) => &normal.item,
+        match &self.kind {
+            AttrKind::Normal(normal) => &normal.item,
             AttrKind::DocComment(..) => panic!("unexpected doc comment"),
         }
     }
@@ -297,28 +295,28 @@ impl Attribute {
 
     /// Extracts the MetaItem from inside this Attribute.
     pub fn meta(&self) -> Option<MetaItem> {
-        match self.kind {
-            AttrKind::Normal(ref normal) => normal.item.meta(self.span),
+        match &self.kind {
+            AttrKind::Normal(normal) => normal.item.meta(self.span),
             AttrKind::DocComment(..) => None,
         }
     }
 
     pub fn meta_kind(&self) -> Option<MetaItemKind> {
-        match self.kind {
-            AttrKind::Normal(ref normal) => normal.item.meta_kind(),
+        match &self.kind {
+            AttrKind::Normal(normal) => normal.item.meta_kind(),
             AttrKind::DocComment(..) => None,
         }
     }
 
     pub fn tokens(&self) -> TokenStream {
-        match self.kind {
-            AttrKind::Normal(ref normal) => normal
+        match &self.kind {
+            AttrKind::Normal(normal) => normal
                 .tokens
                 .as_ref()
                 .unwrap_or_else(|| panic!("attribute is missing tokens: {:?}", self))
                 .to_attr_token_stream()
                 .to_tokenstream(),
-            AttrKind::DocComment(comment_kind, data) => TokenStream::new(vec![TokenTree::Token(
+            &AttrKind::DocComment(comment_kind, data) => TokenStream::new(vec![TokenTree::Token(
                 Token::new(token::DocComment(comment_kind, self.style, data), self.span),
                 Spacing::Alone,
             )]),
@@ -496,17 +494,17 @@ impl MetaItem {
                 let span = span.with_hi(segments.last().unwrap().ident.span.hi());
                 Path { span, segments, tokens: None }
             }
-            Some(TokenTree::Token(Token { kind: token::Interpolated(nt), .. }, _)) => match *nt {
-                token::Nonterminal::NtMeta(ref item) => return item.meta(item.path.span),
-                token::Nonterminal::NtPath(ref path) => (**path).clone(),
+            Some(TokenTree::Token(Token { kind: token::Interpolated(nt), .. }, _)) => match &*nt {
+                token::Nonterminal::NtMeta(item) => return item.meta(item.path.span),
+                token::Nonterminal::NtPath(path) => (**path).clone(),
                 _ => return None,
             },
             _ => return None,
         };
         let list_closing_paren_pos = tokens.peek().map(|tt| tt.span().hi());
         let kind = MetaItemKind::from_tokens(tokens)?;
-        let hi = match kind {
-            MetaItemKind::NameValue(ref lit) => lit.span.hi(),
+        let hi = match &kind {
+            MetaItemKind::NameValue(lit) => lit.span.hi(),
             MetaItemKind::List(..) => list_closing_paren_pos.unwrap_or(path.span.hi()),
             _ => path.span.hi(),
         };
@@ -518,8 +516,8 @@ impl MetaItem {
 impl MetaItemKind {
     pub fn value_str(&self) -> Option<Symbol> {
         match self {
-            MetaItemKind::NameValue(ref v) => match v.kind {
-                LitKind::Str(ref s, _) => Some(*s),
+            MetaItemKind::NameValue(v) => match v.kind {
+                LitKind::Str(s, _) => Some(s),
                 _ => None,
             },
             _ => None,
@@ -557,15 +555,15 @@ impl MetaItemKind {
     }
 
     fn token_trees(&self, span: Span) -> Vec<TokenTree> {
-        match *self {
+        match self {
             MetaItemKind::Word => vec![],
-            MetaItemKind::NameValue(ref lit) => {
+            MetaItemKind::NameValue(lit) => {
                 vec![
                     TokenTree::token_alone(token::Eq, span),
                     TokenTree::Token(lit.to_token(), Spacing::Alone),
                 ]
             }
-            MetaItemKind::List(ref list) => {
+            MetaItemKind::List(list) => {
                 let mut tokens = Vec::new();
                 for (i, item) in list.iter().enumerate() {
                     if i > 0 {
@@ -648,16 +646,16 @@ impl MetaItemKind {
 
 impl NestedMetaItem {
     pub fn span(&self) -> Span {
-        match *self {
-            NestedMetaItem::MetaItem(ref item) => item.span,
-            NestedMetaItem::Literal(ref lit) => lit.span,
+        match self {
+            NestedMetaItem::MetaItem(item) => item.span,
+            NestedMetaItem::Literal(lit) => lit.span,
         }
     }
 
     fn token_trees(&self) -> Vec<TokenTree> {
-        match *self {
-            NestedMetaItem::MetaItem(ref item) => item.token_trees(),
-            NestedMetaItem::Literal(ref lit) => {
+        match self {
+            NestedMetaItem::MetaItem(item) => item.token_trees(),
+            NestedMetaItem::Literal(lit) => {
                 vec![TokenTree::Token(lit.to_token(), Spacing::Alone)]
             }
         }
