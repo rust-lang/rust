@@ -6,11 +6,12 @@ use rustc_hir::intravisit::{
     walk_fn_decl, walk_generic_param, walk_generics, walk_impl_item_ref, walk_item, walk_param_bound,
     walk_poly_trait_ref, walk_trait_ref, walk_ty, Visitor,
 };
+use rustc_hir::lang_items;
 use rustc_hir::FnRetTy::Return;
 use rustc_hir::{
     BareFnTy, BodyId, FnDecl, GenericArg, GenericBound, GenericParam, GenericParamKind, Generics, Impl, ImplItem,
-    ImplItemKind, Item, ItemKind, LangItem, Lifetime, LifetimeName, ParamName, PolyTraitRef, PredicateOrigin, TraitFn,
-    TraitItem, TraitItemKind, Ty, TyKind, WherePredicate,
+    ImplItemKind, Item, ItemKind, Lifetime, LifetimeName, ParamName, PolyTraitRef, PredicateOrigin, TraitFn, TraitItem,
+    TraitItemKind, Ty, TyKind, WherePredicate,
 };
 use rustc_lint::{LateContext, LateLintPass};
 use rustc_middle::hir::nested_filter as middle_nested_filter;
@@ -102,7 +103,7 @@ impl<'tcx> LateLintPass<'tcx> for Lifetimes {
 
     fn check_impl_item(&mut self, cx: &LateContext<'tcx>, item: &'tcx ImplItem<'_>) {
         if let ImplItemKind::Fn(ref sig, id) = item.kind {
-            let report_extra_lifetimes = trait_ref_of_method(cx, item.def_id.def_id).is_none();
+            let report_extra_lifetimes = trait_ref_of_method(cx, item.owner_id.def_id).is_none();
             check_fn_inner(
                 cx,
                 sig.decl,
@@ -391,8 +392,6 @@ fn named_lifetime_occurrences(lts: &[RefLt]) -> Vec<(LocalDefId, usize)> {
     occurrences
 }
 
-const CLOSURE_TRAIT_BOUNDS: [LangItem; 3] = [LangItem::Fn, LangItem::FnMut, LangItem::FnOnce];
-
 /// A visitor usable for `rustc_front::visit::walk_ty()`.
 struct RefVisitor<'a, 'tcx> {
     cx: &'a LateContext<'tcx>,
@@ -453,12 +452,8 @@ impl<'a, 'tcx> Visitor<'tcx> for RefVisitor<'a, 'tcx> {
 
     fn visit_poly_trait_ref(&mut self, poly_tref: &'tcx PolyTraitRef<'tcx>) {
         let trait_ref = &poly_tref.trait_ref;
-        if CLOSURE_TRAIT_BOUNDS.iter().any(|&item| {
-            self.cx
-                .tcx
-                .lang_items()
-                .require(item)
-                .map_or(false, |id| Some(id) == trait_ref.trait_def_id())
+        if let Some(id) = trait_ref.trait_def_id() && lang_items::FN_TRAITS.iter().any(|&item| {
+            self.cx.tcx.lang_items().get(item) == Some(id)
         }) {
             let mut sub_visitor = RefVisitor::new(self.cx);
             sub_visitor.visit_trait_ref(trait_ref);

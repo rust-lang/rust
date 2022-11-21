@@ -23,6 +23,11 @@ error[E0308]: mismatched types
    |
 LL |         Some(reference) = cache.data.get(key) {
    |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ expected `bool`, found `()`
+   |
+help: consider adding `let`
+   |
+LL |         let Some(reference) = cache.data.get(key) {
+   |         +++
 
 error: aborting due to 3 previous errors
 

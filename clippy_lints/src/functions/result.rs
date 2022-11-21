@@ -34,9 +34,9 @@ fn result_err_ty<'tcx>(
 
 pub(super) fn check_item<'tcx>(cx: &LateContext<'tcx>, item: &hir::Item<'tcx>, large_err_threshold: u64) {
     if let hir::ItemKind::Fn(ref sig, _generics, _) = item.kind
-        && let Some((hir_ty, err_ty)) = result_err_ty(cx, sig.decl, item.def_id.def_id, item.span)
+        && let Some((hir_ty, err_ty)) = result_err_ty(cx, sig.decl, item.owner_id.def_id, item.span)
     {
-        if cx.access_levels.is_exported(item.def_id.def_id) {
+        if cx.effective_visibilities.is_exported(item.owner_id.def_id) {
             let fn_header_span = item.span.with_hi(sig.decl.output.span().hi());
             check_result_unit_err(cx, err_ty, fn_header_span);
         }
@@ -47,10 +47,10 @@ pub(super) fn check_item<'tcx>(cx: &LateContext<'tcx>, item: &hir::Item<'tcx>, l
 pub(super) fn check_impl_item<'tcx>(cx: &LateContext<'tcx>, item: &hir::ImplItem<'tcx>, large_err_threshold: u64) {
     // Don't lint if method is a trait's implementation, we can't do anything about those
     if let hir::ImplItemKind::Fn(ref sig, _) = item.kind
-        && let Some((hir_ty, err_ty)) = result_err_ty(cx, sig.decl, item.def_id.def_id, item.span)
-        && trait_ref_of_method(cx, item.def_id.def_id).is_none()
+        && let Some((hir_ty, err_ty)) = result_err_ty(cx, sig.decl, item.owner_id.def_id, item.span)
+        && trait_ref_of_method(cx, item.owner_id.def_id).is_none()
     {
-        if cx.access_levels.is_exported(item.def_id.def_id) {
+        if cx.effective_visibilities.is_exported(item.owner_id.def_id) {
             let fn_header_span = item.span.with_hi(sig.decl.output.span().hi());
             check_result_unit_err(cx, err_ty, fn_header_span);
         }
@@ -61,8 +61,8 @@ pub(super) fn check_impl_item<'tcx>(cx: &LateContext<'tcx>, item: &hir::ImplItem
 pub(super) fn check_trait_item<'tcx>(cx: &LateContext<'tcx>, item: &hir::TraitItem<'tcx>, large_err_threshold: u64) {
     if let hir::TraitItemKind::Fn(ref sig, _) = item.kind {
         let fn_header_span = item.span.with_hi(sig.decl.output.span().hi());
-        if let Some((hir_ty, err_ty)) = result_err_ty(cx, sig.decl, item.def_id.def_id, item.span) {
-            if cx.access_levels.is_exported(item.def_id.def_id) {
+        if let Some((hir_ty, err_ty)) = result_err_ty(cx, sig.decl, item.owner_id.def_id, item.span) {
+            if cx.effective_visibilities.is_exported(item.owner_id.def_id) {
                 check_result_unit_err(cx, err_ty, fn_header_span);
             }
             check_result_large_err(cx, err_ty, hir_ty.span, large_err_threshold);

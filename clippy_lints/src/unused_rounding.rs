@@ -1,5 +1,5 @@
-use clippy_utils::{diagnostics::span_lint_and_sugg, source::snippet};
-use rustc_ast::ast::{Expr, ExprKind, LitKind};
+use clippy_utils::diagnostics::span_lint_and_sugg;
+use rustc_ast::ast::{Expr, ExprKind, MethodCall};
 use rustc_errors::Applicability;
 use rustc_lint::{EarlyContext, EarlyLintPass};
 use rustc_session::{declare_lint_pass, declare_tool_lint};
@@ -29,15 +29,18 @@ declare_clippy_lint! {
 }
 declare_lint_pass!(UnusedRounding => [UNUSED_ROUNDING]);
 
-fn is_useless_rounding<'a>(cx: &EarlyContext<'a>, expr: &'a Expr) -> Option<(&'a str, String)> {
-    if let ExprKind::MethodCall(name_ident, receiver, _, _) = &expr.kind
+fn is_useless_rounding(expr: &Expr) -> Option<(&str, String)> {
+    if let ExprKind::MethodCall(box MethodCall { seg:name_ident, receiver, .. }) = &expr.kind
         && let method_name = name_ident.ident.name.as_str()
         && (method_name == "ceil" || method_name == "round" || method_name == "floor")
-        && let ExprKind::Lit(spanned) = &receiver.kind
-        && let LitKind::Float(symbol, _) = spanned.kind {
-            let f = symbol.as_str().parse::<f64>().unwrap();
+        && let ExprKind::Lit(token_lit) = &receiver.kind
+        && token_lit.is_semantic_float() {
+            let mut f_str = token_lit.symbol.to_string();
+            let f = f_str.trim_end_matches('_').parse::<f64>().unwrap();
+            if let Some(suffix) = token_lit.suffix {
+                f_str.push_str(suffix.as_str());
+            }
             if f.fract() == 0.0 {
-                let f_str = snippet(cx, receiver.span, "..").to_string();
                 Some((method_name, f_str))
             } else {
                 None
@@ -49,7 +52,7 @@ fn is_useless_rounding<'a>(cx: &EarlyContext<'a>, expr: &'a Expr) -> Option<(&'a
 
 impl EarlyLintPass for UnusedRounding {
     fn check_expr(&mut self, cx: &EarlyContext<'_>, expr: &Expr) {
-        if let Some((method_name, float)) = is_useless_rounding(cx, expr) {
+        if let Some((method_name, float)) = is_useless_rounding(expr) {
             span_lint_and_sugg(
                 cx,
                 UNUSED_ROUNDING,

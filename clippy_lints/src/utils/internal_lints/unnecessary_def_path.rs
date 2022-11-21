@@ -91,7 +91,7 @@ impl UnnecessaryDefPath {
     #[allow(clippy::too_many_lines)]
     fn check_call(&mut self, cx: &LateContext<'_>, func: &Expr<'_>, args: &[Expr<'_>], span: Span) {
         enum Item {
-            LangItem(Symbol),
+            LangItem(&'static str),
             DiagnosticItem(Symbol),
         }
         static PATHS: &[&[&str]] = &[
@@ -152,7 +152,7 @@ impl UnnecessaryDefPath {
                         has_ctor,
                     ),
                     (0, Item::LangItem(item)) => (
-                        format!("{cx_snip}.tcx.lang_items().require(LangItem::{item}).ok() == Some({def_snip})"),
+                        format!("{cx_snip}.tcx.lang_items().get(LangItem::{item}) == Some({def_snip})"),
                         has_ctor,
                     ),
                     // match_trait_method
@@ -184,7 +184,7 @@ impl UnnecessaryDefPath {
                     (3, Item::LangItem(item)) => (
                         format!(
                             "path_res({cx_snip}, {def_snip}).opt_def_id()\
-                                .map_or(false, |id| {cx_snip}.tcx.lang_items().require(LangItem::{item}).ok() == Some(id))",
+                                .map_or(false, |id| {cx_snip}.tcx.lang_items().get(LangItem::{item}) == Some(id))",
                         ),
                         false,
                     ),
@@ -246,7 +246,7 @@ fn path_to_matched_type(cx: &LateContext<'_>, expr: &hir::Expr<'_>) -> Option<Ve
 
 fn read_mir_alloc_def_path<'tcx>(cx: &LateContext<'tcx>, alloc: &'tcx Allocation, ty: Ty<'_>) -> Option<Vec<String>> {
     let (alloc, ty) = if let ty::Ref(_, ty, Mutability::Not) = *ty.kind() {
-        let &alloc = alloc.provenance().values().next()?;
+        let &alloc = alloc.provenance().ptrs().values().next()?;
         if let GlobalAlloc::Memory(alloc) = cx.tcx.global_alloc(alloc) {
             (alloc.inner(), ty)
         } else {
@@ -262,6 +262,7 @@ fn read_mir_alloc_def_path<'tcx>(cx: &LateContext<'tcx>, alloc: &'tcx Allocation
     {
         alloc
             .provenance()
+            .ptrs()
             .values()
             .map(|&alloc| {
                 if let GlobalAlloc::Memory(alloc) = cx.tcx.global_alloc(alloc) {
@@ -293,20 +294,9 @@ fn path_from_array(exprs: &[Expr<'_>]) -> Option<Vec<String>> {
         .collect()
 }
 
-fn get_lang_item_name(cx: &LateContext<'_>, def_id: DefId) -> Option<Symbol> {
-    if let Some(lang_item) = cx.tcx.lang_items().items().iter().position(|id| *id == Some(def_id)) {
-        let lang_items = def_path_def_ids(cx, &["rustc_hir", "lang_items", "LangItem"])
-            .next()
-            .unwrap();
-        let item_name = cx
-            .tcx
-            .adt_def(lang_items)
-            .variants()
-            .iter()
-            .nth(lang_item)
-            .unwrap()
-            .name;
-        Some(item_name)
+fn get_lang_item_name(cx: &LateContext<'_>, def_id: DefId) -> Option<&'static str> {
+    if let Some((lang_item, _)) = cx.tcx.lang_items().iter().find(|(_, id)| *id == def_id) {
+        Some(lang_item.variant_name())
     } else {
         None
     }

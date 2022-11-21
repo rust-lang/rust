@@ -7,8 +7,8 @@ use clippy_utils::visitors::find_all_ret_expressions;
 use clippy_utils::{fn_def_id, get_parent_expr, is_diag_item_method, is_diag_trait_item, return_ty};
 use clippy_utils::{meets_msrv, msrvs};
 use rustc_errors::Applicability;
-use rustc_hir::{def_id::DefId, BorrowKind, Expr, ExprKind, ItemKind, LangItem, Node};
-use rustc_hir_analysis::check::{FnCtxt, Inherited};
+use rustc_hir::{def_id::DefId, BorrowKind, Expr, ExprKind, ItemKind, Node};
+use rustc_hir_typeck::{FnCtxt, Inherited};
 use rustc_infer::infer::TyCtxtInferExt;
 use rustc_lint::LateContext;
 use rustc_middle::mir::Mutability;
@@ -378,7 +378,7 @@ fn can_change_type<'a>(cx: &LateContext<'a>, mut expr: &'a Expr<'a>, mut ty: Ty<
             Node::Expr(parent_expr) => {
                 if let Some((callee_def_id, call_substs, recv, call_args)) = get_callee_substs_and_args(cx, parent_expr)
                 {
-                    if cx.tcx.lang_items().require(LangItem::IntoFutureIntoFuture) == Ok(callee_def_id) {
+                    if Some(callee_def_id) == cx.tcx.lang_items().into_future_fn() {
                         return false;
                     }
 
@@ -419,7 +419,7 @@ fn can_change_type<'a>(cx: &LateContext<'a>, mut expr: &'a Expr<'a>, mut ty: Ty<
 
                         if trait_predicates.any(|predicate| {
                             let predicate = EarlyBinder(predicate).subst(cx.tcx, new_subst);
-                            let obligation = Obligation::new(ObligationCause::dummy(), cx.param_env, predicate);
+                            let obligation = Obligation::new(cx.tcx, ObligationCause::dummy(), cx.param_env, predicate);
                             !cx.tcx.infer_ctxt().build().predicate_must_hold_modulo_regions(&obligation)
                         }) {
                             return false;

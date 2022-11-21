@@ -19,7 +19,7 @@ use rustc_middle::ty::{
 };
 use rustc_middle::ty::{GenericArg, GenericArgKind};
 use rustc_span::symbol::Ident;
-use rustc_span::{sym, Span, Symbol, DUMMY_SP};
+use rustc_span::{sym, Span, Symbol};
 use rustc_target::abi::{Size, VariantIdx};
 use rustc_trait_selection::infer::InferCtxtExt;
 use rustc_trait_selection::traits::query::normalize::AtExt;
@@ -29,7 +29,7 @@ use crate::{match_def_path, path_res, paths};
 
 // Checks if the given type implements copy.
 pub fn is_copy<'tcx>(cx: &LateContext<'tcx>, ty: Ty<'tcx>) -> bool {
-    ty.is_copy_modulo_regions(cx.tcx.at(DUMMY_SP), cx.param_env)
+    ty.is_copy_modulo_regions(cx.tcx, cx.param_env)
 }
 
 /// This checks whether a given type is known to implement Debug.
@@ -371,11 +371,7 @@ pub fn is_type_diagnostic_item(cx: &LateContext<'_>, ty: Ty<'_>, diag_item: Symb
 /// Returns `false` if the `LangItem` is not defined.
 pub fn is_type_lang_item(cx: &LateContext<'_>, ty: Ty<'_>, lang_item: hir::LangItem) -> bool {
     match ty.kind() {
-        ty::Adt(adt, _) => cx
-            .tcx
-            .lang_items()
-            .require(lang_item)
-            .map_or(false, |li| li == adt.did()),
+        ty::Adt(adt, _) => cx.tcx.lang_items().get(lang_item) == Some(adt.did()),
         _ => false,
     }
 }
@@ -710,21 +706,18 @@ fn sig_for_projection<'tcx>(cx: &LateContext<'tcx>, ty: ProjectionTy<'tcx>) -> O
     let mut output = None;
     let lang_items = cx.tcx.lang_items();
 
-    for pred in cx
+    for (pred, _) in cx
         .tcx
         .bound_explicit_item_bounds(ty.item_def_id)
-        .transpose_iter()
-        .map(|x| x.map_bound(|(p, _)| p))
+        .subst_iter_copied(cx.tcx, ty.substs)
     {
-        match pred.0.kind().skip_binder() {
+        match pred.kind().skip_binder() {
             PredicateKind::Trait(p)
                 if (lang_items.fn_trait() == Some(p.def_id())
                     || lang_items.fn_mut_trait() == Some(p.def_id())
                     || lang_items.fn_once_trait() == Some(p.def_id())) =>
             {
-                let i = pred
-                    .map_bound(|pred| pred.kind().rebind(p.trait_ref.substs.type_at(1)))
-                    .subst(cx.tcx, ty.substs);
+                let i = pred.kind().rebind(p.trait_ref.substs.type_at(1));
 
                 if inputs.map_or(false, |inputs| inputs != i) {
                     // Multiple different fn trait impls. Is this even allowed?
@@ -737,10 +730,7 @@ fn sig_for_projection<'tcx>(cx: &LateContext<'tcx>, ty: ProjectionTy<'tcx>) -> O
                     // Multiple different fn trait impls. Is this even allowed?
                     return None;
                 }
-                output = Some(
-                    pred.map_bound(|pred| pred.kind().rebind(p.term.ty().unwrap()))
-                        .subst(cx.tcx, ty.substs),
-                );
+                output = pred.kind().rebind(p.term.ty()).transpose();
             },
             _ => (),
         }

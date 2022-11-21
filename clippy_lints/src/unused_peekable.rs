@@ -3,7 +3,6 @@ use clippy_utils::ty::{match_type, peel_mid_ty_refs_is_mutable};
 use clippy_utils::{fn_def_id, is_trait_method, path_to_local_id, paths, peel_ref_operators};
 use rustc_ast::Mutability;
 use rustc_hir::intravisit::{walk_expr, Visitor};
-use rustc_hir::lang_items::LangItem;
 use rustc_hir::{Block, Expr, ExprKind, HirId, Local, Node, PatKind, PathSegment, StmtKind};
 use rustc_lint::{LateContext, LateLintPass};
 use rustc_middle::hir::nested_filter::OnlyBodies;
@@ -132,11 +131,11 @@ impl<'tcx> Visitor<'tcx> for PeekableVisitor<'_, 'tcx> {
                             // If the Peekable is passed to a function, stop
                             ExprKind::Call(_, args) => {
                                 if let Some(func_did) = fn_def_id(self.cx, expr)
-                                    && let Ok(into_iter_did) = self
+                                    && let Some(into_iter_did) = self
                                         .cx
                                         .tcx
                                         .lang_items()
-                                        .require(LangItem::IntoIterIntoIter)
+                                        .into_iter_fn()
                                     && func_did == into_iter_did
                                 {
                                     // Probably a for loop desugar, stop searching

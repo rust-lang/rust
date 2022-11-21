@@ -55,7 +55,7 @@ impl<'tcx> LateLintPass<'tcx> for FallibleImplFrom {
         // check for `impl From<???> for ..`
         if_chain! {
             if let hir::ItemKind::Impl(impl_) = &item.kind;
-            if let Some(impl_trait_ref) = cx.tcx.impl_trait_ref(item.def_id);
+            if let Some(impl_trait_ref) = cx.tcx.impl_trait_ref(item.owner_id);
             if cx.tcx.is_diagnostic_item(sym::From, impl_trait_ref.def_id);
             then {
                 lint_impl_body(cx, item.span, impl_.items);
@@ -107,7 +107,7 @@ fn lint_impl_body(cx: &LateContext<'_>, impl_span: Span, impl_items: &[hir::Impl
                 let body = cx.tcx.hir().body(body_id);
                 let mut fpu = FindPanicUnwrap {
                     lcx: cx,
-                    typeck_results: cx.tcx.typeck(impl_item.id.def_id.def_id),
+                    typeck_results: cx.tcx.typeck(impl_item.id.owner_id.def_id),
                     result: Vec::new(),
                 };
                 fpu.visit_expr(body.value);

@@ -26,7 +26,7 @@ pub(super) fn check(cx: &LateContext<'_>, expr: &Expr<'_>, msrv: Option<RustcVer
             (Mutability::Not, Mutability::Not) | (Mutability::Mut, Mutability::Mut));
         // The `U` in `pointer::cast` have to be `Sized`
         // as explained here: https://github.com/rust-lang/rust/issues/60602.
-        if to_pointee_ty.is_sized(cx.tcx.at(expr.span), cx.param_env);
+        if to_pointee_ty.is_sized(cx.tcx, cx.param_env);
         then {
             let mut applicability = Applicability::MachineApplicable;
             let cast_expr_sugg = Sugg::hir_with_applicability(cx, cast_expr, "_", &mut applicability);

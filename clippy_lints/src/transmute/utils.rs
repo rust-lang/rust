@@ -1,5 +1,6 @@
+use rustc_hir as hir;
 use rustc_hir::Expr;
-use rustc_hir_analysis::check::{cast, FnCtxt, Inherited};
+use rustc_hir_typeck::{cast, FnCtxt, Inherited};
 use rustc_lint::LateContext;
 use rustc_middle::ty::{cast::CastKind, Ty};
 use rustc_span::DUMMY_SP;
@@ -54,9 +55,14 @@ fn check_cast<'tcx>(cx: &LateContext<'tcx>, e: &'tcx Expr<'_>, from_ty: Ty<'tcx>
         );
 
         if let Ok(check) = cast::CastCheck::new(
-            &fn_ctxt, e, from_ty, to_ty,
+            &fn_ctxt,
+            e,
+            from_ty,
+            to_ty,
             // We won't show any error to the user, so we don't care what the span is here.
-            DUMMY_SP, DUMMY_SP,
+            DUMMY_SP,
+            DUMMY_SP,
+            hir::Constness::NotConst,
         ) {
             let res = check.do_check(&fn_ctxt);
 

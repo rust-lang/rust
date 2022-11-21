@@ -5,7 +5,6 @@ use rustc_hir::Expr;
 use rustc_lint::LateContext;
 use rustc_middle::ty::SubstsRef;
 use rustc_middle::ty::{self, IntTy, Ty, TypeAndMut, UintTy};
-use rustc_span::DUMMY_SP;
 
 #[expect(clippy::too_many_lines)]
 pub(super) fn check<'tcx>(
@@ -210,12 +209,12 @@ fn reduce_refs<'tcx>(cx: &LateContext<'tcx>, mut from_ty: Ty<'tcx>, mut to_ty: T
                 continue;
             },
             (&(ty::Ref(_, unsized_ty, _) | ty::RawPtr(TypeAndMut { ty: unsized_ty, .. })), _)
-                if !unsized_ty.is_sized(cx.tcx.at(DUMMY_SP), cx.param_env) =>
+                if !unsized_ty.is_sized(cx.tcx, cx.param_env) =>
             {
                 (true, false)
             },
             (_, &(ty::Ref(_, unsized_ty, _) | ty::RawPtr(TypeAndMut { ty: unsized_ty, .. })))
-                if !unsized_ty.is_sized(cx.tcx.at(DUMMY_SP), cx.param_env) =>
+                if !unsized_ty.is_sized(cx.tcx, cx.param_env) =>
             {
                 (false, true)
             },

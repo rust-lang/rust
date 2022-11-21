@@ -108,7 +108,7 @@ impl<'tcx> LateLintPass<'tcx> for MutableKeyType {
 
     fn check_impl_item(&mut self, cx: &LateContext<'tcx>, item: &'tcx hir::ImplItem<'tcx>) {
         if let hir::ImplItemKind::Fn(ref sig, ..) = item.kind {
-            if trait_ref_of_method(cx, item.def_id.def_id).is_none() {
+            if trait_ref_of_method(cx, item.owner_id.def_id).is_none() {
                 self.check_sig(cx, item.hir_id(), sig.decl);
             }
         }
@@ -153,7 +153,7 @@ impl MutableKeyType {
             let is_keyed_type = [sym::HashMap, sym::BTreeMap, sym::HashSet, sym::BTreeSet]
                 .iter()
                 .any(|diag_item| cx.tcx.is_diagnostic_item(*diag_item, def.did()));
-            if is_keyed_type && self.is_interior_mutable_type(cx, substs.type_at(0), span) {
+            if is_keyed_type && self.is_interior_mutable_type(cx, substs.type_at(0)) {
                 span_lint(cx, MUTABLE_KEY_TYPE, span, "mutable key type");
             }
         }
@@ -161,17 +161,15 @@ impl MutableKeyType {
 
     /// Determines if a type contains interior mutability which would affect its implementation of
     /// [`Hash`] or [`Ord`].
-    fn is_interior_mutable_type<'tcx>(&self, cx: &LateContext<'tcx>, ty: Ty<'tcx>, span: Span) -> bool {
+    fn is_interior_mutable_type<'tcx>(&self, cx: &LateContext<'tcx>, ty: Ty<'tcx>) -> bool {
         match *ty.kind() {
-            Ref(_, inner_ty, mutbl) => {
-                mutbl == hir::Mutability::Mut || self.is_interior_mutable_type(cx, inner_ty, span)
-            },
-            Slice(inner_ty) => self.is_interior_mutable_type(cx, inner_ty, span),
+            Ref(_, inner_ty, mutbl) => mutbl == hir::Mutability::Mut || self.is_interior_mutable_type(cx, inner_ty),
+            Slice(inner_ty) => self.is_interior_mutable_type(cx, inner_ty),
             Array(inner_ty, size) => {
                 size.try_eval_usize(cx.tcx, cx.param_env).map_or(true, |u| u != 0)
-                    && self.is_interior_mutable_type(cx, inner_ty, span)
+                    && self.is_interior_mutable_type(cx, inner_ty)
             },
-            Tuple(fields) => fields.iter().any(|ty| self.is_interior_mutable_type(cx, ty, span)),
+            Tuple(fields) => fields.iter().any(|ty| self.is_interior_mutable_type(cx, ty)),
             Adt(def, substs) => {
                 // Special case for collections in `std` who's impl of `Hash` or `Ord` delegates to
                 // that of their type parameters.  Note: we don't include `HashSet` and `HashMap`
@@ -193,11 +191,11 @@ impl MutableKeyType {
                 let is_box = Some(def_id) == cx.tcx.lang_items().owned_box();
                 if is_std_collection || is_box || self.ignore_mut_def_ids.contains(&def_id) {
                     // The type is mutable if any of its type parameters are
-                    substs.types().any(|ty| self.is_interior_mutable_type(cx, ty, span))
+                    substs.types().any(|ty| self.is_interior_mutable_type(cx, ty))
                 } else {
                     !ty.has_escaping_bound_vars()
                         && cx.tcx.layout_of(cx.param_env.and(ty)).is_ok()
-                        && !ty.is_freeze(cx.tcx.at(span), cx.param_env)
+                        && !ty.is_freeze(cx.tcx, cx.param_env)
                 }
             },
             _ => false,

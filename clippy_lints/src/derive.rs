@@ -210,8 +210,8 @@ impl<'tcx> LateLintPass<'tcx> for Derive {
             ..
         }) = item.kind
         {
-            let ty = cx.tcx.type_of(item.def_id);
-            let is_automatically_derived = cx.tcx.has_attr(item.def_id.to_def_id(), sym::automatically_derived);
+            let ty = cx.tcx.type_of(item.owner_id);
+            let is_automatically_derived = cx.tcx.has_attr(item.owner_id.to_def_id(), sym::automatically_derived);
 
             check_hash_peq(cx, item.span, trait_ref, ty, is_automatically_derived);
             check_ord_partial_ord(cx, item.span, trait_ref, ty, is_automatically_derived);

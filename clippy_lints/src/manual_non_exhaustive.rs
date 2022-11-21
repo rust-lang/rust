@@ -157,16 +157,16 @@ impl<'tcx> LateLintPass<'tcx> for ManualNonExhaustiveEnum {
             && def.variants.len() > 1
         {
             let mut iter = def.variants.iter().filter_map(|v| {
-                let id = cx.tcx.hir().local_def_id(v.id);
-                (matches!(v.data, hir::VariantData::Unit(_))
+                let id = cx.tcx.hir().local_def_id(v.hir_id);
+                (matches!(v.data, hir::VariantData::Unit(..))
                     && v.ident.as_str().starts_with('_')
-                    && is_doc_hidden(cx.tcx.hir().attrs(v.id)))
+                    && is_doc_hidden(cx.tcx.hir().attrs(v.hir_id)))
                 .then_some((id, v.span))
             });
             if let Some((id, span)) = iter.next()
                 && iter.next().is_none()
             {
-                self.potential_enums.push((item.def_id.def_id, id, item.span, span));
+                self.potential_enums.push((item.owner_id.def_id, id, item.span, span));
             }
         }
     }

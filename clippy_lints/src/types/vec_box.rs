@@ -40,7 +40,7 @@ pub(super) fn check(
             });
             let ty_ty = hir_ty_to_ty(cx.tcx, boxed_ty);
             if !ty_ty.has_escaping_bound_vars();
-            if ty_ty.is_sized(cx.tcx.at(ty.span), cx.param_env);
+            if ty_ty.is_sized(cx.tcx, cx.param_env);
             if let Ok(ty_ty_size) = cx.layout_of(ty_ty).map(|l| l.size.bytes());
             if ty_ty_size < box_size_threshold;
             then {

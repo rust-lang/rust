@@ -294,15 +294,15 @@ impl<'tcx> LateLintPass<'tcx> for DocMarkdown {
         let Some(headers) = check_attrs(cx, &self.valid_idents, attrs) else { return };
         match item.kind {
             hir::ItemKind::Fn(ref sig, _, body_id) => {
-                if !(is_entrypoint_fn(cx, item.def_id.to_def_id()) || in_external_macro(cx.tcx.sess, item.span)) {
+                if !(is_entrypoint_fn(cx, item.owner_id.to_def_id()) || in_external_macro(cx.tcx.sess, item.span)) {
                     let body = cx.tcx.hir().body(body_id);
                     let mut fpu = FindPanicUnwrap {
                         cx,
-                        typeck_results: cx.tcx.typeck(item.def_id.def_id),
+                        typeck_results: cx.tcx.typeck(item.owner_id.def_id),
                         panic_span: None,
                     };
                     fpu.visit_expr(body.value);
-                    lint_for_missing_headers(cx, item.def_id.def_id, sig, headers, Some(body_id), fpu.panic_span);
+                    lint_for_missing_headers(cx, item.owner_id.def_id, sig, headers, Some(body_id), fpu.panic_span);
                 }
             },
             hir::ItemKind::Impl(impl_) => {
@@ -312,13 +312,13 @@ impl<'tcx> LateLintPass<'tcx> for DocMarkdown {
                 (false, hir::Unsafety::Unsafe) => span_lint(
                     cx,
                     MISSING_SAFETY_DOC,
-                    cx.tcx.def_span(item.def_id),
+                    cx.tcx.def_span(item.owner_id),
                     "docs for unsafe trait missing `# Safety` section",
                 ),
                 (true, hir::Unsafety::Normal) => span_lint(
                     cx,
                     UNNECESSARY_SAFETY_DOC,
-                    cx.tcx.def_span(item.def_id),
+                    cx.tcx.def_span(item.owner_id),
                     "docs for safe trait have unnecessary `# Safety` section",
                 ),
                 _ => (),
@@ -338,7 +338,7 @@ impl<'tcx> LateLintPass<'tcx> for DocMarkdown {
         let Some(headers) = check_attrs(cx, &self.valid_idents, attrs) else { return };
         if let hir::TraitItemKind::Fn(ref sig, ..) = item.kind {
             if !in_external_macro(cx.tcx.sess, item.span) {
-                lint_for_missing_headers(cx, item.def_id.def_id, sig, headers, None, None);
+                lint_for_missing_headers(cx, item.owner_id.def_id, sig, headers, None, None);
             }
         }
     }
@@ -353,11 +353,11 @@ impl<'tcx> LateLintPass<'tcx> for DocMarkdown {
             let body = cx.tcx.hir().body(body_id);
             let mut fpu = FindPanicUnwrap {
                 cx,
-                typeck_results: cx.tcx.typeck(item.def_id.def_id),
+                typeck_results: cx.tcx.typeck(item.owner_id.def_id),
                 panic_span: None,
             };
             fpu.visit_expr(body.value);
-            lint_for_missing_headers(cx, item.def_id.def_id, sig, headers, Some(body_id), fpu.panic_span);
+            lint_for_missing_headers(cx, item.owner_id.def_id, sig, headers, Some(body_id), fpu.panic_span);
         }
     }
 }
@@ -370,7 +370,7 @@ fn lint_for_missing_headers(
     body_id: Option<hir::BodyId>,
     panic_span: Option<Span>,
 ) {
-    if !cx.access_levels.is_exported(def_id) {
+    if !cx.effective_visibilities.is_exported(def_id) {
         return; // Private functions do not require doc comments
     }
 
@@ -719,6 +719,7 @@ fn check_code(cx: &LateContext<'_>, text: &str, edition: Edition, span: Span) {
                     false,
                     false,
                     None,
+                    false,
                     false,
                 );
                 let handler = Handler::with_emitter(false, None, Box::new(emitter));

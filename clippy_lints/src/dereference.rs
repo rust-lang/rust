@@ -30,7 +30,7 @@ use rustc_middle::ty::{
 };
 use rustc_semver::RustcVersion;
 use rustc_session::{declare_tool_lint, impl_lint_pass};
-use rustc_span::{symbol::sym, Span, Symbol, DUMMY_SP};
+use rustc_span::{symbol::sym, Span, Symbol};
 use rustc_trait_selection::infer::InferCtxtExt as _;
 use rustc_trait_selection::traits::{query::evaluate_obligation::InferCtxtExt as _, Obligation, ObligationCause};
 use std::collections::VecDeque;
@@ -714,47 +714,47 @@ fn walk_parents<'tcx>(
             },
             Node::Item(&Item {
                 kind: ItemKind::Static(..) | ItemKind::Const(..),
-                def_id,
+                owner_id,
                 span,
                 ..
             })
             | Node::TraitItem(&TraitItem {
                 kind: TraitItemKind::Const(..),
-                def_id,
+                owner_id,
                 span,
                 ..
             })
             | Node::ImplItem(&ImplItem {
                 kind: ImplItemKind::Const(..),
-                def_id,
+                owner_id,
                 span,
                 ..
             }) if span.ctxt() == ctxt => {
-                let ty = cx.tcx.type_of(def_id.def_id);
+                let ty = cx.tcx.type_of(owner_id.def_id);
                 Some(ty_auto_deref_stability(cx, ty, precedence).position_for_result(cx))
             },
 
             Node::Item(&Item {
                 kind: ItemKind::Fn(..),
-                def_id,
+                owner_id,
                 span,
                 ..
             })
             | Node::TraitItem(&TraitItem {
                 kind: TraitItemKind::Fn(..),
-                def_id,
+                owner_id,
                 span,
                 ..
             })
             | Node::ImplItem(&ImplItem {
                 kind: ImplItemKind::Fn(..),
-                def_id,
+                owner_id,
                 span,
                 ..
             }) if span.ctxt() == ctxt => {
                 let output = cx
                     .tcx
-                    .erase_late_bound_regions(cx.tcx.fn_sig(def_id.to_def_id()).output());
+                    .erase_late_bound_regions(cx.tcx.fn_sig(owner_id.to_def_id()).output());
                 Some(ty_auto_deref_stability(cx, output, precedence).position_for_result(cx))
             },
 
@@ -1000,7 +1000,7 @@ fn binding_ty_auto_deref_stability<'tcx>(
                                 cx.typeck_results().node_type(ty.ty.hir_id),
                                 binder_args,
                             ))
-                            .is_sized(cx.tcx.at(DUMMY_SP), cx.param_env.without_caller_bounds()),
+                            .is_sized(cx.tcx, cx.param_env.without_caller_bounds()),
                     )
                 }
             },
@@ -1015,7 +1015,7 @@ fn binding_ty_auto_deref_stability<'tcx>(
                         cx.typeck_results().node_type(ty.ty.hir_id),
                         binder_args,
                     ))
-                    .is_sized(cx.tcx.at(DUMMY_SP), cx.param_env.without_caller_bounds()),
+                    .is_sized(cx.tcx, cx.param_env.without_caller_bounds()),
             ),
             TyKind::OpaqueDef(..) | TyKind::Infer | TyKind::Typeof(..) | TyKind::TraitObject(..) | TyKind::Err => {
                 Position::ReborrowStable(precedence)
@@ -1116,7 +1116,7 @@ fn needless_borrow_impl_arg_position<'tcx>(
         .iter()
         .filter_map(|predicate| {
             if let PredicateKind::Trait(trait_predicate) = predicate.kind().skip_binder()
-                && trait_predicate.self_ty() == param_ty.to_ty(cx.tcx)
+                && trait_predicate.trait_ref.self_ty() == param_ty.to_ty(cx.tcx)
             {
                 Some(trait_predicate.trait_ref.def_id)
             } else {
@@ -1188,7 +1188,7 @@ fn needless_borrow_impl_arg_position<'tcx>(
             }
 
             let predicate = EarlyBinder(predicate).subst(cx.tcx, &substs_with_referent_ty);
-            let obligation = Obligation::new(ObligationCause::dummy(), cx.param_env, predicate);
+            let obligation = Obligation::new(cx.tcx, ObligationCause::dummy(), cx.param_env, predicate);
             let infcx = cx.tcx.infer_ctxt().build();
             infcx.predicate_must_hold_modulo_regions(&obligation)
         })
@@ -1362,7 +1362,7 @@ impl<'tcx> TyPosition<'tcx> {
     fn position_for_result(self, cx: &LateContext<'tcx>) -> Position {
         match (self.position, self.ty) {
             (Position::ReborrowStable(precedence), Some(ty)) => {
-                Position::DerefStable(precedence, ty.is_sized(cx.tcx.at(DUMMY_SP), cx.param_env))
+                Position::DerefStable(precedence, ty.is_sized(cx.tcx, cx.param_env))
             },
             (position, _) => position,
         }
@@ -1412,11 +1412,9 @@ fn ty_auto_deref_stability<'tcx>(cx: &LateContext<'tcx>, ty: Ty<'tcx>, precedenc
             | ty::Closure(..)
             | ty::Never
             | ty::Tuple(_)
-            | ty::Projection(_) => Position::DerefStable(
-                precedence,
-                ty.is_sized(cx.tcx.at(DUMMY_SP), cx.param_env.without_caller_bounds()),
-            )
-            .into(),
+            | ty::Projection(_) => {
+                Position::DerefStable(precedence, ty.is_sized(cx.tcx, cx.param_env.without_caller_bounds())).into()
+            },
         };
     }
 }

@@ -12,7 +12,7 @@ use rustc_ast_pretty::pprust::token_kind_to_string;
 use rustc_errors::Applicability;
 use rustc_hir as hir;
 use rustc_hir::{Closure, ExprKind, HirId, MutTy, TyKind};
-use rustc_hir_analysis::expr_use_visitor::{Delegate, ExprUseVisitor, PlaceBase, PlaceWithHirId};
+use rustc_hir_typeck::expr_use_visitor::{Delegate, ExprUseVisitor, PlaceBase, PlaceWithHirId};
 use rustc_infer::infer::TyCtxtInferExt;
 use rustc_lint::{EarlyContext, LateContext, LintContext};
 use rustc_middle::hir::place::ProjectionKind;
@@ -207,6 +207,7 @@ impl<'a> Sugg<'a> {
             | ast::ExprKind::InlineAsm(..)
             | ast::ExprKind::ConstBlock(..)
             | ast::ExprKind::Lit(..)
+            | ast::ExprKind::IncludedBytes(..)
             | ast::ExprKind::Loop(..)
             | ast::ExprKind::MacCall(..)
             | ast::ExprKind::MethodCall(..)
@@ -771,8 +772,7 @@ impl<T: LintContext> DiagnosticExt<T> for rustc_errors::Diagnostic {
 
     fn suggest_remove_item(&mut self, cx: &T, item: Span, msg: &str, applicability: Applicability) {
         let mut remove_span = item;
-        let hi = cx.sess().source_map().next_point(remove_span).hi();
-        let fmpos = cx.sess().source_map().lookup_byte_offset(hi);
+        let fmpos = cx.sess().source_map().lookup_byte_offset(remove_span.hi());
 
         if let Some(ref src) = fmpos.sf.src {
             let non_whitespace_offset = src[fmpos.pos.to_usize()..].find(|c| c != ' ' && c != '\t' && c != '\n');
@@ -1055,13 +1055,7 @@ impl<'tcx> Delegate<'tcx> for DerefDelegate<'_, 'tcx> {
 
     fn mutate(&mut self, _: &PlaceWithHirId<'tcx>, _: HirId) {}
 
-    fn fake_read(
-        &mut self,
-        _: &rustc_hir_analysis::expr_use_visitor::PlaceWithHirId<'tcx>,
-        _: FakeReadCause,
-        _: HirId,
-    ) {
-    }
+    fn fake_read(&mut self, _: &PlaceWithHirId<'tcx>, _: FakeReadCause, _: HirId) {}
 }
 
 #[cfg(test)]

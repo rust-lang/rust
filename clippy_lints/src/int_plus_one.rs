@@ -2,7 +2,8 @@
 
 use clippy_utils::diagnostics::span_lint_and_sugg;
 use clippy_utils::source::snippet_opt;
-use rustc_ast::ast::{BinOpKind, Expr, ExprKind, Lit, LitKind};
+use rustc_ast::ast::{BinOpKind, Expr, ExprKind, LitKind};
+use rustc_ast::token;
 use rustc_errors::Applicability;
 use rustc_lint::{EarlyContext, EarlyLintPass};
 use rustc_session::{declare_lint_pass, declare_tool_lint};
@@ -52,8 +53,8 @@ enum Side {
 
 impl IntPlusOne {
     #[expect(clippy::cast_sign_loss)]
-    fn check_lit(lit: &Lit, target_value: i128) -> bool {
-        if let LitKind::Int(value, ..) = lit.kind {
+    fn check_lit(token_lit: token::Lit, target_value: i128) -> bool {
+        if let Ok(LitKind::Int(value, ..)) = LitKind::from_token_lit(token_lit) {
             return value == (target_value as u128);
         }
         false
@@ -65,11 +66,11 @@ impl IntPlusOne {
             (BinOpKind::Ge, ExprKind::Binary(lhskind, lhslhs, lhsrhs), _) => {
                 match (lhskind.node, &lhslhs.kind, &lhsrhs.kind) {
                     // `-1 + x`
-                    (BinOpKind::Add, ExprKind::Lit(lit), _) if Self::check_lit(lit, -1) => {
+                    (BinOpKind::Add, ExprKind::Lit(lit), _) if Self::check_lit(*lit, -1) => {
                         Self::generate_recommendation(cx, binop, lhsrhs, rhs, Side::Lhs)
                     },
                     // `x - 1`
-                    (BinOpKind::Sub, _, ExprKind::Lit(lit)) if Self::check_lit(lit, 1) => {
+                    (BinOpKind::Sub, _, ExprKind::Lit(lit)) if Self::check_lit(*lit, 1) => {
                         Self::generate_recommendation(cx, binop, lhslhs, rhs, Side::Lhs)
                     },
                     _ => None,
@@ -79,10 +80,10 @@ impl IntPlusOne {
             (BinOpKind::Ge, _, ExprKind::Binary(rhskind, rhslhs, rhsrhs)) if rhskind.node == BinOpKind::Add => {
                 match (&rhslhs.kind, &rhsrhs.kind) {
                     // `y + 1` and `1 + y`
-                    (ExprKind::Lit(lit), _) if Self::check_lit(lit, 1) => {
+                    (ExprKind::Lit(lit), _) if Self::check_lit(*lit, 1) => {
                         Self::generate_recommendation(cx, binop, rhsrhs, lhs, Side::Rhs)
                     },
-                    (_, ExprKind::Lit(lit)) if Self::check_lit(lit, 1) => {
+                    (_, ExprKind::Lit(lit)) if Self::check_lit(*lit, 1) => {
                         Self::generate_recommendation(cx, binop, rhslhs, lhs, Side::Rhs)
                     },
                     _ => None,
@@ -92,10 +93,10 @@ impl IntPlusOne {
             (BinOpKind::Le, ExprKind::Binary(lhskind, lhslhs, lhsrhs), _) if lhskind.node == BinOpKind::Add => {
                 match (&lhslhs.kind, &lhsrhs.kind) {
                     // `1 + x` and `x + 1`
-                    (ExprKind::Lit(lit), _) if Self::check_lit(lit, 1) => {
+                    (ExprKind::Lit(lit), _) if Self::check_lit(*lit, 1) => {
                         Self::generate_recommendation(cx, binop, lhsrhs, rhs, Side::Lhs)
                     },
-                    (_, ExprKind::Lit(lit)) if Self::check_lit(lit, 1) => {
+                    (_, ExprKind::Lit(lit)) if Self::check_lit(*lit, 1) => {
                         Self::generate_recommendation(cx, binop, lhslhs, rhs, Side::Lhs)
                     },
                     _ => None,
@@ -105,11 +106,11 @@ impl IntPlusOne {
             (BinOpKind::Le, _, ExprKind::Binary(rhskind, rhslhs, rhsrhs)) => {
                 match (rhskind.node, &rhslhs.kind, &rhsrhs.kind) {
                     // `-1 + y`
-                    (BinOpKind::Add, ExprKind::Lit(lit), _) if Self::check_lit(lit, -1) => {
+                    (BinOpKind::Add, ExprKind::Lit(lit), _) if Self::check_lit(*lit, -1) => {
                         Self::generate_recommendation(cx, binop, rhsrhs, lhs, Side::Rhs)
                     },
                     // `y - 1`
-                    (BinOpKind::Sub, _, ExprKind::Lit(lit)) if Self::check_lit(lit, 1) => {
+                    (BinOpKind::Sub, _, ExprKind::Lit(lit)) if Self::check_lit(*lit, 1) => {
                         Self::generate_recommendation(cx, binop, rhslhs, lhs, Side::Rhs)
                     },
                     _ => None,
