@@ -13,8 +13,6 @@ const CONSTANT: &&MyType = &&MyType;
 fn main() {
     if let CONSTANT = &&MyType {
         //~^ ERROR must be annotated with `#[derive(PartialEq, Eq)]`
-        println!("semantic!");
-    } else {
-        println!("structural!");
+        println!("did match!");
     }
 }
