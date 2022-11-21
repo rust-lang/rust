@@ -286,8 +286,9 @@ where
     fn visit_const(&mut self, c: Const<'tcx>) -> ControlFlow<Self::BreakTy> {
         self.visit_ty(c.ty())?;
         let tcx = self.def_id_visitor.tcx();
-        if let ty::ConstKind::Unevaluated(uv) = c.kind() &&
-           let Ok(Some(ct)) = tcx.expand_unevaluated_abstract_const(uv.def, uv.substs) {
+        if let ty::ConstKind::Unevaluated(uv) = c.kind()
+            && let Ok(Some(ct)) = tcx.expand_unevaluated_abstract_const(uv.def, uv.substs)
+        {
             ct.super_visit_with(self)?;
         }
         ControlFlow::CONTINUE

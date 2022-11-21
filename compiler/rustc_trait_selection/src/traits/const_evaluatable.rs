@@ -78,7 +78,7 @@ pub fn is_const_evaluatable<'tcx>(
             // compilation with a useful error.
             Err(_) if tcx.sess.is_nightly_build()
                 && let Ok(Some(ac)) = tcx.expand_abstract_consts(ct)
-                && let ty::ConstKind::Expr(_) = ac.kind() => 
+                && let ty::ConstKind::Expr(_) = ac.kind() =>
             {
                 tcx.sess
                     .struct_span_fatal(

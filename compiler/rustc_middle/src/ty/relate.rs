@@ -647,7 +647,7 @@ pub fn super_relate_consts<'tcx, R: TypeRelation<'tcx>>(
         (ty::ConstKind::Placeholder(p1), ty::ConstKind::Placeholder(p2)) => p1 == p2,
         (ty::ConstKind::Value(a_val), ty::ConstKind::Value(b_val)) => a_val == b_val,
 
-        (ty::ConstKind::Unevaluated(_au), ty::ConstKind::Unevaluated(_bu))
+        (ty::ConstKind::Unevaluated(_), ty::ConstKind::Unevaluated(_))
             if tcx.features().generic_const_exprs =>
         {
             if let (Ok(Some(a)), Ok(Some(b))) = (
@@ -681,7 +681,7 @@ pub fn super_relate_consts<'tcx, R: TypeRelation<'tcx>>(
         (ty::ConstKind::Expr(ae), ty::ConstKind::Expr(be)) => {
             let r = relation;
 
-            // FIXME(julianknodt): is it possible to relate two consts which are not identical
+            // FIXME(generic_const_exprs): is it possible to relate two consts which are not identical
             // exprs? Should we care about that?
             let expr = match (ae, be) {
                 (Expr::Binop(a_op, al, ar), Expr::Binop(b_op, bl, br))
