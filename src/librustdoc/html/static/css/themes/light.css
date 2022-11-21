@@ -36,9 +36,11 @@
 	--sidebar-current-link-background-color: #fff;
 	--search-result-link-focus-background-color: #ccc;
 	--search-result-border-color: #aaa3;
+	--search-color: #000;
+	--search-results-alias-color: #000;
+	--search-results-grey-color: #999;
 	--stab-background-color: #fff5d6;
 	--stab-code-color: #000;
-	--search-color: #000;
 	--code-highlight-kw-color: #8959a8;
 	--code-highlight-kw-2-color: #4271ae;
 	--code-highlight-lifetime-color: #b76514;
@@ -94,13 +96,6 @@ body.source .example-wrap pre.rust a {
 
 #titles > button > div.count {
 	color: #888;
-}
-
-.search-results .result-name span.alias {
-	color: #000;
-}
-.search-results .result-name span.grey {
-	color: #999;
 }
 
 #source-sidebar div.files > a:hover, details.dir-entry summary:hover,
