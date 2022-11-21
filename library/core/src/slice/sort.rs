@@ -940,6 +940,7 @@ where
     F: FnMut(&T, &T) -> bool,
 {
     if v.len() >= 2 && is_less(&v[1], &v[0]) {
+        // SAFETY: Copy tmp back even if panic, and ensure unique observation.
         unsafe {
             // There are three ways to implement insertion here:
             //
@@ -992,6 +993,7 @@ where
 
     impl<T> Drop for InsertionHole<T> {
         fn drop(&mut self) {
+            // SAFETY: The caller must ensure that src and dest are correctly set.
             unsafe {
                 ptr::copy_nonoverlapping(self.src, self.dest, 1);
             }
@@ -1012,6 +1014,8 @@ where
 {
     let len = v.len();
     let v = v.as_mut_ptr();
+
+    // SAFETY: mid and len must be in-bounds of v.
     let (v_mid, v_end) = unsafe { (v.add(mid), v.add(len)) };
 
     // The merge process first copies the shorter run into `buf`. Then it traces the newly copied
@@ -1035,6 +1039,8 @@ where
 
     if mid <= len - mid {
         // The left run is shorter.
+
+        // SAFETY: buf must have enough capacity for `v[..mid]`.
         unsafe {
             ptr::copy_nonoverlapping(v, buf, mid);
             hole = MergeHole { start: buf, end: buf.add(mid), dest: v };
@@ -1048,6 +1054,8 @@ where
         while *left < hole.end && right < v_end {
             // Consume the lesser side.
             // If equal, prefer the left run to maintain stability.
+
+            // SAFETY: left and right must be valid and part of v same for out.
             unsafe {
                 let to_copy = if is_less(&*right, &**left) {
                     get_and_increment(&mut right)
@@ -1059,6 +1067,8 @@ where
         }
     } else {
         // The right run is shorter.
+
+        // SAFETY: buf must have enough capacity for `v[mid..]`.
         unsafe {
             ptr::copy_nonoverlapping(v_mid, buf, len - mid);
             hole = MergeHole { start: buf, end: buf.add(len - mid), dest: v_mid };
@@ -1072,6 +1082,8 @@ where
         while v < *left && buf < *right {
             // Consume the greater side.
             // If equal, prefer the right run to maintain stability.
+
+            // SAFETY: left and right must be valid and part of v same for out.
             unsafe {
                 let to_copy = if is_less(&*right.sub(1), &*left.sub(1)) {
                     decrement_and_get(left)
@@ -1087,11 +1099,14 @@ where
 
     unsafe fn get_and_increment<T>(ptr: &mut *mut T) -> *mut T {
         let old = *ptr;
+
+        // SAFETY: ptr.add(1) must still be a valid pointer and part of `v`.
         *ptr = unsafe { ptr.add(1) };
         old
     }
 
     unsafe fn decrement_and_get<T>(ptr: &mut *mut T) -> *mut T {
+        // SAFETY: ptr.sub(1) must still be a valid pointer and part of `v`.
         *ptr = unsafe { ptr.sub(1) };
         *ptr
     }
@@ -1105,7 +1120,7 @@ where
 
     impl<T> Drop for MergeHole<T> {
         fn drop(&mut self) {
-            // `T` is not a zero-sized type, and these are pointers into a slice's elements.
+            // SAFETY: `T` is not a zero-sized type, and these are pointers into a slice's elements.
             unsafe {
                 let len = self.end.sub_ptr(self.start);
                 ptr::copy_nonoverlapping(self.start, self.dest, len);
@@ -1180,6 +1195,8 @@ pub fn merge_sort<T, CmpF, ElemAllocF, ElemDeallocF, RunAllocF, RunDeallocF>(
         let mut start = end - 1;
         if start > 0 {
             start -= 1;
+
+            // SAFETY: The v.get_unchecked must be fed with correct inbound indicies.
             unsafe {
                 if is_less(v.get_unchecked(start + 1), v.get_unchecked(start)) {
                     while start > 0 && is_less(v.get_unchecked(start), v.get_unchecked(start - 1)) {
@@ -1210,6 +1227,8 @@ pub fn merge_sort<T, CmpF, ElemAllocF, ElemDeallocF, RunAllocF, RunDeallocF>(
         while let Some(r) = collapse(runs.as_slice()) {
             let left = runs[r + 1];
             let right = runs[r];
+            // SAFETY: `buf_ptr` must hold enough capacity for the shorter of the two sides, and
+            // neither side may be on length 0.
             unsafe {
                 merge(&mut v[left.start..right.start + right.len], left.len, buf_ptr, is_less);
             }
