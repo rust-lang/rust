@@ -177,6 +177,7 @@ pub(crate) static LINTS: &[&crate::LintInfo] = &[
     crate::from_raw_with_void_ptr::FROM_RAW_WITH_VOID_PTR_INFO,
     crate::from_str_radix_10::FROM_STR_RADIX_10_INFO,
     crate::functions::DOUBLE_MUST_USE_INFO,
+    crate::functions::MISNAMED_GETTERS_INFO,
     crate::functions::MUST_USE_CANDIDATE_INFO,
     crate::functions::MUST_USE_UNIT_INFO,
     crate::functions::NOT_UNSAFE_PTR_ARG_DEREF_INFO,
