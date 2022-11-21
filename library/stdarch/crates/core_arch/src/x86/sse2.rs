@@ -203,7 +203,9 @@ pub unsafe fn _mm_madd_epi16(a: __m128i, b: __m128i) -> __m128i {
 #[cfg_attr(test, assert_instr(pmaxsw))]
 #[stable(feature = "simd_x86", since = "1.27.0")]
 pub unsafe fn _mm_max_epi16(a: __m128i, b: __m128i) -> __m128i {
-    transmute(pmaxsw(a.as_i16x8(), b.as_i16x8()))
+    let a = a.as_i16x8();
+    let b = b.as_i16x8();
+    transmute(simd_select::<i16x8, _>(simd_gt(a, b), a, b))
 }
 
 /// Compares packed unsigned 8-bit integers in `a` and `b`, and returns the
@@ -215,7 +217,9 @@ pub unsafe fn _mm_max_epi16(a: __m128i, b: __m128i) -> __m128i {
 #[cfg_attr(test, assert_instr(pmaxub))]
 #[stable(feature = "simd_x86", since = "1.27.0")]
 pub unsafe fn _mm_max_epu8(a: __m128i, b: __m128i) -> __m128i {
-    transmute(pmaxub(a.as_u8x16(), b.as_u8x16()))
+    let a = a.as_u8x16();
+    let b = b.as_u8x16();
+    transmute(simd_select::<i8x16, _>(simd_gt(a, b), a, b))
 }
 
 /// Compares packed 16-bit integers in `a` and `b`, and returns the packed
@@ -227,7 +231,9 @@ pub unsafe fn _mm_max_epu8(a: __m128i, b: __m128i) -> __m128i {
 #[cfg_attr(test, assert_instr(pminsw))]
 #[stable(feature = "simd_x86", since = "1.27.0")]
 pub unsafe fn _mm_min_epi16(a: __m128i, b: __m128i) -> __m128i {
-    transmute(pminsw(a.as_i16x8(), b.as_i16x8()))
+    let a = a.as_i16x8();
+    let b = b.as_i16x8();
+    transmute(simd_select::<i16x8, _>(simd_lt(a, b), a, b))
 }
 
 /// Compares packed unsigned 8-bit integers in `a` and `b`, and returns the
@@ -239,7 +245,9 @@ pub unsafe fn _mm_min_epi16(a: __m128i, b: __m128i) -> __m128i {
 #[cfg_attr(test, assert_instr(pminub))]
 #[stable(feature = "simd_x86", since = "1.27.0")]
 pub unsafe fn _mm_min_epu8(a: __m128i, b: __m128i) -> __m128i {
-    transmute(pminub(a.as_u8x16(), b.as_u8x16()))
+    let a = a.as_u8x16();
+    let b = b.as_u8x16();
+    transmute(simd_select::<i8x16, _>(simd_lt(a, b), a, b))
 }
 
 /// Multiplies the packed 16-bit integers in `a` and `b`.
@@ -2798,14 +2806,6 @@ extern "C" {
     fn pavgw(a: u16x8, b: u16x8) -> u16x8;
     #[link_name = "llvm.x86.sse2.pmadd.wd"]
     fn pmaddwd(a: i16x8, b: i16x8) -> i32x4;
-    #[link_name = "llvm.x86.sse2.pmaxs.w"]
-    fn pmaxsw(a: i16x8, b: i16x8) -> i16x8;
-    #[link_name = "llvm.x86.sse2.pmaxu.b"]
-    fn pmaxub(a: u8x16, b: u8x16) -> u8x16;
-    #[link_name = "llvm.x86.sse2.pmins.w"]
-    fn pminsw(a: i16x8, b: i16x8) -> i16x8;
-    #[link_name = "llvm.x86.sse2.pminu.b"]
-    fn pminub(a: u8x16, b: u8x16) -> u8x16;
     #[link_name = "llvm.x86.sse2.pmulh.w"]
     fn pmulhw(a: i16x8, b: i16x8) -> i16x8;
     #[link_name = "llvm.x86.sse2.pmulhu.w"]
