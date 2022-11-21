@@ -171,11 +171,7 @@ impl<'tcx> LateLintPass<'tcx> for IndexingSlicing {
 
 /// Returns a tuple of options with the start and end (exclusive) values of
 /// the range. If the start or end is not constant, None is returned.
-fn to_const_range<'tcx>(
-    cx: &LateContext<'tcx>,
-    range: higher::Range<'_>,
-    array_size: u128,
-) -> (Option<u128>, Option<u128>) {
+fn to_const_range(cx: &LateContext<'_>, range: higher::Range<'_>, array_size: u128) -> (Option<u128>, Option<u128>) {
     let s = range
         .start
         .map(|expr| constant(cx, cx.typeck_results(), expr).map(|(c, _)| c));

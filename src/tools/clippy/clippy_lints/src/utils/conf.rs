@@ -53,11 +53,11 @@ impl DisallowedPath {
         path
     }
 
-    pub fn reason(&self) -> Option<&str> {
+    pub fn reason(&self) -> Option<String> {
         match self {
             Self::WithReason {
                 reason: Some(reason), ..
-            } => Some(reason),
+            } => Some(format!("{reason} (from clippy.toml)")),
             _ => None,
         }
     }
@@ -213,7 +213,7 @@ define_Conf! {
     ///
     /// Suppress lints whenever the suggested change would cause breakage for other crates.
     (avoid_breaking_exported_api: bool = true),
-    /// Lint: MANUAL_SPLIT_ONCE, MANUAL_STR_REPEAT, CLONED_INSTEAD_OF_COPIED, REDUNDANT_FIELD_NAMES, REDUNDANT_STATIC_LIFETIMES, FILTER_MAP_NEXT, CHECKED_CONVERSIONS, MANUAL_RANGE_CONTAINS, USE_SELF, MEM_REPLACE_WITH_DEFAULT, MANUAL_NON_EXHAUSTIVE, OPTION_AS_REF_DEREF, MAP_UNWRAP_OR, MATCH_LIKE_MATCHES_MACRO, MANUAL_STRIP, MISSING_CONST_FOR_FN, UNNESTED_OR_PATTERNS, FROM_OVER_INTO, PTR_AS_PTR, IF_THEN_SOME_ELSE_NONE, APPROX_CONSTANT, DEPRECATED_CFG_ATTR, INDEX_REFUTABLE_SLICE, MAP_CLONE, BORROW_AS_PTR, MANUAL_BITS, ERR_EXPECT, CAST_ABS_TO_UNSIGNED, UNINLINED_FORMAT_ARGS, MANUAL_CLAMP.
+    /// Lint: MANUAL_SPLIT_ONCE, MANUAL_STR_REPEAT, CLONED_INSTEAD_OF_COPIED, REDUNDANT_FIELD_NAMES, REDUNDANT_STATIC_LIFETIMES, FILTER_MAP_NEXT, CHECKED_CONVERSIONS, MANUAL_RANGE_CONTAINS, USE_SELF, MEM_REPLACE_WITH_DEFAULT, MANUAL_NON_EXHAUSTIVE, OPTION_AS_REF_DEREF, MAP_UNWRAP_OR, MATCH_LIKE_MATCHES_MACRO, MANUAL_STRIP, MISSING_CONST_FOR_FN, UNNESTED_OR_PATTERNS, FROM_OVER_INTO, PTR_AS_PTR, IF_THEN_SOME_ELSE_NONE, APPROX_CONSTANT, DEPRECATED_CFG_ATTR, INDEX_REFUTABLE_SLICE, MAP_CLONE, BORROW_AS_PTR, MANUAL_BITS, ERR_EXPECT, CAST_ABS_TO_UNSIGNED, UNINLINED_FORMAT_ARGS, MANUAL_CLAMP, MANUAL_LET_ELSE, UNCHECKED_DURATION_SUBTRACTION.
     ///
     /// The minimum rust version that the project supports
     (msrv: Option<String> = None),
@@ -335,6 +335,12 @@ define_Conf! {
     ///
     /// Enables verbose mode. Triggers if there is more than one uppercase char next to each other
     (upper_case_acronyms_aggressive: bool = false),
+    /// Lint: MANUAL_LET_ELSE.
+    ///
+    /// Whether the matches should be considered by the lint, and whether there should
+    /// be filtering for common types.
+    (matches_for_let_else: crate::manual_let_else::MatchLintBehaviour =
+        crate::manual_let_else::MatchLintBehaviour::WellKnownTypes),
     /// Lint: _CARGO_COMMON_METADATA.
     ///
     /// For internal testing only, ignores the current `publish` settings in the Cargo manifest.
@@ -373,23 +379,36 @@ define_Conf! {
     (max_include_file_size: u64 = 1_000_000),
     /// Lint: EXPECT_USED.
     ///
-    /// Whether `expect` should be allowed in test functions
+    /// Whether `expect` should be allowed within `#[cfg(test)]`
     (allow_expect_in_tests: bool = false),
     /// Lint: UNWRAP_USED.
     ///
-    /// Whether `unwrap` should be allowed in test functions
+    /// Whether `unwrap` should be allowed in test cfg
     (allow_unwrap_in_tests: bool = false),
     /// Lint: DBG_MACRO.
     ///
     /// Whether `dbg!` should be allowed in test functions
     (allow_dbg_in_tests: bool = false),
-    /// Lint: RESULT_LARGE_ERR
+    /// Lint: PRINT_STDOUT, PRINT_STDERR.
+    ///
+    /// Whether print macros (ex. `println!`) should be allowed in test functions
+    (allow_print_in_tests: bool = false),
+    /// Lint: RESULT_LARGE_ERR.
     ///
     /// The maximum size of the `Err`-variant in a `Result` returned from a function
     (large_error_threshold: u64 = 128),
+    /// Lint: MUTABLE_KEY.
+    ///
+    /// A list of paths to types that should be treated like `Arc`, i.e. ignored but
+    /// for the generic parameters for determining interior mutability
+    (ignore_interior_mutability: Vec<String> = Vec::from(["bytes::Bytes".into()])),
 }
 
 /// Search for the configuration file.
+///
+/// # Errors
+///
+/// Returns any unexpected filesystem error encountered when searching for the config file
 pub fn lookup_conf_file() -> io::Result<Option<PathBuf>> {
     /// Possible filename to search for.
     const CONFIG_FILE_NAMES: [&str; 2] = [".clippy.toml", "clippy.toml"];

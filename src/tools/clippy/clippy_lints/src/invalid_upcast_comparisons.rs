@@ -38,7 +38,7 @@ declare_clippy_lint! {
 
 declare_lint_pass!(InvalidUpcastComparisons => [INVALID_UPCAST_COMPARISONS]);
 
-fn numeric_cast_precast_bounds<'a>(cx: &LateContext<'_>, expr: &'a Expr<'_>) -> Option<(FullInt, FullInt)> {
+fn numeric_cast_precast_bounds(cx: &LateContext<'_>, expr: &Expr<'_>) -> Option<(FullInt, FullInt)> {
     if let ExprKind::Cast(cast_exp, _) = expr.kind {
         let pre_cast_ty = cx.typeck_results().expr_ty(cast_exp);
         let cast_ty = cx.typeck_results().expr_ty(expr);

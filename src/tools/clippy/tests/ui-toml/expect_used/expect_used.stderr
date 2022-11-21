@@ -1,4 +1,4 @@
-error: used `expect()` on `an Option` value
+error: used `expect()` on an `Option` value
   --> $DIR/expect_used.rs:6:13
    |
 LL |     let _ = opt.expect("");
@@ -7,7 +7,7 @@ LL |     let _ = opt.expect("");
    = help: if this value is `None`, it will panic
    = note: `-D clippy::expect-used` implied by `-D warnings`
 
-error: used `expect()` on `a Result` value
+error: used `expect()` on a `Result` value
   --> $DIR/expect_used.rs:11:13
    |
 LL |     let _ = res.expect("");

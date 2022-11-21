@@ -33,4 +33,33 @@ fn main() {
     // `BinaryHeap` doesn't have `contains` method
     sample.iter().collect::<BinaryHeap<_>>().len();
     sample.iter().collect::<BinaryHeap<_>>().is_empty();
+
+    // Don't lint string from str
+    let _ = ["", ""].into_iter().collect::<String>().is_empty();
+
+    let _ = sample.iter().collect::<HashSet<_>>().is_empty();
+    let _ = sample.iter().collect::<HashSet<_>>().contains(&&0);
+
+    struct VecWrapper<T>(Vec<T>);
+    impl<T> core::ops::Deref for VecWrapper<T> {
+        type Target = Vec<T>;
+        fn deref(&self) -> &Self::Target {
+            &self.0
+        }
+    }
+    impl<T> IntoIterator for VecWrapper<T> {
+        type IntoIter = <Vec<T> as IntoIterator>::IntoIter;
+        type Item = <Vec<T> as IntoIterator>::Item;
+        fn into_iter(self) -> Self::IntoIter {
+            self.0.into_iter()
+        }
+    }
+    impl<T> FromIterator<T> for VecWrapper<T> {
+        fn from_iter<I: IntoIterator<Item = T>>(iter: I) -> Self {
+            Self(Vec::from_iter(iter))
+        }
+    }
+
+    let _ = sample.iter().collect::<VecWrapper<_>>().is_empty();
+    let _ = sample.iter().collect::<VecWrapper<_>>().contains(&&0);
 }

@@ -1,5 +1,9 @@
 use super::ARITHMETIC_SIDE_EFFECTS;
-use clippy_utils::{consts::constant_simple, diagnostics::span_lint};
+use clippy_utils::{
+    consts::{constant, constant_simple},
+    diagnostics::span_lint,
+    peel_hir_expr_refs,
+};
 use rustc_ast as ast;
 use rustc_data_structures::fx::FxHashSet;
 use rustc_hir as hir;
@@ -38,24 +42,6 @@ impl ArithmeticSideEffects {
         }
     }
 
-    /// Assuming that `expr` is a literal integer, checks operators (+=, -=, *, /) in a
-    /// non-constant environment that won't overflow.
-    fn has_valid_op(op: &Spanned<hir::BinOpKind>, expr: &hir::Expr<'_>) -> bool {
-        if let hir::ExprKind::Lit(ref lit) = expr.kind &&
-            let ast::LitKind::Int(value, _) = lit.node
-        {
-            match (&op.node, value) {
-                (hir::BinOpKind::Div | hir::BinOpKind::Rem, 0) => false,
-                (hir::BinOpKind::Add | hir::BinOpKind::Sub, 0)
-                    | (hir::BinOpKind::Div | hir::BinOpKind::Rem, _)
-                    | (hir::BinOpKind::Mul, 0 | 1) => true,
-                _ => false,
-            }
-        } else {
-            false
-        }
-    }
-
     /// Checks if the given `expr` has any of the inner `allowed` elements.
     fn is_allowed_ty(&self, ty: Ty<'_>) -> bool {
         self.allowed
@@ -74,15 +60,14 @@ impl ArithmeticSideEffects {
         self.expr_span = Some(expr.span);
     }
 
-    /// If `expr` does not match any variant of `LiteralIntegerTy`, returns `None`.
-    fn literal_integer<'expr, 'tcx>(expr: &'expr hir::Expr<'tcx>) -> Option<LiteralIntegerTy<'expr, 'tcx>> {
-        if matches!(expr.kind, hir::ExprKind::Lit(_)) {
-            return Some(LiteralIntegerTy::Value(expr));
+    /// If `expr` is not a literal integer like `1`, returns `None`.
+    fn literal_integer(expr: &hir::Expr<'_>) -> Option<u128> {
+        if let hir::ExprKind::Lit(ref lit) = expr.kind && let ast::LitKind::Int(n, _) = lit.node {
+            Some(n)
         }
-        if let hir::ExprKind::AddrOf(.., inn) = expr.kind && let hir::ExprKind::Lit(_) = inn.kind {
-            return Some(LiteralIntegerTy::Ref(inn));
+        else {
+            None
         }
-        None
     }
 
     /// Manages when the lint should be triggered. Operations in constant environments, hard coded
@@ -117,10 +102,20 @@ impl ArithmeticSideEffects {
             return;
         }
         let has_valid_op = if Self::is_integral(lhs_ty) && Self::is_integral(rhs_ty) {
-            match (Self::literal_integer(lhs), Self::literal_integer(rhs)) {
-                (None, Some(lit_int_ty)) | (Some(lit_int_ty), None) => Self::has_valid_op(op, lit_int_ty.into()),
-                (Some(LiteralIntegerTy::Value(_)), Some(LiteralIntegerTy::Value(_))) => true,
-                (None, None) | (Some(_), Some(_)) => false,
+            let (actual_lhs, lhs_ref_counter) = peel_hir_expr_refs(lhs);
+            let (actual_rhs, rhs_ref_counter) = peel_hir_expr_refs(rhs);
+            match (Self::literal_integer(actual_lhs), Self::literal_integer(actual_rhs)) {
+                (None, None) => false,
+                (None, Some(n)) | (Some(n), None) => match (&op.node, n) {
+                    (hir::BinOpKind::Div | hir::BinOpKind::Rem, 0) => false,
+                    (hir::BinOpKind::Add | hir::BinOpKind::Sub, 0)
+                    | (hir::BinOpKind::Div | hir::BinOpKind::Rem, _)
+                    | (hir::BinOpKind::Mul, 0 | 1) => true,
+                    _ => false,
+                },
+                (Some(_), Some(_)) => {
+                    matches!((lhs_ref_counter, rhs_ref_counter), (0, 0))
+                },
             }
         } else {
             false
@@ -129,21 +124,45 @@ impl ArithmeticSideEffects {
             self.issue_lint(cx, expr);
         }
     }
+
+    fn manage_unary_ops<'tcx>(
+        &mut self,
+        cx: &LateContext<'tcx>,
+        expr: &hir::Expr<'tcx>,
+        un_expr: &hir::Expr<'tcx>,
+        un_op: hir::UnOp,
+    ) {
+        let hir::UnOp::Neg = un_op else { return; };
+        if constant(cx, cx.typeck_results(), un_expr).is_some() {
+            return;
+        }
+        let ty = cx.typeck_results().expr_ty(expr).peel_refs();
+        if self.is_allowed_ty(ty) {
+            return;
+        }
+        let actual_un_expr = peel_hir_expr_refs(un_expr).0;
+        if Self::literal_integer(actual_un_expr).is_some() {
+            return;
+        }
+        self.issue_lint(cx, expr);
+    }
+
+    fn should_skip_expr(&mut self, expr: &hir::Expr<'_>) -> bool {
+        self.expr_span.is_some() || self.const_span.map_or(false, |sp| sp.contains(expr.span))
+    }
 }
 
 impl<'tcx> LateLintPass<'tcx> for ArithmeticSideEffects {
     fn check_expr(&mut self, cx: &LateContext<'tcx>, expr: &hir::Expr<'tcx>) {
-        if self.expr_span.is_some() || self.const_span.map_or(false, |sp| sp.contains(expr.span)) {
+        if self.should_skip_expr(expr) {
             return;
         }
         match &expr.kind {
-            hir::ExprKind::Binary(op, lhs, rhs) | hir::ExprKind::AssignOp(op, lhs, rhs) => {
+            hir::ExprKind::AssignOp(op, lhs, rhs) | hir::ExprKind::Binary(op, lhs, rhs) => {
                 self.manage_bin_ops(cx, expr, op, lhs, rhs);
             },
-            hir::ExprKind::Unary(hir::UnOp::Neg, _) => {
-                if constant_simple(cx, cx.typeck_results(), expr).is_none() {
-                    self.issue_lint(cx, expr);
-                }
+            hir::ExprKind::Unary(un_op, un_expr) => {
+                self.manage_unary_ops(cx, expr, un_expr, *un_op);
             },
             _ => {},
         }
@@ -174,25 +193,6 @@ impl<'tcx> LateLintPass<'tcx> for ArithmeticSideEffects {
     fn check_expr_post(&mut self, _: &LateContext<'tcx>, expr: &'tcx hir::Expr<'_>) {
         if Some(expr.span) == self.expr_span {
             self.expr_span = None;
-        }
-    }
-}
-
-/// Tells if an expression is a integer declared by value or by reference.
-///
-/// If `LiteralIntegerTy::Ref`, then the contained value will be `hir::ExprKind::Lit` rather
-/// than `hirExprKind::Addr`.
-enum LiteralIntegerTy<'expr, 'tcx> {
-    /// For example, `&199`
-    Ref(&'expr hir::Expr<'tcx>),
-    /// For example, `1` or `i32::MAX`
-    Value(&'expr hir::Expr<'tcx>),
-}
-
-impl<'expr, 'tcx> From<LiteralIntegerTy<'expr, 'tcx>> for &'expr hir::Expr<'tcx> {
-    fn from(from: LiteralIntegerTy<'expr, 'tcx>) -> Self {
-        match from {
-            LiteralIntegerTy::Ref(elem) | LiteralIntegerTy::Value(elem) => elem,
         }
     }
 }

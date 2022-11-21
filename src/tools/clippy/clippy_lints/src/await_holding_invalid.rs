@@ -1,7 +1,6 @@
 use clippy_utils::diagnostics::span_lint_and_then;
 use clippy_utils::{match_def_path, paths};
 use rustc_data_structures::fx::FxHashMap;
-use rustc_hir::def::{Namespace, Res};
 use rustc_hir::def_id::DefId;
 use rustc_hir::{AsyncGeneratorKind, Body, BodyId, GeneratorKind};
 use rustc_lint::{LateContext, LateLintPass};
@@ -189,7 +188,7 @@ impl LateLintPass<'_> for AwaitHolding {
     fn check_crate(&mut self, cx: &LateContext<'_>) {
         for conf in &self.conf_invalid_types {
             let segs: Vec<_> = conf.path().split("::").collect();
-            if let Res::Def(_, id) = clippy_utils::def_path_res(cx, &segs, Some(Namespace::TypeNS)) {
+            for id in clippy_utils::def_path_def_ids(cx, &segs) {
                 self.def_ids.insert(id, conf.clone());
             }
         }
