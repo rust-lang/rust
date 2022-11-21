@@ -349,11 +349,11 @@ impl<'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
         size: Size,
         align: Align,
     ) -> InterpResult<'tcx, Option<(AllocId, Size, M::ProvenanceExtra)>> {
-        let align = M::enforce_alignment(&self).then_some(align);
         self.check_and_deref_ptr(
             ptr,
             size,
             align,
+            M::enforce_alignment(self),
             CheckInAllocMsg::MemoryAccessTest,
             |alloc_id, offset, prov| {
                 let (size, align) = self.get_live_alloc_size_and_align(alloc_id)?;
@@ -373,10 +373,17 @@ impl<'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
         align: Align,
         msg: CheckInAllocMsg,
     ) -> InterpResult<'tcx> {
-        self.check_and_deref_ptr(ptr, size, Some(align), msg, |alloc_id, _, _| {
-            let (size, align) = self.get_live_alloc_size_and_align(alloc_id)?;
-            Ok((size, align, ()))
-        })?;
+        self.check_and_deref_ptr(
+            ptr,
+            size,
+            align,
+            /* force_alignment_check */ true,
+            msg,
+            |alloc_id, _, _| {
+                let (size, align) = self.get_live_alloc_size_and_align(alloc_id)?;
+                Ok((size, align, ()))
+            },
+        )?;
         Ok(())
     }
 
@@ -388,7 +395,8 @@ impl<'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
         &self,
         ptr: Pointer<Option<M::Provenance>>,
         size: Size,
-        align: Option<Align>,
+        align: Align,
+        force_alignment_check: bool,
         msg: CheckInAllocMsg,
         alloc_size: impl FnOnce(
             AllocId,
@@ -417,7 +425,7 @@ impl<'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
                     throw_ub!(DanglingIntPointer(addr, msg));
                 }
                 // Must be aligned.
-                if let Some(align) = align {
+                if force_alignment_check {
                     check_offset_align(addr, align)?;
                 }
                 None
@@ -441,7 +449,7 @@ impl<'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
                 }
                 // Test align. Check this last; if both bounds and alignment are violated
                 // we want the error to be about the bounds.
-                if let Some(align) = align {
+                if force_alignment_check {
                     if M::use_addr_for_alignment_check(self) {
                         // `use_addr_for_alignment_check` can only be true if `OFFSET_IS_ADDR` is true.
                         check_offset_align(ptr.addr().bytes(), align)?;
@@ -560,11 +568,11 @@ impl<'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
         size: Size,
         align: Align,
     ) -> InterpResult<'tcx, Option<AllocRef<'a, 'tcx, M::Provenance, M::AllocExtra>>> {
-        let align = M::enforce_alignment(self).then_some(align);
         let ptr_and_alloc = self.check_and_deref_ptr(
             ptr,
             size,
             align,
+            M::enforce_alignment(self),
             CheckInAllocMsg::MemoryAccessTest,
             |alloc_id, offset, prov| {
                 let alloc = self.get_alloc_raw(alloc_id)?;
