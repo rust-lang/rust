@@ -41,9 +41,11 @@ Original by Dempfi (https://github.com/dempfi/ayu)
 	--sidebar-current-link-background-color: transparent;
 	--search-result-link-focus-background-color: #3c3c3c;
 	--search-result-border-color: #aaa3;
+	--search-color: #fff;
+	--search-results-alias-color: #c5c5c5;
+	--search-results-grey-color: #999;
 	--stab-background-color: #314559;
 	--stab-code-color: #e6e1cf;
-	--search-color: #fff;
 	--code-highlight-kw-color: #ff7733;
 	--code-highlight-kw-2-color: #ff7733;
 	--code-highlight-lifetime-color: #ff7733;
@@ -200,13 +202,6 @@ pre.rust .kw-2, pre.rust .prelude-ty {}
 
 #settings-menu > a img {
 	filter: invert(100);
-}
-
-.search-results .result-name span.alias {
-	color: #c5c5c5;
-}
-.search-results .result-name span.grey {
-	color: #999;
 }
 
 #source-sidebar > .title {

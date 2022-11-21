@@ -907,6 +907,13 @@ so that we can apply CSS-filters to change the arrow color in themes */
 	background-color: var(--search-result-link-focus-background-color);
 }
 
+.search-results .result-name span.alias {
+	color: var(--search-results-alias-color);
+}
+.search-results .result-name span.grey {
+	color: var(--search-results-grey-color);
+}
+
 .popover {
 	position: absolute;
 	right: 0;

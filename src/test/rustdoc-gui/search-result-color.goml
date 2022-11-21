@@ -366,23 +366,42 @@ assert-css: (
     {"color": "rgb(0, 0, 0)", "background-color": "rgba(0, 0, 0, 0)"},
 )
 
-// Check the alias more specifically in the dark theme.
+// Check the alias.
 goto: "file://" + |DOC_PATH| + "/test_docs/index.html"
-// We set the theme so we're sure that the correct values will be used, whatever the computer
-// this test is running on.
-local-storage: {
-    "rustdoc-theme": "dark",
-    "rustdoc-use-system-theme": "false",
-}
 // If the text isn't displayed, the browser doesn't compute color style correctly...
 show-text: true
-// We reload the page so the local storage settings are being used.
-reload:
-write: (".search-input", "thisisanalias")
-// To be SURE that the search will be run.
-press-key: 'Enter'
-// Waiting for the search results to appear...
-wait-for: "#titles"
-// Checking that the colors for the alias element are the ones expected.
-assert-css: (".result-name > .alias", {"color": "rgb(255, 255, 255)"})
-assert-css: (".result-name > .alias > .grey", {"color": "rgb(204, 204, 204)"})
+
+define-function: (
+    "check-alias",
+    (theme, alias, grey),
+    [
+        ("local-storage", {"rustdoc-theme": |theme|, "rustdoc-use-system-theme": "false"}),
+        ("reload"),
+        ("write", (".search-input", "thisisanalias")),
+        // To be SURE that the search will be run.
+        ("press-key", 'Enter'),
+        // Waiting for the search results to appear...
+        ("wait-for", "#titles"),
+        // Checking that the colors for the alias element are the ones expected.
+        ("assert-css", (".result-name > .alias", {"color": |alias|})),
+        ("assert-css", (".result-name > .alias > .grey", {"color": |grey|})),
+        // Leave the search results to prevent reloading with an already filled search input.
+        ("press-key", "Escape"),
+    ],
+)
+
+call-function: ("check-alias", {
+    "theme": "ayu",
+    "alias": "rgb(197, 197, 197)",
+    "grey": "rgb(153, 153, 153)",
+})
+call-function: ("check-alias", {
+    "theme": "dark",
+    "alias": "rgb(255, 255, 255)",
+    "grey": "rgb(204, 204, 204)",
+})
+call-function: ("check-alias", {
+    "theme": "light",
+    "alias": "rgb(0, 0, 0)",
+    "grey": "rgb(153, 153, 153)",
+})

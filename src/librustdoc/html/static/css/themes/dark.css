@@ -36,9 +36,11 @@
 	--sidebar-current-link-background-color: #444;
 	--search-result-link-focus-background-color: #616161;
 	--search-result-border-color: #aaa3;
+	--search-color: #111;
+	--search-results-alias-color: #fff;
+	--search-results-grey-color: #ccc;
 	--stab-background-color: #314559;
 	--stab-code-color: #e6e1cf;
-	--search-color: #111;
 	--code-highlight-kw-color: #ab8ac1;
 	--code-highlight-kw-2-color: #769acb;
 	--code-highlight-lifetime-color: #d97f26;
@@ -101,13 +103,6 @@ details.rustdoc-toggle > summary::before {
 
 #titles > button > div.count {
 	color: #888;
-}
-
-.search-results .result-name span.alias {
-	color: #fff;
-}
-.search-results .result-name span.grey {
-	color: #ccc;
 }
 
 #source-sidebar div.files > a:hover, details.dir-entry summary:hover,
