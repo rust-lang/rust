@@ -4780,7 +4780,7 @@ dependencies = [
  "panic_abort",
  "panic_unwind",
  "profiler_builtins",
- "rand 0.7.3",
+ "rand 0.8.5",
  "rustc-demangle",
  "std_detect",
  "unwind",
