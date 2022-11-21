@@ -196,7 +196,7 @@ pub enum UnleashedFeatureHelp {
 }
 
 #[derive(Diagnostic)]
-#[diag(parser_invalid_literal_suffix)]
+#[diag(session_invalid_literal_suffix)]
 pub(crate) struct InvalidLiteralSuffix {
     #[primary_span]
     #[label]
@@ -207,7 +207,7 @@ pub(crate) struct InvalidLiteralSuffix {
 }
 
 #[derive(Diagnostic)]
-#[diag(parser_invalid_int_literal_width)]
+#[diag(session_invalid_int_literal_width)]
 #[help]
 pub(crate) struct InvalidIntLiteralWidth {
     #[primary_span]
@@ -216,7 +216,7 @@ pub(crate) struct InvalidIntLiteralWidth {
 }
 
 #[derive(Diagnostic)]
-#[diag(parser_invalid_num_literal_base_prefix)]
+#[diag(session_invalid_num_literal_base_prefix)]
 #[note]
 pub(crate) struct InvalidNumLiteralBasePrefix {
     #[primary_span]
@@ -226,7 +226,7 @@ pub(crate) struct InvalidNumLiteralBasePrefix {
 }
 
 #[derive(Diagnostic)]
-#[diag(parser_invalid_num_literal_suffix)]
+#[diag(session_invalid_num_literal_suffix)]
 #[help]
 pub(crate) struct InvalidNumLiteralSuffix {
     #[primary_span]
@@ -236,7 +236,7 @@ pub(crate) struct InvalidNumLiteralSuffix {
 }
 
 #[derive(Diagnostic)]
-#[diag(parser_invalid_float_literal_width)]
+#[diag(session_invalid_float_literal_width)]
 #[help]
 pub(crate) struct InvalidFloatLiteralWidth {
     #[primary_span]
@@ -245,7 +245,7 @@ pub(crate) struct InvalidFloatLiteralWidth {
 }
 
 #[derive(Diagnostic)]
-#[diag(parser_invalid_float_literal_suffix)]
+#[diag(session_invalid_float_literal_suffix)]
 #[help]
 pub(crate) struct InvalidFloatLiteralSuffix {
     #[primary_span]
@@ -255,33 +255,33 @@ pub(crate) struct InvalidFloatLiteralSuffix {
 }
 
 #[derive(Diagnostic)]
-#[diag(parser_int_literal_too_large)]
+#[diag(session_int_literal_too_large)]
 pub(crate) struct IntLiteralTooLarge {
     #[primary_span]
     pub span: Span,
 }
 
 #[derive(Diagnostic)]
-#[diag(parser_hexadecimal_float_literal_not_supported)]
+#[diag(session_hexadecimal_float_literal_not_supported)]
 pub(crate) struct HexadecimalFloatLiteralNotSupported {
     #[primary_span]
-    #[label(parser_not_supported)]
+    #[label(session_not_supported)]
     pub span: Span,
 }
 
 #[derive(Diagnostic)]
-#[diag(parser_octal_float_literal_not_supported)]
+#[diag(session_octal_float_literal_not_supported)]
 pub(crate) struct OctalFloatLiteralNotSupported {
     #[primary_span]
-    #[label(parser_not_supported)]
+    #[label(session_not_supported)]
     pub span: Span,
 }
 
 #[derive(Diagnostic)]
-#[diag(parser_binary_float_literal_not_supported)]
+#[diag(session_binary_float_literal_not_supported)]
 pub(crate) struct BinaryFloatLiteralNotSupported {
     #[primary_span]
-    #[label(parser_not_supported)]
+    #[label(session_not_supported)]
     pub span: Span,
 }
 

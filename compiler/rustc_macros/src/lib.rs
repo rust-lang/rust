@@ -1,4 +1,5 @@
 #![feature(allow_internal_unstable)]
+#![feature(if_let_guard)]
 #![feature(never_type)]
 #![feature(proc_macro_diagnostic)]
 #![feature(proc_macro_span)]
