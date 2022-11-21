@@ -327,11 +327,10 @@ fn equate<'tcx>(
         return true;
     };
 
-    let selcx = &mut SelectionContext::new(&infcx);
     let opt_failing_obligation = obligations
         .into_iter()
         .chain(more_obligations)
-        .find(|o| negative_impl_exists(selcx, o, body_def_id));
+        .find(|o| negative_impl_exists(infcx, o, body_def_id));
 
     if let Some(failing_obligation) = opt_failing_obligation {
         debug!("overlap: obligation unsatisfiable {:?}", failing_obligation);
@@ -342,19 +341,19 @@ fn equate<'tcx>(
 }
 
 /// Try to prove that a negative impl exist for the given obligation and its super predicates.
-#[instrument(level = "debug", skip(selcx))]
-fn negative_impl_exists<'cx, 'tcx>(
-    selcx: &SelectionContext<'cx, 'tcx>,
+#[instrument(level = "debug", skip(infcx))]
+fn negative_impl_exists<'tcx>(
+    infcx: &InferCtxt<'tcx>,
     o: &PredicateObligation<'tcx>,
     body_def_id: DefId,
 ) -> bool {
-    if resolve_negative_obligation(selcx.infcx().fork(), o, body_def_id) {
+    if resolve_negative_obligation(infcx.fork(), o, body_def_id) {
         return true;
     }
 
     // Try to prove a negative obligation exists for super predicates
-    for o in util::elaborate_predicates(selcx.tcx(), iter::once(o.predicate)) {
-        if resolve_negative_obligation(selcx.infcx().fork(), &o, body_def_id) {
+    for o in util::elaborate_predicates(infcx.tcx, iter::once(o.predicate)) {
+        if resolve_negative_obligation(infcx.fork(), &o, body_def_id) {
             return true;
         }
     }
