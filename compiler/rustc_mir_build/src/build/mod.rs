@@ -924,7 +924,7 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
                         scope,
                         expr.span,
                         &pat,
-                        matches::ArmHasGuard(false),
+                        None,
                         Some((Some(&place), span)),
                     );
                     let place_builder = PlaceBuilder::from(local);

@@ -108,7 +108,7 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
             ExprKind::Let { expr, ref pat } => {
                 let scope = this.local_scope();
                 let (true_block, false_block) = this.in_if_then_scope(scope, expr_span, |this| {
-                    this.lower_let_expr(block, &this.thir[expr], pat, scope, None, expr_span)
+                    this.lower_let_expr(block, &this.thir[expr], pat, scope, None, expr_span, true)
                 });
 
                 this.cfg.push_assign_constant(

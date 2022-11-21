@@ -84,6 +84,7 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
                 break_scope,
                 Some(variable_source_info.scope),
                 variable_source_info.span,
+                true,
             ),
             _ => {
                 let temp_scope = temp_scope_override.unwrap_or_else(|| this.local_scope());
@@ -357,7 +358,7 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
                         None,
                         arm.span,
                         &arm.pattern,
-                        ArmHasGuard(arm.guard.is_some()),
+                        arm.guard.as_ref(),
                         opt_scrutinee_place,
                     );
 
@@ -645,7 +646,7 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
         mut visibility_scope: Option<SourceScope>,
         scope_span: Span,
         pattern: &Pat<'tcx>,
-        has_guard: ArmHasGuard,
+        guard: Option<&Guard<'tcx>>,
         opt_match_place: Option<(Option<&Place<'tcx>>, Span)>,
     ) -> Option<SourceScope> {
         self.visit_primary_bindings(
@@ -667,12 +668,16 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
                     var,
                     ty,
                     user_ty,
-                    has_guard,
+                    ArmHasGuard(guard.is_some()),
                     opt_match_place.map(|(x, y)| (x.cloned(), y)),
                     pattern.span,
                 );
             },
         );
+        if let Some(Guard::IfLet(guard_pat, _)) = guard {
+            // FIXME: pass a proper `opt_match_place`
+            self.declare_bindings(visibility_scope, scope_span, guard_pat, None, None);
+        }
         visibility_scope
     }
 
@@ -1766,6 +1771,8 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
 // Pat binding - used for `let` and function parameters as well.
 
 impl<'a, 'tcx> Builder<'a, 'tcx> {
+    /// If the bindings have already been declared, set `declare_bindings` to
+    /// `false` to avoid duplicated bindings declaration. Used for if-let guards.
     pub(crate) fn lower_let_expr(
         &mut self,
         mut block: BasicBlock,
@@ -1774,6 +1781,7 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
         else_target: region::Scope,
         source_scope: Option<SourceScope>,
         span: Span,
+        declare_bindings: bool,
     ) -> BlockAnd<()> {
         let expr_span = expr.span;
         let expr_place_builder = unpack!(block = self.lower_scrutinee(block, expr, expr_span));
@@ -1797,13 +1805,9 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
         let otherwise_post_guard_block = otherwise_candidate.pre_binding_block.unwrap();
         self.break_for_else(otherwise_post_guard_block, else_target, self.source_info(expr_span));
 
-        self.declare_bindings(
-            source_scope,
-            pat.span.to(span),
-            pat,
-            ArmHasGuard(false),
-            opt_expr_place,
-        );
+        if declare_bindings {
+            self.declare_bindings(source_scope, pat.span.to(span), pat, None, opt_expr_place);
+        }
 
         let post_guard_block = self.bind_pattern(
             self.source_info(pat.span),
@@ -1984,7 +1988,7 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
                     Guard::IfLet(ref pat, scrutinee) => {
                         let s = &this.thir[scrutinee];
                         guard_span = s.span;
-                        this.lower_let_expr(block, s, pat, match_scope, None, arm.span)
+                        this.lower_let_expr(block, s, pat, match_scope, None, arm.span, false)
                     }
                 });
 
