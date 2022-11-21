@@ -120,7 +120,7 @@ impl<T: ?Sized> *const T {
     /// ```
     #[unstable(feature = "ptr_to_from_bits", issue = "91126")]
     #[rustc_deprecated(
-        since = "1.62",
+        since = "1.67",
         reason = "replaced by the `exposed_addr` method, or update your code \
             to follow the strict provenance rules using its APIs"
     )]
@@ -146,7 +146,7 @@ impl<T: ?Sized> *const T {
     /// ```
     #[unstable(feature = "ptr_to_from_bits", issue = "91126")]
     #[rustc_deprecated(
-        since = "1.62",
+        since = "1.67",
         reason = "replaced by the `ptr::from_exposed_addr` function, or update \
             your code to follow the strict provenance rules using its APIs"
     )]
