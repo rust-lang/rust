@@ -124,7 +124,7 @@ impl<'tcx> LateLintPass<'tcx> for EtaReduction {
                 span_lint_and_then(cx, REDUNDANT_CLOSURE, expr.span, "redundant closure", |diag| {
                     if let Some(mut snippet) = snippet_opt(cx, callee.span) {
                         if let Some(fn_mut_id) = cx.tcx.lang_items().fn_mut_trait()
-                            && let args = cx.tcx.erase_late_bound_regions(ty::ClosureSubsts { substs }.sig()).inputs()
+                            && let args = cx.tcx.erase_late_bound_regions(substs.as_closure().sig()).inputs()
                             && implements_trait(cx, callee_ty.peel_refs(), fn_mut_id, &args.iter().copied().map(Into::into).collect::<Vec<_>>())
                             && path_to_local(callee).map_or(false, |l| local_used_after_expr(cx, l, expr))
                         {
