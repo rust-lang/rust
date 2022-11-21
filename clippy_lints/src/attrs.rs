@@ -11,14 +11,14 @@ use rustc_errors::Applicability;
 use rustc_hir::{
     Block, Expr, ExprKind, ImplItem, ImplItemKind, Item, ItemKind, StmtKind, TraitFn, TraitItem, TraitItemKind,
 };
-use rustc_lint::{EarlyContext, EarlyLintPass, LateContext, LateLintPass, LintContext};
+use rustc_lint::{EarlyContext, EarlyLintPass, LateContext, LateLintPass, Level, LintContext};
 use rustc_middle::lint::in_external_macro;
 use rustc_middle::ty;
 use rustc_semver::RustcVersion;
 use rustc_session::{declare_lint_pass, declare_tool_lint, impl_lint_pass};
 use rustc_span::source_map::Span;
-use rustc_span::sym;
 use rustc_span::symbol::Symbol;
+use rustc_span::{sym, DUMMY_SP};
 use semver::Version;
 
 static UNIX_SYSTEMS: &[&str] = &[
@@ -303,6 +303,26 @@ declare_lint_pass!(Attributes => [
 ]);
 
 impl<'tcx> LateLintPass<'tcx> for Attributes {
+    fn check_crate(&mut self, cx: &LateContext<'tcx>) {
+        for (name, level) in &cx.sess().opts.lint_opts {
+            if name == "clippy::restriction" && *level > Level::Allow {
+                span_lint_and_then(
+                    cx,
+                    BLANKET_CLIPPY_RESTRICTION_LINTS,
+                    DUMMY_SP,
+                    "`clippy::restriction` is not meant to be enabled as a group",
+                    |diag| {
+                        diag.note(format!(
+                            "because of the command line `--{} clippy::restriction`",
+                            level.as_str()
+                        ));
+                        diag.help("enable the restriction lints you need individually");
+                    },
+                );
+            }
+        }
+    }
+
     fn check_attribute(&mut self, cx: &LateContext<'tcx>, attr: &'tcx Attribute) {
         if let Some(items) = &attr.meta_item_list() {
             if let Some(ident) = attr.ident() {
@@ -358,7 +378,9 @@ impl<'tcx> LateLintPass<'tcx> for Attributes {
                                                         | "enum_glob_use"
                                                         | "redundant_pub_crate"
                                                         | "macro_use_imports"
-                                                        | "unsafe_removed_from_name",
+                                                        | "unsafe_removed_from_name"
+                                                        | "module_name_repetitions"
+                                                        | "single_component_path_imports"
                                                 )
                                             })
                                         {
@@ -441,9 +463,9 @@ fn check_clippy_lint_names(cx: &LateContext<'_>, name: Symbol, items: &[NestedMe
                     cx,
                     BLANKET_CLIPPY_RESTRICTION_LINTS,
                     lint.span(),
-                    "restriction lints are not meant to be all enabled",
+                    "`clippy::restriction` is not meant to be enabled as a group",
                     None,
-                    "try enabling only the lints you really need",
+                    "enable the restriction lints you need individually",
                 );
             }
         }
@@ -461,6 +483,11 @@ fn check_lint_reason(cx: &LateContext<'_>, name: Symbol, items: &[NestedMetaItem
         && let MetaItemKind::NameValue(_) = &item.kind
         && item.path == sym::reason
     {
+        return;
+    }
+
+    // Check if the attribute is in an external macro and therefore out of the developer's control
+    if in_external_macro(cx.sess(), attr.span) {
         return;
     }
 

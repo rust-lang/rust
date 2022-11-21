@@ -801,7 +801,7 @@ pub struct DerefClosure {
 /// Returns `None` if no such use cases have been triggered in closure body
 ///
 /// note: this only works on single line immutable closures with exactly one input parameter.
-pub fn deref_closure_args<'tcx>(cx: &LateContext<'_>, closure: &'tcx hir::Expr<'_>) -> Option<DerefClosure> {
+pub fn deref_closure_args(cx: &LateContext<'_>, closure: &hir::Expr<'_>) -> Option<DerefClosure> {
     if let hir::ExprKind::Closure(&Closure { fn_decl, body, .. }) = closure.kind {
         let closure_body = cx.tcx.hir().body(body);
         // is closure arg a type annotated double reference (i.e.: `|x: &&i32| ...`)

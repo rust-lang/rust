@@ -63,58 +63,54 @@ impl IntPlusOne {
     fn check_binop(cx: &EarlyContext<'_>, binop: BinOpKind, lhs: &Expr, rhs: &Expr) -> Option<String> {
         match (binop, &lhs.kind, &rhs.kind) {
             // case where `x - 1 >= ...` or `-1 + x >= ...`
-            (BinOpKind::Ge, &ExprKind::Binary(ref lhskind, ref lhslhs, ref lhsrhs), _) => {
+            (BinOpKind::Ge, ExprKind::Binary(lhskind, lhslhs, lhsrhs), _) => {
                 match (lhskind.node, &lhslhs.kind, &lhsrhs.kind) {
                     // `-1 + x`
-                    (BinOpKind::Add, &ExprKind::Lit(lit), _) if Self::check_lit(lit, -1) => {
+                    (BinOpKind::Add, ExprKind::Lit(lit), _) if Self::check_lit(*lit, -1) => {
                         Self::generate_recommendation(cx, binop, lhsrhs, rhs, Side::Lhs)
                     },
                     // `x - 1`
-                    (BinOpKind::Sub, _, &ExprKind::Lit(lit)) if Self::check_lit(lit, 1) => {
+                    (BinOpKind::Sub, _, ExprKind::Lit(lit)) if Self::check_lit(*lit, 1) => {
                         Self::generate_recommendation(cx, binop, lhslhs, rhs, Side::Lhs)
                     },
                     _ => None,
                 }
             },
             // case where `... >= y + 1` or `... >= 1 + y`
-            (BinOpKind::Ge, _, &ExprKind::Binary(ref rhskind, ref rhslhs, ref rhsrhs))
-                if rhskind.node == BinOpKind::Add =>
-            {
+            (BinOpKind::Ge, _, ExprKind::Binary(rhskind, rhslhs, rhsrhs)) if rhskind.node == BinOpKind::Add => {
                 match (&rhslhs.kind, &rhsrhs.kind) {
                     // `y + 1` and `1 + y`
-                    (&ExprKind::Lit(lit), _) if Self::check_lit(lit, 1) => {
+                    (ExprKind::Lit(lit), _) if Self::check_lit(*lit, 1) => {
                         Self::generate_recommendation(cx, binop, rhsrhs, lhs, Side::Rhs)
                     },
-                    (_, &ExprKind::Lit(lit)) if Self::check_lit(lit, 1) => {
+                    (_, ExprKind::Lit(lit)) if Self::check_lit(*lit, 1) => {
                         Self::generate_recommendation(cx, binop, rhslhs, lhs, Side::Rhs)
                     },
                     _ => None,
                 }
             },
             // case where `x + 1 <= ...` or `1 + x <= ...`
-            (BinOpKind::Le, &ExprKind::Binary(ref lhskind, ref lhslhs, ref lhsrhs), _)
-                if lhskind.node == BinOpKind::Add =>
-            {
+            (BinOpKind::Le, ExprKind::Binary(lhskind, lhslhs, lhsrhs), _) if lhskind.node == BinOpKind::Add => {
                 match (&lhslhs.kind, &lhsrhs.kind) {
                     // `1 + x` and `x + 1`
-                    (&ExprKind::Lit(lit), _) if Self::check_lit(lit, 1) => {
+                    (ExprKind::Lit(lit), _) if Self::check_lit(*lit, 1) => {
                         Self::generate_recommendation(cx, binop, lhsrhs, rhs, Side::Lhs)
                     },
-                    (_, &ExprKind::Lit(lit)) if Self::check_lit(lit, 1) => {
+                    (_, ExprKind::Lit(lit)) if Self::check_lit(*lit, 1) => {
                         Self::generate_recommendation(cx, binop, lhslhs, rhs, Side::Lhs)
                     },
                     _ => None,
                 }
             },
             // case where `... >= y - 1` or `... >= -1 + y`
-            (BinOpKind::Le, _, &ExprKind::Binary(ref rhskind, ref rhslhs, ref rhsrhs)) => {
+            (BinOpKind::Le, _, ExprKind::Binary(rhskind, rhslhs, rhsrhs)) => {
                 match (rhskind.node, &rhslhs.kind, &rhsrhs.kind) {
                     // `-1 + y`
-                    (BinOpKind::Add, &ExprKind::Lit(lit), _) if Self::check_lit(lit, -1) => {
+                    (BinOpKind::Add, ExprKind::Lit(lit), _) if Self::check_lit(*lit, -1) => {
                         Self::generate_recommendation(cx, binop, rhsrhs, lhs, Side::Rhs)
                     },
                     // `y - 1`
-                    (BinOpKind::Sub, _, &ExprKind::Lit(lit)) if Self::check_lit(lit, 1) => {
+                    (BinOpKind::Sub, _, ExprKind::Lit(lit)) if Self::check_lit(*lit, 1) => {
                         Self::generate_recommendation(cx, binop, rhslhs, lhs, Side::Rhs)
                     },
                     _ => None,

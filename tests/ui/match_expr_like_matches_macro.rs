@@ -2,7 +2,12 @@
 
 #![feature(custom_inner_attributes)]
 #![warn(clippy::match_like_matches_macro)]
-#![allow(unreachable_patterns, dead_code, clippy::equatable_if_let)]
+#![allow(
+    unreachable_patterns,
+    dead_code,
+    clippy::equatable_if_let,
+    clippy::needless_borrowed_reference
+)]
 
 fn main() {
     let x = Some(5);

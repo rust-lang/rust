@@ -1,119 +1,119 @@
 error: unneeded unit return type
-  --> $DIR/unused_unit.rs:19:58
+  --> $DIR/unused_unit.rs:20:58
    |
 LL |     pub fn get_unit<F: Fn() -> (), G>(&self, f: F, _g: G) -> ()
    |                                                          ^^^^^^ help: remove the `-> ()`
    |
 note: the lint level is defined here
-  --> $DIR/unused_unit.rs:12:9
+  --> $DIR/unused_unit.rs:13:9
    |
 LL | #![deny(clippy::unused_unit)]
    |         ^^^^^^^^^^^^^^^^^^^
 
 error: unneeded unit return type
-  --> $DIR/unused_unit.rs:19:28
+  --> $DIR/unused_unit.rs:20:28
    |
 LL |     pub fn get_unit<F: Fn() -> (), G>(&self, f: F, _g: G) -> ()
    |                            ^^^^^^ help: remove the `-> ()`
 
 error: unneeded unit return type
-  --> $DIR/unused_unit.rs:20:18
+  --> $DIR/unused_unit.rs:21:18
    |
 LL |     where G: Fn() -> () {
    |                  ^^^^^^ help: remove the `-> ()`
 
 error: unneeded unit return type
-  --> $DIR/unused_unit.rs:21:26
+  --> $DIR/unused_unit.rs:22:26
    |
 LL |         let _y: &dyn Fn() -> () = &f;
    |                          ^^^^^^ help: remove the `-> ()`
 
 error: unneeded unit return type
-  --> $DIR/unused_unit.rs:28:18
+  --> $DIR/unused_unit.rs:29:18
    |
 LL |     fn into(self) -> () {
    |                  ^^^^^^ help: remove the `-> ()`
 
 error: unneeded unit expression
-  --> $DIR/unused_unit.rs:29:9
+  --> $DIR/unused_unit.rs:30:9
    |
 LL |         ()
    |         ^^ help: remove the final `()`
 
 error: unneeded unit return type
-  --> $DIR/unused_unit.rs:34:29
+  --> $DIR/unused_unit.rs:35:29
    |
 LL |     fn redundant<F: FnOnce() -> (), G, H>(&self, _f: F, _g: G, _h: H)
    |                             ^^^^^^ help: remove the `-> ()`
 
 error: unneeded unit return type
-  --> $DIR/unused_unit.rs:36:19
+  --> $DIR/unused_unit.rs:37:19
    |
 LL |         G: FnMut() -> (),
    |                   ^^^^^^ help: remove the `-> ()`
 
 error: unneeded unit return type
-  --> $DIR/unused_unit.rs:37:16
+  --> $DIR/unused_unit.rs:38:16
    |
 LL |         H: Fn() -> ();
    |                ^^^^^^ help: remove the `-> ()`
 
 error: unneeded unit return type
-  --> $DIR/unused_unit.rs:41:29
+  --> $DIR/unused_unit.rs:42:29
    |
 LL |     fn redundant<F: FnOnce() -> (), G, H>(&self, _f: F, _g: G, _h: H)
    |                             ^^^^^^ help: remove the `-> ()`
 
 error: unneeded unit return type
-  --> $DIR/unused_unit.rs:43:19
+  --> $DIR/unused_unit.rs:44:19
    |
 LL |         G: FnMut() -> (),
    |                   ^^^^^^ help: remove the `-> ()`
 
 error: unneeded unit return type
-  --> $DIR/unused_unit.rs:44:16
+  --> $DIR/unused_unit.rs:45:16
    |
 LL |         H: Fn() -> () {}
    |                ^^^^^^ help: remove the `-> ()`
 
 error: unneeded unit return type
-  --> $DIR/unused_unit.rs:47:17
+  --> $DIR/unused_unit.rs:48:17
    |
 LL | fn return_unit() -> () { () }
    |                 ^^^^^^ help: remove the `-> ()`
 
 error: unneeded unit expression
-  --> $DIR/unused_unit.rs:47:26
+  --> $DIR/unused_unit.rs:48:26
    |
 LL | fn return_unit() -> () { () }
    |                          ^^ help: remove the final `()`
 
 error: unneeded `()`
-  --> $DIR/unused_unit.rs:57:14
+  --> $DIR/unused_unit.rs:58:14
    |
 LL |         break();
    |              ^^ help: remove the `()`
 
 error: unneeded `()`
-  --> $DIR/unused_unit.rs:59:11
+  --> $DIR/unused_unit.rs:60:11
    |
 LL |     return();
    |           ^^ help: remove the `()`
 
 error: unneeded unit return type
-  --> $DIR/unused_unit.rs:76:10
+  --> $DIR/unused_unit.rs:77:10
    |
 LL | fn test()->(){}
    |          ^^^^ help: remove the `-> ()`
 
 error: unneeded unit return type
-  --> $DIR/unused_unit.rs:79:11
+  --> $DIR/unused_unit.rs:80:11
    |
 LL | fn test2() ->(){}
    |           ^^^^^ help: remove the `-> ()`
 
 error: unneeded unit return type
-  --> $DIR/unused_unit.rs:82:11
+  --> $DIR/unused_unit.rs:83:11
    |
 LL | fn test3()-> (){}
    |           ^^^^^ help: remove the `-> ()`

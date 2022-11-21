@@ -30,16 +30,15 @@ declare_clippy_lint! {
 declare_lint_pass!(UnusedRounding => [UNUSED_ROUNDING]);
 
 fn is_useless_rounding(expr: &Expr) -> Option<(&str, String)> {
-    if let ExprKind::MethodCall(box MethodCall { seg, receiver, .. }) = &expr.kind
-        && let method_name = seg.ident.name.as_str()
+    if let ExprKind::MethodCall(box MethodCall { seg:name_ident, receiver, .. }) = &expr.kind
+        && let method_name = name_ident.ident.name.as_str()
         && (method_name == "ceil" || method_name == "round" || method_name == "floor")
         && let ExprKind::Lit(token_lit) = &receiver.kind
         && token_lit.is_semantic_float() {
-            let f = token_lit.symbol.as_str().parse::<f64>().unwrap();
             let mut f_str = token_lit.symbol.to_string();
-            match token_lit.suffix {
-                Some(suffix) => f_str.push_str(suffix.as_str()),
-                None => {}
+            let f = f_str.trim_end_matches('_').parse::<f64>().unwrap();
+            if let Some(suffix) = token_lit.suffix {
+                f_str.push_str(suffix.as_str());
             }
             if f.fract() == 0.0 {
                 Some((method_name, f_str))
