@@ -652,7 +652,7 @@ dependencies = [
 
 [[package]]
 name = "clippy"
-version = "0.1.66"
+version = "0.1.67"
 dependencies = [
  "clippy_lints",
  "clippy_utils",
@@ -689,16 +689,16 @@ dependencies = [
  "itertools",
  "opener",
  "shell-escape",
- "tempfile",
  "walkdir",
 ]
 
 [[package]]
 name = "clippy_lints"
-version = "0.1.66"
+version = "0.1.67"
 dependencies = [
  "cargo_metadata 0.14.0",
  "clippy_utils",
+ "declare_clippy_lint",
  "if_chain",
  "itertools",
  "pulldown-cmark",
@@ -717,7 +717,7 @@ dependencies = [
 
 [[package]]
 name = "clippy_utils"
-version = "0.1.66"
+version = "0.1.67"
 dependencies = [
  "arrayvec",
  "if_chain",
@@ -1043,6 +1043,15 @@ name = "datafrog"
 version = "2.0.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "a0afaad2b26fa326569eb264b1363e8ae3357618c43982b3f285f0774ce76b69"
+
+[[package]]
+name = "declare_clippy_lint"
+version = "0.1.67"
+dependencies = [
+ "itertools",
+ "quote",
+ "syn",
+]
 
 [[package]]
 name = "derive-new"
@@ -2850,9 +2859,9 @@ checksum = "07589615d719a60c8dd8a4622e7946465dfef20d1a428f969e3443e7386d5f45"
 
 [[package]]
 name = "quote"
-version = "1.0.18"
+version = "1.0.21"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "a1feb54ed693b93a84e14094943b84b7c4eae204c512b7ccb95ab0c66d278ad1"
+checksum = "bbe448f377a7d6961e30f5955f9b8d106c3f5e449d493ee1b125c1d43c2b5179"
 dependencies = [
  "proc-macro2",
 ]
