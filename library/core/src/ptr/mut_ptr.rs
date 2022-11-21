@@ -125,9 +125,9 @@ impl<T: ?Sized> *mut T {
     /// assert_eq!(p1.to_bits() - p0.to_bits(), 4);
     /// ```
     #[unstable(feature = "ptr_to_from_bits", issue = "91126")]
-    #[rustc_deprecated(
+    #[deprecated(
         since = "1.67",
-        reason = "replaced by the `exposed_addr` method, or update your code \
+        note = "replaced by the `exposed_addr` method, or update your code \
             to follow the strict provenance rules using its APIs"
     )]
     pub fn to_bits(self) -> usize
@@ -151,9 +151,9 @@ impl<T: ?Sized> *mut T {
     /// assert_eq!(<*mut u8>::from_bits(1), dangling);
     /// ```
     #[unstable(feature = "ptr_to_from_bits", issue = "91126")]
-    #[rustc_deprecated(
+    #[deprecated(
         since = "1.67",
-        reason = "replaced by the `ptr::from_exposed_addr_mut` function, or \
+        note = "replaced by the `ptr::from_exposed_addr_mut` function, or \
             update your code to follow the strict provenance rules using its APIs"
     )]
     #[allow(fuzzy_provenance_casts)] // this is an unstable and semi-deprecated cast function
