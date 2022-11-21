@@ -687,7 +687,7 @@ fn check_ptr_arg_usage<'tcx>(cx: &LateContext<'tcx>, body: &'tcx Body<'_>, args:
 fn matches_preds<'tcx>(
     cx: &LateContext<'tcx>,
     ty: Ty<'tcx>,
-    preds: &'tcx [Binder<'tcx, ExistentialPredicate<'tcx>>],
+    preds: &'tcx [ty::PolyExistentialPredicate<'tcx>],
 ) -> bool {
     let infcx = cx.tcx.infer_ctxt().build();
     preds.iter().all(|&p| match cx.tcx.erase_late_bound_regions(p) {
