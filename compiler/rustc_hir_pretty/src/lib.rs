@@ -1554,6 +1554,11 @@ impl<'a> State<'a> {
                     self.print_expr_maybe_paren(expr, parser::PREC_JUMP);
                 }
             }
+            hir::ExprKind::Become(result) => {
+                self.word("become");
+                self.word(" ");
+                self.print_expr_maybe_paren(result, parser::PREC_JUMP);
+            }
             hir::ExprKind::InlineAsm(asm) => {
                 self.word("asm!");
                 self.print_inline_asm(asm);
