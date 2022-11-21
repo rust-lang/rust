@@ -8,4 +8,10 @@ disallowed-methods = [
     { path = "regex::Regex::is_match", reason = "no matching allowed" },
     # can use an inline table but omit reason
     { path = "regex::Regex::new" },
+    # local paths
+    "conf_disallowed_methods::local_fn",
+    "conf_disallowed_methods::local_mod::f",
+    "conf_disallowed_methods::Struct::method",
+    "conf_disallowed_methods::Trait::provided_method",
+    "conf_disallowed_methods::Trait::implemented_method",
 ]

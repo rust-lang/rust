@@ -72,8 +72,8 @@ pub fn span_lint<T: LintContext>(cx: &T, lint: &'static Lint, sp: impl Into<Mult
 ///    |
 ///    = help: consider using `f64::NAN` if you would like a constant representing NaN
 /// ```
-pub fn span_lint_and_help<'a, T: LintContext>(
-    cx: &'a T,
+pub fn span_lint_and_help<T: LintContext>(
+    cx: &T,
     lint: &'static Lint,
     span: impl Into<MultiSpan>,
     msg: &str,
@@ -114,8 +114,8 @@ pub fn span_lint_and_help<'a, T: LintContext>(
 /// 10 |     forget(&SomeStruct);
 ///    |            ^^^^^^^^^^^
 /// ```
-pub fn span_lint_and_note<'a, T: LintContext>(
-    cx: &'a T,
+pub fn span_lint_and_note<T: LintContext>(
+    cx: &T,
     lint: &'static Lint,
     span: impl Into<MultiSpan>,
     msg: &str,
@@ -192,8 +192,8 @@ pub fn span_lint_hir_and_then(
 ///     = note: `-D fold-any` implied by `-D warnings`
 /// ```
 #[cfg_attr(feature = "internal", allow(clippy::collapsible_span_lint_calls))]
-pub fn span_lint_and_sugg<'a, T: LintContext>(
-    cx: &'a T,
+pub fn span_lint_and_sugg<T: LintContext>(
+    cx: &T,
     lint: &'static Lint,
     sp: Span,
     msg: &str,

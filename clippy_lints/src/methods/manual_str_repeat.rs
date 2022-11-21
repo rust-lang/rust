@@ -59,10 +59,8 @@ pub(super) fn check(
         if let ExprKind::Call(repeat_fn, [repeat_arg]) = take_self_arg.kind;
         if is_path_diagnostic_item(cx, repeat_fn, sym::iter_repeat);
         if is_type_lang_item(cx, cx.typeck_results().expr_ty(collect_expr), LangItem::String);
-        if let Some(collect_id) = cx.typeck_results().type_dependent_def_id(collect_expr.hir_id);
         if let Some(take_id) = cx.typeck_results().type_dependent_def_id(take_expr.hir_id);
         if let Some(iter_trait_id) = cx.tcx.get_diagnostic_item(sym::Iterator);
-        if cx.tcx.trait_of_item(collect_id) == Some(iter_trait_id);
         if cx.tcx.trait_of_item(take_id) == Some(iter_trait_id);
         if let Some(repeat_kind) = parse_repeat_arg(cx, repeat_arg);
         let ctxt = collect_expr.span.ctxt();

@@ -385,3 +385,128 @@ mod used_more_than_once {
     fn use_x(_: impl AsRef<str>) {}
     fn use_x_again(_: impl AsRef<str>) {}
 }
+
+// https://github.com/rust-lang/rust-clippy/issues/9111#issuecomment-1277114280
+#[allow(dead_code)]
+mod issue_9111 {
+    struct A;
+
+    impl Extend<u8> for A {
+        fn extend<T: IntoIterator<Item = u8>>(&mut self, _: T) {
+            unimplemented!()
+        }
+    }
+
+    impl<'a> Extend<&'a u8> for A {
+        fn extend<T: IntoIterator<Item = &'a u8>>(&mut self, _: T) {
+            unimplemented!()
+        }
+    }
+
+    fn main() {
+        let mut a = A;
+        a.extend(&[]); // vs a.extend([]);
+    }
+}
+
+#[allow(dead_code)]
+mod issue_9710 {
+    fn main() {
+        let string = String::new();
+        for _i in 0..10 {
+            f(&string);
+        }
+    }
+
+    fn f<T: AsRef<str>>(_: T) {}
+}
+
+#[allow(dead_code)]
+mod issue_9739 {
+    fn foo<D: std::fmt::Display>(_it: impl IntoIterator<Item = D>) {}
+
+    fn main() {
+        foo(if std::env::var_os("HI").is_some() {
+            &[0]
+        } else {
+            &[] as &[u32]
+        });
+    }
+}
+
+#[allow(dead_code)]
+mod issue_9739_method_variant {
+    struct S;
+
+    impl S {
+        fn foo<D: std::fmt::Display>(&self, _it: impl IntoIterator<Item = D>) {}
+    }
+
+    fn main() {
+        S.foo(if std::env::var_os("HI").is_some() {
+            &[0]
+        } else {
+            &[] as &[u32]
+        });
+    }
+}
+
+#[allow(dead_code)]
+mod issue_9782 {
+    fn foo<T: AsRef<[u8]>>(t: T) {
+        println!("{}", std::mem::size_of::<T>());
+        let _t: &[u8] = t.as_ref();
+    }
+
+    fn main() {
+        let a: [u8; 100] = [0u8; 100];
+
+        // 100
+        foo::<[u8; 100]>(a);
+        foo(a);
+
+        // 16
+        foo::<&[u8]>(&a);
+        foo(a.as_slice());
+
+        // 8
+        foo::<&[u8; 100]>(&a);
+        foo(&a);
+    }
+}
+
+#[allow(dead_code)]
+mod issue_9782_type_relative_variant {
+    struct S;
+
+    impl S {
+        fn foo<T: AsRef<[u8]>>(t: T) {
+            println!("{}", std::mem::size_of::<T>());
+            let _t: &[u8] = t.as_ref();
+        }
+    }
+
+    fn main() {
+        let a: [u8; 100] = [0u8; 100];
+
+        S::foo::<&[u8; 100]>(&a);
+    }
+}
+
+#[allow(dead_code)]
+mod issue_9782_method_variant {
+    struct S;
+
+    impl S {
+        fn foo<T: AsRef<[u8]>>(&self, t: T) {
+            println!("{}", std::mem::size_of::<T>());
+            let _t: &[u8] = t.as_ref();
+        }
+    }
+
+    fn main() {
+        let a: [u8; 100] = [0u8; 100];
+
+        S.foo::<&[u8; 100]>(&a);
+    }
+}

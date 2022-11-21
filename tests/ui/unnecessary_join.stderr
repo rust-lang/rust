@@ -1,4 +1,4 @@
-error: called `.collect<Vec<String>>().join("")` on an iterator
+error: called `.collect::<Vec<String>>().join("")` on an iterator
   --> $DIR/unnecessary_join.rs:11:10
    |
 LL |           .collect::<Vec<String>>()
@@ -8,7 +8,7 @@ LL | |         .join("");
    |
    = note: `-D clippy::unnecessary-join` implied by `-D warnings`
 
-error: called `.collect<Vec<String>>().join("")` on an iterator
+error: called `.collect::<Vec<String>>().join("")` on an iterator
   --> $DIR/unnecessary_join.rs:20:10
    |
 LL |           .collect::<Vec<_>>()

@@ -50,6 +50,18 @@ impl LargeErrorVariants<()> {
     }
 }
 
+enum MultipleLargeVariants {
+    _Biggest([u8; 1024]),
+    _AlsoBig([u8; 512]),
+    _Ok(usize),
+}
+
+impl MultipleLargeVariants {
+    fn large_enum_error() -> Result<(), Self> {
+        Ok(())
+    }
+}
+
 trait TraitForcesLargeError {
     fn large_error() -> Result<(), [u8; 512]> {
         Ok(())

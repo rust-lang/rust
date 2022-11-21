@@ -207,8 +207,8 @@ impl SliceLintInformation {
     }
 }
 
-fn filter_lintable_slices<'a, 'tcx>(
-    cx: &'a LateContext<'tcx>,
+fn filter_lintable_slices<'tcx>(
+    cx: &LateContext<'tcx>,
     slice_lint_info: FxIndexMap<hir::HirId, SliceLintInformation>,
     max_suggested_slice: u64,
     scope: &'tcx hir::Expr<'tcx>,

@@ -39,12 +39,19 @@ fn get_std_collection(cx: &LateContext<'_>, qpath: &QPath<'_>) -> Option<Symbol>
     let id = path_def_id(cx, param)?;
     cx.tcx
         .get_diagnostic_name(id)
-        .filter(|&name| matches!(name, sym::HashMap | sym::Vec | sym::HashSet
-            | sym::VecDeque
-            | sym::LinkedList
-            | sym::BTreeMap
-            | sym::BTreeSet
-            | sym::BinaryHeap))
+        .filter(|&name| {
+            matches!(
+                name,
+                sym::HashMap
+                    | sym::Vec
+                    | sym::HashSet
+                    | sym::VecDeque
+                    | sym::LinkedList
+                    | sym::BTreeMap
+                    | sym::BTreeSet
+                    | sym::BinaryHeap
+            )
+        })
         .or_else(|| {
             cx.tcx
                 .lang_items()
