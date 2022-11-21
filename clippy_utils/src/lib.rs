@@ -108,11 +108,10 @@ use rustc_middle::ty::{FloatTy, IntTy, UintTy};
 use rustc_semver::RustcVersion;
 use rustc_session::Session;
 use rustc_span::hygiene::{ExpnKind, MacroKind};
-use rustc_span::source_map::original_sp;
 use rustc_span::source_map::SourceMap;
 use rustc_span::sym;
 use rustc_span::symbol::{kw, Ident, Symbol};
-use rustc_span::{Span, DUMMY_SP};
+use rustc_span::Span;
 use rustc_target::abi::Integer;
 
 use crate::consts::{constant, Constant};
@@ -1300,23 +1299,6 @@ pub fn contains_return(expr: &hir::Expr<'_>) -> bool {
         }
     })
     .is_some()
-}
-
-/// Extends the span to the beginning of the spans line, incl. whitespaces.
-///
-/// ```rust
-///        let x = ();
-/// //             ^^
-/// // will be converted to
-///        let x = ();
-/// // ^^^^^^^^^^^^^^
-/// ```
-fn line_span<T: LintContext>(cx: &T, span: Span) -> Span {
-    let span = original_sp(span, DUMMY_SP);
-    let source_map_and_line = cx.sess().source_map().lookup_line(span.lo()).unwrap();
-    let line_no = source_map_and_line.line;
-    let line_start = source_map_and_line.sf.lines(|lines| lines[line_no]);
-    span.with_lo(line_start)
 }
 
 /// Gets the parent node, if any.
