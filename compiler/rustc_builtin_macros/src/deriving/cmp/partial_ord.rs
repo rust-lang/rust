@@ -59,6 +59,7 @@ pub fn expand_deriving_partial_ord(
         span,
         path: path_std!(cmp::PartialOrd),
         skip_path_as_bound: false,
+        needs_copy_as_bound_if_packed: true,
         additional_bounds: vec![],
         supports_unions: false,
         methods: vec![partial_cmp_def],
