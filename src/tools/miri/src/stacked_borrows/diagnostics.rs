@@ -6,7 +6,7 @@ use rustc_span::{Span, SpanData};
 use rustc_target::abi::Size;
 
 use crate::helpers::CurrentSpan;
-use crate::stacked_borrows::{err_sb_ub, AccessKind, GlobalStateInner, Permission};
+use crate::stacked_borrows::{err_sb_ub, AccessKind, GlobalStateInner, Permission, ProtectorKind};
 use crate::*;
 
 use rustc_middle::mir::interpret::InterpError;
@@ -288,7 +288,11 @@ impl<'span, 'history, 'ecx, 'mir, 'tcx> DiagnosticCx<'span, 'history, 'ecx, 'mir
             }
             Operation::Access(AccessOp { kind, range, .. }) =>
                 (*range, InvalidationCause::Access(*kind)),
-            _ => unreachable!("Tags can only be invalidated during a retag or access"),
+            Operation::Dealloc(_) => {
+                // This can be reached, but never be relevant later since the entire allocation is
+                // gone now.
+                return;
+            }
         };
         self.history.invalidations.push(Invalidation { tag, range, span, cause });
     }
@@ -369,7 +373,7 @@ impl<'span, 'history, 'ecx, 'mir, 'tcx> DiagnosticCx<'span, 'history, 'ecx, 'mir
 
     /// Report a descriptive error when `new` could not be granted from `derived_from`.
     #[inline(never)] // This is only called on fatal code paths
-    pub fn grant_error(&self, perm: Permission, stack: &Stack) -> InterpError<'tcx> {
+    pub(super) fn grant_error(&self, perm: Permission, stack: &Stack) -> InterpError<'tcx> {
         let Operation::Retag(op) = &self.operation else {
             unreachable!("grant_error should only be called during a retag")
         };
@@ -389,7 +393,7 @@ impl<'span, 'history, 'ecx, 'mir, 'tcx> DiagnosticCx<'span, 'history, 'ecx, 'mir
 
     /// Report a descriptive error when `access` is not permitted based on `tag`.
     #[inline(never)] // This is only called on fatal code paths
-    pub fn access_error(&self, stack: &Stack) -> InterpError<'tcx> {
+    pub(super) fn access_error(&self, stack: &Stack) -> InterpError<'tcx> {
         let Operation::Access(op) = &self.operation  else {
             unreachable!("access_error should only be called during an access")
         };
@@ -408,7 +412,11 @@ impl<'span, 'history, 'ecx, 'mir, 'tcx> DiagnosticCx<'span, 'history, 'ecx, 'mir
     }
 
     #[inline(never)] // This is only called on fatal code paths
-    pub fn protector_error(&self, item: &Item) -> InterpError<'tcx> {
+    pub(super) fn protector_error(&self, item: &Item, kind: ProtectorKind) -> InterpError<'tcx> {
+        let protected = match kind {
+            ProtectorKind::WeakProtector => "weakly protected",
+            ProtectorKind::StrongProtector => "strongly protected",
+        };
         let call_id = self
             .threads
             .all_stacks()
@@ -422,10 +430,7 @@ impl<'span, 'history, 'ecx, 'mir, 'tcx> DiagnosticCx<'span, 'history, 'ecx, 'mir
         match self.operation {
             Operation::Dealloc(_) =>
                 err_sb_ub(
-                    format!(
-                        "deallocating while item {:?} is protected by call {:?}",
-                        item, call_id
-                    ),
+                    format!("deallocating while item {item:?} is {protected} by call {call_id:?}",),
                     None,
                     None,
                 ),
@@ -433,8 +438,7 @@ impl<'span, 'history, 'ecx, 'mir, 'tcx> DiagnosticCx<'span, 'history, 'ecx, 'mir
             | Operation::Access(AccessOp { tag, .. }) =>
                 err_sb_ub(
                     format!(
-                        "not granting access to tag {:?} because that would remove {:?} which is protected because it is an argument of call {:?}",
-                        tag, item, call_id
+                        "not granting access to tag {tag:?} because that would remove {item:?} which is {protected} because it is an argument of call {call_id:?}",
                     ),
                     None,
                     tag.and_then(|tag| self.get_logs_relevant_to(tag, Some(item.tag()))),
