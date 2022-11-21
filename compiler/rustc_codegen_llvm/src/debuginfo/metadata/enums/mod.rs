@@ -91,9 +91,7 @@ fn build_c_style_enum_di_node<'ll, 'tcx>(
             tag_base_type(cx, enum_type_and_layout),
             enum_adt_def.discriminants(cx.tcx).map(|(variant_index, discr)| {
                 let name = Cow::from(enum_adt_def.variant(variant_index).name.as_str());
-                // Is there anything we can do to support 128-bit C-Style enums?
-                let value = discr.val as u64;
-                (name, value)
+                (name, discr.val)
             }),
             containing_scope,
         ),
@@ -147,14 +145,11 @@ fn tag_base_type<'ll, 'tcx>(
 /// This is a helper function and does not register anything in the type map by itself.
 ///
 /// `variants` is an iterator of (discr-value, variant-name).
-///
-// NOTE: Handling of discriminant values is somewhat inconsistent. They can appear as u128,
-//       u64, and i64. Here everything gets mapped to i64 because that's what LLVM's API expects.
 fn build_enumeration_type_di_node<'ll, 'tcx>(
     cx: &CodegenCx<'ll, 'tcx>,
     type_name: &str,
     base_type: Ty<'tcx>,
-    enumerators: impl Iterator<Item = (Cow<'tcx, str>, u64)>,
+    enumerators: impl Iterator<Item = (Cow<'tcx, str>, u128)>,
     containing_scope: &'ll DIType,
 ) -> &'ll DIType {
     let is_unsigned = match base_type.kind() {
@@ -162,20 +157,21 @@ fn build_enumeration_type_di_node<'ll, 'tcx>(
         ty::Uint(_) => true,
         _ => bug!("build_enumeration_type_di_node() called with non-integer tag type."),
     };
+    let (size, align) = cx.size_and_align_of(base_type);
 
     let enumerator_di_nodes: SmallVec<Option<&'ll DIType>> = enumerators
         .map(|(name, value)| unsafe {
+            let value = [value as u64, (value >> 64) as u64];
             Some(llvm::LLVMRustDIBuilderCreateEnumerator(
                 DIB(cx),
                 name.as_ptr().cast(),
                 name.len(),
-                value as i64,
+                value.as_ptr(),
+                size.bits() as libc::c_uint,
                 is_unsigned,
             ))
         })
         .collect();
-
-    let (size, align) = cx.size_and_align_of(base_type);
 
     unsafe {
         llvm::LLVMRustDIBuilderCreateEnumerationType(
