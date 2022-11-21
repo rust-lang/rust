@@ -419,6 +419,8 @@ declare_features! (
     (active, if_let_guard, "1.47.0", Some(51114), None),
     /// Allows `impl Trait` as output type in `Fn` traits in return position of functions.
     (active, impl_trait_in_fn_trait_return, "1.64.0", Some(99697), None),
+    /// Allows referencing `Self` and projections in impl-trait.
+    (active, impl_trait_projections, "CURRENT_RUSTC_VERSION", Some(103532), None),
     /// Allows using imported `main` function
     (active, imported_main, "1.53.0", Some(28937), None),
     /// Allows associated types in inherent impls.

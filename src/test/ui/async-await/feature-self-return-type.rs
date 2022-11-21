@@ -1,7 +1,8 @@
 // edition:2018
-// gate-test-impl_trait_projections
+#![feature(impl_trait_projections)]
 
-// This test checks that `Self` is prohibited as a return type. See #61949 for context.
+// This test checks that we emit the correct borrowck error when `Self` is used as a return type.
+// See #61949 for context.
 
 pub struct Foo<'a> {
     pub bar: &'a i32,
@@ -9,14 +10,13 @@ pub struct Foo<'a> {
 
 impl<'a> Foo<'a> {
     pub async fn new(_bar: &'a i32) -> Self {
-    //~^ ERROR `async fn` return type cannot contain a projection or `Self` that references lifetimes from a parent scope
         Foo {
             bar: &22
         }
     }
 }
 
-async fn foo() {
+pub async fn foo() {
     let x = {
         let bar = 22;
         Foo::new(&bar).await

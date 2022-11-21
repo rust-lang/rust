@@ -2777,35 +2777,11 @@ impl<'o, 'tcx> dyn AstConv<'tcx> + 'o {
         let substs = InternalSubsts::for_item(tcx, def_id, |param, _| {
             if let Some(i) = (param.index as usize).checked_sub(generics.parent_count) {
                 // Our own parameters are the resolved lifetimes.
-                if let GenericParamDefKind::Lifetime = param.kind {
-                    if let hir::GenericArg::Lifetime(lifetime) = &lifetimes[i] {
-                        self.ast_region_to_region(lifetime, None).into()
-                    } else {
-                        bug!()
-                    }
-                } else {
-                    bug!()
-                }
+                let GenericParamDefKind::Lifetime { .. } = param.kind else { bug!() };
+                let hir::GenericArg::Lifetime(lifetime) = &lifetimes[i] else { bug!() };
+                self.ast_region_to_region(lifetime, None).into()
             } else {
-                match param.kind {
-                    // For RPIT (return position impl trait), only lifetimes
-                    // mentioned in the impl Trait predicate are captured by
-                    // the opaque type, so the lifetime parameters from the
-                    // parent item need to be replaced with `'static`.
-                    //
-                    // For `impl Trait` in the types of statics, constants,
-                    // locals and type aliases. These capture all parent
-                    // lifetimes, so they can use their identity subst.
-                    GenericParamDefKind::Lifetime
-                        if matches!(
-                            origin,
-                            hir::OpaqueTyOrigin::FnReturn(..) | hir::OpaqueTyOrigin::AsyncFn(..)
-                        ) =>
-                    {
-                        tcx.lifetimes.re_static.into()
-                    }
-                    _ => tcx.mk_param_from_def(param),
-                }
+                tcx.mk_param_from_def(param)
             }
         });
         debug!("impl_trait_ty_to_ty: substs={:?}", substs);
@@ -2982,6 +2958,7 @@ impl<'o, 'tcx> dyn AstConv<'tcx> + 'o {
         Some(tcx.liberate_late_bound_regions(fn_hir_id.expect_owner().to_def_id(), ty))
     }
 
+    #[instrument(level = "trace", skip(self, generate_err))]
     fn validate_late_bound_regions(
         &self,
         constrained_regions: FxHashSet<ty::BoundRegionKind>,

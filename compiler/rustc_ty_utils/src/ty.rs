@@ -108,12 +108,7 @@ fn adt_sized_constraint(tcx: TyCtxt<'_>, def_id: DefId) -> &[Ty<'_>] {
 
 /// See `ParamEnv` struct definition for details.
 fn param_env(tcx: TyCtxt<'_>, def_id: DefId) -> ty::ParamEnv<'_> {
-    // The param_env of an impl Trait type is its defining function's param_env
-    if let Some(parent) = ty::is_impl_trait_defn(tcx, def_id) {
-        return param_env(tcx, parent.to_def_id());
-    }
     // Compute the bounds on Self and the type parameters.
-
     let ty::InstantiatedPredicates { mut predicates, .. } =
         tcx.predicates_of(def_id).instantiate_identity(tcx);
 

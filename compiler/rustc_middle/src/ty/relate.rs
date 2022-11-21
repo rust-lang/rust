@@ -60,7 +60,7 @@ pub trait TypeRelation<'tcx>: Sized {
 
         let tcx = self.tcx();
         let opt_variances = tcx.variances_of(item_def_id);
-        relate_substs_with_variances(self, item_def_id, opt_variances, a_subst, b_subst)
+        relate_substs_with_variances(self, item_def_id, opt_variances, a_subst, b_subst, true)
     }
 
     /// Switch variance for the purpose of relating `a` and `b`.
@@ -151,13 +151,14 @@ pub fn relate_substs_with_variances<'tcx, R: TypeRelation<'tcx>>(
     variances: &[ty::Variance],
     a_subst: SubstsRef<'tcx>,
     b_subst: SubstsRef<'tcx>,
+    fetch_ty_for_diag: bool,
 ) -> RelateResult<'tcx, SubstsRef<'tcx>> {
     let tcx = relation.tcx();
 
     let mut cached_ty = None;
     let params = iter::zip(a_subst, b_subst).enumerate().map(|(i, (a, b))| {
         let variance = variances[i];
-        let variance_info = if variance == ty::Invariant {
+        let variance_info = if variance == ty::Invariant && fetch_ty_for_diag {
             let ty =
                 *cached_ty.get_or_insert_with(|| tcx.bound_type_of(ty_def_id).subst(tcx, a_subst));
             ty::VarianceDiagInfo::Invariant { ty, param_index: i.try_into().unwrap() }
@@ -561,7 +562,15 @@ pub fn super_relate_tys<'tcx, R: TypeRelation<'tcx>>(
         (&ty::Opaque(a_def_id, a_substs), &ty::Opaque(b_def_id, b_substs))
             if a_def_id == b_def_id =>
         {
-            let substs = relate_substs(relation, a_substs, b_substs)?;
+            let opt_variances = tcx.variances_of(a_def_id);
+            let substs = relate_substs_with_variances(
+                relation,
+                a_def_id,
+                opt_variances,
+                a_substs,
+                b_substs,
+                false, // do not fetch `type_of(a_def_id)`, as it will cause a cycle
+            )?;
             Ok(tcx.mk_opaque(a_def_id, substs))
         }
 

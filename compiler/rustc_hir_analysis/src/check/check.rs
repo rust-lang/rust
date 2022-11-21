@@ -10,6 +10,7 @@ use rustc_hir::def::{CtorKind, DefKind, Res};
 use rustc_hir::def_id::{DefId, LocalDefId};
 use rustc_hir::intravisit::Visitor;
 use rustc_hir::{ItemKind, Node, PathSegment};
+use rustc_infer::infer::opaque_types::ConstrainOpaqueTypeRegionVisitor;
 use rustc_infer::infer::outlives::env::OutlivesEnvironment;
 use rustc_infer::infer::{DefiningAnchor, RegionVariableOrigin, TyCtxtInferExt};
 use rustc_infer::traits::Obligation;
@@ -229,7 +230,9 @@ fn check_opaque<'tcx>(tcx: TyCtxt<'tcx>, id: hir::ItemId) {
     let substs = InternalSubsts::identity_for_item(tcx, item.owner_id.to_def_id());
     let span = tcx.def_span(item.owner_id.def_id);
 
-    check_opaque_for_inheriting_lifetimes(tcx, item.owner_id.def_id, span);
+    if !tcx.features().impl_trait_projections {
+        check_opaque_for_inheriting_lifetimes(tcx, item.owner_id.def_id, span);
+    }
     if tcx.type_of(item.owner_id.def_id).references_error() {
         return;
     }
@@ -238,6 +241,7 @@ fn check_opaque<'tcx>(tcx: TyCtxt<'tcx>, id: hir::ItemId) {
     }
     check_opaque_meets_bounds(tcx, item.owner_id.def_id, substs, span, &origin);
 }
+
 /// Checks that an opaque type does not use `Self` or `T::Foo` projections that would result
 /// in "inheriting lifetimes".
 #[instrument(level = "debug", skip(tcx, span))]
@@ -249,39 +253,11 @@ pub(super) fn check_opaque_for_inheriting_lifetimes<'tcx>(
     let item = tcx.hir().expect_item(def_id);
     debug!(?item, ?span);
 
-    struct FoundParentLifetime;
-    struct FindParentLifetimeVisitor<'tcx>(&'tcx ty::Generics);
-    impl<'tcx> ty::visit::TypeVisitor<'tcx> for FindParentLifetimeVisitor<'tcx> {
-        type BreakTy = FoundParentLifetime;
-
-        fn visit_region(&mut self, r: ty::Region<'tcx>) -> ControlFlow<Self::BreakTy> {
-            debug!("FindParentLifetimeVisitor: r={:?}", r);
-            if let ty::ReEarlyBound(ty::EarlyBoundRegion { index, .. }) = *r {
-                if index < self.0.parent_count as u32 {
-                    return ControlFlow::Break(FoundParentLifetime);
-                } else {
-                    return ControlFlow::CONTINUE;
-                }
-            }
-
-            r.super_visit_with(self)
-        }
-
-        fn visit_const(&mut self, c: ty::Const<'tcx>) -> ControlFlow<Self::BreakTy> {
-            if let ty::ConstKind::Unevaluated(..) = c.kind() {
-                // FIXME(#72219) We currently don't detect lifetimes within substs
-                // which would violate this check. Even though the particular substitution is not used
-                // within the const, this should still be fixed.
-                return ControlFlow::CONTINUE;
-            }
-            c.super_visit_with(self)
-        }
-    }
-
     struct ProhibitOpaqueVisitor<'tcx> {
         tcx: TyCtxt<'tcx>,
         opaque_identity_ty: Ty<'tcx>,
-        generics: &'tcx ty::Generics,
+        parent_count: u32,
+        references_parent_regions: bool,
         selftys: Vec<(Span, Option<String>)>,
     }
 
@@ -289,12 +265,25 @@ pub(super) fn check_opaque_for_inheriting_lifetimes<'tcx>(
         type BreakTy = Ty<'tcx>;
 
         fn visit_ty(&mut self, t: Ty<'tcx>) -> ControlFlow<Self::BreakTy> {
-            debug!("check_opaque_for_inheriting_lifetimes: (visit_ty) t={:?}", t);
+            debug!(?t, "root_visit_ty");
             if t == self.opaque_identity_ty {
                 ControlFlow::CONTINUE
             } else {
-                t.super_visit_with(&mut FindParentLifetimeVisitor(self.generics))
-                    .map_break(|FoundParentLifetime| t)
+                t.visit_with(&mut ConstrainOpaqueTypeRegionVisitor {
+                    tcx: self.tcx,
+                    op: |region| {
+                        if let ty::ReEarlyBound(ty::EarlyBoundRegion { index, .. }) = *region
+                            && index < self.parent_count
+                        {
+                            self.references_parent_regions= true;
+                        }
+                    },
+                });
+                if self.references_parent_regions {
+                    ControlFlow::Break(t)
+                } else {
+                    ControlFlow::CONTINUE
+                }
             }
         }
     }
@@ -327,15 +316,20 @@ pub(super) fn check_opaque_for_inheriting_lifetimes<'tcx>(
 
     if let ItemKind::OpaqueTy(hir::OpaqueTy {
         origin: hir::OpaqueTyOrigin::AsyncFn(..) | hir::OpaqueTyOrigin::FnReturn(..),
+        in_trait,
         ..
     }) = item.kind
     {
+        let substs = InternalSubsts::identity_for_item(tcx, def_id.to_def_id());
+        let opaque_identity_ty = if in_trait {
+            tcx.mk_projection(def_id.to_def_id(), substs)
+        } else {
+            tcx.mk_opaque(def_id.to_def_id(), substs)
+        };
         let mut visitor = ProhibitOpaqueVisitor {
-            opaque_identity_ty: tcx.mk_opaque(
-                def_id.to_def_id(),
-                InternalSubsts::identity_for_item(tcx, def_id.to_def_id()),
-            ),
-            generics: tcx.generics_of(def_id),
+            opaque_identity_ty,
+            parent_count: tcx.generics_of(def_id).parent_count as u32,
+            references_parent_regions: false,
             tcx,
             selftys: vec![],
         };
@@ -343,10 +337,6 @@ pub(super) fn check_opaque_for_inheriting_lifetimes<'tcx>(
             .explicit_item_bounds(def_id)
             .iter()
             .try_for_each(|(predicate, _)| predicate.visit_with(&mut visitor));
-        debug!(
-            "check_opaque_for_inheriting_lifetimes: prohibit_opaque={:?}, visitor.opaque_identity_ty={:?}, visitor.generics={:?}",
-            prohibit_opaque, visitor.opaque_identity_ty, visitor.generics
-        );
 
         if let Some(ty) = prohibit_opaque.break_value() {
             visitor.visit_item(&item);
@@ -357,15 +347,16 @@ pub(super) fn check_opaque_for_inheriting_lifetimes<'tcx>(
                 _ => unreachable!(),
             };
 
-            let mut err = struct_span_err!(
-                tcx.sess,
+            let mut err = feature_err(
+                &tcx.sess.parse_sess,
+                sym::impl_trait_projections,
                 span,
-                E0760,
-                "`{}` return type cannot contain a projection or `Self` that references lifetimes from \
-                 a parent scope",
-                if is_async { "async fn" } else { "impl Trait" },
+                &format!(
+                    "`{}` return type cannot contain a projection or `Self` that references \
+                    lifetimes from a parent scope",
+                    if is_async { "async fn" } else { "impl Trait" },
+                ),
             );
-
             for (span, name) in visitor.selftys {
                 err.span_suggestion(
                     span,

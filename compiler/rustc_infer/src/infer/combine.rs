@@ -564,6 +564,7 @@ impl<'tcx> TypeRelation<'tcx> for Generalizer<'_, 'tcx> {
                 &opt_variances,
                 a_subst,
                 b_subst,
+                true,
             )
         }
     }

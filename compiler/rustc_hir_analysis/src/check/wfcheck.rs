@@ -1539,7 +1539,6 @@ fn check_fn_or_method<'tcx>(
 
     check_return_position_impl_trait_in_trait_bounds(
         tcx,
-        wfcx,
         def_id,
         sig.output(),
         hir_decl.output.span(),
@@ -1575,9 +1574,9 @@ fn check_fn_or_method<'tcx>(
 
 /// Basically `check_associated_type_bounds`, but separated for now and should be
 /// deduplicated when RPITITs get lowered into real associated items.
+#[tracing::instrument(level = "trace", skip(tcx))]
 fn check_return_position_impl_trait_in_trait_bounds<'tcx>(
     tcx: TyCtxt<'tcx>,
-    wfcx: &WfCheckingCtxt<'_, 'tcx>,
     fn_def_id: LocalDefId,
     fn_output: Ty<'tcx>,
     span: Span,
@@ -1591,18 +1590,22 @@ fn check_return_position_impl_trait_in_trait_bounds<'tcx>(
                 && tcx.def_kind(proj.item_def_id) == DefKind::ImplTraitPlaceholder
                 && tcx.impl_trait_in_trait_parent(proj.item_def_id) == fn_def_id.to_def_id()
             {
-                let bounds = wfcx.tcx().explicit_item_bounds(proj.item_def_id);
-                let wf_obligations = bounds.iter().flat_map(|&(bound, bound_span)| {
-                    let normalized_bound = wfcx.normalize(span, None, bound);
-                    traits::wf::predicate_obligations(
-                        wfcx.infcx,
-                        wfcx.param_env,
-                        wfcx.body_id,
-                        normalized_bound,
-                        bound_span,
-                    )
+                // Create a new context, since we want the opaque's ParamEnv and not the parent's.
+                let span = tcx.def_span(proj.item_def_id);
+                enter_wf_checking_ctxt(tcx, span, proj.item_def_id.expect_local(), |wfcx| {
+                    let bounds = wfcx.tcx().explicit_item_bounds(proj.item_def_id);
+                    let wf_obligations = bounds.iter().flat_map(|&(bound, bound_span)| {
+                        let normalized_bound = wfcx.normalize(span, None, bound);
+                        traits::wf::predicate_obligations(
+                            wfcx.infcx,
+                            wfcx.param_env,
+                            wfcx.body_id,
+                            normalized_bound,
+                            bound_span,
+                        )
+                    });
+                    wfcx.register_obligations(wf_obligations);
                 });
-                wfcx.register_obligations(wf_obligations);
             }
         }
     }
