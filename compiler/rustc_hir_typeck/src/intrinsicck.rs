@@ -47,7 +47,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         let to = normalize(to);
         trace!(?from, ?to);
         if from.has_non_region_infer() || to.has_non_region_infer() {
-            // We can't check anything if there are inference variables.
+            tcx.sess.delay_span_bug(span, "argument to transmute has inference variables");
             return;
         }
         // Transmutes that are only changing lifetimes are always ok.
