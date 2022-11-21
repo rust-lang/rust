@@ -326,6 +326,10 @@ impl<'a, 'tcx> ExprUseVisitor<'a, 'tcx> {
                 }
             }
 
+            hir::ExprKind::Become(call) => {
+                self.consume_expr(call);
+            }
+
             hir::ExprKind::Assign(lhs, rhs, _) => {
                 self.mutate_expr(lhs);
                 self.consume_expr(rhs);

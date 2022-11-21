@@ -1,4 +1,4 @@
-error[E0572]: return statement outside of function body
+error[E0572]: `return` statement outside of function body
   --> $DIR/issue-86188-return-not-in-fn-body.rs:9:10
    |
 LL |       [(); return || {
@@ -8,31 +8,31 @@ LL | |         let tx;
 LL | |     }]
    | |_____^
 
-error[E0572]: return statement outside of function body
+error[E0572]: `return` statement outside of function body
   --> $DIR/issue-86188-return-not-in-fn-body.rs:20:14
    |
 LL | /     fn bar() {
 LL | |
 LL | |         [(); return];
-   | |              ^^^^^^ the return is part of this body...
+   | |              ^^^^^^ the `return` is part of this body...
 LL | |
 LL | |
 LL | |     }
    | |_____- ...not the enclosing function body
 
-error[E0572]: return statement outside of function body
+error[E0572]: `return` statement outside of function body
   --> $DIR/issue-86188-return-not-in-fn-body.rs:28:14
    |
 LL | /     fn foo() {
 LL | |
 LL | |         [(); return];
-   | |              ^^^^^^ the return is part of this body...
+   | |              ^^^^^^ the `return` is part of this body...
 LL | |
 LL | |
 LL | |     }
    | |_____- ...not the enclosing function body
 
-error[E0572]: return statement outside of function body
+error[E0572]: `return` statement outside of function body
   --> $DIR/issue-86188-return-not-in-fn-body.rs:36:10
    |
 LL | /  fn main() {
@@ -43,7 +43,7 @@ LL | ||
 LL | ||
 LL | ||         let tx;
 LL | ||     }];
-   | ||_____^ the return is part of this body...
+   | ||_____^ the `return` is part of this body...
 LL | |  }
    | |__- ...not the enclosing function body
 

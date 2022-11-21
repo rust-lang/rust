@@ -31,6 +31,8 @@ pub struct ReturnStmtOutsideOfFnBody {
     pub encl_body_span: Option<Span>,
     #[label(hir_typeck_encl_fn_label)]
     pub encl_fn_span: Option<Span>,
+    // "return" or "become"
+    pub statement_kind: String,
 }
 
 #[derive(Diagnostic)]

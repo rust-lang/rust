@@ -214,6 +214,7 @@ impl<'a, 'tcx> DropRangeVisitor<'a, 'tcx> {
             | ExprKind::Break(..)
             | ExprKind::Continue(..)
             | ExprKind::Ret(..)
+            | ExprKind::Become(..)
             | ExprKind::InlineAsm(..)
             | ExprKind::OffsetOf(..)
             | ExprKind::Struct(..)
@@ -450,6 +451,9 @@ impl<'a, 'tcx> Visitor<'tcx> for DropRangeVisitor<'a, 'tcx> {
                     self.visit_expr(value);
                 }
             }
+
+            // FIXME(explicit_tail_calls): we should record the "drop everything that is not passed by-value" here, I think
+            ExprKind::Become(_call) => intravisit::walk_expr(self, expr),
 
             ExprKind::Call(f, args) => {
                 self.visit_expr(f);

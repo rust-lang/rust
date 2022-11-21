@@ -361,6 +361,7 @@ impl<'a, 'tcx> MemCategorizationContext<'a, 'tcx> {
             | hir::ExprKind::AssignOp(..)
             | hir::ExprKind::Closure { .. }
             | hir::ExprKind::Ret(..)
+            | hir::ExprKind::Become(..)
             | hir::ExprKind::Unary(..)
             | hir::ExprKind::Yield(..)
             | hir::ExprKind::MethodCall(..)

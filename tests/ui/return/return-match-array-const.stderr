@@ -1,4 +1,4 @@
-error[E0572]: return statement outside of function body
+error[E0572]: `return` statement outside of function body
   --> $DIR/return-match-array-const.rs:5:10
    |
 LL | / fn main() {
@@ -6,13 +6,13 @@ LL | |
 LL | |
 LL | |
 LL | |     [(); return match 0 { n => n }];
-   | |          ^^^^^^^^^^^^^^^^^^^^^^^^^ the return is part of this body...
+   | |          ^^^^^^^^^^^^^^^^^^^^^^^^^ the `return` is part of this body...
 ...  |
 LL | |
 LL | | }
    | |_- ...not the enclosing function body
 
-error[E0572]: return statement outside of function body
+error[E0572]: `return` statement outside of function body
   --> $DIR/return-match-array-const.rs:9:10
    |
 LL | / fn main() {
@@ -21,13 +21,13 @@ LL | |
 LL | |
 ...  |
 LL | |     [(); return match 0 { 0 => 0 }];
-   | |          ^^^^^^^^^^^^^^^^^^^^^^^^^ the return is part of this body...
+   | |          ^^^^^^^^^^^^^^^^^^^^^^^^^ the `return` is part of this body...
 ...  |
 LL | |
 LL | | }
    | |_- ...not the enclosing function body
 
-error[E0572]: return statement outside of function body
+error[E0572]: `return` statement outside of function body
   --> $DIR/return-match-array-const.rs:13:10
    |
 LL | / fn main() {
@@ -36,7 +36,7 @@ LL | |
 LL | |
 ...  |
 LL | |     [(); return match () { 'a' => 0, _ => 0 }];
-   | |          ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ the return is part of this body...
+   | |          ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ the `return` is part of this body...
 ...  |
 LL | |
 LL | | }
