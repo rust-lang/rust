@@ -551,7 +551,7 @@ impl<'tcx> Instance<'tcx> {
         let sig =
             tcx.try_normalize_erasing_late_bound_regions(ty::ParamEnv::reveal_all(), sig).ok()?;
         assert_eq!(sig.inputs().len(), 1);
-        let substs = tcx.mk_substs_trait(self_ty, &[sig.inputs()[0].into()]);
+        let substs = tcx.mk_substs_trait(self_ty, [sig.inputs()[0].into()]);
 
         debug!(?self_ty, ?sig);
         Some(Instance { def, substs })

@@ -1884,7 +1884,7 @@ impl<'tcx> Operand<'tcx> {
         substs: SubstsRef<'tcx>,
         span: Span,
     ) -> Self {
-        let ty = tcx.bound_type_of(def_id).subst(tcx, substs);
+        let ty = tcx.mk_fn_def(def_id, substs);
         Operand::Constant(Box::new(Constant {
             span,
             user_ty: None,

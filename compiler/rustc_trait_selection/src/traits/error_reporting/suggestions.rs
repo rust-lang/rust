@@ -2971,8 +2971,7 @@ impl<'tcx> TypeErrCtxtExt<'tcx> for TypeErrCtxt<'_, 'tcx> {
                 let self_ty = self.resolve_vars_if_possible(trait_pred.self_ty());
                 let impls_future = self.type_implements_trait(
                     future_trait,
-                    self.tcx.erase_late_bound_regions(self_ty),
-                    ty::List::empty(),
+                    [self.tcx.erase_late_bound_regions(self_ty)],
                     obligation.param_env,
                 );
                 if !impls_future.must_apply_modulo_regions() {
@@ -2985,7 +2984,7 @@ impl<'tcx> TypeErrCtxtExt<'tcx> for TypeErrCtxt<'_, 'tcx> {
                     self.tcx.mk_projection(
                         item_def_id,
                         // Future::Output has no substs
-                        self.tcx.mk_substs_trait(trait_pred.self_ty(), &[]),
+                        self.tcx.mk_substs_trait(trait_pred.self_ty(), []),
                     )
                 });
                 let projection_ty = normalize_to(
@@ -3070,15 +3069,15 @@ impl<'tcx> TypeErrCtxtExt<'tcx> for TypeErrCtxt<'_, 'tcx> {
                     let field_ty = field.ty(self.tcx, substs);
                     let trait_substs = match diagnostic_name {
                         sym::PartialEq | sym::PartialOrd => {
-                            self.tcx.mk_substs_trait(field_ty, &[field_ty.into()])
+                            Some(field_ty)
                         }
-                        _ => self.tcx.mk_substs_trait(field_ty, &[]),
+                        _ => None,
                     };
                     let trait_pred = trait_pred.map_bound_ref(|tr| ty::TraitPredicate {
-                        trait_ref: ty::TraitRef {
-                            substs: trait_substs,
-                            ..trait_pred.skip_binder().trait_ref
-                        },
+                        trait_ref: self.tcx.mk_trait_ref(
+                            trait_pred.def_id(),
+                            [field_ty].into_iter().chain(trait_substs),
+                        ),
                         ..*tr
                     });
                     let field_obl = Obligation::new(

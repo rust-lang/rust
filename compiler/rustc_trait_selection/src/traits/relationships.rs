@@ -18,11 +18,6 @@ pub(crate) fn update<'tcx, T>(
     {
         let new_self_ty = infcx.tcx.types.unit;
 
-        let trait_ref = ty::TraitRef {
-            substs: infcx.tcx.mk_substs_trait(new_self_ty, &tpred.trait_ref.substs[1..]),
-            ..tpred.trait_ref
-        };
-
         // Then construct a new obligation with Self = () added
         // to the ParamEnv, and see if it holds.
         let o = obligation.with(infcx.tcx,
@@ -31,11 +26,7 @@ pub(crate) fn update<'tcx, T>(
                 .kind()
                 .rebind(
                     // (*) binder moved here
-                    ty::PredicateKind::Trait(ty::TraitPredicate {
-                        trait_ref,
-                        constness: tpred.constness,
-                        polarity: tpred.polarity,
-                    })
+                    ty::PredicateKind::Trait(tpred.with_self_type(infcx.tcx, new_self_ty))
                 ),
         );
         // Don't report overflow errors. Otherwise equivalent to may_hold.

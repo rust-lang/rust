@@ -4,7 +4,7 @@ use crate::traits::{self, TraitEngine, TraitEngineExt};
 use rustc_hir as hir;
 use rustc_infer::infer::InferCtxt;
 use rustc_middle::ty::TypeVisitable;
-use rustc_middle::ty::{self, TraitRef, Ty, TyCtxt};
+use rustc_middle::ty::{self, Ty, TyCtxt};
 use rustc_session::Limit;
 use rustc_span::def_id::LOCAL_CRATE;
 use rustc_span::Span;
@@ -122,10 +122,7 @@ impl<'a, 'tcx> Autoderef<'a, 'tcx> {
         let tcx = self.infcx.tcx;
 
         // <ty as Deref>
-        let trait_ref = TraitRef {
-            def_id: tcx.lang_items().deref_trait()?,
-            substs: tcx.mk_substs_trait(ty, &[]),
-        };
+        let trait_ref = tcx.mk_trait_ref(tcx.lang_items().deref_trait()?, [ty]);
 
         let cause = traits::ObligationCause::misc(self.span, self.body_id);
 

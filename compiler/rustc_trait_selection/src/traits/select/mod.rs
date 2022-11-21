@@ -2100,8 +2100,7 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
                     cause.clone(),
                     trait_def_id,
                     recursion_depth,
-                    normalized_ty,
-                    &[],
+                    [normalized_ty],
                 );
                 obligations.push(placeholder_obligation);
                 obligations

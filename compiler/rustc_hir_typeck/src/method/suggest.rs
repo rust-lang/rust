@@ -68,16 +68,16 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                 self.autoderef(span, ty).any(|(ty, _)| {
                     info!("check deref {:?} impl FnOnce", ty);
                     self.probe(|_| {
-                        let fn_once_substs = tcx.mk_substs_trait(
-                            ty,
-                            &[self
-                                .next_ty_var(TypeVariableOrigin {
+                        let trait_ref = tcx.mk_trait_ref(
+                            fn_once,
+                            [
+                                ty,
+                                self.next_ty_var(TypeVariableOrigin {
                                     kind: TypeVariableOriginKind::MiscVariable,
                                     span,
-                                })
-                                .into()],
+                                }),
+                            ],
                         );
-                        let trait_ref = ty::TraitRef::new(fn_once, fn_once_substs);
                         let poly_trait_ref = ty::Binder::dummy(trait_ref);
                         let obligation = Obligation::misc(
                             tcx,

@@ -1093,10 +1093,10 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                 self.tcx,
                 self.misc(expr.span),
                 self.param_env,
-                ty::Binder::dummy(ty::TraitRef {
-                    def_id: into_def_id,
-                    substs: self.tcx.mk_substs_trait(expr_ty, &[expected_ty.into()]),
-                })
+                ty::Binder::dummy(self.tcx.mk_trait_ref(
+                    into_def_id,
+                    [expr_ty, expected_ty]
+                ))
                 .to_poly_trait_predicate(),
             ))
         {

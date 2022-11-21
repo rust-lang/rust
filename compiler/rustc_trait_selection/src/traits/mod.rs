@@ -136,7 +136,6 @@ pub fn predicates_for_generics<'tcx>(
 /// `bound` or is not known to meet bound (note that this is
 /// conservative towards *no impl*, which is the opposite of the
 /// `evaluate` methods).
-#[instrument(level = "debug", skip(infcx, param_env, span), ret)]
 pub fn type_known_to_meet_bound_modulo_regions<'tcx>(
     infcx: &InferCtxt<'tcx>,
     param_env: ty::ParamEnv<'tcx>,
@@ -144,33 +143,42 @@ pub fn type_known_to_meet_bound_modulo_regions<'tcx>(
     def_id: DefId,
     span: Span,
 ) -> bool {
-    let trait_ref =
-        ty::Binder::dummy(ty::TraitRef { def_id, substs: infcx.tcx.mk_substs_trait(ty, &[]) });
+    let trait_ref = ty::Binder::dummy(infcx.tcx.mk_trait_ref(def_id, [ty]));
+    pred_known_to_hold_modulo_regions(infcx, param_env, trait_ref.without_const(), span)
+}
+
+#[instrument(level = "debug", skip(infcx, param_env, span, pred), ret)]
+fn pred_known_to_hold_modulo_regions<'tcx>(
+    infcx: &InferCtxt<'tcx>,
+    param_env: ty::ParamEnv<'tcx>,
+    pred: impl ToPredicate<'tcx, ty::Predicate<'tcx>> + TypeVisitable<'tcx>,
+    span: Span,
+) -> bool {
+    let has_non_region_infer = pred.has_non_region_infer();
     let obligation = Obligation {
         param_env,
+        // We can use a dummy node-id here because we won't pay any mind
+        // to region obligations that arise (there shouldn't really be any
+        // anyhow).
         cause: ObligationCause::misc(span, hir::CRATE_HIR_ID),
         recursion_depth: 0,
-        predicate: trait_ref.without_const().to_predicate(infcx.tcx),
+        predicate: pred.to_predicate(infcx.tcx),
     };
 
     let result = infcx.predicate_must_hold_modulo_regions(&obligation);
     debug!(?result);
 
-    if result && ty.has_non_region_infer() {
+    if result && has_non_region_infer {
         // Because of inference "guessing", selection can sometimes claim
         // to succeed while the success requires a guess. To ensure
         // this function's result remains infallible, we must confirm
         // that guess. While imperfect, I believe this is sound.
 
-        // We can use a dummy node-id here because we won't pay any mind
-        // to region obligations that arise (there shouldn't really be any
-        // anyhow).
-        let cause = ObligationCause::misc(span, hir::CRATE_HIR_ID);
-
+        // FIXME(@lcnr): this function doesn't seem right.
         // The handling of regions in this area of the code is terrible,
         // see issue #29149. We should be able to improve on this with
         // NLL.
-        let errors = fully_solve_bound(infcx, cause, param_env, ty, def_id);
+        let errors = fully_solve_obligation(infcx, obligation);
 
         // Note: we only assume something is `Copy` if we can
         // *definitively* show that it implements `Copy`. Otherwise,
@@ -895,10 +903,7 @@ pub fn vtable_trait_upcasting_coercion_new_vptr_slot<'tcx>(
     // this has been typecked-before, so diagnostics is not really needed.
     let unsize_trait_did = tcx.require_lang_item(LangItem::Unsize, None);
 
-    let trait_ref = ty::TraitRef {
-        def_id: unsize_trait_did,
-        substs: tcx.mk_substs_trait(source, &[target.into()]),
-    };
+    let trait_ref = tcx.mk_trait_ref(unsize_trait_did, [source, target]);
 
     match tcx.codegen_select_candidate((ty::ParamEnv::reveal_all(), ty::Binder::dummy(trait_ref))) {
         Ok(ImplSource::TraitUpcasting(implsrc_traitcasting)) => {

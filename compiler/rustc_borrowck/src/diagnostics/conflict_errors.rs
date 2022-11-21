@@ -489,12 +489,7 @@ impl<'cx, 'tcx> MirBorrowckCtxt<'cx, 'tcx> {
             // but the type has region variables, so erase those.
             tcx.infer_ctxt()
                 .build()
-                .type_implements_trait(
-                    default_trait,
-                    tcx.erase_regions(ty),
-                    ty::List::empty(),
-                    param_env,
-                )
+                .type_implements_trait(default_trait, [tcx.erase_regions(ty)], param_env)
                 .must_apply_modulo_regions()
         };
 
@@ -1707,7 +1702,6 @@ impl<'cx, 'tcx> MirBorrowckCtxt<'cx, 'tcx> {
             err.span_label(borrow_span, note);
 
             let tcx = self.infcx.tcx;
-            let ty_params = ty::List::empty();
 
             let return_ty = self.regioncx.universal_regions().unnormalized_output_ty;
             let return_ty = tcx.erase_regions(return_ty);
@@ -1716,7 +1710,7 @@ impl<'cx, 'tcx> MirBorrowckCtxt<'cx, 'tcx> {
             if let Some(iter_trait) = tcx.get_diagnostic_item(sym::Iterator)
                 && self
                     .infcx
-                    .type_implements_trait(iter_trait, return_ty, ty_params, self.param_env)
+                    .type_implements_trait(iter_trait, [return_ty], self.param_env)
                     .must_apply_modulo_regions()
             {
                 err.span_suggestion_hidden(

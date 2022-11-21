@@ -2516,7 +2516,7 @@ impl<'tcx> TyCtxt<'tcx> {
         self.mk_ty(Tuple(self.intern_type_list(&ts)))
     }
 
-    pub fn mk_tup<I: InternAs<[Ty<'tcx>], Ty<'tcx>>>(self, iter: I) -> I::Output {
+    pub fn mk_tup<I: InternAs<Ty<'tcx>, Ty<'tcx>>>(self, iter: I) -> I::Output {
         iter.intern_with(|ts| self.mk_ty(Tuple(self.intern_type_list(&ts))))
     }
 
@@ -2532,6 +2532,11 @@ impl<'tcx> TyCtxt<'tcx> {
 
     #[inline]
     pub fn mk_fn_def(self, def_id: DefId, substs: SubstsRef<'tcx>) -> Ty<'tcx> {
+        debug_assert_eq!(
+            self.generics_of(def_id).count(),
+            substs.len(),
+            "wrong number of generic parameters for {def_id:?}: {substs:?}",
+        );
         self.mk_ty(FnDef(def_id, substs))
     }
 
@@ -2552,6 +2557,11 @@ impl<'tcx> TyCtxt<'tcx> {
 
     #[inline]
     pub fn mk_projection(self, item_def_id: DefId, substs: SubstsRef<'tcx>) -> Ty<'tcx> {
+        debug_assert_eq!(
+            self.generics_of(item_def_id).count(),
+            substs.len(),
+            "wrong number of generic parameters for {item_def_id:?}: {substs:?}",
+        );
         self.mk_ty(Projection(ProjectionTy { item_def_id, substs }))
     }
 
@@ -2766,7 +2776,7 @@ impl<'tcx> TyCtxt<'tcx> {
     }
 
     pub fn mk_poly_existential_predicates<
-        I: InternAs<[PolyExistentialPredicate<'tcx>], &'tcx List<PolyExistentialPredicate<'tcx>>>,
+        I: InternAs<PolyExistentialPredicate<'tcx>, &'tcx List<PolyExistentialPredicate<'tcx>>>,
     >(
         self,
         iter: I,
@@ -2774,37 +2784,58 @@ impl<'tcx> TyCtxt<'tcx> {
         iter.intern_with(|xs| self.intern_poly_existential_predicates(xs))
     }
 
-    pub fn mk_predicates<I: InternAs<[Predicate<'tcx>], &'tcx List<Predicate<'tcx>>>>(
+    pub fn mk_predicates<I: InternAs<Predicate<'tcx>, &'tcx List<Predicate<'tcx>>>>(
         self,
         iter: I,
     ) -> I::Output {
         iter.intern_with(|xs| self.intern_predicates(xs))
     }
 
-    pub fn mk_type_list<I: InternAs<[Ty<'tcx>], &'tcx List<Ty<'tcx>>>>(self, iter: I) -> I::Output {
+    pub fn mk_type_list<I: InternAs<Ty<'tcx>, &'tcx List<Ty<'tcx>>>>(self, iter: I) -> I::Output {
         iter.intern_with(|xs| self.intern_type_list(xs))
     }
 
-    pub fn mk_substs<I: InternAs<[GenericArg<'tcx>], &'tcx List<GenericArg<'tcx>>>>(
+    pub fn mk_substs<I: InternAs<GenericArg<'tcx>, &'tcx List<GenericArg<'tcx>>>>(
         self,
         iter: I,
     ) -> I::Output {
         iter.intern_with(|xs| self.intern_substs(xs))
     }
 
-    pub fn mk_place_elems<I: InternAs<[PlaceElem<'tcx>], &'tcx List<PlaceElem<'tcx>>>>(
+    pub fn mk_place_elems<I: InternAs<PlaceElem<'tcx>, &'tcx List<PlaceElem<'tcx>>>>(
         self,
         iter: I,
     ) -> I::Output {
         iter.intern_with(|xs| self.intern_place_elems(xs))
     }
 
-    pub fn mk_substs_trait(self, self_ty: Ty<'tcx>, rest: &[GenericArg<'tcx>]) -> SubstsRef<'tcx> {
-        self.mk_substs(iter::once(self_ty.into()).chain(rest.iter().cloned()))
+    pub fn mk_substs_trait(
+        self,
+        self_ty: Ty<'tcx>,
+        rest: impl IntoIterator<Item = GenericArg<'tcx>>,
+    ) -> SubstsRef<'tcx> {
+        self.mk_substs(iter::once(self_ty.into()).chain(rest))
+    }
+
+    pub fn mk_trait_ref(
+        self,
+        trait_def_id: DefId,
+        substs: impl IntoIterator<Item = impl Into<GenericArg<'tcx>>>,
+    ) -> ty::TraitRef<'tcx> {
+        let substs = substs.into_iter().map(Into::into);
+        let n = self.generics_of(trait_def_id).count();
+        debug_assert_eq!(
+            (n, Some(n)),
+            substs.size_hint(),
+            "wrong number of generic parameters for {trait_def_id:?}: {:?} \nDid you accidentally include the self-type in the params list?",
+            substs.collect::<Vec<_>>(),
+        );
+        let substs = self.mk_substs(substs);
+        ty::TraitRef::new(trait_def_id, substs)
     }
 
     pub fn mk_bound_variable_kinds<
-        I: InternAs<[ty::BoundVariableKind], &'tcx List<ty::BoundVariableKind>>,
+        I: InternAs<ty::BoundVariableKind, &'tcx List<ty::BoundVariableKind>>,
     >(
         self,
         iter: I,
@@ -2958,6 +2989,15 @@ impl<'tcx> TyCtxtAt<'tcx> {
     #[track_caller]
     pub fn ty_error_with_message(self, msg: &str) -> Ty<'tcx> {
         self.tcx.ty_error_with_message(self.span, msg)
+    }
+
+    pub fn mk_trait_ref(
+        self,
+        trait_lang_item: LangItem,
+        substs: impl IntoIterator<Item = impl Into<ty::GenericArg<'tcx>>>,
+    ) -> ty::TraitRef<'tcx> {
+        let trait_def_id = self.require_lang_item(trait_lang_item, Some(self.span));
+        self.tcx.mk_trait_ref(trait_def_id, substs)
     }
 }
 
