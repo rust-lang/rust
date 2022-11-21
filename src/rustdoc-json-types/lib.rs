@@ -9,7 +9,7 @@ use std::path::PathBuf;
 use serde::{Deserialize, Serialize};
 
 /// rustdoc format-version.
-pub const FORMAT_VERSION: u32 = 22;
+pub const FORMAT_VERSION: u32 = 23;
 
 /// A `Crate` is the root of the emitted JSON blob. It contains all type/documentation information
 /// about the language items in the local crate, as well as info about external items to allow
@@ -210,7 +210,6 @@ pub enum ItemKind {
     Constant,
     Trait,
     TraitAlias,
-    Method,
     Impl,
     Static,
     ForeignType,
@@ -243,7 +242,6 @@ pub enum ItemEnum {
 
     Trait(Trait),
     TraitAlias(TraitAlias),
-    Method(Method),
     Impl(Impl),
 
     Typedef(Typedef),
@@ -415,15 +413,9 @@ pub enum Abi {
     Other(String),
 }
 
+/// Represents a function (including methods and other associated functions)
 #[derive(Clone, Debug, PartialEq, Eq, Hash, Serialize, Deserialize)]
 pub struct Function {
-    pub decl: FnDecl,
-    pub generics: Generics,
-    pub header: Header,
-}
-
-#[derive(Clone, Debug, PartialEq, Eq, Hash, Serialize, Deserialize)]
-pub struct Method {
     pub decl: FnDecl,
     pub generics: Generics,
     pub header: Header,

@@ -17,7 +17,6 @@ pub(crate) enum Kind {
     Constant,
     Trait,
     TraitAlias,
-    Method,
     Impl,
     Static,
     ForeignType,
@@ -63,7 +62,6 @@ impl Kind {
             // Only in traits
             AssocConst => false,
             AssocType => false,
-            Method => false,
 
             StructField => false, // Only in structs or variants
             Variant => false,     // Only in enums
@@ -74,7 +72,7 @@ impl Kind {
         match self {
             Kind::AssocConst => true,
             Kind::AssocType => true,
-            Kind::Method => true,
+            Kind::Function => true,
 
             Kind::Module => false,
             Kind::ExternCrate => false,
@@ -84,7 +82,6 @@ impl Kind {
             Kind::Union => false,
             Kind::Enum => false,
             Kind::Variant => false,
-            Kind::Function => false,
             Kind::Typedef => false,
             Kind::OpaqueTy => false,
             Kind::Constant => false,
@@ -134,7 +131,6 @@ impl Kind {
             ItemEnum::Function(_) => Function,
             ItemEnum::Trait(_) => Trait,
             ItemEnum::TraitAlias(_) => TraitAlias,
-            ItemEnum::Method(_) => Method,
             ItemEnum::Impl(_) => Impl,
             ItemEnum::Typedef(_) => Typedef,
             ItemEnum::OpaqueTy(_) => OpaqueTy,
@@ -164,7 +160,6 @@ impl Kind {
             ItemKind::Import => Import,
             ItemKind::Keyword => Keyword,
             ItemKind::Macro => Macro,
-            ItemKind::Method => Method,
             ItemKind::Module => Module,
             ItemKind::OpaqueTy => OpaqueTy,
             ItemKind::Primitive => Primitive,
