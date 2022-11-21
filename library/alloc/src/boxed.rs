@@ -1,4 +1,4 @@
-//! The pointer type for heap allocation for an owned value of type `T`.
+//! The `Box<T>` type for heap allocation.
 //!
 //! [`Box<T>`], casually referred to as a 'box', provides the simplest form of
 //! heap allocation in Rust. Boxes provide ownership for this allocation, and
@@ -187,7 +187,7 @@ pub use thin::ThinBox;
 
 mod thin;
 
-/// A pointer type for heap allocation for an owned value of type `T`.
+/// A pointer type that uniquely owns a heap allocation of type `T`.
 ///
 /// See the [module-level documentation](../../std/boxed/index.html) for more.
 #[lang = "owned_box"]
