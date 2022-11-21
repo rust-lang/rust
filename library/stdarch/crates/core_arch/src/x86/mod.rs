@@ -835,17 +835,17 @@ pub use self::avx512vnni::*;
 mod avx512bitalg;
 pub use self::avx512bitalg::*;
 
-mod avx512gfni;
-pub use self::avx512gfni::*;
+mod gfni;
+pub use self::gfni::*;
 
 mod avx512vpopcntdq;
 pub use self::avx512vpopcntdq::*;
 
-mod avx512vaes;
-pub use self::avx512vaes::*;
+mod vaes;
+pub use self::vaes::*;
 
-mod avx512vpclmulqdq;
-pub use self::avx512vpclmulqdq::*;
+mod vpclmulqdq;
+pub use self::vpclmulqdq::*;
 
 mod bt;
 pub use self::bt::*;

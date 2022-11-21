@@ -17,7 +17,7 @@ macro_rules! features {
       @CFG: $cfg:meta;
       @MACRO_NAME: $macro_name:ident;
       @MACRO_ATTRS: $(#[$macro_attrs:meta])*
-      $(@BIND_FEATURE_NAME: $bind_feature:tt; $feature_impl:tt; )*
+      $(@BIND_FEATURE_NAME: $bind_feature:tt; $feature_impl:tt; $(#[$deprecate_attr:meta];)?)*
       $(@NO_RUNTIME_DETECTION: $nort_feature:tt; )*
       $(@FEATURE: #[$stability_attr:meta] $feature:ident: $feature_lit:tt;
           $(implied by target_features: [$($target_feature_lit:tt),*];)?
@@ -35,7 +35,15 @@ macro_rules! features {
                 };
             )*
             $(
-                ($bind_feature) => { $crate::$macro_name!($feature_impl) };
+                ($bind_feature) => {
+                    {
+                        $(
+                            #[$deprecate_attr] macro_rules! deprecated_feature { {} => {}; }
+                            deprecated_feature! {};
+                        )?
+                        $crate::$macro_name!($feature_impl)
+                    }
+                };
             )*
             $(
                 ($nort_feature) => {

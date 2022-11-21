@@ -65,7 +65,7 @@ extern "C" {
 ///
 /// [Intel's documentation](https://software.intel.com/sites/landingpage/IntrinsicsGuide/#text=_mm512_gf2p8mul_epi8)
 #[inline]
-#[target_feature(enable = "avx512gfni,avx512bw,avx512f")]
+#[target_feature(enable = "gfni,avx512bw,avx512f")]
 #[cfg_attr(test, assert_instr(vgf2p8mulb))]
 pub unsafe fn _mm512_gf2p8mul_epi8(a: __m512i, b: __m512i) -> __m512i {
     transmute(vgf2p8mulb_512(a.as_i8x64(), b.as_i8x64()))
@@ -80,7 +80,7 @@ pub unsafe fn _mm512_gf2p8mul_epi8(a: __m512i, b: __m512i) -> __m512i {
 ///
 /// [Intel's documentation](https://software.intel.com/sites/landingpage/IntrinsicsGuide/#text=_mm512_mask_gf2p8mul_epi8)
 #[inline]
-#[target_feature(enable = "avx512gfni,avx512bw,avx512f")]
+#[target_feature(enable = "gfni,avx512bw,avx512f")]
 #[cfg_attr(test, assert_instr(vgf2p8mulb))]
 pub unsafe fn _mm512_mask_gf2p8mul_epi8(
     src: __m512i,
@@ -104,7 +104,7 @@ pub unsafe fn _mm512_mask_gf2p8mul_epi8(
 ///
 /// [Intel's documentation](https://software.intel.com/sites/landingpage/IntrinsicsGuide/#text=_mm512_maskz_gf2p8mul_epi8)
 #[inline]
-#[target_feature(enable = "avx512gfni,avx512bw,avx512f")]
+#[target_feature(enable = "gfni,avx512bw,avx512f")]
 #[cfg_attr(test, assert_instr(vgf2p8mulb))]
 pub unsafe fn _mm512_maskz_gf2p8mul_epi8(k: __mmask64, a: __m512i, b: __m512i) -> __m512i {
     let zero = _mm512_setzero_si512().as_i8x64();
@@ -121,7 +121,7 @@ pub unsafe fn _mm512_maskz_gf2p8mul_epi8(k: __mmask64, a: __m512i, b: __m512i) -
 ///
 /// [Intel's documentation](https://software.intel.com/sites/landingpage/IntrinsicsGuide/#text=_mm256_gf2p8mul_epi8)
 #[inline]
-#[target_feature(enable = "avx512gfni,avx")]
+#[target_feature(enable = "gfni,avx")]
 #[cfg_attr(test, assert_instr(vgf2p8mulb))]
 pub unsafe fn _mm256_gf2p8mul_epi8(a: __m256i, b: __m256i) -> __m256i {
     transmute(vgf2p8mulb_256(a.as_i8x32(), b.as_i8x32()))
@@ -136,7 +136,7 @@ pub unsafe fn _mm256_gf2p8mul_epi8(a: __m256i, b: __m256i) -> __m256i {
 ///
 /// [Intel's documentation](https://software.intel.com/sites/landingpage/IntrinsicsGuide/#text=_mm256_mask_gf2p8mul_epi8)
 #[inline]
-#[target_feature(enable = "avx512gfni,avx512bw,avx512vl")]
+#[target_feature(enable = "gfni,avx512bw,avx512vl")]
 #[cfg_attr(test, assert_instr(vgf2p8mulb))]
 pub unsafe fn _mm256_mask_gf2p8mul_epi8(
     src: __m256i,
@@ -160,7 +160,7 @@ pub unsafe fn _mm256_mask_gf2p8mul_epi8(
 ///
 /// [Intel's documentation](https://software.intel.com/sites/landingpage/IntrinsicsGuide/#text=_mm256_maskz_gf2p8mul_epi8)
 #[inline]
-#[target_feature(enable = "avx512gfni,avx512bw,avx512vl")]
+#[target_feature(enable = "gfni,avx512bw,avx512vl")]
 #[cfg_attr(test, assert_instr(vgf2p8mulb))]
 pub unsafe fn _mm256_maskz_gf2p8mul_epi8(k: __mmask32, a: __m256i, b: __m256i) -> __m256i {
     let zero = _mm256_setzero_si256().as_i8x32();
@@ -177,7 +177,7 @@ pub unsafe fn _mm256_maskz_gf2p8mul_epi8(k: __mmask32, a: __m256i, b: __m256i) -
 ///
 /// [Intel's documentation](https://software.intel.com/sites/landingpage/IntrinsicsGuide/#text=_mm_gf2p8mul_epi8)
 #[inline]
-#[target_feature(enable = "avx512gfni")]
+#[target_feature(enable = "gfni")]
 #[cfg_attr(test, assert_instr(gf2p8mulb))]
 pub unsafe fn _mm_gf2p8mul_epi8(a: __m128i, b: __m128i) -> __m128i {
     transmute(vgf2p8mulb_128(a.as_i8x16(), b.as_i8x16()))
@@ -192,7 +192,7 @@ pub unsafe fn _mm_gf2p8mul_epi8(a: __m128i, b: __m128i) -> __m128i {
 ///
 /// [Intel's documentation](https://software.intel.com/sites/landingpage/IntrinsicsGuide/#text=_mm_mask_gf2p8mul_epi8)
 #[inline]
-#[target_feature(enable = "avx512gfni,avx512bw,avx512vl")]
+#[target_feature(enable = "gfni,avx512bw,avx512vl")]
 #[cfg_attr(test, assert_instr(vgf2p8mulb))]
 pub unsafe fn _mm_mask_gf2p8mul_epi8(
     src: __m128i,
@@ -216,7 +216,7 @@ pub unsafe fn _mm_mask_gf2p8mul_epi8(
 ///
 /// [Intel's documentation](https://software.intel.com/sites/landingpage/IntrinsicsGuide/#text=_mm_maskz_gf2p8mul_epi8)
 #[inline]
-#[target_feature(enable = "avx512gfni,avx512bw,avx512vl")]
+#[target_feature(enable = "gfni,avx512bw,avx512vl")]
 #[cfg_attr(test, assert_instr(vgf2p8mulb))]
 pub unsafe fn _mm_maskz_gf2p8mul_epi8(k: __mmask16, a: __m128i, b: __m128i) -> __m128i {
     let zero = _mm_setzero_si128().as_i8x16();
@@ -234,7 +234,7 @@ pub unsafe fn _mm_maskz_gf2p8mul_epi8(k: __mmask16, a: __m128i, b: __m128i) -> _
 ///
 /// [Intel's documentation](https://software.intel.com/sites/landingpage/IntrinsicsGuide/#text=_mm512_gf2p8affine_epi8)
 #[inline]
-#[target_feature(enable = "avx512gfni,avx512bw,avx512f")]
+#[target_feature(enable = "gfni,avx512bw,avx512f")]
 #[cfg_attr(test, assert_instr(vgf2p8affineqb, B = 0))]
 #[rustc_legacy_const_generics(2)]
 pub unsafe fn _mm512_gf2p8affine_epi64_epi8<const B: i32>(x: __m512i, a: __m512i) -> __m512i {
@@ -256,7 +256,7 @@ pub unsafe fn _mm512_gf2p8affine_epi64_epi8<const B: i32>(x: __m512i, a: __m512i
 ///
 /// [Intel's documentation](https://software.intel.com/sites/landingpage/IntrinsicsGuide/#text=_mm512_maskz_gf2p8affine_epi8)
 #[inline]
-#[target_feature(enable = "avx512gfni,avx512bw,avx512f")]
+#[target_feature(enable = "gfni,avx512bw,avx512f")]
 #[cfg_attr(test, assert_instr(vgf2p8affineqb, B = 0))]
 #[rustc_legacy_const_generics(3)]
 pub unsafe fn _mm512_maskz_gf2p8affine_epi64_epi8<const B: i32>(
@@ -283,7 +283,7 @@ pub unsafe fn _mm512_maskz_gf2p8affine_epi64_epi8<const B: i32>(
 ///
 /// [Intel's documentation](https://software.intel.com/sites/landingpage/IntrinsicsGuide/#text=_mm512_mask_gf2p8affine_epi8)
 #[inline]
-#[target_feature(enable = "avx512gfni,avx512bw,avx512f")]
+#[target_feature(enable = "gfni,avx512bw,avx512f")]
 #[cfg_attr(test, assert_instr(vgf2p8affineqb, B = 0))]
 #[rustc_legacy_const_generics(4)]
 pub unsafe fn _mm512_mask_gf2p8affine_epi64_epi8<const B: i32>(
@@ -307,7 +307,7 @@ pub unsafe fn _mm512_mask_gf2p8affine_epi64_epi8<const B: i32>(
 ///
 /// [Intel's documentation](https://software.intel.com/sites/landingpage/IntrinsicsGuide/#text=_mm256_gf2p8affine_epi8)
 #[inline]
-#[target_feature(enable = "avx512gfni,avx")]
+#[target_feature(enable = "gfni,avx")]
 #[cfg_attr(test, assert_instr(vgf2p8affineqb, B = 0))]
 #[rustc_legacy_const_generics(2)]
 pub unsafe fn _mm256_gf2p8affine_epi64_epi8<const B: i32>(x: __m256i, a: __m256i) -> __m256i {
@@ -329,7 +329,7 @@ pub unsafe fn _mm256_gf2p8affine_epi64_epi8<const B: i32>(x: __m256i, a: __m256i
 ///
 /// [Intel's documentation](https://software.intel.com/sites/landingpage/IntrinsicsGuide/#text=_mm256_maskz_gf2p8affine_epi8)
 #[inline]
-#[target_feature(enable = "avx512gfni,avx512bw,avx512vl")]
+#[target_feature(enable = "gfni,avx512bw,avx512vl")]
 #[cfg_attr(test, assert_instr(vgf2p8affineqb, B = 0))]
 #[rustc_legacy_const_generics(3)]
 pub unsafe fn _mm256_maskz_gf2p8affine_epi64_epi8<const B: i32>(
@@ -356,7 +356,7 @@ pub unsafe fn _mm256_maskz_gf2p8affine_epi64_epi8<const B: i32>(
 ///
 /// [Intel's documentation](https://software.intel.com/sites/landingpage/IntrinsicsGuide/#text=_mm256_mask_gf2p8affine_epi8)
 #[inline]
-#[target_feature(enable = "avx512gfni,avx512bw,avx512vl")]
+#[target_feature(enable = "gfni,avx512bw,avx512vl")]
 #[cfg_attr(test, assert_instr(vgf2p8affineqb, B = 0))]
 #[rustc_legacy_const_generics(4)]
 pub unsafe fn _mm256_mask_gf2p8affine_epi64_epi8<const B: i32>(
@@ -380,7 +380,7 @@ pub unsafe fn _mm256_mask_gf2p8affine_epi64_epi8<const B: i32>(
 ///
 /// [Intel's documentation](https://software.intel.com/sites/landingpage/IntrinsicsGuide/#text=_mm_gf2p8affine_epi8)
 #[inline]
-#[target_feature(enable = "avx512gfni")]
+#[target_feature(enable = "gfni")]
 #[cfg_attr(test, assert_instr(gf2p8affineqb, B = 0))]
 #[rustc_legacy_const_generics(2)]
 pub unsafe fn _mm_gf2p8affine_epi64_epi8<const B: i32>(x: __m128i, a: __m128i) -> __m128i {
@@ -402,7 +402,7 @@ pub unsafe fn _mm_gf2p8affine_epi64_epi8<const B: i32>(x: __m128i, a: __m128i) -
 ///
 /// [Intel's documentation](https://software.intel.com/sites/landingpage/IntrinsicsGuide/#text=_mm_maskz_gf2p8affine_epi8)
 #[inline]
-#[target_feature(enable = "avx512gfni,avx512bw,avx512vl")]
+#[target_feature(enable = "gfni,avx512bw,avx512vl")]
 #[cfg_attr(test, assert_instr(vgf2p8affineqb, B = 0))]
 #[rustc_legacy_const_generics(3)]
 pub unsafe fn _mm_maskz_gf2p8affine_epi64_epi8<const B: i32>(
@@ -429,7 +429,7 @@ pub unsafe fn _mm_maskz_gf2p8affine_epi64_epi8<const B: i32>(
 ///
 /// [Intel's documentation](https://software.intel.com/sites/landingpage/IntrinsicsGuide/#text=_mm_mask_gf2p8affine_epi8)
 #[inline]
-#[target_feature(enable = "avx512gfni,avx512bw,avx512vl")]
+#[target_feature(enable = "gfni,avx512bw,avx512vl")]
 #[cfg_attr(test, assert_instr(vgf2p8affineqb, B = 0))]
 #[rustc_legacy_const_generics(4)]
 pub unsafe fn _mm_mask_gf2p8affine_epi64_epi8<const B: i32>(
@@ -455,7 +455,7 @@ pub unsafe fn _mm_mask_gf2p8affine_epi64_epi8<const B: i32>(
 ///
 /// [Intel's documentation](https://software.intel.com/sites/landingpage/IntrinsicsGuide/#text=_mm512_gf2p8affineinv_epi64_epi8)
 #[inline]
-#[target_feature(enable = "avx512gfni,avx512bw,avx512f")]
+#[target_feature(enable = "gfni,avx512bw,avx512f")]
 #[cfg_attr(test, assert_instr(vgf2p8affineinvqb, B = 0))]
 #[rustc_legacy_const_generics(2)]
 pub unsafe fn _mm512_gf2p8affineinv_epi64_epi8<const B: i32>(x: __m512i, a: __m512i) -> __m512i {
@@ -479,7 +479,7 @@ pub unsafe fn _mm512_gf2p8affineinv_epi64_epi8<const B: i32>(x: __m512i, a: __m5
 ///
 /// [Intel's documentation](https://software.intel.com/sites/landingpage/IntrinsicsGuide/#text=_mm512_maskz_gf2p8affineinv_epi64_epi8)
 #[inline]
-#[target_feature(enable = "avx512gfni,avx512bw,avx512f")]
+#[target_feature(enable = "gfni,avx512bw,avx512f")]
 #[cfg_attr(test, assert_instr(vgf2p8affineinvqb, B = 0))]
 #[rustc_legacy_const_generics(3)]
 pub unsafe fn _mm512_maskz_gf2p8affineinv_epi64_epi8<const B: i32>(
@@ -508,7 +508,7 @@ pub unsafe fn _mm512_maskz_gf2p8affineinv_epi64_epi8<const B: i32>(
 ///
 /// [Intel's documentation](https://software.intel.com/sites/landingpage/IntrinsicsGuide/#text=_mm512_mask_gf2p8affineinv_epi64_epi8)
 #[inline]
-#[target_feature(enable = "avx512gfni,avx512bw,avx512f")]
+#[target_feature(enable = "gfni,avx512bw,avx512f")]
 #[cfg_attr(test, assert_instr(vgf2p8affineinvqb, B = 0))]
 #[rustc_legacy_const_generics(4)]
 pub unsafe fn _mm512_mask_gf2p8affineinv_epi64_epi8<const B: i32>(
@@ -534,7 +534,7 @@ pub unsafe fn _mm512_mask_gf2p8affineinv_epi64_epi8<const B: i32>(
 ///
 /// [Intel's documentation](https://software.intel.com/sites/landingpage/IntrinsicsGuide/#text=_mm256_gf2p8affineinv_epi64_epi8)
 #[inline]
-#[target_feature(enable = "avx512gfni,avx")]
+#[target_feature(enable = "gfni,avx")]
 #[cfg_attr(test, assert_instr(vgf2p8affineinvqb, B = 0))]
 #[rustc_legacy_const_generics(2)]
 pub unsafe fn _mm256_gf2p8affineinv_epi64_epi8<const B: i32>(x: __m256i, a: __m256i) -> __m256i {
@@ -558,7 +558,7 @@ pub unsafe fn _mm256_gf2p8affineinv_epi64_epi8<const B: i32>(x: __m256i, a: __m2
 ///
 /// [Intel's documentation](https://software.intel.com/sites/landingpage/IntrinsicsGuide/#text=_mm256_maskz_gf2p8affineinv_epi64_epi8)
 #[inline]
-#[target_feature(enable = "avx512gfni,avx512bw,avx512vl")]
+#[target_feature(enable = "gfni,avx512bw,avx512vl")]
 #[cfg_attr(test, assert_instr(vgf2p8affineinvqb, B = 0))]
 #[rustc_legacy_const_generics(3)]
 pub unsafe fn _mm256_maskz_gf2p8affineinv_epi64_epi8<const B: i32>(
@@ -587,7 +587,7 @@ pub unsafe fn _mm256_maskz_gf2p8affineinv_epi64_epi8<const B: i32>(
 ///
 /// [Intel's documentation](https://software.intel.com/sites/landingpage/IntrinsicsGuide/#text=_mm256_mask_gf2p8affineinv_epi64_epi8)
 #[inline]
-#[target_feature(enable = "avx512gfni,avx512bw,avx512vl")]
+#[target_feature(enable = "gfni,avx512bw,avx512vl")]
 #[cfg_attr(test, assert_instr(vgf2p8affineinvqb, B = 0))]
 #[rustc_legacy_const_generics(4)]
 pub unsafe fn _mm256_mask_gf2p8affineinv_epi64_epi8<const B: i32>(
@@ -613,7 +613,7 @@ pub unsafe fn _mm256_mask_gf2p8affineinv_epi64_epi8<const B: i32>(
 ///
 /// [Intel's documentation](https://software.intel.com/sites/landingpage/IntrinsicsGuide/#text=_mm_gf2p8affineinv_epi64_epi8)
 #[inline]
-#[target_feature(enable = "avx512gfni")]
+#[target_feature(enable = "gfni")]
 #[cfg_attr(test, assert_instr(gf2p8affineinvqb, B = 0))]
 #[rustc_legacy_const_generics(2)]
 pub unsafe fn _mm_gf2p8affineinv_epi64_epi8<const B: i32>(x: __m128i, a: __m128i) -> __m128i {
@@ -637,7 +637,7 @@ pub unsafe fn _mm_gf2p8affineinv_epi64_epi8<const B: i32>(x: __m128i, a: __m128i
 ///
 /// [Intel's documentation](https://software.intel.com/sites/landingpage/IntrinsicsGuide/#text=_mm_maskz_gf2p8affineinv_epi64_epi8)
 #[inline]
-#[target_feature(enable = "avx512gfni,avx512bw,avx512vl")]
+#[target_feature(enable = "gfni,avx512bw,avx512vl")]
 #[cfg_attr(test, assert_instr(vgf2p8affineinvqb, B = 0))]
 #[rustc_legacy_const_generics(3)]
 pub unsafe fn _mm_maskz_gf2p8affineinv_epi64_epi8<const B: i32>(
@@ -666,7 +666,7 @@ pub unsafe fn _mm_maskz_gf2p8affineinv_epi64_epi8<const B: i32>(
 ///
 /// [Intel's documentation](https://software.intel.com/sites/landingpage/IntrinsicsGuide/#text=_mm_mask_gf2p8affineinv_epi64_epi8)
 #[inline]
-#[target_feature(enable = "avx512gfni,avx512bw,avx512vl")]
+#[target_feature(enable = "gfni,avx512bw,avx512vl")]
 #[cfg_attr(test, assert_instr(vgf2p8affineinvqb, B = 0))]
 #[rustc_legacy_const_generics(4)]
 pub unsafe fn _mm_mask_gf2p8affineinv_epi64_epi8<const B: i32>(
@@ -847,7 +847,7 @@ mod tests {
         _mm512_loadu_si512(black_box(pointer))
     }
 
-    #[simd_test(enable = "avx512gfni,avx512bw")]
+    #[simd_test(enable = "gfni,avx512bw")]
     unsafe fn test_mm512_gf2p8mul_epi8() {
         let (left, right, expected) = generate_byte_mul_test_data();
 
@@ -860,7 +860,7 @@ mod tests {
         }
     }
 
-    #[simd_test(enable = "avx512gfni,avx512bw")]
+    #[simd_test(enable = "gfni,avx512bw")]
     unsafe fn test_mm512_maskz_gf2p8mul_epi8() {
         let (left, right, _expected) = generate_byte_mul_test_data();
 
@@ -879,7 +879,7 @@ mod tests {
         }
     }
 
-    #[simd_test(enable = "avx512gfni,avx512bw")]
+    #[simd_test(enable = "gfni,avx512bw")]
     unsafe fn test_mm512_mask_gf2p8mul_epi8() {
         let (left, right, _expected) = generate_byte_mul_test_data();
 
@@ -897,7 +897,7 @@ mod tests {
         }
     }
 
-    #[simd_test(enable = "avx512gfni,avx512bw,avx512vl")]
+    #[simd_test(enable = "gfni,avx512bw,avx512vl")]
     unsafe fn test_mm256_gf2p8mul_epi8() {
         let (left, right, expected) = generate_byte_mul_test_data();
 
@@ -910,7 +910,7 @@ mod tests {
         }
     }
 
-    #[simd_test(enable = "avx512gfni,avx512bw,avx512vl")]
+    #[simd_test(enable = "gfni,avx512bw,avx512vl")]
     unsafe fn test_mm256_maskz_gf2p8mul_epi8() {
         let (left, right, _expected) = generate_byte_mul_test_data();
 
@@ -929,7 +929,7 @@ mod tests {
         }
     }
 
-    #[simd_test(enable = "avx512gfni,avx512bw,avx512vl")]
+    #[simd_test(enable = "gfni,avx512bw,avx512vl")]
     unsafe fn test_mm256_mask_gf2p8mul_epi8() {
         let (left, right, _expected) = generate_byte_mul_test_data();
 
@@ -947,7 +947,7 @@ mod tests {
         }
     }
 
-    #[simd_test(enable = "avx512gfni,avx512bw,avx512vl")]
+    #[simd_test(enable = "gfni,avx512bw,avx512vl")]
     unsafe fn test_mm_gf2p8mul_epi8() {
         let (left, right, expected) = generate_byte_mul_test_data();
 
@@ -960,7 +960,7 @@ mod tests {
         }
     }
 
-    #[simd_test(enable = "avx512gfni,avx512bw,avx512vl")]
+    #[simd_test(enable = "gfni,avx512bw,avx512vl")]
     unsafe fn test_mm_maskz_gf2p8mul_epi8() {
         let (left, right, _expected) = generate_byte_mul_test_data();
 
@@ -979,7 +979,7 @@ mod tests {
         }
     }
 
-    #[simd_test(enable = "avx512gfni,avx512bw,avx512vl")]
+    #[simd_test(enable = "gfni,avx512bw,avx512vl")]
     unsafe fn test_mm_mask_gf2p8mul_epi8() {
         let (left, right, _expected) = generate_byte_mul_test_data();
 
@@ -997,7 +997,7 @@ mod tests {
         }
     }
 
-    #[simd_test(enable = "avx512gfni,avx512bw")]
+    #[simd_test(enable = "gfni,avx512bw")]
     unsafe fn test_mm512_gf2p8affine_epi64_epi8() {
         let identity: i64 = 0x01_02_04_08_10_20_40_80;
         const IDENTITY_BYTE: i32 = 0;
@@ -1031,7 +1031,7 @@ mod tests {
         }
     }
 
-    #[simd_test(enable = "avx512gfni,avx512bw")]
+    #[simd_test(enable = "gfni,avx512bw")]
     unsafe fn test_mm512_maskz_gf2p8affine_epi64_epi8() {
         const CONSTANT_BYTE: i32 = 0x63;
         let (matrices, vectors, _expected) = generate_affine_mul_test_data(CONSTANT_BYTE as u8);
@@ -1053,7 +1053,7 @@ mod tests {
         }
     }
 
-    #[simd_test(enable = "avx512gfni,avx512bw")]
+    #[simd_test(enable = "gfni,avx512bw")]
     unsafe fn test_mm512_mask_gf2p8affine_epi64_epi8() {
         const CONSTANT_BYTE: i32 = 0x63;
         let (matrices, vectors, _expected) = generate_affine_mul_test_data(CONSTANT_BYTE as u8);
@@ -1074,7 +1074,7 @@ mod tests {
         }
     }
 
-    #[simd_test(enable = "avx512gfni,avx512bw,avx512vl")]
+    #[simd_test(enable = "gfni,avx512bw,avx512vl")]
     unsafe fn test_mm256_gf2p8affine_epi64_epi8() {
         let identity: i64 = 0x01_02_04_08_10_20_40_80;
         const IDENTITY_BYTE: i32 = 0;
@@ -1108,7 +1108,7 @@ mod tests {
         }
     }
 
-    #[simd_test(enable = "avx512gfni,avx512bw,avx512vl")]
+    #[simd_test(enable = "gfni,avx512bw,avx512vl")]
     unsafe fn test_mm256_maskz_gf2p8affine_epi64_epi8() {
         const CONSTANT_BYTE: i32 = 0x63;
         let (matrices, vectors, _expected) = generate_affine_mul_test_data(CONSTANT_BYTE as u8);
@@ -1130,7 +1130,7 @@ mod tests {
         }
     }
 
-    #[simd_test(enable = "avx512gfni,avx512bw,avx512vl")]
+    #[simd_test(enable = "gfni,avx512bw,avx512vl")]
     unsafe fn test_mm256_mask_gf2p8affine_epi64_epi8() {
         const CONSTANT_BYTE: i32 = 0x63;
         let (matrices, vectors, _expected) = generate_affine_mul_test_data(CONSTANT_BYTE as u8);
@@ -1151,7 +1151,7 @@ mod tests {
         }
     }
 
-    #[simd_test(enable = "avx512gfni,avx512bw,avx512vl")]
+    #[simd_test(enable = "gfni,avx512bw,avx512vl")]
     unsafe fn test_mm_gf2p8affine_epi64_epi8() {
         let identity: i64 = 0x01_02_04_08_10_20_40_80;
         const IDENTITY_BYTE: i32 = 0;
@@ -1185,7 +1185,7 @@ mod tests {
         }
     }
 
-    #[simd_test(enable = "avx512gfni,avx512bw,avx512vl")]
+    #[simd_test(enable = "gfni,avx512bw,avx512vl")]
     unsafe fn test_mm_maskz_gf2p8affine_epi64_epi8() {
         const CONSTANT_BYTE: i32 = 0x63;
         let (matrices, vectors, _expected) = generate_affine_mul_test_data(CONSTANT_BYTE as u8);
@@ -1206,7 +1206,7 @@ mod tests {
         }
     }
 
-    #[simd_test(enable = "avx512gfni,avx512bw,avx512vl")]
+    #[simd_test(enable = "gfni,avx512bw,avx512vl")]
     unsafe fn test_mm_mask_gf2p8affine_epi64_epi8() {
         const CONSTANT_BYTE: i32 = 0x63;
         let (matrices, vectors, _expected) = generate_affine_mul_test_data(CONSTANT_BYTE as u8);
@@ -1227,7 +1227,7 @@ mod tests {
         }
     }
 
-    #[simd_test(enable = "avx512gfni,avx512bw")]
+    #[simd_test(enable = "gfni,avx512bw")]
     unsafe fn test_mm512_gf2p8affineinv_epi64_epi8() {
         let identity: i64 = 0x01_02_04_08_10_20_40_80;
         const IDENTITY_BYTE: i32 = 0;
@@ -1271,7 +1271,7 @@ mod tests {
         }
     }
 
-    #[simd_test(enable = "avx512gfni,avx512bw")]
+    #[simd_test(enable = "gfni,avx512bw")]
     unsafe fn test_mm512_maskz_gf2p8affineinv_epi64_epi8() {
         const CONSTANT_BYTE: i32 = 0x63;
         let (matrices, vectors, _expected) = generate_affine_mul_test_data(CONSTANT_BYTE as u8);
@@ -1293,7 +1293,7 @@ mod tests {
         }
     }
 
-    #[simd_test(enable = "avx512gfni,avx512bw")]
+    #[simd_test(enable = "gfni,avx512bw")]
     unsafe fn test_mm512_mask_gf2p8affineinv_epi64_epi8() {
         const CONSTANT_BYTE: i32 = 0x63;
         let (matrices, vectors, _expected) = generate_affine_mul_test_data(CONSTANT_BYTE as u8);
@@ -1315,7 +1315,7 @@ mod tests {
         }
     }
 
-    #[simd_test(enable = "avx512gfni,avx512bw,avx512vl")]
+    #[simd_test(enable = "gfni,avx512bw,avx512vl")]
     unsafe fn test_mm256_gf2p8affineinv_epi64_epi8() {
         let identity: i64 = 0x01_02_04_08_10_20_40_80;
         const IDENTITY_BYTE: i32 = 0;
@@ -1359,7 +1359,7 @@ mod tests {
         }
     }
 
-    #[simd_test(enable = "avx512gfni,avx512bw,avx512vl")]
+    #[simd_test(enable = "gfni,avx512bw,avx512vl")]
     unsafe fn test_mm256_maskz_gf2p8affineinv_epi64_epi8() {
         const CONSTANT_BYTE: i32 = 0x63;
         let (matrices, vectors, _expected) = generate_affine_mul_test_data(CONSTANT_BYTE as u8);
@@ -1381,7 +1381,7 @@ mod tests {
         }
     }
 
-    #[simd_test(enable = "avx512gfni,avx512bw,avx512vl")]
+    #[simd_test(enable = "gfni,avx512bw,avx512vl")]
     unsafe fn test_mm256_mask_gf2p8affineinv_epi64_epi8() {
         const CONSTANT_BYTE: i32 = 0x63;
         let (matrices, vectors, _expected) = generate_affine_mul_test_data(CONSTANT_BYTE as u8);
@@ -1403,7 +1403,7 @@ mod tests {
         }
     }
 
-    #[simd_test(enable = "avx512gfni,avx512bw,avx512vl")]
+    #[simd_test(enable = "gfni,avx512bw,avx512vl")]
     unsafe fn test_mm_gf2p8affineinv_epi64_epi8() {
         let identity: i64 = 0x01_02_04_08_10_20_40_80;
         const IDENTITY_BYTE: i32 = 0;
@@ -1447,7 +1447,7 @@ mod tests {
         }
     }
 
-    #[simd_test(enable = "avx512gfni,avx512bw,avx512vl")]
+    #[simd_test(enable = "gfni,avx512bw,avx512vl")]
     unsafe fn test_mm_maskz_gf2p8affineinv_epi64_epi8() {
         const CONSTANT_BYTE: i32 = 0x63;
         let (matrices, vectors, _expected) = generate_affine_mul_test_data(CONSTANT_BYTE as u8);
@@ -1469,7 +1469,7 @@ mod tests {
         }
     }
 
-    #[simd_test(enable = "avx512gfni,avx512bw,avx512vl")]
+    #[simd_test(enable = "gfni,avx512bw,avx512vl")]
     unsafe fn test_mm_mask_gf2p8affineinv_epi64_epi8() {
         const CONSTANT_BYTE: i32 = 0x63;
         let (matrices, vectors, _expected) = generate_affine_mul_test_data(CONSTANT_BYTE as u8);

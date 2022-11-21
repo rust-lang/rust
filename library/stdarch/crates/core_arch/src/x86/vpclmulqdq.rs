@@ -32,7 +32,7 @@ extern "C" {
 ///
 /// [Intel's documentation](https://software.intel.com/sites/landingpage/IntrinsicsGuide/#text=_mm512_clmulepi64_epi128)
 #[inline]
-#[target_feature(enable = "avx512vpclmulqdq,avx512f")]
+#[target_feature(enable = "vpclmulqdq,avx512f")]
 // technically according to Intel's documentation we don't need avx512f here, however LLVM gets confused otherwise
 #[cfg_attr(test, assert_instr(vpclmul, IMM8 = 0))]
 #[rustc_legacy_const_generics(2)]
@@ -50,7 +50,7 @@ pub unsafe fn _mm512_clmulepi64_epi128<const IMM8: i32>(a: __m512i, b: __m512i) 
 ///
 /// [Intel's documentation](https://software.intel.com/sites/landingpage/IntrinsicsGuide/#text=_mm256_clmulepi64_epi128)
 #[inline]
-#[target_feature(enable = "avx512vpclmulqdq")]
+#[target_feature(enable = "vpclmulqdq")]
 #[cfg_attr(test, assert_instr(vpclmul, IMM8 = 0))]
 #[rustc_legacy_const_generics(2)]
 pub unsafe fn _mm256_clmulepi64_epi128<const IMM8: i32>(a: __m256i, b: __m256i) -> __m256i {
@@ -121,7 +121,7 @@ mod tests {
 
     // this function tests one of the possible 4 instances
     // with different inputs across lanes
-    #[target_feature(enable = "avx512vpclmulqdq,avx512f")]
+    #[target_feature(enable = "vpclmulqdq,avx512f")]
     unsafe fn verify_512_helper(
         linear: unsafe fn(__m128i, __m128i) -> __m128i,
         vectorized: unsafe fn(__m512i, __m512i) -> __m512i,
@@ -162,7 +162,7 @@ mod tests {
 
     // this function tests one of the possible 4 instances
     // with different inputs across lanes for the VL version
-    #[target_feature(enable = "avx512vpclmulqdq,avx512vl")]
+    #[target_feature(enable = "vpclmulqdq,avx512vl")]
     unsafe fn verify_256_helper(
         linear: unsafe fn(__m128i, __m128i) -> __m128i,
         vectorized: unsafe fn(__m256i, __m256i) -> __m256i,
@@ -204,7 +204,7 @@ mod tests {
         unroll! {assert_eq_m128i(_mm256_extracti128_si256::<2>(r),e_decomp[2]);}
     }
 
-    #[simd_test(enable = "avx512vpclmulqdq,avx512f")]
+    #[simd_test(enable = "vpclmulqdq,avx512f")]
     unsafe fn test_mm512_clmulepi64_epi128() {
         verify_kat_pclmul!(
             _mm512_broadcast_i32x4,
@@ -230,7 +230,7 @@ mod tests {
         );
     }
 
-    #[simd_test(enable = "avx512vpclmulqdq,avx512vl")]
+    #[simd_test(enable = "vpclmulqdq,avx512vl")]
     unsafe fn test_mm256_clmulepi64_epi128() {
         verify_kat_pclmul!(
             _mm256_broadcastsi128_si256,

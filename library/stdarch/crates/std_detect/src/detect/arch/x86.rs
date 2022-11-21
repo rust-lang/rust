@@ -68,9 +68,9 @@ features! {
     /// * `"avx512vbmi"`
     /// * `"avx512vpopcntdq"`
     /// * `"avx512vbmi2"`
-    /// * `"avx512gfni"`
-    /// * `"avx512vaes"`
-    /// * `"avx512vpclmulqdq"`
+    /// * `"gfni"`
+    /// * `"vaes"`
+    /// * `"vpclmulqdq"`
     /// * `"avx512vnni"`
     /// * `"avx512bitalg"`
     /// * `"avx512bf16"`
@@ -95,6 +95,9 @@ features! {
     /// [docs]: https://software.intel.com/sites/landingpage/IntrinsicsGuide
     #[stable(feature = "simd_x86", since = "1.27.0")]
     @BIND_FEATURE_NAME: "abm"; "lzcnt"; // abm is a synonym for lzcnt
+    @BIND_FEATURE_NAME: "avx512gfni"; "gfni"; #[deprecated(since = "1.67.0", note = "the `avx512gfni` feature has been renamed to `gfni`")];
+    @BIND_FEATURE_NAME: "avx512vaes"; "vaes"; #[deprecated(since = "1.67.0", note = "the `avx512vaes` feature has been renamed to `vaes`")];
+    @BIND_FEATURE_NAME: "avx512vpclmulqdq"; "vpclmulqdq"; #[deprecated(since = "1.67.0", note = "the `avx512vpclmulqdq` feature has been renamed to `vpclmulqdq`")];
     @FEATURE: #[stable(feature = "simd_x86", since = "1.27.0")] aes: "aes";
     /// AES (Advanced Encryption Standard New Instructions AES-NI)
     @FEATURE: #[stable(feature = "simd_x86", since = "1.27.0")] pclmulqdq: "pclmulqdq";
@@ -150,11 +153,11 @@ features! {
     /// Quadword)
     @FEATURE: #[stable(feature = "simd_x86", since = "1.27.0")] avx512vbmi2: "avx512vbmi2";
     /// AVX-512 VBMI2 (Additional byte, word, dword and qword capabilities)
-    @FEATURE: #[stable(feature = "simd_x86", since = "1.27.0")] avx512gfni: "avx512gfni";
+    @FEATURE: #[stable(feature = "simd_x86", since = "1.27.0")] gfni: "gfni";
     /// AVX-512 GFNI (Galois Field New Instruction)
-    @FEATURE: #[stable(feature = "simd_x86", since = "1.27.0")] avx512vaes: "avx512vaes";
+    @FEATURE: #[stable(feature = "simd_x86", since = "1.27.0")] vaes: "vaes";
     /// AVX-512 VAES (Vector AES instruction)
-    @FEATURE: #[stable(feature = "simd_x86", since = "1.27.0")] avx512vpclmulqdq: "avx512vpclmulqdq";
+    @FEATURE: #[stable(feature = "simd_x86", since = "1.27.0")] vpclmulqdq: "vpclmulqdq";
     /// AVX-512 VPCLMULQDQ (Vector PCLMULQDQ instructions)
     @FEATURE: #[stable(feature = "simd_x86", since = "1.27.0")] avx512vnni: "avx512vnni";
     /// AVX-512 VNNI (Vector Neural Network Instructions)

@@ -36,12 +36,9 @@ fn dump() {
         is_x86_feature_detected!("avx512vpopcntdq")
     );
     println!("avx512vbmi2 {:?}", is_x86_feature_detected!("avx512vbmi2"));
-    println!("avx512gfni {:?}", is_x86_feature_detected!("avx512gfni"));
-    println!("avx512vaes {:?}", is_x86_feature_detected!("avx512vaes"));
-    println!(
-        "avx512vpclmulqdq {:?}",
-        is_x86_feature_detected!("avx512vpclmulqdq")
-    );
+    println!("gfni {:?}", is_x86_feature_detected!("gfni"));
+    println!("vaes {:?}", is_x86_feature_detected!("vaes"));
+    println!("vpclmulqdq {:?}", is_x86_feature_detected!("vpclmulqdq"));
     println!("avx512vnni {:?}", is_x86_feature_detected!("avx512vnni"));
     println!(
         "avx512bitalg {:?}",
