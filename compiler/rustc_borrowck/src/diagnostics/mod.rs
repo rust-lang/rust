@@ -301,6 +301,16 @@ impl<'cx, 'tcx> MirBorrowckCtxt<'cx, 'tcx> {
         }
     }
 
+    /// We only suggest clone for `std::sync::Arc` and `std::rc::Rc` types.
+    fn suggest_using_clone(&self, ty: Ty<'tcx>) -> bool {
+        if let ty::Adt(adt, _) = ty.kind() &&
+            (self.infcx.tcx.is_diagnostic_item(sym::Arc, adt.did()) ||
+                self.infcx.tcx.is_diagnostic_item(sym::Rc, adt.did())) {
+                return true;
+            }
+        false
+    }
+
     /// End-user visible description of the `field`nth field of `base`
     fn describe_field(
         &self,
@@ -1029,6 +1039,7 @@ impl<'cx, 'tcx> MirBorrowckCtxt<'cx, 'tcx> {
         move_msg: &str,
         is_loop_move: bool,
         maybe_reinitialized_locations_is_empty: bool,
+        suggest_clone: bool,
     ) {
         if let UseSpans::FnSelfUse { var_span, fn_call_span, fn_span, kind } = move_spans {
             let place_name = self
@@ -1166,6 +1177,14 @@ impl<'cx, 'tcx> MirBorrowckCtxt<'cx, 'tcx> {
                     move_span,
                     format!("value {}moved{} here{}", partially_str, move_msg, loop_message),
                 );
+                if suggest_clone {
+                    err.span_suggestion_verbose(
+                        move_span.shrink_to_hi(),
+                        "consider cloning here",
+                        ".clone()",
+                        Applicability::MaybeIncorrect,
+                    );
+                }
             }
             // If the move error occurs due to a loop, don't show
             // another message for the same span

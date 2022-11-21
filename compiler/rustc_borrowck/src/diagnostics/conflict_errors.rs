@@ -130,6 +130,10 @@ impl<'cx, 'tcx> MirBorrowckCtxt<'cx, 'tcx> {
             let partial_str = if is_partial_move { "partial " } else { "" };
             let partially_str = if is_partial_move { "partially " } else { "" };
 
+            let mpi = self.move_data.moves[move_out_indices[0]].path;
+            let place = &self.move_data.move_paths[mpi].place;
+            let ty = place.ty(self.body, self.infcx.tcx).ty;
+
             let mut err = self.cannot_act_on_moved_value(
                 span,
                 desired_action.as_noun(),
@@ -186,6 +190,7 @@ impl<'cx, 'tcx> MirBorrowckCtxt<'cx, 'tcx> {
                 } else {
                     ""
                 };
+                let suggest_clone = self.suggest_using_clone(ty) && !move_spans.for_closure();
 
                 if location == move_out.source {
                     is_loop_move = true;
@@ -202,6 +207,7 @@ impl<'cx, 'tcx> MirBorrowckCtxt<'cx, 'tcx> {
                     move_msg,
                     is_loop_move,
                     maybe_reinitialized_locations.is_empty(),
+                    suggest_clone,
                 );
 
                 if let (UseSpans::PatUse(span), []) =
@@ -237,8 +243,8 @@ impl<'cx, 'tcx> MirBorrowckCtxt<'cx, 'tcx> {
                 );
             }
 
-            let ty = used_place.ty(self.body, self.infcx.tcx).ty;
-            let needs_note = match ty.kind() {
+            let used_ty = used_place.ty(self.body, self.infcx.tcx).ty;
+            let needs_note = match used_ty.kind() {
                 ty::Closure(id, _) => {
                     let tables = self.infcx.tcx.typeck(id.expect_local());
                     let hir_id = self.infcx.tcx.hir().local_def_id_to_hir_id(id.expect_local());
@@ -247,10 +253,6 @@ impl<'cx, 'tcx> MirBorrowckCtxt<'cx, 'tcx> {
                 }
                 _ => true,
             };
-
-            let mpi = self.move_data.moves[move_out_indices[0]].path;
-            let place = &self.move_data.move_paths[mpi].place;
-            let ty = place.ty(self.body, self.infcx.tcx).ty;
 
             // If we're in pattern, we do nothing in favor of the previous suggestion (#80913).
             // Same for if we're in a loop, see #101119.

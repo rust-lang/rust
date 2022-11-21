@@ -1,0 +1,76 @@
+error[E0382]: use of moved value: `x`
+  --> $DIR/issue-104232-suggest-clone.rs:9:10
+   |
+LL |     let x = Arc::new(1);
+   |         - move occurs because `x` has type `Arc<usize>`, which does not implement the `Copy` trait
+LL |     foo1(x);
+   |          - value moved here
+LL |     foo1(x);
+   |          ^ value used here after move
+   |
+help: consider cloning here
+   |
+LL |     foo1(x.clone());
+   |           ++++++++
+
+error[E0382]: use of moved value: `x`
+  --> $DIR/issue-104232-suggest-clone.rs:10:10
+   |
+LL |     let x = Arc::new(1);
+   |         - move occurs because `x` has type `Arc<usize>`, which does not implement the `Copy` trait
+LL |     foo1(x);
+LL |     foo1(x);
+   |          - value moved here
+LL |     bar1(x);
+   |          ^ value used here after move
+   |
+help: consider cloning here
+   |
+LL |     foo1(x.clone());
+   |           ++++++++
+
+error[E0382]: use of moved value: `x`
+  --> $DIR/issue-104232-suggest-clone.rs:18:10
+   |
+LL |     let x = Rc::new(1);
+   |         - move occurs because `x` has type `Rc<usize>`, which does not implement the `Copy` trait
+LL |     foo2(x);
+   |          - value moved here
+LL |     foo2(x);
+   |          ^ value used here after move
+   |
+help: consider cloning here
+   |
+LL |     foo2(x.clone());
+   |           ++++++++
+
+error[E0382]: use of moved value: `x`
+  --> $DIR/issue-104232-suggest-clone.rs:19:10
+   |
+LL |     let x = Rc::new(1);
+   |         - move occurs because `x` has type `Rc<usize>`, which does not implement the `Copy` trait
+LL |     foo2(x);
+LL |     foo2(x);
+   |          - value moved here
+LL |     bar2(x);
+   |          ^ value used here after move
+   |
+help: consider cloning here
+   |
+LL |     foo2(x.clone());
+   |           ++++++++
+
+error[E0382]: use of moved value: `x`
+  --> $DIR/issue-104232-suggest-clone.rs:26:28
+   |
+LL |     let x = Arc::new(1);
+   |         - move occurs because `x` has type `Arc<i32>`, which does not implement the `Copy` trait
+...
+LL |         std::thread::spawn(move || {
+   |                            ^^^^^^^ value moved into closure here, in previous iteration of loop
+LL |             println!("{}", x);
+   |                            - use occurs due to use in closure
+
+error: aborting due to 5 previous errors
+
+For more information about this error, try `rustc --explain E0382`.
