@@ -162,7 +162,7 @@ pub(crate) fn codegen_icmp_imm(
             }
         }
     } else {
-        let rhs = i64::try_from(rhs).expect("codegen_icmp_imm rhs out of range for <128bit int");
+        let rhs = rhs as i64; // Truncates on purpose in case rhs is actually an unsigned value
         fx.bcx.ins().icmp_imm(intcc, lhs, rhs)
     }
 }
