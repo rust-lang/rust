@@ -82,11 +82,24 @@ declare_clippy_lint! {
     "indexing/slicing usage"
 }
 
+#[derive(Copy, Clone)]
+pub struct IndexingSlicing {
+    suppress_lint_in_const: bool,
+}
+
+impl IndexingSlicing {
+    pub fn new(suppress_lint_in_const: bool) -> Self {
+        Self {
+            suppress_lint_in_const,
+        }
+    }
+}
+
 declare_lint_pass!(IndexingSlicing => [INDEXING_SLICING, OUT_OF_BOUNDS_INDEXING]);
 
 impl<'tcx> LateLintPass<'tcx> for IndexingSlicing {
     fn check_expr(&mut self, cx: &LateContext<'tcx>, expr: &'tcx Expr<'_>) {
-        if cx.tcx.hir().is_inside_const_context(expr.hir_id) {
+        if self.suppress_lint_in_const && cx.tcx.hir().is_inside_const_context(expr.hir_id) {
             return;
         }
 
@@ -146,7 +159,7 @@ impl<'tcx> LateLintPass<'tcx> for IndexingSlicing {
                 // Catchall non-range index, i.e., [n] or [n << m]
                 if let ty::Array(..) = ty.kind() {
                     // Index is a const block.
-                    if let ExprKind::ConstBlock(..) = index.kind {
+                    if self.suppress_lint_in_const && let ExprKind::ConstBlock(..) = index.kind {
                         return;
                     }
                     // Index is a constant uint.
@@ -191,7 +204,7 @@ fn to_const_range(cx: &LateContext<'_>, range: higher::Range<'_>, array_size: u1
             } else {
                 Some(x)
             }
-        },
+        }
         Some(_) => None,
         None => Some(array_size),
     };
