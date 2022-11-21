@@ -1,4 +1,3 @@
-use crate::build::expr::as_place::PlaceBase;
 use crate::build::expr::as_place::PlaceBuilder;
 use crate::build::matches::MatchPair;
 use crate::build::Builder;
@@ -18,70 +17,7 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
         subpatterns
             .iter()
             .map(|fieldpat| {
-                let place =
-                    place.clone_project(PlaceElem::Field(fieldpat.field, fieldpat.pattern.ty));
-                MatchPair::new(place, &fieldpat.pattern, self)
-            })
-            .collect()
-    }
-
-    #[instrument(skip(self), level = "debug")]
-    pub(crate) fn field_match_pairs_tuple_struct<'pat>(
-        &mut self,
-        place_builder: PlaceBuilder<'tcx>,
-        subpatterns: &'pat [FieldPat<'tcx>],
-    ) -> Vec<MatchPair<'pat, 'tcx>> {
-        let place_ty_and_variant_idx =
-            place_builder.try_compute_ty(&self.local_decls, self).map(|place_ty| {
-                (
-                    self.tcx.normalize_erasing_regions(self.param_env, place_ty.ty),
-                    place_ty.variant_index,
-                )
-            });
-        debug!(?place_ty_and_variant_idx);
-
-        subpatterns
-            .iter()
-            .map(|fieldpat| {
-                // NOTE: With type ascriptions it can happen that we get errors
-                // during borrow-checking on higher-ranked types if we use the
-                // ascribed type as the field type, so we try to get the actual field
-                // type from the `Place`, if possible, see issue #96514
-                let field_ty = if let Some((place_ty, opt_variant_idx)) = place_ty_and_variant_idx {
-                    let field_idx = fieldpat.field.as_usize();
-                    let field_ty = match place_ty.kind() {
-                        ty::Adt(adt_def, substs) if adt_def.is_enum() => {
-                            let variant_idx = opt_variant_idx.unwrap();
-                            adt_def.variant(variant_idx).fields[field_idx].ty(self.tcx, substs)
-                        }
-                        ty::Adt(adt_def, substs) => adt_def
-                            .all_fields()
-                            .nth(field_idx)
-                            .unwrap_or_else(|| {
-                                bug!(
-                                    "expected to take field idx {:?} of fields of {:?}",
-                                    field_idx,
-                                    adt_def
-                                )
-                            })
-                            .ty(self.tcx, substs),
-                        ty::Tuple(elems) => elems.iter().nth(field_idx).unwrap_or_else(|| {
-                            bug!("expected to take field idx {:?} of {:?}", field_idx, elems)
-                        }),
-                        _ => bug!(
-                            "no field available, place_ty: {:#?}, kind: {:?}",
-                            place_ty,
-                            place_ty.kind()
-                        ),
-                    };
-
-                    self.tcx.normalize_erasing_regions(self.param_env, field_ty)
-                } else {
-                    fieldpat.pattern.ty
-                };
-
-                let place = place_builder.clone().field(fieldpat.field, field_ty);
-                debug!(?place, ?field_ty);
+                let place = place.clone().field(self, fieldpat.field, fieldpat.pattern.ty);
 
                 MatchPair::new(place, &fieldpat.pattern, self)
             })
@@ -171,9 +107,10 @@ impl<'pat, 'tcx> MatchPair<'pat, 'tcx> {
 
         // Only add the OpaqueCast projection if the given place is an opaque type and the
         // expected type from the pattern is not.
-        let may_need_cast = match place.base() {
-            PlaceBase::Local(local) => {
-                let ty = Place::ty_from(local, place.projection(), &cx.local_decls, cx.tcx).ty;
+        let may_need_cast = match place {
+            PlaceBuilder::Local(local, _) => {
+                let ty =
+                    Place::ty_from(local, place.get_local_projection(), &cx.local_decls, cx.tcx).ty;
                 ty != pattern.ty && ty.has_opaque_types()
             }
             _ => true,

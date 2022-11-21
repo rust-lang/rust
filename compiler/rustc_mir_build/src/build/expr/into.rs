@@ -358,8 +358,10 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
                         .map(|(n, ty)| match fields_map.get(&n) {
                             Some(v) => v.clone(),
                             None => {
-                                let place = place_builder.clone_project(PlaceElem::Field(n, *ty));
-                                this.consume_by_copy_or_move(place.to_place(this))
+                                let place_builder = place_builder.clone();
+                                this.consume_by_copy_or_move(
+                                    place_builder.field(this, n, *ty).to_place(this),
+                                )
                             }
                         })
                         .collect()
