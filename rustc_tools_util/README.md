@@ -20,36 +20,29 @@ rustc_tools_util = "0.2.1"
 ````
 
 In `build.rs`, generate the data in your `main()`
-````rust
-fn main() {
-    println!(
-        "cargo:rustc-env=GIT_HASH={}",
-        rustc_tools_util::get_commit_hash().unwrap_or_default()
-    );
-    println!(
-        "cargo:rustc-env=COMMIT_DATE={}",
-        rustc_tools_util::get_commit_date().unwrap_or_default()
-    );
-    println!(
-        "cargo:rustc-env=RUSTC_RELEASE_CHANNEL={}",
-        rustc_tools_util::get_channel().unwrap_or_default()
-    );
-}
 
-````
+```rust
+fn main() {
+    rustc_tools_util::setup_version_info!();
+}
+```
 
 Use the version information in your main.rs
-````rust
-use rustc_tools_util::*;
 
+```rust
 fn show_version() {
     let version_info = rustc_tools_util::get_version_info!();
     println!("{}", version_info);
 }
-````
-This gives the following output in clippy:
-`clippy 0.0.212 (a416c5e 2018-12-14)`
+```
 
+This gives the following output in clippy:
+`clippy 0.1.66 (a28f3c8 2022-11-20)`
+
+## Repository
+
+This project is part of the rust-lang/rust-clippy repository. The source code
+can be found under `./rustc_tools_util/`.
 
 ## License
 

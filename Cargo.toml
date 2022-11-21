@@ -23,7 +23,7 @@ path = "src/driver.rs"
 [dependencies]
 clippy_lints = { path = "clippy_lints" }
 semver = "1.0"
-rustc_tools_util = "0.2.1"
+rustc_tools_util = {version = "0.2.1", path = "./rustc_tools_util"}
 tempfile = { version = "3.2", optional = true }
 termize = "0.1"
 
@@ -56,7 +56,7 @@ tokio = { version = "1", features = ["io-util"] }
 rustc-semver = "1.1"
 
 [build-dependencies]
-rustc_tools_util = "0.2.1"
+rustc_tools_util = {version = "0.2.1", path = "./rustc_tools_util"}
 
 [features]
 deny-warnings = ["clippy_lints/deny-warnings"]
