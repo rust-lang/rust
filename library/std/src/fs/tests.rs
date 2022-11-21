@@ -10,7 +10,7 @@ use crate::sys_common::io::test::{tmpdir, TempDir};
 use crate::thread;
 use crate::time::{Duration, Instant};
 
-use rand::{rngs::StdRng, RngCore, SeedableRng};
+use rand::RngCore;
 
 #[cfg(unix)]
 use crate::os::unix::fs::symlink as symlink_dir;
@@ -1181,7 +1181,7 @@ fn _assert_send_sync() {
 #[test]
 fn binary_file() {
     let mut bytes = [0; 1024];
-    StdRng::from_entropy().fill_bytes(&mut bytes);
+    crate::test_helpers::test_rng().fill_bytes(&mut bytes);
 
     let tmpdir = tmpdir();
 
@@ -1194,7 +1194,7 @@ fn binary_file() {
 #[test]
 fn write_then_read() {
     let mut bytes = [0; 1024];
-    StdRng::from_entropy().fill_bytes(&mut bytes);
+    crate::test_helpers::test_rng().fill_bytes(&mut bytes);
 
     let tmpdir = tmpdir();
 

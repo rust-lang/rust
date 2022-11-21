@@ -5,7 +5,7 @@ use crate::vec::Vec;
 use std::panic::{catch_unwind, AssertUnwindSafe};
 use std::thread;
 
-use rand::{thread_rng, RngCore};
+use rand::RngCore;
 
 #[test]
 fn test_basic() {
@@ -481,12 +481,12 @@ fn test_split_off_2() {
     }
 }
 
-fn fuzz_test(sz: i32) {
+fn fuzz_test(sz: i32, rng: &mut impl RngCore) {
     let mut m: LinkedList<_> = LinkedList::new();
     let mut v = vec![];
     for i in 0..sz {
         check_links(&m);
-        let r: u8 = thread_rng().next_u32() as u8;
+        let r: u8 = rng.next_u32() as u8;
         match r % 6 {
             0 => {
                 m.pop_back();
@@ -521,11 +521,12 @@ fn fuzz_test(sz: i32) {
 
 #[test]
 fn test_fuzz() {
+    let mut rng = crate::test_helpers::test_rng();
     for _ in 0..25 {
-        fuzz_test(3);
-        fuzz_test(16);
+        fuzz_test(3, &mut rng);
+        fuzz_test(16, &mut rng);
         #[cfg(not(miri))] // Miri is too slow
-        fuzz_test(189);
+        fuzz_test(189, &mut rng);
     }
 }
 
