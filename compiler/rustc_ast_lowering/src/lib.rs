@@ -66,9 +66,9 @@ use rustc_span::hygiene::MacroKind;
 use rustc_span::source_map::DesugaringKind;
 use rustc_span::symbol::{kw, sym, Ident, Symbol};
 use rustc_span::{Span, DUMMY_SP};
-
 use smallvec::SmallVec;
 use std::collections::hash_map::Entry;
+use thin_vec::ThinVec;
 
 macro_rules! arena_vec {
     ($this:expr; $($x:expr),*) => (
@@ -1207,7 +1207,7 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
             let (bounds, lifetime_bound) = self.with_dyn_type_scope(true, |this| {
                 let bound = this.lower_poly_trait_ref(
                     &PolyTraitRef {
-                        bound_generic_params: vec![],
+                        bound_generic_params: ThinVec::new(),
                         trait_ref: TraitRef { path: path.clone(), ref_id: t.id },
                         span: t.span
                     },

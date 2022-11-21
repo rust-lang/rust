@@ -384,7 +384,7 @@ impl GenericParam {
 /// a function, enum, trait, etc.
 #[derive(Clone, Encodable, Decodable, Debug)]
 pub struct Generics {
-    pub params: Vec<GenericParam>,
+    pub params: ThinVec<GenericParam>,
     pub where_clause: WhereClause,
     pub span: Span,
 }
@@ -392,7 +392,7 @@ pub struct Generics {
 impl Default for Generics {
     /// Creates an instance of `Generics`.
     fn default() -> Generics {
-        Generics { params: Vec::new(), where_clause: Default::default(), span: DUMMY_SP }
+        Generics { params: ThinVec::new(), where_clause: Default::default(), span: DUMMY_SP }
     }
 }
 
@@ -441,7 +441,7 @@ impl WherePredicate {
 pub struct WhereBoundPredicate {
     pub span: Span,
     /// Any generics from a `for` binding.
-    pub bound_generic_params: Vec<GenericParam>,
+    pub bound_generic_params: ThinVec<GenericParam>,
     /// The type being bounded.
     pub bounded_ty: P<Ty>,
     /// Trait and lifetime bounds (`Clone + Send + 'static`).
@@ -1169,7 +1169,7 @@ impl Expr {
     pub fn to_bound(&self) -> Option<GenericBound> {
         match &self.kind {
             ExprKind::Path(None, path) => Some(GenericBound::Trait(
-                PolyTraitRef::new(Vec::new(), path.clone(), self.span),
+                PolyTraitRef::new(ThinVec::new(), path.clone(), self.span),
                 TraitBoundModifier::None,
             )),
             _ => None,
@@ -1574,7 +1574,7 @@ pub enum ClosureBinder {
         /// for<'a, 'b> |_: &'a (), _: &'b ()| { ... }
         ///     ^^^^^^ -- this
         /// ```
-        generic_params: P<[GenericParam]>,
+        generic_params: ThinVec<GenericParam>,
     },
 }
 
@@ -2056,7 +2056,7 @@ impl Ty {
 pub struct BareFnTy {
     pub unsafety: Unsafe,
     pub ext: Extern,
-    pub generic_params: Vec<GenericParam>,
+    pub generic_params: ThinVec<GenericParam>,
     pub decl: P<FnDecl>,
     /// Span of the `fn(...) -> ...` part.
     pub decl_span: Span,
@@ -2636,7 +2636,7 @@ pub struct TraitRef {
 #[derive(Clone, Encodable, Decodable, Debug)]
 pub struct PolyTraitRef {
     /// The `'a` in `for<'a> Foo<&'a T>`.
-    pub bound_generic_params: Vec<GenericParam>,
+    pub bound_generic_params: ThinVec<GenericParam>,
 
     /// The `Foo<&'a T>` in `<'a> Foo<&'a T>`.
     pub trait_ref: TraitRef,
@@ -2645,7 +2645,7 @@ pub struct PolyTraitRef {
 }
 
 impl PolyTraitRef {
-    pub fn new(generic_params: Vec<GenericParam>, path: Path, span: Span) -> Self {
+    pub fn new(generic_params: ThinVec<GenericParam>, path: Path, span: Span) -> Self {
         PolyTraitRef {
             bound_generic_params: generic_params,
             trait_ref: TraitRef { path, ref_id: DUMMY_NODE_ID },
@@ -3115,15 +3115,15 @@ mod size_asserts {
     static_assert_size!(Block, 48);
     static_assert_size!(Expr, 72);
     static_assert_size!(ExprKind, 40);
-    static_assert_size!(Fn, 184);
+    static_assert_size!(Fn, 168);
     static_assert_size!(ForeignItem, 96);
     static_assert_size!(ForeignItemKind, 24);
     static_assert_size!(GenericArg, 24);
-    static_assert_size!(GenericBound, 72);
-    static_assert_size!(Generics, 72);
-    static_assert_size!(Impl, 184);
-    static_assert_size!(Item, 184);
-    static_assert_size!(ItemKind, 112);
+    static_assert_size!(GenericBound, 56);
+    static_assert_size!(Generics, 56);
+    static_assert_size!(Impl, 168);
+    static_assert_size!(Item, 168);
+    static_assert_size!(ItemKind, 96);
     static_assert_size!(LitKind, 24);
     static_assert_size!(Local, 72);
     static_assert_size!(MetaItemLit, 40);
