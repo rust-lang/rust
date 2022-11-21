@@ -1,13 +1,13 @@
 use clippy_utils::diagnostics::span_lint_and_sugg;
+use clippy_utils::msrvs::{self, Msrv};
 use clippy_utils::source::snippet;
 use clippy_utils::ty::is_type_diagnostic_item;
-use clippy_utils::{match_def_path, meets_msrv, msrvs, path_to_local_id, paths, peel_blocks};
+use clippy_utils::{match_def_path, path_to_local_id, paths, peel_blocks};
 use if_chain::if_chain;
 use rustc_errors::Applicability;
 use rustc_hir as hir;
 use rustc_lint::LateContext;
 use rustc_middle::ty;
-use rustc_semver::RustcVersion;
 use rustc_span::sym;
 
 use super::OPTION_AS_REF_DEREF;
@@ -19,9 +19,9 @@ pub(super) fn check(
     as_ref_recv: &hir::Expr<'_>,
     map_arg: &hir::Expr<'_>,
     is_mut: bool,
-    msrv: Option<RustcVersion>,
+    msrv: &Msrv,
 ) {
-    if !meets_msrv(msrv, msrvs::OPTION_AS_DEREF) {
+    if !msrv.meets(msrvs::OPTION_AS_DEREF) {
         return;
     }
 

@@ -1,10 +1,9 @@
 use clippy_utils::diagnostics::span_lint_and_then;
+use clippy_utils::msrvs::{self, Msrv};
 use clippy_utils::source::snippet;
-use clippy_utils::{meets_msrv, msrvs};
 use rustc_ast::ast::{Item, ItemKind, Ty, TyKind};
 use rustc_errors::Applicability;
 use rustc_lint::{EarlyContext, EarlyLintPass};
-use rustc_semver::RustcVersion;
 use rustc_session::{declare_tool_lint, impl_lint_pass};
 
 declare_clippy_lint! {
@@ -34,12 +33,12 @@ declare_clippy_lint! {
 }
 
 pub struct RedundantStaticLifetimes {
-    msrv: Option<RustcVersion>,
+    msrv: Msrv,
 }
 
 impl RedundantStaticLifetimes {
     #[must_use]
-    pub fn new(msrv: Option<RustcVersion>) -> Self {
+    pub fn new(msrv: Msrv) -> Self {
         Self { msrv }
     }
 }
@@ -96,7 +95,7 @@ impl RedundantStaticLifetimes {
 
 impl EarlyLintPass for RedundantStaticLifetimes {
     fn check_item(&mut self, cx: &EarlyContext<'_>, item: &Item) {
-        if !meets_msrv(self.msrv, msrvs::STATIC_IN_CONST) {
+        if !self.msrv.meets(msrvs::STATIC_IN_CONST) {
             return;
         }
 
