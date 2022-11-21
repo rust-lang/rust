@@ -448,7 +448,8 @@ impl<'a> TraitDef<'a> {
                     _ => unreachable!(),
                 };
                 let container_id = cx.current_expansion.id.expn_data().parent.expect_local();
-                let always_copy = has_no_type_params && cx.resolver.has_derive_copy(container_id);
+                let copy_fields =
+                    is_packed && has_no_type_params && cx.resolver.has_derive_copy(container_id);
 
                 let newitem = match item.kind {
                     ast::ItemKind::Struct(ref struct_def, ref generics) => self.expand_struct_def(
@@ -457,16 +458,14 @@ impl<'a> TraitDef<'a> {
                         item.ident,
                         generics,
                         from_scratch,
-                        is_packed,
-                        always_copy,
+                        copy_fields,
                     ),
                     ast::ItemKind::Enum(ref enum_def, ref generics) => {
-                        // We ignore `is_packed`/`always_copy` here, because
-                        // `repr(packed)` enums cause an error later on.
+                        // We ignore `is_packed` here, because `repr(packed)`
+                        // enums cause an error later on.
                         //
                         // This can only cause further compilation errors
-                        // downstream in blatantly illegal code, so it
-                        // is fine.
+                        // downstream in blatantly illegal code, so it is fine.
                         self.expand_enum_def(cx, enum_def, item.ident, generics, from_scratch)
                     }
                     ast::ItemKind::Union(ref struct_def, ref generics) => {
@@ -477,8 +476,7 @@ impl<'a> TraitDef<'a> {
                                 item.ident,
                                 generics,
                                 from_scratch,
-                                is_packed,
-                                always_copy,
+                                copy_fields,
                             )
                         } else {
                             cx.span_err(mitem.span, "this trait cannot be derived for unions");
@@ -748,8 +746,7 @@ impl<'a> TraitDef<'a> {
         type_ident: Ident,
         generics: &Generics,
         from_scratch: bool,
-        is_packed: bool,
-        always_copy: bool,
+        copy_fields: bool,
     ) -> P<ast::Item> {
         let field_tys: Vec<P<ast::Ty>> =
             struct_def.fields().iter().map(|field| field.ty.clone()).collect();
@@ -777,8 +774,7 @@ impl<'a> TraitDef<'a> {
                         type_ident,
                         &selflike_args,
                         &nonselflike_args,
-                        is_packed,
-                        always_copy,
+                        copy_fields,
                     )
                 };
 
@@ -1016,19 +1012,9 @@ impl<'a> MethodDef<'a> {
     ///     }
     /// }
     /// ```
-    /// If the struct doesn't impl `Copy`, we use let-destructuring with `ref`:
-    /// ```
-    /// # struct A { x: u8, y: u8 }
-    /// impl PartialEq for A {
-    ///     fn eq(&self, other: &A) -> bool {
-    ///         let Self { x: ref __self_0_0, y: ref __self_0_1 } = *self;
-    ///         let Self { x: ref __self_1_0, y: ref __self_1_1 } = *other;
-    ///         *__self_0_0 == *__self_1_0 && *__self_0_1 == *__self_1_1
-    ///     }
-    /// }
-    /// ```
-    /// This latter case only works if the fields match the alignment required
-    /// by the `packed(N)` attribute. (We'll get errors later on if not.)
+    /// If the struct doesn't impl `Copy`, we use the normal `&self.x`. This
+    /// only works if the fields match the alignment required by the
+    /// `packed(N)` attribute. (We'll get errors later on if not.)
     fn expand_struct_method_body<'b>(
         &self,
         cx: &mut ExtCtxt<'_>,
@@ -1037,51 +1023,19 @@ impl<'a> MethodDef<'a> {
         type_ident: Ident,
         selflike_args: &[P<Expr>],
         nonselflike_args: &[P<Expr>],
-        is_packed: bool,
-        always_copy: bool,
+        copy_fields: bool,
     ) -> BlockOrExpr {
-        let span = trait_.span;
         assert!(selflike_args.len() == 1 || selflike_args.len() == 2);
 
-        let mk_body = |cx, selflike_fields| {
-            self.call_substructure_method(
-                cx,
-                trait_,
-                type_ident,
-                nonselflike_args,
-                &Struct(struct_def, selflike_fields),
-            )
-        };
-
-        if !is_packed {
-            let selflike_fields =
-                trait_.create_struct_field_access_fields(cx, selflike_args, struct_def, false);
-            mk_body(cx, selflike_fields)
-        } else if always_copy {
-            let selflike_fields =
-                trait_.create_struct_field_access_fields(cx, selflike_args, struct_def, true);
-            mk_body(cx, selflike_fields)
-        } else {
-            // Packed and not copy. Need to use ref patterns.
-            let prefixes: Vec<_> =
-                (0..selflike_args.len()).map(|i| format!("__self_{}", i)).collect();
-            let selflike_fields = trait_.create_struct_pattern_fields(cx, struct_def, &prefixes);
-            let mut body = mk_body(cx, selflike_fields);
-
-            let struct_path = cx.path(span, vec![Ident::new(kw::SelfUpper, type_ident.span)]);
-            let patterns =
-                trait_.create_struct_patterns(cx, struct_path, struct_def, &prefixes, ByRef::Yes);
-
-            // Do the let-destructuring.
-            let mut stmts: Vec<_> = iter::zip(selflike_args, patterns)
-                .map(|(selflike_arg_expr, pat)| {
-                    let selflike_arg_expr = cx.expr_deref(span, selflike_arg_expr.clone());
-                    cx.stmt_let_pat(span, pat, selflike_arg_expr)
-                })
-                .collect();
-            stmts.extend(std::mem::take(&mut body.0));
-            BlockOrExpr(stmts, body.1)
-        }
+        let selflike_fields =
+            trait_.create_struct_field_access_fields(cx, selflike_args, struct_def, copy_fields);
+        self.call_substructure_method(
+            cx,
+            trait_,
+            type_ident,
+            nonselflike_args,
+            &Struct(struct_def, selflike_fields),
+        )
     }
 
     fn expand_static_struct_method_body(
@@ -1531,7 +1485,7 @@ impl<'a> TraitDef<'a> {
         cx: &mut ExtCtxt<'_>,
         selflike_args: &[P<Expr>],
         struct_def: &'a VariantData,
-        copy: bool,
+        copy_fields: bool,
     ) -> Vec<FieldInfo> {
         self.create_fields(struct_def, |i, struct_field, sp| {
             selflike_args
@@ -1550,7 +1504,7 @@ impl<'a> TraitDef<'a> {
                             }),
                         ),
                     );
-                    if copy {
+                    if copy_fields {
                         field_expr = cx.expr_block(
                             cx.block(struct_field.span, vec![cx.stmt_expr(field_expr)]),
                         );
