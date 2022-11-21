@@ -644,24 +644,27 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
             }
         };
 
-        if let Some(destination) = destination {
-            if let Some(value) = value {
+        match (destination, value) {
+            (Some(destination), Some(value)) => {
                 debug!("stmt_expr Break val block_context.push(SubExpr)");
                 self.block_context.push(BlockFrame::SubExpr);
                 unpack!(block = self.expr_into_dest(destination, block, value));
                 self.block_context.pop();
-            } else {
+            }
+            (Some(destination), None) => {
                 self.cfg.push_assign_unit(block, source_info, destination, self.tcx)
             }
-        } else {
-            assert!(value.is_none(), "`return` and `break` should have a destination");
-            if self.tcx.sess.instrument_coverage() {
+            (None, Some(_)) => {
+                panic!("`return`, `become` and `break` with value and must have a destination")
+            }
+            (None, None) if self.tcx.sess.instrument_coverage() => {
                 // Unlike `break` and `return`, which push an `Assign` statement to MIR, from which
                 // a Coverage code region can be generated, `continue` needs no `Assign`; but
                 // without one, the `InstrumentCoverage` MIR pass cannot generate a code region for
                 // `continue`. Coverage will be missing unless we add a dummy `Assign` to MIR.
                 self.add_dummy_assignment(span, block, source_info);
             }
+            (None, None) => {}
         }
 
         let region_scope = self.scopes.breakable_scopes[break_index].region_scope;
