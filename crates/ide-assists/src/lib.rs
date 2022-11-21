@@ -152,7 +152,6 @@ mod handlers {
     mod generate_function;
     mod generate_getter;
     mod generate_impl;
-    mod generate_trait_impl;
     mod generate_is_empty_from_len;
     mod generate_new;
     mod generate_setter;
@@ -248,7 +247,7 @@ mod handlers {
             generate_from_impl_for_enum::generate_from_impl_for_enum,
             generate_function::generate_function,
             generate_impl::generate_impl,
-            generate_trait_impl::generate_trait_impl,
+            generate_impl::generate_trait_impl,
             generate_is_empty_from_len::generate_is_empty_from_len,
             generate_new::generate_new,
             inline_call::inline_call,
