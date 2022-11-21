@@ -13,9 +13,9 @@ use rustc_infer::infer::TyCtxtInferExt;
 use rustc_lint::LateContext;
 use rustc_middle::mir::interpret::{ConstValue, Scalar};
 use rustc_middle::ty::{
-    self, AdtDef, AssocKind, Binder, BoundRegion, DefIdTree, FnSig, GenericParamDefKind, IntTy, List, ParamEnv,
-    Predicate, PredicateKind, ProjectionTy, Region, RegionKind, SubstsRef, Ty, TyCtxt, TypeSuperVisitable,
-    TypeVisitable, TypeVisitor, UintTy, VariantDef, VariantDiscr,
+    self, AdtDef, AssocKind, Binder, BoundRegion, DefIdTree, FnSig, IntTy, List, ParamEnv, Predicate, PredicateKind,
+    ProjectionTy, Region, RegionKind, SubstsRef, Ty, TyCtxt, TypeSuperVisitable, TypeVisitable, TypeVisitor, UintTy,
+    VariantDef, VariantDiscr,
 };
 use rustc_middle::ty::{GenericArg, GenericArgKind};
 use rustc_span::symbol::Ident;
@@ -1011,7 +1011,7 @@ pub fn make_projection<'tcx>(
                 assoc_item.def_id,
                 substs.len(),
                 generic_count,
-                params.map(GenericParamDefKind::descr).collect::<Vec<_>>(),
+                params.map(ty::GenericParamDefKind::descr).collect::<Vec<_>>(),
                 substs,
             );
 
@@ -1022,9 +1022,9 @@ pub fn make_projection<'tcx>(
                 .find(|(_, (param, arg))| {
                     !matches!(
                         (param, arg),
-                        (GenericParamDefKind::Lifetime, GenericArgKind::Lifetime(_))
-                            | (GenericParamDefKind::Type { .. }, GenericArgKind::Type(_))
-                            | (GenericParamDefKind::Const { .. }, GenericArgKind::Const(_))
+                        (ty::GenericParamDefKind::Lifetime, GenericArgKind::Lifetime(_))
+                            | (ty::GenericParamDefKind::Type { .. }, GenericArgKind::Type(_))
+                            | (ty::GenericParamDefKind::Const { .. }, GenericArgKind::Const(_))
                     )
                 })
             {
@@ -1036,7 +1036,7 @@ pub fn make_projection<'tcx>(
                     idx,
                     param.descr(),
                     arg,
-                    params.map(GenericParamDefKind::descr).collect::<Vec<_>>(),
+                    params.map(ty::GenericParamDefKind::descr).collect::<Vec<_>>(),
                     substs,
                 );
             }
