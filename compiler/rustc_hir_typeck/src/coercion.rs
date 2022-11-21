@@ -804,10 +804,9 @@ impl<'f, 'tcx> Coerce<'f, 'tcx> {
                 self.tcx,
                 self.cause.clone(),
                 self.param_env,
-                ty::Binder::dummy(ty::TraitRef::new(
-                    self.tcx.require_lang_item(hir::LangItem::PointerSized, Some(self.cause.span)),
-                    self.tcx.mk_substs_trait(a, []),
-                ))
+                ty::Binder::dummy(
+                    self.tcx.at(self.cause.span).mk_trait_ref(hir::LangItem::PointerSized, [a]),
+                )
                 .to_poly_trait_predicate(),
             ));
         }
