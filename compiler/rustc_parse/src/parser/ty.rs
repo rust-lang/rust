@@ -665,7 +665,7 @@ impl<'a> Parser<'a> {
             // Macro invocation in type position
             Ok(TyKind::MacCall(P(MacCall {
                 path,
-                args: self.parse_mac_args()?,
+                args: self.parse_delim_args()?,
                 prior_type_ascription: self.last_type_ascription,
             })))
         } else if allow_plus == AllowPlus::Yes && self.check_plus() {

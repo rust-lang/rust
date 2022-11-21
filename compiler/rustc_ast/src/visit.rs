@@ -926,17 +926,17 @@ pub fn walk_vis<'a, V: Visitor<'a>>(visitor: &mut V, vis: &'a Visibility) {
 
 pub fn walk_attribute<'a, V: Visitor<'a>>(visitor: &mut V, attr: &'a Attribute) {
     match &attr.kind {
-        AttrKind::Normal(normal) => walk_mac_args(visitor, &normal.item.args),
+        AttrKind::Normal(normal) => walk_attr_args(visitor, &normal.item.args),
         AttrKind::DocComment(..) => {}
     }
 }
 
-pub fn walk_mac_args<'a, V: Visitor<'a>>(visitor: &mut V, args: &'a MacArgs) {
+pub fn walk_attr_args<'a, V: Visitor<'a>>(visitor: &mut V, args: &'a AttrArgs) {
     match args {
-        MacArgs::Empty => {}
-        MacArgs::Delimited(_dspan, _delim, _tokens) => {}
-        MacArgs::Eq(_eq_span, MacArgsEq::Ast(expr)) => visitor.visit_expr(expr),
-        MacArgs::Eq(_, MacArgsEq::Hir(lit)) => {
+        AttrArgs::Empty => {}
+        AttrArgs::Delimited(_) => {}
+        AttrArgs::Eq(_eq_span, AttrArgsEq::Ast(expr)) => visitor.visit_expr(expr),
+        AttrArgs::Eq(_, AttrArgsEq::Hir(lit)) => {
             unreachable!("in literal form when walking mac args eq: {:?}", lit)
         }
     }

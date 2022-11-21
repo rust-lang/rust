@@ -13,7 +13,7 @@ use rustc_ast::{Async, Const, Defaultness, IsAuto, Mutability, Unsafe, UseTree, 
 use rustc_ast::{BindingAnnotation, Block, FnDecl, FnSig, Param, SelfKind};
 use rustc_ast::{EnumDef, FieldDef, Generics, TraitRef, Ty, TyKind, Variant, VariantData};
 use rustc_ast::{FnHeader, ForeignItem, Path, PathSegment, Visibility, VisibilityKind};
-use rustc_ast::{MacArgs, MacCall, MacDelimiter};
+use rustc_ast::{MacCall, MacDelimiter};
 use rustc_ast_pretty::pprust;
 use rustc_errors::{struct_span_err, Applicability, IntoDiagnostic, PResult, StashKey};
 use rustc_span::edition::Edition;
@@ -471,7 +471,7 @@ impl<'a> Parser<'a> {
     fn parse_item_macro(&mut self, vis: &Visibility) -> PResult<'a, MacCall> {
         let path = self.parse_path(PathStyle::Mod)?; // `foo::bar`
         self.expect(&token::Not)?; // `!`
-        match self.parse_mac_args() {
+        match self.parse_delim_args() {
             // `( .. )` or `[ .. ]` (followed by `;`), or `{ .. }`.
             Ok(args) => {
                 self.eat_semi_for_macro_if_needed(&args);
@@ -1867,7 +1867,7 @@ impl<'a> Parser<'a> {
     fn parse_item_decl_macro(&mut self, lo: Span) -> PResult<'a, ItemInfo> {
         let ident = self.parse_ident()?;
         let body = if self.check(&token::OpenDelim(Delimiter::Brace)) {
-            self.parse_mac_args()? // `MacBody`
+            self.parse_delim_args()? // `MacBody`
         } else if self.check(&token::OpenDelim(Delimiter::Parenthesis)) {
             let params = self.parse_token_tree(); // `MacParams`
             let pspan = params.span();
@@ -1880,7 +1880,7 @@ impl<'a> Parser<'a> {
             let arrow = TokenTree::token_alone(token::FatArrow, pspan.between(bspan)); // `=>`
             let tokens = TokenStream::new(vec![params, arrow, body]);
             let dspan = DelimSpan::from_pair(pspan.shrink_to_lo(), bspan.shrink_to_hi());
-            P(MacArgs::Delimited(dspan, MacDelimiter::Brace, tokens))
+            P(DelimArgs { dspan, delim: MacDelimiter::Brace, tokens })
         } else {
             return self.unexpected();
         };
@@ -1935,7 +1935,7 @@ impl<'a> Parser<'a> {
                 .emit();
         }
 
-        let body = self.parse_mac_args()?;
+        let body = self.parse_delim_args()?;
         self.eat_semi_for_macro_if_needed(&body);
         self.complain_if_pub_macro(vis, true);
 
@@ -1974,14 +1974,14 @@ impl<'a> Parser<'a> {
         }
     }
 
-    fn eat_semi_for_macro_if_needed(&mut self, args: &MacArgs) {
+    fn eat_semi_for_macro_if_needed(&mut self, args: &DelimArgs) {
         if args.need_semicolon() && !self.eat(&token::Semi) {
             self.report_invalid_macro_expansion_item(args);
         }
     }
 
-    fn report_invalid_macro_expansion_item(&self, args: &MacArgs) {
-        let span = args.span().expect("undelimited macro call");
+    fn report_invalid_macro_expansion_item(&self, args: &DelimArgs) {
+        let span = args.dspan.entire();
         let mut err = self.struct_span_err(
             span,
             "macros that expand to items must be delimited with braces or followed by a semicolon",
@@ -1990,10 +1990,7 @@ impl<'a> Parser<'a> {
         // macros within the same crate (that we can fix), which is sad.
         if !span.from_expansion() {
             if self.unclosed_delims.is_empty() {
-                let DelimSpan { open, close } = match args {
-                    MacArgs::Empty | MacArgs::Eq(..) => unreachable!(),
-                    MacArgs::Delimited(dspan, ..) => *dspan,
-                };
+                let DelimSpan { open, close } = args.dspan;
                 err.multipart_suggestion(
                     "change the delimiters to curly braces",
                     vec![(open, "{".to_string()), (close, '}'.to_string())],

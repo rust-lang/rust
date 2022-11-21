@@ -671,7 +671,7 @@ impl<'hir> LoweringContext<'_, 'hir> {
                     kind: AttrKind::Normal(ptr::P(NormalAttr {
                         item: AttrItem {
                             path: Path::from_ident(Ident::new(sym::track_caller, span)),
-                            args: MacArgs::Empty,
+                            args: AttrArgs::Empty,
                             tokens: None,
                         },
                         tokens: None,

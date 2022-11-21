@@ -400,7 +400,7 @@ define_tables! {
     assoc_container: Table<DefIndex, ty::AssocItemContainer>,
     // Slot is full when macro is macro_rules.
     macro_rules: Table<DefIndex, ()>,
-    macro_definition: Table<DefIndex, LazyValue<ast::MacArgs>>,
+    macro_definition: Table<DefIndex, LazyValue<ast::DelimArgs>>,
     proc_macro: Table<DefIndex, MacroKind>,
     module_reexports: Table<DefIndex, LazyArray<ModChild>>,
     deduced_param_attrs: Table<DefIndex, LazyArray<DeducedParamAttrs>>,

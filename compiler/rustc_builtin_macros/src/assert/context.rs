@@ -3,7 +3,7 @@ use rustc_ast::{
     ptr::P,
     token,
     tokenstream::{DelimSpan, TokenStream, TokenTree},
-    BinOpKind, BorrowKind, Expr, ExprKind, ItemKind, MacArgs, MacCall, MacDelimiter, MethodCall,
+    BinOpKind, BorrowKind, DelimArgs, Expr, ExprKind, ItemKind, MacCall, MacDelimiter, MethodCall,
     Mutability, Path, PathSegment, Stmt, StructRest, UnOp, UseTree, UseTreeKind, DUMMY_NODE_ID,
 };
 use rustc_ast_pretty::pprust;
@@ -181,11 +181,11 @@ impl<'cx, 'a> Context<'cx, 'a> {
             self.span,
             ExprKind::MacCall(P(MacCall {
                 path: panic_path,
-                args: P(MacArgs::Delimited(
-                    DelimSpan::from_single(self.span),
-                    MacDelimiter::Parenthesis,
-                    initial.into_iter().chain(captures).collect::<TokenStream>(),
-                )),
+                args: P(DelimArgs {
+                    dspan: DelimSpan::from_single(self.span),
+                    delim: MacDelimiter::Parenthesis,
+                    tokens: initial.into_iter().chain(captures).collect::<TokenStream>(),
+                }),
                 prior_type_ascription: None,
             })),
         )
