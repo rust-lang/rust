@@ -703,7 +703,9 @@ impl<'tcx> ExistentialPredicate<'tcx> {
     }
 }
 
-impl<'tcx> Binder<'tcx, ExistentialPredicate<'tcx>> {
+pub type PolyExistentialPredicate<'tcx> = Binder<'tcx, ExistentialPredicate<'tcx>>;
+
+impl<'tcx> PolyExistentialPredicate<'tcx> {
     /// Given an existential predicate like `?Self: PartialEq<u32>` (e.g., derived from `dyn PartialEq<u32>`),
     /// and a concrete type `self_ty`, returns a full predicate where the existentially quantified variable `?Self`
     /// has been replaced with `self_ty` (e.g., `self_ty: PartialEq<u32>`, in our example).
@@ -727,7 +729,7 @@ impl<'tcx> Binder<'tcx, ExistentialPredicate<'tcx>> {
     }
 }
 
-impl<'tcx> List<ty::Binder<'tcx, ExistentialPredicate<'tcx>>> {
+impl<'tcx> List<ty::PolyExistentialPredicate<'tcx>> {
     /// Returns the "principal `DefId`" of this set of existential predicates.
     ///
     /// A Rust trait object type consists (in addition to a lifetime bound)

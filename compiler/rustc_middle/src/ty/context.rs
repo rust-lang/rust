@@ -17,11 +17,11 @@ use crate::traits;
 use crate::ty::query::{self, TyCtxtAt};
 use crate::ty::{
     self, AdtDef, AdtDefData, AdtKind, Binder, BindingMode, BoundVar, CanonicalPolyFnSig,
-    ClosureSizeProfileData, Const, ConstS, ConstVid, DefIdTree, ExistentialPredicate, FloatTy,
-    FloatVar, FloatVid, GenericParamDefKind, InferConst, InferTy, IntTy, IntVar, IntVid, List,
-    ParamConst, ParamTy, PolyFnSig, Predicate, PredicateKind, PredicateS, ProjectionTy, Region,
-    RegionKind, ReprOptions, TraitObjectVisitor, Ty, TyKind, TyS, TyVar, TyVid, TypeAndMut, UintTy,
-    Visibility,
+    ClosureSizeProfileData, Const, ConstS, ConstVid, DefIdTree, FloatTy, FloatVar, FloatVid,
+    GenericParamDefKind, InferConst, InferTy, IntTy, IntVar, IntVid, List, ParamConst, ParamTy,
+    PolyExistentialPredicate, PolyFnSig, Predicate, PredicateKind, PredicateS, ProjectionTy,
+    Region, RegionKind, ReprOptions, TraitObjectVisitor, Ty, TyKind, TyS, TyVar, TyVid, TypeAndMut,
+    UintTy, Visibility,
 };
 use crate::ty::{GenericArg, GenericArgKind, InternalSubsts, SubstsRef, UserSubsts};
 use rustc_ast as ast;
@@ -109,7 +109,7 @@ impl<'tcx> Interner for TyCtxt<'tcx> {
     type Mutability = hir::Mutability;
     type Movability = hir::Movability;
     type PolyFnSig = PolyFnSig<'tcx>;
-    type ListBinderExistentialPredicate = &'tcx List<Binder<'tcx, ExistentialPredicate<'tcx>>>;
+    type ListBinderExistentialPredicate = &'tcx List<PolyExistentialPredicate<'tcx>>;
     type BinderListTy = Binder<'tcx, &'tcx List<Ty<'tcx>>>;
     type ListTy = &'tcx List<Ty<'tcx>>;
     type ProjectionTy = ty::ProjectionTy<'tcx>;
@@ -140,8 +140,7 @@ pub struct CtxtInterners<'tcx> {
     substs: InternedSet<'tcx, InternalSubsts<'tcx>>,
     canonical_var_infos: InternedSet<'tcx, List<CanonicalVarInfo<'tcx>>>,
     region: InternedSet<'tcx, RegionKind<'tcx>>,
-    poly_existential_predicates:
-        InternedSet<'tcx, List<ty::Binder<'tcx, ExistentialPredicate<'tcx>>>>,
+    poly_existential_predicates: InternedSet<'tcx, List<PolyExistentialPredicate<'tcx>>>,
     predicate: InternedSet<'tcx, PredicateS<'tcx>>,
     predicates: InternedSet<'tcx, List<Predicate<'tcx>>>,
     projs: InternedSet<'tcx, List<ProjectionKind>>,
@@ -1810,7 +1809,7 @@ nop_lift! {const_; Const<'a> => Const<'tcx>}
 nop_lift! {const_allocation; ConstAllocation<'a> => ConstAllocation<'tcx>}
 nop_lift! {predicate; Predicate<'a> => Predicate<'tcx>}
 
-nop_list_lift! {poly_existential_predicates; ty::Binder<'a, ExistentialPredicate<'a>> => ty::Binder<'tcx, ExistentialPredicate<'tcx>>}
+nop_list_lift! {poly_existential_predicates; PolyExistentialPredicate<'a> => PolyExistentialPredicate<'tcx>}
 nop_list_lift! {predicates; Predicate<'a> => Predicate<'tcx>}
 nop_list_lift! {canonical_var_infos; CanonicalVarInfo<'a> => CanonicalVarInfo<'tcx>}
 nop_list_lift! {projs; ProjectionKind => ProjectionKind}
@@ -2265,7 +2264,7 @@ slice_interners!(
     substs: _intern_substs(GenericArg<'tcx>),
     canonical_var_infos: _intern_canonical_var_infos(CanonicalVarInfo<'tcx>),
     poly_existential_predicates:
-        _intern_poly_existential_predicates(ty::Binder<'tcx, ExistentialPredicate<'tcx>>),
+        _intern_poly_existential_predicates(PolyExistentialPredicate<'tcx>),
     predicates: _intern_predicates(Predicate<'tcx>),
     projs: _intern_projs(ProjectionKind),
     place_elems: _intern_place_elems(PlaceElem<'tcx>),
@@ -2544,7 +2543,7 @@ impl<'tcx> TyCtxt<'tcx> {
     #[inline]
     pub fn mk_dynamic(
         self,
-        obj: &'tcx List<ty::Binder<'tcx, ExistentialPredicate<'tcx>>>,
+        obj: &'tcx List<PolyExistentialPredicate<'tcx>>,
         reg: ty::Region<'tcx>,
         repr: DynKind,
     ) -> Ty<'tcx> {
@@ -2682,8 +2681,8 @@ impl<'tcx> TyCtxt<'tcx> {
 
     pub fn intern_poly_existential_predicates(
         self,
-        eps: &[ty::Binder<'tcx, ExistentialPredicate<'tcx>>],
-    ) -> &'tcx List<ty::Binder<'tcx, ExistentialPredicate<'tcx>>> {
+        eps: &[PolyExistentialPredicate<'tcx>],
+    ) -> &'tcx List<PolyExistentialPredicate<'tcx>> {
         assert!(!eps.is_empty());
         assert!(
             eps.array_windows()
@@ -2767,10 +2766,7 @@ impl<'tcx> TyCtxt<'tcx> {
     }
 
     pub fn mk_poly_existential_predicates<
-        I: InternAs<
-            [ty::Binder<'tcx, ExistentialPredicate<'tcx>>],
-            &'tcx List<ty::Binder<'tcx, ExistentialPredicate<'tcx>>>,
-        >,
+        I: InternAs<[PolyExistentialPredicate<'tcx>], &'tcx List<PolyExistentialPredicate<'tcx>>>,
     >(
         self,
         iter: I,

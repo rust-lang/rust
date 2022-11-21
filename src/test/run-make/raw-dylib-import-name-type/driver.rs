@@ -3,6 +3,7 @@
 
 #[link(name = "extern", kind = "raw-dylib", import_name_type = "undecorated")]
 extern "C" {
+    fn LooksLikeAPrivateGlobal(i: i32);
     fn cdecl_fn_undecorated(i: i32);
     #[link_name = "cdecl_fn_undecorated2"]
     fn cdecl_fn_undecorated_renamed(i: i32);
@@ -84,6 +85,13 @@ extern {
 
 pub fn main() {
     unsafe {
+        // Regression test for #104453
+        // On x86 LLVM uses 'L' as the prefix for private globals (PrivateGlobalPrefix), which
+        // causes it to believe that undecorated functions starting with 'L' are actually temporary
+        // symbols that it generated, which causes a later check to fail as the symbols we are
+        // creating don't have definitions (whereas all temporary symbols do).
+        LooksLikeAPrivateGlobal(13);
+
         cdecl_fn_undecorated(1);
         cdecl_fn_undecorated_renamed(10);
         cdecl_fn_noprefix(2);

@@ -3,9 +3,9 @@ use std::hash::Hash;
 
 use rustdoc_json_types::{
     Constant, Crate, DynTrait, Enum, FnDecl, Function, FunctionPointer, GenericArg, GenericArgs,
-    GenericBound, GenericParamDef, Generics, Id, Impl, Import, ItemEnum, Method, Module, OpaqueTy,
-    Path, Primitive, ProcMacro, Static, Struct, StructKind, Term, Trait, TraitAlias, Type,
-    TypeBinding, TypeBindingKind, Typedef, Union, Variant, WherePredicate,
+    GenericBound, GenericParamDef, Generics, Id, Impl, Import, ItemEnum, Module, OpaqueTy, Path,
+    Primitive, ProcMacro, Static, Struct, StructKind, Term, Trait, TraitAlias, Type, TypeBinding,
+    TypeBindingKind, Typedef, Union, Variant, WherePredicate,
 };
 
 use crate::{item_kind::Kind, Error, ErrorKind};
@@ -67,7 +67,6 @@ impl<'a> Validator<'a> {
                 ItemEnum::Function(x) => self.check_function(x),
                 ItemEnum::Trait(x) => self.check_trait(x),
                 ItemEnum::TraitAlias(x) => self.check_trait_alias(x),
-                ItemEnum::Method(x) => self.check_method(x),
                 ItemEnum::Impl(x) => self.check_impl(x),
                 ItemEnum::Typedef(x) => self.check_typedef(x),
                 ItemEnum::OpaqueTy(x) => self.check_opaque_ty(x),
@@ -174,11 +173,6 @@ impl<'a> Validator<'a> {
     fn check_trait_alias(&mut self, x: &'a TraitAlias) {
         self.check_generics(&x.generics);
         x.params.iter().for_each(|i| self.check_generic_bound(i));
-    }
-
-    fn check_method(&mut self, x: &'a Method) {
-        self.check_fn_decl(&x.decl);
-        self.check_generics(&x.generics);
     }
 
     fn check_impl(&mut self, x: &'a Impl) {
