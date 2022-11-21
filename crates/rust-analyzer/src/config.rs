@@ -182,7 +182,7 @@ config_data! {
         /// `["aarch64-apple-darwin", "x86_64-apple-darwin"]`.
         ///
         /// Aliased as `"checkOnSave.targets"`.
-        checkOnSave_target | checkOnSave_targets: CheckOnSaveTargets           = "[]",
+        checkOnSave_target | checkOnSave_targets: Option<CheckOnSaveTargets>           = "null",
 
         /// Toggles the additional completions that automatically add imports when completed.
         /// Note that your client must specify the `additionalTextEdits` LSP client capability to truly have this feature enabled.
@@ -1153,10 +1153,15 @@ impl Config {
             }
             Some(_) | None => FlycheckConfig::CargoCommand {
                 command: self.data.checkOnSave_command.clone(),
-                target_triples: match &self.data.checkOnSave_target.0[..] {
-                    [] => self.data.cargo_target.clone().into_iter().collect(),
-                    targets => targets.into(),
-                },
+                target_triples: self
+                    .data
+                    .checkOnSave_target
+                    .clone()
+                    .and_then(|targets| match &targets.0[..] {
+                        [] => None,
+                        targets => Some(targets.into()),
+                    })
+                    .unwrap_or_else(|| self.data.cargo_target.clone().into_iter().collect()),
                 all_targets: self.data.checkOnSave_allTargets,
                 no_default_features: self
                     .data
@@ -2126,8 +2131,11 @@ fn field_props(field: &str, ty: &str, doc: &[&str], default: &str) -> serde_json
                 "The command will be executed in the project root."
             ],
         },
-        "CheckOnSaveTargets" => set! {
+        "Option<CheckOnSaveTargets>" => set! {
             "anyOf": [
+                {
+                    "type": "null"
+                },
                 {
                     "type": "string",
                 },
