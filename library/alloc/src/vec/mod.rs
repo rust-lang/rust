@@ -1830,9 +1830,7 @@ impl<T, A: Allocator> Vec<T, A> {
     pub fn push(&mut self, value: T) {
         // This will panic or abort if we would allocate > isize::MAX bytes
         // or if the length increment would overflow for zero-sized types.
-        if self.len == self.buf.capacity() {
-            self.buf.reserve_for_push(self.len);
-        }
+        self.buf.reserve(self.len, 1);
         unsafe {
             let end = self.as_mut_ptr().add(self.len);
             ptr::write(end, value);
