@@ -9,8 +9,6 @@
 //! In addition it also contains the core logic of the stable sort used by `slice::sort` based on
 //! TimSort.
 
-#![allow(unused)] // FIXME debug
-
 use crate::cmp;
 use crate::mem::{self, MaybeUninit, SizedTypeProperties};
 use crate::ptr;
@@ -1167,7 +1165,7 @@ pub fn merge_sort<T, CmpF, ElemAllocF, ElemDeallocF, RunAllocF, RunDeallocF>(
     // shallow copies of the contents of `v` without risking the dtors running on copies if
     // `is_less` panics. When merging two sorted runs, this buffer holds a copy of the shorter run,
     // which will always have length at most `len / 2`.
-    let mut buf = BufGuard::new(len / 2, elem_alloc_fn, elem_dealloc_fn);
+    let buf = BufGuard::new(len / 2, elem_alloc_fn, elem_dealloc_fn);
     let buf_ptr = buf.buf_ptr;
 
     let mut runs = RunVec::new(run_alloc_fn, run_dealloc_fn);
@@ -1255,30 +1253,33 @@ pub fn merge_sort<T, CmpF, ElemAllocF, ElemDeallocF, RunAllocF, RunDeallocF>(
     // Extremely basic versions of Vec.
     // Their use is super limited and by having the code here, it allows reuse between the sort
     // implementations.
-    struct BufGuard<T, ElemAllocF, ElemDeallocF>
+    struct BufGuard<T, ElemDeallocF>
     where
-        ElemAllocF: Fn(usize) -> *mut T,
         ElemDeallocF: Fn(*mut T, usize),
     {
         buf_ptr: *mut T,
         capacity: usize,
-        elem_alloc_fn: ElemAllocF,
         elem_dealloc_fn: ElemDeallocF,
     }
 
-    impl<T, ElemAllocF, ElemDeallocF> BufGuard<T, ElemAllocF, ElemDeallocF>
+    impl<T, ElemDeallocF> BufGuard<T, ElemDeallocF>
     where
-        ElemAllocF: Fn(usize) -> *mut T,
         ElemDeallocF: Fn(*mut T, usize),
     {
-        fn new(len: usize, elem_alloc_fn: ElemAllocF, elem_dealloc_fn: ElemDeallocF) -> Self {
-            Self { buf_ptr: elem_alloc_fn(len), capacity: len, elem_alloc_fn, elem_dealloc_fn }
+        fn new<ElemAllocF>(
+            len: usize,
+            elem_alloc_fn: ElemAllocF,
+            elem_dealloc_fn: ElemDeallocF,
+        ) -> Self
+        where
+            ElemAllocF: Fn(usize) -> *mut T,
+        {
+            Self { buf_ptr: elem_alloc_fn(len), capacity: len, elem_dealloc_fn }
         }
     }
 
-    impl<T, ElemAllocF, ElemDeallocF> Drop for BufGuard<T, ElemAllocF, ElemDeallocF>
+    impl<T, ElemDeallocF> Drop for BufGuard<T, ElemDeallocF>
     where
-        ElemAllocF: Fn(usize) -> *mut T,
         ElemDeallocF: Fn(*mut T, usize),
     {
         fn drop(&mut self) {
