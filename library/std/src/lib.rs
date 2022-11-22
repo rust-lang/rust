@@ -347,6 +347,7 @@
 #![feature(stdsimd)]
 #![feature(test)]
 #![feature(trace_macros)]
+#![feature(get_many_mut)]
 //
 // Only used in tests/benchmarks:
 //

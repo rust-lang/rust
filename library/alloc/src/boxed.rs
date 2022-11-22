@@ -187,7 +187,7 @@ pub use thin::ThinBox;
 
 mod thin;
 
-/// A pointer type for heap allocation.
+/// A pointer type that uniquely owns a heap allocation of type `T`.
 ///
 /// See the [module-level documentation](../../std/boxed/index.html) for more.
 #[lang = "owned_box"]

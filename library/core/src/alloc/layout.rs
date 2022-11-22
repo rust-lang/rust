@@ -157,9 +157,10 @@ impl Layout {
     /// allocate backing structure for `T` (which could be a trait
     /// or other unsized type like a slice).
     #[stable(feature = "alloc_layout", since = "1.28.0")]
+    #[rustc_const_unstable(feature = "const_alloc_layout", issue = "67521")]
     #[must_use]
     #[inline]
-    pub fn for_value<T: ?Sized>(t: &T) -> Self {
+    pub const fn for_value<T: ?Sized>(t: &T) -> Self {
         let (size, align) = (mem::size_of_val(t), mem::align_of_val(t));
         // SAFETY: see rationale in `new` for why this is using the unsafe variant
         unsafe { Layout::from_size_align_unchecked(size, align) }
@@ -191,8 +192,9 @@ impl Layout {
     /// [trait object]: ../../book/ch17-02-trait-objects.html
     /// [extern type]: ../../unstable-book/language-features/extern-types.html
     #[unstable(feature = "layout_for_ptr", issue = "69835")]
+    #[rustc_const_unstable(feature = "const_alloc_layout", issue = "67521")]
     #[must_use]
-    pub unsafe fn for_value_raw<T: ?Sized>(t: *const T) -> Self {
+    pub const unsafe fn for_value_raw<T: ?Sized>(t: *const T) -> Self {
         // SAFETY: we pass along the prerequisites of these functions to the caller
         let (size, align) = unsafe { (mem::size_of_val_raw(t), mem::align_of_val_raw(t)) };
         // SAFETY: see rationale in `new` for why this is using the unsafe variant
@@ -229,8 +231,9 @@ impl Layout {
     /// Returns an error if the combination of `self.size()` and the given
     /// `align` violates the conditions listed in [`Layout::from_size_align`].
     #[stable(feature = "alloc_layout_manipulation", since = "1.44.0")]
+    #[rustc_const_unstable(feature = "const_alloc_layout", issue = "67521")]
     #[inline]
-    pub fn align_to(&self, align: usize) -> Result<Self, LayoutError> {
+    pub const fn align_to(&self, align: usize) -> Result<Self, LayoutError> {
         Layout::from_size_align(self.size(), cmp::max(self.align(), align))
     }
 
@@ -287,10 +290,11 @@ impl Layout {
     /// This is equivalent to adding the result of `padding_needed_for`
     /// to the layout's current size.
     #[stable(feature = "alloc_layout_manipulation", since = "1.44.0")]
+    #[rustc_const_unstable(feature = "const_alloc_layout", issue = "67521")]
     #[must_use = "this returns a new `Layout`, \
                   without modifying the original"]
     #[inline]
-    pub fn pad_to_align(&self) -> Layout {
+    pub const fn pad_to_align(&self) -> Layout {
         let pad = self.padding_needed_for(self.align());
         // This cannot overflow. Quoting from the invariant of Layout:
         // > `size`, when rounded up to the nearest multiple of `align`,
@@ -311,8 +315,9 @@ impl Layout {
     ///
     /// On arithmetic overflow, returns `LayoutError`.
     #[unstable(feature = "alloc_layout_extra", issue = "55724")]
+    #[rustc_const_unstable(feature = "const_alloc_layout", issue = "67521")]
     #[inline]
-    pub fn repeat(&self, n: usize) -> Result<(Self, usize), LayoutError> {
+    pub const fn repeat(&self, n: usize) -> Result<(Self, usize), LayoutError> {
         // This cannot overflow. Quoting from the invariant of Layout:
         // > `size`, when rounded up to the nearest multiple of `align`,
         // > must not overflow isize (i.e., the rounded value must be
@@ -321,7 +326,8 @@ impl Layout {
         let alloc_size = padded_size.checked_mul(n).ok_or(LayoutError)?;
 
         // The safe constructor is called here to enforce the isize size limit.
-        Layout::from_size_alignment(alloc_size, self.align).map(|layout| (layout, padded_size))
+        let layout = Layout::from_size_alignment(alloc_size, self.align)?;
+        Ok((layout, padded_size))
     }
 
     /// Creates a layout describing the record for `self` followed by
@@ -370,8 +376,9 @@ impl Layout {
     /// # assert_eq!(repr_c(&[u64, u32, u16, u32]), Ok((s, vec![0, 8, 12, 16])));
     /// ```
     #[stable(feature = "alloc_layout_manipulation", since = "1.44.0")]
+    #[rustc_const_unstable(feature = "const_alloc_layout", issue = "67521")]
     #[inline]
-    pub fn extend(&self, next: Self) -> Result<(Self, usize), LayoutError> {
+    pub const fn extend(&self, next: Self) -> Result<(Self, usize), LayoutError> {
         let new_align = cmp::max(self.align, next.align);
         let pad = self.padding_needed_for(next.align());
 
@@ -396,8 +403,9 @@ impl Layout {
     ///
     /// On arithmetic overflow, returns `LayoutError`.
     #[unstable(feature = "alloc_layout_extra", issue = "55724")]
+    #[rustc_const_unstable(feature = "const_alloc_layout", issue = "67521")]
     #[inline]
-    pub fn repeat_packed(&self, n: usize) -> Result<Self, LayoutError> {
+    pub const fn repeat_packed(&self, n: usize) -> Result<Self, LayoutError> {
         let size = self.size().checked_mul(n).ok_or(LayoutError)?;
         // The safe constructor is called here to enforce the isize size limit.
         Layout::from_size_alignment(size, self.align)
@@ -410,8 +418,9 @@ impl Layout {
     ///
     /// On arithmetic overflow, returns `LayoutError`.
     #[unstable(feature = "alloc_layout_extra", issue = "55724")]
+    #[rustc_const_unstable(feature = "const_alloc_layout", issue = "67521")]
     #[inline]
-    pub fn extend_packed(&self, next: Self) -> Result<Self, LayoutError> {
+    pub const fn extend_packed(&self, next: Self) -> Result<Self, LayoutError> {
         let new_size = self.size().checked_add(next.size()).ok_or(LayoutError)?;
         // The safe constructor is called here to enforce the isize size limit.
         Layout::from_size_alignment(new_size, self.align)
@@ -422,13 +431,18 @@ impl Layout {
     /// On arithmetic overflow or when the total size would exceed
     /// `isize::MAX`, returns `LayoutError`.
     #[stable(feature = "alloc_layout_manipulation", since = "1.44.0")]
+    #[rustc_const_unstable(feature = "const_alloc_layout", issue = "67521")]
     #[inline]
-    pub fn array<T>(n: usize) -> Result<Self, LayoutError> {
+    pub const fn array<T>(n: usize) -> Result<Self, LayoutError> {
         // Reduce the amount of code we need to monomorphize per `T`.
         return inner(mem::size_of::<T>(), Alignment::of::<T>(), n);
 
         #[inline]
-        fn inner(element_size: usize, align: Alignment, n: usize) -> Result<Layout, LayoutError> {
+        const fn inner(
+            element_size: usize,
+            align: Alignment,
+            n: usize,
+        ) -> Result<Layout, LayoutError> {
             // We need to check two things about the size:
             //  - That the total size won't overflow a `usize`, and
             //  - That the total size still fits in an `isize`.

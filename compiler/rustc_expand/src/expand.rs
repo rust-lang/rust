@@ -1,7 +1,7 @@
 use crate::base::*;
 use crate::config::StripUnconfigured;
 use crate::hygiene::SyntaxContext;
-use crate::mbe::macro_rules::annotate_err_with_kind;
+use crate::mbe::diagnostics::annotate_err_with_kind;
 use crate::module::{mod_dir_path, parse_external_mod, DirOwnership, ParsedExternalMod};
 use crate::placeholders::{placeholder, PlaceholderExpander};
 
