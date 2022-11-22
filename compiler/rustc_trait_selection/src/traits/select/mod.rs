@@ -1591,20 +1591,8 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
             (TransmutabilityCandidate, _) | (_, TransmutabilityCandidate) => false,
 
             // (*)
-            (
-                BuiltinCandidate { has_nested: false }
-                | DiscriminantKindCandidate
-                | PointeeCandidate
-                | ConstDestructCandidate(_),
-                _,
-            ) => true,
-            (
-                _,
-                BuiltinCandidate { has_nested: false }
-                | DiscriminantKindCandidate
-                | PointeeCandidate
-                | ConstDestructCandidate(_),
-            ) => false,
+            (BuiltinCandidate { has_nested: false } | ConstDestructCandidate(_), _) => true,
+            (_, BuiltinCandidate { has_nested: false } | ConstDestructCandidate(_)) => false,
 
             (ParamCandidate(other), ParamCandidate(victim)) => {
                 let same_except_bound_vars = other.skip_binder().trait_ref
