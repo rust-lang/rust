@@ -96,6 +96,10 @@ note: this function takes ownership of the receiver `self`, which moves `rc_foo`
    |
 LL |     fn use_rc_self(self: Rc<Self>) {}
    |                    ^^^^
+help: consider cloning the value if the performance cost is acceptable
+   |
+LL |     rc_foo.clone().use_rc_self();
+   |           ++++++++
 
 error[E0382]: use of moved value: `foo_add`
   --> $DIR/move-fn-self-receiver.rs:59:5
@@ -137,6 +141,11 @@ LL |     for _val in explicit_into_iter.into_iter() {}
    |                                    ----------- `explicit_into_iter` moved due to this method call
 LL |     explicit_into_iter;
    |     ^^^^^^^^^^^^^^^^^^ value used here after move
+   |
+help: consider cloning the value if the performance cost is acceptable
+   |
+LL |     for _val in explicit_into_iter.clone().into_iter() {}
+   |                                   ++++++++
 
 error[E0382]: use of moved value: `container`
   --> $DIR/move-fn-self-receiver.rs:71:5
@@ -160,6 +169,7 @@ error[E0382]: use of moved value: `foo2`
 LL |     let foo2 = Foo;
    |         ---- move occurs because `foo2` has type `Foo`, which does not implement the `Copy` trait
 LL |     loop {
+   |     ---- inside of this loop
 LL |         foo2.use_self();
    |         ^^^^ ---------- `foo2` moved due to this method call, in previous iteration of loop
 

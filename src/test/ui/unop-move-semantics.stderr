@@ -14,6 +14,10 @@ note: calling this operator moves the left-hand side
    |
 LL |     fn not(self) -> Self::Output;
    |            ^^^^
+help: consider cloning the value if the performance cost is acceptable
+   |
+LL |     !x.clone();
+   |       ++++++++
 help: consider further restricting this bound
    |
 LL | fn move_then_borrow<T: Not<Output=T> + Clone + Copy>(x: T) {

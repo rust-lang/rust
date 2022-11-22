@@ -1734,7 +1734,7 @@ impl<'a> Parser<'a> {
                         expr.kind,
                         ExprKind::While(_, _, None)
                             | ExprKind::ForLoop(_, _, _, None)
-                            | ExprKind::Loop(_, None)
+                            | ExprKind::Loop(_, None, _)
                             | ExprKind::Block(_, None)
                     )
                 {
@@ -2444,10 +2444,11 @@ impl<'a> Parser<'a> {
 
     /// Parses `loop { ... }` (`loop` token already eaten).
     fn parse_loop_expr(&mut self, opt_label: Option<Label>, lo: Span) -> PResult<'a, P<Expr>> {
+        let loop_span = self.prev_token.span;
         let (attrs, body) = self.parse_inner_attrs_and_block()?;
         Ok(self.mk_expr_with_attrs(
             lo.to(self.prev_token.span),
-            ExprKind::Loop(body, opt_label),
+            ExprKind::Loop(body, opt_label, loop_span),
             attrs,
         ))
     }

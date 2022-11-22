@@ -70,7 +70,7 @@ impl<'cx, 'tcx> MirBorrowckCtxt<'cx, 'tcx> {
         location: Location,
         place: PlaceRef<'tcx>,
         diag: &mut Diagnostic,
-    ) {
+    ) -> bool {
         debug!("add_moved_or_invoked_closure_note: location={:?} place={:?}", location, place);
         let mut target = place.local_or_deref_local();
         for stmt in &self.body[location.block].statements[location.statement_index..] {
@@ -106,7 +106,7 @@ impl<'cx, 'tcx> MirBorrowckCtxt<'cx, 'tcx> {
                         {
                             place.local_or_deref_local().unwrap()
                         }
-                        _ => return,
+                        _ => return false,
                     };
 
                     debug!("add_moved_or_invoked_closure_note: closure={:?}", closure);
@@ -125,7 +125,7 @@ impl<'cx, 'tcx> MirBorrowckCtxt<'cx, 'tcx> {
                                     ty::place_to_string_for_capture(self.infcx.tcx, hir_place)
                                 ),
                             );
-                            return;
+                            return true;
                         }
                     }
                 }
@@ -149,9 +149,11 @@ impl<'cx, 'tcx> MirBorrowckCtxt<'cx, 'tcx> {
                             ty::place_to_string_for_capture(self.infcx.tcx, hir_place)
                         ),
                     );
+                    return true;
                 }
             }
         }
+        false
     }
 
     /// End-user visible description of `place` if one can be found.

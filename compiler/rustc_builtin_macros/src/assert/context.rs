@@ -307,7 +307,7 @@ impl<'cx, 'a> Context<'cx, 'a> {
             | ExprKind::InlineAsm(_)
             | ExprKind::Let(_, _, _)
             | ExprKind::Lit(_)
-            | ExprKind::Loop(_, _)
+            | ExprKind::Loop(_, _, _)
             | ExprKind::MacCall(_)
             | ExprKind::Match(_, _)
             | ExprKind::Path(_, _)

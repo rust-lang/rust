@@ -377,7 +377,7 @@ impl<'a> State<'a> {
                 self.space();
                 self.print_block_with_attrs(blk, attrs);
             }
-            ast::ExprKind::Loop(ref blk, opt_label) => {
+            ast::ExprKind::Loop(ref blk, opt_label, _) => {
                 if let Some(label) = opt_label {
                     self.print_ident(label.ident);
                     self.word_space(":");
