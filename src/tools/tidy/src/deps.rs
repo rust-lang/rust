@@ -48,6 +48,7 @@ const EXCEPTIONS: &[(&str, &str)] = &[
     ("dunce", "CC0-1.0"),            // cargo (dev dependency)
     ("similar", "Apache-2.0"),       // cargo (dev dependency)
     ("normalize-line-endings", "Apache-2.0"), // cargo (dev dependency)
+    ("dissimilar", "Apache-2.0"),    // rustdoc, rustc_lexer (few tests) via expect-test, (dev deps)
 ];
 
 const EXCEPTIONS_CRANELIFT: &[(&str, &str)] = &[
@@ -110,9 +111,9 @@ const PERMITTED_RUSTC_DEPENDENCIES: &[&str] = &[
     "cstr",
     "datafrog",
     "derive_more",
-    "difference",
     "digest",
     "displaydoc",
+    "dissimilar",
     "dlmalloc",
     "either",
     "ena",
