@@ -66,6 +66,7 @@ rm src/test/ui/fn/dyn-fn-alignment.rs # wants a 256 byte alignment
 rm -r src/test/run-make/emit-named-files # requires full --emit support
 rm src/test/ui/abi/stack-probes.rs # stack probes not yet implemented
 rm src/test/ui/simd/intrinsic/ptr-cast.rs # simd_expose_addr intrinsic unimplemented
+rm -r src/test/run-make/repr128-dwarf # debuginfo test
 
 # optimization tests
 # ==================
