@@ -251,19 +251,18 @@ impl<'tcx> LateLintPass<'tcx> for UnusedResults {
                         .map(|inner| MustUsePath::Boxed(Box::new(inner)))
                 }
                 ty::Adt(def, _) => is_def_must_use(cx, def.did(), span),
-                ty::Opaque(def, _) => {
+                ty::Opaque(def, substs) => {
                     elaborate_predicates_with_span(
                         cx.tcx,
-                        cx.tcx.explicit_item_bounds(def).iter().cloned(),
+                        cx.tcx.bound_explicit_item_bounds(def).subst_iter_copied(cx.tcx, substs),
                     )
                     .filter_map(|obligation| {
                         // We only look at the `DefId`, so it is safe to skip the binder here.
-                        if let ty::PredicateKind::Trait(ref poly_trait_predicate) =
+                        if let ty::PredicateKind::Trait(ref trait_predicate) =
                             obligation.predicate.kind().skip_binder()
+                            && trait_predicate.self_ty() == ty
                         {
-                            let def_id = poly_trait_predicate.trait_ref.def_id;
-
-                            is_def_must_use(cx, def_id, span)
+                            is_def_must_use(cx, trait_predicate.def_id(), span)
                         } else {
                             None
                         }
