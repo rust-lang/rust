@@ -968,6 +968,7 @@ impl<'mir, 'tcx> MiriMachine<'mir, 'tcx> {
         self.threads.active_thread_ref().top_user_relevant_frame()
     }
 
+    /// This is the source of truth for the `is_user_relevant` flag in our `FrameExtra`.
     pub fn is_user_relevant(&self, frame: &Frame<'mir, 'tcx, Provenance>) -> bool {
         let def_id = frame.instance.def_id();
         (def_id.is_local() || self.local_crates.contains(&def_id.krate))
