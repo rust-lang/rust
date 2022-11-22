@@ -3,7 +3,7 @@ use smallvec::smallvec;
 use crate::infer::outlives::components::{push_outlives_components, Component};
 use crate::traits::{Obligation, ObligationCause, PredicateObligation};
 use rustc_data_structures::fx::{FxHashSet, FxIndexSet};
-use rustc_middle::ty::{self, ToPredicate, TyCtxt};
+use rustc_middle::ty::{self, ToPredicate, Ty, TyCtxt};
 use rustc_span::symbol::Ident;
 use rustc_span::Span;
 
@@ -132,8 +132,11 @@ fn predicate_obligation<'tcx>(
 }
 
 impl<'tcx> Elaborator<'tcx> {
-    pub fn filter_to_traits(self) -> FilterToTraits<Self> {
-        FilterToTraits::new(self)
+    pub fn filter_to_traits(
+        self,
+        filter_self_ty: Option<ty::Binder<'tcx, Ty<'tcx>>>,
+    ) -> FilterToTraits<'tcx, Self> {
+        FilterToTraits::new(self, filter_self_ty)
     }
 
     fn elaborate(&mut self, obligation: &PredicateObligation<'tcx>) {
@@ -312,20 +315,20 @@ impl<'tcx> Iterator for Elaborator<'tcx> {
 // Supertrait iterator
 ///////////////////////////////////////////////////////////////////////////
 
-pub type Supertraits<'tcx> = FilterToTraits<Elaborator<'tcx>>;
+pub type Supertraits<'tcx> = FilterToTraits<'tcx, Elaborator<'tcx>>;
 
 pub fn supertraits<'tcx>(
     tcx: TyCtxt<'tcx>,
     trait_ref: ty::PolyTraitRef<'tcx>,
 ) -> Supertraits<'tcx> {
-    elaborate_trait_ref(tcx, trait_ref).filter_to_traits()
+    elaborate_trait_ref(tcx, trait_ref).filter_to_traits(Some(trait_ref.self_ty()))
 }
 
 pub fn transitive_bounds<'tcx>(
     tcx: TyCtxt<'tcx>,
     bounds: impl Iterator<Item = ty::PolyTraitRef<'tcx>>,
 ) -> Supertraits<'tcx> {
-    elaborate_trait_refs(tcx, bounds).filter_to_traits()
+    elaborate_trait_refs(tcx, bounds).filter_to_traits(None)
 }
 
 /// A specialized variant of `elaborate_trait_refs` that only elaborates trait references that may
@@ -370,22 +373,29 @@ pub fn transitive_bounds_that_define_assoc_type<'tcx>(
 
 /// A filter around an iterator of predicates that makes it yield up
 /// just trait references.
-pub struct FilterToTraits<I> {
+pub struct FilterToTraits<'tcx, I> {
     base_iterator: I,
+    filter_self_ty: Option<ty::Binder<'tcx, Ty<'tcx>>>,
 }
 
-impl<I> FilterToTraits<I> {
-    fn new(base: I) -> FilterToTraits<I> {
-        FilterToTraits { base_iterator: base }
+impl<'tcx, I> FilterToTraits<'tcx, I> {
+    fn new(base: I, filter_self_ty: Option<ty::Binder<'tcx, Ty<'tcx>>>) -> FilterToTraits<'tcx, I> {
+        FilterToTraits { base_iterator: base, filter_self_ty }
     }
 }
 
-impl<'tcx, I: Iterator<Item = PredicateObligation<'tcx>>> Iterator for FilterToTraits<I> {
+impl<'tcx, I: Iterator<Item = PredicateObligation<'tcx>>> Iterator for FilterToTraits<'tcx, I> {
     type Item = ty::PolyTraitRef<'tcx>;
 
     fn next(&mut self) -> Option<ty::PolyTraitRef<'tcx>> {
         while let Some(obligation) = self.base_iterator.next() {
-            if let Some(data) = obligation.predicate.to_opt_poly_trait_pred() {
+            if let Some(data) = obligation.predicate.to_opt_poly_trait_pred()
+                // A note on binders: Elaboration means that the output predicates
+                // may have more bound variables than the inputs. However, since we
+                // only append variables to the bound vars list, it is fine to
+                // compare self types outside of the binders.
+                && self.filter_self_ty.map_or(true, |filter_self_ty| filter_self_ty.skip_binder() == data.skip_binder().self_ty())
+            {
                 return Some(data.map_bound(|t| t.trait_ref));
             }
         }
