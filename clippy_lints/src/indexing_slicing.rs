@@ -7,7 +7,7 @@ use rustc_ast::ast::RangeLimits;
 use rustc_hir::{Expr, ExprKind};
 use rustc_lint::{LateContext, LateLintPass};
 use rustc_middle::ty;
-use rustc_session::{declare_lint_pass, declare_tool_lint};
+use rustc_session::{declare_tool_lint, impl_lint_pass};
 
 declare_clippy_lint! {
     /// ### What it does
@@ -82,6 +82,8 @@ declare_clippy_lint! {
     "indexing/slicing usage"
 }
 
+impl_lint_pass!(IndexingSlicing => [INDEXING_SLICING, OUT_OF_BOUNDS_INDEXING]);
+
 #[derive(Copy, Clone)]
 pub struct IndexingSlicing {
     suppress_lint_in_const: bool,
@@ -89,13 +91,9 @@ pub struct IndexingSlicing {
 
 impl IndexingSlicing {
     pub fn new(suppress_lint_in_const: bool) -> Self {
-        Self {
-            suppress_lint_in_const,
-        }
+        Self { suppress_lint_in_const }
     }
 }
-
-declare_lint_pass!(IndexingSlicing => [INDEXING_SLICING, OUT_OF_BOUNDS_INDEXING]);
 
 impl<'tcx> LateLintPass<'tcx> for IndexingSlicing {
     fn check_expr(&mut self, cx: &LateContext<'tcx>, expr: &'tcx Expr<'_>) {
@@ -204,7 +202,7 @@ fn to_const_range(cx: &LateContext<'_>, range: higher::Range<'_>, array_size: u1
             } else {
                 Some(x)
             }
-        }
+        },
         Some(_) => None,
         None => Some(array_size),
     };

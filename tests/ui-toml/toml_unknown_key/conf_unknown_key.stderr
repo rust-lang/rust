@@ -35,6 +35,7 @@ error: error reading Clippy's configuration file `$DIR/clippy.toml`: unknown fie
            pass-by-value-size-limit
            single-char-binding-names-threshold
            standard-macro-braces
+           suppress-lint-in-const
            third-party
            too-large-for-stack
            too-many-arguments-threshold

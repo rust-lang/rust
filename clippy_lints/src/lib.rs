@@ -685,8 +685,7 @@ pub fn register_plugins(store: &mut rustc_lint::LintStore, sess: &Session, conf:
     store.register_late_pass(|_| Box::new(inherent_impl::MultipleInherentImpl));
     store.register_late_pass(|_| Box::new(neg_cmp_op_on_partial_ord::NoNegCompOpForPartialOrd));
     store.register_late_pass(|_| Box::new(unwrap::Unwrap));
-    store.register_late_pass(|_| Box::new(indexing_slicing::IndexingSlicing));
-    store.register_late_pass(|_| Box::new(indexing_slicing::IndexingSlicing::new(suppress_lint_in_const)));
+    store.register_late_pass(move |_| Box::new(indexing_slicing::IndexingSlicing::new(suppress_lint_in_const)));
     store.register_late_pass(|_| Box::new(non_copy_const::NonCopyConst));
     store.register_late_pass(|_| Box::new(ptr_offset_with_cast::PtrOffsetWithCast));
     store.register_late_pass(|_| Box::new(redundant_clone::RedundantClone));

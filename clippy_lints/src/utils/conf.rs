@@ -406,7 +406,7 @@ define_Conf! {
     ///
     /// Whether to allow mixed uninlined format args, e.g. `format!("{} {}", a, foo.bar)`
     (allow_mixed_uninlined_format_args: bool = true),
-    /// Lint: SUPPRESS_LINT
+    /// Lint: INDEXING_SLICING
     ///
     /// Whether to suppress lint in const function
     (suppress_lint_in_const: bool = true),
