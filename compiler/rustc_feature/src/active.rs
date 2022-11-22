@@ -430,6 +430,8 @@ declare_features! (
     (active, half_open_range_patterns_in_slices, "1.66.0", Some(67264), None),
     /// Allows `if let` guard in match arms.
     (active, if_let_guard, "1.47.0", Some(51114), None),
+    /// Allow multiple const-generic impls to unify for traits which are abstract.
+    (active, impl_exhaustive_const_traits, "1.65.0", Some(104806), None),
     /// Allows `impl Trait` to be used inside associated types (RFC 2515).
     (active, impl_trait_in_assoc_type, "1.70.0", Some(63063), None),
     /// Allows `impl Trait` as output type in `Fn` traits in return position of functions.

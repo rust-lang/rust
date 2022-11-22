@@ -1,0 +1,9 @@
+error[E0080]: evaluation of `<Mat<0> as Dot>::{constant#0}` failed
+  --> $DIR/inductive.rs:11:48
+   |
+LL | impl<const N: usize> Dot for Mat<N> where Mat<{N-1}>: Dot {}
+   |                                                ^^^ attempt to compute `0_usize - 1_usize`, which would overflow
+
+error: aborting due to previous error
+
+For more information about this error, try `rustc --explain E0080`.

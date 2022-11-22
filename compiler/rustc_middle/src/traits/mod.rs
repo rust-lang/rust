@@ -653,6 +653,8 @@ pub enum ImplSource<'tcx, N> {
 
     /// Successful resolution for a builtin impl.
     Builtin(BuiltinImplSource, Vec<N>),
+    /// Impl Source for an Abstract Const unification.
+    Exhaustive(Vec<N>),
 }
 
 impl<'tcx, N> ImplSource<'tcx, N> {
@@ -660,6 +662,7 @@ impl<'tcx, N> ImplSource<'tcx, N> {
         match self {
             ImplSource::UserDefined(i) => i.nested,
             ImplSource::Param(_, n) | ImplSource::Builtin(_, n) => n,
+            ImplSource::Exhaustive(n) => n,
         }
     }
 
@@ -667,6 +670,7 @@ impl<'tcx, N> ImplSource<'tcx, N> {
         match self {
             ImplSource::UserDefined(i) => &i.nested,
             ImplSource::Param(_, n) | ImplSource::Builtin(_, n) => &n,
+            ImplSource::Exhaustive(n) => &n,
         }
     }
 
@@ -674,6 +678,7 @@ impl<'tcx, N> ImplSource<'tcx, N> {
         match self {
             ImplSource::UserDefined(i) => &mut i.nested,
             ImplSource::Param(_, n) | ImplSource::Builtin(_, n) => n,
+            ImplSource::Exhaustive(ref mut n) => n,
         }
     }
 
@@ -691,6 +696,7 @@ impl<'tcx, N> ImplSource<'tcx, N> {
             ImplSource::Builtin(source, n) => {
                 ImplSource::Builtin(source, n.into_iter().map(f).collect())
             }
+            ImplSource::Exhaustive(n) => ImplSource::Exhaustive(n.into_iter().map(f).collect()),
         }
     }
 }

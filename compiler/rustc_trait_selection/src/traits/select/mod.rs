@@ -1806,6 +1806,8 @@ impl<'tcx> SelectionContext<'_, 'tcx> {
         // This is a fix for #53123 and prevents winnowing from accidentally extending the
         // lifetime of a variable.
         match (&other.candidate, &victim.candidate) {
+            (_, ExhaustiveCandidate(..)) => DropVictim::Yes,
+            (ExhaustiveCandidate(..), _) => DropVictim::No,
             // FIXME(@jswrenn): this should probably be more sophisticated
             (TransmutabilityCandidate, _) | (_, TransmutabilityCandidate) => DropVictim::No,
 
@@ -2604,6 +2606,7 @@ impl<'tcx> SelectionContext<'_, 'tcx> {
         assert_eq!(predicates.parent, None);
         let predicates = predicates.instantiate_own(tcx, args);
         let mut obligations = Vec::with_capacity(predicates.len());
+
         for (index, (predicate, span)) in predicates.into_iter().enumerate() {
             let cause =
                 if Some(parent_trait_pred.def_id()) == tcx.lang_items().coerce_unsized_trait() {
@@ -2998,4 +3001,53 @@ fn bind_generator_hidden_types_above<'tcx>(
         (num_bound_variables..counter).map(|_| ty::BoundVariableKind::Region(ty::BrAnon(None))),
     ));
     ty::Binder::bind_with_vars(hidden_types, bound_vars)
+}
+
+// For a given type, will run a function over all constants for that type if permitted.
+// returns false if not permitted. Callers should not rely on the order.
+fn exhaustive_types<'tcx>(
+    tcx: TyCtxt<'tcx>,
+    ty: Ty<'tcx>,
+    mut f: impl FnMut(ty::Const<'tcx>),
+) -> bool {
+    use std::mem::transmute;
+    match ty.kind() {
+        ty::Bool => {
+            for v in [true, false].into_iter() {
+                f(ty::Const::from_bool(tcx, v));
+            }
+        }
+        // Should always compile, as this is never instantiable
+        ty::Never => {}
+        ty::Adt(adt_def, _substs) => {
+            if adt_def.is_payloadfree() {
+                return true;
+            }
+            if adt_def.is_variant_list_non_exhaustive() {
+                return false;
+            }
+
+            // FIXME(julianknodt): here need to create constants for each variant
+            return false;
+        }
+
+        ty::Int(ty::IntTy::I8) => {
+            for v in -128i8..127i8 {
+                let c = ty::Const::from_bits(
+                    tcx,
+                    unsafe { transmute(v as i128) },
+                    ty::ParamEnv::empty().and(ty),
+                );
+                f(c);
+            }
+        }
+        ty::Uint(ty::UintTy::U8) => {
+            for v in 0u8..=255u8 {
+                let c = ty::Const::from_bits(tcx, v as u128, ty::ParamEnv::empty().and(ty));
+                f(c);
+            }
+        }
+        _ => return false,
+    }
+    true
 }

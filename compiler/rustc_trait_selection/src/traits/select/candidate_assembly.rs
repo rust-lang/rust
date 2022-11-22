@@ -12,7 +12,7 @@ use rustc_hir as hir;
 use rustc_infer::traits::ObligationCause;
 use rustc_infer::traits::{Obligation, PolyTraitObligation, SelectionError};
 use rustc_middle::ty::fast_reject::{DeepRejectCtxt, TreatParams};
-use rustc_middle::ty::{self, Ty, TypeVisitableExt};
+use rustc_middle::ty::{self, ConstKind, Ty, TypeVisitableExt};
 
 use crate::traits;
 use crate::traits::query::evaluate_obligation::InferCtxtExt;
@@ -118,6 +118,7 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
 
                 self.assemble_closure_candidates(obligation, &mut candidates);
                 self.assemble_fn_pointer_candidates(obligation, &mut candidates);
+                self.assemble_candidates_from_exhaustive_impls(obligation, &mut candidates);
                 self.assemble_candidates_from_impls(obligation, &mut candidates);
                 self.assemble_candidates_from_object_ty(obligation, &mut candidates);
             }
@@ -348,6 +349,12 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
 
         let drcx = DeepRejectCtxt { treat_obligation_params: TreatParams::ForLookup };
         let obligation_args = obligation.predicate.skip_binder().trait_ref.args;
+        // disallow any adts to have recursive types in the LHS
+        if let ty::Adt(_, args) = obligation.predicate.skip_binder().self_ty().kind() {
+            if args.consts().any(|c| matches!(c.kind(), ConstKind::Expr(_))) {
+                return;
+            }
+        }
         self.tcx().for_each_relevant_impl(
             obligation.predicate.def_id(),
             obligation.predicate.skip_binder().trait_ref.self_ty(),
@@ -464,6 +471,54 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
             }
         }
         false
+    }
+    /// When constructing an impl over a generic const enum (i.e. bool = { true, false })
+    /// If all possible variants of an enum are implemented AND the obligation is over that
+    /// variant,
+    fn assemble_candidates_from_exhaustive_impls(
+        &mut self,
+        obligation: &PolyTraitObligation<'tcx>,
+        candidates: &mut SelectionCandidateSet<'tcx>,
+    ) {
+        if !self.tcx().features().impl_exhaustive_const_traits {
+            return;
+        }
+
+        // see note in `assemble_candidates_from_impls`.
+        if obligation.predicate.references_error() {
+            return;
+        }
+
+        // note: ow = otherwise
+        // - check if trait has abstract const argument(s) which is (are) enum or bool, ow return
+        // - check if trait enum is non-exhaustive, ow return
+        // - construct required set of possible combinations, with false unless present
+        // for each relevant trait
+        // - check if is same trait
+        // - set combo as present
+        // If all required sets are present, add candidate impl generic over all combinations.
+
+        let query = obligation.predicate.skip_binder().self_ty();
+        let ty::Adt(_adt_def, adt_substs) = query.kind() else {
+            return;
+        };
+
+        let Some(ct) = adt_substs
+            .consts()
+            .filter(|ct| {
+                matches!(ct.kind(), ty::ConstKind::Unevaluated(..) | ty::ConstKind::Param(_))
+            })
+            .next()
+        else {
+            return;
+        };
+
+        // explicitly gate certain types which are exhaustive
+        if !super::exhaustive_types(self.tcx(), ct.ty(), |_| {}) {
+            return;
+        }
+
+        candidates.vec.push(ExhaustiveCandidate(obligation.predicate));
     }
 
     fn assemble_candidates_from_auto_impls(

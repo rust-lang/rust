@@ -1,0 +1,28 @@
+error[E0391]: cycle detected when building an abstract representation for `demo_func::{constant#1}`
+  --> $DIR/unified_with_assoc.rs:21:7
+   |
+LL |   [();Demo::<{N>5}>::VAL]:,
+   |       ^^^^^^^^^^^^^^^^^^
+   |
+note: ...which requires building THIR for `demo_func::{constant#1}`...
+  --> $DIR/unified_with_assoc.rs:21:7
+   |
+LL |   [();Demo::<{N>5}>::VAL]:,
+   |       ^^^^^^^^^^^^^^^^^^
+note: ...which requires type-checking `demo_func::{constant#1}`...
+  --> $DIR/unified_with_assoc.rs:21:7
+   |
+LL |   [();Demo::<{N>5}>::VAL]:,
+   |       ^^^^^^^^^^^^^^^^^^
+   = note: ...which again requires building an abstract representation for `demo_func::{constant#1}`, completing the cycle
+note: cycle used when checking that `demo_func` is well-formed
+  --> $DIR/unified_with_assoc.rs:20:1
+   |
+LL | / fn demo_func<const N: usize>() where Demo<{ N > 5 }>: WithAssoc,
+LL | |   [();Demo::<{N>5}>::VAL]:,
+   | |___________________________^
+   = note: see https://rustc-dev-guide.rust-lang.org/overview.html#queries and https://rustc-dev-guide.rust-lang.org/query.html for more information
+
+error: aborting due to previous error
+
+For more information about this error, try `rustc --explain E0391`.

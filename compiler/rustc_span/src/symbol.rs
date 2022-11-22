@@ -815,6 +815,7 @@ symbols! {
         if_let_guard,
         if_while_or_patterns,
         ignore,
+        impl_exhaustive_const_traits,
         impl_header_lifetime_elision,
         impl_lint_pass,
         impl_trait_in_assoc_type,
