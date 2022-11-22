@@ -2097,7 +2097,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             && let maybe_trait_item_def_id = assoc_item.trait_item_def_id.unwrap_or(def_id)
             && let maybe_trait_def_id = self.tcx.parent(maybe_trait_item_def_id)
             // Just an easy way to check "trait_def_id == Fn/FnMut/FnOnce"
-            && let Some(call_kind) = ty::ClosureKind::from_def_id(self.tcx, maybe_trait_def_id)
+            && let Some(call_kind) = self.tcx.fn_trait_kind_from_def_id(maybe_trait_def_id)
             && let Some(callee_ty) = callee_ty
         {
             let callee_ty = callee_ty.peel_refs();
@@ -2123,7 +2123,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                         {
                             if let ty::PredicateKind::Trait(pred) = predicate.kind().skip_binder()
                                 && pred.self_ty().peel_refs() == callee_ty
-                                && ty::ClosureKind::from_def_id(self.tcx, pred.def_id()).is_some()
+                                && self.tcx.fn_trait_kind_from_def_id(pred.def_id()).is_some()
                             {
                                 err.span_note(span, "callable defined here");
                                 return;

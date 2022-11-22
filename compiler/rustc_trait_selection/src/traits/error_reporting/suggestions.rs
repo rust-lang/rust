@@ -1757,7 +1757,7 @@ impl<'tcx> TypeErrCtxtExt<'tcx> for TypeErrCtxt<'_, 'tcx> {
             && let predicates = self.tcx.predicates_of(def_id).instantiate_identity(self.tcx)
             && let Some(pred) = predicates.predicates.get(*idx)
             && let ty::PredicateKind::Trait(trait_pred) = pred.kind().skip_binder()
-            && ty::ClosureKind::from_def_id(self.tcx, trait_pred.def_id()).is_some()
+            && self.tcx.fn_trait_kind_from_def_id(trait_pred.def_id()).is_some()
         {
             let expected_self =
                 self.tcx.anonymize_late_bound_regions(pred.kind().rebind(trait_pred.self_ty()));
@@ -1771,7 +1771,7 @@ impl<'tcx> TypeErrCtxtExt<'tcx> for TypeErrCtxt<'_, 'tcx> {
                 .enumerate()
                 .find(|(other_idx, (pred, _))| match pred.kind().skip_binder() {
                     ty::PredicateKind::Trait(trait_pred)
-                        if ty::ClosureKind::from_def_id(self.tcx, trait_pred.def_id())
+                        if self.tcx.fn_trait_kind_from_def_id(trait_pred.def_id())
                             .is_some()
                             && other_idx != idx
                             // Make sure that the self type matches

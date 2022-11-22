@@ -117,18 +117,9 @@ impl<'tcx> ClosureKind {
         }
     }
 
-    pub fn from_def_id(tcx: TyCtxt<'_>, def_id: DefId) -> Option<ClosureKind> {
-        if Some(def_id) == tcx.lang_items().fn_once_trait() {
-            Some(ClosureKind::FnOnce)
-        } else if Some(def_id) == tcx.lang_items().fn_mut_trait() {
-            Some(ClosureKind::FnMut)
-        } else if Some(def_id) == tcx.lang_items().fn_trait() {
-            Some(ClosureKind::Fn)
-        } else {
-            None
-        }
-    }
-
+    /// Converts `self` to a [`DefId`] of the corresponding trait.
+    ///
+    /// Note: the inverse of this function is [`TyCtxt::fn_trait_kind_from_def_id`]
     pub fn to_def_id(&self, tcx: TyCtxt<'_>) -> DefId {
         match self {
             ClosureKind::Fn => tcx.lang_items().fn_once_trait().unwrap(),
