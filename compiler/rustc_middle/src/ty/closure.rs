@@ -96,15 +96,7 @@ impl<'tcx> ClosureKind {
     /// Returns `true` if a type that impls this closure kind
     /// must also implement `other`.
     pub fn extends(self, other: ty::ClosureKind) -> bool {
-        matches!(
-            (self, other),
-            (ClosureKind::Fn, ClosureKind::Fn)
-                | (ClosureKind::Fn, ClosureKind::FnMut)
-                | (ClosureKind::Fn, ClosureKind::FnOnce)
-                | (ClosureKind::FnMut, ClosureKind::FnMut)
-                | (ClosureKind::FnMut, ClosureKind::FnOnce)
-                | (ClosureKind::FnOnce, ClosureKind::FnOnce)
-        )
+        self <= other
     }
 
     /// Returns the representative scalar type for this closure kind.
