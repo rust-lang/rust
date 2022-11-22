@@ -275,7 +275,7 @@ metadata_crate_location_unknown_type =
     extern location for {$crate_name} is of an unknown type: {$path}
 
 metadata_lib_filename_form =
-    file name should be lib*.rlib or {$dll_prefix}*.{$dll_suffix}
+    file name should be lib*.rlib or {$dll_prefix}*{$dll_suffix}
 
 metadata_multiple_import_name_type =
     multiple `import_name_type` arguments in a single `#[link]` attribute
