@@ -740,7 +740,7 @@ impl<T: Ord> BinaryHeap<T> {
     /// };
     ///
     /// let mut a = BinaryHeap::from(vec![Cell::new(0), Cell::new(1), Cell::new(2), Cell::new(3)]);
-    ///     
+    ///
     /// let sorted_values = |heap: &BinaryHeap<Cell<i32>>| {
     ///     heap.clone()
     ///         // this method assumes the heap is in a valid state.
