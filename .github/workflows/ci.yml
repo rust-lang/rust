@@ -7,7 +7,7 @@ on:
   workflow_call:
 jobs:
   build-libc:
-    runs-on: self-hosted-ubuntu
+    runs-on: ubuntu-latest-4-cores
     steps:
       - name: show git config
         run: |
@@ -69,24 +69,19 @@ jobs:
     needs: build-libc
     strategy:
       matrix:
-        os: [self-hosted-ubuntu, macos-12, self-hosted-windows]
+        os: [ubuntu-latest-4-cores, macos-12, windows-latest-4-cores]
         arch: [x86, aarch64]
         exclude:
-          - os: windows-2019
+          - os: windows-latest-4-cores
             arch: aarch64
-          - os: self-hosted-windows
+          - os: ubuntu-latest-4-cores
             arch: aarch64
-          - os: self-hosted-ubuntu
-            arch: aarch64
-          - os: ubuntu-latest
-            arch: aarch64
-
 
     runs-on: ${{ matrix.os }}
     steps:
       - name: Install Rust
         uses: actions-rs/toolchain@v1
-        if: matrix.os != 'self-hosted-windows'
+        # if: matrix.os != 'self-hosted-windows'
         with:
             toolchain: stable
 
@@ -126,14 +121,14 @@ jobs:
       # Linux!
 
       - name: Setup (Ubuntu)
-        if: matrix.arch == 'x86' && (matrix.os == 'self-hosted-ubuntu' || matrix.os == 'ubuntu-latest')
+        if: matrix.arch == 'x86' && contains(matrix.os, 'ubuntu')
         shell: bash
         run: |
           sudo apt-get update
           sudo apt-get install -y build-essential curl wget xz-utils git python3 ninja-build cmake
 
       - name: Build (Linux)
-        if: matrix.arch == 'x86' && (matrix.os == 'self-hosted-ubuntu' || matrix.os == 'ubuntu-latest')
+        if: matrix.arch == 'x86' && contains(matrix.os, 'ubuntu')
         shell: bash
         env:
           WASIX_NO_UPDATE_REPOS: '1'
@@ -147,7 +142,7 @@ jobs:
 
       - name: Archive build output (Linux)
         uses: actions/upload-artifact@v3
-        if: matrix.os == 'self-hosted-ubuntu' || matrix.os == 'ubuntu-latest'
+        if: contains(matrix.os, 'ubuntu')
         with:
           name: rust-toolchain-x86_64-unknown-linux-gnu
           path: |
@@ -214,15 +209,15 @@ jobs:
 
       # Windows
 
-      - name: Install chocolatey deps (Windows)
-        if: (matrix.os == 'self-hosted-windows') && matrix.arch == 'x86'
-        shell: bash
-        run:
-          choco install -y git python3 visualstudio2019community cmake 
+      # - name: Install chocolatey deps (Windows)
+      #   if: (matrix.os == 'self-hosted-windows') && matrix.arch == 'x86'
+      #   shell: bash
+      #   run:
+      #     choco install -y git python3 visualstudio2019community cmake 
 
-      - name: Set up MinGW (Windows)
-        if: (matrix.os == 'windows-2019') && matrix.arch == 'x86'
-        uses: egor-tensin/setup-mingw@v2
+      # - name: Set up MinGW (Windows)
+      #   if: (matrix.os == 'windows-2019') && matrix.arch == 'x86'
+      #   uses: egor-tensin/setup-mingw@v2
 
       # - name: Install llvm (Windows)
       #   if: matrix.os == 'self-hosted-windows'
@@ -235,14 +230,14 @@ jobs:
         uses: seanmiddleditch/gha-setup-ninja@master
 
       - name: Build (Windows)
-        if: (matrix.os == 'windows-2019' || matrix.os == 'self-hosted-windows' ) && matrix.arch == 'x86'
+        if: contains(matrix.os, 'windows') && matrix.arch == 'x86'
         continue-on-error: true
         shell: bash
         env:
           WASIX_NO_UPDATE_REPOS: '1'
           WASIX_COMPONENTS: rust
-          WASIX_RUST_HOST: x86_64-pc-windows-gnu
-          # WASIX_RUST_HOST: x86_64-pc-windows-msvc
+          # WASIX_RUST_HOST: x86_64-pc-windows-gnu
+          WASIX_RUST_HOST: x86_64-pc-windows-msvc
         run: |
           cd cargo-wasix
           # NOTE: must unset GITHUB_ACTIONS env var, because Rst bootstrap checks for it.
@@ -250,11 +245,11 @@ jobs:
           GITHUB_ACTIONS=false WASIX_BUILD_DIR=$GITHUB_WORKSPACE cargo run -- wasix build-toolchain
 
       - name: Archive build output (Windows)
-        if: (matrix.os == 'windows-2019' || matrix.os == 'self-hosted-windows' ) && matrix.arch == 'x86'
+        if: contains(matrix.os, 'windows') && matrix.arch == 'x86'
         uses: actions/upload-artifact@v3
         with:
-          # name: rust-toolchain-x86_64-pc-windows-msvc
-          name: rust-toolchain-x86_64-pc-windows-gnu
+          name: rust-toolchain-x86_64-pc-windows-msvc
+          # name: rust-toolchain-x86_64-pc-windows-gnu
           path: |
-            wasix-rust/build/x86_64-pc-windows-gnu/stage2
-            !wasix-rust/build/x86_64-pc-windows-gnu/stage2/lib/rustlib/src
+            wasix-rust/build/x86_64-pc-windows-msvc/stage2
+            !wasix-rust/build/x86_64-pc-windows-msvc/stage2/lib/rustlib/src
