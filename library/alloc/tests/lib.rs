@@ -47,6 +47,7 @@
 #![feature(strict_provenance)]
 #![feature(once_cell)]
 #![feature(drain_keep_rest)]
+#![deny(fuzzy_provenance_casts)]
 
 use std::collections::hash_map::DefaultHasher;
 use std::hash::{Hash, Hasher};
