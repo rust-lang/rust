@@ -414,7 +414,7 @@ impl<'a> Parser<'a> {
                 self.sess.ambiguous_block_expr_parse.borrow_mut().insert(sp, lhs.span);
                 false
             }
-            (true, Some(ref op)) if !op.can_continue_expr_unambiguously() => false,
+            (true, Some(op)) if !op.can_continue_expr_unambiguously() => false,
             (true, Some(_)) => {
                 self.error_found_expr_would_be_stmt(lhs);
                 true
@@ -1728,7 +1728,7 @@ impl<'a> Parser<'a> {
             || !self.restrictions.contains(Restrictions::NO_STRUCT_LITERAL)
         {
             let expr = self.parse_expr_opt()?;
-            if let Some(ref expr) = expr {
+            if let Some(expr) = &expr {
                 if label.is_some()
                     && matches!(
                         expr.kind,
@@ -2590,8 +2590,8 @@ impl<'a> Parser<'a> {
         // Used to check the `let_chains` and `if_let_guard` features mostly by scanning
         // `&&` tokens.
         fn check_let_expr(expr: &Expr) -> (bool, bool) {
-            match expr.kind {
-                ExprKind::Binary(BinOp { node: BinOpKind::And, .. }, ref lhs, ref rhs) => {
+            match &expr.kind {
+                ExprKind::Binary(BinOp { node: BinOpKind::And, .. }, lhs, rhs) => {
                     let lhs_rslt = check_let_expr(lhs);
                     let rhs_rslt = check_let_expr(rhs);
                     (lhs_rslt.0 || rhs_rslt.0, false)
