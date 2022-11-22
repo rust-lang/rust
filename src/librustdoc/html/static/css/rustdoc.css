@@ -290,19 +290,20 @@ p:last-child {
 button {
 	/* Buttons on Safari have different default padding than other platforms. Make them the same. */
 	padding: 1px 6px;
+	/* Opinionated tweak: use pointer cursor as clickability signifier. */
+	cursor: pointer;
 }
+
+/* end tweaks for normalize.css 8 */
 
 button#toggle-all-docs {
 	padding: 0;
 	background: none;
 	border: none;
-	cursor: pointer;
 	/* iOS button gradient: https://stackoverflow.com/q/5438567 */
 	-webkit-appearance: none;
 	opacity: 1;
 }
-
-/* end tweaks for normalize.css 8 */
 
 .rustdoc {
 	display: flex;
@@ -906,6 +907,13 @@ so that we can apply CSS-filters to change the arrow color in themes */
 	background-color: var(--search-result-link-focus-background-color);
 }
 
+.search-results .result-name span.alias {
+	color: var(--search-results-alias-color);
+}
+.search-results .result-name span.grey {
+	color: var(--search-results-grey-color);
+}
+
 .popover {
 	position: absolute;
 	right: 0;
@@ -1305,7 +1313,6 @@ a.test-arrow:hover {
 #titles > button {
 	text-align: center;
 	font-size: 1.125rem;
-	cursor: pointer;
 	border: 0;
 	border-top: 2px solid;
 	flex: 1;
@@ -1345,7 +1352,6 @@ a.test-arrow:hover {
 	font-weight: bold;
 	background: none;
 	color: inherit;
-	cursor: pointer;
 	text-align: center;
 	border: none;
 	outline: none;
@@ -1367,7 +1373,6 @@ a.test-arrow:hover {
 
 #settings-menu > a, #help-button > a, #copy-path {
 	width: 33px;
-	cursor: pointer;
 	line-height: 1.5;
 }
 
@@ -1796,7 +1801,6 @@ in storage.js
 		z-index: 10;
 		border-top-right-radius: 3px;
 		border-bottom-right-radius: 3px;
-		cursor: pointer;
 		border: 1px solid;
 		border-left: 0;
 	}
@@ -1967,7 +1971,6 @@ in storage.js
 	position: absolute;
 	top: 0.25em;
 	z-index: 1;
-	cursor: pointer;
 	padding: 0;
 	background: none;
 	border: none;

@@ -367,21 +367,25 @@ pub fn visit_fn_sig<T: MutVisitor>(FnSig { header, decl, span }: &mut FnSig, vis
 }
 
 // No `noop_` prefix because there isn't a corresponding method in `MutVisitor`.
-pub fn visit_mac_args<T: MutVisitor>(args: &mut MacArgs, vis: &mut T) {
+pub fn visit_attr_args<T: MutVisitor>(args: &mut AttrArgs, vis: &mut T) {
     match args {
-        MacArgs::Empty => {}
-        MacArgs::Delimited(dspan, _delim, tokens) => {
-            visit_delim_span(dspan, vis);
-            visit_tts(tokens, vis);
-        }
-        MacArgs::Eq(eq_span, MacArgsEq::Ast(expr)) => {
+        AttrArgs::Empty => {}
+        AttrArgs::Delimited(args) => visit_delim_args(args, vis),
+        AttrArgs::Eq(eq_span, AttrArgsEq::Ast(expr)) => {
             vis.visit_span(eq_span);
             vis.visit_expr(expr);
         }
-        MacArgs::Eq(_, MacArgsEq::Hir(lit)) => {
+        AttrArgs::Eq(_, AttrArgsEq::Hir(lit)) => {
             unreachable!("in literal form when visiting mac args eq: {:?}", lit)
         }
     }
+}
+
+// No `noop_` prefix because there isn't a corresponding method in `MutVisitor`.
+pub fn visit_delim_args<T: MutVisitor>(args: &mut DelimArgs, vis: &mut T) {
+    let DelimArgs { dspan, delim: _, tokens } = args;
+    visit_delim_span(dspan, vis);
+    visit_tts(tokens, vis);
 }
 
 pub fn visit_delim_span<T: MutVisitor>(dspan: &mut DelimSpan, vis: &mut T) {
@@ -601,7 +605,7 @@ pub fn noop_visit_attribute<T: MutVisitor>(attr: &mut Attribute, vis: &mut T) {
             let NormalAttr { item: AttrItem { path, args, tokens }, tokens: attr_tokens } =
                 &mut **normal;
             vis.visit_path(path);
-            visit_mac_args(args, vis);
+            visit_attr_args(args, vis);
             visit_lazy_tts(tokens, vis);
             visit_lazy_tts(attr_tokens, vis);
         }
@@ -613,12 +617,12 @@ pub fn noop_visit_attribute<T: MutVisitor>(attr: &mut Attribute, vis: &mut T) {
 pub fn noop_visit_mac<T: MutVisitor>(mac: &mut MacCall, vis: &mut T) {
     let MacCall { path, args, prior_type_ascription: _ } = mac;
     vis.visit_path(path);
-    visit_mac_args(args, vis);
+    visit_delim_args(args, vis);
 }
 
 pub fn noop_visit_macro_def<T: MutVisitor>(macro_def: &mut MacroDef, vis: &mut T) {
     let MacroDef { body, macro_rules: _ } = macro_def;
-    visit_mac_args(body, vis);
+    visit_delim_args(body, vis);
 }
 
 pub fn noop_visit_meta_list_item<T: MutVisitor>(li: &mut NestedMetaItem, vis: &mut T) {
@@ -792,7 +796,7 @@ pub fn visit_nonterminal<T: MutVisitor>(nt: &mut token::Nonterminal, vis: &mut T
         token::NtMeta(item) => {
             let AttrItem { path, args, tokens } = item.deref_mut();
             vis.visit_path(path);
-            visit_mac_args(args, vis);
+            visit_attr_args(args, vis);
             visit_lazy_tts(tokens, vis);
         }
         token::NtPath(path) => vis.visit_path(path),

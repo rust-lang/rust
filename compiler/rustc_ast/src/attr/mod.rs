@@ -1,9 +1,9 @@
 //! Functions dealing with attributes and meta items.
 
 use crate::ast;
-use crate::ast::{AttrId, AttrItem, AttrKind, AttrStyle, Attribute};
-use crate::ast::{Lit, LitKind};
-use crate::ast::{MacArgs, MacArgsEq, MacDelimiter, MetaItem, MetaItemKind, NestedMetaItem};
+use crate::ast::{AttrArgs, AttrArgsEq, AttrId, AttrItem, AttrKind, AttrStyle, Attribute};
+use crate::ast::{DelimArgs, Lit, LitKind};
+use crate::ast::{MacDelimiter, MetaItem, MetaItemKind, NestedMetaItem};
 use crate::ast::{Path, PathSegment};
 use crate::ptr::P;
 use crate::token::{self, CommentKind, Delimiter, Token};
@@ -158,7 +158,7 @@ impl Attribute {
 
     pub fn is_word(&self) -> bool {
         if let AttrKind::Normal(normal) = &self.kind {
-            matches!(normal.item.args, MacArgs::Empty)
+            matches!(normal.item.args, AttrArgs::Empty)
         } else {
             false
         }
@@ -223,13 +223,13 @@ impl AttrItem {
     pub fn meta(&self, span: Span) -> Option<MetaItem> {
         Some(MetaItem {
             path: self.path.clone(),
-            kind: MetaItemKind::from_mac_args(&self.args)?,
+            kind: MetaItemKind::from_attr_args(&self.args)?,
             span,
         })
     }
 
     pub fn meta_kind(&self) -> Option<MetaItemKind> {
-        MetaItemKind::from_mac_args(&self.args)
+        MetaItemKind::from_attr_args(&self.args)
     }
 }
 
@@ -390,7 +390,7 @@ pub fn mk_attr(
     g: &AttrIdGenerator,
     style: AttrStyle,
     path: Path,
-    args: MacArgs,
+    args: AttrArgs,
     span: Span,
 ) -> Attribute {
     mk_attr_from_item(g, AttrItem { path, args, tokens: None }, None, style, span)
@@ -413,12 +413,12 @@ pub fn mk_attr_from_item(
 
 /// Returns an inner attribute with the given value and span.
 pub fn mk_attr_inner(g: &AttrIdGenerator, item: MetaItem) -> Attribute {
-    mk_attr(g, AttrStyle::Inner, item.path, item.kind.mac_args(item.span), item.span)
+    mk_attr(g, AttrStyle::Inner, item.path, item.kind.attr_args(item.span), item.span)
 }
 
 /// Returns an outer attribute with the given value and span.
 pub fn mk_attr_outer(g: &AttrIdGenerator, item: MetaItem) -> Attribute {
-    mk_attr(g, AttrStyle::Outer, item.path, item.kind.mac_args(item.span), item.span)
+    mk_attr(g, AttrStyle::Outer, item.path, item.kind.attr_args(item.span), item.span)
 }
 
 pub fn mk_doc_comment(
@@ -524,9 +524,9 @@ impl MetaItemKind {
         }
     }
 
-    pub fn mac_args(&self, span: Span) -> MacArgs {
+    pub fn attr_args(&self, span: Span) -> AttrArgs {
         match self {
-            MetaItemKind::Word => MacArgs::Empty,
+            MetaItemKind::Word => AttrArgs::Empty,
             MetaItemKind::NameValue(lit) => {
                 let expr = P(ast::Expr {
                     id: ast::DUMMY_NODE_ID,
@@ -535,7 +535,7 @@ impl MetaItemKind {
                     attrs: ast::AttrVec::new(),
                     tokens: None,
                 });
-                MacArgs::Eq(span, MacArgsEq::Ast(expr))
+                AttrArgs::Eq(span, AttrArgsEq::Ast(expr))
             }
             MetaItemKind::List(list) => {
                 let mut tts = Vec::new();
@@ -545,11 +545,11 @@ impl MetaItemKind {
                     }
                     tts.extend(item.token_trees())
                 }
-                MacArgs::Delimited(
-                    DelimSpan::from_single(span),
-                    MacDelimiter::Parenthesis,
-                    TokenStream::new(tts),
-                )
+                AttrArgs::Delimited(DelimArgs {
+                    dspan: DelimSpan::from_single(span),
+                    delim: MacDelimiter::Parenthesis,
+                    tokens: TokenStream::new(tts),
+                })
             }
         }
     }
@@ -608,20 +608,22 @@ impl MetaItemKind {
         }
     }
 
-    fn from_mac_args(args: &MacArgs) -> Option<MetaItemKind> {
+    fn from_attr_args(args: &AttrArgs) -> Option<MetaItemKind> {
         match args {
-            MacArgs::Empty => Some(MetaItemKind::Word),
-            MacArgs::Delimited(_, MacDelimiter::Parenthesis, tokens) => {
-                MetaItemKind::list_from_tokens(tokens.clone())
-            }
-            MacArgs::Delimited(..) => None,
-            MacArgs::Eq(_, MacArgsEq::Ast(expr)) => match expr.kind {
+            AttrArgs::Empty => Some(MetaItemKind::Word),
+            AttrArgs::Delimited(DelimArgs {
+                dspan: _,
+                delim: MacDelimiter::Parenthesis,
+                tokens,
+            }) => MetaItemKind::list_from_tokens(tokens.clone()),
+            AttrArgs::Delimited(..) => None,
+            AttrArgs::Eq(_, AttrArgsEq::Ast(expr)) => match expr.kind {
                 ast::ExprKind::Lit(token_lit) => Some(MetaItemKind::NameValue(
-                    Lit::from_token_lit(token_lit, expr.span).expect("token_lit in from_mac_args"),
+                    Lit::from_token_lit(token_lit, expr.span).expect("token_lit in from_attr_args"),
                 )),
                 _ => None,
             },
-            MacArgs::Eq(_, MacArgsEq::Hir(lit)) => Some(MetaItemKind::NameValue(lit.clone())),
+            AttrArgs::Eq(_, AttrArgsEq::Hir(lit)) => Some(MetaItemKind::NameValue(lit.clone())),
         }
     }
 

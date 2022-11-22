@@ -18,7 +18,7 @@ fn take_a(_: &dyn A) {}
 
 fn whoops(b: &dyn B) {
     take_a(b)
-    //~^ ERROR `dyn B` implements `Deref` with supertrait `(dyn A + 'static)` as output
+    //~^ ERROR `dyn B` implements `Deref` with supertrait `A` as output
     //~^^ WARN this was previously accepted by the compiler but is being phased out;
 }
 

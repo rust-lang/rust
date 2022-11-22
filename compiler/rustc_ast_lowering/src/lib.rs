@@ -911,7 +911,7 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
             AttrKind::Normal(ref normal) => AttrKind::Normal(P(NormalAttr {
                 item: AttrItem {
                     path: normal.item.path.clone(),
-                    args: self.lower_mac_args(&normal.item.args),
+                    args: self.lower_attr_args(&normal.item.args),
                     tokens: None,
                 },
                 tokens: None,
@@ -931,32 +931,14 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
         }
     }
 
-    fn lower_mac_args(&self, args: &MacArgs) -> MacArgs {
+    fn lower_attr_args(&self, args: &AttrArgs) -> AttrArgs {
         match *args {
-            MacArgs::Empty => MacArgs::Empty,
-            MacArgs::Delimited(dspan, delim, ref tokens) => {
-                // This is either a non-key-value attribute, or a `macro_rules!` body.
-                // We either not have any nonterminals present (in the case of an attribute),
-                // or have tokens available for all nonterminals in the case of a nested
-                // `macro_rules`: e.g:
-                //
-                // ```rust
-                // macro_rules! outer {
-                //     ($e:expr) => {
-                //         macro_rules! inner {
-                //             () => { $e }
-                //         }
-                //     }
-                // }
-                // ```
-                //
-                // In both cases, we don't want to synthesize any tokens
-                MacArgs::Delimited(dspan, delim, tokens.flattened())
-            }
+            AttrArgs::Empty => AttrArgs::Empty,
+            AttrArgs::Delimited(ref args) => AttrArgs::Delimited(self.lower_delim_args(args)),
             // This is an inert key-value attribute - it will never be visible to macros
             // after it gets lowered to HIR. Therefore, we can extract literals to handle
             // nonterminals in `#[doc]` (e.g. `#[doc = $e]`).
-            MacArgs::Eq(eq_span, MacArgsEq::Ast(ref expr)) => {
+            AttrArgs::Eq(eq_span, AttrArgsEq::Ast(ref expr)) => {
                 // In valid code the value always ends up as a single literal. Otherwise, a dummy
                 // literal suffices because the error is handled elsewhere.
                 let lit = if let ExprKind::Lit(token_lit) = expr.kind {
@@ -975,12 +957,16 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
                         span: DUMMY_SP,
                     }
                 };
-                MacArgs::Eq(eq_span, MacArgsEq::Hir(lit))
+                AttrArgs::Eq(eq_span, AttrArgsEq::Hir(lit))
             }
-            MacArgs::Eq(_, MacArgsEq::Hir(ref lit)) => {
+            AttrArgs::Eq(_, AttrArgsEq::Hir(ref lit)) => {
                 unreachable!("in literal form when lowering mac args eq: {:?}", lit)
             }
         }
+    }
+
+    fn lower_delim_args(&self, args: &DelimArgs) -> DelimArgs {
+        DelimArgs { dspan: args.dspan, delim: args.delim, tokens: args.tokens.flattened() }
     }
 
     /// Given an associated type constraint like one of these:

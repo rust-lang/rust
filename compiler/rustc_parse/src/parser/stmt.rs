@@ -167,14 +167,13 @@ impl<'a> Parser<'a> {
     /// Parses a statement macro `mac!(args)` provided a `path` representing `mac`.
     /// At this point, the `!` token after the path has already been eaten.
     fn parse_stmt_mac(&mut self, lo: Span, attrs: AttrVec, path: ast::Path) -> PResult<'a, Stmt> {
-        let args = self.parse_mac_args()?;
-        let delim = args.delim();
+        let args = self.parse_delim_args()?;
+        let delim = args.delim.to_token();
         let hi = self.prev_token.span;
 
         let style = match delim {
-            Some(Delimiter::Brace) => MacStmtStyle::Braces,
-            Some(_) => MacStmtStyle::NoBraces,
-            None => unreachable!(),
+            Delimiter::Brace => MacStmtStyle::Braces,
+            _ => MacStmtStyle::NoBraces,
         };
 
         let mac = P(MacCall { path, args, prior_type_ascription: self.last_type_ascription });

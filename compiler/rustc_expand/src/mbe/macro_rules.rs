@@ -577,7 +577,7 @@ pub fn compile_declarative_macro(
 
     // Parse the macro_rules! invocation
     let (macro_rules, body) = match &def.kind {
-        ast::ItemKind::MacroDef(def) => (def.macro_rules, def.body.inner_tokens()),
+        ast::ItemKind::MacroDef(def) => (def.macro_rules, def.body.tokens.clone()),
         _ => unreachable!(),
     };
 
