@@ -12,6 +12,7 @@ error[E0382]: use of moved value: `a`
 LL |     let a = vec![1, 2, 3];
    |         - move occurs because `a` has type `Vec<i32>`, which does not implement the `Copy` trait
 LL |     for i in &a {
+   |     ----------- inside of this loop
 LL |         for j in a {
    |                  ^ `a` moved due to this implicit call to `.into_iter()`, in previous iteration of loop
    |
