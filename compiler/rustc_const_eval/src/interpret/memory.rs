@@ -14,11 +14,8 @@ use std::ptr;
 
 use rustc_ast::Mutability;
 use rustc_data_structures::fx::{FxHashMap, FxHashSet};
-use rustc_hir::CRATE_HIR_ID;
 use rustc_middle::mir::display_allocation;
-use rustc_middle::mir::interpret::UndefinedBehaviorInfo;
 use rustc_middle::ty::{self, Instance, ParamEnv, Ty, TyCtxt};
-use rustc_session::lint::builtin::INVALID_ALIGNMENT;
 use rustc_target::abi::{Align, HasDataLayout, Size};
 
 use crate::const_eval::CheckAlignment;
@@ -448,7 +445,7 @@ impl<'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
                     } else {
                         // Check allocation alignment and offset alignment.
                         if alloc_align.bytes() < align.bytes() {
-                            self.alignment_check_failed(alloc_align, align, check)?;
+                            M::alignment_check_failed(self, alloc_align, align, check)?;
                         }
                         self.check_offset_align(offset.bytes(), align, check)?;
                     }
@@ -472,42 +469,8 @@ impl<'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
         } else {
             // The biggest power of two through which `offset` is divisible.
             let offset_pow2 = 1 << offset.trailing_zeros();
-            self.alignment_check_failed(Align::from_bytes(offset_pow2).unwrap(), align, check)
+            M::alignment_check_failed(self, Align::from_bytes(offset_pow2).unwrap(), align, check)
         }
-    }
-
-    fn alignment_check_failed(
-        &self,
-        has: Align,
-        required: Align,
-        check: CheckAlignment,
-    ) -> InterpResult<'tcx, ()> {
-        match check {
-            CheckAlignment::Error => {
-                throw_ub!(AlignmentCheckFailed { has, required })
-            }
-            CheckAlignment::No => span_bug!(
-                self.cur_span(),
-                "`alignment_check_failed` called when no alignment check requested"
-            ),
-            CheckAlignment::FutureIncompat => self.tcx.struct_span_lint_hir(
-                INVALID_ALIGNMENT,
-                self.stack().iter().find_map(|frame| frame.lint_root()).unwrap_or(CRATE_HIR_ID),
-                self.cur_span(),
-                UndefinedBehaviorInfo::AlignmentCheckFailed { has, required }.to_string(),
-                |db| {
-                    let mut stacktrace = self.generate_stacktrace();
-                    // Filter out `requires_caller_location` frames.
-                    stacktrace
-                        .retain(|frame| !frame.instance.def.requires_caller_location(*self.tcx));
-                    for frame in stacktrace {
-                        db.span_label(frame.span, format!("inside `{}`", frame.instance));
-                    }
-                    db
-                },
-            ),
-        }
-        Ok(())
     }
 }
 

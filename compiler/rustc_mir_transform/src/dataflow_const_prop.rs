@@ -11,6 +11,7 @@ use rustc_middle::ty::{self, Ty, TyCtxt};
 use rustc_mir_dataflow::value_analysis::{Map, State, TrackElem, ValueAnalysis, ValueOrPlace};
 use rustc_mir_dataflow::{lattice::FlatSet, Analysis, ResultsVisitor, SwitchIntEdgeEffects};
 use rustc_span::DUMMY_SP;
+use rustc_target::abi::Align;
 
 use crate::MirPass;
 
@@ -454,6 +455,14 @@ impl<'mir, 'tcx> rustc_const_eval::interpret::Machine<'mir, 'tcx> for DummyMachi
     }
 
     fn enforce_validity(_ecx: &InterpCx<'mir, 'tcx, Self>) -> bool {
+        unimplemented!()
+    }
+    fn alignment_check_failed(
+        _ecx: &InterpCx<'mir, 'tcx, Self>,
+        _has: Align,
+        _required: Align,
+        _check: CheckAlignment,
+    ) -> interpret::InterpResult<'tcx, ()> {
         unimplemented!()
     }
 

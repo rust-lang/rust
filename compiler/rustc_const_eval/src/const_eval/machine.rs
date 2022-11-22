@@ -1,9 +1,10 @@
 use rustc_hir::def::DefKind;
-use rustc_hir::LangItem;
+use rustc_hir::{LangItem, CRATE_HIR_ID};
 use rustc_middle::mir;
-use rustc_middle::mir::interpret::PointerArithmetic;
+use rustc_middle::mir::interpret::{PointerArithmetic, UndefinedBehaviorInfo};
 use rustc_middle::ty::layout::FnAbiOf;
 use rustc_middle::ty::{self, Ty, TyCtxt};
+use rustc_session::lint::builtin::INVALID_ALIGNMENT;
 use std::borrow::Borrow;
 use std::hash::Hash;
 use std::ops::ControlFlow;
@@ -336,6 +337,40 @@ impl<'mir, 'tcx> interpret::Machine<'mir, 'tcx> for CompileTimeInterpreter<'mir,
     #[inline(always)]
     fn enforce_validity(ecx: &InterpCx<'mir, 'tcx, Self>) -> bool {
         ecx.tcx.sess.opts.unstable_opts.extra_const_ub_checks
+    }
+
+    fn alignment_check_failed(
+        ecx: &InterpCx<'mir, 'tcx, Self>,
+        has: Align,
+        required: Align,
+        check: CheckAlignment,
+    ) -> InterpResult<'tcx, ()> {
+        match check {
+            CheckAlignment::Error => {
+                throw_ub!(AlignmentCheckFailed { has, required })
+            }
+            CheckAlignment::No => span_bug!(
+                ecx.cur_span(),
+                "`alignment_check_failed` called when no alignment check requested"
+            ),
+            CheckAlignment::FutureIncompat => ecx.tcx.struct_span_lint_hir(
+                INVALID_ALIGNMENT,
+                ecx.stack().iter().find_map(|frame| frame.lint_root()).unwrap_or(CRATE_HIR_ID),
+                ecx.cur_span(),
+                UndefinedBehaviorInfo::AlignmentCheckFailed { has, required }.to_string(),
+                |db| {
+                    let mut stacktrace = ecx.generate_stacktrace();
+                    // Filter out `requires_caller_location` frames.
+                    stacktrace
+                        .retain(|frame| !frame.instance.def.requires_caller_location(*ecx.tcx));
+                    for frame in stacktrace {
+                        db.span_label(frame.span, format!("inside `{}`", frame.instance));
+                    }
+                    db
+                },
+            ),
+        }
+        Ok(())
     }
 
     fn load_mir(

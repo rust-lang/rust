@@ -10,7 +10,7 @@ use rustc_ast::{InlineAsmOptions, InlineAsmTemplatePiece};
 use rustc_middle::mir;
 use rustc_middle::ty::{self, Ty, TyCtxt};
 use rustc_span::def_id::DefId;
-use rustc_target::abi::Size;
+use rustc_target::abi::{Align, Size};
 use rustc_target::spec::abi::Abi as CallAbi;
 
 use crate::const_eval::CheckAlignment;
@@ -131,6 +131,13 @@ pub trait Machine<'mir, 'tcx>: Sized {
     ///
     /// If this returns true, Provenance::OFFSET_IS_ADDR must be true.
     fn use_addr_for_alignment_check(ecx: &InterpCx<'mir, 'tcx, Self>) -> bool;
+
+    fn alignment_check_failed(
+        ecx: &InterpCx<'mir, 'tcx, Self>,
+        has: Align,
+        required: Align,
+        check: CheckAlignment,
+    ) -> InterpResult<'tcx, ()>;
 
     /// Whether to enforce the validity invariant
     fn enforce_validity(ecx: &InterpCx<'mir, 'tcx, Self>) -> bool;

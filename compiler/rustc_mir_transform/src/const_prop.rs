@@ -23,7 +23,7 @@ use rustc_middle::ty::layout::{LayoutError, LayoutOf, LayoutOfHelpers, TyAndLayo
 use rustc_middle::ty::InternalSubsts;
 use rustc_middle::ty::{self, ConstKind, Instance, ParamEnv, Ty, TyCtxt, TypeVisitable};
 use rustc_span::{def_id::DefId, Span};
-use rustc_target::abi::{self, HasDataLayout, Size, TargetDataLayout};
+use rustc_target::abi::{self, Align, HasDataLayout, Size, TargetDataLayout};
 use rustc_target::spec::abi::Abi as CallAbi;
 use rustc_trait_selection::traits;
 
@@ -196,6 +196,17 @@ impl<'mir, 'tcx> interpret::Machine<'mir, 'tcx> for ConstPropMachine<'mir, 'tcx>
     #[inline(always)]
     fn enforce_validity(_ecx: &InterpCx<'mir, 'tcx, Self>) -> bool {
         false // for now, we don't enforce validity
+    }
+    fn alignment_check_failed(
+        ecx: &InterpCx<'mir, 'tcx, Self>,
+        _has: Align,
+        _required: Align,
+        _check: CheckAlignment,
+    ) -> InterpResult<'tcx, ()> {
+        span_bug!(
+            ecx.cur_span(),
+            "`alignment_check_failed` called when no alignment check requested"
+        )
     }
 
     fn load_mir(
