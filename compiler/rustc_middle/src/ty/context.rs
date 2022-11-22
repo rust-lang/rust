@@ -2293,7 +2293,7 @@ impl<'tcx> TyCtxt<'tcx> {
     /// Given a `ty`, return whether it's an `impl Future<...>`.
     pub fn ty_is_opaque_future(self, ty: Ty<'_>) -> bool {
         let ty::Opaque(def_id, _) = ty.kind() else { return false };
-        let future_trait = self.lang_items().future_trait().unwrap();
+        let future_trait = self.require_lang_item(LangItem::Future, None);
 
         self.explicit_item_bounds(def_id).iter().any(|(predicate, _)| {
             let ty::PredicateKind::Trait(trait_predicate) = predicate.kind().skip_binder() else {
