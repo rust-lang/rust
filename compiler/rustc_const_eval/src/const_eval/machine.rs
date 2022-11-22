@@ -1,7 +1,7 @@
 use rustc_hir::def::DefKind;
 use rustc_hir::{LangItem, CRATE_HIR_ID};
 use rustc_middle::mir;
-use rustc_middle::mir::interpret::{InterpError, PointerArithmetic, UndefinedBehaviorInfo};
+use rustc_middle::mir::interpret::PointerArithmetic;
 use rustc_middle::ty::layout::FnAbiOf;
 use rustc_middle::ty::{self, Ty, TyCtxt};
 use rustc_session::lint::builtin::INVALID_ALIGNMENT;
@@ -345,24 +345,15 @@ impl<'mir, 'tcx> interpret::Machine<'mir, 'tcx> for CompileTimeInterpreter<'mir,
         required: Align,
         check: CheckAlignment,
     ) -> InterpResult<'tcx, ()> {
+        let err = err_ub!(AlignmentCheckFailed { has, required }).into();
         match check {
-            CheckAlignment::Error => {
-                throw_ub!(AlignmentCheckFailed { has, required })
-            }
+            CheckAlignment::Error => Err(err),
             CheckAlignment::No => span_bug!(
                 ecx.cur_span(),
                 "`alignment_check_failed` called when no alignment check requested"
             ),
             CheckAlignment::FutureIncompat => {
-                let err = ConstEvalErr::new(
-                    ecx,
-                    InterpError::UndefinedBehavior(UndefinedBehaviorInfo::AlignmentCheckFailed {
-                        has,
-                        required,
-                    })
-                    .into(),
-                    None,
-                );
+                let err = ConstEvalErr::new(ecx, err, None);
                 ecx.tcx.struct_span_lint_hir(
                     INVALID_ALIGNMENT,
                     ecx.stack().iter().find_map(|frame| frame.lint_root()).unwrap_or(CRATE_HIR_ID),
@@ -373,9 +364,9 @@ impl<'mir, 'tcx> interpret::Machine<'mir, 'tcx> for CompileTimeInterpreter<'mir,
                         db
                     },
                 );
+                Ok(())
             }
         }
-        Ok(())
     }
 
     fn load_mir(
