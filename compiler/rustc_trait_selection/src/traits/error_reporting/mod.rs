@@ -687,7 +687,7 @@ impl<'tcx> TypeErrCtxtExt<'tcx> for TypeErrCtxt<'_, 'tcx> {
                                 }
                                 ObligationCauseCode::BindingObligation(def_id, _)
                                 | ObligationCauseCode::ItemObligation(def_id)
-                                    if tcx.fn_trait_kind_from_def_id(*def_id).is_some() =>
+                                    if tcx.is_fn_trait(*def_id) =>
                                 {
                                     err.code(rustc_errors::error_code!(E0059));
                                     err.set_primary_message(format!(
@@ -847,8 +847,7 @@ impl<'tcx> TypeErrCtxtExt<'tcx> for TypeErrCtxt<'_, 'tcx> {
                             );
                         }
 
-                        let is_fn_trait =
-                            tcx.fn_trait_kind_from_def_id(trait_ref.def_id()).is_some();
+                        let is_fn_trait = tcx.is_fn_trait(trait_ref.def_id());
                         let is_target_feature_fn = if let ty::FnDef(def_id, _) =
                             *trait_ref.skip_binder().self_ty().kind()
                         {
@@ -2156,7 +2155,7 @@ impl<'tcx> InferCtxtPrivExt<'tcx> for TypeErrCtxt<'_, 'tcx> {
                     if generics.params.iter().any(|p| p.name != kw::SelfUpper)
                         && !snippet.ends_with('>')
                         && !generics.has_impl_trait()
-                        && !self.tcx.fn_trait_kind_from_def_id(def_id).is_some()
+                        && !self.tcx.is_fn_trait(def_id)
                     {
                         // FIXME: To avoid spurious suggestions in functions where type arguments
                         // where already supplied, we check the snippet to make sure it doesn't

@@ -1679,9 +1679,7 @@ impl<'tcx> TypeErrCtxtExt<'tcx> for TypeErrCtxt<'_, 'tcx> {
         ) -> Ty<'tcx> {
             let inputs = trait_ref.skip_binder().substs.type_at(1);
             let sig = match inputs.kind() {
-                ty::Tuple(inputs)
-                    if infcx.tcx.fn_trait_kind_from_def_id(trait_ref.def_id()).is_some() =>
-                {
+                ty::Tuple(inputs) if infcx.tcx.is_fn_trait(trait_ref.def_id()) => {
                     infcx.tcx.mk_fn_sig(
                         inputs.iter(),
                         infcx.next_ty_var(TypeVariableOrigin {
@@ -1752,7 +1750,7 @@ impl<'tcx> TypeErrCtxtExt<'tcx> for TypeErrCtxt<'_, 'tcx> {
             && let predicates = self.tcx.predicates_of(def_id).instantiate_identity(self.tcx)
             && let Some(pred) = predicates.predicates.get(*idx)
             && let ty::PredicateKind::Clause(ty::Clause::Trait(trait_pred)) = pred.kind().skip_binder()
-            && self.tcx.fn_trait_kind_from_def_id(trait_pred.def_id()).is_some()
+            && self.tcx.is_fn_trait(trait_pred.def_id())
         {
             let expected_self =
                 self.tcx.anonymize_late_bound_regions(pred.kind().rebind(trait_pred.self_ty()));
