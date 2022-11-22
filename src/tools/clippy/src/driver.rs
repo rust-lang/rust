@@ -90,11 +90,12 @@ fn track_files(parse_sess: &mut ParseSess, conf_path_string: Option<String>) {
 
     // During development track the `clippy-driver` executable so that cargo will re-run clippy whenever
     // it is rebuilt
-    if cfg!(debug_assertions)
-        && let Ok(current_exe) = env::current_exe()
-        && let Some(current_exe) = current_exe.to_str()
-    {
-        file_depinfo.insert(Symbol::intern(current_exe));
+    if cfg!(debug_assertions) {
+        if let Ok(current_exe) = env::current_exe()
+            && let Some(current_exe) = current_exe.to_str()
+        {
+            file_depinfo.insert(Symbol::intern(current_exe));
+        }
     }
 }
 
