@@ -101,6 +101,13 @@ impl<'me, 'tcx> AscribeUserTypeCx<'me, 'tcx> {
         ));
     }
 
+    fn prove_wf(&self, arg: ty::GenericArg<'tcx>) {
+        self.prove_predicate(
+            ty::Binder::dummy(ty::PredicateKind::WellFormed(arg)).to_predicate(self.tcx()),
+            ObligationCause::dummy_with_span(self.span),
+        );
+    }
+
     fn tcx(&self) -> TyCtxt<'tcx> {
         self.ocx.infcx.tcx
     }
@@ -111,16 +118,8 @@ impl<'me, 'tcx> AscribeUserTypeCx<'me, 'tcx> {
         mir_ty: Ty<'tcx>,
         user_ty: Ty<'tcx>,
     ) -> Result<(), NoSolution> {
-        let user_ty = self.normalize(user_ty);
-        self.eq(mir_ty, user_ty)?;
-
-        // FIXME(#xxxx): We should check well-formedness before normalization.
-        self.prove_predicate(
-            ty::Binder::dummy(ty::PredicateKind::WellFormed(user_ty.into()))
-                .to_predicate(self.tcx()),
-            ObligationCause::dummy_with_span(self.span),
-        );
-
+        self.prove_wf(user_ty.into());
+        self.eq(mir_ty, self.normalize(user_ty))?;
         Ok(())
     }
 
@@ -147,8 +146,6 @@ impl<'me, 'tcx> AscribeUserTypeCx<'me, 'tcx> {
         // outlives" error messages.
         let instantiated_predicates = tcx.predicates_of(def_id).instantiate(tcx, substs);
 
-        let cause = ObligationCause::dummy_with_span(self.span);
-
         debug!(?instantiated_predicates);
         for (instantiated_predicate, predicate_span) in
             zip(instantiated_predicates.predicates, instantiated_predicates.spans)
@@ -164,35 +161,29 @@ impl<'me, 'tcx> AscribeUserTypeCx<'me, 'tcx> {
             self.prove_predicate(instantiated_predicate, cause);
         }
 
+        // Now prove the well-formedness of `def_id` with `substs`.
+        // Note for some items, proving the WF of `ty` is not sufficient because the
+        // well-formedness of an item may depend on the WF of gneneric args not present in the
+        // item's type. Currently this is true for associated consts, e.g.:
+        // ```rust
+        // impl<T> MyTy<T> {
+        //     const CONST: () = { /* arbitrary code that depends on T being WF */ };
+        // }
+        // ```
+        for arg in substs {
+            self.prove_wf(arg);
+        }
+
         if let Some(UserSelfTy { impl_def_id, self_ty }) = user_self_ty {
+            self.prove_wf(self_ty.into());
+
             let self_ty = self.normalize(self_ty);
             let impl_self_ty = tcx.bound_type_of(impl_def_id).subst(tcx, substs);
             let impl_self_ty = self.normalize(impl_self_ty);
 
             self.eq(self_ty, impl_self_ty)?;
-
-            self.prove_predicate(
-                ty::Binder::dummy(ty::PredicateKind::WellFormed(impl_self_ty.into()))
-                    .to_predicate(tcx),
-                cause.clone(),
-            );
         }
 
-        // In addition to proving the predicates, we have to
-        // prove that `ty` is well-formed -- this is because
-        // the WF of `ty` is predicated on the substs being
-        // well-formed, and we haven't proven *that*. We don't
-        // want to prove the WF of types from  `substs` directly because they
-        // haven't been normalized.
-        //
-        // FIXME(nmatsakis): Well, perhaps we should normalize
-        // them?  This would only be relevant if some input
-        // type were ill-formed but did not appear in `ty`,
-        // which...could happen with normalization...
-        self.prove_predicate(
-            ty::Binder::dummy(ty::PredicateKind::WellFormed(ty.into())).to_predicate(tcx),
-            cause,
-        );
         Ok(())
     }
 }
