@@ -426,3 +426,32 @@ mod issue_9504 {
         foo(std::path::PathBuf::new().to_string_lossy().to_string()).await;
     }
 }
+
+mod issue_9771a {
+    #![allow(dead_code)]
+
+    use std::marker::PhantomData;
+
+    pub struct Key<K: AsRef<[u8]>, V: ?Sized>(K, PhantomData<V>);
+
+    impl<K: AsRef<[u8]>, V: ?Sized> Key<K, V> {
+        pub fn new(key: K) -> Key<K, V> {
+            Key(key, PhantomData)
+        }
+    }
+
+    pub fn pkh(pkh: &[u8]) -> Key<Vec<u8>, String> {
+        Key::new([b"pkh-", pkh].concat().to_vec())
+    }
+}
+
+mod issue_9771b {
+    #![allow(dead_code)]
+
+    pub struct Key<K: AsRef<[u8]>>(K);
+
+    pub fn from(c: &[u8]) -> Key<Vec<u8>> {
+        let v = [c].concat();
+        Key(v.to_vec())
+    }
+}

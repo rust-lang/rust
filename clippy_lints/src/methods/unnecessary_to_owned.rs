@@ -19,7 +19,6 @@ use rustc_middle::ty::{self, ParamTy, PredicateKind, ProjectionPredicate, TraitP
 use rustc_semver::RustcVersion;
 use rustc_span::{sym, Symbol};
 use rustc_trait_selection::traits::{query::evaluate_obligation::InferCtxtExt as _, Obligation, ObligationCause};
-use std::cmp::max;
 
 use super::UNNECESSARY_TO_OWNED;
 
@@ -263,11 +262,22 @@ fn check_other_call_arg<'tcx>(
         if let Some(as_ref_trait_id) = cx.tcx.get_diagnostic_item(sym::AsRef);
         if trait_predicate.def_id() == deref_trait_id || trait_predicate.def_id() == as_ref_trait_id;
         let receiver_ty = cx.typeck_results().expr_ty(receiver);
-        if can_change_type(cx, maybe_arg, receiver_ty);
         // We can't add an `&` when the trait is `Deref` because `Target = &T` won't match
         // `Target = T`.
-        if n_refs > 0 || is_copy(cx, receiver_ty) || trait_predicate.def_id() != deref_trait_id;
-        let n_refs = max(n_refs, usize::from(!is_copy(cx, receiver_ty)));
+        if let Some((n_refs, receiver_ty)) = if n_refs > 0 || is_copy(cx, receiver_ty) {
+            Some((n_refs, receiver_ty))
+        } else if trait_predicate.def_id() != deref_trait_id {
+            Some((1, cx.tcx.mk_ref(
+                cx.tcx.lifetimes.re_erased,
+                ty::TypeAndMut {
+                    ty: receiver_ty,
+                    mutbl: Mutability::Not,
+                },
+            )))
+        } else {
+            None
+        };
+        if can_change_type(cx, maybe_arg, receiver_ty);
         if let Some(receiver_snippet) = snippet_opt(cx, receiver.span);
         then {
             span_lint_and_sugg(
