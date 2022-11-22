@@ -1118,7 +1118,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                 let lhs_deref_ty_is_sized = self
                     .infcx
                     .type_implements_trait(
-                        self.tcx.lang_items().sized_trait().unwrap(),
+                        self.tcx.require_lang_item(LangItem::Sized, None),
                         [lhs_deref_ty],
                         self.param_env,
                     )
