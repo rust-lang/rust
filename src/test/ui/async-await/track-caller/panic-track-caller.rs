@@ -1,7 +1,9 @@
 // run-pass
 // edition:2021
+// revisions: feat nofeat
 // needs-unwind
-#![feature(closure_track_caller)]
+#![feature(async_closure, stmt_expr_attributes)]
+#![cfg_attr(feat, feature(closure_track_caller))]
 
 use std::future::Future;
 use std::panic;
@@ -45,7 +47,7 @@ async fn foo() {
     bar().await
 }
 
-#[track_caller]
+#[track_caller] //[nofeat]~ WARN `#[track_caller]` on async functions is a no-op
 async fn bar_track_caller() {
     panic!()
 }
@@ -57,7 +59,7 @@ async fn foo_track_caller() {
 struct Foo;
 
 impl Foo {
-    #[track_caller]
+    #[track_caller] //[nofeat]~ WARN `#[track_caller]` on async functions is a no-op
     async fn bar_assoc() {
         panic!();
     }
@@ -84,7 +86,15 @@ fn panicked_at(f: impl FnOnce() + panic::UnwindSafe) -> u32 {
 }
 
 fn main() {
-    assert_eq!(panicked_at(|| block_on(foo())), 41);
-    assert_eq!(panicked_at(|| block_on(foo_track_caller())), 54);
-    assert_eq!(panicked_at(|| block_on(foo_assoc())), 67);
+    assert_eq!(panicked_at(|| block_on(foo())), 43);
+
+    #[cfg(feat)]
+    assert_eq!(panicked_at(|| block_on(foo_track_caller())), 56);
+    #[cfg(nofeat)]
+    assert_eq!(panicked_at(|| block_on(foo_track_caller())), 52);
+
+    #[cfg(feat)]
+    assert_eq!(panicked_at(|| block_on(foo_assoc())), 69);
+    #[cfg(nofeat)]
+    assert_eq!(panicked_at(|| block_on(foo_assoc())), 64);
 }
