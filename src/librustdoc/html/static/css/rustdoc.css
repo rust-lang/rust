@@ -932,7 +932,6 @@ so that we can apply CSS-filters to change the arrow color in themes */
 	right: var(--popover-arrow-offset);
 	border: solid var(--border-color);
 	border-width: 1px 1px 0 0;
-	display: inline-block;
 	padding: 4px;
 	transform: rotate(-45deg);
 	top: -5px;
