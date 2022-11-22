@@ -2497,7 +2497,7 @@ pub struct ForeignMod {
     /// semantically by Rust.
     pub unsafety: Unsafe,
     pub abi: Option<StrLit>,
-    pub items: Vec<P<ForeignItem>>,
+    pub items: ThinVec<P<ForeignItem>>,
 }
 
 #[derive(Clone, Encodable, Decodable, Debug)]
@@ -2826,7 +2826,7 @@ pub struct Trait {
     pub is_auto: IsAuto,
     pub generics: Generics,
     pub bounds: GenericBounds,
-    pub items: Vec<P<AssocItem>>,
+    pub items: ThinVec<P<AssocItem>>,
 }
 
 /// The location of a where clause on a `TyAlias` (`Span`) and whether there was
@@ -2874,7 +2874,7 @@ pub struct Impl {
     /// The trait being implemented, if any.
     pub of_trait: Option<TraitRef>,
     pub self_ty: P<Ty>,
-    pub items: Vec<P<AssocItem>>,
+    pub items: ThinVec<P<AssocItem>>,
 }
 
 #[derive(Clone, Encodable, Decodable, Debug)]
@@ -3121,7 +3121,7 @@ mod size_asserts {
     static_assert_size!(GenericArg, 24);
     static_assert_size!(GenericBound, 56);
     static_assert_size!(Generics, 40);
-    static_assert_size!(Impl, 152);
+    static_assert_size!(Impl, 136);
     static_assert_size!(Item, 152);
     static_assert_size!(ItemKind, 80);
     static_assert_size!(LitKind, 24);
