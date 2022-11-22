@@ -25,6 +25,7 @@ use crate::{
     types::{transparent_newtype_field, CItemKind},
     EarlyContext, EarlyLintPass, LateContext, LateLintPass, LintContext,
 };
+use hir::IsAsync;
 use rustc_ast::attr;
 use rustc_ast::tokenstream::{TokenStream, TokenTree};
 use rustc_ast::visit::{FnCtxt, FnKind};
@@ -40,7 +41,10 @@ use rustc_feature::{deprecated_attributes, AttributeGate, BuiltinAttribute, Gate
 use rustc_hir as hir;
 use rustc_hir::def::{DefKind, Res};
 use rustc_hir::def_id::{DefId, LocalDefId, LocalDefIdSet, CRATE_DEF_ID};
-use rustc_hir::{ForeignItemKind, GenericParamKind, HirId, Node, PatKind, PredicateOrigin};
+use rustc_hir::intravisit::FnKind as HirFnKind;
+use rustc_hir::{
+    Body, FnDecl, ForeignItemKind, GenericParamKind, HirId, Node, PatKind, PredicateOrigin,
+};
 use rustc_index::vec::Idx;
 use rustc_middle::lint::in_external_macro;
 use rustc_middle::ty::layout::{LayoutError, LayoutOf};
@@ -1365,6 +1369,45 @@ impl<'tcx> LateLintPass<'tcx> for UnstableFeatures {
                         |lint| lint,
                     );
                 }
+            }
+        }
+    }
+}
+
+declare_lint! {
+    /// `#[track_caller]` is a no-op without corresponding feature flag
+    UNGATED_ASYNC_FN_TRACK_CALLER,
+    Warn,
+    "enabling track_caller on an async fn is a no-op unless the closure_track_caller feature is enabled"
+}
+
+declare_lint_pass!(
+    /// Explains corresponding feature flag must be enabled for the `#[track_caller] attribute to
+    /// do anything
+    UngatedAsyncFnTrackCaller => [UNGATED_ASYNC_FN_TRACK_CALLER]
+);
+
+impl<'tcx> LateLintPass<'tcx> for UngatedAsyncFnTrackCaller {
+    fn check_fn(
+        &mut self,
+        cx: &LateContext<'_>,
+        fn_kind: HirFnKind<'_>,
+        _: &'tcx FnDecl<'_>,
+        _: &'tcx Body<'_>,
+        span: Span,
+        hir_id: HirId,
+    ) {
+        if let HirFnKind::ItemFn(_, _, _) = fn_kind && fn_kind.asyncness() == IsAsync::Async && !cx.tcx.features().closure_track_caller {
+            // Now, check if the function has the `#[track_caller]` attribute
+            let attrs = cx.tcx.hir().attrs(hir_id);
+            let maybe_track_caller = attrs.iter().find(|attr| attr.has_name(sym::track_caller));
+            if let Some(attr) = maybe_track_caller {
+                cx.struct_span_lint(
+                    UNGATED_ASYNC_FN_TRACK_CALLER,
+                    span.with_hi(attr.span.hi()),
+                    fluent::lint_ungated_async_fn_track_caller,
+                    |lint| lint,
+                    );
             }
         }
     }
