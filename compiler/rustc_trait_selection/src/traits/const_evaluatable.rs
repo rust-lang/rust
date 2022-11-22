@@ -31,6 +31,7 @@ pub fn is_const_evaluatable<'tcx>(
     let tcx = infcx.tcx;
     let uv = match ct.kind() {
         ty::ConstKind::Unevaluated(uv) => uv,
+        // FIXME(generic_const_exprs): this seems wrong but I couldn't find a way to get this to trigger
         ty::ConstKind::Expr(_) => bug!("unexpected expr in `is_const_evaluatable: {ct:?}"),
         ty::ConstKind::Param(_)
         | ty::ConstKind::Bound(_, _)
