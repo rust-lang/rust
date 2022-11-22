@@ -408,6 +408,11 @@ pub struct WithGenerics<T: TraitWithNoDocblocks, S = String, E = WhoLetTheDogOut
     p: P,
 }
 
+pub struct StructWithPublicUndocumentedFields {
+    pub first: u32,
+    pub second: u32,
+}
+
 pub const CONST: u8 = 0;
 
 pub trait TraitWithoutGenerics {
