@@ -350,6 +350,8 @@ lint_builtin_mutable_transmutes =
 
 lint_builtin_unstable_features = unstable feature
 
+lint_ungated_async_fn_track_caller = `#[track_caller]` on async functions is a no-op, unless the `closure_track_caller` feature is enabled
+
 lint_builtin_unreachable_pub = unreachable `pub` {$what}
     .suggestion = consider restricting its visibility
     .help = or consider exporting it for use by other crates
