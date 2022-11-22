@@ -5,7 +5,7 @@
 // features.
 
 use super::{Cc, CodeModel, LinkerFlavor, Lld, PanicStrategy};
-use super::{RelroLevel, StackProbeType, Target, TargetOptions};
+use super::{RelroLevel, SanitizerSet, StackProbeType, Target, TargetOptions};
 
 pub fn target() -> Target {
     let opts = TargetOptions {
@@ -20,6 +20,7 @@ pub fn target() -> Target {
         features:
             "-mmx,-sse,-sse2,-sse3,-ssse3,-sse4.1,-sse4.2,-3dnow,-3dnowa,-avx,-avx2,+soft-float"
                 .into(),
+        supported_sanitizers: SanitizerSet::KCFI,
         disable_redzone: true,
         panic_strategy: PanicStrategy::Abort,
         code_model: Some(CodeModel::Kernel),

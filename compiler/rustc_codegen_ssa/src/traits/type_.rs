@@ -122,6 +122,7 @@ pub trait LayoutTypeMethods<'tcx>: Backend<'tcx> {
 pub trait TypeMembershipMethods<'tcx>: Backend<'tcx> {
     fn set_type_metadata(&self, function: Self::Function, typeid: String);
     fn typeid_metadata(&self, typeid: String) -> Self::Value;
+    fn set_kcfi_type_metadata(&self, function: Self::Function, typeid: u32);
 }
 
 pub trait ArgAbiMethods<'tcx>: HasCodegen<'tcx> {
