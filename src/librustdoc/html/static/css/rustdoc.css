@@ -1199,7 +1199,6 @@ pre.rust .doccomment {
 }
 
 a.test-arrow {
-	display: inline-block;
 	visibility: hidden;
 	position: absolute;
 	padding: 5px 10px 5px 10px;
