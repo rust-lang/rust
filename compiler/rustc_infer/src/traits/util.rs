@@ -285,6 +285,7 @@ impl<'tcx> Elaborator<'tcx> {
             ty::PredicateKind::TypeWellFormedFromEnv(..) => {
                 // Nothing to elaborate
             }
+            ty::PredicateKind::Ambiguous => {}
         }
     }
 }

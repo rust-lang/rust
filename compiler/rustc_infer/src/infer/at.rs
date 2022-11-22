@@ -81,6 +81,7 @@ impl<'tcx> InferCtxt<'tcx> {
                 .normalize_fn_sig_for_diagnostic
                 .as_ref()
                 .map(|f| f.clone()),
+            intercrate: self.intercrate,
         }
     }
 }

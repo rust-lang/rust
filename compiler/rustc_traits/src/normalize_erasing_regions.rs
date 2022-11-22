@@ -66,6 +66,7 @@ fn not_outlives_predicate<'tcx>(p: ty::Predicate<'tcx>) -> bool {
         | ty::PredicateKind::Coerce(..)
         | ty::PredicateKind::ConstEvaluatable(..)
         | ty::PredicateKind::ConstEquate(..)
+        | ty::PredicateKind::Ambiguous
         | ty::PredicateKind::TypeWellFormedFromEnv(..) => true,
     }
 }
