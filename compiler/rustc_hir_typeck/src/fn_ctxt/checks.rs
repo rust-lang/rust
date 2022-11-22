@@ -2123,7 +2123,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                         {
                             if let ty::PredicateKind::Trait(pred) = predicate.kind().skip_binder()
                                 && pred.self_ty().peel_refs() == callee_ty
-                                && self.tcx.fn_trait_kind_from_def_id(pred.def_id()).is_some()
+                                && self.tcx.is_fn_trait(pred.def_id())
                             {
                                 err.span_note(span, "callable defined here");
                                 return;
