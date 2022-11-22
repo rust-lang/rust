@@ -1031,7 +1031,7 @@ declare_lint! {
     ///     let y = x.as_ptr() as *const u32;
     ///     *y; // the address of a `u8` array is unknown and thus we don't know if
     ///     // it is aligned enough for reading a `u32`.
-    /// }
+    /// };
     /// ```
     ///
     /// {{produces}}
