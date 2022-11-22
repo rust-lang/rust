@@ -36,22 +36,8 @@ impl ConstantCx {
 pub(crate) fn check_constants(fx: &mut FunctionCx<'_, '_, '_>) -> bool {
     let mut all_constants_ok = true;
     for constant in &fx.mir.required_consts {
-        let unevaluated = match fx.monomorphize(constant.literal) {
-            ConstantKind::Ty(_) => unreachable!(),
-            ConstantKind::Unevaluated(uv, _) => uv,
-            ConstantKind::Val(..) => continue,
-        };
-
-        if let Err(err) = fx.tcx.const_eval_resolve(ParamEnv::reveal_all(), unevaluated, None) {
+        if eval_mir_constant(fx, constant).is_none() {
             all_constants_ok = false;
-            match err {
-                ErrorHandled::Reported(_) => {
-                    fx.tcx.sess.span_err(constant.span, "erroneous constant encountered");
-                }
-                ErrorHandled::TooGeneric => {
-                    span_bug!(constant.span, "codegen encountered polymorphic constant: {:?}", err);
-                }
-            }
         }
     }
     all_constants_ok
@@ -78,15 +64,15 @@ pub(crate) fn codegen_tls_ref<'tcx>(
 }
 
 pub(crate) fn eval_mir_constant<'tcx>(
-    fx: &mut FunctionCx<'_, '_, 'tcx>,
+    fx: &FunctionCx<'_, '_, 'tcx>,
     constant: &Constant<'tcx>,
-) -> (ConstValue<'tcx>, Ty<'tcx>) {
+) -> Option<(ConstValue<'tcx>, Ty<'tcx>)> {
     let constant_kind = fx.monomorphize(constant.literal);
     let uv = match constant_kind {
         ConstantKind::Ty(const_) => match const_.kind() {
             ty::ConstKind::Unevaluated(uv) => uv.expand(),
             ty::ConstKind::Value(val) => {
-                return (fx.tcx.valtree_to_const_val((const_.ty(), val)), const_.ty());
+                return Some((fx.tcx.valtree_to_const_val((const_.ty(), val)), const_.ty()));
             }
             err => span_bug!(
                 constant.span,
@@ -100,22 +86,31 @@ pub(crate) fn eval_mir_constant<'tcx>(
             span_bug!(constant.span, "MIR constant refers to static");
         }
         ConstantKind::Unevaluated(uv, _) => uv,
-        ConstantKind::Val(val, _) => return (val, constant_kind.ty()),
+        ConstantKind::Val(val, _) => return Some((val, constant_kind.ty())),
     };
 
-    (
-        fx.tcx.const_eval_resolve(ty::ParamEnv::reveal_all(), uv, None).unwrap_or_else(|_err| {
-            span_bug!(constant.span, "erroneous constant not captured by required_consts");
-        }),
-        constant_kind.ty(),
-    )
+    let val = fx
+        .tcx
+        .const_eval_resolve(ty::ParamEnv::reveal_all(), uv, None)
+        .map_err(|err| match err {
+            ErrorHandled::Reported(_) => {
+                fx.tcx.sess.span_err(constant.span, "erroneous constant encountered");
+            }
+            ErrorHandled::TooGeneric => {
+                span_bug!(constant.span, "codegen encountered polymorphic constant: {:?}", err);
+            }
+        })
+        .ok();
+    val.map(|val| (val, constant_kind.ty()))
 }
 
 pub(crate) fn codegen_constant_operand<'tcx>(
     fx: &mut FunctionCx<'_, '_, 'tcx>,
     constant: &Constant<'tcx>,
 ) -> CValue<'tcx> {
-    let (const_val, ty) = eval_mir_constant(fx, constant);
+    let (const_val, ty) = eval_mir_constant(fx, constant).unwrap_or_else(|| {
+        span_bug!(constant.span, "erroneous constant not captured by required_consts")
+    });
 
     codegen_const_value(fx, const_val, ty)
 }
@@ -448,20 +443,13 @@ fn define_all_allocs(tcx: TyCtxt<'_>, module: &mut dyn Module, cx: &mut Constant
     assert!(cx.todo.is_empty(), "{:?}", cx.todo);
 }
 
+/// Used only for intrinsic implementations that need a compile-time constant
 pub(crate) fn mir_operand_get_const_val<'tcx>(
     fx: &FunctionCx<'_, '_, 'tcx>,
     operand: &Operand<'tcx>,
 ) -> Option<ConstValue<'tcx>> {
     match operand {
-        Operand::Constant(const_) => match fx.monomorphize(const_.literal) {
-            ConstantKind::Ty(const_) => Some(
-                const_.eval_for_mir(fx.tcx, ParamEnv::reveal_all()).try_to_value(fx.tcx).unwrap(),
-            ),
-            ConstantKind::Val(val, _) => Some(val),
-            ConstantKind::Unevaluated(uv, _) => {
-                Some(fx.tcx.const_eval_resolve(ParamEnv::reveal_all(), uv, None).unwrap())
-            }
-        },
+        Operand::Constant(const_) => Some(eval_mir_constant(fx, const_).unwrap().0),
         // FIXME(rust-lang/rust#85105): Casts like `IMM8 as u32` result in the const being stored
         // inside a temporary before being passed to the intrinsic requiring the const argument.
         // This code tries to find a single constant defining definition of the referenced local.
