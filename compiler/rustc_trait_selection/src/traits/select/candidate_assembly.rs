@@ -818,12 +818,10 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
                                     DEREF_INTO_DYN_SUPERTRAIT,
                                     obligation.cause.body_id,
                                     obligation.cause.span,
-                                    DelayDm(|| {
-                                        format!(
+                                    DelayDm(|| format!(
                                         "`{}` implements `Deref` with supertrait `{}` as output",
                                         source, deref_output_ty
-                                    )
-                                    }),
+                                    )),
                                     |lint| lint,
                                 );
                                 return;

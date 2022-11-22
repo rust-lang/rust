@@ -1727,8 +1727,7 @@ fn test_unix_absolute() {
     // Test leading `.` and `..` components
     let curdir = crate::env::current_dir().unwrap();
     assert_eq!(absolute("./a").unwrap().as_os_str(), curdir.join("a").as_os_str());
-    assert_eq!(absolute("../a").unwrap().as_os_str(), curdir.join("../a").as_os_str());
-    // return /pwd/../a
+    assert_eq!(absolute("../a").unwrap().as_os_str(), curdir.join("../a").as_os_str()); // return /pwd/../a
 }
 
 #[test]
