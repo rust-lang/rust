@@ -1052,6 +1052,7 @@ declare_lint! {
     "raw pointers must be aligned before dereferencing",
     @future_incompatible = FutureIncompatibleInfo {
         reference: "issue #68585 <https://github.com/rust-lang/rust/issues/104616>",
+        reason: FutureIncompatibilityReason::FutureReleaseErrorReportNow,
     };
 }
 
