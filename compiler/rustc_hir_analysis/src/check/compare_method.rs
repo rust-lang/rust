@@ -288,17 +288,7 @@ fn compare_predicate_entailment<'tcx>(
     // type would be more appropriate. In other places we have a `Vec<Span>`
     // corresponding to their `Vec<Predicate>`, but we don't have that here.
     // Fixing this would improve the output of test `issue-83765.rs`.
-    let mut result = ocx.sup(&cause, param_env, trait_fty, impl_fty);
-
-    // HACK(RPITIT): #101614. When we are trying to infer the hidden types for
-    // RPITITs, we need to equate the output tys instead of just subtyping. If
-    // we just use `sup` above, we'll end up `&'static str <: _#1t`, which causes
-    // us to infer `_#1t = #'_#2r str`, where `'_#2r` is unconstrained, which gets
-    // fixed up to `ReEmpty`, and which is certainly not what we want.
-    if trait_fty.has_infer_types() {
-        result =
-            result.and_then(|()| ocx.eq(&cause, param_env, trait_sig.output(), impl_sig.output()));
-    }
+    let result = ocx.sup(&cause, param_env, trait_fty, impl_fty);
 
     if let Err(terr) = result {
         debug!(?terr, "sub_types failed: impl ty {:?}, trait ty {:?}", impl_fty, trait_fty);
