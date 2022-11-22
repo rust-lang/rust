@@ -133,11 +133,11 @@ impl UnnecessaryDefPath {
                 let has_ctor = match cx.tcx.def_kind(def_id) {
                     DefKind::Struct => {
                         let variant = cx.tcx.adt_def(def_id).non_enum_variant();
-                        variant.ctor_def_id.is_some() && variant.fields.iter().all(|f| f.vis.is_public())
+                        variant.ctor.is_some() && variant.fields.iter().all(|f| f.vis.is_public())
                     },
                     DefKind::Variant => {
                         let variant = cx.tcx.adt_def(cx.tcx.parent(def_id)).variant_with_id(def_id);
-                        variant.ctor_def_id.is_some() && variant.fields.iter().all(|f| f.vis.is_public())
+                        variant.ctor.is_some() && variant.fields.iter().all(|f| f.vis.is_public())
                     },
                     _ => false,
                 };
