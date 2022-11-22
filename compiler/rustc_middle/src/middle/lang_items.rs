@@ -27,7 +27,7 @@ impl<'tcx> TyCtxt<'tcx> {
         })
     }
 
-    pub fn fn_trait_kind_from_lang_item(self, id: DefId) -> Option<ty::ClosureKind> {
+    pub fn fn_trait_kind_from_def_id(self, id: DefId) -> Option<ty::ClosureKind> {
         let items = self.lang_items();
         match Some(id) {
             x if x == items.fn_trait() => Some(ty::ClosureKind::Fn),

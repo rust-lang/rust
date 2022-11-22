@@ -401,7 +401,7 @@ impl<'tcx> NiceRegionError<'_, 'tcx> {
                 if self_ty.value.is_closure()
                     && self
                         .tcx()
-                        .fn_trait_kind_from_lang_item(expected_trait_ref.value.def_id)
+                        .fn_trait_kind_from_def_id(expected_trait_ref.value.def_id)
                         .is_some()
                 {
                     let closure_sig = self_ty.map(|closure| {

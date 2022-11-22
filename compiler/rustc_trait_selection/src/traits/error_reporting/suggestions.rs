@@ -1685,7 +1685,7 @@ impl<'tcx> TypeErrCtxtExt<'tcx> for TypeErrCtxt<'_, 'tcx> {
             let inputs = trait_ref.skip_binder().substs.type_at(1);
             let sig = match inputs.kind() {
                 ty::Tuple(inputs)
-                    if infcx.tcx.fn_trait_kind_from_lang_item(trait_ref.def_id()).is_some() =>
+                    if infcx.tcx.fn_trait_kind_from_def_id(trait_ref.def_id()).is_some() =>
                 {
                     infcx.tcx.mk_fn_sig(
                         inputs.iter(),
