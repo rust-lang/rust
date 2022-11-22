@@ -99,6 +99,10 @@ pub struct FunctionCx<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> {
 
     /// Caller location propagated if this function has `#[track_caller]`.
     caller_location: Option<OperandRef<'tcx, Bx::Value>>,
+
+    /// Whether `StorageLive` and `StorageDead`.should be ignored.
+    /// The return value of `!tcx.sess.emit_lifetime_markers()`.
+    remove_lifetime_markers: bool,
 }
 
 impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
@@ -192,6 +196,7 @@ pub fn codegen_mir<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>>(
         debug_context,
         per_local_var_debug_info: None,
         caller_location: None,
+        remove_lifetime_markers: !cx.tcx().sess.emit_lifetime_markers(),
     };
 
     fx.per_local_var_debug_info = fx.compute_per_local_var_debug_info(&mut start_bx);

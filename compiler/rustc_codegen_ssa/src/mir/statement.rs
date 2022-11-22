@@ -1,10 +1,9 @@
-use rustc_middle::mir;
-use rustc_middle::mir::NonDivergingIntrinsic;
-
 use super::FunctionCx;
 use super::LocalRef;
 use crate::traits::BuilderMethods;
 use crate::traits::*;
+use rustc_middle::mir;
+use rustc_middle::mir::NonDivergingIntrinsic;
 
 impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
     #[instrument(level = "debug", skip(self, bx))]
@@ -51,6 +50,12 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
                 // perf here
             }
             mir::StatementKind::StorageLive(local) => {
+                // We don't remove them earlier if we don't want to emit lifetime markers because they are
+                // useful for finding bugs in the compiler.
+                if self.remove_lifetime_markers {
+                    return;
+                }
+
                 if let LocalRef::Place(cg_place) = self.locals[local] {
                     cg_place.storage_live(bx);
                 } else if let LocalRef::UnsizedPlace(cg_indirect_place) = self.locals[local] {
@@ -58,6 +63,10 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
                 }
             }
             mir::StatementKind::StorageDead(local) => {
+                if self.remove_lifetime_markers {
+                    return;
+                }
+
                 if let LocalRef::Place(cg_place) = self.locals[local] {
                     cg_place.storage_dead(bx);
                 } else if let LocalRef::UnsizedPlace(cg_indirect_place) = self.locals[local] {

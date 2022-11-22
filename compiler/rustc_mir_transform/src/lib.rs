@@ -80,7 +80,6 @@ mod nrvo;
 // This pass is public to allow external drivers to perform MIR cleanup
 pub mod remove_false_edges;
 mod remove_noop_landing_pads;
-mod remove_storage_markers;
 mod remove_uninit_drops;
 mod remove_unneeded_drops;
 mod remove_zsts;
@@ -559,7 +558,6 @@ fn run_optimization_passes<'tcx>(tcx: TyCtxt<'tcx>, body: &mut Body<'tcx>) {
             &uninhabited_enum_branching::UninhabitedEnumBranching,
             &o1(simplify::SimplifyCfg::new("after-uninhabited-enum-branching")),
             &inline::Inline,
-            &remove_storage_markers::RemoveStorageMarkers,
             &remove_zsts::RemoveZsts,
             &const_goto::ConstGoto,
             &remove_unneeded_drops::RemoveUnneededDrops,
