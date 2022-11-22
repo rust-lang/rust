@@ -2817,6 +2817,7 @@ impl<'tcx> TyCtxt<'tcx> {
         self.mk_substs(iter::once(self_ty.into()).chain(rest))
     }
 
+    #[inline(always)]
     pub fn mk_trait_ref(
         self,
         trait_def_id: DefId,

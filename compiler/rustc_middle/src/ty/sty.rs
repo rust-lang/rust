@@ -807,10 +807,12 @@ pub struct TraitRef<'tcx> {
 }
 
 impl<'tcx> TraitRef<'tcx> {
+    #[inline(always)]
     pub fn new(def_id: DefId, substs: SubstsRef<'tcx>) -> TraitRef<'tcx> {
         TraitRef { def_id, substs }
     }
 
+    #[inline(always)]
     pub fn with_self_type(self, tcx: TyCtxt<'tcx>, self_ty: Ty<'tcx>) -> Self {
         tcx.mk_trait_ref(
             self.def_id,
