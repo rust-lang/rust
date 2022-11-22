@@ -33,6 +33,8 @@ pub trait Interner {
     type SubstsRef: Clone + Debug + Hash + PartialEq + Eq + PartialOrd + Ord;
     type DefId: Clone + Debug + Hash + PartialEq + Eq + PartialOrd + Ord;
     type Ty: Clone + Debug + Hash + PartialEq + Eq + PartialOrd + Ord;
+    /// A pattern type pattern.
+    type Pat: Clone + Debug + Hash + PartialEq + Eq + PartialOrd + Ord;
     type Const: Clone + Debug + Hash + PartialEq + Eq + PartialOrd + Ord;
     type Region: Clone + Debug + Hash + PartialEq + Eq + PartialOrd + Ord;
     type TypeAndMut: Clone + Debug + Hash + PartialEq + Eq + PartialOrd + Ord;

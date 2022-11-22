@@ -1613,7 +1613,9 @@ pub(crate) enum Type {
     ///
     /// This is mostly Rustdoc's version of [`hir::Path`].
     /// It has to be different because Rustdoc's [`PathSegment`] can contain cleaned generics.
-    Path { path: Path },
+    Path {
+        path: Path,
+    },
     /// A `dyn Trait` object: `dyn for<'a> Trait<'a> + Send + 'static`
     DynTrait(Vec<PolyTrait>, Option<Lifetime>),
     /// A type parameter.
@@ -1630,10 +1632,15 @@ pub(crate) enum Type {
     ///
     /// The `String` field is a stringified version of the array's length parameter.
     Array(Box<Type>, Box<str>),
+    Pat(Box<Type>, Box<str>),
     /// A raw pointer type: `*const i32`, `*mut i32`
     RawPointer(Mutability, Box<Type>),
     /// A reference type: `&i32`, `&'a mut Foo`
-    BorrowedRef { lifetime: Option<Lifetime>, mutability: Mutability, type_: Box<Type> },
+    BorrowedRef {
+        lifetime: Option<Lifetime>,
+        mutability: Mutability,
+        type_: Box<Type>,
+    },
 
     /// A qualified path to an associated item: `<Type as Trait>::Name`
     QPath(Box<QPathData>),
@@ -1758,6 +1765,7 @@ impl Type {
             BareFunction(..) => PrimitiveType::Fn,
             Slice(..) => PrimitiveType::Slice,
             Array(..) => PrimitiveType::Array,
+            Type::Pat(..) => PrimitiveType::Pat,
             RawPointer(..) => PrimitiveType::RawPointer,
             QPath(box QPathData { ref self_type, .. }) => return self_type.inner_def_id(cache),
             Generic(_) | Infer | ImplTrait(_) => return None,
@@ -1810,6 +1818,7 @@ pub(crate) enum PrimitiveType {
     Slice,
     Array,
     Tuple,
+    Pat,
     Unit,
     RawPointer,
     Reference,
@@ -1955,6 +1964,7 @@ impl PrimitiveType {
             Str => sym::str,
             Bool => sym::bool,
             Char => sym::char,
+            Pat => sym::pat,
             Array => sym::array,
             Slice => sym::slice,
             Tuple => sym::tuple,

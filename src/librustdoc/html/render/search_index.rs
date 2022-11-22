@@ -369,6 +369,7 @@ fn get_index_type_id(clean_type: &clean::Type) -> Option<RenderTypeId> {
         | clean::Tuple(_)
         | clean::Slice(_)
         | clean::Array(_, _)
+        | clean::Type::Pat(_, _)
         | clean::QPath { .. }
         | clean::Infer => None,
     }

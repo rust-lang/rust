@@ -642,6 +642,7 @@ impl<'tcx> TypeVisitor<'tcx> for OrphanChecker<'tcx> {
             | ty::Float(..)
             | ty::Str
             | ty::FnDef(..)
+            | ty::Pat(..)
             | ty::FnPtr(_)
             | ty::Array(..)
             | ty::Slice(..)

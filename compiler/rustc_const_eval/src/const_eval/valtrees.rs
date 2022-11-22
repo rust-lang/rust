@@ -96,6 +96,8 @@ pub(crate) fn const_to_valtree_inner<'tcx>(
             Ok(ty::ValTree::Leaf(val.assert_int()))
         }
 
+        ty::Pat(..) => const_to_valtree_inner(ecx, &ecx.mplace_field(&place, 0).unwrap(), num_nodes),
+
         // Raw pointers are not allowed in type level constants, as we cannot properly test them for
         // equality at compile-time (see `ptr_guaranteed_cmp`).
         // Technically we could allow function pointers (represented as `ty::Instance`), but this is not guaranteed to
@@ -265,7 +267,7 @@ pub fn valtree_to_const_value<'tcx>(
     let (param_env, ty) = param_env_ty.into_parts();
     let mut ecx = mk_eval_cx(tcx, DUMMY_SP, param_env, false);
 
-    match ty.kind() {
+    match *ty.kind() {
         ty::FnDef(..) => {
             assert!(valtree.unwrap_branch().is_empty());
             ConstValue::ZeroSized
@@ -276,6 +278,7 @@ pub fn valtree_to_const_value<'tcx>(
                 "ValTrees for Bool, Int, Uint, Float or Char should have the form ValTree::Leaf"
             ),
         },
+        ty::Pat(ty, _) => valtree_to_const_value(tcx, param_env.and(ty), valtree),
         ty::Ref(_, _, _) | ty::Tuple(_) | ty::Array(_, _) | ty::Adt(..) => {
             let mut place = match ty.kind() {
                 ty::Ref(_, inner_ty, _) => {

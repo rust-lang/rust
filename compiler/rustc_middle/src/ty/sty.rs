@@ -2158,6 +2158,8 @@ impl<'tcx> Ty<'tcx> {
                 tcx.mk_projection(assoc_items[0], tcx.intern_substs(&[self.into()]))
             }
 
+            ty::Pat(ty, _) => ty.discriminant_ty(tcx),
+
             ty::Bool
             | ty::Char
             | ty::Int(_)
@@ -2234,6 +2236,7 @@ impl<'tcx> Ty<'tcx> {
             ty::Param(_) |  ty::Alias(..) => (tcx.types.unit, true),
 
             ty::Infer(ty::TyVar(_))
+            | ty::Pat(..)
             | ty::Bound(..)
             | ty::Placeholder(..)
             | ty::Infer(ty::FreshTy(_) | ty::FreshIntTy(_) | ty::FreshFloatTy(_)) => {
@@ -2305,6 +2308,8 @@ impl<'tcx> Ty<'tcx> {
 
             ty::Tuple(tys) => tys.iter().all(|ty| ty.is_trivially_sized(tcx)),
 
+            ty::Pat(ty, _) => ty.is_trivially_sized(tcx),
+
             ty::Adt(def, _substs) => def.sized_constraint(tcx).0.is_empty(),
 
             ty::Alias(..) | ty::Param(_) => false,
@@ -2348,6 +2353,8 @@ impl<'tcx> Ty<'tcx> {
             ty::Tuple(field_tys) => {
                 field_tys.len() <= 3 && field_tys.iter().all(Self::is_trivially_pure_clone_copy)
             }
+
+            ty::Pat(ty, _) => ty.is_trivially_pure_clone_copy(),
 
             // Sometimes traits aren't implemented for every ABI or arity,
             // because we can't be generic over everything yet.

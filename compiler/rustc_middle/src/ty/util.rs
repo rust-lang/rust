@@ -260,6 +260,11 @@ impl<'tcx> TyCtxt<'tcx> {
 
                 ty::Tuple(_) => break,
 
+                ty::Pat(inner, _) => {
+                    f();
+                    ty = inner;
+                }
+
                 ty::Alias(..) => {
                     let normalized = normalize(ty);
                     if ty == normalized {
@@ -903,7 +908,7 @@ impl<'tcx> Ty<'tcx> {
             | ty::Error(_)
             | ty::FnPtr(_) => true,
             ty::Tuple(fields) => fields.iter().all(Self::is_trivially_freeze),
-            ty::Slice(elem_ty) | ty::Array(elem_ty, _) => elem_ty.is_trivially_freeze(),
+            ty::Pat(ty, _) | ty::Slice(ty) | ty::Array(ty, _) => ty.is_trivially_freeze(),
             ty::Adt(..)
             | ty::Bound(..)
             | ty::Closure(..)
@@ -942,7 +947,7 @@ impl<'tcx> Ty<'tcx> {
             | ty::Error(_)
             | ty::FnPtr(_) => true,
             ty::Tuple(fields) => fields.iter().all(Self::is_trivially_unpin),
-            ty::Slice(elem_ty) | ty::Array(elem_ty, _) => elem_ty.is_trivially_unpin(),
+            ty::Pat(ty, _) | ty::Slice(ty) | ty::Array(ty, _) => ty.is_trivially_unpin(),
             ty::Adt(..)
             | ty::Bound(..)
             | ty::Closure(..)
@@ -1056,7 +1061,7 @@ impl<'tcx> Ty<'tcx> {
             //
             // Because this function is "shallow", we return `true` for these composites regardless
             // of the type(s) contained within.
-            ty::Ref(..) | ty::Array(..) | ty::Slice(_) | ty::Tuple(..) => true,
+            ty::Pat(..) | ty::Ref(..) | ty::Array(..) | ty::Slice(_) | ty::Tuple(..) => true,
 
             // Raw pointers use bitwise comparison.
             ty::RawPtr(_) | ty::FnPtr(_) => true,
@@ -1182,7 +1187,7 @@ pub fn needs_drop_components<'tcx>(
 
         ty::Dynamic(..) | ty::Error(_) => Err(AlwaysRequiresDrop),
 
-        ty::Slice(ty) => needs_drop_components(*ty, target_layout),
+        ty::Pat(ty, _) | ty::Slice(ty) => needs_drop_components(*ty, target_layout),
         ty::Array(elem_ty, size) => {
             match needs_drop_components(*elem_ty, target_layout) {
                 Ok(v) if v.is_empty() => Ok(v),
@@ -1245,7 +1250,7 @@ pub fn is_trivially_const_drop(ty: Ty<'_>) -> bool {
         // we'll just perform trait selection.
         ty::Closure(..) | ty::Generator(..) | ty::GeneratorWitness(_) | ty::Adt(..) => false,
 
-        ty::Array(ty, _) | ty::Slice(ty) => is_trivially_const_drop(ty),
+        ty::Array(ty, _) | ty::Slice(ty) | ty::Pat(ty, _) => is_trivially_const_drop(ty),
 
         ty::Tuple(tys) => tys.iter().all(|ty| is_trivially_const_drop(ty)),
     }

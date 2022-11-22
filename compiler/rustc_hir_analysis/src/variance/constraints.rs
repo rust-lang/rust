@@ -231,6 +231,16 @@ impl<'a, 'tcx> ConstraintContext<'a, 'tcx> {
                 self.add_constraints_from_ty(current, typ, variance);
             }
 
+            ty::Pat(typ, pat) => {
+                match *pat {
+                    ty::PatternKind::Range { start, end } => {
+                        self.add_constraints_from_const(current, start, variance);
+                        self.add_constraints_from_const(current, end, variance);
+                    }
+                }
+                self.add_constraints_from_ty(current, typ, variance);
+            }
+
             ty::Slice(typ) => {
                 self.add_constraints_from_ty(current, typ, variance);
             }

@@ -584,6 +584,7 @@ impl<'rt, 'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> ValidityVisitor<'rt, 'mir, '
                 // Nothing to check.
                 Ok(true)
             }
+            ty::Pat(..) => unimplemented!(),
             // The above should be all the primitive types. The rest is compound, we
             // check them by visiting their fields/variants.
             ty::Adt(..)

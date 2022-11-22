@@ -40,6 +40,7 @@ impl<'tcx> Printer<'tcx> for AbsolutePathPrinter<'tcx> {
             | ty::Uint(_)
             | ty::Float(_)
             | ty::Str
+            | ty::Pat(_, _)
             | ty::Array(_, _)
             | ty::Slice(_)
             | ty::RawPtr(_)

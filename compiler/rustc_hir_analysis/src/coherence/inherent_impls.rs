@@ -208,6 +208,9 @@ impl<'tcx> InherentCollect<'tcx> {
                 .note("define and implement a new trait or type instead")
                 .emit();
             }
+            ty::Pat(..) => {
+                self.tcx.sess.span_err(ty.span, "cannot define inherent `impl` for pattern types");
+            }
             ty::Bool
             | ty::Char
             | ty::Int(_)

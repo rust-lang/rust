@@ -484,7 +484,7 @@ pub(crate) fn from_trait_bound_modifier(
 impl FromWithTcx<clean::Type> for Type {
     fn from_tcx(ty: clean::Type, tcx: TyCtxt<'_>) -> Self {
         use clean::Type::{
-            Array, BareFunction, BorrowedRef, Generic, ImplTrait, Infer, Primitive, QPath,
+            Array, BareFunction, BorrowedRef, Generic, ImplTrait, Infer, Pat, Primitive, QPath,
             RawPointer, Slice, Tuple,
         };
 
@@ -500,6 +500,7 @@ impl FromWithTcx<clean::Type> for Type {
             Tuple(t) => Type::Tuple(t.into_tcx(tcx)),
             Slice(t) => Type::Slice(Box::new((*t).into_tcx(tcx))),
             Array(t, s) => Type::Array { type_: Box::new((*t).into_tcx(tcx)), len: s.to_string() },
+            Pat(t, s) => Type::Pat { type_: Box::new((*t).into_tcx(tcx)), pat: s.to_string() },
             ImplTrait(g) => Type::ImplTrait(g.into_tcx(tcx)),
             Infer => Type::Infer,
             RawPointer(mutability, type_) => Type::RawPointer {

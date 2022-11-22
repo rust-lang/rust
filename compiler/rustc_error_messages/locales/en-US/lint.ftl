@@ -237,6 +237,9 @@ lint_improper_ctypes_128bit = 128-bit integers don't currently have a known stab
 lint_improper_ctypes_char_reason = the `char` type has no C equivalent
 lint_improper_ctypes_char_help = consider using `u32` or `libc::wchar_t` instead
 
+lint_improper_ctypes_pat_reason = pattern types have no C equivalent
+lint_improper_ctypes_pat_help = consider using the patterned type instead
+
 lint_improper_ctypes_non_exhaustive = this enum is non-exhaustive
 lint_improper_ctypes_non_exhaustive_variant = this enum has non-exhaustive variants
 

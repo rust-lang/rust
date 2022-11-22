@@ -263,6 +263,7 @@ where
             | ty::Str
             | ty::Never
             | ty::Array(..)
+            | ty::Pat(..)
             | ty::Slice(..)
             | ty::Tuple(..)
             | ty::RawPtr(..)

@@ -132,6 +132,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             | ty::GeneratorWitness(..)
             | ty::RawPtr(_)
             | ty::Ref(..)
+            | ty::Pat(..)
             | ty::FnDef(..)
             | ty::FnPtr(..)
             | ty::Closure(..)

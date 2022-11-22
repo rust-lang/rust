@@ -2052,6 +2052,8 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
                 obligation.predicate.rebind(tys.last().map_or_else(Vec::new, |&last| vec![last])),
             ),
 
+            ty::Pat(ty, _) => Where(obligation.predicate.rebind(vec![*ty])),
+
             ty::Adt(def, substs) => {
                 let sized_crit = def.sized_constraint(self.tcx());
                 // (*) binder moved here
@@ -2114,6 +2116,11 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
             ty::Tuple(tys) => {
                 // (*) binder moved here
                 Where(obligation.predicate.rebind(tys.iter().collect()))
+            }
+
+            ty::Pat(ty, _) => {
+                // (*) binder moved here
+                Where(obligation.predicate.rebind(vec![ty]))
             }
 
             ty::Generator(_, substs, hir::Movability::Movable) => {
@@ -2227,7 +2234,7 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
                 t.rebind(vec![element_ty])
             }
 
-            ty::Array(element_ty, _) | ty::Slice(element_ty) => t.rebind(vec![element_ty]),
+            ty::Pat(ty, _) | ty::Array(ty, _) | ty::Slice(ty) => t.rebind(vec![ty]),
 
             ty::Tuple(ref tys) => {
                 // (T1, ..., Tn) -- meets any bound that all of T1...Tn meet

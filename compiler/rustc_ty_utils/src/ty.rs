@@ -26,6 +26,8 @@ fn sized_constraint_for_ty<'tcx>(
             Some(&ty) => sized_constraint_for_ty(tcx, adtdef, ty),
         },
 
+        Pat(ty, _) => sized_constraint_for_ty(tcx, adtdef, *ty),
+
         Adt(adt, substs) => {
             // recursive case
             let adt_tys = adt.sized_constraint(tcx);

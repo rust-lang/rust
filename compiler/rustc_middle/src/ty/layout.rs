@@ -646,6 +646,7 @@ where
                 | ty::FnDef(..)
                 | ty::GeneratorWitness(..)
                 | ty::Foreign(..)
+                | ty::Pat(_, _)
                 | ty::Dynamic(_, _, ty::Dyn) => {
                     bug!("TyAndLayout::field({:?}): not applicable", this)
                 }

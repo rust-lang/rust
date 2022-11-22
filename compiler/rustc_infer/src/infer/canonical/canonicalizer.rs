@@ -454,6 +454,7 @@ impl<'cx, 'tcx> TypeFolder<'tcx> for Canonicalizer<'cx, 'tcx> {
             | ty::Tuple(..)
             | ty::Alias(..)
             | ty::Foreign(..)
+            | ty::Pat(..)
             | ty::Param(..) => {
                 if t.flags().intersects(self.needs_canonical_flags) {
                     t.super_fold_with(self)

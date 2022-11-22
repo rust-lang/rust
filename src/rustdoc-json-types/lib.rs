@@ -565,6 +565,12 @@ pub enum Type {
         type_: Box<Type>,
         len: String,
     },
+    /// u32 is 0..=100
+    Pat {
+        #[serde(rename = "type")]
+        type_: Box<Type>,
+        pat: String,
+    },
     /// `impl TraitA + TraitB + ...`
     ImplTrait(Vec<GenericBound>),
     /// `_`

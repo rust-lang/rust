@@ -19,6 +19,8 @@ use std::ops::ControlFlow;
 use std::rc::Rc;
 use std::sync::Arc;
 
+use super::Pattern;
+
 impl fmt::Debug for ty::TraitDef {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         ty::tls::with(|tcx| {
@@ -573,6 +575,19 @@ impl<'tcx, T: TypeVisitable<'tcx>> TypeVisitable<'tcx> for Box<[T]> {
     }
 }
 
+impl<'tcx> TypeFoldable<'tcx> for Pattern<'tcx> {
+    fn try_fold_with<F: FallibleTypeFolder<'tcx>>(self, folder: &mut F) -> Result<Self, F::Error> {
+        let pat = (*self).clone().try_fold_with(folder)?;
+        Ok(if pat == *self { self } else { folder.tcx().mk_pat(pat) })
+    }
+}
+
+impl<'tcx> TypeVisitable<'tcx> for Pattern<'tcx> {
+    fn visit_with<V: TypeVisitor<'tcx>>(&self, visitor: &mut V) -> ControlFlow<V::BreakTy> {
+        (**self).visit_with(visitor)
+    }
+}
+
 impl<'tcx, T: TypeFoldable<'tcx>> TypeFoldable<'tcx> for ty::Binder<'tcx, T> {
     fn try_fold_with<F: FallibleTypeFolder<'tcx>>(self, folder: &mut F) -> Result<Self, F::Error> {
         folder.try_fold_binder(self)
@@ -657,6 +672,7 @@ impl<'tcx> TypeSuperFoldable<'tcx> for Ty<'tcx> {
             ty::GeneratorWitness(types) => ty::GeneratorWitness(types.try_fold_with(folder)?),
             ty::Closure(did, substs) => ty::Closure(did, substs.try_fold_with(folder)?),
             ty::Alias(kind, data) => ty::Alias(kind, data.try_fold_with(folder)?),
+            ty::Pat(ty, pat) => ty::Pat(ty.try_fold_with(folder)?, pat.try_fold_with(folder)?),
 
             ty::Bool
             | ty::Char
@@ -702,6 +718,11 @@ impl<'tcx> TypeSuperVisitable<'tcx> for Ty<'tcx> {
             ty::GeneratorWitness(ref types) => types.visit_with(visitor),
             ty::Closure(_did, ref substs) => substs.visit_with(visitor),
             ty::Alias(_, ref data) => data.visit_with(visitor),
+
+            ty::Pat(ty, pat) => {
+                ty.visit_with(visitor)?;
+                pat.visit_with(visitor)
+            }
 
             ty::Bool
             | ty::Char

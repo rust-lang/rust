@@ -1031,6 +1031,20 @@ fn fmt_type<'cx>(
                 write!(f, "]")
             }
         },
+        clean::Type::Pat(ref t, ref n) => match **t {
+            clean::Generic(name) if !f.alternate() => {
+                primitive_link(f, PrimitiveType::Pat, &format!("{name} is {n}", n = Escape(n)), cx)
+            }
+            _ => {
+                fmt::Display::fmt(&t.print(cx), f)?;
+                write!(f, " is ")?;
+                if f.alternate() {
+                    write!(f, "{n}")
+                } else {
+                    primitive_link(f, PrimitiveType::Pat, &format!("{n}", n = Escape(n)), cx)
+                }
+            }
+        },
         clean::RawPointer(m, ref t) => {
             let m = match m {
                 hir::Mutability::Mut => "mut",

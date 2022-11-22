@@ -287,6 +287,8 @@ impl<'tcx> Ty<'tcx> {
                 }
                 "array".into()
             }
+            ty::Pat(ty, _) if ty.is_simple_ty() => format!("pattern `{}`", self).into(),
+            ty::Pat(..) => "pattern".into(),
             ty::Slice(ty) if ty.is_simple_ty() => format!("slice `{}`", self).into(),
             ty::Slice(_) => "slice".into(),
             ty::RawPtr(tymut) => {
@@ -363,6 +365,7 @@ impl<'tcx> Ty<'tcx> {
             ty::Adt(def, _) => def.descr().into(),
             ty::Foreign(_) => "extern type".into(),
             ty::Array(..) => "array".into(),
+            ty::Pat(..) => "pattern type".into(),
             ty::Slice(_) => "slice".into(),
             ty::RawPtr(_) => "raw pointer".into(),
             ty::Ref(.., mutbl) => match mutbl {

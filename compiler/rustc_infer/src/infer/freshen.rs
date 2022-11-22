@@ -201,6 +201,7 @@ impl<'a, 'tcx> TypeFolder<'tcx> for TypeFreshener<'a, 'tcx> {
             | ty::RawPtr(..)
             | ty::Ref(..)
             | ty::FnDef(..)
+            | ty::Pat(..)
             | ty::FnPtr(_)
             | ty::Dynamic(..)
             | ty::Never

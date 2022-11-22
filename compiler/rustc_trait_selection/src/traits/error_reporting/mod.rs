@@ -1891,6 +1891,7 @@ impl<'tcx> InferCtxtPrivExt<'tcx> for TypeErrCtxt<'_, 'tcx> {
                 ty::Generator(..) => Some(16),
                 ty::Foreign(..) => Some(17),
                 ty::GeneratorWitness(..) => Some(18),
+                ty::Pat(..) => Some(19),
                 ty::Placeholder(..) | ty::Bound(..) | ty::Infer(..) | ty::Error(_) => None,
             }
         }
