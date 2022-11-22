@@ -1632,6 +1632,18 @@ fn strslice_issue_16878() {
 }
 
 #[test]
+fn strslice_issue_104726() {
+    // Edge-case in the simd_contains impl.
+    // The first and last byte are the same so it backtracks by one byte
+    // which aligns with the end of the string. Previously incorrect offset calculations
+    // lead to out-of-bounds slicing.
+    #[rustfmt::skip]
+    let needle =                        "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaba";
+    let haystack = "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaab";
+    assert!(!haystack.contains(needle));
+}
+
+#[test]
 #[cfg_attr(miri, ignore)] // Miri is too slow
 fn test_strslice_contains() {
     let x = "There are moments, Jeeves, when one asks oneself, 'Do trousers matter?'";
