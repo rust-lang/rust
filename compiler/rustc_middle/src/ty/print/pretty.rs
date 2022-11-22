@@ -11,6 +11,7 @@ use rustc_hir as hir;
 use rustc_hir::def::{self, CtorKind, DefKind, Namespace};
 use rustc_hir::def_id::{DefId, DefIdSet, CRATE_DEF_ID, LOCAL_CRATE};
 use rustc_hir::definitions::{DefPathData, DefPathDataName, DisambiguatedDefPathData};
+use rustc_hir::LangItem;
 use rustc_session::config::TrimmedDefPaths;
 use rustc_session::cstore::{ExternCrate, ExternCrateSource};
 use rustc_session::Limit;
@@ -889,7 +890,7 @@ pub trait PrettyPrinter<'tcx>:
                                 // Group the return ty with its def id, if we had one.
                                 entry
                                     .return_ty
-                                    .map(|ty| (tcx.lang_items().fn_once_output().unwrap(), ty)),
+                                    .map(|ty| (tcx.require_lang_item(LangItem::FnOnce, None), ty)),
                             );
                         }
                         if let Some(trait_ref) = entry.fn_mut_trait_ref {

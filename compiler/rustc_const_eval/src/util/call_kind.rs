@@ -3,7 +3,7 @@
 //! context.
 
 use rustc_hir::def_id::DefId;
-use rustc_hir::lang_items;
+use rustc_hir::{lang_items, LangItem};
 use rustc_middle::ty::subst::SubstsRef;
 use rustc_middle::ty::{self, AssocItemContainer, DefIdTree, Instance, ParamEnv, Ty, TyCtxt};
 use rustc_span::symbol::Ident;
@@ -26,7 +26,7 @@ impl CallDesugaringKind {
         match self {
             Self::ForLoopIntoIter => tcx.get_diagnostic_item(sym::IntoIterator).unwrap(),
             Self::QuestionBranch | Self::TryBlockFromOutput => {
-                tcx.lang_items().try_trait().unwrap()
+                tcx.require_lang_item(LangItem::Try, None)
             }
             Self::QuestionFromResidual => tcx.get_diagnostic_item(sym::FromResidual).unwrap(),
         }
