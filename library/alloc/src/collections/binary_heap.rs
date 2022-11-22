@@ -429,11 +429,7 @@ impl<T: Ord> BinaryHeap<T> {
     /// otherwise it's *O*(1).
     #[stable(feature = "binary_heap_peek_mut", since = "1.12.0")]
     pub fn peek_mut(&mut self) -> Option<PeekMut<'_, T>> {
-        if self.is_empty() {
-            None
-        } else {
-            Some(PeekMut { heap: self, sift: false })
-        }
+        if self.is_empty() { None } else { Some(PeekMut { heap: self, sift: false }) }
     }
 
     /// Removes the greatest item from the binary heap and returns it, or `None` if it
