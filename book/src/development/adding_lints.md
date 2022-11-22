@@ -443,22 +443,22 @@ value is passed to the constructor in `clippy_lints/lib.rs`.
 
 ```rust
 pub struct ManualStrip {
-    msrv: Option<RustcVersion>,
+    msrv: Msrv,
 }
 
 impl ManualStrip {
     #[must_use]
-    pub fn new(msrv: Option<RustcVersion>) -> Self {
+    pub fn new(msrv: Msrv) -> Self {
         Self { msrv }
     }
 }
 ```
 
 The project's MSRV can then be matched against the feature MSRV in the LintPass
-using the `meets_msrv` utility function.
+using the `Msrv::meets` method.
 
 ``` rust
-if !meets_msrv(self.msrv, msrvs::STR_STRIP_PREFIX) {
+if !self.msrv.meets(msrvs::STR_STRIP_PREFIX) {
     return;
 }
 ```

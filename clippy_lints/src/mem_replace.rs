@@ -1,14 +1,14 @@
 use clippy_utils::diagnostics::{span_lint_and_help, span_lint_and_sugg, span_lint_and_then};
+use clippy_utils::msrvs::{self, Msrv};
 use clippy_utils::source::{snippet, snippet_with_applicability};
 use clippy_utils::ty::is_non_aggregate_primitive_type;
-use clippy_utils::{is_default_equivalent, is_res_lang_ctor, meets_msrv, msrvs, path_res};
+use clippy_utils::{is_default_equivalent, is_res_lang_ctor, path_res};
 use if_chain::if_chain;
 use rustc_errors::Applicability;
 use rustc_hir::LangItem::OptionNone;
 use rustc_hir::{BorrowKind, Expr, ExprKind, Mutability, QPath};
 use rustc_lint::{LateContext, LateLintPass};
 use rustc_middle::lint::in_external_macro;
-use rustc_semver::RustcVersion;
 use rustc_session::{declare_tool_lint, impl_lint_pass};
 use rustc_span::source_map::Span;
 use rustc_span::symbol::sym;
@@ -227,12 +227,12 @@ fn check_replace_with_default(cx: &LateContext<'_>, src: &Expr<'_>, dest: &Expr<
 }
 
 pub struct MemReplace {
-    msrv: Option<RustcVersion>,
+    msrv: Msrv,
 }
 
 impl MemReplace {
     #[must_use]
-    pub fn new(msrv: Option<RustcVersion>) -> Self {
+    pub fn new(msrv: Msrv) -> Self {
         Self { msrv }
     }
 }
@@ -248,7 +248,7 @@ impl<'tcx> LateLintPass<'tcx> for MemReplace {
             then {
                 check_replace_option_with_none(cx, src, dest, expr.span);
                 check_replace_with_uninit(cx, src, dest, expr.span);
-                if meets_msrv(self.msrv, msrvs::MEM_TAKE) {
+                if self.msrv.meets(msrvs::MEM_TAKE) {
                     check_replace_with_default(cx, src, dest, expr.span);
                 }
             }

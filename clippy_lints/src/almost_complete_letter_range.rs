@@ -1,11 +1,10 @@
 use clippy_utils::diagnostics::span_lint_and_then;
+use clippy_utils::msrvs::{self, Msrv};
 use clippy_utils::source::{trim_span, walk_span_to_context};
-use clippy_utils::{meets_msrv, msrvs};
 use rustc_ast::ast::{Expr, ExprKind, LitKind, Pat, PatKind, RangeEnd, RangeLimits};
 use rustc_errors::Applicability;
 use rustc_lint::{EarlyContext, EarlyLintPass, LintContext};
 use rustc_middle::lint::in_external_macro;
-use rustc_semver::RustcVersion;
 use rustc_session::{declare_tool_lint, impl_lint_pass};
 use rustc_span::Span;
 
@@ -33,10 +32,10 @@ declare_clippy_lint! {
 impl_lint_pass!(AlmostCompleteLetterRange => [ALMOST_COMPLETE_LETTER_RANGE]);
 
 pub struct AlmostCompleteLetterRange {
-    msrv: Option<RustcVersion>,
+    msrv: Msrv,
 }
 impl AlmostCompleteLetterRange {
-    pub fn new(msrv: Option<RustcVersion>) -> Self {
+    pub fn new(msrv: Msrv) -> Self {
         Self { msrv }
     }
 }
@@ -46,7 +45,7 @@ impl EarlyLintPass for AlmostCompleteLetterRange {
             let ctxt = e.span.ctxt();
             let sugg = if let Some(start) = walk_span_to_context(start.span, ctxt)
                 && let Some(end) = walk_span_to_context(end.span, ctxt)
-                && meets_msrv(self.msrv, msrvs::RANGE_INCLUSIVE)
+                && self.msrv.meets(msrvs::RANGE_INCLUSIVE)
             {
                 Some((trim_span(cx.sess().source_map(), start.between(end)), "..="))
             } else {
@@ -60,7 +59,7 @@ impl EarlyLintPass for AlmostCompleteLetterRange {
         if let PatKind::Range(Some(start), Some(end), kind) = &p.kind
             && matches!(kind.node, RangeEnd::Excluded)
         {
-            let sugg = if meets_msrv(self.msrv, msrvs::RANGE_INCLUSIVE) {
+            let sugg = if self.msrv.meets(msrvs::RANGE_INCLUSIVE) {
                 "..="
             } else {
                 "..."

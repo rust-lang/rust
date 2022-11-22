@@ -1,16 +1,16 @@
 use clippy_utils::diagnostics::span_lint_and_then;
 use clippy_utils::higher::IfLetOrMatch;
+use clippy_utils::msrvs::{self, Msrv};
+use clippy_utils::peel_blocks;
 use clippy_utils::source::snippet_opt;
 use clippy_utils::ty::is_type_diagnostic_item;
 use clippy_utils::visitors::{for_each_expr, Descend};
-use clippy_utils::{meets_msrv, msrvs, peel_blocks};
 use if_chain::if_chain;
 use rustc_data_structures::fx::FxHashSet;
 use rustc_errors::Applicability;
 use rustc_hir::{Expr, ExprKind, MatchSource, Pat, PatKind, QPath, Stmt, StmtKind};
 use rustc_lint::{LateContext, LateLintPass, LintContext};
 use rustc_middle::lint::in_external_macro;
-use rustc_semver::RustcVersion;
 use rustc_session::{declare_tool_lint, impl_lint_pass};
 use rustc_span::symbol::sym;
 use rustc_span::Span;
@@ -50,13 +50,13 @@ declare_clippy_lint! {
 }
 
 pub struct ManualLetElse {
-    msrv: Option<RustcVersion>,
+    msrv: Msrv,
     matches_behaviour: MatchLintBehaviour,
 }
 
 impl ManualLetElse {
     #[must_use]
-    pub fn new(msrv: Option<RustcVersion>, matches_behaviour: MatchLintBehaviour) -> Self {
+    pub fn new(msrv: Msrv, matches_behaviour: MatchLintBehaviour) -> Self {
         Self {
             msrv,
             matches_behaviour,
@@ -69,7 +69,7 @@ impl_lint_pass!(ManualLetElse => [MANUAL_LET_ELSE]);
 impl<'tcx> LateLintPass<'tcx> for ManualLetElse {
     fn check_stmt(&mut self, cx: &LateContext<'_>, stmt: &'tcx Stmt<'tcx>) {
         let if_let_or_match = if_chain! {
-            if meets_msrv(self.msrv, msrvs::LET_ELSE);
+            if self.msrv.meets(msrvs::LET_ELSE);
             if !in_external_macro(cx.sess(), stmt.span);
             if let StmtKind::Local(local) = stmt.kind;
             if let Some(init) = local.init;

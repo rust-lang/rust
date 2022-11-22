@@ -1,16 +1,16 @@
-use clippy_utils::{diagnostics::span_lint_and_then, meets_msrv, msrvs, source};
+use clippy_utils::msrvs::{self, Msrv};
+use clippy_utils::{diagnostics::span_lint_and_then, source};
 use if_chain::if_chain;
 use rustc_ast::Mutability;
 use rustc_hir::{Expr, ExprKind, Node};
 use rustc_lint::LateContext;
 use rustc_middle::ty::{self, layout::LayoutOf, Ty, TypeAndMut};
-use rustc_semver::RustcVersion;
 
 use super::CAST_SLICE_DIFFERENT_SIZES;
 
-pub(super) fn check<'tcx>(cx: &LateContext<'tcx>, expr: &Expr<'tcx>, msrv: Option<RustcVersion>) {
+pub(super) fn check<'tcx>(cx: &LateContext<'tcx>, expr: &Expr<'tcx>, msrv: &Msrv) {
     // suggestion is invalid if `ptr::slice_from_raw_parts` does not exist
-    if !meets_msrv(msrv, msrvs::PTR_SLICE_RAW_PARTS) {
+    if !msrv.meets(msrvs::PTR_SLICE_RAW_PARTS) {
         return;
     }
 

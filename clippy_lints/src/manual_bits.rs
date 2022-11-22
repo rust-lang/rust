@@ -1,12 +1,12 @@
 use clippy_utils::diagnostics::span_lint_and_sugg;
+use clippy_utils::get_parent_expr;
+use clippy_utils::msrvs::{self, Msrv};
 use clippy_utils::source::snippet_with_applicability;
-use clippy_utils::{get_parent_expr, meets_msrv, msrvs};
 use rustc_ast::ast::LitKind;
 use rustc_errors::Applicability;
 use rustc_hir::{BinOpKind, Expr, ExprKind, GenericArg, QPath};
 use rustc_lint::{LateContext, LateLintPass};
 use rustc_middle::ty::{self, Ty};
-use rustc_semver::RustcVersion;
 use rustc_session::{declare_tool_lint, impl_lint_pass};
 use rustc_span::sym;
 
@@ -34,12 +34,12 @@ declare_clippy_lint! {
 
 #[derive(Clone)]
 pub struct ManualBits {
-    msrv: Option<RustcVersion>,
+    msrv: Msrv,
 }
 
 impl ManualBits {
     #[must_use]
-    pub fn new(msrv: Option<RustcVersion>) -> Self {
+    pub fn new(msrv: Msrv) -> Self {
         Self { msrv }
     }
 }
@@ -48,7 +48,7 @@ impl_lint_pass!(ManualBits => [MANUAL_BITS]);
 
 impl<'tcx> LateLintPass<'tcx> for ManualBits {
     fn check_expr(&mut self, cx: &LateContext<'tcx>, expr: &'tcx Expr<'_>) {
-        if !meets_msrv(self.msrv, msrvs::MANUAL_BITS) {
+        if !self.msrv.meets(msrvs::MANUAL_BITS) {
             return;
         }
 

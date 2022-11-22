@@ -1,5 +1,5 @@
 use clippy_utils::diagnostics::span_lint_and_help;
-use clippy_utils::{meets_msrv, msrvs};
+use clippy_utils::msrvs::{self, Msrv};
 use rustc_ast::ast::{FloatTy, LitFloatType, LitKind};
 use rustc_hir::{Expr, ExprKind};
 use rustc_lint::{LateContext, LateLintPass};
@@ -63,12 +63,12 @@ const KNOWN_CONSTS: [(f64, &str, usize, Option<RustcVersion>); 19] = [
 ];
 
 pub struct ApproxConstant {
-    msrv: Option<RustcVersion>,
+    msrv: Msrv,
 }
 
 impl ApproxConstant {
     #[must_use]
-    pub fn new(msrv: Option<RustcVersion>) -> Self {
+    pub fn new(msrv: Msrv) -> Self {
         Self { msrv }
     }
 
@@ -87,7 +87,7 @@ impl ApproxConstant {
         let s = s.as_str();
         if s.parse::<f64>().is_ok() {
             for &(constant, name, min_digits, msrv) in &KNOWN_CONSTS {
-                if is_approx_const(constant, s, min_digits) && msrv.map_or(true, |msrv| meets_msrv(self.msrv, msrv)) {
+                if is_approx_const(constant, s, min_digits) && msrv.map_or(true, |msrv| self.msrv.meets(msrv)) {
                     span_lint_and_help(
                         cx,
                         APPROX_CONSTANT,
