@@ -640,7 +640,11 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
     }
 
     #[instrument(skip(self), level = "debug")]
-    fn self_type_matches_expected_vid(&self, self_ty: Ty<'tcx>, expected_vid: ty::TyVid) -> bool {
+    pub(in super::super) fn self_type_matches_expected_vid(
+        &self,
+        self_ty: Ty<'tcx>,
+        expected_vid: ty::TyVid,
+    ) -> bool {
         let self_ty = self.shallow_resolve(self_ty);
         debug!(?self_ty);
 

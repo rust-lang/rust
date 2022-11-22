@@ -169,6 +169,8 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
     ) -> (Option<ExpectedSig<'tcx>>, Option<ty::ClosureKind>) {
         match *expected_ty.kind() {
             ty::Opaque(def_id, substs) => self.deduce_signature_from_predicates(
+                // Elaborating expectations from explicit_item_bounds shouldn't include any variable shenanigans
+                |ty| ty == expected_ty,
                 self.tcx.bound_explicit_item_bounds(def_id).subst_iter_copied(self.tcx, substs),
             ),
             ty::Dynamic(ref object_type, ..) => {
@@ -181,9 +183,16 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                     .and_then(|did| self.tcx.fn_trait_kind_from_lang_item(did));
                 (sig, kind)
             }
-            ty::Infer(ty::TyVar(vid)) => self.deduce_signature_from_predicates(
-                self.obligations_for_self_ty(vid).map(|obl| (obl.predicate, obl.cause.span)),
-            ),
+            ty::Infer(ty::TyVar(vid)) => {
+                let root_vid = self.root_var(vid);
+                self.deduce_signature_from_predicates(
+                    // We need to do equality "modulo root vids" here, since that's
+                    // how `obligations_for_self_ty` filters its predicates.
+                    |ty| self.self_type_matches_expected_vid(ty, root_vid),
+                    self.obligations_for_self_ty(root_vid)
+                        .map(|obl| (obl.predicate, obl.cause.span)),
+                )
+            }
             ty::FnPtr(sig) => {
                 let expected_sig = ExpectedSig { cause_span: None, sig };
                 (Some(expected_sig), Some(ty::ClosureKind::Fn))
@@ -194,6 +203,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
 
     fn deduce_signature_from_predicates(
         &self,
+        eq_expected_ty: impl Fn(Ty<'tcx>) -> bool,
         predicates: impl DoubleEndedIterator<Item = (ty::Predicate<'tcx>, Span)>,
     ) -> (Option<ExpectedSig<'tcx>>, Option<ty::ClosureKind>) {
         let mut expected_sig = None;
@@ -213,6 +223,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             // the complete signature.
             if expected_sig.is_none()
                 && let ty::PredicateKind::Projection(proj_predicate) = bound_predicate.skip_binder()
+                && eq_expected_ty(proj_predicate.projection_ty.self_ty())
             {
                 expected_sig = self.normalize_associated_types_in(
                     obligation.cause.span,
@@ -228,10 +239,14 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             // like `F : Fn<A>`. Note that due to subtyping we could encounter
             // many viable options, so pick the most restrictive.
             let trait_def_id = match bound_predicate.skip_binder() {
-                ty::PredicateKind::Projection(data) => {
+                ty::PredicateKind::Projection(data)
+                    if eq_expected_ty(data.projection_ty.self_ty()) =>
+                {
                     Some(data.projection_ty.trait_def_id(self.tcx))
                 }
-                ty::PredicateKind::Trait(data) => Some(data.def_id()),
+                ty::PredicateKind::Trait(data) if eq_expected_ty(data.self_ty()) => {
+                    Some(data.def_id())
+                }
                 _ => None,
             };
             if let Some(closure_kind) =
