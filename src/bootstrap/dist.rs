@@ -10,9 +10,13 @@
 
 use std::collections::HashSet;
 use std::env;
+use std::ffi::OsStr;
 use std::fs;
 use std::path::{Path, PathBuf};
 use std::process::Command;
+
+use object::read::archive::ArchiveFile;
+use object::BinaryFormat;
 
 use crate::builder::{Builder, Kind, RunConfig, ShouldRun, Step};
 use crate::cache::{Interned, INTERNER};
@@ -555,6 +559,39 @@ fn skip_host_target_lib(builder: &Builder<'_>, compiler: Compiler) -> bool {
     }
 }
 
+/// Check that all objects in rlibs for UEFI targets are COFF. This
+/// ensures that the C compiler isn't producing ELF objects, which would
+/// not link correctly with the COFF objects.
+fn verify_uefi_rlib_format(builder: &Builder<'_>, target: TargetSelection, stamp: &Path) {
+    if !target.ends_with("-uefi") {
+        return;
+    }
+
+    for (path, _) in builder.read_stamp_file(stamp) {
+        if path.extension() != Some(OsStr::new("rlib")) {
+            continue;
+        }
+
+        let data = t!(fs::read(&path));
+        let data = data.as_slice();
+        let archive = t!(ArchiveFile::parse(data));
+        for member in archive.members() {
+            let member = t!(member);
+            let member_data = t!(member.data(data));
+
+            let is_coff = match object::File::parse(member_data) {
+                Ok(member_file) => member_file.format() == BinaryFormat::Coff,
+                Err(_) => false,
+            };
+
+            if !is_coff {
+                let member_name = String::from_utf8_lossy(member.name());
+                panic!("member {} in {} is not COFF", member_name, path.display());
+            }
+        }
+    }
+}
+
 /// Copy stamped files into an image's `target/lib` directory.
 fn copy_target_libs(builder: &Builder<'_>, target: TargetSelection, image: &Path, stamp: &Path) {
     let dst = image.join("lib/rustlib").join(target.triple).join("lib");
@@ -610,6 +647,7 @@ impl Step for Std {
 
         let compiler_to_use = builder.compiler_for(compiler.stage, compiler.host, target);
         let stamp = compile::libstd_stamp(builder, compiler_to_use, target);
+        verify_uefi_rlib_format(builder, target, &stamp);
         copy_target_libs(builder, target, &tarball.image_dir(), &stamp);
 
         Some(tarball.generate())
