@@ -100,19 +100,9 @@ impl<'tcx> ClosureKind {
         self <= other
     }
 
-    /// Returns the representative scalar type for this closure kind.
-    /// See `Ty::to_opt_closure_kind` for more details.
-    pub fn to_ty(self, tcx: TyCtxt<'tcx>) -> Ty<'tcx> {
-        match self {
-            ClosureKind::Fn => tcx.types.i8,
-            ClosureKind::FnMut => tcx.types.i16,
-            ClosureKind::FnOnce => tcx.types.i32,
-        }
-    }
-
     /// Converts `self` to a [`DefId`] of the corresponding trait.
     ///
-    /// Note: the inverse of this function is [`TyCtxt::fn_trait_kind_from_def_id`]
+    /// Note: the inverse of this function is [`TyCtxt::fn_trait_kind_from_def_id`].
     pub fn to_def_id(&self, tcx: TyCtxt<'_>) -> DefId {
         tcx.require_lang_item(
             match self {
@@ -122,6 +112,16 @@ impl<'tcx> ClosureKind {
             },
             None,
         )
+    }
+
+    /// Returns the representative scalar type for this closure kind.
+    /// See `Ty::to_opt_closure_kind` for more details.
+    pub fn to_ty(self, tcx: TyCtxt<'tcx>) -> Ty<'tcx> {
+        match self {
+            ClosureKind::Fn => tcx.types.i8,
+            ClosureKind::FnMut => tcx.types.i16,
+            ClosureKind::FnOnce => tcx.types.i32,
+        }
     }
 }
 
