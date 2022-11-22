@@ -1769,8 +1769,7 @@ impl<'tcx> TypeErrCtxtExt<'tcx> for TypeErrCtxt<'_, 'tcx> {
                 .enumerate()
                 .find(|(other_idx, (pred, _))| match pred.kind().skip_binder() {
                     ty::PredicateKind::Trait(trait_pred)
-                        if self.tcx.fn_trait_kind_from_def_id(trait_pred.def_id())
-                            .is_some()
+                        if self.tcx.is_fn_trait(trait_pred.def_id())
                             && other_idx != idx
                             // Make sure that the self type matches
                             // (i.e. constraining this closure)
