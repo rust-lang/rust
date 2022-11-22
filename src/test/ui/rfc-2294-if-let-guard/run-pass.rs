@@ -30,4 +30,11 @@ fn main() {
         Some(x) if let Foo::Qux(y) = qux(x) => assert_eq!(y, 84),
         _ => panic!(),
     }
+
+    // issue #88015
+    #[allow(irrefutable_let_patterns)]
+    match () {
+        () | () if let x = 42 => assert_eq!(x, 42),
+        _ => panic!()
+    }
 }
