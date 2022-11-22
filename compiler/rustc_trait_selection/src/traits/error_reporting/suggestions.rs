@@ -2625,7 +2625,7 @@ impl<'tcx> TypeErrCtxtExt<'tcx> for TypeErrCtxt<'_, 'tcx> {
                     }
                 };
 
-                let from_generator = tcx.lang_items().from_generator_fn().unwrap();
+                let from_generator = tcx.require_lang_item(LangItem::FromGenerator, None);
 
                 // Don't print the tuple of capture types
                 'print: {

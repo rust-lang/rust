@@ -114,7 +114,7 @@ fn visit_implementation_of_copy(tcx: TyCtxt<'_>, impl_did: LocalDefId) {
                     traits::ObligationCause::dummy_with_span(field_ty_span),
                     param_env,
                     ty,
-                    tcx.lang_items().copy_trait().unwrap(),
+                    tcx.require_lang_item(LangItem::Copy, Some(span)),
                 ) {
                     let error_predicate = error.obligation.predicate;
                     // Only note if it's not the root obligation, otherwise it's trivial and
