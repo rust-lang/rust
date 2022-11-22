@@ -1378,7 +1378,7 @@ impl<'o, 'tcx> dyn AstConv<'tcx> + 'o {
 
                 let bound_predicate = obligation.predicate.kind();
                 match bound_predicate.skip_binder() {
-                    ty::PredicateKind::Trait(pred) => {
+                    ty::PredicateKind::Trait(pred) if pred.self_ty() == dummy_self => {
                         let pred = bound_predicate.rebind(pred);
                         associated_types.entry(span).or_default().extend(
                             tcx.associated_items(pred.def_id())
@@ -1387,7 +1387,9 @@ impl<'o, 'tcx> dyn AstConv<'tcx> + 'o {
                                 .map(|item| item.def_id),
                         );
                     }
-                    ty::PredicateKind::Projection(pred) => {
+                    ty::PredicateKind::Projection(pred)
+                        if pred.projection_ty.self_ty() == dummy_self =>
+                    {
                         let pred = bound_predicate.rebind(pred);
                         // A `Self` within the original bound will be substituted with a
                         // `trait_object_dummy_self`, so check for that.
@@ -1510,7 +1512,11 @@ impl<'o, 'tcx> dyn AstConv<'tcx> + 'o {
 
         let existential_projections = bounds.projection_bounds.iter().map(|(bound, _)| {
             bound.map_bound(|mut b| {
-                assert_eq!(b.projection_ty.self_ty(), dummy_self);
+                assert_eq!(
+                    b.projection_ty.self_ty(),
+                    dummy_self,
+                    "projection doesn't have the dummy self as its `Self` type: {b:?}"
+                );
 
                 // Like for trait refs, verify that `dummy_self` did not leak inside default type
                 // parameters.
