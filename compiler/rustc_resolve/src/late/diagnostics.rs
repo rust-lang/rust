@@ -21,6 +21,7 @@ use rustc_hir::def::Namespace::{self, *};
 use rustc_hir::def::{self, CtorKind, CtorOf, DefKind};
 use rustc_hir::def_id::{DefId, CRATE_DEF_ID, LOCAL_CRATE};
 use rustc_hir::PrimTy;
+use rustc_middle::ty::DefIdTree;
 use rustc_session::lint;
 use rustc_session::parse::feature_err;
 use rustc_session::Session;
@@ -1462,7 +1463,8 @@ impl<'a: 'ast, 'ast> LateResolutionVisitor<'a, '_, 'ast> {
                     _ => return false,
                 }
             }
-            (Res::Def(DefKind::Ctor(_, CtorKind::Fn), def_id), _) if ns == ValueNS => {
+            (Res::Def(DefKind::Ctor(_, CtorKind::Fn), ctor_def_id), _) if ns == ValueNS => {
+                let def_id = self.r.parent(ctor_def_id);
                 if let Some(span) = self.def_span(def_id) {
                     err.span_label(span, &format!("`{}` defined here", path_str));
                 }
@@ -1953,7 +1955,8 @@ impl<'a: 'ast, 'ast> LateResolutionVisitor<'a, '_, 'ast> {
                 ));
             }
         } else {
-            let needs_placeholder = |def_id: DefId, kind: CtorKind| {
+            let needs_placeholder = |ctor_def_id: DefId, kind: CtorKind| {
+                let def_id = self.r.parent(ctor_def_id);
                 let has_no_fields = self.r.field_names.get(&def_id).map_or(false, |f| f.is_empty());
                 match kind {
                     CtorKind::Const => false,
