@@ -177,7 +177,7 @@ fn try_mark_green(tcx, current_node) -> bool {
 }
 
 // Note: The actual implementation can be found in
-//       compiler/rustc_middle/src/dep_graph/graph.rs
+//       compiler/rustc_query_system/src/dep_graph/graph.rs
 ```
 
 By using red-green marking we can avoid the devastating cumulative effect of
