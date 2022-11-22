@@ -23,6 +23,8 @@ pub enum Cause {
 pub trait TypeRelation<'tcx>: Sized {
     fn tcx(&self) -> TyCtxt<'tcx>;
 
+    fn intercrate(&self) -> bool;
+
     fn param_env(&self) -> ty::ParamEnv<'tcx>;
 
     /// Returns a static string we can use for printouts.
@@ -31,6 +33,9 @@ pub trait TypeRelation<'tcx>: Sized {
     /// Returns `true` if the value `a` is the "expected" type in the
     /// relation. Just affects error messages.
     fn a_is_expected(&self) -> bool;
+
+    /// Used during coherence. If called, must emit an always-ambiguous obligation.
+    fn mark_ambiguous(&mut self);
 
     fn with_cause<F, R>(&mut self, _cause: Cause, f: F) -> R
     where
@@ -562,16 +567,23 @@ pub fn super_relate_tys<'tcx, R: TypeRelation<'tcx>>(
         (&ty::Opaque(a_def_id, a_substs), &ty::Opaque(b_def_id, b_substs))
             if a_def_id == b_def_id =>
         {
-            let opt_variances = tcx.variances_of(a_def_id);
-            let substs = relate_substs_with_variances(
-                relation,
-                a_def_id,
-                opt_variances,
-                a_substs,
-                b_substs,
-                false, // do not fetch `type_of(a_def_id)`, as it will cause a cycle
-            )?;
-            Ok(tcx.mk_opaque(a_def_id, substs))
+            if relation.intercrate() {
+                // During coherence, opaque types should be treated as equal to each other, even if their generic params
+                // differ, as they could resolve to the same hidden type, even for different generic params.
+                relation.mark_ambiguous();
+                Ok(a)
+            } else {
+                let opt_variances = tcx.variances_of(a_def_id);
+                let substs = relate_substs_with_variances(
+                    relation,
+                    a_def_id,
+                    opt_variances,
+                    a_substs,
+                    b_substs,
+                    false, // do not fetch `type_of(a_def_id)`, as it will cause a cycle
+                )?;
+                Ok(tcx.mk_opaque(a_def_id, substs))
+            }
         }
 
         _ => Err(TypeError::Sorts(expected_found(relation, a, b))),

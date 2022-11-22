@@ -620,6 +620,7 @@ impl<'tcx> Predicate<'tcx> {
             | PredicateKind::Coerce(_)
             | PredicateKind::ConstEvaluatable(_)
             | PredicateKind::ConstEquate(_, _)
+            | PredicateKind::Ambiguous
             | PredicateKind::TypeWellFormedFromEnv(_) => true,
         }
     }
@@ -702,6 +703,10 @@ pub enum PredicateKind<'tcx> {
     ///
     /// Only used for Chalk.
     TypeWellFormedFromEnv(Ty<'tcx>),
+
+    /// A marker predicate that is always ambiguous.
+    /// Used for coherence to mark opaque types as possibly equal to each other but ambiguous.
+    Ambiguous,
 }
 
 /// The crate outlives map is computed during typeck and contains the
@@ -1186,6 +1191,7 @@ impl<'tcx> Predicate<'tcx> {
             | PredicateKind::TypeOutlives(..)
             | PredicateKind::ConstEvaluatable(..)
             | PredicateKind::ConstEquate(..)
+            | PredicateKind::Ambiguous
             | PredicateKind::TypeWellFormedFromEnv(..) => None,
         }
     }
@@ -1204,6 +1210,7 @@ impl<'tcx> Predicate<'tcx> {
             | PredicateKind::TypeOutlives(..)
             | PredicateKind::ConstEvaluatable(..)
             | PredicateKind::ConstEquate(..)
+            | PredicateKind::Ambiguous
             | PredicateKind::TypeWellFormedFromEnv(..) => None,
         }
     }
@@ -1222,6 +1229,7 @@ impl<'tcx> Predicate<'tcx> {
             | PredicateKind::ClosureKind(..)
             | PredicateKind::ConstEvaluatable(..)
             | PredicateKind::ConstEquate(..)
+            | PredicateKind::Ambiguous
             | PredicateKind::TypeWellFormedFromEnv(..) => None,
         }
     }

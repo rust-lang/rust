@@ -841,6 +841,7 @@ impl<'tcx> AutoTraitFinder<'tcx> {
                 | ty::PredicateKind::ConstEvaluatable(..)
                 | ty::PredicateKind::Coerce(..)
                 | ty::PredicateKind::TypeWellFormedFromEnv(..) => {}
+                ty::PredicateKind::Ambiguous => return false,
             };
         }
         true
