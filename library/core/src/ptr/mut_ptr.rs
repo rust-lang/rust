@@ -117,12 +117,14 @@ impl<T: ?Sized> *mut T {
     ///
     /// ```
     /// #![feature(ptr_to_from_bits)]
+    /// # #[cfg(not(miri))] { // doctest does not work with strict provenance
     /// let mut array = [13, 42];
     /// let mut it = array.iter_mut();
     /// let p0: *mut i32 = it.next().unwrap();
     /// assert_eq!(<*mut _>::from_bits(p0.to_bits()), p0);
     /// let p1: *mut i32 = it.next().unwrap();
     /// assert_eq!(p1.to_bits() - p0.to_bits(), 4);
+    /// }
     /// ```
     #[unstable(feature = "ptr_to_from_bits", issue = "91126")]
     #[deprecated(
@@ -146,9 +148,11 @@ impl<T: ?Sized> *mut T {
     ///
     /// ```
     /// #![feature(ptr_to_from_bits)]
+    /// # #[cfg(not(miri))] { // doctest does not work with strict provenance
     /// use std::ptr::NonNull;
     /// let dangling: *mut u8 = NonNull::dangling().as_ptr();
     /// assert_eq!(<*mut u8>::from_bits(1), dangling);
+    /// }
     /// ```
     #[unstable(feature = "ptr_to_from_bits", issue = "91126")]
     #[deprecated(
