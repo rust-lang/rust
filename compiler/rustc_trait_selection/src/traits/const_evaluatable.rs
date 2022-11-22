@@ -157,12 +157,7 @@ fn satisfied_from_param_env<'tcx>(
     for pred in param_env.caller_bounds() {
         match pred.kind().skip_binder() {
             ty::PredicateKind::ConstEvaluatable(ce) => {
-                let ty::ConstKind::Unevaluated(_) = ce.kind() else {
-                    continue
-                };
-                let Some(b_ct) = tcx.expand_abstract_consts(ce)? else {
-                    continue
-                };
+                let b_ct = tcx.expand_abstract_consts(ce)?.unwrap_or(ce);
 
                 let mut v = Visitor { ct, infcx, param_env };
                 let result = b_ct.visit_with(&mut v);
