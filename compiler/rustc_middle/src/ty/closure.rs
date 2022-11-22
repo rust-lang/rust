@@ -5,6 +5,7 @@ use crate::{mir, ty};
 
 use std::fmt::Write;
 
+use hir::LangItem;
 use rustc_data_structures::fx::{FxHashMap, FxIndexMap};
 use rustc_hir as hir;
 use rustc_hir::def_id::{DefId, LocalDefId};
@@ -130,11 +131,14 @@ impl<'tcx> ClosureKind {
     }
 
     pub fn to_def_id(&self, tcx: TyCtxt<'_>) -> DefId {
-        match self {
-            ClosureKind::Fn => tcx.lang_items().fn_once_trait().unwrap(),
-            ClosureKind::FnMut => tcx.lang_items().fn_mut_trait().unwrap(),
-            ClosureKind::FnOnce => tcx.lang_items().fn_trait().unwrap(),
-        }
+        tcx.require_lang_item(
+            match self {
+                ClosureKind::Fn => LangItem::Fn,
+                ClosureKind::FnMut => LangItem::FnMut,
+                ClosureKind::FnOnce => LangItem::FnOnce,
+            },
+            None,
+        )
     }
 }
 
