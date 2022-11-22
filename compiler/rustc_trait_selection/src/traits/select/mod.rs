@@ -265,6 +265,7 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
         self.infcx
     }
 
+    #[inline(always)]
     pub fn tcx(&self) -> TyCtxt<'tcx> {
         self.infcx.tcx
     }
