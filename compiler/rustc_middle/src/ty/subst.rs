@@ -589,6 +589,10 @@ where
     fn next(&mut self) -> Option<Self::Item> {
         Some(EarlyBinder(self.it.next()?).subst(self.tcx, self.substs))
     }
+
+    fn size_hint(&self) -> (usize, Option<usize>) {
+        self.it.size_hint()
+    }
 }
 
 impl<'tcx, I: IntoIterator> DoubleEndedIterator for SubstIter<'_, 'tcx, I>
@@ -631,6 +635,10 @@ where
     fn next(&mut self) -> Option<Self::Item> {
         Some(EarlyBinder(*self.it.next()?).subst(self.tcx, self.substs))
     }
+
+    fn size_hint(&self) -> (usize, Option<usize>) {
+        self.it.size_hint()
+    }
 }
 
 impl<'tcx, I: IntoIterator> DoubleEndedIterator for SubstIterCopied<'_, 'tcx, I>
@@ -659,6 +667,10 @@ impl<T: Iterator> Iterator for EarlyBinderIter<T> {
 
     fn next(&mut self) -> Option<Self::Item> {
         self.t.next().map(|i| EarlyBinder(i))
+    }
+
+    fn size_hint(&self) -> (usize, Option<usize>) {
+        self.t.size_hint()
     }
 }
 
