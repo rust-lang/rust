@@ -18,7 +18,11 @@ pub(super) fn check(cx: &LateContext<'_>, expr: &hir::Expr<'_>, recv: &hir::Expr
         let target = &arglists[0].0;
         let self_ty = cx.typeck_results().expr_ty(target).peel_refs();
         let ref_str = if *self_ty.kind() == ty::Str {
-            ""
+            if matches!(target.kind, hir::ExprKind::Index(..)) {
+                "&"
+            } else {
+                ""
+            }
         } else if is_type_lang_item(cx, self_ty, hir::LangItem::String) {
             "&"
         } else {

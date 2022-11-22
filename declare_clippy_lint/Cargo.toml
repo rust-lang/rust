@@ -1,0 +1,16 @@
+[package]
+name = "declare_clippy_lint"
+version = "0.1.67"
+edition = "2021"
+publish = false
+
+[lib]
+proc-macro = true
+
+[dependencies]
+itertools = "0.10.1"
+quote = "1.0.21"
+syn = "1.0.100"
+
+[features]
+deny-warnings = []

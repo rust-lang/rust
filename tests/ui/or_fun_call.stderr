@@ -156,5 +156,17 @@ error: use of `unwrap_or` followed by a call to `new`
 LL |         .unwrap_or(String::new());
    |          ^^^^^^^^^^^^^^^^^^^^^^^^ help: try this: `unwrap_or_default()`
 
-error: aborting due to 26 previous errors
+error: use of `map_or` followed by a function call
+  --> $DIR/or_fun_call.rs:249:25
+   |
+LL |         let _ = Some(4).map_or(g(), |v| v);
+   |                         ^^^^^^^^^^^^^^^^^^ help: try this: `map_or_else(g, |v| v)`
+
+error: use of `map_or` followed by a function call
+  --> $DIR/or_fun_call.rs:250:25
+   |
+LL |         let _ = Some(4).map_or(g(), f);
+   |                         ^^^^^^^^^^^^^^ help: try this: `map_or_else(g, f)`
+
+error: aborting due to 28 previous errors
 

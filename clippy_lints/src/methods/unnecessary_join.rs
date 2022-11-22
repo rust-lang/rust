@@ -31,7 +31,7 @@ pub(super) fn check<'tcx>(
                 cx,
                 UNNECESSARY_JOIN,
                 span.with_hi(expr.span.hi()),
-                r#"called `.collect<Vec<String>>().join("")` on an iterator"#,
+                r#"called `.collect::<Vec<String>>().join("")` on an iterator"#,
                 "try using",
                 "collect::<String>()".to_owned(),
                 applicability,

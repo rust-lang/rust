@@ -148,11 +148,19 @@ pub fn eq_expr(l: &Expr, r: &Expr) -> bool {
         (Repeat(le, ls), Repeat(re, rs)) => eq_expr(le, re) && eq_expr(&ls.value, &rs.value),
         (Call(lc, la), Call(rc, ra)) => eq_expr(lc, rc) && over(la, ra, |l, r| eq_expr(l, r)),
         (
-            MethodCall(box ast::MethodCall { seg: ls, receiver: lr, args: la, .. }),
-            MethodCall(box ast::MethodCall { seg: rs, receiver: rr, args: ra, .. })
-        ) => {
-            eq_path_seg(ls, rs) && eq_expr(lr, rr) && over(la, ra, |l, r| eq_expr(l, r))
-        },
+            MethodCall(box ast::MethodCall {
+                seg: ls,
+                receiver: lr,
+                args: la,
+                ..
+            }),
+            MethodCall(box ast::MethodCall {
+                seg: rs,
+                receiver: rr,
+                args: ra,
+                ..
+            }),
+        ) => eq_path_seg(ls, rs) && eq_expr(lr, rr) && over(la, ra, |l, r| eq_expr(l, r)),
         (Binary(lo, ll, lr), Binary(ro, rl, rr)) => lo.node == ro.node && eq_expr(ll, rl) && eq_expr(lr, rr),
         (Unary(lo, l), Unary(ro, r)) => mem::discriminant(lo) == mem::discriminant(ro) && eq_expr(l, r),
         (Lit(l), Lit(r)) => l == r,
@@ -191,7 +199,7 @@ pub fn eq_expr(l: &Expr, r: &Expr) -> bool {
                 fn_decl: rf,
                 body: re,
                 ..
-            })
+            }),
         ) => {
             eq_closure_binder(lb, rb)
                 && lc == rc

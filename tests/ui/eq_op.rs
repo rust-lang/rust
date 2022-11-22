@@ -2,6 +2,7 @@
 
 #![warn(clippy::eq_op)]
 #![allow(clippy::double_parens, clippy::identity_op, clippy::nonminimal_bool)]
+#![allow(clippy::suspicious_xor_used_as_pow)]
 
 fn main() {
     // simple values and comparisons

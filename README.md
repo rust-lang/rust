@@ -1,6 +1,6 @@
 # Clippy
 
-[![Clippy Test](https://github.com/rust-lang/rust-clippy/workflows/Clippy%20Test/badge.svg?branch=auto&event=push)](https://github.com/rust-lang/rust-clippy/actions?query=workflow%3A%22Clippy+Test%22+event%3Apush+branch%3Aauto)
+[![Clippy Test](https://github.com/rust-lang/rust-clippy/workflows/Clippy%20Test%20(bors)/badge.svg?branch=auto&event=push)](https://github.com/rust-lang/rust-clippy/actions?query=workflow%3A%22Clippy+Test+(bors)%22+event%3Apush+branch%3Aauto)
 [![License: MIT OR Apache-2.0](https://img.shields.io/crates/l/clippy.svg)](#license)
 
 A collection of lints to catch common mistakes and improve your [Rust](https://github.com/rust-lang/rust) code.
@@ -203,12 +203,6 @@ lints can be configured and the meaning of the variables.
 > **Note**
 >
 > `clippy.toml` or `.clippy.toml` cannot be used to allow/deny lints.
-
-> **Note**
->
-> Configuration changes will not apply for code that has already been compiled and cached under `./target/`;
-> for example, adding a new string to `doc-valid-idents` may still result in Clippy flagging that string. To be sure
-> that any configuration changes are applied, you may want to run `cargo clean` and re-compile your crate from scratch.
 
 To deactivate the “for further information visit *lint-link*” message you can
 define the `CLIPPY_DISABLE_DOCS_LINKS` environment variable.
