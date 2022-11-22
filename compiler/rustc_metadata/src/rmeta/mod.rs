@@ -410,10 +410,9 @@ define_tables! {
 
 #[derive(TyEncodable, TyDecodable)]
 struct VariantData {
-    ctor_kind: CtorKind,
     discr: ty::VariantDiscr,
     /// If this is unit or tuple-variant/struct, then this is the index of the ctor id.
-    ctor: Option<DefIndex>,
+    ctor: Option<(CtorKind, DefIndex)>,
     is_non_exhaustive: bool,
 }
 

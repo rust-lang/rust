@@ -1812,15 +1812,13 @@ pub struct VariantDef {
     pub def_id: DefId,
     /// `DefId` that identifies the variant's constructor.
     /// If this variant is a struct variant, then this is `None`.
-    pub ctor_def_id: Option<DefId>,
+    pub ctor: Option<(CtorKind, DefId)>,
     /// Variant or struct name.
     pub name: Symbol,
     /// Discriminant of this variant.
     pub discr: VariantDiscr,
     /// Fields of this variant.
     pub fields: Vec<FieldDef>,
-    /// Type of constructor of variant.
-    pub ctor_kind: CtorKind,
     /// Flags of the variant (e.g. is field list non-exhaustive)?
     flags: VariantFlags,
 }
@@ -1845,19 +1843,18 @@ impl VariantDef {
     pub fn new(
         name: Symbol,
         variant_did: Option<DefId>,
-        ctor_def_id: Option<DefId>,
+        ctor: Option<(CtorKind, DefId)>,
         discr: VariantDiscr,
         fields: Vec<FieldDef>,
-        ctor_kind: CtorKind,
         adt_kind: AdtKind,
         parent_did: DefId,
         recovered: bool,
         is_field_list_non_exhaustive: bool,
     ) -> Self {
         debug!(
-            "VariantDef::new(name = {:?}, variant_did = {:?}, ctor_def_id = {:?}, discr = {:?},
-             fields = {:?}, ctor_kind = {:?}, adt_kind = {:?}, parent_did = {:?})",
-            name, variant_did, ctor_def_id, discr, fields, ctor_kind, adt_kind, parent_did,
+            "VariantDef::new(name = {:?}, variant_did = {:?}, ctor = {:?}, discr = {:?},
+             fields = {:?}, adt_kind = {:?}, parent_did = {:?})",
+            name, variant_did, ctor, discr, fields, adt_kind, parent_did,
         );
 
         let mut flags = VariantFlags::NO_VARIANT_FLAGS;
@@ -1869,15 +1866,7 @@ impl VariantDef {
             flags |= VariantFlags::IS_RECOVERED;
         }
 
-        VariantDef {
-            def_id: variant_did.unwrap_or(parent_did),
-            ctor_def_id,
-            name,
-            discr,
-            fields,
-            ctor_kind,
-            flags,
-        }
+        VariantDef { def_id: variant_did.unwrap_or(parent_did), ctor, name, discr, fields, flags }
     }
 
     /// Is this field list non-exhaustive?
@@ -1896,6 +1885,16 @@ impl VariantDef {
     pub fn ident(&self, tcx: TyCtxt<'_>) -> Ident {
         Ident::new(self.name, tcx.def_ident_span(self.def_id).unwrap())
     }
+
+    #[inline]
+    pub fn ctor_kind(&self) -> Option<CtorKind> {
+        self.ctor.map(|(kind, _)| kind)
+    }
+
+    #[inline]
+    pub fn ctor_def_id(&self) -> Option<DefId> {
+        self.ctor.map(|(_, def_id)| def_id)
+    }
 }
 
 impl PartialEq for VariantDef {
@@ -1908,26 +1907,8 @@ impl PartialEq for VariantDef {
         // definition of `VariantDef` changes, a compile-error will be produced,
         // reminding us to revisit this assumption.
 
-        let Self {
-            def_id: lhs_def_id,
-            ctor_def_id: _,
-            name: _,
-            discr: _,
-            fields: _,
-            ctor_kind: _,
-            flags: _,
-        } = &self;
-
-        let Self {
-            def_id: rhs_def_id,
-            ctor_def_id: _,
-            name: _,
-            discr: _,
-            fields: _,
-            ctor_kind: _,
-            flags: _,
-        } = other;
-
+        let Self { def_id: lhs_def_id, ctor: _, name: _, discr: _, fields: _, flags: _ } = &self;
+        let Self { def_id: rhs_def_id, ctor: _, name: _, discr: _, fields: _, flags: _ } = other;
         lhs_def_id == rhs_def_id
     }
 }
@@ -1944,9 +1925,7 @@ impl Hash for VariantDef {
         // of `VariantDef` changes, a compile-error will be produced, reminding
         // us to revisit this assumption.
 
-        let Self { def_id, ctor_def_id: _, name: _, discr: _, fields: _, ctor_kind: _, flags: _ } =
-            &self;
-
+        let Self { def_id, ctor: _, name: _, discr: _, fields: _, flags: _ } = &self;
         def_id.hash(s)
     }
 }

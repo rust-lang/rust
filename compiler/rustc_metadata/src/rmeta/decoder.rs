@@ -11,7 +11,7 @@ use rustc_data_structures::sync::{Lock, LockGuard, Lrc, OnceCell};
 use rustc_data_structures::unhash::UnhashMap;
 use rustc_expand::base::{SyntaxExtension, SyntaxExtensionKind};
 use rustc_expand::proc_macro::{AttrProcMacro, BangProcMacro, DeriveProcMacro};
-use rustc_hir::def::{CtorKind, CtorOf, DefKind, Res};
+use rustc_hir::def::{CtorKind, DefKind, Res};
 use rustc_hir::def_id::{CrateNum, DefId, DefIndex, CRATE_DEF_INDEX, LOCAL_CRATE};
 use rustc_hir::definitions::{DefKey, DefPath, DefPathData, DefPathHash};
 use rustc_hir::diagnostic_items::DiagnosticItems;
@@ -31,7 +31,7 @@ use rustc_session::cstore::{
 use rustc_session::Session;
 use rustc_span::hygiene::{ExpnIndex, MacroKind};
 use rustc_span::source_map::{respan, Spanned};
-use rustc_span::symbol::{kw, sym, Ident, Symbol};
+use rustc_span::symbol::{kw, Ident, Symbol};
 use rustc_span::{self, BytePos, ExpnId, Pos, Span, SyntaxContext, DUMMY_SP};
 
 use proc_macro::bridge::client::ProcMacro;
@@ -866,12 +866,12 @@ impl<'a, 'tcx> CrateMetadataRef<'a> {
 
         let variant_did =
             if adt_kind == ty::AdtKind::Enum { Some(self.local_def_id(index)) } else { None };
-        let ctor_did = data.ctor.map(|index| self.local_def_id(index));
+        let ctor = data.ctor.map(|(kind, index)| (kind, self.local_def_id(index)));
 
         ty::VariantDef::new(
             self.item_name(index),
             variant_did,
-            ctor_did,
+            ctor,
             data.discr,
             self.root
                 .tables
@@ -885,7 +885,6 @@ impl<'a, 'tcx> CrateMetadataRef<'a> {
                     vis: self.get_visibility(index),
                 })
                 .collect(),
-            data.ctor_kind,
             adt_kind,
             parent_did,
             false,
@@ -1041,29 +1040,6 @@ impl<'a, 'tcx> CrateMetadataRef<'a> {
                 };
 
                 callback(ModChild { ident, res, vis, span, macro_rules });
-
-                // For non-reexport variants add their fictive constructors to children.
-                // Braced variants, unlike structs, generate unusable names in value namespace,
-                // they are reserved for possible future use. It's ok to use the variant's id as
-                // a ctor id since an error will be reported on any use of such resolution anyway.
-                // Reexport lists automatically contain such constructors when necessary.
-                if kind == DefKind::Variant && self.get_ctor_def_id_and_kind(child_index).is_none()
-                {
-                    let ctor_res =
-                        Res::Def(DefKind::Ctor(CtorOf::Variant, CtorKind::Fictive), def_id);
-                    let mut vis = vis;
-                    if vis.is_public() {
-                        // For non-exhaustive variants lower the constructor visibility to
-                        // within the crate. We only need this for fictive constructors,
-                        // for other constructors correct visibilities
-                        // were already encoded in metadata.
-                        let mut attrs = self.get_item_attrs(def_id.index, sess);
-                        if attrs.any(|item| item.has_name(sym::non_exhaustive)) {
-                            vis = ty::Visibility::Restricted(self.local_def_id(CRATE_DEF_INDEX));
-                        }
-                    }
-                    callback(ModChild { ident, res: ctor_res, vis, span, macro_rules: false });
-                }
             }
         }
 
@@ -1136,11 +1112,11 @@ impl<'a, 'tcx> CrateMetadataRef<'a> {
         }
     }
 
-    fn get_ctor_def_id_and_kind(self, node_id: DefIndex) -> Option<(DefId, CtorKind)> {
+    fn get_ctor(self, node_id: DefIndex) -> Option<(CtorKind, DefId)> {
         match self.def_kind(node_id) {
             DefKind::Struct | DefKind::Variant => {
                 let vdata = self.root.tables.variant_data.get(self, node_id).unwrap().decode(self);
-                vdata.ctor.map(|index| (self.local_def_id(index), vdata.ctor_kind))
+                vdata.ctor.map(|(kind, index)| (kind, self.local_def_id(index)))
             }
             _ => None,
         }

@@ -998,7 +998,7 @@ fn build_struct_type_di_node<'ll, 'tcx>(
                 .iter()
                 .enumerate()
                 .map(|(i, f)| {
-                    let field_name = if variant_def.ctor_kind == CtorKind::Fn {
+                    let field_name = if variant_def.ctor_kind() == Some(CtorKind::Fn) {
                         // This is a tuple struct
                         tuple_field_name(i)
                     } else {

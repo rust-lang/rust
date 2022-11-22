@@ -1442,13 +1442,7 @@ impl<'a: 'ast, 'ast> LateResolutionVisitor<'a, '_, 'ast> {
 
                 err.span_label(span, "constructor is not visible here due to private fields");
             }
-            (
-                Res::Def(
-                    DefKind::Union | DefKind::Variant | DefKind::Ctor(_, CtorKind::Fictive),
-                    def_id,
-                ),
-                _,
-            ) if ns == ValueNS => {
+            (Res::Def(DefKind::Union | DefKind::Variant, def_id), _) if ns == ValueNS => {
                 bad_struct_syntax_suggestion(def_id);
             }
             (Res::Def(DefKind::Ctor(_, CtorKind::Const), def_id), _) if ns == ValueNS => {
@@ -1963,7 +1957,7 @@ impl<'a: 'ast, 'ast> LateResolutionVisitor<'a, '_, 'ast> {
                 let has_no_fields = self.r.field_names.get(&def_id).map_or(false, |f| f.is_empty());
                 match kind {
                     CtorKind::Const => false,
-                    CtorKind::Fn | CtorKind::Fictive if has_no_fields => false,
+                    CtorKind::Fn if has_no_fields => false,
                     _ => true,
                 }
             };
@@ -1975,7 +1969,6 @@ impl<'a: 'ast, 'ast> LateResolutionVisitor<'a, '_, 'ast> {
                 .map(|(variant, kind)| match kind {
                     CtorKind::Const => variant,
                     CtorKind::Fn => format!("({}())", variant),
-                    CtorKind::Fictive => format!("({} {{}})", variant),
                 })
                 .collect::<Vec<_>>();
             let no_suggestable_variant = suggestable_variants.is_empty();
@@ -2001,7 +1994,6 @@ impl<'a: 'ast, 'ast> LateResolutionVisitor<'a, '_, 'ast> {
                 .map(|(variant, _, kind)| (path_names_to_string(variant), kind))
                 .filter_map(|(variant, kind)| match kind {
                     CtorKind::Fn => Some(format!("({}(/* fields */))", variant)),
-                    CtorKind::Fictive => Some(format!("({} {{ /* fields */ }})", variant)),
                     _ => None,
                 })
                 .collect::<Vec<_>>();

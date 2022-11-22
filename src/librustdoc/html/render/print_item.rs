@@ -1232,7 +1232,7 @@ fn item_enum(w: &mut Buffer, cx: &mut Context<'_>, it: &clean::Item, e: &clean::
                                     w,
                                     v,
                                     None,
-                                    s.struct_type,
+                                    s.ctor_kind,
                                     &s.fields,
                                     "    ",
                                     false,
@@ -1458,7 +1458,7 @@ fn item_struct(w: &mut Buffer, cx: &mut Context<'_>, it: &clean::Item, s: &clean
     wrap_into_item_decl(w, |w| {
         wrap_item(w, "struct", |w| {
             render_attributes_in_code(w, it);
-            render_struct(w, it, Some(&s.generics), s.struct_type, &s.fields, "", true, cx);
+            render_struct(w, it, Some(&s.generics), s.ctor_kind, &s.fields, "", true, cx);
         });
     });
 
@@ -1472,14 +1472,14 @@ fn item_struct(w: &mut Buffer, cx: &mut Context<'_>, it: &clean::Item, s: &clean
             _ => None,
         })
         .peekable();
-    if let CtorKind::Fictive | CtorKind::Fn = s.struct_type {
+    if let None | Some(CtorKind::Fn) = s.ctor_kind {
         if fields.peek().is_some() {
             write!(
                 w,
                 "<h2 id=\"fields\" class=\"fields small-section-header\">\
                      {}{}<a href=\"#fields\" class=\"anchor\"></a>\
                  </h2>",
-                if let CtorKind::Fictive = s.struct_type { "Fields" } else { "Tuple Fields" },
+                if s.ctor_kind.is_none() { "Fields" } else { "Tuple Fields" },
                 document_non_exhaustive_header(it)
             );
             document_non_exhaustive(w, it);
@@ -1739,7 +1739,7 @@ fn render_struct(
     w: &mut Buffer,
     it: &clean::Item,
     g: Option<&clean::Generics>,
-    ty: CtorKind,
+    ty: Option<CtorKind>,
     fields: &[clean::Item],
     tab: &str,
     structhead: bool,
@@ -1757,7 +1757,7 @@ fn render_struct(
         write!(w, "{}", g.print(cx))
     }
     match ty {
-        CtorKind::Fictive => {
+        None => {
             let where_diplayed = g.map(|g| print_where_clause_and_check(w, g, cx)).unwrap_or(false);
 
             // If there wasn't a `where` clause, we add a whitespace.
@@ -1799,7 +1799,7 @@ fn render_struct(
             }
             w.write_str("}");
         }
-        CtorKind::Fn => {
+        Some(CtorKind::Fn) => {
             w.write_str("(");
             for (i, field) in fields.iter().enumerate() {
                 if i > 0 {
@@ -1827,7 +1827,7 @@ fn render_struct(
                 w.write_str(";");
             }
         }
-        CtorKind::Const => {
+        Some(CtorKind::Const) => {
             // Needed for PhantomData.
             if let Some(g) = g {
                 write!(w, "{}", print_where_clause(g, cx, 0, Ending::NoNewline));

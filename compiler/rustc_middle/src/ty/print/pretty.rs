@@ -1487,12 +1487,12 @@ pub trait PrettyPrinter<'tcx>:
                             contents.variant.expect("destructed const of adt without variant idx");
                         let variant_def = &def.variant(variant_idx);
                         p!(print_value_path(variant_def.def_id, substs));
-                        match variant_def.ctor_kind {
-                            CtorKind::Const => {}
-                            CtorKind::Fn => {
+                        match variant_def.ctor_kind() {
+                            Some(CtorKind::Const) => {}
+                            Some(CtorKind::Fn) => {
                                 p!("(", comma_sep(fields), ")");
                             }
-                            CtorKind::Fictive => {
+                            None => {
                                 p!(" {{ ");
                                 let mut first = true;
                                 for (field_def, field) in iter::zip(&variant_def.fields, fields) {

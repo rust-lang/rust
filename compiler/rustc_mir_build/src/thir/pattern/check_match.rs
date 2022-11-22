@@ -564,7 +564,7 @@ fn check_for_bindings_named_same_as_variants(
             && let ty::Adt(edef, _) = pat_ty.kind()
             && edef.is_enum()
             && edef.variants().iter().any(|variant| {
-                variant.ident(cx.tcx) == ident && variant.ctor_kind == CtorKind::Const
+                variant.ident(cx.tcx) == ident && variant.ctor_kind() == Some(CtorKind::Const)
             })
         {
             let variant_count = edef.variants().len();

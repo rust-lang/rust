@@ -24,7 +24,6 @@ use rustc_data_structures::captures::Captures;
 use rustc_data_structures::fx::{FxHashMap, FxHashSet};
 use rustc_errors::{struct_span_err, Applicability, DiagnosticBuilder, ErrorGuaranteed, StashKey};
 use rustc_hir as hir;
-use rustc_hir::def::CtorKind;
 use rustc_hir::def_id::{DefId, LocalDefId, LOCAL_CRATE};
 use rustc_hir::intravisit::{self, Visitor};
 use rustc_hir::weak_lang_items::WEAK_LANG_ITEMS;
@@ -794,7 +793,7 @@ fn convert_enum_variant_types(tcx: TyCtxt<'_>, def_id: DefId) {
 
         // Convert the ctor, if any. This also registers the variant as
         // an item.
-        if let Some(ctor_def_id) = variant.ctor_def_id {
+        if let Some(ctor_def_id) = variant.ctor_def_id() {
             convert_variant_ctor(tcx, ctor_def_id.expect_local());
         }
     }
@@ -803,7 +802,6 @@ fn convert_enum_variant_types(tcx: TyCtxt<'_>, def_id: DefId) {
 fn convert_variant(
     tcx: TyCtxt<'_>,
     variant_did: Option<LocalDefId>,
-    ctor_did: Option<LocalDefId>,
     ident: Ident,
     discr: ty::VariantDiscr,
     def: &hir::VariantData<'_>,
@@ -840,10 +838,9 @@ fn convert_variant(
     ty::VariantDef::new(
         ident.name,
         variant_did.map(LocalDefId::to_def_id),
-        ctor_did.map(LocalDefId::to_def_id),
+        def.ctor().map(|(kind, _, def_id)| (kind, def_id.to_def_id())),
         discr,
         fields,
-        CtorKind::from_hir(def),
         adt_kind,
         parent_did.to_def_id(),
         recovered,
@@ -882,7 +879,6 @@ fn adt_def<'tcx>(tcx: TyCtxt<'tcx>, def_id: DefId) -> ty::AdtDef<'tcx> {
                     convert_variant(
                         tcx,
                         Some(v.def_id),
-                        v.data.ctor_def_id(),
                         v.ident,
                         discr,
                         &v.data,
@@ -894,35 +890,23 @@ fn adt_def<'tcx>(tcx: TyCtxt<'tcx>, def_id: DefId) -> ty::AdtDef<'tcx> {
 
             (AdtKind::Enum, variants)
         }
-        ItemKind::Struct(ref def, _) => {
+        ItemKind::Struct(ref def, _) | ItemKind::Union(ref def, _) => {
+            let adt_kind = match item.kind {
+                ItemKind::Struct(..) => AdtKind::Struct,
+                _ => AdtKind::Union,
+            };
             let variants = std::iter::once(convert_variant(
                 tcx,
                 None,
-                def.ctor_def_id(),
                 item.ident,
                 ty::VariantDiscr::Relative(0),
                 def,
-                AdtKind::Struct,
+                adt_kind,
                 def_id,
             ))
             .collect();
 
-            (AdtKind::Struct, variants)
-        }
-        ItemKind::Union(ref def, _) => {
-            let variants = std::iter::once(convert_variant(
-                tcx,
-                None,
-                def.ctor_def_id(),
-                item.ident,
-                ty::VariantDiscr::Relative(0),
-                def,
-                AdtKind::Union,
-                def_id,
-            ))
-            .collect();
-
-            (AdtKind::Union, variants)
+            (adt_kind, variants)
         }
         _ => bug!(),
     };
@@ -1171,7 +1155,7 @@ fn fn_sig(tcx: TyCtxt<'_>, def_id: DefId) -> ty::PolyFnSig<'_> {
             compute_sig_of_foreign_fn_decl(tcx, def_id.to_def_id(), fn_decl, abi)
         }
 
-        Ctor(data) | Variant(hir::Variant { data, .. }) if data.ctor_hir_id().is_some() => {
+        Ctor(data) | Variant(hir::Variant { data, .. }) if data.ctor().is_some() => {
             let ty = tcx.type_of(tcx.hir().get_parent_item(hir_id));
             let inputs = data.fields().iter().map(|f| tcx.type_of(f.def_id));
             ty::Binder::dummy(tcx.mk_fn_sig(

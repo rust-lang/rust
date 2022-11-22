@@ -2115,10 +2115,10 @@ impl<'tcx> Debug for Rvalue<'tcx> {
                                 .print_def_path(variant_def.def_id, substs)?
                                 .into_buffer();
 
-                            match variant_def.ctor_kind {
-                                CtorKind::Const => fmt.write_str(&name),
-                                CtorKind::Fn => fmt_tuple(fmt, &name),
-                                CtorKind::Fictive => {
+                            match variant_def.ctor_kind() {
+                                Some(CtorKind::Const) => fmt.write_str(&name),
+                                Some(CtorKind::Fn) => fmt_tuple(fmt, &name),
+                                None => {
                                     let mut struct_fmt = fmt.debug_struct(&name);
                                     for (field, place) in iter::zip(&variant_def.fields, places) {
                                         struct_fmt.field(field.name.as_str(), place);
@@ -2955,14 +2955,14 @@ fn pretty_print_const_value<'tcx>(
                             let cx = cx.print_value_path(variant_def.def_id, substs)?;
                             fmt.write_str(&cx.into_buffer())?;
 
-                            match variant_def.ctor_kind {
-                                CtorKind::Const => {}
-                                CtorKind::Fn => {
+                            match variant_def.ctor_kind() {
+                                Some(CtorKind::Const) => {}
+                                Some(CtorKind::Fn) => {
                                     fmt.write_str("(")?;
                                     comma_sep(fmt, fields)?;
                                     fmt.write_str(")")?;
                                 }
-                                CtorKind::Fictive => {
+                                None => {
                                     fmt.write_str(" {{ ")?;
                                     let mut first = true;
                                     for (field_def, field) in iter::zip(&variant_def.fields, fields)

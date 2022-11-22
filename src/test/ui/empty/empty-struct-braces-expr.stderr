@@ -21,24 +21,6 @@ help: a unit struct with a similar name exists
 LL |     let e1 = XEmpty2;
    |              ~~~~~~~
 
-error[E0423]: expected value, found struct variant `E::Empty3`
-  --> $DIR/empty-struct-braces-expr.rs:18:14
-   |
-LL |     Empty3 {}
-   |     --------- `E::Empty3` defined here
-...
-LL |     let e3 = E::Empty3;
-   |              ^^^^^^^^^ help: use struct literal syntax instead: `E::Empty3 {}`
-
-error[E0423]: expected function, tuple struct or tuple variant, found struct variant `E::Empty3`
-  --> $DIR/empty-struct-braces-expr.rs:19:14
-   |
-LL |     Empty3 {}
-   |     --------- `E::Empty3` defined here
-...
-LL |     let e3 = E::Empty3();
-   |              ^^^^^^^^^^^ help: use struct literal syntax instead: `E::Empty3 {}`
-
 error[E0423]: expected value, found struct `XEmpty1`
   --> $DIR/empty-struct-braces-expr.rs:22:15
    |
@@ -83,6 +65,18 @@ help: a unit struct with a similar name exists
    |
 LL |     let e1 = XEmpty2();
    |              ~~~~~~~
+
+error[E0533]: expected value, found struct variant `E::Empty3`
+  --> $DIR/empty-struct-braces-expr.rs:18:14
+   |
+LL |     let e3 = E::Empty3;
+   |              ^^^^^^^^^ not a value
+
+error[E0533]: expected value, found struct variant `E::Empty3`
+  --> $DIR/empty-struct-braces-expr.rs:19:14
+   |
+LL |     let e3 = E::Empty3();
+   |              ^^^^^^^^^ not a value
 
 error[E0423]: expected function, tuple struct or tuple variant, found struct `XEmpty1`
   --> $DIR/empty-struct-braces-expr.rs:23:15
@@ -132,5 +126,5 @@ LL |     XE::Empty1 {};
 
 error: aborting due to 9 previous errors
 
-Some errors have detailed explanations: E0423, E0599.
+Some errors have detailed explanations: E0423, E0533, E0599.
 For more information about an error, try `rustc --explain E0423`.

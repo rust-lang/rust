@@ -97,13 +97,13 @@ mod m8 {
 
 fn f78() {
     check(m7::V{}); //~ ERROR c::Item
-    check(m7::V); //~ ERROR expected value, found struct variant `m7::V`
+    check(m7::V); //~ ERROR expected value, found type alias `m7::V`
     check(m8::V{}); //~ ERROR c::E
     check(m8::V); //~ ERROR c::Item
 }
 fn xf78() {
     check(xm7::V{}); //~ ERROR c::Item
-    check(xm7::V); //~ ERROR expected value, found struct variant `xm7::V`
+    check(xm7::V); //~ ERROR expected value, found type alias `xm7::V`
     check(xm8::V{}); //~ ERROR c::E
     check(xm8::V); //~ ERROR c::Item
 }

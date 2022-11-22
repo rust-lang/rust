@@ -269,7 +269,7 @@ fn build_enum_variant_struct_type_di_node<'ll, 'tcx>(
         |cx, struct_type_di_node| {
             (0..variant_layout.fields.count())
                 .map(|field_index| {
-                    let field_name = if variant_def.ctor_kind != CtorKind::Fn {
+                    let field_name = if variant_def.ctor_kind() != Some(CtorKind::Fn) {
                         // Fields have names
                         Cow::from(variant_def.fields[field_index].name.as_str())
                     } else {
