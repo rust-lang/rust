@@ -141,12 +141,6 @@ pub enum SelectionCandidate<'tcx> {
         is_const: bool,
     },
 
-    /// Builtin implementation of `DiscriminantKind`.
-    DiscriminantKindCandidate,
-
-    /// Builtin implementation of `Pointee`.
-    PointeeCandidate,
-
     TraitAliasCandidate,
 
     /// Matching `dyn Trait` with a supertrait of `Trait`. The index is the

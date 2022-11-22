@@ -651,12 +651,6 @@ pub enum ImplSource<'tcx, N> {
     /// Same as above, but for a function pointer type with the given signature.
     FnPointer(ImplSourceFnPointerData<'tcx, N>),
 
-    /// ImplSource for a builtin `DeterminantKind` trait implementation.
-    DiscriminantKind(ImplSourceDiscriminantKindData),
-
-    /// ImplSource for a builtin `Pointee` trait implementation.
-    Pointee(ImplSourcePointeeData),
-
     /// ImplSource automatically generated for a generator.
     Generator(ImplSourceGeneratorData<'tcx, N>),
 
@@ -682,8 +676,6 @@ impl<'tcx, N> ImplSource<'tcx, N> {
             ImplSource::Future(c) => c.nested,
             ImplSource::Object(d) => d.nested,
             ImplSource::FnPointer(d) => d.nested,
-            ImplSource::DiscriminantKind(ImplSourceDiscriminantKindData)
-            | ImplSource::Pointee(ImplSourcePointeeData) => vec![],
             ImplSource::TraitAlias(d) => d.nested,
             ImplSource::TraitUpcasting(d) => d.nested,
             ImplSource::ConstDestruct(i) => i.nested,
@@ -701,8 +693,6 @@ impl<'tcx, N> ImplSource<'tcx, N> {
             ImplSource::Future(c) => &c.nested,
             ImplSource::Object(d) => &d.nested,
             ImplSource::FnPointer(d) => &d.nested,
-            ImplSource::DiscriminantKind(ImplSourceDiscriminantKindData)
-            | ImplSource::Pointee(ImplSourcePointeeData) => &[],
             ImplSource::TraitAlias(d) => &d.nested,
             ImplSource::TraitUpcasting(d) => &d.nested,
             ImplSource::ConstDestruct(i) => &i.nested,
@@ -751,12 +741,6 @@ impl<'tcx, N> ImplSource<'tcx, N> {
                 fn_ty: p.fn_ty,
                 nested: p.nested.into_iter().map(f).collect(),
             }),
-            ImplSource::DiscriminantKind(ImplSourceDiscriminantKindData) => {
-                ImplSource::DiscriminantKind(ImplSourceDiscriminantKindData)
-            }
-            ImplSource::Pointee(ImplSourcePointeeData) => {
-                ImplSource::Pointee(ImplSourcePointeeData)
-            }
             ImplSource::TraitAlias(d) => ImplSource::TraitAlias(ImplSourceTraitAliasData {
                 alias_def_id: d.alias_def_id,
                 substs: d.substs,
@@ -875,13 +859,6 @@ pub struct ImplSourceFnPointerData<'tcx, N> {
     pub fn_ty: Ty<'tcx>,
     pub nested: Vec<N>,
 }
-
-// FIXME(@lcnr): This should be  refactored and merged with other builtin vtables.
-#[derive(Clone, Debug, PartialEq, Eq, TyEncodable, TyDecodable, HashStable)]
-pub struct ImplSourceDiscriminantKindData;
-
-#[derive(Clone, Debug, PartialEq, Eq, TyEncodable, TyDecodable, HashStable)]
-pub struct ImplSourcePointeeData;
 
 #[derive(Clone, PartialEq, Eq, TyEncodable, TyDecodable, HashStable, Lift)]
 #[derive(TypeFoldable, TypeVisitable)]
