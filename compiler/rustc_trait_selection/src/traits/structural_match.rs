@@ -1,6 +1,5 @@
 use crate::infer::{InferCtxt, TyCtxtInferExt};
-use crate::traits::ObligationCause;
-use crate::traits::{TraitEngine, TraitEngineExt};
+use crate::traits::{ObligationCause, ObligationCtxt};
 
 use rustc_data_structures::fx::FxHashSet;
 use rustc_hir as hir;
@@ -72,28 +71,16 @@ fn type_marked_structural<'tcx>(
     adt_ty: Ty<'tcx>,
     cause: ObligationCause<'tcx>,
 ) -> bool {
-    let mut fulfillment_cx = <dyn TraitEngine<'tcx>>::new(infcx.tcx);
+    let ocx = ObligationCtxt::new(infcx);
     // require `#[derive(PartialEq)]`
     let structural_peq_def_id =
         infcx.tcx.require_lang_item(LangItem::StructuralPeq, Some(cause.span));
-    fulfillment_cx.register_bound(
-        infcx,
-        ty::ParamEnv::empty(),
-        adt_ty,
-        structural_peq_def_id,
-        cause.clone(),
-    );
+    ocx.register_bound(cause.clone(), ty::ParamEnv::empty(), adt_ty, structural_peq_def_id);
     // for now, require `#[derive(Eq)]`. (Doing so is a hack to work around
     // the type `for<'a> fn(&'a ())` failing to implement `Eq` itself.)
     let structural_teq_def_id =
         infcx.tcx.require_lang_item(LangItem::StructuralTeq, Some(cause.span));
-    fulfillment_cx.register_bound(
-        infcx,
-        ty::ParamEnv::empty(),
-        adt_ty,
-        structural_teq_def_id,
-        cause,
-    );
+    ocx.register_bound(cause, ty::ParamEnv::empty(), adt_ty, structural_teq_def_id);
 
     // We deliberately skip *reporting* fulfillment errors (via
     // `report_fulfillment_errors`), for two reasons:
@@ -104,7 +91,7 @@ fn type_marked_structural<'tcx>(
     //
     // 2. We are sometimes doing future-incompatibility lints for
     //    now, so we do not want unconditional errors here.
-    fulfillment_cx.select_all_or_error(infcx).is_empty()
+    ocx.select_all_or_error().is_empty()
 }
 
 /// This implements the traversal over the structure of a given type to try to
