@@ -735,7 +735,7 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
     ) -> Result<ImplSourceClosureData<'tcx, PredicateObligation<'tcx>>, SelectionError<'tcx>> {
         let kind = self
             .tcx()
-            .fn_trait_kind_from_lang_item(obligation.predicate.def_id())
+            .fn_trait_kind_from_def_id(obligation.predicate.def_id())
             .unwrap_or_else(|| bug!("closure candidate for non-fn trait {:?}", obligation));
 
         // Okay to skip binder because the substs on closure types never
