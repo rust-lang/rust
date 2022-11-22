@@ -66,7 +66,7 @@ pub mod visitors;
 pub use self::attrs::*;
 pub use self::check_proc_macro::{is_from_proc_macro, is_span_if, is_span_match};
 pub use self::hir_utils::{
-    both, count_eq, eq_expr_value, hash_expr, hash_stmt, over, HirEqInterExpr, SpanlessEq, SpanlessHash,
+    both, count_eq, eq_expr_value, hash_expr, hash_stmt, is_bool, over, HirEqInterExpr, SpanlessEq, SpanlessHash,
 };
 
 use core::ops::ControlFlow;
@@ -80,17 +80,16 @@ use rustc_ast::ast::{self, LitKind};
 use rustc_ast::Attribute;
 use rustc_data_structures::fx::FxHashMap;
 use rustc_data_structures::unhash::UnhashMap;
-use rustc_hir as hir;
-use rustc_hir::def::{DefKind, Namespace, Res};
-use rustc_hir::def_id::{CrateNum, DefId, LocalDefId};
+use rustc_hir::def::{DefKind, Res};
+use rustc_hir::def_id::{CrateNum, DefId, LocalDefId, LOCAL_CRATE};
 use rustc_hir::hir_id::{HirIdMap, HirIdSet};
 use rustc_hir::intravisit::{walk_expr, FnKind, Visitor};
 use rustc_hir::LangItem::{OptionNone, ResultErr, ResultOk};
 use rustc_hir::{
-    def, Arm, ArrayLen, BindingAnnotation, Block, BlockCheckMode, Body, Closure, Constness,
-    Destination, Expr, ExprKind, FnDecl, HirId, Impl, ImplItem, ImplItemKind, Item, ItemKind,
-    LangItem, Local, MatchSource, Mutability, Node, Param, Pat, PatKind, Path, PathSegment, PrimTy,
-    QPath, Stmt, StmtKind, TraitItem, TraitItemKind, TraitRef, TyKind, UnOp,
+    self as hir, def, Arm, ArrayLen, BindingAnnotation, Block, BlockCheckMode, Body, Closure, Constness, Destination,
+    Expr, ExprKind, FnDecl, HirId, Impl, ImplItem, ImplItemKind, ImplItemRef, IsAsync, Item, ItemKind, LangItem, Local,
+    MatchSource, Mutability, Node, OwnerId, Param, Pat, PatKind, Path, PathSegment, PrimTy, QPath, Stmt, StmtKind,
+    TraitItem, TraitItemKind, TraitItemRef, TraitRef, TyKind, UnOp,
 };
 use rustc_lexer::{tokenize, TokenKind};
 use rustc_lint::{LateContext, Level, Lint, LintContext};
@@ -109,11 +108,10 @@ use rustc_middle::ty::{FloatTy, IntTy, UintTy};
 use rustc_semver::RustcVersion;
 use rustc_session::Session;
 use rustc_span::hygiene::{ExpnKind, MacroKind};
-use rustc_span::source_map::original_sp;
 use rustc_span::source_map::SourceMap;
 use rustc_span::sym;
-use rustc_span::symbol::{kw, Symbol};
-use rustc_span::{Span, DUMMY_SP};
+use rustc_span::symbol::{kw, Ident, Symbol};
+use rustc_span::Span;
 use rustc_target::abi::Integer;
 
 use crate::consts::{constant, Constant};
@@ -436,11 +434,7 @@ pub fn is_expr_path_def_path(cx: &LateContext<'_>, expr: &Expr<'_>, segments: &[
 
 /// If `maybe_path` is a path node which resolves to an item, resolves it to a `DefId` and checks if
 /// it matches the given lang item.
-pub fn is_path_lang_item<'tcx>(
-    cx: &LateContext<'_>,
-    maybe_path: &impl MaybePath<'tcx>,
-    lang_item: LangItem,
-) -> bool {
+pub fn is_path_lang_item<'tcx>(cx: &LateContext<'_>, maybe_path: &impl MaybePath<'tcx>, lang_item: LangItem) -> bool {
     path_def_id(cx, maybe_path).map_or(false, |id| cx.tcx.lang_items().get(lang_item) == Some(id))
 }
 
@@ -535,125 +529,177 @@ pub fn path_def_id<'tcx>(cx: &LateContext<'_>, maybe_path: &impl MaybePath<'tcx>
     path_res(cx, maybe_path).opt_def_id()
 }
 
-fn find_primitive<'tcx>(tcx: TyCtxt<'tcx>, name: &str) -> impl Iterator<Item = DefId> + 'tcx {
-    let single = |ty| tcx.incoherent_impls(ty).iter().copied();
-    let empty = || [].iter().copied();
-    match name {
-        "bool" => single(BoolSimplifiedType),
-        "char" => single(CharSimplifiedType),
-        "str" => single(StrSimplifiedType),
-        "array" => single(ArraySimplifiedType),
-        "slice" => single(SliceSimplifiedType),
+fn find_primitive_impls<'tcx>(tcx: TyCtxt<'tcx>, name: &str) -> impl Iterator<Item = DefId> + 'tcx {
+    let ty = match name {
+        "bool" => BoolSimplifiedType,
+        "char" => CharSimplifiedType,
+        "str" => StrSimplifiedType,
+        "array" => ArraySimplifiedType,
+        "slice" => SliceSimplifiedType,
         // FIXME: rustdoc documents these two using just `pointer`.
         //
         // Maybe this is something we should do here too.
-        "const_ptr" => single(PtrSimplifiedType(Mutability::Not)),
-        "mut_ptr" => single(PtrSimplifiedType(Mutability::Mut)),
-        "isize" => single(IntSimplifiedType(IntTy::Isize)),
-        "i8" => single(IntSimplifiedType(IntTy::I8)),
-        "i16" => single(IntSimplifiedType(IntTy::I16)),
-        "i32" => single(IntSimplifiedType(IntTy::I32)),
-        "i64" => single(IntSimplifiedType(IntTy::I64)),
-        "i128" => single(IntSimplifiedType(IntTy::I128)),
-        "usize" => single(UintSimplifiedType(UintTy::Usize)),
-        "u8" => single(UintSimplifiedType(UintTy::U8)),
-        "u16" => single(UintSimplifiedType(UintTy::U16)),
-        "u32" => single(UintSimplifiedType(UintTy::U32)),
-        "u64" => single(UintSimplifiedType(UintTy::U64)),
-        "u128" => single(UintSimplifiedType(UintTy::U128)),
-        "f32" => single(FloatSimplifiedType(FloatTy::F32)),
-        "f64" => single(FloatSimplifiedType(FloatTy::F64)),
-        _ => empty(),
+        "const_ptr" => PtrSimplifiedType(Mutability::Not),
+        "mut_ptr" => PtrSimplifiedType(Mutability::Mut),
+        "isize" => IntSimplifiedType(IntTy::Isize),
+        "i8" => IntSimplifiedType(IntTy::I8),
+        "i16" => IntSimplifiedType(IntTy::I16),
+        "i32" => IntSimplifiedType(IntTy::I32),
+        "i64" => IntSimplifiedType(IntTy::I64),
+        "i128" => IntSimplifiedType(IntTy::I128),
+        "usize" => UintSimplifiedType(UintTy::Usize),
+        "u8" => UintSimplifiedType(UintTy::U8),
+        "u16" => UintSimplifiedType(UintTy::U16),
+        "u32" => UintSimplifiedType(UintTy::U32),
+        "u64" => UintSimplifiedType(UintTy::U64),
+        "u128" => UintSimplifiedType(UintTy::U128),
+        "f32" => FloatSimplifiedType(FloatTy::F32),
+        "f64" => FloatSimplifiedType(FloatTy::F64),
+        _ => return [].iter().copied(),
+    };
+
+    tcx.incoherent_impls(ty).iter().copied()
+}
+
+fn non_local_item_children_by_name(tcx: TyCtxt<'_>, def_id: DefId, name: Symbol) -> Vec<Res> {
+    match tcx.def_kind(def_id) {
+        DefKind::Mod | DefKind::Enum | DefKind::Trait => tcx
+            .module_children(def_id)
+            .iter()
+            .filter(|item| item.ident.name == name)
+            .map(|child| child.res.expect_non_local())
+            .collect(),
+        DefKind::Impl => tcx
+            .associated_item_def_ids(def_id)
+            .iter()
+            .copied()
+            .filter(|assoc_def_id| tcx.item_name(*assoc_def_id) == name)
+            .map(|assoc_def_id| Res::Def(tcx.def_kind(assoc_def_id), assoc_def_id))
+            .collect(),
+        _ => Vec::new(),
     }
 }
 
-/// Resolves a def path like `std::vec::Vec`. `namespace_hint` can be supplied to disambiguate
-/// between `std::vec` the module and `std::vec` the macro
+fn local_item_children_by_name(tcx: TyCtxt<'_>, local_id: LocalDefId, name: Symbol) -> Vec<Res> {
+    let hir = tcx.hir();
+
+    let root_mod;
+    let item_kind = match hir.find_by_def_id(local_id) {
+        Some(Node::Crate(r#mod)) => {
+            root_mod = ItemKind::Mod(r#mod);
+            &root_mod
+        },
+        Some(Node::Item(item)) => &item.kind,
+        _ => return Vec::new(),
+    };
+
+    let res = |ident: Ident, owner_id: OwnerId| {
+        if ident.name == name {
+            let def_id = owner_id.to_def_id();
+            Some(Res::Def(tcx.def_kind(def_id), def_id))
+        } else {
+            None
+        }
+    };
+
+    match item_kind {
+        ItemKind::Mod(r#mod) => r#mod
+            .item_ids
+            .iter()
+            .filter_map(|&item_id| res(hir.item(item_id).ident, item_id.owner_id))
+            .collect(),
+        ItemKind::Impl(r#impl) => r#impl
+            .items
+            .iter()
+            .filter_map(|&ImplItemRef { ident, id, .. }| res(ident, id.owner_id))
+            .collect(),
+        ItemKind::Trait(.., trait_item_refs) => trait_item_refs
+            .iter()
+            .filter_map(|&TraitItemRef { ident, id, .. }| res(ident, id.owner_id))
+            .collect(),
+        _ => Vec::new(),
+    }
+}
+
+fn item_children_by_name(tcx: TyCtxt<'_>, def_id: DefId, name: Symbol) -> Vec<Res> {
+    if let Some(local_id) = def_id.as_local() {
+        local_item_children_by_name(tcx, local_id, name)
+    } else {
+        non_local_item_children_by_name(tcx, def_id, name)
+    }
+}
+
+/// Resolves a def path like `std::vec::Vec`.
+///
+/// Can return multiple resolutions when there are multiple versions of the same crate, e.g.
+/// `memchr::memchr` could return the functions from both memchr 1.0 and memchr 2.0.
+///
+/// Also returns multiple results when there are mulitple paths under the same name e.g. `std::vec`
+/// would have both a [`DefKind::Mod`] and [`DefKind::Macro`].
 ///
 /// This function is expensive and should be used sparingly.
-pub fn def_path_res(cx: &LateContext<'_>, path: &[&str], namespace_hint: Option<Namespace>) -> Res {
-    fn item_child_by_name(tcx: TyCtxt<'_>, def_id: DefId, name: &str, matches_ns: impl Fn(Res) -> bool) -> Option<Res> {
-        match tcx.def_kind(def_id) {
-            DefKind::Mod | DefKind::Enum | DefKind::Trait => tcx
-                .module_children(def_id)
-                .iter()
-                .find(|item| item.ident.name.as_str() == name && matches_ns(item.res.expect_non_local()))
-                .map(|child| child.res.expect_non_local()),
-            DefKind::Impl => tcx
-                .associated_item_def_ids(def_id)
-                .iter()
-                .copied()
-                .find(|assoc_def_id| tcx.item_name(*assoc_def_id).as_str() == name)
-                .map(|assoc_def_id| Res::Def(tcx.def_kind(assoc_def_id), assoc_def_id)),
-            DefKind::Struct | DefKind::Union => tcx
-                .adt_def(def_id)
-                .non_enum_variant()
-                .fields
-                .iter()
-                .find(|f| f.name.as_str() == name)
-                .map(|f| Res::Def(DefKind::Field, f.did)),
-            _ => None,
-        }
-    }
-
-    fn find_crate(tcx: TyCtxt<'_>, name: &str) -> Option<DefId> {
+pub fn def_path_res(cx: &LateContext<'_>, path: &[&str]) -> Vec<Res> {
+    fn find_crates(tcx: TyCtxt<'_>, name: Symbol) -> impl Iterator<Item = DefId> + '_ {
         tcx.crates(())
             .iter()
             .copied()
-            .find(|&num| tcx.crate_name(num).as_str() == name)
+            .filter(move |&num| tcx.crate_name(num) == name)
             .map(CrateNum::as_def_id)
     }
 
-    let (base, path) = match *path {
+    let tcx = cx.tcx;
+
+    let (base, mut path) = match *path {
         [primitive] => {
-            return PrimTy::from_name(Symbol::intern(primitive)).map_or(Res::Err, Res::PrimTy);
+            return vec![PrimTy::from_name(Symbol::intern(primitive)).map_or(Res::Err, Res::PrimTy)];
         },
         [base, ref path @ ..] => (base, path),
-        _ => return Res::Err,
+        _ => return Vec::new(),
     };
-    let tcx = cx.tcx;
-    let starts = find_primitive(tcx, base)
-        .chain(find_crate(tcx, base))
+
+    let base_sym = Symbol::intern(base);
+
+    let local_crate = if tcx.crate_name(LOCAL_CRATE) == base_sym {
+        Some(LOCAL_CRATE.as_def_id())
+    } else {
+        None
+    };
+
+    let starts = find_primitive_impls(tcx, base)
+        .chain(find_crates(tcx, base_sym))
+        .chain(local_crate)
         .map(|id| Res::Def(tcx.def_kind(id), id));
 
-    for first in starts {
-        let last = path
-            .iter()
-            .copied()
-            .enumerate()
-            // for each segment, find the child item
-            .try_fold(first, |res, (idx, segment)| {
-                let matches_ns = |res: Res| {
-                    // If at the last segment in the path, respect the namespace hint
-                    if idx == path.len() - 1 {
-                        match namespace_hint {
-                            Some(ns) => res.matches_ns(ns),
-                            None => true,
-                        }
-                    } else {
-                        res.matches_ns(Namespace::TypeNS)
-                    }
-                };
+    let mut resolutions: Vec<Res> = starts.collect();
 
-                let def_id = res.def_id();
-                if let Some(item) = item_child_by_name(tcx, def_id, segment, matches_ns) {
-                    Some(item)
-                } else if matches!(res, Res::Def(DefKind::Enum | DefKind::Struct, _)) {
-                    // it is not a child item so check inherent impl items
-                    tcx.inherent_impls(def_id)
-                        .iter()
-                        .find_map(|&impl_def_id| item_child_by_name(tcx, impl_def_id, segment, matches_ns))
-                } else {
-                    None
-                }
-            });
+    while let [segment, rest @ ..] = path {
+        path = rest;
+        let segment = Symbol::intern(segment);
 
-        if let Some(last) = last {
-            return last;
-        }
+        resolutions = resolutions
+            .into_iter()
+            .filter_map(|res| res.opt_def_id())
+            .flat_map(|def_id| {
+                // When the current def_id is e.g. `struct S`, check the impl items in
+                // `impl S { ... }`
+                let inherent_impl_children = tcx
+                    .inherent_impls(def_id)
+                    .iter()
+                    .flat_map(|&impl_def_id| item_children_by_name(tcx, impl_def_id, segment));
+
+                let direct_children = item_children_by_name(tcx, def_id, segment);
+
+                inherent_impl_children.chain(direct_children)
+            })
+            .collect();
     }
 
-    Res::Err
+    resolutions
+}
+
+/// Resolves a def path like `std::vec::Vec` to its [`DefId`]s, see [`def_path_res`].
+pub fn def_path_def_ids(cx: &LateContext<'_>, path: &[&str]) -> impl Iterator<Item = DefId> {
+    def_path_res(cx, path).into_iter().filter_map(|res| res.opt_def_id())
 }
 
 /// Convenience function to get the `DefId` of a trait by path.
@@ -661,10 +707,10 @@ pub fn def_path_res(cx: &LateContext<'_>, path: &[&str], namespace_hint: Option<
 ///
 /// This function is expensive and should be used sparingly.
 pub fn get_trait_def_id(cx: &LateContext<'_>, path: &[&str]) -> Option<DefId> {
-    match def_path_res(cx, path, Some(Namespace::TypeNS)) {
+    def_path_res(cx, path).into_iter().find_map(|res| match res {
         Res::Def(DefKind::Trait | DefKind::TraitAlias, trait_id) => Some(trait_id),
         _ => None,
-    }
+    })
 }
 
 /// Gets the `hir::TraitRef` of the trait the given method is implemented for.
@@ -784,9 +830,9 @@ fn is_default_equivalent_ctor(cx: &LateContext<'_>, def_id: DefId, path: &QPath<
         if method.ident.name == sym::new {
             if let Some(impl_did) = cx.tcx.impl_of_method(def_id) {
                 if let Some(adt) = cx.tcx.type_of(impl_did).ty_adt_def() {
-                    return std_types_symbols
-                        .iter()
-                        .any(|&symbol| cx.tcx.is_diagnostic_item(symbol, adt.did()) || Some(adt.did()) == cx.tcx.lang_items().string());
+                    return std_types_symbols.iter().any(|&symbol| {
+                        cx.tcx.is_diagnostic_item(symbol, adt.did()) || Some(adt.did()) == cx.tcx.lang_items().string()
+                    });
                 }
             }
         }
@@ -963,7 +1009,7 @@ impl std::ops::BitOrAssign for CaptureKind {
 /// Note as this will walk up to parent expressions until the capture can be determined it should
 /// only be used while making a closure somewhere a value is consumed. e.g. a block, match arm, or
 /// function argument (other than a receiver).
-pub fn capture_local_usage<'tcx>(cx: &LateContext<'tcx>, e: &Expr<'_>) -> CaptureKind {
+pub fn capture_local_usage(cx: &LateContext<'_>, e: &Expr<'_>) -> CaptureKind {
     fn pat_capture_kind(cx: &LateContext<'_>, pat: &Pat<'_>) -> CaptureKind {
         let mut capture = CaptureKind::Ref(Mutability::Not);
         pat.each_binding_or_first(&mut |_, id, span, _| match cx
@@ -1258,23 +1304,6 @@ pub fn contains_return(expr: &hir::Expr<'_>) -> bool {
         }
     })
     .is_some()
-}
-
-/// Extends the span to the beginning of the spans line, incl. whitespaces.
-///
-/// ```rust
-///        let x = ();
-/// //             ^^
-/// // will be converted to
-///        let x = ();
-/// // ^^^^^^^^^^^^^^
-/// ```
-fn line_span<T: LintContext>(cx: &T, span: Span) -> Span {
-    let span = original_sp(span, DUMMY_SP);
-    let source_map_and_line = cx.sess().source_map().lookup_line(span.lo()).unwrap();
-    let line_no = source_map_and_line.line;
-    let line_start = source_map_and_line.sf.lines(|lines| lines[line_no]);
-    span.with_lo(line_start)
 }
 
 /// Gets the parent node, if any.
@@ -1749,6 +1778,10 @@ pub fn has_attr(attrs: &[ast::Attribute], symbol: Symbol) -> bool {
     attrs.iter().any(|attr| attr.has_name(symbol))
 }
 
+pub fn has_repr_attr(cx: &LateContext<'_>, hir_id: HirId) -> bool {
+    has_attr(cx.tcx.hir().attrs(hir_id), sym::repr)
+}
+
 pub fn any_parent_has_attr(tcx: TyCtxt<'_>, node: HirId, symbol: Symbol) -> bool {
     let map = &tcx.hir();
     let mut prev_enclosing_node = None;
@@ -1821,7 +1854,7 @@ pub fn match_any_def_paths(cx: &LateContext<'_>, did: DefId, paths: &[&[&str]]) 
 }
 
 /// Checks if the given `DefId` matches the path.
-pub fn match_def_path<'tcx>(cx: &LateContext<'tcx>, did: DefId, syms: &[&str]) -> bool {
+pub fn match_def_path(cx: &LateContext<'_>, did: DefId, syms: &[&str]) -> bool {
     // We should probably move to Symbols in Clippy as well rather than interning every time.
     let path = cx.get_def_path(did);
     syms.iter().map(|x| Symbol::intern(x)).eq(path.iter().copied())
@@ -1870,7 +1903,11 @@ pub fn if_sequence<'tcx>(mut expr: &'tcx Expr<'tcx>) -> (Vec<&'tcx Expr<'tcx>>, 
 
 /// Checks if the given function kind is an async function.
 pub fn is_async_fn(kind: FnKind<'_>) -> bool {
-    matches!(kind, FnKind::ItemFn(_, _, header) if header.asyncness.is_async())
+    match kind {
+        FnKind::ItemFn(_, _, header) => header.asyncness == IsAsync::Async,
+        FnKind::Method(_, sig) => sig.header.asyncness == IsAsync::Async,
+        FnKind::Closure => false,
+    }
 }
 
 /// Peels away all the compiler generated code surrounding the body of an async function,

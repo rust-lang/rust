@@ -18,5 +18,11 @@ error: used the `round` method with a whole number float
 LL |     let _ = 1.00f32.round();
    |             ^^^^^^^^^^^^^^^ help: remove the `round` method call: `1.00f32`
 
-error: aborting due to 3 previous errors
+error: used the `round` method with a whole number float
+  --> $DIR/unused_rounding.rs:13:13
+   |
+LL |     let _ = 3.0_f32.round();
+   |             ^^^^^^^^^^^^^^^ help: remove the `round` method call: `3.0_f32`
+
+error: aborting due to 4 previous errors
 

@@ -263,5 +263,29 @@ LL | unsafe impl CrateRoot for () {}
    |
    = help: consider adding a safety comment on the preceding line
 
-error: aborting due to 31 previous errors
+error: unsafe block missing a safety comment
+  --> $DIR/undocumented_unsafe_blocks.rs:498:9
+   |
+LL |         unsafe {};
+   |         ^^^^^^^^^
+   |
+   = help: consider adding a safety comment on the preceding line
+
+error: unsafe block missing a safety comment
+  --> $DIR/undocumented_unsafe_blocks.rs:502:12
+   |
+LL |         if unsafe { true } {
+   |            ^^^^^^^^^^^^^^^
+   |
+   = help: consider adding a safety comment on the preceding line
+
+error: unsafe block missing a safety comment
+  --> $DIR/undocumented_unsafe_blocks.rs:505:23
+   |
+LL |             let bar = unsafe {};
+   |                       ^^^^^^^^^
+   |
+   = help: consider adding a safety comment on the preceding line
+
+error: aborting due to 34 previous errors
 

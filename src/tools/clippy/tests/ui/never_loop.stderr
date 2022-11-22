@@ -114,5 +114,17 @@ LL | |         break x;
 LL | |     };
    | |_____^
 
-error: aborting due to 10 previous errors
+error: this loop never actually loops
+  --> $DIR/never_loop.rs:244:5
+   |
+LL | /     'a: loop {
+LL | |         'b: {
+LL | |             break 'b 'c: {
+LL | |                 break 'a;
+LL | |             };
+LL | |         }
+LL | |     }
+   | |_____^
+
+error: aborting due to 11 previous errors
 

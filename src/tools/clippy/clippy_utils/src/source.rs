@@ -2,13 +2,12 @@
 
 #![allow(clippy::module_name_repetitions)]
 
-use crate::line_span;
 use rustc_errors::Applicability;
 use rustc_hir::{Expr, ExprKind};
 use rustc_lint::{LateContext, LintContext};
 use rustc_span::hygiene;
-use rustc_span::source_map::SourceMap;
-use rustc_span::{BytePos, Pos, Span, SpanData, SyntaxContext};
+use rustc_span::source_map::{original_sp, SourceMap};
+use rustc_span::{BytePos, Pos, Span, SpanData, SyntaxContext, DUMMY_SP};
 use std::borrow::Cow;
 
 /// Like `snippet_block`, but add braces if the expr is not an `ExprKind::Block`.
@@ -53,6 +52,23 @@ fn first_char_in_first_line<T: LintContext>(cx: &T, span: Span) -> Option<BytePo
         snip.find(|c: char| !c.is_whitespace())
             .map(|pos| line_span.lo() + BytePos::from_usize(pos))
     })
+}
+
+/// Extends the span to the beginning of the spans line, incl. whitespaces.
+///
+/// ```rust
+///        let x = ();
+/// //             ^^
+/// // will be converted to
+///        let x = ();
+/// // ^^^^^^^^^^^^^^
+/// ```
+fn line_span<T: LintContext>(cx: &T, span: Span) -> Span {
+    let span = original_sp(span, DUMMY_SP);
+    let source_map_and_line = cx.sess().source_map().lookup_line(span.lo()).unwrap();
+    let line_no = source_map_and_line.line;
+    let line_start = source_map_and_line.sf.lines(|lines| lines[line_no]);
+    span.with_lo(line_start)
 }
 
 /// Returns the indentation of the line of a span

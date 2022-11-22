@@ -30,7 +30,6 @@ declare_clippy_lint! {
     ///
     /// ### Known problems
     /// - Unaddressed false negative in fn bodies of trait implementations
-    /// - False positive with associated types in traits (#4140)
     ///
     /// ### Example
     /// ```rust
@@ -103,6 +102,7 @@ impl<'tcx> LateLintPass<'tcx> for UseSelf {
             if parameters.as_ref().map_or(true, |params| {
                 !params.parenthesized && !params.args.iter().any(|arg| matches!(arg, GenericArg::Lifetime(_)))
             });
+            if !item.span.from_expansion();
             if !is_from_proc_macro(cx, item); // expensive, should be last check
             then {
                 StackItem::Check {
@@ -234,24 +234,13 @@ impl<'tcx> LateLintPass<'tcx> for UseSelf {
             then {} else { return; }
         }
         match expr.kind {
-            ExprKind::Struct(QPath::Resolved(_, path), ..) => match path.res {
-                Res::SelfTyParam { .. } | Res::SelfTyAlias { .. } => (),
-                Res::Def(DefKind::Variant, _) => lint_path_to_variant(cx, path),
-                _ => span_lint(cx, path.span),
-            },
-            // tuple struct instantiation (`Foo(arg)` or `Enum::Foo(arg)`)
+            ExprKind::Struct(QPath::Resolved(_, path), ..) => check_path(cx, path),
             ExprKind::Call(fun, _) => {
                 if let ExprKind::Path(QPath::Resolved(_, path)) = fun.kind {
-                    if let Res::Def(DefKind::Ctor(ctor_of, _), ..) = path.res {
-                        match ctor_of {
-                            CtorOf::Variant => lint_path_to_variant(cx, path),
-                            CtorOf::Struct => span_lint(cx, path.span),
-                        }
-                    }
+                    check_path(cx, path);
                 }
             },
-            // unit enum variants (`Enum::A`)
-            ExprKind::Path(QPath::Resolved(_, path)) => lint_path_to_variant(cx, path),
+            ExprKind::Path(QPath::Resolved(_, path)) => check_path(cx, path),
             _ => (),
         }
     }
@@ -267,15 +256,7 @@ impl<'tcx> LateLintPass<'tcx> for UseSelf {
                  | PatKind::Struct(QPath::Resolved(_, path), _, _) = pat.kind;
             if cx.typeck_results().pat_ty(pat) == cx.tcx.type_of(impl_id);
             then {
-                match path.res {
-                    Res::Def(DefKind::Ctor(ctor_of, _), ..) => match ctor_of {
-                            CtorOf::Variant => lint_path_to_variant(cx, path),
-                            CtorOf::Struct => span_lint(cx, path.span),
-                    },
-                    Res::Def(DefKind::Variant, ..) => lint_path_to_variant(cx, path),
-                    Res::Def(DefKind::Struct, ..) => span_lint(cx, path.span),
-                    _ => ()
-                }
+                check_path(cx, path);
             }
         }
     }
@@ -311,6 +292,16 @@ fn span_lint(cx: &LateContext<'_>, span: Span) {
         "Self".to_owned(),
         Applicability::MachineApplicable,
     );
+}
+
+fn check_path(cx: &LateContext<'_>, path: &Path<'_>) {
+    match path.res {
+        Res::Def(DefKind::Ctor(CtorOf::Variant, _) | DefKind::Variant, ..) => {
+            lint_path_to_variant(cx, path);
+        },
+        Res::Def(DefKind::Ctor(CtorOf::Struct, _) | DefKind::Struct, ..) => span_lint(cx, path.span),
+        _ => (),
+    }
 }
 
 fn lint_path_to_variant(cx: &LateContext<'_>, path: &Path<'_>) {

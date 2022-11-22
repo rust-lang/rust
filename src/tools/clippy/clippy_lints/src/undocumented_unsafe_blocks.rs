@@ -68,7 +68,8 @@ impl LateLintPass<'_> for UndocumentedUnsafeBlocks {
             && !in_external_macro(cx.tcx.sess, block.span)
             && !is_lint_allowed(cx, UNDOCUMENTED_UNSAFE_BLOCKS, block.hir_id)
             && !is_unsafe_from_proc_macro(cx, block.span)
-            && !block_has_safety_comment(cx, block)
+            && !block_has_safety_comment(cx, block.span)
+            && !block_parents_have_safety_comment(cx, block.hir_id)
         {
             let source_map = cx.tcx.sess.source_map();
             let span = if source_map.is_multiline(block.span) {
@@ -126,8 +127,41 @@ fn is_unsafe_from_proc_macro(cx: &LateContext<'_>, span: Span) -> bool {
         .map_or(true, |src| !src.starts_with("unsafe"))
 }
 
+// Checks if any parent {expression, statement, block, local, const, static}
+// has a safety comment
+fn block_parents_have_safety_comment(cx: &LateContext<'_>, id: hir::HirId) -> bool {
+    if let Some(node) = get_parent_node(cx.tcx, id) {
+        return match node {
+            Node::Expr(expr) => !is_branchy(expr) && span_in_body_has_safety_comment(cx, expr.span),
+            Node::Stmt(hir::Stmt {
+                kind:
+                    hir::StmtKind::Local(hir::Local { span, .. })
+                    | hir::StmtKind::Expr(hir::Expr { span, .. })
+                    | hir::StmtKind::Semi(hir::Expr { span, .. }),
+                ..
+            })
+            | Node::Local(hir::Local { span, .. })
+            | Node::Item(hir::Item {
+                kind: hir::ItemKind::Const(..) | ItemKind::Static(..),
+                span,
+                ..
+            }) => span_in_body_has_safety_comment(cx, *span),
+            _ => false,
+        };
+    }
+    false
+}
+
+/// Checks if an expression is "branchy", e.g. loop, match/if/etc.
+fn is_branchy(expr: &hir::Expr<'_>) -> bool {
+    matches!(
+        expr.kind,
+        hir::ExprKind::If(..) | hir::ExprKind::Loop(..) | hir::ExprKind::Match(..)
+    )
+}
+
 /// Checks if the lines immediately preceding the block contain a safety comment.
-fn block_has_safety_comment(cx: &LateContext<'_>, block: &hir::Block<'_>) -> bool {
+fn block_has_safety_comment(cx: &LateContext<'_>, span: Span) -> bool {
     // This intentionally ignores text before the start of a function so something like:
     // ```
     //     // SAFETY: reason
@@ -136,7 +170,7 @@ fn block_has_safety_comment(cx: &LateContext<'_>, block: &hir::Block<'_>) -> boo
     // won't work. This is to avoid dealing with where such a comment should be place relative to
     // attributes and doc comments.
 
-    span_from_macro_expansion_has_safety_comment(cx, block.span) || span_in_body_has_safety_comment(cx, block.span)
+    span_from_macro_expansion_has_safety_comment(cx, span) || span_in_body_has_safety_comment(cx, span)
 }
 
 /// Checks if the lines immediately preceding the item contain a safety comment.

@@ -7,8 +7,6 @@ use std::env;
 use std::path::PathBuf;
 use std::process::{self, Command};
 
-mod docs;
-
 const CARGO_CLIPPY_HELP: &str = r#"Checks a package to catch common mistakes and improve your Rust code.
 
 Usage:
@@ -60,7 +58,7 @@ pub fn main() {
     if let Some(pos) = env::args().position(|a| a == "--explain") {
         if let Some(mut lint) = env::args().nth(pos + 1) {
             lint.make_ascii_lowercase();
-            docs::explain(&lint.strip_prefix("clippy::").unwrap_or(&lint).replace('-', "_"));
+            clippy_lints::explain(&lint.strip_prefix("clippy::").unwrap_or(&lint).replace('-', "_"));
         } else {
             show_help();
         }

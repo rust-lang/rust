@@ -544,34 +544,6 @@ fn gather_stats(clippy_warnings: &[ClippyWarning]) -> (String, HashMap<&String, 
     (stats_string, counter)
 }
 
-/// check if the latest modification of the logfile is older than the modification date of the
-/// clippy binary, if this is true, we should clean the lintchec shared target directory and recheck
-fn lintcheck_needs_rerun(lintcheck_logs_path: &Path, paths: [&Path; 2]) -> bool {
-    if !lintcheck_logs_path.exists() {
-        return true;
-    }
-
-    let clippy_modified: std::time::SystemTime = {
-        let [cargo, driver] = paths.map(|p| {
-            std::fs::metadata(p)
-                .expect("failed to get metadata of file")
-                .modified()
-                .expect("failed to get modification date")
-        });
-        // the oldest modification of either of the binaries
-        std::cmp::max(cargo, driver)
-    };
-
-    let logs_modified: std::time::SystemTime = std::fs::metadata(lintcheck_logs_path)
-        .expect("failed to get metadata of file")
-        .modified()
-        .expect("failed to get modification date");
-
-    // time is represented in seconds since X
-    // logs_modified 2 and clippy_modified 5 means clippy binary is older and we need to recheck
-    logs_modified < clippy_modified
-}
-
 #[allow(clippy::too_many_lines)]
 fn main() {
     // We're being executed as a `RUSTC_WRAPPER` as part of `--recursive`
@@ -593,23 +565,6 @@ fn main() {
 
     let cargo_clippy_path = fs::canonicalize(format!("target/debug/cargo-clippy{EXE_SUFFIX}")).unwrap();
     let clippy_driver_path = fs::canonicalize(format!("target/debug/clippy-driver{EXE_SUFFIX}")).unwrap();
-
-    // if the clippy bin is newer than our logs, throw away target dirs to force clippy to
-    // refresh the logs
-    if lintcheck_needs_rerun(
-        &config.lintcheck_results_path,
-        [&cargo_clippy_path, &clippy_driver_path],
-    ) {
-        let shared_target_dir = "target/lintcheck/shared_target_dir";
-        // if we get an Err here, the shared target dir probably does simply not exist
-        if let Ok(metadata) = std::fs::metadata(shared_target_dir) {
-            if metadata.is_dir() {
-                println!("Clippy is newer than lint check logs, clearing lintcheck shared target dir...");
-                std::fs::remove_dir_all(shared_target_dir)
-                    .expect("failed to remove target/lintcheck/shared_target_dir");
-            }
-        }
-    }
 
     // assert that clippy is found
     assert!(
@@ -678,7 +633,7 @@ fn main() {
         .unwrap();
 
     let server = config.recursive.then(|| {
-        fs::remove_dir_all("target/lintcheck/shared_target_dir/recursive").unwrap_or_default();
+        let _ = fs::remove_dir_all("target/lintcheck/shared_target_dir/recursive");
 
         LintcheckServer::spawn(recursive_options)
     });

@@ -59,7 +59,7 @@ impl LateLintPass<'_> for ImportRename {
     fn check_crate(&mut self, cx: &LateContext<'_>) {
         for Rename { path, rename } in &self.conf_renames {
             let segs = path.split("::").collect::<Vec<_>>();
-            if let Res::Def(_, id) = clippy_utils::def_path_res(cx, &segs, None) {
+            for id in clippy_utils::def_path_def_ids(cx, &segs) {
                 self.renames.insert(id, Symbol::intern(rename));
             }
         }
