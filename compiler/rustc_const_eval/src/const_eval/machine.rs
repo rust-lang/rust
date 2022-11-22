@@ -1,7 +1,7 @@
 use rustc_hir::def::DefKind;
 use rustc_hir::{LangItem, CRATE_HIR_ID};
 use rustc_middle::mir;
-use rustc_middle::mir::interpret::{PointerArithmetic, UndefinedBehaviorInfo};
+use rustc_middle::mir::interpret::{InterpError, PointerArithmetic, UndefinedBehaviorInfo};
 use rustc_middle::ty::layout::FnAbiOf;
 use rustc_middle::ty::{self, Ty, TyCtxt};
 use rustc_session::lint::builtin::INVALID_ALIGNMENT;
@@ -353,22 +353,27 @@ impl<'mir, 'tcx> interpret::Machine<'mir, 'tcx> for CompileTimeInterpreter<'mir,
                 ecx.cur_span(),
                 "`alignment_check_failed` called when no alignment check requested"
             ),
-            CheckAlignment::FutureIncompat => ecx.tcx.struct_span_lint_hir(
-                INVALID_ALIGNMENT,
-                ecx.stack().iter().find_map(|frame| frame.lint_root()).unwrap_or(CRATE_HIR_ID),
-                ecx.cur_span(),
-                UndefinedBehaviorInfo::AlignmentCheckFailed { has, required }.to_string(),
-                |db| {
-                    let mut stacktrace = ecx.generate_stacktrace();
-                    // Filter out `requires_caller_location` frames.
-                    stacktrace
-                        .retain(|frame| !frame.instance.def.requires_caller_location(*ecx.tcx));
-                    for frame in stacktrace {
-                        db.span_label(frame.span, format!("inside `{}`", frame.instance));
-                    }
-                    db
-                },
-            ),
+            CheckAlignment::FutureIncompat => {
+                let err = ConstEvalErr::new(
+                    ecx,
+                    InterpError::UndefinedBehavior(UndefinedBehaviorInfo::AlignmentCheckFailed {
+                        has,
+                        required,
+                    })
+                    .into(),
+                    None,
+                );
+                ecx.tcx.struct_span_lint_hir(
+                    INVALID_ALIGNMENT,
+                    ecx.stack().iter().find_map(|frame| frame.lint_root()).unwrap_or(CRATE_HIR_ID),
+                    err.span,
+                    err.error.to_string(),
+                    |db| {
+                        err.decorate(db, |_| {});
+                        db
+                    },
+                );
+            }
         }
         Ok(())
     }
