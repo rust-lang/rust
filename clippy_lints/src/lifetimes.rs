@@ -3,7 +3,7 @@ use clippy_utils::trait_ref_of_method;
 use rustc_data_structures::fx::{FxHashMap, FxHashSet};
 use rustc_hir::intravisit::nested_filter::{self as hir_nested_filter, NestedFilter};
 use rustc_hir::intravisit::{
-    walk_fn_decl, walk_generic_param, walk_generics, walk_impl_item_ref, walk_item, walk_param_bound,
+    walk_fn_decl, walk_generic_arg, walk_generic_param, walk_generics, walk_impl_item_ref, walk_item, walk_param_bound,
     walk_poly_trait_ref, walk_trait_ref, walk_ty, Visitor,
 };
 use rustc_hir::lang_items;
@@ -503,14 +503,7 @@ impl<'a, 'tcx> Visitor<'tcx> for RefVisitor<'a, 'tcx> {
         {
             self.lifetime_generic_arg_spans.entry(def_id).or_insert(l.span);
         }
-        // Replace with `walk_generic_arg` if/when https://github.com/rust-lang/rust/pull/103692 lands.
-        // walk_generic_arg(self, generic_arg);
-        match generic_arg {
-            GenericArg::Lifetime(lt) => self.visit_lifetime(lt),
-            GenericArg::Type(ty) => self.visit_ty(ty),
-            GenericArg::Const(ct) => self.visit_anon_const(&ct.value),
-            GenericArg::Infer(inf) => self.visit_infer(inf),
-        }
+        walk_generic_arg(self, generic_arg);
     }
 }
 
