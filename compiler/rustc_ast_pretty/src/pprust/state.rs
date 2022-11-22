@@ -1724,7 +1724,7 @@ impl<'a> State<'a> {
             params: ThinVec::new(),
             where_clause: ast::WhereClause {
                 has_where_token: false,
-                predicates: Vec::new(),
+                predicates: ThinVec::new(),
                 span: DUMMY_SP,
             },
             span: DUMMY_SP,

@@ -258,7 +258,7 @@ impl<'a> Parser<'a> {
             params,
             where_clause: WhereClause {
                 has_where_token: false,
-                predicates: Vec::new(),
+                predicates: ThinVec::new(),
                 span: self.prev_token.span.shrink_to_hi(),
             },
             span,
@@ -288,7 +288,7 @@ impl<'a> Parser<'a> {
     ) -> PResult<'a, (WhereClause, Option<Vec<ast::FieldDef>>)> {
         let mut where_clause = WhereClause {
             has_where_token: false,
-            predicates: Vec::new(),
+            predicates: ThinVec::new(),
             span: self.prev_token.span.shrink_to_hi(),
         };
         let mut tuple_struct_body = None;
