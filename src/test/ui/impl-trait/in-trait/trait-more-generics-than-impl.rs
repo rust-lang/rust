@@ -10,7 +10,6 @@ trait Foo {
 impl Foo for S {
     fn bar() -> impl Sized {}
     //~^ ERROR method `bar` has 0 type parameters but its trait declaration has 1 type parameter
-    //~| ERROR method `bar` has 0 type parameters but its trait declaration has 1 type parameter
 }
 
 fn main() {

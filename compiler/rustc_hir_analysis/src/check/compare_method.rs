@@ -49,11 +49,11 @@ pub(crate) fn compare_impl_method<'tcx>(
         return;
     }
 
-    if let Err(_) = compare_number_of_generics(tcx, impl_m, trait_m, trait_item_span) {
+    if let Err(_) = compare_number_of_generics(tcx, impl_m, trait_m, trait_item_span, false) {
         return;
     }
 
-    if let Err(_) = compare_generic_param_kinds(tcx, impl_m, trait_m) {
+    if let Err(_) = compare_generic_param_kinds(tcx, impl_m, trait_m, false) {
         return;
     }
 
@@ -349,8 +349,8 @@ pub fn collect_trait_impl_trait_tys<'tcx>(
     let param_env = tcx.param_env(def_id);
 
     // First, check a few of the same thing as `compare_impl_method`, just so we don't ICE during substitutions later.
-    compare_number_of_generics(tcx, impl_m, trait_m, tcx.hir().span_if_local(impl_m.def_id))?;
-    compare_generic_param_kinds(tcx, impl_m, trait_m)?;
+    compare_number_of_generics(tcx, impl_m, trait_m, tcx.hir().span_if_local(impl_m.def_id), true)?;
+    compare_generic_param_kinds(tcx, impl_m, trait_m, true)?;
 
     let trait_to_impl_substs = impl_trait_ref.substs;
 
@@ -927,6 +927,7 @@ fn compare_number_of_generics<'tcx>(
     impl_: &ty::AssocItem,
     trait_: &ty::AssocItem,
     trait_span: Option<Span>,
+    delay: bool,
 ) -> Result<(), ErrorGuaranteed> {
     let trait_own_counts = tcx.generics_of(trait_.def_id).own_counts();
     let impl_own_counts = tcx.generics_of(impl_.def_id).own_counts();
@@ -1056,7 +1057,7 @@ fn compare_number_of_generics<'tcx>(
                 err.span_label(*span, "`impl Trait` introduces an implicit type parameter");
             }
 
-            let reported = err.emit();
+            let reported = err.emit_unless(delay);
             err_occurred = Some(reported);
         }
     }
@@ -1308,6 +1309,7 @@ fn compare_generic_param_kinds<'tcx>(
     tcx: TyCtxt<'tcx>,
     impl_item: &ty::AssocItem,
     trait_item: &ty::AssocItem,
+    delay: bool,
 ) -> Result<(), ErrorGuaranteed> {
     assert_eq!(impl_item.kind, trait_item.kind);
 
@@ -1365,7 +1367,7 @@ fn compare_generic_param_kinds<'tcx>(
             err.span_label(impl_header_span, "");
             err.span_label(param_impl_span, make_param_message("found", param_impl));
 
-            let reported = err.emit();
+            let reported = err.emit_unless(delay);
             return Err(reported);
         }
     }
@@ -1491,9 +1493,9 @@ pub(crate) fn compare_ty_impl<'tcx>(
     debug!("compare_impl_type(impl_trait_ref={:?})", impl_trait_ref);
 
     let _: Result<(), ErrorGuaranteed> = (|| {
-        compare_number_of_generics(tcx, impl_ty, trait_ty, trait_item_span)?;
+        compare_number_of_generics(tcx, impl_ty, trait_ty, trait_item_span, false)?;
 
-        compare_generic_param_kinds(tcx, impl_ty, trait_ty)?;
+        compare_generic_param_kinds(tcx, impl_ty, trait_ty, false)?;
 
         let sp = tcx.def_span(impl_ty.def_id);
         compare_type_predicate_entailment(tcx, impl_ty, sp, trait_ty, impl_trait_ref)?;
