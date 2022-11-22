@@ -1,8 +1,14 @@
-error: `dyn B` implements `Deref` with supertrait `A` as output
-  --> $DIR/migrate-lint-deny.rs:20:12
+error: `(dyn B + 'a)` implements `Deref` with supertrait `A` as output
+  --> $DIR/migrate-lint-deny.rs:11:1
    |
-LL |     take_a(b)
-   |            ^
+LL | / impl<'a> Deref for dyn 'a + B {
+LL | |
+LL | |
+LL | |
+...  |
+LL | |     }
+LL | | }
+   | |_^
    |
    = warning: this was previously accepted by the compiler but is being phased out; it will become a hard error in a future release!
    = note: for more information, see issue #89460 <https://github.com/rust-lang/rust/issues/89460>

@@ -6,11 +6,9 @@
 //!
 //! [rustc dev guide]:https://rustc-dev-guide.rust-lang.org/traits/resolution.html#candidate-assembly
 use hir::LangItem;
-use rustc_errors::DelayDm;
 use rustc_hir as hir;
 use rustc_infer::traits::ObligationCause;
 use rustc_infer::traits::{Obligation, SelectionError, TraitObligation};
-use rustc_lint_defs::builtin::DEREF_INTO_DYN_SUPERTRAIT;
 use rustc_middle::ty::print::with_no_trimmed_paths;
 use rustc_middle::ty::{self, Ty, TypeVisitable};
 use rustc_target::spec::abi::Abi;
@@ -811,16 +809,6 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
                             &obligation.cause,
                         ) {
                             if deref_trait_ref.def_id() == target_trait_did {
-                                self.tcx().struct_span_lint_hir(
-                                    DEREF_INTO_DYN_SUPERTRAIT,
-                                    obligation.cause.body_id,
-                                    obligation.cause.span,
-                                    DelayDm(|| format!(
-                                        "`{}` implements `Deref` with supertrait `{}` as output",
-                                        source, deref_trait_ref
-                                    )),
-                                    |lint| lint,
-                                );
                                 return;
                             }
                         }
