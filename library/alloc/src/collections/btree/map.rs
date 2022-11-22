@@ -283,7 +283,8 @@ impl<K: Clone, V: Clone, A: Allocator + Clone> Clone for BTreeMap<K, V, A> {
         if self.is_empty() {
             BTreeMap::new_in((*self.alloc).clone())
         } else {
-            clone_subtree(self.root.as_ref().unwrap().reborrow(), (*self.alloc).clone()) // unwrap succeeds because not empty
+            clone_subtree(self.root.as_ref().unwrap().reborrow(), (*self.alloc).clone())
+            // unwrap succeeds because not empty
         }
     }
 }

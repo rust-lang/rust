@@ -409,7 +409,8 @@ impl<'a> StringReader<'a> {
             rustc_lexer::LiteralKind::RawByteStr { n_hashes } => {
                 if let Some(n_hashes) = n_hashes {
                     let n = u32::from(n_hashes);
-                    (token::ByteStrRaw(n_hashes), Mode::RawByteStr, 3 + n, 1 + n) // br##" "##
+                    (token::ByteStrRaw(n_hashes), Mode::RawByteStr, 3 + n, 1 + n)
+                // br##" "##
                 } else {
                     self.report_raw_str_error(start, 2);
                 }

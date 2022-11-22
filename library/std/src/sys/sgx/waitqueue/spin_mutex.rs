@@ -56,7 +56,11 @@ impl<T> SpinMutex<T> {
 
 /// Lock the Mutex or return false.
 pub macro try_lock_or_false($e:expr) {
-    if let Some(v) = $e.try_lock() { v } else { return false }
+    if let Some(v) = $e.try_lock() {
+        v
+    } else {
+        return false;
+    }
 }
 
 impl<'a, T> Deref for SpinMutexGuard<'a, T> {

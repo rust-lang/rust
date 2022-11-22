@@ -1,5 +1,6 @@
 use super::*;
 use crate::boxed::Box;
+use core::cell::Cell;
 use std::iter::TrustedLen;
 use std::panic::{catch_unwind, AssertUnwindSafe};
 use std::sync::atomic::{AtomicU32, Ordering};
@@ -407,13 +408,33 @@ fn test_retain() {
 
 #[test]
 fn test_drain_filter() {
-    let mut a = BinaryHeap::from(vec![1, 2, 3, 4, 5, 6, 8, 9, 11, 13, 14, 15]);
+    let mut a = BinaryHeap::from(vec![1, 2, 3, 4, 5]);
     let mut evens = a.drain_filter(|x| *x % 2 == 0).collect::<Vec<_>>();
     evens.sort();
+    a.rebuild();
     let odds = a.into_sorted_vec();
+    assert_eq!(evens, vec![2, 4]);
+    assert_eq!(odds, vec![1, 3, 5]);
+}
 
-    assert_eq!(evens, vec![2, 4, 6, 8, 14]);
-    assert_eq!(odds, vec![1, 3, 5, 9, 11, 13, 15]);
+#[test]
+fn test_rebuild() {
+    let mut a = BinaryHeap::from(vec![Cell::new(0), Cell::new(1), Cell::new(2), Cell::new(3)]);
+
+    let sorted_values = |heap: &BinaryHeap<Cell<i32>>| {
+        heap.clone()
+            // this method assumes the heap is in a valid state.
+            .into_iter_sorted()
+            .map(|x| x.get())
+            .collect::<Vec<_>>()
+    };
+    // internal mutation invalidates the heap order and so the sort fails
+    a.peek().unwrap().set(0);
+    assert_eq!(sorted_values(&a), [0, 2, 1, 0]);
+
+    // the heap is rebuilt to a valid state and so the sort works
+    a.rebuild();
+    assert_eq!(sorted_values(&a), [2, 1, 0, 0]);
 }
 
 // old binaryheap failed this test

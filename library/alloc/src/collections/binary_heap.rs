@@ -398,6 +398,9 @@ impl<T: Ord> BinaryHeap<T> {
     /// Returns a mutable reference to the greatest item in the binary heap, or
     /// `None` if it is empty.
     ///
+    /// # Logic
+    /// This method assumes that [`BinaryHeap`]'s heap invariant is upheld.
+    ///
     /// Note: If the `PeekMut` value is leaked, the heap may be in an
     /// inconsistent state.
     ///
@@ -426,12 +429,18 @@ impl<T: Ord> BinaryHeap<T> {
     /// otherwise it's *O*(1).
     #[stable(feature = "binary_heap_peek_mut", since = "1.12.0")]
     pub fn peek_mut(&mut self) -> Option<PeekMut<'_, T>> {
-        if self.is_empty() { None } else { Some(PeekMut { heap: self, sift: false }) }
+        if self.is_empty() {
+            None
+        } else {
+            Some(PeekMut { heap: self, sift: false })
+        }
     }
 
     /// Removes the greatest item from the binary heap and returns it, or `None` if it
     /// is empty.
     ///
+    /// # Logic
+    /// This method assumes that [`BinaryHeap`]'s heap invariant is upheld.
     /// # Examples
     ///
     /// Basic usage:
@@ -462,6 +471,8 @@ impl<T: Ord> BinaryHeap<T> {
 
     /// Pushes an item onto the binary heap.
     ///
+    /// # Logic
+    /// This method assumes that [`BinaryHeap`]'s heap invariant is upheld.
     /// # Examples
     ///
     /// Basic usage:
@@ -504,6 +515,8 @@ impl<T: Ord> BinaryHeap<T> {
     /// Consumes the `BinaryHeap` and returns a vector in sorted
     /// (ascending) order.
     ///
+    /// # Logic
+    /// This method assumes that `BinaryHeap`'s heap invariant is upheld.
     /// # Examples
     ///
     /// Basic usage:
@@ -710,7 +723,42 @@ impl<T: Ord> BinaryHeap<T> {
         }
     }
 
-    fn rebuild(&mut self) {
+    /// Rebuilds the [`BinaryHeap`] into a valid state.
+    /// This conversion happens in-place, and has *O*(*n*) time complexity.
+    /// Commonly used after operations such as [`BinaryHeap::drain_filter`] that violate [`BinaryHeap`]'s heap invariant,
+    /// or methods that allow interior mutability such as [`Cell`][core::cell::Cell].
+    ///
+    /// # Examples
+    /// Mutates the heap interiorly using [`Cell`][core::cell::Cell] and restores it afterwards with `rebuild`.
+    ///
+    /// ```
+    /// #![feature(binary_heap_rebuild)]
+    /// #![feature(binary_heap_into_iter_sorted)]
+    /// use std::{
+    ///     collections::BinaryHeap,
+    ///     cell::Cell
+    /// };
+    ///
+    /// let mut a = BinaryHeap::from(vec![Cell::new(0), Cell::new(1), Cell::new(2), Cell::new(3)]);
+    ///     
+    /// let sorted_values = |heap: &BinaryHeap<Cell<i32>>| {
+    ///     heap.clone()
+    ///         // this method assumes the heap is in a valid state.
+    ///         .into_iter_sorted()
+    ///         .map(|x| x.get())
+    ///         .collect::<Vec<_>>()
+    /// };
+    ///
+    /// // internal mutation invalidates the heap order and so the sort fails
+    /// a.peek().unwrap().set(0);
+    /// assert_eq!(sorted_values(&a), [0, 2, 1, 0]);
+    ///
+    /// // the heap is rebuilt to a valid state and so the sort works
+    /// a.rebuild();
+    /// assert_eq!(sorted_values(&a), [2, 1, 0, 0]);
+    /// ```
+    #[unstable(feature = "binary_heap_rebuild", reason = "recently added", issue = "none")]
+    pub fn rebuild(&mut self) {
         let mut n = self.len() / 2;
         while n > 0 {
             n -= 1;
@@ -723,6 +771,8 @@ impl<T: Ord> BinaryHeap<T> {
 
     /// Moves all the elements of `other` into `self`, leaving `other` empty.
     ///
+    /// # Logic
+    /// This method assumes that [`BinaryHeap`]'s heap invariant is upheld.
     /// # Examples
     ///
     /// Basic usage:
@@ -762,6 +812,8 @@ impl<T: Ord> BinaryHeap<T> {
     /// * `.drain_sorted()` is *O*(*n* \* log(*n*)); much slower than `.drain()`.
     ///   You should use the latter for most cases.
     ///
+    /// # Logic
+    /// This method assumes that [`BinaryHeap`]’s heap invariant is upheld.
     /// # Examples
     ///
     /// Basic usage:
@@ -787,6 +839,8 @@ impl<T: Ord> BinaryHeap<T> {
     /// In other words, remove all elements `e` for which `f(&e)` returns
     /// `false`. The elements are visited in unsorted (and unspecified) order.
     ///
+    /// # Logic
+    /// This method assumes that [`BinaryHeap`]'s heap invariant is upheld.
     /// # Examples
     ///
     /// Basic usage:
@@ -846,6 +900,8 @@ impl<T> BinaryHeap<T> {
     /// Returns an iterator which retrieves elements in heap order.
     /// This method consumes the original heap.
     ///
+    /// # Logic
+    /// This method assumes that [`BinaryHeap`]’s heap invariant is upheld.
     /// # Examples
     ///
     /// Basic usage:
@@ -864,6 +920,8 @@ impl<T> BinaryHeap<T> {
 
     /// Returns the greatest item in the binary heap, or `None` if it is empty.
     ///
+    /// # Logic
+    /// This method assumes that [`BinaryHeap`]’s heap invariant is upheld.
     /// # Examples
     ///
     /// Basic usage:
@@ -1223,19 +1281,23 @@ impl<T> BinaryHeap<T> {
 
     /// Creates an iterator which uses a closure to determine if an element should be removed from the underlying vec.
     /// If the closure returns true, then the element is removed and yielded. If the closure returns false, the element will remain in the binary heap and will not be yielded by the iterator.
+    /// # Logic
+    /// This operation violates [`BinaryHeap`]'s heap invariant.
+    /// It is necessary to call [`BinaryHeap::rebuild`] afterwards if you plan to use methods that assume a heap invariant.
     /// # Examples
     /// Splitting the binary heap into evens and odds, reusing the original allocation:
     ///
     /// ```
     /// #![feature(binary_heap_drain_filter)]
+    /// #![feature(binary_heap_rebuild)]
     /// use std::collections::BinaryHeap;
-    /// let mut a = BinaryHeap::from(vec![1, 2, 3, 4, 5, 6, 8, 9, 11, 13, 14, 15]);
+    /// let mut a = BinaryHeap::from(vec![1, 2, 3, 4, 5]);
     /// let mut evens = a.drain_filter(|x| *x % 2 == 0).collect::<Vec<_>>();
     /// evens.sort();
+    /// a.rebuild(); //restores heap
     /// let odds = a.into_sorted_vec();
-    ///
-    /// assert_eq!(evens, vec![2, 4, 6, 8, 14]);
-    /// assert_eq!(odds, vec![1, 3, 5, 9, 11, 13, 15]);
+    /// assert_eq!(evens, vec![2, 4]);
+    /// assert_eq!(odds, vec![1, 3, 5]);
     /// ```
     #[unstable(feature = "binary_heap_drain_filter", reason = "recently added", issue = "42849")]
     pub fn drain_filter<F>(&mut self, filter: F) -> DrainFilter<'_, T, F>
