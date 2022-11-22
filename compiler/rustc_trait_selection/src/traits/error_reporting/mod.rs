@@ -357,7 +357,8 @@ impl<'tcx> InferCtxtExt<'tcx> for InferCtxt<'tcx> {
                 ocx.register_obligation(obligation);
                 if ocx.select_all_or_error().is_empty() {
                     return Ok((
-                        ty::ClosureKind::from_def_id(self.tcx, trait_def_id)
+                        self.tcx
+                            .fn_trait_kind_from_def_id(trait_def_id)
                             .expect("expected to map DefId to ClosureKind"),
                         ty.rebind(self.resolve_vars_if_possible(var)),
                     ));
@@ -686,7 +687,7 @@ impl<'tcx> TypeErrCtxtExt<'tcx> for TypeErrCtxt<'_, 'tcx> {
                                 }
                                 ObligationCauseCode::BindingObligation(def_id, _)
                                 | ObligationCauseCode::ItemObligation(def_id)
-                                    if ty::ClosureKind::from_def_id(tcx, *def_id).is_some() =>
+                                    if tcx.fn_trait_kind_from_def_id(*def_id).is_some() =>
                                 {
                                     err.code(rustc_errors::error_code!(E0059));
                                     err.set_primary_message(format!(
@@ -847,7 +848,7 @@ impl<'tcx> TypeErrCtxtExt<'tcx> for TypeErrCtxt<'_, 'tcx> {
                         }
 
                         let is_fn_trait =
-                            ty::ClosureKind::from_def_id(tcx, trait_ref.def_id()).is_some();
+                            tcx.fn_trait_kind_from_def_id(trait_ref.def_id()).is_some();
                         let is_target_feature_fn = if let ty::FnDef(def_id, _) =
                             *trait_ref.skip_binder().self_ty().kind()
                         {
@@ -877,7 +878,7 @@ impl<'tcx> TypeErrCtxtExt<'tcx> for TypeErrCtxt<'_, 'tcx> {
                             // Note if the `FnMut` or `FnOnce` is less general than the trait we're trying
                             // to implement.
                             let selected_kind =
-                                ty::ClosureKind::from_def_id(self.tcx, trait_ref.def_id())
+                                self.tcx.fn_trait_kind_from_def_id(trait_ref.def_id())
                                     .expect("expected to map DefId to ClosureKind");
                             if !implemented_kind.extends(selected_kind) {
                                 err.note(
