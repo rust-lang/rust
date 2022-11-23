@@ -20,24 +20,16 @@ pub struct Zip<A, B> {
     len: usize,
     a_len: usize,
 }
-impl<A: Iterator, B: Iterator> Zip<A, B> {
-    pub(in crate::iter) const fn new(a: A, b: B) -> Zip<A, B>
-    where
-        A: ~const Iterator,
-        B: ~const Iterator,
-        A::Item: ~const Destruct,
-        B::Item: ~const Destruct,
-    {
-        ZipImpl::new(a, b)
+impl<A: ~const Iterator, B: ~const Iterator> Zip<A, B>
+where
+    A::Item: ~const Destruct,
+    B::Item: ~const Destruct,
+{
+    pub(in crate::iter) const fn new(a: A, b: B) -> Zip<A, B> {
+        NewZip::new(a, b)
     }
 
-    const fn super_nth(&mut self, mut n: usize) -> Option<(A::Item, B::Item)>
-    where
-        A: ~const Iterator,
-        B: ~const Iterator,
-        A::Item: ~const Destruct,
-        B::Item: ~const Destruct,
-    {
+    fn super_nth(&mut self, mut n: usize) -> Option<(A::Item, B::Item)> {
         while let Some(x) = Iterator::next(self) {
             if n == 0 {
                 return Some(x);
@@ -83,17 +75,14 @@ where
     A: IntoIterator,
     B: IntoIterator,
 {
-    ZipImpl::new(a.into_iter(), b.into_iter())
+    NewZip::new(a.into_iter(), b.into_iter())
 }
 
 #[stable(feature = "rust1", since = "1.0.0")]
-#[rustc_const_unstable(feature = "const_iter", issue = "92476")]
-impl<A, B> const Iterator for Zip<A, B>
+impl<A, B> Iterator for Zip<A, B>
 where
-    A: ~const Iterator,
-    B: ~const Iterator,
-    A::Item: ~const Destruct,
-    B::Item: ~const Destruct,
+    A: Iterator,
+    B: Iterator,
 {
     type Item = (A::Item, B::Item);
 
@@ -137,10 +126,8 @@ where
 
 // Zip specialization trait
 #[doc(hidden)]
-#[const_trait]
 trait ZipImpl<A, B> {
     type Item;
-    fn new(a: A, b: B) -> Self;
     fn next(&mut self) -> Option<Self::Item>;
     fn size_hint(&self) -> (usize, Option<usize>);
     fn nth(&mut self, n: usize) -> Option<Self::Item>;
@@ -154,20 +141,45 @@ trait ZipImpl<A, B> {
         Self: Iterator + TrustedRandomAccessNoCoerce;
 }
 
+// Zip creation specialization trait
+#[const_trait]
+#[doc(hidden)]
+trait NewZip<A, B> {
+    fn new(a: A, b: B) -> Self;
+}
+
+impl<A, B> const NewZip<A, B> for Zip<A, B>
+where
+    A: ~const Iterator,
+    B: ~const Iterator,
+{
+    default fn new(a: A, b: B) -> Self {
+        Zip {
+            a,
+            b,
+            index: 0, // unused
+            len: 0,   // unused
+            a_len: 0, // unused
+        }
+    }
+}
+
+impl<A, B> const NewZip<A, B> for Zip<A, B>
+where
+    A: ~const TrustedRandomAccess + ~const Iterator,
+    B: ~const TrustedRandomAccess + ~const Iterator,
+{
+    fn new(a: A, b: B) -> Self {
+        let a_len = a.size();
+        let len = cmp::min(a_len, b.size());
+        Zip { a, b, index: 0, len, a_len }
+    }
+}
+
 // Work around limitations of specialization, requiring `default` impls to be repeated
 // in intermediary impls.
 macro_rules! zip_impl_general_defaults {
     () => {
-        default fn new(a: A, b: B) -> Self {
-            Zip {
-                a,
-                b,
-                index: 0, // unused
-                len: 0,   // unused
-                a_len: 0, // unused
-            }
-        }
-
         #[inline]
         #[cfg_attr(not(bootstrap), rustc_allow_const_fn_unstable(const_try, const_for))]
         default fn next(&mut self) -> Option<(A::Item, B::Item)> {
@@ -223,12 +235,10 @@ macro_rules! zip_impl_general_defaults {
 // General Zip impl
 
 #[doc(hidden)]
-impl<A, B> const ZipImpl<A, B> for Zip<A, B>
+impl<A, B> ZipImpl<A, B> for Zip<A, B>
 where
-    A: ~const Iterator,
-    B: ~const Iterator,
-    A::Item: ~const Destruct,
-    B::Item: ~const Destruct,
+    A: Iterator,
+    B: Iterator,
 {
     type Item = (A::Item, B::Item);
 
@@ -260,12 +270,10 @@ where
 }
 
 #[doc(hidden)]
-impl<A, B> const ZipImpl<A, B> for Zip<A, B>
+impl<A, B> ZipImpl<A, B> for Zip<A, B>
 where
-    A: ~const TrustedRandomAccessNoCoerce + ~const Iterator,
-    B: ~const TrustedRandomAccessNoCoerce + ~const Iterator,
-    A::Item: ~const Destruct,
-    B::Item: ~const Destruct,
+    A: TrustedRandomAccessNoCoerce + Iterator,
+    B: TrustedRandomAccessNoCoerce + Iterator,
 {
     zip_impl_general_defaults! {}
 
@@ -285,19 +293,11 @@ where
 }
 
 #[doc(hidden)]
-impl<A, B> const ZipImpl<A, B> for Zip<A, B>
+impl<A, B> ZipImpl<A, B> for Zip<A, B>
 where
-    A: ~const TrustedRandomAccess + ~const Iterator,
-    B: ~const TrustedRandomAccess + ~const Iterator,
-    A::Item: ~const Destruct,
-    B::Item: ~const Destruct,
+    A: TrustedRandomAccess + Iterator,
+    B: TrustedRandomAccess + Iterator,
 {
-    fn new(a: A, b: B) -> Self {
-        let a_len = a.size();
-        let len = cmp::min(a_len, b.size());
-        Zip { a, b, index: 0, len, a_len }
-    }
-
     #[inline]
     fn next(&mut self) -> Option<(A::Item, B::Item)> {
         if self.index < self.len {

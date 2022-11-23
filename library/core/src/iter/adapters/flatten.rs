@@ -14,12 +14,12 @@ pub struct FlatMap<I, U: IntoIterator, F> {
     inner: FlattenCompat<Map<I, F>, <U as IntoIterator>::IntoIter>,
 }
 
-impl<I, U: IntoIterator, F> FlatMap<I, U, F> {
-    pub(in crate::iter) const fn new(iter: I, f: F) -> FlatMap<I, U, F>
-    where
-        I: ~const Iterator + ~const Destruct,
-        F: ~const FnMut(I::Item) -> U + ~const Destruct,
-    {
+impl<I, U: IntoIterator, F> FlatMap<I, U, F>
+where
+    I: ~const Iterator + ~const Destruct,
+    F: ~const FnMut(I::Item) -> U + ~const Destruct,
+{
+    pub(in crate::iter) const fn new(iter: I, f: F) -> FlatMap<I, U, F> {
         FlatMap { inner: FlattenCompat::new(iter.map(f)) }
     }
 }

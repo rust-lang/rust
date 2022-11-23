@@ -15,11 +15,8 @@ pub struct Cycle<I> {
     iter: I,
 }
 
-impl<I: Clone> Cycle<I> {
-    pub(in crate::iter) const fn new(iter: I) -> Cycle<I>
-    where
-        I: ~const Clone,
-    {
+impl<I: ~const Clone> Cycle<I> {
+    pub(in crate::iter) const fn new(iter: I) -> Cycle<I> {
         Cycle { orig: iter.clone(), iter }
     }
 }
