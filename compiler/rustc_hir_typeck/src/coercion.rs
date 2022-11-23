@@ -46,7 +46,7 @@ use rustc_hir::Expr;
 use rustc_hir_analysis::astconv::AstConv;
 use rustc_infer::infer::type_variable::{TypeVariableOrigin, TypeVariableOriginKind};
 use rustc_infer::infer::{Coercion, InferOk, InferResult};
-use rustc_infer::traits::{Obligation, TraitEngine, TraitEngineExt};
+use rustc_infer::traits::Obligation;
 use rustc_middle::lint::in_external_macro;
 use rustc_middle::ty::adjustment::{
     Adjust, Adjustment, AllowTwoPhase, AutoBorrow, AutoBorrowMutability, PointerCast,
@@ -55,14 +55,14 @@ use rustc_middle::ty::error::TypeError;
 use rustc_middle::ty::relate::RelateResult;
 use rustc_middle::ty::subst::SubstsRef;
 use rustc_middle::ty::visit::TypeVisitable;
-use rustc_middle::ty::{self, ToPredicate, Ty, TypeAndMut};
+use rustc_middle::ty::{self, Ty, TypeAndMut};
 use rustc_session::parse::feature_err;
 use rustc_span::symbol::sym;
 use rustc_span::{self, BytePos, DesugaringKind, Span};
 use rustc_target::spec::abi::Abi;
 use rustc_trait_selection::infer::InferCtxtExt as _;
 use rustc_trait_selection::traits::error_reporting::TypeErrCtxtExt as _;
-use rustc_trait_selection::traits::{self, ObligationCause, ObligationCauseCode};
+use rustc_trait_selection::traits::{self, ObligationCause, ObligationCauseCode, ObligationCtxt};
 
 use smallvec::{smallvec, SmallVec};
 use std::ops::Deref;
@@ -277,13 +277,13 @@ impl<'f, 'tcx> Coerce<'f, 'tcx> {
             for &source_ty in &[a, b] {
                 if source_ty != target_ty {
                     obligations.push(Obligation::new(
+                        self.tcx(),
                         self.cause.clone(),
                         self.param_env,
                         ty::Binder::dummy(ty::PredicateKind::Coerce(ty::CoercePredicate {
                             a: source_ty,
                             b: target_ty,
-                        }))
-                        .to_predicate(self.tcx()),
+                        })),
                     ));
                 }
             }
@@ -629,8 +629,7 @@ impl<'f, 'tcx> Coerce<'f, 'tcx> {
             cause,
             coerce_unsized_did,
             0,
-            coerce_source,
-            &[coerce_target.into()]
+            [coerce_source, coerce_target]
         )];
 
         let mut has_unsized_tuple_coercion = false;
@@ -668,7 +667,7 @@ impl<'f, 'tcx> Coerce<'f, 'tcx> {
                     continue;
                 }
             };
-            match selcx.select(&obligation.with(trait_pred)) {
+            match selcx.select(&obligation.with(selcx.tcx(), trait_pred)) {
                 // Uncertain or unimplemented.
                 Ok(None) => {
                     if trait_pred.def_id() == unsize_did {
@@ -747,7 +746,7 @@ impl<'f, 'tcx> Coerce<'f, 'tcx> {
         &self,
         a: Ty<'tcx>,
         b: Ty<'tcx>,
-        predicates: &'tcx ty::List<ty::Binder<'tcx, ty::ExistentialPredicate<'tcx>>>,
+        predicates: &'tcx ty::List<ty::PolyExistentialPredicate<'tcx>>,
         b_region: ty::Region<'tcx>,
     ) -> CoerceResult<'tcx> {
         if !self.tcx.features().dyn_star {
@@ -774,7 +773,7 @@ impl<'f, 'tcx> Coerce<'f, 'tcx> {
 
         // Check the obligations of the cast -- for example, when casting
         // `usize` to `dyn* Clone + 'static`:
-        let obligations = predicates
+        let mut obligations: Vec<_> = predicates
             .iter()
             .map(|predicate| {
                 // For each existential predicate (e.g., `?Self: Clone`) substitute
@@ -782,17 +781,34 @@ impl<'f, 'tcx> Coerce<'f, 'tcx> {
                 // and then require that the resulting predicate (e.g., `usize: Clone`)
                 // holds (it does).
                 let predicate = predicate.with_self_ty(self.tcx, a);
-                Obligation::new(self.cause.clone(), self.param_env, predicate)
+                Obligation::new(self.tcx, self.cause.clone(), self.param_env, predicate)
             })
-            // Enforce the region bound (e.g., `usize: 'static`, in our example).
-            .chain([Obligation::new(
+            .chain([
+                // Enforce the region bound (e.g., `usize: 'static`, in our example).
+                Obligation::new(
+                    self.tcx,
+                    self.cause.clone(),
+                    self.param_env,
+                    ty::Binder::dummy(ty::PredicateKind::TypeOutlives(ty::OutlivesPredicate(
+                        a, b_region,
+                    ))),
+                ),
+            ])
+            .collect();
+
+        // Enforce that the type is `usize`/pointer-sized. For now, only those
+        // can be coerced to `dyn*`, except for `dyn* -> dyn*` upcasts.
+        if !a.is_dyn_star() {
+            obligations.push(Obligation::new(
+                self.tcx,
                 self.cause.clone(),
                 self.param_env,
-                self.tcx.mk_predicate(ty::Binder::dummy(ty::PredicateKind::TypeOutlives(
-                    ty::OutlivesPredicate(a, b_region),
-                ))),
-            )])
-            .collect();
+                ty::Binder::dummy(
+                    self.tcx.at(self.cause.span).mk_trait_ref(hir::LangItem::PointerSized, [a]),
+                )
+                .to_poly_trait_predicate(),
+            ));
+        }
 
         Ok(InferOk {
             value: (vec![Adjustment { kind: Adjust::DynStar, target: b }], b),
@@ -1038,9 +1054,9 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             let Ok(ok) = coerce.coerce(source, target) else {
                 return false;
             };
-            let mut fcx = traits::FulfillmentContext::new_in_snapshot();
-            fcx.register_predicate_obligations(self, ok.obligations);
-            fcx.select_where_possible(&self).is_empty()
+            let ocx = ObligationCtxt::new_in_snapshot(self);
+            ocx.register_obligations(ok.obligations);
+            ocx.select_where_possible().is_empty()
         })
     }
 
@@ -1067,8 +1083,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             self.infcx
                 .type_implements_trait(
                     self.tcx.lang_items().deref_mut_trait()?,
-                    expr_ty,
-                    ty::List::empty(),
+                    [expr_ty],
                     self.param_env,
                 )
                 .may_apply()
@@ -1542,7 +1557,9 @@ impl<'tcx, 'exprs, E: AsCoercionSite> CoerceMany<'tcx, 'exprs, E> {
                 // Mark that we've failed to coerce the types here to suppress
                 // any superfluous errors we might encounter while trying to
                 // emit or provide suggestions on how to fix the initial error.
-                fcx.set_tainted_by_errors();
+                fcx.set_tainted_by_errors(
+                    fcx.tcx.sess.delay_span_bug(cause.span, "coercion error but no error emitted"),
+                );
                 let (expected, found) = if label_expression_as_expected {
                     // In the case where this is a "forced unit", like
                     // `break`, we want to call the `()` "expected"
@@ -1639,9 +1656,9 @@ impl<'tcx, 'exprs, E: AsCoercionSite> CoerceMany<'tcx, 'exprs, E> {
                 if visitor.ret_exprs.len() > 0 && let Some(expr) = expression {
                     self.note_unreachable_loop_return(&mut err, &expr, &visitor.ret_exprs);
                 }
-                err.emit_unless(unsized_return);
+                let reported = err.emit_unless(unsized_return);
 
-                self.final_ty = Some(fcx.tcx.ty_error());
+                self.final_ty = Some(fcx.tcx.ty_error_with_guaranteed(reported));
             }
         }
     }

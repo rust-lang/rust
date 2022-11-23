@@ -7,6 +7,8 @@
 //! but we still need to do bounds checking and adjust the layout. To not duplicate that with MPlaceTy, we actually
 //! implement the logic on OpTy, and MPlaceTy calls that.
 
+use either::{Left, Right};
+
 use rustc_middle::mir;
 use rustc_middle::ty;
 use rustc_middle::ty::layout::LayoutOf;
@@ -84,13 +86,13 @@ where
         base: &OpTy<'tcx, M::Provenance>,
         field: usize,
     ) -> InterpResult<'tcx, OpTy<'tcx, M::Provenance>> {
-        let base = match base.try_as_mplace() {
-            Ok(ref mplace) => {
+        let base = match base.as_mplace_or_imm() {
+            Left(ref mplace) => {
                 // We can reuse the mplace field computation logic for indirect operands.
                 let field = self.mplace_field(mplace, field)?;
                 return Ok(field.into());
             }
-            Err(value) => value,
+            Right(value) => value,
         };
 
         let field_layout = base.layout.field(self, field);

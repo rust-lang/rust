@@ -91,8 +91,8 @@ pub fn determine_parameters_to_be_inferred<'a, 'tcx>(
 
                 let adt = tcx.adt_def(def_id);
                 for variant in adt.variants() {
-                    if let Some(ctor) = variant.ctor_def_id {
-                        terms_cx.add_inferreds_for_item(ctor.expect_local());
+                    if let Some(ctor_def_id) = variant.ctor_def_id() {
+                        terms_cx.add_inferreds_for_item(ctor_def_id.expect_local());
                     }
                 }
             }

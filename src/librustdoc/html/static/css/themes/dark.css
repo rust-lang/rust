@@ -2,6 +2,8 @@
 	--main-background-color: #353535;
 	--main-color: #ddd;
 	--settings-input-color: #2196f3;
+	--settings-button-color: #000;
+	--settings-button-border-focus: #ffb900;
 	--sidebar-background-color: #505050;
 	--sidebar-background-color-hover: #676767;
 	--code-block-background-color: #2A2A2A;
@@ -34,9 +36,11 @@
 	--sidebar-current-link-background-color: #444;
 	--search-result-link-focus-background-color: #616161;
 	--search-result-border-color: #aaa3;
+	--search-color: #111;
+	--search-results-alias-color: #fff;
+	--search-results-grey-color: #ccc;
 	--stab-background-color: #314559;
 	--stab-code-color: #e6e1cf;
-	--search-color: #111;
 	--code-highlight-kw-color: #ab8ac1;
 	--code-highlight-kw-2-color: #769acb;
 	--code-highlight-lifetime-color: #d97f26;
@@ -58,20 +62,23 @@
 	--test-arrow-background-color: rgba(78, 139, 202, 0.2);
 	--test-arrow-hover-color: #dedede;
 	--test-arrow-hover-background-color: #4e8bca;
+	--target-background-color: #494a3d;
+	--target-border-color: #bb7410;
+	--tooltip-background-color: #000;
+	--tooltip-color: #fff;
+	--kbd-color: #000;
+	--kbd-background: #fafbfc;
+	--kbd-box-shadow-color: #c6cbd1;
 	--rust-logo-filter: drop-shadow(1px 0 0px #fff)
 		drop-shadow(0 1px 0 #fff)
 		drop-shadow(-1px 0 0 #fff)
 		drop-shadow(0 -1px 0 #fff);
-}
-
-.slider {
-	background-color: #ccc;
-}
-.slider:before {
-	background-color: white;
-}
-input:focus + .slider {
-	box-shadow: 0 0 0 2px #0a84ff, 0 0 0 6px rgba(10, 132, 255, 0.3);
+	/* match border-color; uses https://codepen.io/sosuke/pen/Pjoqqp */
+	--crate-search-div-filter: invert(94%) sepia(0%) saturate(721%) hue-rotate(255deg)
+		brightness(90%) contrast(90%);
+	--crate-search-div-hover-filter: invert(69%) sepia(60%) saturate(6613%) hue-rotate(184deg)
+		brightness(100%) contrast(91%);
+	--crate-search-hover-border: #2196f3;
 }
 
 .content .item-info::before { color: #ccc; }
@@ -82,40 +89,6 @@ body.source .example-wrap pre.rust a {
 
 details.rustdoc-toggle > summary::before {
 	filter: invert(100%);
-}
-
-#crate-search-div::after {
-	/* match border-color; uses https://codepen.io/sosuke/pen/Pjoqqp */
-	filter: invert(94%) sepia(0%) saturate(721%) hue-rotate(255deg) brightness(90%) contrast(90%);
-}
-#crate-search:hover, #crate-search:focus {
-	border-color: #2196f3 !important;
-}
-#crate-search-div:hover::after, #crate-search-div:focus-within::after {
-	filter: invert(69%) sepia(60%) saturate(6613%) hue-rotate(184deg) brightness(100%) contrast(91%);
-}
-
-:target {
-	background-color: #494a3d;
-	border-right: 3px solid #bb7410;
-}
-
-.search-failed a {
-	color: #0089ff;
-}
-
-.tooltip::after {
-	background-color: #000;
-	color: #fff;
-	border-color: #000;
-}
-
-.tooltip::before {
-	border-color: transparent black transparent transparent;
-}
-
-.notable-traits-tooltiptext {
-	background-color: #111;
 }
 
 #titles > button:not(.selected) {
@@ -130,28 +103,6 @@ details.rustdoc-toggle > summary::before {
 
 #titles > button > div.count {
 	color: #888;
-}
-
-kbd {
-	color: #000;
-	background-color: #fafbfc;
-	box-shadow: inset 0 -1px 0 #c6cbd1;
-}
-
-#settings-menu > a, #help-button > a {
-	color: #000;
-}
-
-#settings-menu > a:hover, #settings-menu > a:focus,
-#help-button > a:hover, #help-button > a:focus {
-	border-color: #ffb900;
-}
-
-.search-results .result-name span.alias {
-	color: #fff;
-}
-.search-results .result-name span.grey {
-	color: #ccc;
 }
 
 #source-sidebar div.files > a:hover, details.dir-entry summary:hover,

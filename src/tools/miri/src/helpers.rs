@@ -117,7 +117,8 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriInterpCxExt<'mir, 'tcx> {
         let this = self.eval_context_ref();
         let instance = this.resolve_path(path);
         let cid = GlobalId { instance, promoted: None };
-        let const_val = this.eval_to_allocation(cid)?;
+        // We don't give a span -- this isn't actually used directly by the program anyway.
+        let const_val = this.eval_global(cid, None)?;
         this.read_scalar(&const_val.into())
     }
 
@@ -667,7 +668,7 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriInterpCxExt<'mir, 'tcx> {
         layout: TyAndLayout<'tcx>,
     ) -> InterpResult<'tcx, MPlaceTy<'tcx, Provenance>> {
         let this = self.eval_context_ref();
-        let op_place = this.deref_operand(op)?;
+        let op_place = this.deref_operand(op)?; // FIXME: we still deref with the original type!
         let offset = Size::from_bytes(offset);
 
         // Ensure that the access is within bounds.
@@ -687,17 +688,6 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriInterpCxExt<'mir, 'tcx> {
         this.read_scalar(&value_place.into())
     }
 
-    fn write_immediate_at_offset(
-        &mut self,
-        op: &OpTy<'tcx, Provenance>,
-        offset: u64,
-        value: &ImmTy<'tcx, Provenance>,
-    ) -> InterpResult<'tcx, ()> {
-        let this = self.eval_context_mut();
-        let value_place = this.deref_operand_and_offset(op, offset, value.layout)?;
-        this.write_immediate(**value, &value_place.into())
-    }
-
     fn write_scalar_at_offset(
         &mut self,
         op: &OpTy<'tcx, Provenance>,
@@ -705,7 +695,9 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriInterpCxExt<'mir, 'tcx> {
         value: impl Into<Scalar<Provenance>>,
         layout: TyAndLayout<'tcx>,
     ) -> InterpResult<'tcx, ()> {
-        self.write_immediate_at_offset(op, offset, &ImmTy::from_scalar(value.into(), layout))
+        let this = self.eval_context_mut();
+        let value_place = this.deref_operand_and_offset(op, offset, layout)?;
+        this.write_scalar(value, &value_place.into())
     }
 
     /// Parse a `timespec` struct and return it as a `std::time::Duration`. It returns `None`

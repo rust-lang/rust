@@ -1,6 +1,7 @@
 error: error reading Clippy's configuration file `$DIR/clippy.toml`: unknown field `foobar`, expected one of
            allow-dbg-in-tests
            allow-expect-in-tests
+           allow-print-in-tests
            allow-unwrap-in-tests
            allowed-scripts
            arithmetic-side-effects-allowed
@@ -20,8 +21,10 @@ error: error reading Clippy's configuration file `$DIR/clippy.toml`: unknown fie
            enforced-import-renames
            enum-variant-name-threshold
            enum-variant-size-threshold
+           ignore-interior-mutability
            large-error-threshold
            literal-representation-threshold
+           matches-for-let-else
            max-fn-params-bools
            max-include-file-size
            max-struct-bools

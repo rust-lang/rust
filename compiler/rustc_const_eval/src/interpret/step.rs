@@ -2,6 +2,8 @@
 //!
 //! The main entry point is the `step` method.
 
+use either::Either;
+
 use rustc_middle::mir;
 use rustc_middle::mir::interpret::{InterpResult, Scalar};
 use rustc_middle::ty::layout::LayoutOf;
@@ -46,7 +48,7 @@ impl<'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
             return Ok(false);
         }
 
-        let Ok(loc) = self.frame().loc else {
+        let Either::Left(loc) = self.frame().loc else {
             // We are unwinding and this fn has no cleanup code.
             // Just go on unwinding.
             trace!("unwinding: skipping frame");
@@ -61,7 +63,7 @@ impl<'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
             // Make sure we are not updating `statement_index` of the wrong frame.
             assert_eq!(old_frames, self.frame_idx());
             // Advance the program counter.
-            self.frame_mut().loc.as_mut().unwrap().statement_index += 1;
+            self.frame_mut().loc.as_mut().left().unwrap().statement_index += 1;
             return Ok(true);
         }
 
@@ -209,7 +211,7 @@ impl<'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
 
             Repeat(ref operand, _) => {
                 let src = self.eval_operand(operand, None)?;
-                assert!(!src.layout.is_unsized());
+                assert!(src.layout.is_sized());
                 let dest = self.force_allocation(&dest)?;
                 let length = dest.len(self)?;
 
@@ -305,7 +307,7 @@ impl<'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
 
         self.eval_terminator(terminator)?;
         if !self.stack().is_empty() {
-            if let Ok(loc) = self.frame().loc {
+            if let Either::Left(loc) = self.frame().loc {
                 info!("// executing {:?}", loc.block);
             }
         }

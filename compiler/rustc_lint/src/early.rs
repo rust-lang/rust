@@ -159,8 +159,8 @@ impl<'a, T: EarlyLintPass> ast_visit::Visitor<'a> for EarlyContextAndPass<'a, T>
     }
 
     fn visit_variant_data(&mut self, s: &'a ast::VariantData) {
-        if let Some(ctor_hir_id) = s.ctor_id() {
-            self.check_id(ctor_hir_id);
+        if let Some(ctor_node_id) = s.ctor_node_id() {
+            self.check_id(ctor_node_id);
         }
         ast_visit::walk_struct_def(self, s);
     }
@@ -212,7 +212,10 @@ impl<'a, T: EarlyLintPass> ast_visit::Visitor<'a> for EarlyContextAndPass<'a, T>
         // Explicitly check for lints associated with 'closure_id', since
         // it does not have a corresponding AST node
         match e.kind {
-            ast::ExprKind::Closure(_, _, ast::Async::Yes { closure_id, .. }, ..)
+            ast::ExprKind::Closure(box ast::Closure {
+                asyncness: ast::Async::Yes { closure_id, .. },
+                ..
+            })
             | ast::ExprKind::Async(_, closure_id, ..) => self.check_id(closure_id),
             _ => {}
         }

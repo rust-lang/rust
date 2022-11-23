@@ -400,7 +400,7 @@ define_tables! {
     assoc_container: Table<DefIndex, ty::AssocItemContainer>,
     // Slot is full when macro is macro_rules.
     macro_rules: Table<DefIndex, ()>,
-    macro_definition: Table<DefIndex, LazyValue<ast::MacArgs>>,
+    macro_definition: Table<DefIndex, LazyValue<ast::DelimArgs>>,
     proc_macro: Table<DefIndex, MacroKind>,
     module_reexports: Table<DefIndex, LazyArray<ModChild>>,
     deduced_param_attrs: Table<DefIndex, LazyArray<DeducedParamAttrs>>,
@@ -410,10 +410,9 @@ define_tables! {
 
 #[derive(TyEncodable, TyDecodable)]
 struct VariantData {
-    ctor_kind: CtorKind,
     discr: ty::VariantDiscr,
     /// If this is unit or tuple-variant/struct, then this is the index of the ctor id.
-    ctor: Option<DefIndex>,
+    ctor: Option<(CtorKind, DefIndex)>,
     is_non_exhaustive: bool,
 }
 

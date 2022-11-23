@@ -2,6 +2,7 @@ use crate::FnCtxt;
 use rustc_ast::util::parser::PREC_POSTFIX;
 use rustc_errors::{Applicability, Diagnostic, DiagnosticBuilder, ErrorGuaranteed};
 use rustc_hir as hir;
+use rustc_hir::def::CtorKind;
 use rustc_hir::lang_items::LangItem;
 use rustc_hir::{is_range_literal, Node};
 use rustc_infer::infer::InferOk;
@@ -30,6 +31,10 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         expected_ty_expr: Option<&'tcx hir::Expr<'tcx>>,
         error: Option<TypeError<'tcx>>,
     ) {
+        if expr_ty == expected {
+            return;
+        }
+
         self.annotate_expected_due_to_let_ty(err, expr, error);
 
         // Use `||` to give these suggestions a precedence
@@ -42,7 +47,9 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             || self.suggest_boxing_when_appropriate(err, expr, expected, expr_ty)
             || self.suggest_block_to_brackets_peeling_refs(err, expr, expr_ty, expected)
             || self.suggest_copied_or_cloned(err, expr, expr_ty, expected)
-            || self.suggest_into(err, expr, expr_ty, expected);
+            || self.suggest_into(err, expr, expr_ty, expected)
+            || self.suggest_option_to_bool(err, expr, expr_ty, expected)
+            || self.suggest_floating_point_literal(err, expr, expected);
 
         self.note_type_is_not_clone(err, expected, expr_ty, expr);
         self.note_need_for_fn_pointer(err, expected, expr_ty);
@@ -148,7 +155,10 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             Err(e) => e,
         };
 
-        self.set_tainted_by_errors();
+        self.set_tainted_by_errors(self.tcx.sess.delay_span_bug(
+            expr.span,
+            "`TypeError` when attempting coercion but no error emitted",
+        ));
         let expr = expr.peel_drop_temps();
         let cause = self.misc(expr.span);
         let expr_ty = self.resolve_vars_with_obligations(checked_ty);
@@ -395,27 +405,27 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                         if let Some(path) = variant_path.strip_prefix("std::prelude::")
                             && let Some((_, path)) = path.split_once("::")
                         {
-                            return Some((path.to_string(), variant.ctor_kind, sole_field.name, note_about_variant_field_privacy));
+                            return Some((path.to_string(), variant.ctor_kind(), sole_field.name, note_about_variant_field_privacy));
                         }
-                        Some((variant_path, variant.ctor_kind, sole_field.name, note_about_variant_field_privacy))
+                        Some((variant_path, variant.ctor_kind(), sole_field.name, note_about_variant_field_privacy))
                     } else {
                         None
                     }
                 })
                 .collect();
 
-            let suggestions_for = |variant: &_, ctor, field_name| {
+            let suggestions_for = |variant: &_, ctor_kind, field_name| {
                 let prefix = match self.maybe_get_struct_pattern_shorthand_field(expr) {
                     Some(ident) => format!("{ident}: "),
                     None => String::new(),
                 };
 
-                let (open, close) = match ctor {
-                    hir::def::CtorKind::Fn => ("(".to_owned(), ")"),
-                    hir::def::CtorKind::Fictive => (format!(" {{ {field_name}: "), " }"),
+                let (open, close) = match ctor_kind {
+                    Some(CtorKind::Fn) => ("(".to_owned(), ")"),
+                    None => (format!(" {{ {field_name}: "), " }"),
 
                     // unit variants don't have fields
-                    hir::def::CtorKind::Const => unreachable!(),
+                    Some(CtorKind::Const) => unreachable!(),
                 };
 
                 // Suggest constructor as deep into the block tree as possible.

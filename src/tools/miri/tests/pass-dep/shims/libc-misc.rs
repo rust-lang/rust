@@ -181,17 +181,25 @@ fn test_thread_local_errno() {
 }
 
 /// Tests whether clock support exists at all
-#[cfg(target_os = "linux")]
 fn test_clocks() {
     let mut tp = std::mem::MaybeUninit::<libc::timespec>::uninit();
     let is_error = unsafe { libc::clock_gettime(libc::CLOCK_REALTIME, tp.as_mut_ptr()) };
     assert_eq!(is_error, 0);
-    let is_error = unsafe { libc::clock_gettime(libc::CLOCK_REALTIME_COARSE, tp.as_mut_ptr()) };
-    assert_eq!(is_error, 0);
     let is_error = unsafe { libc::clock_gettime(libc::CLOCK_MONOTONIC, tp.as_mut_ptr()) };
     assert_eq!(is_error, 0);
-    let is_error = unsafe { libc::clock_gettime(libc::CLOCK_MONOTONIC_COARSE, tp.as_mut_ptr()) };
-    assert_eq!(is_error, 0);
+    #[cfg(target_os = "linux")]
+    {
+        let is_error = unsafe { libc::clock_gettime(libc::CLOCK_REALTIME_COARSE, tp.as_mut_ptr()) };
+        assert_eq!(is_error, 0);
+        let is_error =
+            unsafe { libc::clock_gettime(libc::CLOCK_MONOTONIC_COARSE, tp.as_mut_ptr()) };
+        assert_eq!(is_error, 0);
+    }
+    #[cfg(all(target_os = "macos", target_arch = "aarch64"))]
+    {
+        let is_error = unsafe { libc::clock_gettime(libc::CLOCK_UPTIME_RAW, tp.as_mut_ptr()) };
+        assert_eq!(is_error, 0);
+    }
 }
 
 fn test_posix_gettimeofday() {
@@ -293,11 +301,11 @@ fn main() {
     test_thread_local_errno();
 
     test_isatty();
+    test_clocks();
 
     #[cfg(target_os = "linux")]
     {
         test_posix_fadvise();
         test_sync_file_range();
-        test_clocks();
     }
 }

@@ -230,7 +230,7 @@ impl AdtDefData {
             AdtKind::Struct => AdtFlags::IS_STRUCT,
         };
 
-        if kind == AdtKind::Struct && variants[VariantIdx::new(0)].ctor_def_id.is_some() {
+        if kind == AdtKind::Struct && variants[VariantIdx::new(0)].ctor.is_some() {
             flags |= AdtFlags::HAS_CTOR;
         }
 
@@ -386,11 +386,9 @@ impl<'tcx> AdtDef<'tcx> {
         //    Baz = 3,
         // }
         // ```
-        if self
-            .variants()
-            .iter()
-            .any(|v| matches!(v.discr, VariantDiscr::Explicit(_)) && v.ctor_kind != CtorKind::Const)
-        {
+        if self.variants().iter().any(|v| {
+            matches!(v.discr, VariantDiscr::Explicit(_)) && v.ctor_kind() != Some(CtorKind::Const)
+        }) {
             return false;
         }
         self.variants().iter().all(|v| v.fields.is_empty())
@@ -405,7 +403,7 @@ impl<'tcx> AdtDef<'tcx> {
     pub fn variant_with_ctor_id(self, cid: DefId) -> &'tcx VariantDef {
         self.variants()
             .iter()
-            .find(|v| v.ctor_def_id == Some(cid))
+            .find(|v| v.ctor_def_id() == Some(cid))
             .expect("variant_with_ctor_id: unknown variant")
     }
 
@@ -422,7 +420,7 @@ impl<'tcx> AdtDef<'tcx> {
     pub fn variant_index_with_ctor_id(self, cid: DefId) -> VariantIdx {
         self.variants()
             .iter_enumerated()
-            .find(|(_, v)| v.ctor_def_id == Some(cid))
+            .find(|(_, v)| v.ctor_def_id() == Some(cid))
             .expect("variant_index_with_ctor_id: unknown variant")
             .0
     }
@@ -463,9 +461,7 @@ impl<'tcx> AdtDef<'tcx> {
             }
             Err(err) => {
                 let msg = match err {
-                    ErrorHandled::Reported(_) | ErrorHandled::Linted => {
-                        "enum discriminant evaluation failed"
-                    }
+                    ErrorHandled::Reported(_) => "enum discriminant evaluation failed",
                     ErrorHandled::TooGeneric => "enum discriminant depends on generics",
                 };
                 tcx.sess.delay_span_bug(tcx.def_span(expr_did), msg);

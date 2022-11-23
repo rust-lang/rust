@@ -49,7 +49,7 @@ use std::{
 use rustc_ast::Mutability;
 use rustc_data_structures::fx::{FxHashMap, FxHashSet};
 use rustc_index::vec::{Idx, IndexVec};
-use rustc_middle::{mir, ty::layout::TyAndLayout};
+use rustc_middle::mir;
 use rustc_target::abi::{Align, Size};
 
 use crate::*;
@@ -440,33 +440,6 @@ impl MemoryCellClocks {
 /// Evaluation context extensions.
 impl<'mir, 'tcx: 'mir> EvalContextExt<'mir, 'tcx> for MiriInterpCx<'mir, 'tcx> {}
 pub trait EvalContextExt<'mir, 'tcx: 'mir>: MiriInterpCxExt<'mir, 'tcx> {
-    /// Atomic variant of read_scalar_at_offset.
-    fn read_scalar_at_offset_atomic(
-        &self,
-        op: &OpTy<'tcx, Provenance>,
-        offset: u64,
-        layout: TyAndLayout<'tcx>,
-        atomic: AtomicReadOrd,
-    ) -> InterpResult<'tcx, Scalar<Provenance>> {
-        let this = self.eval_context_ref();
-        let value_place = this.deref_operand_and_offset(op, offset, layout)?;
-        this.read_scalar_atomic(&value_place, atomic)
-    }
-
-    /// Atomic variant of write_scalar_at_offset.
-    fn write_scalar_at_offset_atomic(
-        &mut self,
-        op: &OpTy<'tcx, Provenance>,
-        offset: u64,
-        value: impl Into<Scalar<Provenance>>,
-        layout: TyAndLayout<'tcx>,
-        atomic: AtomicWriteOrd,
-    ) -> InterpResult<'tcx> {
-        let this = self.eval_context_mut();
-        let value_place = this.deref_operand_and_offset(op, offset, layout)?;
-        this.write_scalar_atomic(value.into(), &value_place, atomic)
-    }
-
     /// Perform an atomic read operation at the memory location.
     fn read_scalar_atomic(
         &self,
@@ -713,7 +686,10 @@ impl VClockAlloc {
         let (alloc_timestamp, alloc_index) = match kind {
             // User allocated and stack memory should track allocation.
             MemoryKind::Machine(
-                MiriMemoryKind::Rust | MiriMemoryKind::C | MiriMemoryKind::WinHeap,
+                MiriMemoryKind::Rust
+                | MiriMemoryKind::Miri
+                | MiriMemoryKind::C
+                | MiriMemoryKind::WinHeap,
             )
             | MemoryKind::Stack => {
                 let (alloc_index, clocks) = global.current_thread_state(thread_mgr);

@@ -50,7 +50,9 @@ pub(super) fn check_impl_item<'tcx>(cx: &LateContext<'tcx>, item: &'tcx hir::Imp
         let attr = cx.tcx.get_attr(item.owner_id.to_def_id(), sym::must_use);
         if let Some(attr) = attr {
             check_needless_must_use(cx, sig.decl, item.hir_id(), item.span, fn_header_span, attr);
-        } else if is_public && !is_proc_macro(cx.sess(), attrs) && trait_ref_of_method(cx, item.owner_id.def_id).is_none()
+        } else if is_public
+            && !is_proc_macro(cx.sess(), attrs)
+            && trait_ref_of_method(cx, item.owner_id.def_id).is_none()
         {
             check_must_use_candidate(
                 cx,
@@ -175,7 +177,7 @@ fn is_mutable_pat(cx: &LateContext<'_>, pat: &hir::Pat<'_>, tys: &mut DefIdSet) 
         return false; // ignore `_` patterns
     }
     if cx.tcx.has_typeck_results(pat.hir_id.owner.to_def_id()) {
-        is_mutable_ty(cx, cx.tcx.typeck(pat.hir_id.owner.def_id).pat_ty(pat), pat.span, tys)
+        is_mutable_ty(cx, cx.tcx.typeck(pat.hir_id.owner.def_id).pat_ty(pat), tys)
     } else {
         false
     }
@@ -183,7 +185,7 @@ fn is_mutable_pat(cx: &LateContext<'_>, pat: &hir::Pat<'_>, tys: &mut DefIdSet) 
 
 static KNOWN_WRAPPER_TYS: &[Symbol] = &[sym::Rc, sym::Arc];
 
-fn is_mutable_ty<'tcx>(cx: &LateContext<'tcx>, ty: Ty<'tcx>, span: Span, tys: &mut DefIdSet) -> bool {
+fn is_mutable_ty<'tcx>(cx: &LateContext<'tcx>, ty: Ty<'tcx>, tys: &mut DefIdSet) -> bool {
     match *ty.kind() {
         // primitive types are never mutable
         ty::Bool | ty::Char | ty::Int(_) | ty::Uint(_) | ty::Float(_) | ty::Str => false,
@@ -192,12 +194,12 @@ fn is_mutable_ty<'tcx>(cx: &LateContext<'tcx>, ty: Ty<'tcx>, span: Span, tys: &m
                 || KNOWN_WRAPPER_TYS
                     .iter()
                     .any(|&sym| cx.tcx.is_diagnostic_item(sym, adt.did()))
-                    && substs.types().any(|ty| is_mutable_ty(cx, ty, span, tys))
+                    && substs.types().any(|ty| is_mutable_ty(cx, ty, tys))
         },
-        ty::Tuple(substs) => substs.iter().any(|ty| is_mutable_ty(cx, ty, span, tys)),
-        ty::Array(ty, _) | ty::Slice(ty) => is_mutable_ty(cx, ty, span, tys),
+        ty::Tuple(substs) => substs.iter().any(|ty| is_mutable_ty(cx, ty, tys)),
+        ty::Array(ty, _) | ty::Slice(ty) => is_mutable_ty(cx, ty, tys),
         ty::RawPtr(ty::TypeAndMut { ty, mutbl }) | ty::Ref(_, ty, mutbl) => {
-            mutbl == hir::Mutability::Mut || is_mutable_ty(cx, ty, span, tys)
+            mutbl == hir::Mutability::Mut || is_mutable_ty(cx, ty, tys)
         },
         // calling something constitutes a side effect, so return true on all callables
         // also never calls need not be used, so return true for them, too
@@ -225,12 +227,7 @@ fn mutates_static<'tcx>(cx: &LateContext<'tcx>, body: &'tcx hir::Body<'_>) -> bo
                 let mut tys = DefIdSet::default();
                 for arg in args {
                     if cx.tcx.has_typeck_results(arg.hir_id.owner.to_def_id())
-                        && is_mutable_ty(
-                            cx,
-                            cx.tcx.typeck(arg.hir_id.owner.def_id).expr_ty(arg),
-                            arg.span,
-                            &mut tys,
-                        )
+                        && is_mutable_ty(cx, cx.tcx.typeck(arg.hir_id.owner.def_id).expr_ty(arg), &mut tys)
                         && is_mutated_static(arg)
                     {
                         return ControlFlow::Break(());
@@ -243,12 +240,7 @@ fn mutates_static<'tcx>(cx: &LateContext<'tcx>, body: &'tcx hir::Body<'_>) -> bo
                 let mut tys = DefIdSet::default();
                 for arg in std::iter::once(receiver).chain(args.iter()) {
                     if cx.tcx.has_typeck_results(arg.hir_id.owner.to_def_id())
-                        && is_mutable_ty(
-                            cx,
-                            cx.tcx.typeck(arg.hir_id.owner.def_id).expr_ty(arg),
-                            arg.span,
-                            &mut tys,
-                        )
+                        && is_mutable_ty(cx, cx.tcx.typeck(arg.hir_id.owner.def_id).expr_ty(arg), &mut tys)
                         && is_mutated_static(arg)
                     {
                         return ControlFlow::Break(());

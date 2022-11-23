@@ -26,19 +26,23 @@ declare_lint! {
     ///
     /// ### Example
     ///
-    /// ```
+    /// ```rust
+    /// trait Duh {}
+    ///
+    /// impl Duh for i32 {}
+    ///
     /// trait Trait {
-    ///     type Assoc: Send;
+    ///     type Assoc: Duh;
     /// }
     ///
     /// struct Struct;
     ///
-    /// impl Trait for Struct {
-    ///     type Assoc = i32;
+    /// impl<F: Duh> Trait for F {
+    ///     type Assoc = F;
     /// }
     ///
     /// fn test() -> impl Trait<Assoc = impl Sized> {
-    ///     Struct
+    ///     42
     /// }
     /// ```
     ///
@@ -104,6 +108,7 @@ impl<'tcx> LateLintPass<'tcx> for OpaqueHiddenInferredBound {
                 // then we must've taken advantage of the hack in `project_and_unify_types` where
                 // we replace opaques with inference vars. Emit a warning!
                 if !infcx.predicate_must_hold_modulo_regions(&traits::Obligation::new(
+                    cx.tcx,
                     traits::ObligationCause::dummy(),
                     cx.param_env,
                     assoc_pred,

@@ -711,7 +711,7 @@ impl<'test> TestCx<'test> {
             script_str.push_str("\n");
         }
 
-        script_str.push_str("\nqq\n"); // Quit the debugger (including remote debugger, if any)
+        script_str.push_str("qq\n"); // Quit the debugger (including remote debugger, if any)
 
         // Write the script into a file
         debug!("script_str = {}", script_str);
@@ -2987,6 +2987,10 @@ impl<'test> TestCx<'test> {
             cmd.env("LLVM_BIN_DIR", llvm_bin_dir);
         }
 
+        if let Some(ref remote_test_client) = self.config.remote_test_client {
+            cmd.env("REMOTE_TEST_CLIENT", remote_test_client);
+        }
+
         // We don't want RUSTFLAGS set from the outside to interfere with
         // compiler flags set in the test cases:
         cmd.env_remove("RUSTFLAGS");
@@ -3529,22 +3533,25 @@ impl<'test> TestCx<'test> {
         let parent_dir = self.testpaths.file.parent().unwrap();
         normalize_path(parent_dir, "$DIR");
 
-        // Paths into the libstd/libcore
-        let base_dir = self.config.src_base.parent().unwrap().parent().unwrap().parent().unwrap();
-        let src_dir = base_dir.join("library");
-        normalize_path(&src_dir, "$SRC_DIR");
-
-        // `ui-fulldeps` tests can show paths to the compiler source when testing macros from
-        // `rustc_macros`
-        // eg. /home/user/rust/compiler
-        let compiler_src_dir = base_dir.join("compiler");
-        normalize_path(&compiler_src_dir, "$COMPILER_DIR");
-
-        if let Some(virtual_rust_source_base_dir) =
-            option_env!("CFG_VIRTUAL_RUST_SOURCE_BASE_DIR").map(PathBuf::from)
-        {
-            normalize_path(&virtual_rust_source_base_dir.join("library"), "$SRC_DIR");
-            normalize_path(&virtual_rust_source_base_dir.join("compiler"), "$COMPILER_DIR");
+        let source_bases = &[
+            // Source base on the current filesystem (calculated as parent of `src/test/$suite`):
+            Some(self.config.src_base.parent().unwrap().parent().unwrap().parent().unwrap().into()),
+            // Source base on the sysroot (from the src components downloaded by `download-rustc`):
+            Some(self.config.sysroot_base.join("lib").join("rustlib").join("src").join("rust")),
+            // Virtual `/rustc/$sha` remapped paths (if `remap-debuginfo` is enabled):
+            option_env!("CFG_VIRTUAL_RUST_SOURCE_BASE_DIR").map(PathBuf::from),
+            // Virtual `/rustc/$sha` coming from download-rustc:
+            std::env::var_os("FAKE_DOWNLOAD_RUSTC_PREFIX").map(PathBuf::from),
+        ];
+        for base_dir in source_bases {
+            if let Some(base_dir) = base_dir {
+                // Paths into the libstd/libcore
+                normalize_path(&base_dir.join("library"), "$SRC_DIR");
+                // `ui-fulldeps` tests can show paths to the compiler source when testing macros from
+                // `rustc_macros`
+                // eg. /home/user/rust/compiler
+                normalize_path(&base_dir.join("compiler"), "$COMPILER_DIR");
+            }
         }
 
         // Paths into the build directory

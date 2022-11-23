@@ -377,26 +377,26 @@ pub fn needs_par_as_let_scrutinee(order: i8) -> bool {
 /// parens or other delimiters, e.g., `X { y: 1 }`, `X { y: 1 }.method()`, `foo == X { y: 1 }` and
 /// `X { y: 1 } == foo` all do, but `(X { y: 1 }) == foo` does not.
 pub fn contains_exterior_struct_lit(value: &ast::Expr) -> bool {
-    match value.kind {
+    match &value.kind {
         ast::ExprKind::Struct(..) => true,
 
-        ast::ExprKind::Assign(ref lhs, ref rhs, _)
-        | ast::ExprKind::AssignOp(_, ref lhs, ref rhs)
-        | ast::ExprKind::Binary(_, ref lhs, ref rhs) => {
+        ast::ExprKind::Assign(lhs, rhs, _)
+        | ast::ExprKind::AssignOp(_, lhs, rhs)
+        | ast::ExprKind::Binary(_, lhs, rhs) => {
             // X { y: 1 } + X { y: 2 }
             contains_exterior_struct_lit(&lhs) || contains_exterior_struct_lit(&rhs)
         }
-        ast::ExprKind::Await(ref x)
-        | ast::ExprKind::Unary(_, ref x)
-        | ast::ExprKind::Cast(ref x, _)
-        | ast::ExprKind::Type(ref x, _)
-        | ast::ExprKind::Field(ref x, _)
-        | ast::ExprKind::Index(ref x, _) => {
+        ast::ExprKind::Await(x)
+        | ast::ExprKind::Unary(_, x)
+        | ast::ExprKind::Cast(x, _)
+        | ast::ExprKind::Type(x, _)
+        | ast::ExprKind::Field(x, _)
+        | ast::ExprKind::Index(x, _) => {
             // &X { y: 1 }, X { y: 1 }.y
             contains_exterior_struct_lit(&x)
         }
 
-        ast::ExprKind::MethodCall(_, ref receiver, _, _) => {
+        ast::ExprKind::MethodCall(box ast::MethodCall { receiver, .. }) => {
             // X { y: 1 }.bar(...)
             contains_exterior_struct_lit(&receiver)
         }

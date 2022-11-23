@@ -257,12 +257,12 @@ fn from_clean_item(item: clean::Item, tcx: TyCtxt<'_>) -> ItemEnum {
         StructFieldItem(f) => ItemEnum::StructField(f.into_tcx(tcx)),
         EnumItem(e) => ItemEnum::Enum(e.into_tcx(tcx)),
         VariantItem(v) => ItemEnum::Variant(v.into_tcx(tcx)),
-        FunctionItem(f) => ItemEnum::Function(from_function(f, header.unwrap(), tcx)),
-        ForeignFunctionItem(f) => ItemEnum::Function(from_function(f, header.unwrap(), tcx)),
+        FunctionItem(f) => ItemEnum::Function(from_function(f, true, header.unwrap(), tcx)),
+        ForeignFunctionItem(f) => ItemEnum::Function(from_function(f, false, header.unwrap(), tcx)),
         TraitItem(t) => ItemEnum::Trait((*t).into_tcx(tcx)),
         TraitAliasItem(t) => ItemEnum::TraitAlias(t.into_tcx(tcx)),
-        MethodItem(m, _) => ItemEnum::Method(from_function_method(m, true, header.unwrap(), tcx)),
-        TyMethodItem(m) => ItemEnum::Method(from_function_method(m, false, header.unwrap(), tcx)),
+        MethodItem(m, _) => ItemEnum::Function(from_function(m, true, header.unwrap(), tcx)),
+        TyMethodItem(m) => ItemEnum::Function(from_function(m, false, header.unwrap(), tcx)),
         ImplItem(i) => ItemEnum::Impl((*i).into_tcx(tcx)),
         StaticItem(s) => ItemEnum::Static(s.into_tcx(tcx)),
         ForeignStaticItem(s) => ItemEnum::Static(s.into_tcx(tcx)),
@@ -315,15 +315,15 @@ fn from_clean_item(item: clean::Item, tcx: TyCtxt<'_>) -> ItemEnum {
 impl FromWithTcx<clean::Struct> for Struct {
     fn from_tcx(struct_: clean::Struct, tcx: TyCtxt<'_>) -> Self {
         let fields_stripped = struct_.has_stripped_entries();
-        let clean::Struct { struct_type, generics, fields } = struct_;
+        let clean::Struct { ctor_kind, generics, fields } = struct_;
 
-        let kind = match struct_type {
-            CtorKind::Fn => StructKind::Tuple(ids_keeping_stripped(fields, tcx)),
-            CtorKind::Const => {
+        let kind = match ctor_kind {
+            Some(CtorKind::Fn) => StructKind::Tuple(ids_keeping_stripped(fields, tcx)),
+            Some(CtorKind::Const) => {
                 assert!(fields.is_empty());
                 StructKind::Unit
             }
-            CtorKind::Fictive => StructKind::Plain { fields: ids(fields, tcx), fields_stripped },
+            None => StructKind::Plain { fields: ids(fields, tcx), fields_stripped },
         };
 
         Struct {
@@ -618,25 +618,12 @@ impl FromWithTcx<clean::Impl> for Impl {
 
 pub(crate) fn from_function(
     function: Box<clean::Function>,
+    has_body: bool,
     header: rustc_hir::FnHeader,
     tcx: TyCtxt<'_>,
 ) -> Function {
     let clean::Function { decl, generics } = *function;
     Function {
-        decl: decl.into_tcx(tcx),
-        generics: generics.into_tcx(tcx),
-        header: from_fn_header(&header),
-    }
-}
-
-pub(crate) fn from_function_method(
-    function: Box<clean::Function>,
-    has_body: bool,
-    header: rustc_hir::FnHeader,
-    tcx: TyCtxt<'_>,
-) -> Method {
-    let clean::Function { decl, generics } = *function;
-    Method {
         decl: decl.into_tcx(tcx),
         generics: generics.into_tcx(tcx),
         header: from_fn_header(&header),
@@ -674,7 +661,7 @@ impl FromWithTcx<clean::Variant> for Variant {
 impl FromWithTcx<clean::Discriminant> for Discriminant {
     fn from_tcx(disr: clean::Discriminant, tcx: TyCtxt<'_>) -> Self {
         Discriminant {
-            // expr is only none if going throught the inlineing path, which gets
+            // expr is only none if going through the inlineing path, which gets
             // `rustc_middle` types, not `rustc_hir`, but because JSON never inlines
             // the expr is always some.
             expr: disr.expr(tcx).unwrap(),
@@ -759,14 +746,13 @@ impl FromWithTcx<ItemType> for ItemKind {
             Struct => ItemKind::Struct,
             Union => ItemKind::Union,
             Enum => ItemKind::Enum,
-            Function => ItemKind::Function,
+            Function | TyMethod | Method => ItemKind::Function,
             Typedef => ItemKind::Typedef,
             OpaqueTy => ItemKind::OpaqueTy,
             Static => ItemKind::Static,
             Constant => ItemKind::Constant,
             Trait => ItemKind::Trait,
             Impl => ItemKind::Impl,
-            TyMethod | Method => ItemKind::Method,
             StructField => ItemKind::StructField,
             Variant => ItemKind::Variant,
             Macro => ItemKind::Macro,

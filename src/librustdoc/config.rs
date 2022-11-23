@@ -326,7 +326,7 @@ impl Options {
             crate::usage("rustdoc");
             return Err(0);
         } else if matches.opt_present("version") {
-            rustc_driver::version("rustdoc", matches);
+            rustc_driver::version!("rustdoc", matches);
             return Err(0);
         }
 
@@ -418,7 +418,7 @@ impl Options {
             ) {
                 Ok(p) => p,
                 Err(e) => {
-                    diag.struct_err(&e.to_string()).emit();
+                    diag.struct_err(e).emit();
                     return Err(1);
                 }
             };
@@ -561,7 +561,7 @@ impl Options {
             ) {
                 Ok(p) => p,
                 Err(e) => {
-                    diag.struct_err(&e.to_string()).emit();
+                    diag.struct_err(e).emit();
                     return Err(1);
                 }
             };

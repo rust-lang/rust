@@ -420,7 +420,7 @@ impl<'a> Parser<'a> {
                 err.span_label(self_.token.span, format!("expected {}", expected));
                 err
             });
-            PatKind::Lit(self.mk_expr(lo, ExprKind::Lit(lit)))
+            PatKind::Lit(self.mk_expr(lo, ExprKind::Lit(lit.token_lit)))
         } else {
             // Try to parse everything else as literal with optional minus
             match self.parse_literal_maybe_minus() {
@@ -485,7 +485,7 @@ impl<'a> Parser<'a> {
         let mut rhs = self.parse_pat_no_top_alt(None)?;
         let sp = lhs.span.to(rhs.span);
 
-        if let PatKind::Ident(_, _, ref mut sub @ None) = rhs.kind {
+        if let PatKind::Ident(_, _, sub @ None) = &mut rhs.kind {
             // The user inverted the order, so help them fix that.
             let mut applicability = Applicability::MachineApplicable;
             // FIXME(bindings_after_at): Remove this code when stabilizing the feature.
@@ -595,7 +595,7 @@ impl<'a> Parser<'a> {
         self.recover_additional_muts();
 
         // Make sure we don't allow e.g. `let mut $p;` where `$p:pat`.
-        if let token::Interpolated(ref nt) = self.token.kind {
+        if let token::Interpolated(nt) = &self.token.kind {
             if let token::NtPat(_) = **nt {
                 self.expected_ident_found().emit();
             }
@@ -693,7 +693,7 @@ impl<'a> Parser<'a> {
     /// Parse macro invocation
     fn parse_pat_mac_invoc(&mut self, path: Path) -> PResult<'a, PatKind> {
         self.bump();
-        let args = self.parse_mac_args()?;
+        let args = self.parse_delim_args()?;
         let mac = P(MacCall { path, args, prior_type_ascription: self.last_type_ascription });
         Ok(PatKind::MacCall(mac))
     }
@@ -796,7 +796,7 @@ impl<'a> Parser<'a> {
     /// expression syntax `...expr` for splatting in expressions.
     fn parse_pat_range_to(&mut self, mut re: Spanned<RangeEnd>) -> PResult<'a, PatKind> {
         let end = self.parse_pat_range_end()?;
-        if let RangeEnd::Included(ref mut syn @ RangeSyntax::DotDotDot) = &mut re.node {
+        if let RangeEnd::Included(syn @ RangeSyntax::DotDotDot) = &mut re.node {
             *syn = RangeSyntax::DotDotEq;
             self.struct_span_err(re.span, "range-to patterns with `...` are not allowed")
                 .span_suggestion_short(
@@ -889,7 +889,7 @@ impl<'a> Parser<'a> {
     }
 
     /// Parse a struct ("record") pattern (e.g. `Foo { ... }` or `Foo::Bar { ... }`).
-    fn parse_pat_struct(&mut self, qself: Option<QSelf>, path: Path) -> PResult<'a, PatKind> {
+    fn parse_pat_struct(&mut self, qself: Option<P<QSelf>>, path: Path) -> PResult<'a, PatKind> {
         if qself.is_some() {
             // Feature gate the use of qualified paths in patterns
             self.sess.gated_spans.gate(sym::more_qualified_paths, path.span);
@@ -906,7 +906,11 @@ impl<'a> Parser<'a> {
     }
 
     /// Parse tuple struct or tuple variant pattern (e.g. `Foo(...)` or `Foo::Bar(...)`).
-    fn parse_pat_tuple_struct(&mut self, qself: Option<QSelf>, path: Path) -> PResult<'a, PatKind> {
+    fn parse_pat_tuple_struct(
+        &mut self,
+        qself: Option<P<QSelf>>,
+        path: Path,
+    ) -> PResult<'a, PatKind> {
         let (fields, _) = self.parse_paren_comma_seq(|p| {
             p.parse_pat_allow_top_alt(
                 None,

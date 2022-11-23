@@ -8,12 +8,11 @@
 use hir::LangItem;
 use rustc_errors::DelayDm;
 use rustc_hir as hir;
-use rustc_hir::def_id::DefId;
 use rustc_infer::traits::ObligationCause;
 use rustc_infer::traits::{Obligation, SelectionError, TraitObligation};
 use rustc_lint_defs::builtin::DEREF_INTO_DYN_SUPERTRAIT;
 use rustc_middle::ty::print::with_no_trimmed_paths;
-use rustc_middle::ty::{self, ToPredicate, Ty, TypeVisitable};
+use rustc_middle::ty::{self, Ty, TypeVisitable};
 use rustc_target::spec::abi::Abi;
 
 use crate::traits;
@@ -304,6 +303,8 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
                 self.assemble_candidates_for_transmutability(obligation, &mut candidates);
             } else if lang_items.tuple_trait() == Some(def_id) {
                 self.assemble_candidate_for_tuple(obligation, &mut candidates);
+            } else if lang_items.pointer_sized() == Some(def_id) {
+                self.assemble_candidate_for_ptr_sized(obligation, &mut candidates);
             } else {
                 if lang_items.clone_trait() == Some(def_id) {
                     // Same builtin conditions as `Copy`, i.e., every type which has builtin support
@@ -705,48 +706,44 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
         ty: Ty<'tcx>,
         param_env: ty::ParamEnv<'tcx>,
         cause: &ObligationCause<'tcx>,
-    ) -> Option<(Ty<'tcx>, DefId)> {
+    ) -> Option<ty::PolyExistentialTraitRef<'tcx>> {
         let tcx = self.tcx();
         if tcx.features().trait_upcasting {
             return None;
         }
 
         // <ty as Deref>
-        let trait_ref = ty::TraitRef {
-            def_id: tcx.lang_items().deref_trait()?,
-            substs: tcx.mk_substs_trait(ty, &[]),
-        };
+        let trait_ref = tcx.mk_trait_ref(tcx.lang_items().deref_trait()?, [ty]);
 
         let obligation = traits::Obligation::new(
+            tcx,
             cause.clone(),
             param_env,
-            ty::Binder::dummy(trait_ref).without_const().to_predicate(tcx),
+            ty::Binder::dummy(trait_ref).without_const(),
         );
         if !self.infcx.predicate_may_hold(&obligation) {
             return None;
         }
 
-        let ty = traits::normalize_projection_type(
-            self,
-            param_env,
-            ty::ProjectionTy {
-                item_def_id: tcx.lang_items().deref_target()?,
-                substs: trait_ref.substs,
-            },
-            cause.clone(),
-            0,
-            // We're *intentionally* throwing these away,
-            // since we don't actually use them.
-            &mut vec![],
-        )
-        .ty()
-        .unwrap();
+        self.infcx.probe(|_| {
+            let ty = traits::normalize_projection_type(
+                self,
+                param_env,
+                ty::ProjectionTy {
+                    item_def_id: tcx.lang_items().deref_target()?,
+                    substs: trait_ref.substs,
+                },
+                cause.clone(),
+                0,
+                // We're *intentionally* throwing these away,
+                // since we don't actually use them.
+                &mut vec![],
+            )
+            .ty()
+            .unwrap();
 
-        if let ty::Dynamic(data, ..) = ty.kind() {
-            Some((ty, data.principal_def_id()?))
-        } else {
-            None
-        }
+            if let ty::Dynamic(data, ..) = ty.kind() { data.principal() } else { None }
+        })
     }
 
     /// Searches for unsizing that might apply to `obligation`.
@@ -779,7 +776,9 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
 
         match (source.kind(), target.kind()) {
             // Trait+Kx+'a -> Trait+Ky+'b (upcasts).
-            (&ty::Dynamic(ref data_a, ..), &ty::Dynamic(ref data_b, ..)) => {
+            (&ty::Dynamic(ref data_a, _, dyn_a), &ty::Dynamic(ref data_b, _, dyn_b))
+                if dyn_a == dyn_b =>
+            {
                 // Upcast coercions permit several things:
                 //
                 // 1. Dropping auto traits, e.g., `Foo + Send` to `Foo`
@@ -806,21 +805,19 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
                         let principal_a = data_a.principal().unwrap();
                         let target_trait_did = principal_def_id_b.unwrap();
                         let source_trait_ref = principal_a.with_self_ty(self.tcx(), source);
-                        if let Some((deref_output_ty, deref_output_trait_did)) = self
-                            .need_migrate_deref_output_trait_object(
-                                source,
-                                obligation.param_env,
-                                &obligation.cause,
-                            )
-                        {
-                            if deref_output_trait_did == target_trait_did {
+                        if let Some(deref_trait_ref) = self.need_migrate_deref_output_trait_object(
+                            source,
+                            obligation.param_env,
+                            &obligation.cause,
+                        ) {
+                            if deref_trait_ref.def_id() == target_trait_did {
                                 self.tcx().struct_span_lint_hir(
                                     DEREF_INTO_DYN_SUPERTRAIT,
                                     obligation.cause.body_id,
                                     obligation.cause.span,
                                     DelayDm(|| format!(
                                         "`{}` implements `Deref` with supertrait `{}` as output",
-                                        source, deref_output_ty
+                                        source, deref_trait_ref
                                     )),
                                     |lint| lint,
                                 );
@@ -840,7 +837,7 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
             }
 
             // `T` -> `Trait`
-            (_, &ty::Dynamic(..)) => {
+            (_, &ty::Dynamic(_, _, ty::Dyn)) => {
                 candidates.vec.push(BuiltinUnsizeCandidate);
             }
 
@@ -1044,6 +1041,32 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
             | ty::Error(_)
             | ty::Infer(_)
             | ty::Placeholder(_) => {}
+        }
+    }
+
+    fn assemble_candidate_for_ptr_sized(
+        &mut self,
+        obligation: &TraitObligation<'tcx>,
+        candidates: &mut SelectionCandidateSet<'tcx>,
+    ) {
+        // The regions of a type don't affect the size of the type
+        let self_ty = self
+            .tcx()
+            .erase_regions(self.tcx().erase_late_bound_regions(obligation.predicate.self_ty()));
+
+        // But if there are inference variables, we have to wait until it's resolved.
+        if self_ty.has_non_region_infer() {
+            candidates.ambiguous = true;
+            return;
+        }
+
+        let usize_layout =
+            self.tcx().layout_of(ty::ParamEnv::empty().and(self.tcx().types.usize)).unwrap().layout;
+        if let Ok(layout) = self.tcx().layout_of(obligation.param_env.and(self_ty))
+            && layout.layout.size() == usize_layout.size()
+            && layout.layout.align().abi == usize_layout.align().abi
+        {
+            candidates.vec.push(BuiltinCandidate { has_nested: false });
         }
     }
 }

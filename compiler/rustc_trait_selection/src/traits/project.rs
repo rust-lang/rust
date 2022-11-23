@@ -200,7 +200,7 @@ pub(super) fn poly_project_and_unify_type<'cx, 'tcx>(
             infcx.replace_bound_vars_with_placeholders(obligation.predicate);
         let new_universe = infcx.universe();
 
-        let placeholder_obligation = obligation.with(placeholder_predicate);
+        let placeholder_obligation = obligation.with(infcx.tcx, placeholder_predicate);
         match project_and_unify_type(selcx, &placeholder_obligation) {
             ProjectAndUnifyResult::MismatchedProjectionTypes(e) => Err(e),
             ProjectAndUnifyResult::Holds(obligations)
@@ -508,7 +508,7 @@ impl<'a, 'b, 'tcx> TypeFolder<'tcx> for AssocTypeNormalizer<'a, 'b, 'tcx> {
             // This is really important. While we *can* handle this, this has
             // severe performance implications for large opaque types with
             // late-bound regions. See `issue-88862` benchmark.
-            ty::Opaque(def_id, substs) => {
+            ty::Opaque(def_id, substs) if !substs.has_escaping_bound_vars() => {
                 // Only normalize `impl Trait` outside of type inference, usually in codegen.
                 match self.param_env.reveal() {
                     Reveal::UserFacing => ty.super_fold_with(self),
@@ -517,6 +517,7 @@ impl<'a, 'b, 'tcx> TypeFolder<'tcx> for AssocTypeNormalizer<'a, 'b, 'tcx> {
                         let recursion_limit = self.tcx().recursion_limit();
                         if !recursion_limit.value_within_limit(self.depth) {
                             let obligation = Obligation::with_depth(
+                                self.tcx(),
                                 self.cause.clone(),
                                 recursion_limit.0,
                                 self.param_env,
@@ -573,6 +574,7 @@ impl<'a, 'b, 'tcx> TypeFolder<'tcx> for AssocTypeNormalizer<'a, 'b, 'tcx> {
                     && !self.tcx().sess.opts.actually_rustdoc
                 {
                     let obligation = Obligation::with_depth(
+                        self.selcx.tcx(),
                         self.cause.clone(),
                         recursion_limit.0,
                         self.param_env,
@@ -1110,7 +1112,8 @@ fn opt_normalize_projection_type<'a, 'b, 'tcx>(
         }
     }
 
-    let obligation = Obligation::with_depth(cause.clone(), depth, param_env, projection_ty);
+    let obligation =
+        Obligation::with_depth(selcx.tcx(), cause.clone(), depth, param_env, projection_ty);
 
     match project(selcx, &obligation) {
         Ok(Projected::Progress(Progress {
@@ -1343,8 +1346,8 @@ fn assemble_candidate_for_impl_trait_in_trait<'cx, 'tcx>(
             ty::Binder::dummy(ty::TraitRef { def_id: trait_def_id, substs: trait_substs })
                 .to_poly_trait_predicate();
 
-        let _ =
-            selcx.infcx().commit_if_ok(|_| match selcx.select(&obligation.with(trait_predicate)) {
+        let _ = selcx.infcx().commit_if_ok(|_| {
+            match selcx.select(&obligation.with(tcx, trait_predicate)) {
                 Ok(Some(super::ImplSource::UserDefined(data))) => {
                     candidate_set.push_candidate(ProjectionCandidate::ImplTraitInTrait(
                         ImplTraitInTraitCandidate::Impl(data),
@@ -1364,7 +1367,8 @@ fn assemble_candidate_for_impl_trait_in_trait<'cx, 'tcx>(
                     candidate_set.mark_error(e);
                     return Err(());
                 }
-            });
+            }
+        });
     }
 }
 
@@ -1538,7 +1542,7 @@ fn assemble_candidates_from_impls<'cx, 'tcx>(
     // If we are resolving `<T as TraitRef<...>>::Item == Type`,
     // start out by selecting the predicate `T as TraitRef<...>`:
     let poly_trait_ref = ty::Binder::dummy(obligation.predicate.trait_ref(selcx.tcx()));
-    let trait_obligation = obligation.with(poly_trait_ref.to_poly_trait_predicate());
+    let trait_obligation = obligation.with(selcx.tcx(), poly_trait_ref.to_poly_trait_predicate());
     let _ = selcx.infcx().commit_if_ok(|_| {
         let impl_source = match selcx.select(&trait_obligation) {
             Ok(Some(impl_source)) => impl_source,
@@ -1705,12 +1709,12 @@ fn assemble_candidates_from_impls<'cx, 'tcx>(
                     ty::Param(_) | ty::Projection(..) | ty::Opaque(..)
                         if selcx.infcx().predicate_must_hold_modulo_regions(
                             &obligation.with(
-                                ty::Binder::dummy(ty::TraitRef::new(
-                                    selcx.tcx().require_lang_item(LangItem::Sized, None),
-                                    selcx.tcx().mk_substs_trait(self_ty, &[]),
+                                selcx.tcx(),
+                                ty::Binder::dummy(selcx.tcx().at(obligation.cause.span).mk_trait_ref(
+                                    LangItem::Sized,
+                                    [self_ty],
                                 ))
-                                .without_const()
-                                .to_predicate(selcx.tcx()),
+                                .without_const(),
                             ),
                         ) =>
                     {
@@ -1962,21 +1966,15 @@ fn confirm_pointee_candidate<'cx, 'tcx>(
         )
     });
     if check_is_sized {
-        let sized_predicate = ty::Binder::dummy(ty::TraitRef::new(
-            tcx.require_lang_item(LangItem::Sized, None),
-            tcx.mk_substs_trait(self_ty, &[]),
-        ))
-        .without_const()
-        .to_predicate(tcx);
-        obligations.push(Obligation::new(
-            obligation.cause.clone(),
-            obligation.param_env,
-            sized_predicate,
-        ));
+        let sized_predicate = ty::Binder::dummy(
+            tcx.at(obligation.cause.span).mk_trait_ref(LangItem::Sized, [self_ty]),
+        )
+        .without_const();
+        obligations.push(obligation.with(tcx, sized_predicate));
     }
 
     let substs = tcx.mk_substs([self_ty.into()].iter());
-    let metadata_def_id = tcx.require_lang_item(LangItem::Metadata, None);
+    let metadata_def_id = tcx.require_lang_item(LangItem::Metadata, Some(obligation.cause.span));
 
     let predicate = ty::ProjectionPredicate {
         projection_ty: ty::ProjectionTy { substs, item_def_id: metadata_def_id },
@@ -2187,7 +2185,7 @@ fn confirm_impl_candidate<'cx, 'tcx>(
 // Verify that the trait item and its implementation have compatible substs lists
 fn check_substs_compatible<'tcx>(
     tcx: TyCtxt<'tcx>,
-    assoc_ty: &ty::AssocItem,
+    assoc_item: &ty::AssocItem,
     substs: ty::SubstsRef<'tcx>,
 ) -> bool {
     fn check_substs_compatible_inner<'tcx>(
@@ -2219,7 +2217,10 @@ fn check_substs_compatible<'tcx>(
         true
     }
 
-    check_substs_compatible_inner(tcx, tcx.generics_of(assoc_ty.def_id), substs.as_slice())
+    let generics = tcx.generics_of(assoc_item.def_id);
+    // Chop off any additional substs (RPITIT) substs
+    let substs = &substs[0..generics.count().min(substs.len())];
+    check_substs_compatible_inner(tcx, generics, substs)
 }
 
 fn confirm_impl_trait_in_trait_candidate<'tcx>(
@@ -2248,11 +2249,27 @@ fn confirm_impl_trait_in_trait_candidate<'tcx>(
         };
     }
 
-    let impl_fn_def_id = leaf_def.item.def_id;
     // Rebase from {trait}::{fn}::{opaque} to {impl}::{fn}::{opaque},
     // since `data.substs` are the impl substs.
     let impl_fn_substs =
         obligation.predicate.substs.rebase_onto(tcx, tcx.parent(trait_fn_def_id), data.substs);
+    let impl_fn_substs = translate_substs(
+        selcx.infcx(),
+        obligation.param_env,
+        data.impl_def_id,
+        impl_fn_substs,
+        leaf_def.defining_node,
+    );
+
+    if !check_substs_compatible(tcx, &leaf_def.item, impl_fn_substs) {
+        let err = tcx.ty_error_with_message(
+            obligation.cause.span,
+            "impl method and trait method have different parameters",
+        );
+        return Progress { term: err.into(), obligations };
+    }
+
+    let impl_fn_def_id = leaf_def.item.def_id;
 
     let cause = ObligationCause::new(
         obligation.cause.span,
@@ -2270,6 +2287,7 @@ fn confirm_impl_trait_in_trait_candidate<'tcx>(
     obligations.extend(std::iter::zip(predicates.predicates, predicates.spans).map(
         |(pred, span)| {
             Obligation::with_depth(
+                tcx,
                 ObligationCause::new(
                     obligation.cause.span,
                     obligation.cause.body_id,
@@ -2323,6 +2341,7 @@ fn assoc_ty_own_obligations<'cx, 'tcx>(
             nested,
         );
         nested.push(Obligation::with_depth(
+            tcx,
             obligation.cause.clone(),
             obligation.recursion_depth + 1,
             obligation.param_env,

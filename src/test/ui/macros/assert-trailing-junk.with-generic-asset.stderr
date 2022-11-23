@@ -17,6 +17,8 @@ LL |     assert!(true, "whatever" blah);
    |                             -^^^^ no rules expected this token in macro call
    |                             |
    |                             help: missing comma here
+   |
+   = note: while trying to match sequence start
 
 error: unexpected string literal
   --> $DIR/assert-trailing-junk.rs:18:18
@@ -33,6 +35,8 @@ LL |     assert!(true "whatever" blah);
    |                            -^^^^ no rules expected this token in macro call
    |                            |
    |                            help: missing comma here
+   |
+   = note: while trying to match sequence start
 
 error: macro requires an expression as an argument
   --> $DIR/assert-trailing-junk.rs:22:5

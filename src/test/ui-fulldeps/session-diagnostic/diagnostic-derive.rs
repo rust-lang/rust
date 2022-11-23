@@ -471,7 +471,7 @@ struct NoApplicability {
 }
 
 #[derive(Subdiagnostic)]
-#[note(parser_add_paren)]
+#[note(parse_add_paren)]
 struct Note;
 
 #[derive(Diagnostic)]

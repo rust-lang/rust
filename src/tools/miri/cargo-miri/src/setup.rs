@@ -5,7 +5,7 @@ use std::ffi::OsStr;
 use std::path::PathBuf;
 use std::process::{self, Command};
 
-use rustc_build_sysroot::{BuildMode, Sysroot, SysrootConfig};
+use rustc_build_sysroot::{BuildMode, SysrootBuilder, SysrootConfig};
 use rustc_version::VersionMeta;
 
 use crate::util::*;
@@ -17,10 +17,8 @@ pub fn setup(subcommand: &MiriCommand, target: &str, rustc_version: &VersionMeta
     let only_setup = matches!(subcommand, MiriCommand::Setup);
     let ask_user = !only_setup;
     let print_sysroot = only_setup && has_arg_flag("--print-sysroot"); // whether we just print the sysroot path
-    if std::env::var_os("MIRI_SYSROOT").is_some() {
-        if only_setup {
-            println!("WARNING: MIRI_SYSROOT already set, not doing anything.")
-        }
+    if !only_setup && std::env::var_os("MIRI_SYSROOT").is_some() {
+        // Skip setup step if MIRI_SYSROOT is explicitly set, *unless* we are `cargo miri setup`.
         return;
     }
 
@@ -61,15 +59,22 @@ pub fn setup(subcommand: &MiriCommand, target: &str, rustc_version: &VersionMeta
     }
 
     // Determine where to put the sysroot.
-    let user_dirs = directories::ProjectDirs::from("org", "rust-lang", "miri").unwrap();
-    let sysroot_dir = user_dirs.cache_dir();
+    let sysroot_dir = match std::env::var_os("MIRI_SYSROOT") {
+        Some(dir) => PathBuf::from(dir),
+        None => {
+            let user_dirs = directories::ProjectDirs::from("org", "rust-lang", "miri").unwrap();
+            user_dirs.cache_dir().to_owned()
+        }
+    };
     // Sysroot configuration and build details.
     let sysroot_config = if std::env::var_os("MIRI_NO_STD").is_some() {
         SysrootConfig::NoStd
     } else {
-        SysrootConfig::WithStd { std_features: &["panic_unwind", "backtrace"] }
+        SysrootConfig::WithStd {
+            std_features: ["panic_unwind", "backtrace"].into_iter().map(Into::into).collect(),
+        }
     };
-    let cargo_cmd = || {
+    let cargo_cmd = {
         let mut command = cargo();
         // Use Miri as rustc to build a libstd compatible with us (and use the right flags).
         // However, when we are running in bootstrap, we cannot just overwrite `RUSTC`,
@@ -103,15 +108,16 @@ pub fn setup(subcommand: &MiriCommand, target: &str, rustc_version: &VersionMeta
             command.stdout(process::Stdio::null());
             command.stderr(process::Stdio::null());
         }
-        // Disable debug assertions in the standard library -- Miri is already slow enough.
-        // But keep the overflow checks, they are cheap. This completely overwrites flags
-        // the user might have set, which is consistent with normal `cargo build` that does
-        // not apply `RUSTFLAGS` to the sysroot either.
-        let rustflags = vec!["-Cdebug-assertions=off".into(), "-Coverflow-checks=on".into()];
-        (command, rustflags)
+
+        command
     };
+    // Disable debug assertions in the standard library -- Miri is already slow enough.
+    // But keep the overflow checks, they are cheap. This completely overwrites flags
+    // the user might have set, which is consistent with normal `cargo build` that does
+    // not apply `RUSTFLAGS` to the sysroot either.
+    let rustflags = &["-Cdebug-assertions=off", "-Coverflow-checks=on"];
     // Make sure all target-level Miri invocations know their sysroot.
-    std::env::set_var("MIRI_SYSROOT", sysroot_dir);
+    std::env::set_var("MIRI_SYSROOT", &sysroot_dir);
 
     // Do the build.
     if only_setup {
@@ -121,8 +127,13 @@ pub fn setup(subcommand: &MiriCommand, target: &str, rustc_version: &VersionMeta
         // We want to be quiet, but still let the user know that something is happening.
         eprint!("Preparing a sysroot for Miri (target: {target})... ");
     }
-    Sysroot::new(sysroot_dir, target)
-        .build_from_source(&rust_src, BuildMode::Check, sysroot_config, rustc_version, cargo_cmd)
+    SysrootBuilder::new(&sysroot_dir, target)
+        .build_mode(BuildMode::Check)
+        .rustc_version(rustc_version.clone())
+        .sysroot_config(sysroot_config)
+        .rustflags(rustflags)
+        .cargo(cargo_cmd)
+        .build_from_source(&rust_src)
         .unwrap_or_else(|_| {
             if only_setup {
                 show_error!("failed to build sysroot, see error details above")

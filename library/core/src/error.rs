@@ -493,7 +493,7 @@ impl Error for crate::char::ParseCharError {
     }
 }
 
-#[stable(feature = "duration_checked_float", since = "CURRENT_RUSTC_VERSION")]
+#[stable(feature = "duration_checked_float", since = "1.66.0")]
 impl Error for crate::time::TryFromFloatSecsError {}
 
 #[stable(feature = "frombyteswithnulerror_impls", since = "1.17.0")]
@@ -506,3 +506,6 @@ impl Error for crate::ffi::FromBytesWithNulError {
 
 #[unstable(feature = "cstr_from_bytes_until_nul", issue = "95027")]
 impl Error for crate::ffi::FromBytesUntilNulError {}
+
+#[unstable(feature = "get_many_mut", issue = "104642")]
+impl<const N: usize> Error for crate::slice::GetManyMutError<N> {}

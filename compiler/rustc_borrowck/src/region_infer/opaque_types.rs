@@ -1,4 +1,4 @@
-use rustc_data_structures::fx::FxHashMap;
+use rustc_data_structures::fx::{FxHashMap, FxIndexSet};
 use rustc_data_structures::vec_map::VecMap;
 use rustc_hir::def_id::LocalDefId;
 use rustc_hir::OpaqueTyOrigin;
@@ -7,9 +7,7 @@ use rustc_infer::infer::{DefiningAnchor, InferCtxt};
 use rustc_infer::traits::{Obligation, ObligationCause};
 use rustc_middle::ty::subst::{GenericArgKind, InternalSubsts};
 use rustc_middle::ty::visit::TypeVisitable;
-use rustc_middle::ty::{
-    self, OpaqueHiddenType, OpaqueTypeKey, ToPredicate, Ty, TyCtxt, TypeFoldable,
-};
+use rustc_middle::ty::{self, OpaqueHiddenType, OpaqueTypeKey, Ty, TyCtxt, TypeFoldable};
 use rustc_span::Span;
 use rustc_trait_selection::traits::error_reporting::TypeErrCtxtExt as _;
 use rustc_trait_selection::traits::ObligationCtxt;
@@ -63,17 +61,21 @@ impl<'tcx> RegionInferenceContext<'tcx> {
         opaque_ty_decls: VecMap<OpaqueTypeKey<'tcx>, (OpaqueHiddenType<'tcx>, OpaqueTyOrigin)>,
     ) -> VecMap<LocalDefId, OpaqueHiddenType<'tcx>> {
         let mut result: VecMap<LocalDefId, OpaqueHiddenType<'tcx>> = VecMap::new();
+
+        let member_constraints: FxHashMap<_, _> = self
+            .member_constraints
+            .all_indices()
+            .map(|ci| (self.member_constraints[ci].key, ci))
+            .collect();
+        debug!(?member_constraints);
+
         for (opaque_type_key, (concrete_type, origin)) in opaque_ty_decls {
             let substs = opaque_type_key.substs;
             debug!(?concrete_type, ?substs);
 
             let mut subst_regions = vec![self.universal_regions.fr_static];
-            let universal_substs = infcx.tcx.fold_regions(substs, |region, _| {
-                if let ty::RePlaceholder(..) = region.kind() {
-                    // Higher kinded regions don't need remapping, they don't refer to anything outside of this the substs.
-                    return region;
-                }
-                let vid = self.to_region_vid(region);
+
+            let to_universal_region = |vid, subst_regions: &mut Vec<_>| {
                 trace!(?vid);
                 let scc = self.constraint_sccs.scc(vid);
                 trace!(?scc);
@@ -94,10 +96,33 @@ impl<'tcx> RegionInferenceContext<'tcx> {
                         infcx.tcx.lifetimes.re_static
                     }
                 }
-            });
+            };
 
-            subst_regions.sort();
-            subst_regions.dedup();
+            // Start by inserting universal regions from the member_constraint choice regions.
+            // This will ensure they get precedence when folding the regions in the concrete type.
+            if let Some(&ci) = member_constraints.get(&opaque_type_key) {
+                for &vid in self.member_constraints.choice_regions(ci) {
+                    to_universal_region(vid, &mut subst_regions);
+                }
+            }
+            debug!(?subst_regions);
+
+            // Next, insert universal regions from substs, so we can translate regions that appear
+            // in them but are not subject to member constraints, for instance closure substs.
+            let universal_substs = infcx.tcx.fold_regions(substs, |region, _| {
+                if let ty::RePlaceholder(..) = region.kind() {
+                    // Higher kinded regions don't need remapping, they don't refer to anything outside of this the substs.
+                    return region;
+                }
+                let vid = self.to_region_vid(region);
+                to_universal_region(vid, &mut subst_regions)
+            });
+            debug!(?universal_substs);
+            debug!(?subst_regions);
+
+            // Deduplicate the set of regions while keeping the chosen order.
+            let subst_regions = subst_regions.into_iter().collect::<FxIndexSet<_>>();
+            debug!(?subst_regions);
 
             let universal_concrete_type =
                 infcx.tcx.fold_regions(concrete_type, |region, _| match *region {
@@ -108,8 +133,7 @@ impl<'tcx> RegionInferenceContext<'tcx> {
                         .unwrap_or(infcx.tcx.lifetimes.re_erased),
                     _ => region,
                 });
-
-            debug!(?universal_concrete_type, ?universal_substs);
+            debug!(?universal_concrete_type);
 
             let opaque_type_key =
                 OpaqueTypeKey { def_id: opaque_type_key.def_id, substs: universal_substs };
@@ -221,8 +245,8 @@ impl<'tcx> InferCtxtExt<'tcx> for InferCtxt<'tcx> {
         instantiated_ty: OpaqueHiddenType<'tcx>,
         origin: OpaqueTyOrigin,
     ) -> Ty<'tcx> {
-        if self.is_tainted_by_errors() {
-            return self.tcx.ty_error();
+        if let Some(e) = self.tainted_by_errors() {
+            return self.tcx.ty_error_with_guaranteed(e);
         }
 
         let definition_ty = instantiated_ty
@@ -256,8 +280,7 @@ impl<'tcx> InferCtxtExt<'tcx> for InferCtxt<'tcx> {
         // Require the hidden type to be well-formed with only the generics of the opaque type.
         // Defining use functions may have more bounds than the opaque type, which is ok, as long as the
         // hidden type is well formed even without those bounds.
-        let predicate = ty::Binder::dummy(ty::PredicateKind::WellFormed(definition_ty.into()))
-            .to_predicate(infcx.tcx);
+        let predicate = ty::Binder::dummy(ty::PredicateKind::WellFormed(definition_ty.into()));
 
         let id_substs = InternalSubsts::identity_for_item(self.tcx, def_id.to_def_id());
 
@@ -282,6 +305,7 @@ impl<'tcx> InferCtxtExt<'tcx> for InferCtxt<'tcx> {
         }
 
         ocx.register_obligation(Obligation::misc(
+            infcx.tcx,
             instantiated_ty.span,
             body_id,
             param_env,
@@ -299,8 +323,8 @@ impl<'tcx> InferCtxtExt<'tcx> for InferCtxt<'tcx> {
         if errors.is_empty() {
             definition_ty
         } else {
-            infcx.err_ctxt().report_fulfillment_errors(&errors, None);
-            self.tcx.ty_error()
+            let reported = infcx.err_ctxt().report_fulfillment_errors(&errors, None);
+            self.tcx.ty_error_with_guaranteed(reported)
         }
     }
 }

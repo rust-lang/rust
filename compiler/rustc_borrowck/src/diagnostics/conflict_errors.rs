@@ -7,7 +7,7 @@ use rustc_errors::{
 };
 use rustc_hir as hir;
 use rustc_hir::intravisit::{walk_block, walk_expr, Visitor};
-use rustc_hir::{AsyncGeneratorKind, GeneratorKind};
+use rustc_hir::{AsyncGeneratorKind, GeneratorKind, LangItem};
 use rustc_infer::infer::TyCtxtInferExt;
 use rustc_infer::traits::ObligationCause;
 use rustc_middle::mir::tcx::PlaceTy;
@@ -224,10 +224,7 @@ impl<'cx, 'tcx> MirBorrowckCtxt<'cx, 'tcx> {
                 }
             }
 
-            use_spans.var_span_label_path_only(
-                &mut err,
-                format!("{} occurs due to use{}", desired_action.as_noun(), use_spans.describe()),
-            );
+            use_spans.var_path_only_subdiag(&mut err, desired_action);
 
             if !is_loop_move {
                 err.span_label(
@@ -404,10 +401,7 @@ impl<'cx, 'tcx> MirBorrowckCtxt<'cx, 'tcx> {
         let used = desired_action.as_general_verb_in_past_tense();
         let mut err =
             struct_span_err!(self, span, E0381, "{used} binding {desc}{isnt_initialized}");
-        use_spans.var_span_label_path_only(
-            &mut err,
-            format!("{} occurs due to use{}", desired_action.as_noun(), use_spans.describe()),
-        );
+        use_spans.var_path_only_subdiag(&mut err, desired_action);
 
         if let InitializationRequiringAction::PartialAssignment
         | InitializationRequiringAction::Assignment = desired_action
@@ -495,12 +489,7 @@ impl<'cx, 'tcx> MirBorrowckCtxt<'cx, 'tcx> {
             // but the type has region variables, so erase those.
             tcx.infer_ctxt()
                 .build()
-                .type_implements_trait(
-                    default_trait,
-                    tcx.erase_regions(ty),
-                    ty::List::empty(),
-                    param_env,
-                )
+                .type_implements_trait(default_trait, [tcx.erase_regions(ty)], param_env)
                 .must_apply_modulo_regions()
         };
 
@@ -612,7 +601,7 @@ impl<'cx, 'tcx> MirBorrowckCtxt<'cx, 'tcx> {
         else { return; };
         // Try to find predicates on *generic params* that would allow copying `ty`
         let infcx = tcx.infer_ctxt().build();
-        let copy_did = infcx.tcx.lang_items().copy_trait().unwrap();
+        let copy_did = infcx.tcx.require_lang_item(LangItem::Copy, Some(span));
         let cause = ObligationCause::new(
             span,
             self.mir_hir_id(),
@@ -673,15 +662,15 @@ impl<'cx, 'tcx> MirBorrowckCtxt<'cx, 'tcx> {
         let move_spans = self.move_spans(place.as_ref(), location);
         let span = move_spans.args_or_use();
 
-        let mut err =
-            self.cannot_move_when_borrowed(span, &self.describe_any_place(place.as_ref()));
-        err.span_label(borrow_span, format!("borrow of {} occurs here", borrow_msg));
-        err.span_label(span, format!("move out of {} occurs here", value_msg));
-
-        borrow_spans.var_span_label_path_only(
-            &mut err,
-            format!("borrow occurs due to use{}", borrow_spans.describe()),
+        let mut err = self.cannot_move_when_borrowed(
+            span,
+            borrow_span,
+            &self.describe_any_place(place.as_ref()),
+            &borrow_msg,
+            &value_msg,
         );
+
+        borrow_spans.var_path_only_subdiag(&mut err, crate::InitializationRequiringAction::Borrow);
 
         move_spans.var_span_label(
             &mut err,
@@ -724,16 +713,15 @@ impl<'cx, 'tcx> MirBorrowckCtxt<'cx, 'tcx> {
             borrow_span,
             &self.describe_any_place(borrow.borrowed_place.as_ref()),
         );
-
-        borrow_spans.var_span_label(
-            &mut err,
-            {
-                let place = &borrow.borrowed_place;
-                let desc_place = self.describe_any_place(place.as_ref());
-                format!("borrow occurs due to use of {}{}", desc_place, borrow_spans.describe())
-            },
-            "mutable",
-        );
+        borrow_spans.var_subdiag(&mut err, Some(borrow.kind), |kind, var_span| {
+            use crate::session_diagnostics::CaptureVarCause::*;
+            let place = &borrow.borrowed_place;
+            let desc_place = self.describe_any_place(place.as_ref());
+            match kind {
+                Some(_) => BorrowUsePlaceGenerator { place: desc_place, var_span },
+                None => BorrowUsePlaceClosure { place: desc_place, var_span },
+            }
+        });
 
         self.explain_why_borrow_contains_point(location, borrow, None)
             .add_explanation_to_diagnostic(
@@ -1551,7 +1539,7 @@ impl<'cx, 'tcx> MirBorrowckCtxt<'cx, 'tcx> {
         }
 
         let mut err = self.temporary_value_borrowed_for_too_long(proper_span);
-        err.span_label(proper_span, "creates a temporary which is freed while still in use");
+        err.span_label(proper_span, "creates a temporary value which is freed while still in use");
         err.span_label(drop_span, "temporary value is freed at the end of this statement");
 
         match explanation {
@@ -1714,7 +1702,6 @@ impl<'cx, 'tcx> MirBorrowckCtxt<'cx, 'tcx> {
             err.span_label(borrow_span, note);
 
             let tcx = self.infcx.tcx;
-            let ty_params = ty::List::empty();
 
             let return_ty = self.regioncx.universal_regions().unnormalized_output_ty;
             let return_ty = tcx.erase_regions(return_ty);
@@ -1723,7 +1710,7 @@ impl<'cx, 'tcx> MirBorrowckCtxt<'cx, 'tcx> {
             if let Some(iter_trait) = tcx.get_diagnostic_item(sym::Iterator)
                 && self
                     .infcx
-                    .type_implements_trait(iter_trait, return_ty, ty_params, self.param_env)
+                    .type_implements_trait(iter_trait, [return_ty], self.param_env)
                     .must_apply_modulo_regions()
             {
                 err.span_suggestion_hidden(

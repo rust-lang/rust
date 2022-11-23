@@ -548,6 +548,7 @@ pub enum PrintRequest {
     NativeStaticLibs,
     StackProtectorStrategies,
     LinkArgs,
+    SplitDebuginfo,
 }
 
 pub enum Input {
@@ -1806,6 +1807,7 @@ fn collect_print_requests(
         ("stack-protector-strategies", PrintRequest::StackProtectorStrategies),
         ("target-spec-json", PrintRequest::TargetSpec),
         ("link-args", PrintRequest::LinkArgs),
+        ("split-debuginfo", PrintRequest::SplitDebuginfo),
     ];
 
     prints.extend(matches.opt_strs("print").into_iter().map(|req| {

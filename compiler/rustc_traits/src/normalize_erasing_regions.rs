@@ -34,7 +34,9 @@ fn try_normalize_after_erasing_regions<'tcx, T: TypeFoldable<'tcx> + PartialEq +
             // We don't care about the `obligations`; they are
             // always only region relations, and we are about to
             // erase those anyway:
-            debug_assert_eq!(
+            // This has been seen to fail in RL, so making it a non-debug assertion to better catch
+            // those cases.
+            assert_eq!(
                 normalized_obligations.iter().find(|p| not_outlives_predicate(p.predicate)),
                 None,
             );
@@ -64,6 +66,7 @@ fn not_outlives_predicate<'tcx>(p: ty::Predicate<'tcx>) -> bool {
         | ty::PredicateKind::Coerce(..)
         | ty::PredicateKind::ConstEvaluatable(..)
         | ty::PredicateKind::ConstEquate(..)
+        | ty::PredicateKind::Ambiguous
         | ty::PredicateKind::TypeWellFormedFromEnv(..) => true,
     }
 }

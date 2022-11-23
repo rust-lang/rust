@@ -11,10 +11,9 @@ use rustc_ast::tokenstream::{TokenStream, TokenTree};
 use rustc_ast::util::classify;
 use rustc_ast::util::comments::{gather_comments, Comment, CommentStyle};
 use rustc_ast::util::parser;
-use rustc_ast::{self as ast, BlockCheckMode, Mutability, PatKind, RangeEnd, RangeSyntax};
-use rustc_ast::{attr, BindingAnnotation, ByRef, Term};
-use rustc_ast::{GenericArg, MacArgs, MacArgsEq};
-use rustc_ast::{GenericBound, SelfKind, TraitBoundModifier};
+use rustc_ast::{self as ast, AttrArgs, AttrArgsEq, BlockCheckMode, Mutability, PatKind};
+use rustc_ast::{attr, BindingAnnotation, ByRef, DelimArgs, RangeEnd, RangeSyntax, Term};
+use rustc_ast::{GenericArg, GenericBound, SelfKind, TraitBoundModifier};
 use rustc_ast::{InlineAsmOperand, InlineAsmRegOrRegClass};
 use rustc_ast::{InlineAsmOptions, InlineAsmTemplatePiece};
 use rustc_span::edition::Edition;
@@ -373,8 +372,12 @@ pub trait PrintState<'a>: std::ops::Deref<Target = pp::Printer> + std::ops::Dere
     }
 
     fn print_literal(&mut self, lit: &ast::Lit) {
-        self.maybe_print_comment(lit.span.lo());
-        self.word(lit.token_lit.to_string())
+        self.print_token_literal(lit.token_lit, lit.span)
+    }
+
+    fn print_token_literal(&mut self, token_lit: token::Lit, span: Span) {
+        self.maybe_print_comment(span.lo());
+        self.word(token_lit.to_string())
     }
 
     fn print_string(&mut self, st: &str, style: ast::StrStyle) {
@@ -462,26 +465,26 @@ pub trait PrintState<'a>: std::ops::Deref<Target = pp::Printer> + std::ops::Dere
     fn print_attr_item(&mut self, item: &ast::AttrItem, span: Span) {
         self.ibox(0);
         match &item.args {
-            MacArgs::Delimited(_, delim, tokens) => self.print_mac_common(
+            AttrArgs::Delimited(DelimArgs { dspan: _, delim, tokens }) => self.print_mac_common(
                 Some(MacHeader::Path(&item.path)),
                 false,
                 None,
-                Some(delim.to_token()),
+                delim.to_token(),
                 tokens,
                 true,
                 span,
             ),
-            MacArgs::Empty => {
+            AttrArgs::Empty => {
                 self.print_path(&item.path, false, 0);
             }
-            MacArgs::Eq(_, MacArgsEq::Ast(expr)) => {
+            AttrArgs::Eq(_, AttrArgsEq::Ast(expr)) => {
                 self.print_path(&item.path, false, 0);
                 self.space();
                 self.word_space("=");
                 let token_str = self.expr_to_string(expr);
                 self.word(token_str);
             }
-            MacArgs::Eq(_, MacArgsEq::Hir(lit)) => {
+            AttrArgs::Eq(_, AttrArgsEq::Hir(lit)) => {
                 self.print_path(&item.path, false, 0);
                 self.space();
                 self.word_space("=");
@@ -540,7 +543,7 @@ pub trait PrintState<'a>: std::ops::Deref<Target = pp::Printer> + std::ops::Dere
                     None,
                     false,
                     None,
-                    Some(*delim),
+                    *delim,
                     tts,
                     convert_dollar_crate,
                     dspan.entire(),
@@ -566,12 +569,12 @@ pub trait PrintState<'a>: std::ops::Deref<Target = pp::Printer> + std::ops::Dere
         header: Option<MacHeader<'_>>,
         has_bang: bool,
         ident: Option<Ident>,
-        delim: Option<Delimiter>,
+        delim: Delimiter,
         tts: &TokenStream,
         convert_dollar_crate: bool,
         span: Span,
     ) {
-        if delim == Some(Delimiter::Brace) {
+        if delim == Delimiter::Brace {
             self.cbox(INDENT_UNIT);
         }
         match header {
@@ -587,7 +590,7 @@ pub trait PrintState<'a>: std::ops::Deref<Target = pp::Printer> + std::ops::Dere
             self.print_ident(ident);
         }
         match delim {
-            Some(Delimiter::Brace) => {
+            Delimiter::Brace => {
                 if header.is_some() || has_bang || ident.is_some() {
                     self.nbsp();
                 }
@@ -601,7 +604,7 @@ pub trait PrintState<'a>: std::ops::Deref<Target = pp::Printer> + std::ops::Dere
                 let empty = tts.is_empty();
                 self.bclose(span, empty);
             }
-            Some(delim) => {
+            delim => {
                 let token_str = self.token_kind_to_string(&token::OpenDelim(delim));
                 self.word(token_str);
                 self.ibox(0);
@@ -609,11 +612,6 @@ pub trait PrintState<'a>: std::ops::Deref<Target = pp::Printer> + std::ops::Dere
                 self.end();
                 let token_str = self.token_kind_to_string(&token::CloseDelim(delim));
                 self.word(token_str);
-            }
-            None => {
-                self.ibox(0);
-                self.print_tts(tts, convert_dollar_crate);
-                self.end();
             }
         }
     }
@@ -635,8 +633,8 @@ pub trait PrintState<'a>: std::ops::Deref<Target = pp::Printer> + std::ops::Dere
             Some(MacHeader::Keyword(kw)),
             has_bang,
             Some(*ident),
-            macro_def.body.delim(),
-            &macro_def.body.inner_tokens(),
+            macro_def.body.delim.to_token(),
+            &macro_def.body.tokens.clone(),
             true,
             sp,
         );
@@ -1226,8 +1224,8 @@ impl<'a> State<'a> {
             Some(MacHeader::Path(&m.path)),
             true,
             None,
-            m.args.delim(),
-            &m.args.inner_tokens(),
+            m.args.delim.to_token(),
+            &m.args.tokens.clone(),
             true,
             m.span(),
         );
@@ -1735,7 +1733,7 @@ impl<'a> State<'a> {
             }
             ast::Extern::Explicit(abi, _) => {
                 self.word_nbsp("extern");
-                self.print_literal(&abi.as_lit());
+                self.print_token_literal(abi.as_token_lit(), abi.span);
                 self.nbsp();
             }
         }

@@ -55,9 +55,9 @@ cfg_if::cfg_if! {
             mod futex_condvar;
             mod futex_mutex;
             mod futex_rwlock;
-            pub(crate) use futex_condvar::{Condvar, MovableCondvar};
-            pub(crate) use futex_mutex::{Mutex, MovableMutex};
-            pub(crate) use futex_rwlock::MovableRwLock;
+            pub(crate) use futex_condvar::Condvar;
+            pub(crate) use futex_mutex::Mutex;
+            pub(crate) use futex_rwlock::RwLock;
         }
         #[path = "atomics/futex.rs"]
         pub mod futex;

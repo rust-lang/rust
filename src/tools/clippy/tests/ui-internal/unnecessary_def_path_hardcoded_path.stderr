@@ -8,20 +8,20 @@ LL |     const DEREF_MUT_TRAIT: [&str; 4] = ["core", "ops", "deref", "DerefMut"]
    = note: `-D clippy::unnecessary-def-path` implied by `-D warnings`
 
 error: hardcoded path to a diagnostic item
-  --> $DIR/unnecessary_def_path_hardcoded_path.rs:12:43
-   |
-LL |     const DEREF_TRAIT_METHOD: [&str; 5] = ["core", "ops", "deref", "Deref", "deref"];
-   |                                           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
-   |
-   = help: convert all references to use `sym::deref_method`
-
-error: hardcoded path to a diagnostic item
   --> $DIR/unnecessary_def_path_hardcoded_path.rs:10:36
    |
 LL |     const DEREF_TRAIT: [&str; 4] = ["core", "ops", "deref", "Deref"];
    |                                    ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
    |
    = help: convert all references to use `sym::Deref`
+
+error: hardcoded path to a diagnostic item
+  --> $DIR/unnecessary_def_path_hardcoded_path.rs:12:43
+   |
+LL |     const DEREF_TRAIT_METHOD: [&str; 5] = ["core", "ops", "deref", "Deref", "deref"];
+   |                                           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+   = help: convert all references to use `sym::deref_method`
 
 error: aborting due to 3 previous errors
 

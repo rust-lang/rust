@@ -256,7 +256,7 @@ impl<'tcx> LateLintPass<'tcx> for LintWithoutLintPass {
     }
 }
 
-pub(super) fn is_lint_ref_type<'tcx>(cx: &LateContext<'tcx>, ty: &hir::Ty<'_>) -> bool {
+pub(super) fn is_lint_ref_type(cx: &LateContext<'_>, ty: &hir::Ty<'_>) -> bool {
     if let TyKind::Rptr(
         _,
         MutTy {

@@ -139,11 +139,11 @@ LL | const SLICE_CONTENT_INVALID: &[bool] = &[unsafe { mem::transmute(3u8) }];
                ╾───────allocN───────╼                         │ ╾──────╼
            }
 
-error[E0080]: evaluation of constant value failed
+note: erroneous constant used
   --> $DIR/ub-wide-ptr.rs:83:40
    |
 LL | const SLICE_CONTENT_INVALID: &[bool] = &[unsafe { mem::transmute(3u8) }];
-   |                                        ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ referenced constant has errors
+   |                                        ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
 error[E0080]: it is undefined behavior to use this value
   --> $DIR/ub-wide-ptr.rs:90:1
@@ -156,11 +156,11 @@ LL | const MYSLICE_PREFIX_BAD: &MySliceBool = &MySlice(unsafe { mem::transmute(3
                ╾──────allocN───────╼                         │ ╾──────╼
            }
 
-error[E0080]: evaluation of constant value failed
+note: erroneous constant used
   --> $DIR/ub-wide-ptr.rs:90:42
    |
 LL | const MYSLICE_PREFIX_BAD: &MySliceBool = &MySlice(unsafe { mem::transmute(3u8) }, [false]);
-   |                                          ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ referenced constant has errors
+   |                                          ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
 error[E0080]: it is undefined behavior to use this value
   --> $DIR/ub-wide-ptr.rs:94:1
@@ -173,11 +173,11 @@ LL | const MYSLICE_SUFFIX_BAD: &MySliceBool = &MySlice(true, [unsafe { mem::tran
                ╾──────allocN───────╼                         │ ╾──────╼
            }
 
-error[E0080]: evaluation of constant value failed
+note: erroneous constant used
   --> $DIR/ub-wide-ptr.rs:94:42
    |
 LL | const MYSLICE_SUFFIX_BAD: &MySliceBool = &MySlice(true, [unsafe { mem::transmute(3u8) }]);
-   |                                          ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ referenced constant has errors
+   |                                          ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
 error[E0080]: evaluation of constant value failed
   --> $DIR/ub-wide-ptr.rs:102:1
@@ -292,6 +292,6 @@ error[E0080]: could not evaluate static initializer
 LL |     mem::transmute::<_, &dyn Trait>((&92u8, &3u64))
    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ using allocN as vtable pointer but it does not point to a vtable
 
-error: aborting due to 32 previous errors
+error: aborting due to 29 previous errors
 
 For more information about this error, try `rustc --explain E0080`.

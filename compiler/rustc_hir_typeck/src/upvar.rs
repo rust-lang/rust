@@ -970,12 +970,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                 check_trait
                     .map(|check_trait| {
                         self.infcx
-                            .type_implements_trait(
-                                check_trait,
-                                ty,
-                                self.tcx.mk_substs_trait(ty, &[]),
-                                self.param_env,
-                            )
+                            .type_implements_trait(check_trait, [ty], self.param_env)
                             .must_apply_modulo_regions()
                     })
                     .unwrap_or(false),
@@ -999,12 +994,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                     check_trait
                         .map(|check_trait| {
                             self.infcx
-                                .type_implements_trait(
-                                    check_trait,
-                                    ty,
-                                    self.tcx.mk_substs_trait(ty, &[]),
-                                    self.param_env,
-                                )
+                                .type_implements_trait(check_trait, [ty], self.param_env)
                                 .must_apply_modulo_regions()
                         })
                         .unwrap_or(false),
@@ -1347,14 +1337,8 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
 
         let is_drop_defined_for_ty = |ty: Ty<'tcx>| {
             let drop_trait = self.tcx.require_lang_item(hir::LangItem::Drop, Some(closure_span));
-            let ty_params = self.tcx.mk_substs_trait(base_path_ty, &[]);
             self.infcx
-                .type_implements_trait(
-                    drop_trait,
-                    ty,
-                    ty_params,
-                    self.tcx.param_env(closure_def_id),
-                )
+                .type_implements_trait(drop_trait, [ty], self.tcx.param_env(closure_def_id))
                 .must_apply_modulo_regions()
         };
 

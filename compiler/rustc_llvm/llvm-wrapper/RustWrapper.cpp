@@ -9,7 +9,7 @@
 #include "llvm/IR/IntrinsicsARM.h"
 #include "llvm/IR/Mangler.h"
 #if LLVM_VERSION_GE(16, 0)
-#include "llvm/IR/ModRef.h"
+#include "llvm/Support/ModRef.h"
 #endif
 #include "llvm/Object/Archive.h"
 #include "llvm/Object/COFFImportFile.h"
@@ -1036,8 +1036,9 @@ extern "C" LLVMValueRef LLVMRustDIBuilderInsertDeclareAtEnd(
 
 extern "C" LLVMMetadataRef LLVMRustDIBuilderCreateEnumerator(
     LLVMRustDIBuilderRef Builder, const char *Name, size_t NameLen,
-    int64_t Value, bool IsUnsigned) {
-  return wrap(Builder->createEnumerator(StringRef(Name, NameLen), Value, IsUnsigned));
+    const uint64_t Value[2], unsigned SizeInBits, bool IsUnsigned) {
+  return wrap(Builder->createEnumerator(StringRef(Name, NameLen),
+      APSInt(APInt(SizeInBits, makeArrayRef(Value, 2)), IsUnsigned)));
 }
 
 extern "C" LLVMMetadataRef LLVMRustDIBuilderCreateEnumerationType(
@@ -1109,6 +1110,10 @@ extern "C" uint64_t LLVMRustDIBuilderCreateOpDeref() {
 
 extern "C" uint64_t LLVMRustDIBuilderCreateOpPlusUconst() {
   return dwarf::DW_OP_plus_uconst;
+}
+
+extern "C" int64_t LLVMRustDIBuilderCreateOpLLVMFragment() {
+  return dwarf::DW_OP_LLVM_fragment;
 }
 
 extern "C" void LLVMRustWriteTypeToString(LLVMTypeRef Ty, RustStringRef Str) {

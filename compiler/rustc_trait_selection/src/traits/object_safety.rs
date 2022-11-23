@@ -319,6 +319,7 @@ fn predicate_references_self<'tcx>(
         | ty::PredicateKind::Coerce(..)
         | ty::PredicateKind::ConstEvaluatable(..)
         | ty::PredicateKind::ConstEquate(..)
+        | ty::PredicateKind::Ambiguous
         | ty::PredicateKind::TypeWellFormedFromEnv(..) => None,
     }
 }
@@ -350,6 +351,7 @@ fn generics_require_sized_self(tcx: TyCtxt<'_>, def_id: DefId) -> bool {
             | ty::PredicateKind::TypeOutlives(..)
             | ty::PredicateKind::ConstEvaluatable(..)
             | ty::PredicateKind::ConstEquate(..)
+            | ty::PredicateKind::Ambiguous
             | ty::PredicateKind::TypeWellFormedFromEnv(..) => false,
         }
     })
@@ -375,6 +377,7 @@ fn object_safety_violation_for_method(
         let span = match (&v, node) {
             (MethodViolationCode::ReferencesSelfInput(Some(span)), _) => *span,
             (MethodViolationCode::UndispatchableReceiver(Some(span)), _) => *span,
+            (MethodViolationCode::ReferencesImplTraitInTrait(span), _) => *span,
             (MethodViolationCode::ReferencesSelfOutput, Some(node)) => {
                 node.fn_decl().map_or(method.ident(tcx).span, |decl| decl.output.span())
             }
@@ -437,8 +440,8 @@ fn virtual_call_violation_for_method<'tcx>(
     if contains_illegal_self_type_reference(tcx, trait_def_id, sig.output()) {
         return Some(MethodViolationCode::ReferencesSelfOutput);
     }
-    if contains_illegal_impl_trait_in_trait(tcx, sig.output()) {
-        return Some(MethodViolationCode::ReferencesImplTraitInTrait);
+    if let Some(code) = contains_illegal_impl_trait_in_trait(tcx, method.def_id, sig.output()) {
+        return Some(code);
     }
 
     // We can't monomorphize things like `fn foo<A>(...)`.
@@ -684,10 +687,9 @@ fn receiver_is_dispatchable<'tcx>(
         let param_env = tcx.param_env(method.def_id);
 
         // Self: Unsize<U>
-        let unsize_predicate = ty::Binder::dummy(ty::TraitRef {
-            def_id: unsize_did,
-            substs: tcx.mk_substs_trait(tcx.types.self_param, &[unsized_self_ty.into()]),
-        })
+        let unsize_predicate = ty::Binder::dummy(
+            tcx.mk_trait_ref(unsize_did, [tcx.types.self_param, unsized_self_ty]),
+        )
         .without_const()
         .to_predicate(tcx);
 
@@ -719,14 +721,12 @@ fn receiver_is_dispatchable<'tcx>(
 
     // Receiver: DispatchFromDyn<Receiver[Self => U]>
     let obligation = {
-        let predicate = ty::Binder::dummy(ty::TraitRef {
-            def_id: dispatch_from_dyn_did,
-            substs: tcx.mk_substs_trait(receiver_ty, &[unsized_receiver_ty.into()]),
-        })
-        .without_const()
-        .to_predicate(tcx);
+        let predicate = ty::Binder::dummy(
+            tcx.mk_trait_ref(dispatch_from_dyn_did, [receiver_ty, unsized_receiver_ty]),
+        )
+        .without_const();
 
-        Obligation::new(ObligationCause::dummy(), param_env, predicate)
+        Obligation::new(tcx, ObligationCause::dummy(), param_env, predicate)
     };
 
     let infcx = tcx.infer_ctxt().build();
@@ -865,16 +865,24 @@ fn contains_illegal_self_type_reference<'tcx, T: TypeVisitable<'tcx>>(
 
 pub fn contains_illegal_impl_trait_in_trait<'tcx>(
     tcx: TyCtxt<'tcx>,
+    fn_def_id: DefId,
     ty: ty::Binder<'tcx, Ty<'tcx>>,
-) -> bool {
+) -> Option<MethodViolationCode> {
+    // This would be caught below, but rendering the error as a separate
+    // `async-specific` message is better.
+    if tcx.asyncness(fn_def_id).is_async() {
+        return Some(MethodViolationCode::AsyncFn);
+    }
+
     // FIXME(RPITIT): Perhaps we should use a visitor here?
-    ty.skip_binder().walk().any(|arg| {
+    ty.skip_binder().walk().find_map(|arg| {
         if let ty::GenericArgKind::Type(ty) = arg.unpack()
             && let ty::Projection(proj) = ty.kind()
+            && tcx.def_kind(proj.item_def_id) == DefKind::ImplTraitPlaceholder
         {
-            tcx.def_kind(proj.item_def_id) == DefKind::ImplTraitPlaceholder
+            Some(MethodViolationCode::ReferencesImplTraitInTrait(tcx.def_span(proj.item_def_id)))
         } else {
-            false
+            None
         }
     })
 }

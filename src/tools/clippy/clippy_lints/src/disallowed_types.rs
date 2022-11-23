@@ -1,7 +1,7 @@
 use clippy_utils::diagnostics::span_lint_and_then;
 
 use rustc_data_structures::fx::FxHashMap;
-use rustc_hir::def::{Namespace, Res};
+use rustc_hir::def::Res;
 use rustc_hir::def_id::DefId;
 use rustc_hir::{Item, ItemKind, PolyTraitRef, PrimTy, Ty, TyKind, UseKind};
 use rustc_lint::{LateContext, LateLintPass};
@@ -53,8 +53,8 @@ declare_clippy_lint! {
 #[derive(Clone, Debug)]
 pub struct DisallowedTypes {
     conf_disallowed: Vec<conf::DisallowedPath>,
-    def_ids: FxHashMap<DefId, Option<String>>,
-    prim_tys: FxHashMap<PrimTy, Option<String>>,
+    def_ids: FxHashMap<DefId, usize>,
+    prim_tys: FxHashMap<PrimTy, usize>,
 }
 
 impl DisallowedTypes {
@@ -69,13 +69,13 @@ impl DisallowedTypes {
     fn check_res_emit(&self, cx: &LateContext<'_>, res: &Res, span: Span) {
         match res {
             Res::Def(_, did) => {
-                if let Some(reason) = self.def_ids.get(did) {
-                    emit(cx, &cx.tcx.def_path_str(*did), span, reason.as_deref());
+                if let Some(&index) = self.def_ids.get(did) {
+                    emit(cx, &cx.tcx.def_path_str(*did), span, &self.conf_disallowed[index]);
                 }
             },
             Res::PrimTy(prim) => {
-                if let Some(reason) = self.prim_tys.get(prim) {
-                    emit(cx, prim.name_str(), span, reason.as_deref());
+                if let Some(&index) = self.prim_tys.get(prim) {
+                    emit(cx, prim.name_str(), span, &self.conf_disallowed[index]);
                 }
             },
             _ => {},
@@ -87,17 +87,19 @@ impl_lint_pass!(DisallowedTypes => [DISALLOWED_TYPES]);
 
 impl<'tcx> LateLintPass<'tcx> for DisallowedTypes {
     fn check_crate(&mut self, cx: &LateContext<'_>) {
-        for conf in &self.conf_disallowed {
+        for (index, conf) in self.conf_disallowed.iter().enumerate() {
             let segs: Vec<_> = conf.path().split("::").collect();
-            let reason = conf.reason().map(|reason| format!("{reason} (from clippy.toml)"));
-            match clippy_utils::def_path_res(cx, &segs, Some(Namespace::TypeNS)) {
-                Res::Def(_, id) => {
-                    self.def_ids.insert(id, reason);
-                },
-                Res::PrimTy(ty) => {
-                    self.prim_tys.insert(ty, reason);
-                },
-                _ => {},
+
+            for res in clippy_utils::def_path_res(cx, &segs) {
+                match res {
+                    Res::Def(_, id) => {
+                        self.def_ids.insert(id, index);
+                    },
+                    Res::PrimTy(ty) => {
+                        self.prim_tys.insert(ty, index);
+                    },
+                    _ => {},
+                }
             }
         }
     }
@@ -119,14 +121,14 @@ impl<'tcx> LateLintPass<'tcx> for DisallowedTypes {
     }
 }
 
-fn emit(cx: &LateContext<'_>, name: &str, span: Span, reason: Option<&str>) {
+fn emit(cx: &LateContext<'_>, name: &str, span: Span, conf: &conf::DisallowedPath) {
     span_lint_and_then(
         cx,
         DISALLOWED_TYPES,
         span,
         &format!("`{name}` is not allowed according to config"),
         |diag| {
-            if let Some(reason) = reason {
+            if let Some(reason) = conf.reason() {
                 diag.note(reason);
             }
         },

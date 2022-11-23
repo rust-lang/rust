@@ -9,7 +9,6 @@ use rustc_middle::mir::interpret::ErrorHandled;
 use rustc_middle::ty::abstract_const::NotConstEvaluatable;
 use rustc_middle::ty::error::{ExpectedFound, TypeError};
 use rustc_middle::ty::subst::SubstsRef;
-use rustc_middle::ty::ToPredicate;
 use rustc_middle::ty::{self, Binder, Const, Ty, TypeVisitable};
 use std::marker::PhantomData;
 
@@ -85,7 +84,7 @@ static_assert_size!(PendingPredicateObligation<'_>, 72);
 
 impl<'a, 'tcx> FulfillmentContext<'tcx> {
     /// Creates a new fulfillment context.
-    pub fn new() -> FulfillmentContext<'tcx> {
+    pub(super) fn new() -> FulfillmentContext<'tcx> {
         FulfillmentContext {
             predicates: ObligationForest::new(),
             relationships: FxHashMap::default(),
@@ -93,7 +92,7 @@ impl<'a, 'tcx> FulfillmentContext<'tcx> {
         }
     }
 
-    pub fn new_in_snapshot() -> FulfillmentContext<'tcx> {
+    pub(super) fn new_in_snapshot() -> FulfillmentContext<'tcx> {
         FulfillmentContext {
             predicates: ObligationForest::new(),
             relationships: FxHashMap::default(),
@@ -296,7 +295,7 @@ impl<'a, 'tcx> ObligationProcessor for FulfillProcessor<'a, 'tcx> {
                 &mut obligations,
             );
             if predicate != obligation.predicate {
-                obligations.push(obligation.with(predicate));
+                obligations.push(obligation.with(infcx.tcx, predicate));
                 return ProcessResult::Changed(mk_pending(obligations));
             }
         }
@@ -307,7 +306,7 @@ impl<'a, 'tcx> ObligationProcessor for FulfillProcessor<'a, 'tcx> {
                 // This means we need to pass it the bound version of our
                 // predicate.
                 ty::PredicateKind::Trait(trait_ref) => {
-                    let trait_obligation = obligation.with(binder.rebind(trait_ref));
+                    let trait_obligation = obligation.with(infcx.tcx, binder.rebind(trait_ref));
 
                     self.process_trait_obligation(
                         obligation,
@@ -316,7 +315,7 @@ impl<'a, 'tcx> ObligationProcessor for FulfillProcessor<'a, 'tcx> {
                     )
                 }
                 ty::PredicateKind::Projection(data) => {
-                    let project_obligation = obligation.with(binder.rebind(data));
+                    let project_obligation = obligation.with(infcx.tcx, binder.rebind(data));
 
                     self.process_projection_obligation(
                         obligation,
@@ -335,17 +334,16 @@ impl<'a, 'tcx> ObligationProcessor for FulfillProcessor<'a, 'tcx> {
                 | ty::PredicateKind::ConstEquate(..) => {
                     let pred =
                         ty::Binder::dummy(infcx.replace_bound_vars_with_placeholders(binder));
-                    ProcessResult::Changed(mk_pending(vec![
-                        obligation.with(pred.to_predicate(self.selcx.tcx())),
-                    ]))
+                    ProcessResult::Changed(mk_pending(vec![obligation.with(infcx.tcx, pred)]))
                 }
+                ty::PredicateKind::Ambiguous => ProcessResult::Unchanged,
                 ty::PredicateKind::TypeWellFormedFromEnv(..) => {
                     bug!("TypeWellFormedFromEnv is only used for Chalk")
                 }
             },
             Some(pred) => match pred {
                 ty::PredicateKind::Trait(data) => {
-                    let trait_obligation = obligation.with(Binder::dummy(data));
+                    let trait_obligation = obligation.with(infcx.tcx, Binder::dummy(data));
 
                     self.process_trait_obligation(
                         obligation,
@@ -370,7 +368,7 @@ impl<'a, 'tcx> ObligationProcessor for FulfillProcessor<'a, 'tcx> {
                 }
 
                 ty::PredicateKind::Projection(ref data) => {
-                    let project_obligation = obligation.with(Binder::dummy(*data));
+                    let project_obligation = obligation.with(infcx.tcx, Binder::dummy(*data));
 
                     self.process_projection_obligation(
                         obligation,
@@ -558,12 +556,6 @@ impl<'a, 'tcx> ObligationProcessor for FulfillProcessor<'a, 'tcx> {
                                 NotConstEvaluatable::Error(reported),
                             )),
                         ),
-                        (Err(ErrorHandled::Linted), _) | (_, Err(ErrorHandled::Linted)) => {
-                            span_bug!(
-                                obligation.cause.span(),
-                                "ConstEquate: const_eval_resolve returned an unexpected error"
-                            )
-                        }
                         (Err(ErrorHandled::TooGeneric), _) | (_, Err(ErrorHandled::TooGeneric)) => {
                             if c1.has_non_region_infer() || c2.has_non_region_infer() {
                                 ProcessResult::Unchanged
@@ -578,6 +570,7 @@ impl<'a, 'tcx> ObligationProcessor for FulfillProcessor<'a, 'tcx> {
                         }
                     }
                 }
+                ty::PredicateKind::Ambiguous => ProcessResult::Unchanged,
                 ty::PredicateKind::TypeWellFormedFromEnv(..) => {
                     bug!("TypeWellFormedFromEnv is only used for Chalk")
                 }
@@ -703,7 +696,7 @@ impl<'a, 'tcx> FulfillProcessor<'a, 'tcx> {
             }
             // Let the caller handle the recursion
             ProjectAndUnifyResult::Recursive => ProcessResult::Changed(mk_pending(vec![
-                project_obligation.with(project_obligation.predicate.to_predicate(tcx)),
+                project_obligation.with(tcx, project_obligation.predicate),
             ])),
             ProjectAndUnifyResult::MismatchedProjectionTypes(e) => {
                 ProcessResult::Error(CodeProjectionError(e))

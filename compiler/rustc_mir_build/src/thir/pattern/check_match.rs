@@ -564,7 +564,7 @@ fn check_for_bindings_named_same_as_variants(
             && let ty::Adt(edef, _) = pat_ty.kind()
             && edef.is_enum()
             && edef.variants().iter().any(|variant| {
-                variant.ident(cx.tcx) == ident && variant.ctor_kind == CtorKind::Const
+                variant.ident(cx.tcx) == ident && variant.ctor_kind() == Some(CtorKind::Const)
             })
         {
             let variant_count = edef.variants().len();
@@ -818,7 +818,7 @@ fn non_exhaustive_match<'p, 'tcx>(
         }
     }
     if let ty::Ref(_, sub_ty, _) = scrut_ty.kind() {
-        if cx.tcx.is_ty_uninhabited_from(cx.module, *sub_ty, cx.param_env) {
+        if !sub_ty.is_inhabited_from(cx.tcx, cx.module, cx.param_env) {
             err.note("references are always considered inhabited");
         }
     }

@@ -1,7 +1,7 @@
 //! Concrete error types for all operations which may be invalid in a certain const context.
 
 use hir::def_id::LocalDefId;
-use hir::ConstContext;
+use hir::{ConstContext, LangItem};
 use rustc_errors::{
     error_code, struct_span_err, Applicability, DiagnosticBuilder, ErrorGuaranteed,
 };
@@ -147,6 +147,7 @@ impl<'tcx> NonConstOp<'tcx> for FnCallNonConst<'tcx> {
                 }
                 Adt(..) => {
                     let obligation = Obligation::new(
+                        tcx,
                         ObligationCause::dummy(),
                         param_env,
                         Binder::dummy(TraitPredicate {
@@ -303,7 +304,7 @@ impl<'tcx> NonConstOp<'tcx> for FnCallNonConst<'tcx> {
                     err.span_note(deref_target, "deref defined here");
                 }
 
-                diag_trait(&mut err, self_ty, tcx.lang_items().deref_trait().unwrap());
+                diag_trait(&mut err, self_ty, tcx.require_lang_item(LangItem::Deref, Some(span)));
                 err
             }
             _ if tcx.opt_parent(callee) == tcx.get_diagnostic_item(sym::ArgumentV1Methods) => {

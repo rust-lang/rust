@@ -419,7 +419,7 @@ fn can_change_type<'a>(cx: &LateContext<'a>, mut expr: &'a Expr<'a>, mut ty: Ty<
 
                         if trait_predicates.any(|predicate| {
                             let predicate = EarlyBinder(predicate).subst(cx.tcx, new_subst);
-                            let obligation = Obligation::new(ObligationCause::dummy(), cx.param_env, predicate);
+                            let obligation = Obligation::new(cx.tcx, ObligationCause::dummy(), cx.param_env, predicate);
                             !cx.tcx.infer_ctxt().build().predicate_must_hold_modulo_regions(&obligation)
                         }) {
                             return false;
@@ -474,7 +474,7 @@ fn is_cow_into_owned(cx: &LateContext<'_>, method_name: Symbol, method_def_id: D
 }
 
 /// Returns true if the named method is `ToString::to_string` and it's called on a type that
-/// is string-like i.e. implements `AsRef<str>` or `Deref<str>`.
+/// is string-like i.e. implements `AsRef<str>` or `Deref<Target = str>`.
 fn is_to_string_on_string_like<'a>(
     cx: &LateContext<'_>,
     call_expr: &'a Expr<'a>,
@@ -490,7 +490,7 @@ fn is_to_string_on_string_like<'a>(
         && let GenericArgKind::Type(ty) = generic_arg.unpack()
         && let Some(deref_trait_id) = cx.tcx.get_diagnostic_item(sym::Deref)
         && let Some(as_ref_trait_id) = cx.tcx.get_diagnostic_item(sym::AsRef)
-        && (implements_trait(cx, ty, deref_trait_id, &[cx.tcx.types.str_.into()]) ||
+        && (get_associated_type(cx, ty, deref_trait_id, "Target") == Some(cx.tcx.types.str_) ||
             implements_trait(cx, ty, as_ref_trait_id, &[cx.tcx.types.str_.into()])) {
             true
         } else {

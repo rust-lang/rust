@@ -18,7 +18,7 @@ use std::borrow::Cow;
 
 type McfResult = Result<(), (Span, Cow<'static, str>)>;
 
-pub fn is_min_const_fn<'a, 'tcx>(tcx: TyCtxt<'tcx>, body: &'a Body<'tcx>, msrv: Option<RustcVersion>) -> McfResult {
+pub fn is_min_const_fn<'tcx>(tcx: TyCtxt<'tcx>, body: &Body<'tcx>, msrv: Option<RustcVersion>) -> McfResult {
     let def_id = body.source.def_id();
     let mut current = def_id;
     loop {
@@ -37,6 +37,7 @@ pub fn is_min_const_fn<'a, 'tcx>(tcx: TyCtxt<'tcx>, body: &'a Body<'tcx>, msrv: 
                 ty::PredicateKind::ClosureKind(..) => panic!("closure kind predicate on function: {predicate:#?}"),
                 ty::PredicateKind::Subtype(_) => panic!("subtype predicate on function: {predicate:#?}"),
                 ty::PredicateKind::Coerce(_) => panic!("coerce predicate on function: {predicate:#?}"),
+                ty::PredicateKind::Ambiguous => panic!("ambiguous predicate on function: {predicate:#?}"),
             }
         }
         match predicates.parent {
@@ -276,9 +277,9 @@ fn check_place<'tcx>(tcx: TyCtxt<'tcx>, place: Place<'tcx>, span: Span, body: &B
     Ok(())
 }
 
-fn check_terminator<'a, 'tcx>(
+fn check_terminator<'tcx>(
     tcx: TyCtxt<'tcx>,
-    body: &'a Body<'tcx>,
+    body: &Body<'tcx>,
     terminator: &Terminator<'tcx>,
     msrv: Option<RustcVersion>,
 ) -> McfResult {

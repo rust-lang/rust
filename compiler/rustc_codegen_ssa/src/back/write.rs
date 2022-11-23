@@ -15,10 +15,8 @@ use rustc_data_structures::profiling::TimingGuard;
 use rustc_data_structures::profiling::VerboseTimingGuard;
 use rustc_data_structures::sync::Lrc;
 use rustc_errors::emitter::Emitter;
-use rustc_errors::{
-    translation::{to_fluent_args, Translate},
-    DiagnosticId, FatalError, Handler, Level,
-};
+use rustc_errors::{translation::Translate, DiagnosticId, FatalError, Handler, Level};
+use rustc_errors::{DiagnosticMessage, Style};
 use rustc_fs_util::link_or_copy;
 use rustc_hir::def_id::{CrateNum, LOCAL_CRATE};
 use rustc_incremental::{
@@ -38,6 +36,7 @@ use rustc_span::{BytePos, FileName, InnerSpan, Pos, Span};
 use rustc_target::spec::{MergeFunctions, SanitizerSet};
 
 use std::any::Any;
+use std::borrow::Cow;
 use std::fs;
 use std::io;
 use std::marker::PhantomData;
@@ -969,8 +968,11 @@ pub enum Message<B: WriteBackendMethods> {
     CodegenAborted,
 }
 
+type DiagnosticArgName<'source> = Cow<'source, str>;
+
 struct Diagnostic {
-    msg: String,
+    msg: Vec<(DiagnosticMessage, Style)>,
+    args: FxHashMap<DiagnosticArgName<'static>, rustc_errors::DiagnosticArgValue<'static>>,
     code: Option<DiagnosticId>,
     lvl: Level,
 }
@@ -1743,15 +1745,18 @@ impl Translate for SharedEmitter {
 
 impl Emitter for SharedEmitter {
     fn emit_diagnostic(&mut self, diag: &rustc_errors::Diagnostic) {
-        let fluent_args = to_fluent_args(diag.args());
+        let args: FxHashMap<Cow<'_, str>, rustc_errors::DiagnosticArgValue<'_>> =
+            diag.args().map(|(name, arg)| (name.clone(), arg.clone())).collect();
         drop(self.sender.send(SharedEmitterMessage::Diagnostic(Diagnostic {
-            msg: self.translate_messages(&diag.message, &fluent_args).to_string(),
+            msg: diag.message.clone(),
+            args: args.clone(),
             code: diag.code.clone(),
             lvl: diag.level(),
         })));
         for child in &diag.children {
             drop(self.sender.send(SharedEmitterMessage::Diagnostic(Diagnostic {
-                msg: self.translate_messages(&child.message, &fluent_args).to_string(),
+                msg: child.message.clone(),
+                args: args.clone(),
                 code: None,
                 lvl: child.level,
             })));
@@ -1782,10 +1787,11 @@ impl SharedEmitterMain {
             match message {
                 Ok(SharedEmitterMessage::Diagnostic(diag)) => {
                     let handler = sess.diagnostic();
-                    let mut d = rustc_errors::Diagnostic::new(diag.lvl, &diag.msg);
+                    let mut d = rustc_errors::Diagnostic::new_with_messages(diag.lvl, diag.msg);
                     if let Some(code) = diag.code {
                         d.code(code);
                     }
+                    d.replace_args(diag.args);
                     handler.emit_diagnostic(&mut d);
                 }
                 Ok(SharedEmitterMessage::InlineAsmError(cookie, msg, level, source)) => {

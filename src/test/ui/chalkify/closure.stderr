@@ -1,80 +1,22 @@
-error[E0277]: `()` is not a tuple
-  --> $DIR/closure.rs:7:5
+error[E0382]: borrow of moved value: `b`
+  --> $DIR/closure.rs:27:5
    |
-LL |     t();
-   |     ^^^ the trait `Tuple` is not implemented for `()`
-   |
-help: consider introducing a `where` clause, but there might be an alternative better way to express this requirement
-   |
-LL | fn main() -> () where (): Tuple {
-   |                 +++++++++++++++
-
-error[E0277]: `()` is not a tuple
-  --> $DIR/closure.rs:13:5
-   |
+LL |     let mut c = b;
+   |                 - value moved here
+...
 LL |     b();
-   |     ^^^ the trait `Tuple` is not implemented for `()`
+   |     ^ value borrowed here after move
    |
-help: consider introducing a `where` clause, but there might be an alternative better way to express this requirement
+note: closure cannot be moved more than once as it is not `Copy` due to moving the variable `a` out of its environment
+  --> $DIR/closure.rs:20:9
    |
-LL | fn main() -> () where (): Tuple {
-   |                 +++++++++++++++
+LL |         a = 1;
+   |         ^
+help: consider mutably borrowing `b`
+   |
+LL |     let mut c = &mut b;
+   |                 ++++
 
-error[E0277]: `()` is not a tuple
-  --> $DIR/closure.rs:17:5
-   |
-LL |     c();
-   |     ^^^ the trait `Tuple` is not implemented for `()`
-   |
-help: consider introducing a `where` clause, but there might be an alternative better way to express this requirement
-   |
-LL | fn main() -> () where (): Tuple {
-   |                 +++++++++++++++
+error: aborting due to previous error
 
-error[E0277]: `()` is not a tuple
-  --> $DIR/closure.rs:18:5
-   |
-LL |     b();
-   |     ^^^ the trait `Tuple` is not implemented for `()`
-   |
-help: consider introducing a `where` clause, but there might be an alternative better way to express this requirement
-   |
-LL | fn main() -> () where (): Tuple {
-   |                 +++++++++++++++
-
-error[E0277]: `()` is not a tuple
-  --> $DIR/closure.rs:24:5
-   |
-LL |     b();
-   |     ^^^ the trait `Tuple` is not implemented for `()`
-   |
-help: consider introducing a `where` clause, but there might be an alternative better way to express this requirement
-   |
-LL | fn main() -> () where (): Tuple {
-   |                 +++++++++++++++
-
-error[E0277]: `()` is not a tuple
-  --> $DIR/closure.rs:28:5
-   |
-LL |     c();
-   |     ^^^ the trait `Tuple` is not implemented for `()`
-   |
-help: consider introducing a `where` clause, but there might be an alternative better way to express this requirement
-   |
-LL | fn main() -> () where (): Tuple {
-   |                 +++++++++++++++
-
-error[E0277]: `()` is not a tuple
-  --> $DIR/closure.rs:29:5
-   |
-LL |     b(); // FIXME: reenable when this is fixed ~ ERROR
-   |     ^^^ the trait `Tuple` is not implemented for `()`
-   |
-help: consider introducing a `where` clause, but there might be an alternative better way to express this requirement
-   |
-LL | fn main() -> () where (): Tuple {
-   |                 +++++++++++++++
-
-error: aborting due to 7 previous errors
-
-For more information about this error, try `rustc --explain E0277`.
+For more information about this error, try `rustc --explain E0382`.

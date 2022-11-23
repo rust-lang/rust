@@ -121,6 +121,7 @@ impl<'tcx> LowerInto<'tcx, chalk_ir::InEnvironment<chalk_ir::Goal<RustInterner<'
                 | ty::PredicateKind::Subtype(..)
                 | ty::PredicateKind::Coerce(..)
                 | ty::PredicateKind::ConstEvaluatable(..)
+                | ty::PredicateKind::Ambiguous
                 | ty::PredicateKind::ConstEquate(..) => bug!("unexpected predicate {}", predicate),
             };
             let value = chalk_ir::ProgramClauseImplication {
@@ -212,6 +213,7 @@ impl<'tcx> LowerInto<'tcx, chalk_ir::GoalData<RustInterner<'tcx>>> for ty::Predi
             ty::PredicateKind::ClosureKind(..)
             | ty::PredicateKind::Coerce(..)
             | ty::PredicateKind::ConstEvaluatable(..)
+            | ty::PredicateKind::Ambiguous
             | ty::PredicateKind::ConstEquate(..) => {
                 chalk_ir::GoalData::All(chalk_ir::Goals::empty(interner))
             }
@@ -498,18 +500,15 @@ impl<'tcx> LowerInto<'tcx, Region<'tcx>> for &chalk_ir::Lifetime<RustInterner<'t
                 ty::DebruijnIndex::from_u32(var.debruijn.depth()),
                 ty::BoundRegion {
                     var: ty::BoundVar::from_usize(var.index),
-                    kind: ty::BrAnon(var.index as u32),
+                    kind: ty::BrAnon(var.index as u32, None),
                 },
             ),
             chalk_ir::LifetimeData::InferenceVar(_var) => unimplemented!(),
             chalk_ir::LifetimeData::Placeholder(p) => ty::RePlaceholder(ty::Placeholder {
                 universe: ty::UniverseIndex::from_usize(p.ui.counter),
-                name: ty::BoundRegionKind::BrAnon(p.idx as u32),
+                name: ty::BoundRegionKind::BrAnon(p.idx as u32, None),
             }),
             chalk_ir::LifetimeData::Static => return interner.tcx.lifetimes.re_static,
-            chalk_ir::LifetimeData::Empty(_) => {
-                bug!("Chalk should not have been passed an empty lifetime.")
-            }
             chalk_ir::LifetimeData::Erased => return interner.tcx.lifetimes.re_erased,
             chalk_ir::LifetimeData::Phantom(void, _) => match *void {},
         };
@@ -628,6 +627,7 @@ impl<'tcx> LowerInto<'tcx, Option<chalk_ir::QuantifiedWhereClause<RustInterner<'
             | ty::PredicateKind::Coerce(..)
             | ty::PredicateKind::ConstEvaluatable(..)
             | ty::PredicateKind::ConstEquate(..)
+            | ty::PredicateKind::Ambiguous
             | ty::PredicateKind::TypeWellFormedFromEnv(..) => {
                 bug!("unexpected predicate {}", &self)
             }
@@ -637,7 +637,7 @@ impl<'tcx> LowerInto<'tcx, Option<chalk_ir::QuantifiedWhereClause<RustInterner<'
 }
 
 impl<'tcx> LowerInto<'tcx, chalk_ir::Binders<chalk_ir::QuantifiedWhereClauses<RustInterner<'tcx>>>>
-    for &'tcx ty::List<ty::Binder<'tcx, ty::ExistentialPredicate<'tcx>>>
+    for &'tcx ty::List<ty::PolyExistentialPredicate<'tcx>>
 {
     fn lower_into(
         self,
@@ -692,7 +692,7 @@ impl<'tcx> LowerInto<'tcx, chalk_ir::Binders<chalk_ir::QuantifiedWhereClauses<Ru
                         trait_id: chalk_ir::TraitId(def_id),
                         substitution: interner
                             .tcx
-                            .mk_substs_trait(self_ty, &[])
+                            .mk_substs_trait(self_ty, [])
                             .lower_into(interner),
                     }),
                 ),
@@ -757,6 +757,7 @@ impl<'tcx> LowerInto<'tcx, Option<chalk_solve::rust_ir::QuantifiedInlineBound<Ru
             | ty::PredicateKind::Coerce(..)
             | ty::PredicateKind::ConstEvaluatable(..)
             | ty::PredicateKind::ConstEquate(..)
+            | ty::PredicateKind::Ambiguous
             | ty::PredicateKind::TypeWellFormedFromEnv(..) => {
                 bug!("unexpected predicate {}", &self)
             }
@@ -933,7 +934,7 @@ impl<'tcx> TypeVisitor<'tcx> for BoundVarsCollector<'tcx> {
                     }
                 }
 
-                ty::BoundRegionKind::BrAnon(var) => match self.parameters.entry(var) {
+                ty::BoundRegionKind::BrAnon(var, _) => match self.parameters.entry(var) {
                     Entry::Vacant(entry) => {
                         entry.insert(chalk_ir::VariableKind::Lifetime);
                     }
@@ -991,13 +992,13 @@ impl<'a, 'tcx> TypeFolder<'tcx> for NamedBoundVarSubstitutor<'a, 'tcx> {
             ty::ReLateBound(index, br) if index == self.binder_index => match br.kind {
                 ty::BrNamed(def_id, _name) => match self.named_parameters.get(&def_id) {
                     Some(idx) => {
-                        let new_br = ty::BoundRegion { var: br.var, kind: ty::BrAnon(*idx) };
+                        let new_br = ty::BoundRegion { var: br.var, kind: ty::BrAnon(*idx, None) };
                         return self.tcx.mk_region(ty::ReLateBound(index, new_br));
                     }
                     None => panic!("Missing `BrNamed`."),
                 },
                 ty::BrEnv => unimplemented!(),
-                ty::BrAnon(_) => {}
+                ty::BrAnon(..) => {}
             },
             _ => (),
         };
@@ -1072,14 +1073,16 @@ impl<'tcx> TypeFolder<'tcx> for ParamsSubstitutor<'tcx> {
                 Some(idx) => {
                     let br = ty::BoundRegion {
                         var: ty::BoundVar::from_u32(*idx),
-                        kind: ty::BrAnon(*idx),
+                        kind: ty::BrAnon(*idx, None),
                     };
                     self.tcx.mk_region(ty::ReLateBound(self.binder_index, br))
                 }
                 None => {
                     let idx = self.named_regions.len() as u32;
-                    let br =
-                        ty::BoundRegion { var: ty::BoundVar::from_u32(idx), kind: ty::BrAnon(idx) };
+                    let br = ty::BoundRegion {
+                        var: ty::BoundVar::from_u32(idx),
+                        kind: ty::BrAnon(idx, None),
+                    };
                     self.named_regions.insert(_re.def_id, idx);
                     self.tcx.mk_region(ty::ReLateBound(self.binder_index, br))
                 }
@@ -1156,7 +1159,7 @@ impl<'tcx> TypeVisitor<'tcx> for PlaceholdersCollector {
     fn visit_region(&mut self, r: Region<'tcx>) -> ControlFlow<Self::BreakTy> {
         match *r {
             ty::RePlaceholder(p) if p.universe == self.universe_index => {
-                if let ty::BoundRegionKind::BrAnon(anon) = p.name {
+                if let ty::BoundRegionKind::BrAnon(anon, _) = p.name {
                     self.next_anon_region_placeholder = self.next_anon_region_placeholder.max(anon);
                 }
             }

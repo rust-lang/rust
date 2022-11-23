@@ -189,6 +189,7 @@ fn is_early_return(smbl: Symbol, cx: &LateContext<'_>, if_block: &IfBlockType<'_
                             && expr_return_none_or_err(smbl, cx, if_else.unwrap(), let_expr, Some(let_pat_sym)))
                             || is_res_lang_ctor(cx, res, ResultErr)
                                 && expr_return_none_or_err(smbl, cx, if_then, let_expr, Some(let_pat_sym))
+                                && if_else.is_none()
                     },
                     _ => false,
                 }

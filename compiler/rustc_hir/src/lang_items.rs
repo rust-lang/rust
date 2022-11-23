@@ -95,6 +95,14 @@ macro_rules! language_item_table {
                 }
             }
 
+            /// Returns the name of the `LangItem` enum variant.
+            // This method is used by Clippy for internal lints.
+            pub fn variant_name(self) -> &'static str {
+                match self {
+                    $( LangItem::$variant => stringify!($variant), )*
+                }
+            }
+
             pub fn target(self) -> Target {
                 match self {
                     $( LangItem::$variant => $target, )*
@@ -270,6 +278,8 @@ language_item_table! {
     TryTraitBranch,          sym::branch,              branch_fn,                  Target::Method(MethodKind::Trait { body: false }), GenericRequirement::None;
     TryTraitFromYeet,        sym::from_yeet,           from_yeet_fn,               Target::Fn,             GenericRequirement::None;
 
+    PointerSized,            sym::pointer_sized,       pointer_sized,              Target::Trait,          GenericRequirement::Exact(0);
+
     PollReady,               sym::Ready,               poll_ready_variant,         Target::Variant,        GenericRequirement::None;
     PollPending,             sym::Pending,             poll_pending_variant,       Target::Variant,        GenericRequirement::None;
 
@@ -302,6 +312,8 @@ language_item_table! {
     Range,                   sym::Range,               range_struct,               Target::Struct,         GenericRequirement::None;
     RangeToInclusive,        sym::RangeToInclusive,    range_to_inclusive_struct,  Target::Struct,         GenericRequirement::None;
     RangeTo,                 sym::RangeTo,             range_to_struct,            Target::Struct,         GenericRequirement::None;
+
+    String,                  sym::String,              string,                     Target::Struct,         GenericRequirement::None;
 }
 
 pub enum GenericRequirement {

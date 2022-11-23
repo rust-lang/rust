@@ -9,7 +9,7 @@ use std::path::PathBuf;
 use serde::{Deserialize, Serialize};
 
 /// rustdoc format-version.
-pub const FORMAT_VERSION: u32 = 22;
+pub const FORMAT_VERSION: u32 = 23;
 
 /// A `Crate` is the root of the emitted JSON blob. It contains all type/documentation information
 /// about the language items in the local crate, as well as info about external items to allow
@@ -53,7 +53,7 @@ pub struct ItemSummary {
     /// `["std", "io", "lazy", "Lazy"]` for `std::io::lazy::Lazy`).
     ///
     /// Note that items can appear in multiple paths, and the one chosen is implementation
-    /// defined. Currenty, this is the full path to where the item was defined. Eg
+    /// defined. Currently, this is the full path to where the item was defined. Eg
     /// [`String`] is currently `["alloc", "string", "String"]` and [`HashMap`] is
     /// `["std", "collections", "hash", "map", "HashMap"]`, but this is subject to change.
     pub path: Vec<String>,
@@ -210,7 +210,6 @@ pub enum ItemKind {
     Constant,
     Trait,
     TraitAlias,
-    Method,
     Impl,
     Static,
     ForeignType,
@@ -243,7 +242,6 @@ pub enum ItemEnum {
 
     Trait(Trait),
     TraitAlias(TraitAlias),
-    Method(Method),
     Impl(Impl),
 
     Typedef(Typedef),
@@ -351,7 +349,7 @@ pub enum Variant {
     /// A variant with unnamed fields.
     ///
     /// Unlike most of json, `#[doc(hidden)]` fields will be given as `None`
-    /// instead of being ommited, because order matters.
+    /// instead of being omitted, because order matters.
     ///
     /// ```rust
     /// enum Demo {
@@ -415,15 +413,9 @@ pub enum Abi {
     Other(String),
 }
 
+/// Represents a function (including methods and other associated functions)
 #[derive(Clone, Debug, PartialEq, Eq, Hash, Serialize, Deserialize)]
 pub struct Function {
-    pub decl: FnDecl,
-    pub generics: Generics,
-    pub header: Header,
-}
-
-#[derive(Clone, Debug, PartialEq, Eq, Hash, Serialize, Deserialize)]
-pub struct Method {
     pub decl: FnDecl,
     pub generics: Generics,
     pub header: Header,

@@ -187,7 +187,7 @@ pub use thin::ThinBox;
 
 mod thin;
 
-/// A pointer type for heap allocation.
+/// A pointer type that uniquely owns a heap allocation of type `T`.
 ///
 /// See the [module-level documentation](../../std/boxed/index.html) for more.
 #[lang = "owned_box"]
@@ -1661,7 +1661,7 @@ impl<T, const N: usize> TryFrom<Box<[T]>> for Box<[T; N]> {
 }
 
 #[cfg(not(no_global_oom_handling))]
-#[stable(feature = "boxed_array_try_from_vec", since = "CURRENT_RUSTC_VERSION")]
+#[stable(feature = "boxed_array_try_from_vec", since = "1.66.0")]
 impl<T, const N: usize> TryFrom<Vec<T>> for Box<[T; N]> {
     type Error = Vec<T>;
 

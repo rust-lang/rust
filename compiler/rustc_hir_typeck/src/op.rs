@@ -529,8 +529,8 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                         }
                     }
                 }
-                err.emit();
-                self.tcx.ty_error()
+                let reported = err.emit();
+                self.tcx.ty_error_with_guaranteed(reported)
             }
         };
 
@@ -556,9 +556,9 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         let rm_borrow_msg = "remove the borrow to obtain an owned `String`";
         let to_owned_msg = "create an owned `String` from a string reference";
 
+        let string_type = self.tcx.lang_items().string();
         let is_std_string = |ty: Ty<'tcx>| {
-            ty.ty_adt_def()
-                .map_or(false, |ty_def| self.tcx.is_diagnostic_item(sym::String, ty_def.did()))
+            ty.ty_adt_def().map_or(false, |ty_def| Some(ty_def.did()) == string_type)
         };
 
         match (lhs_ty.kind(), rhs_ty.kind()) {

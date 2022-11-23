@@ -10,7 +10,7 @@ use rustc_session::Session;
 use rustc_span::symbol::{sym, Ident};
 use rustc_span::Span;
 
-pub(crate) struct Expander;
+pub(crate) struct Expander(pub bool);
 
 impl MultiItemModifier for Expander {
     fn expand(
@@ -19,6 +19,7 @@ impl MultiItemModifier for Expander {
         span: Span,
         meta_item: &ast::MetaItem,
         item: Annotatable,
+        _: bool,
     ) -> ExpandResult<Vec<Annotatable>, Annotatable> {
         let sess = ecx.sess;
         if report_bad_target(sess, &item, span) {
@@ -58,20 +59,20 @@ impl MultiItemModifier for Expander {
                         report_path_args(sess, &meta);
                         meta.path
                     })
-                    .map(|path| (path, dummy_annotatable(), None))
+                    .map(|path| (path, dummy_annotatable(), None, self.0))
                     .collect();
 
                 // Do not configure or clone items unless necessary.
                 match &mut resolutions[..] {
                     [] => {}
-                    [(_, first_item, _), others @ ..] => {
+                    [(_, first_item, ..), others @ ..] => {
                         *first_item = cfg_eval(
                             sess,
                             features,
                             item.clone(),
                             ecx.current_expansion.lint_node_id,
                         );
-                        for (_, item, _) in others {
+                        for (_, item, _, _) in others {
                             *item = first_item.clone();
                         }
                     }

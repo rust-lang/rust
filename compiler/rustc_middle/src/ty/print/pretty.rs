@@ -11,8 +11,10 @@ use rustc_hir as hir;
 use rustc_hir::def::{self, CtorKind, DefKind, Namespace};
 use rustc_hir::def_id::{DefId, DefIdSet, CRATE_DEF_ID, LOCAL_CRATE};
 use rustc_hir::definitions::{DefPathData, DefPathDataName, DisambiguatedDefPathData};
+use rustc_hir::LangItem;
 use rustc_session::config::TrimmedDefPaths;
 use rustc_session::cstore::{ExternCrate, ExternCrateSource};
+use rustc_session::Limit;
 use rustc_span::symbol::{kw, Ident, Symbol};
 use rustc_target::abi::Size;
 use rustc_target::spec::abi::Abi;
@@ -888,7 +890,7 @@ pub trait PrettyPrinter<'tcx>:
                                 // Group the return ty with its def id, if we had one.
                                 entry
                                     .return_ty
-                                    .map(|ty| (tcx.lang_items().fn_once_output().unwrap(), ty)),
+                                    .map(|ty| (tcx.require_lang_item(LangItem::FnOnce, None), ty)),
                             );
                         }
                         if let Some(trait_ref) = entry.fn_mut_trait_ref {
@@ -1059,7 +1061,7 @@ pub trait PrettyPrinter<'tcx>:
 
     fn pretty_print_dyn_existential(
         mut self,
-        predicates: &'tcx ty::List<ty::Binder<'tcx, ty::ExistentialPredicate<'tcx>>>,
+        predicates: &'tcx ty::List<ty::PolyExistentialPredicate<'tcx>>,
     ) -> Result<Self::DynExistential, Self::Error> {
         // Generate the main trait ref, including associated types.
         let mut first = true;
@@ -1486,12 +1488,12 @@ pub trait PrettyPrinter<'tcx>:
                             contents.variant.expect("destructed const of adt without variant idx");
                         let variant_def = &def.variant(variant_idx);
                         p!(print_value_path(variant_def.def_id, substs));
-                        match variant_def.ctor_kind {
-                            CtorKind::Const => {}
-                            CtorKind::Fn => {
+                        match variant_def.ctor_kind() {
+                            Some(CtorKind::Const) => {}
+                            Some(CtorKind::Fn) => {
                                 p!("(", comma_sep(fields), ")");
                             }
-                            CtorKind::Fictive => {
+                            None => {
                                 p!(" {{ ");
                                 let mut first = true;
                                 for (field_def, field) in iter::zip(&variant_def.fields, fields) {
@@ -1583,6 +1585,8 @@ pub struct FmtPrinterData<'a, 'tcx> {
     region_index: usize,
     binder_depth: usize,
     printed_type_count: usize,
+    type_length_limit: Limit,
+    truncated: bool,
 
     pub region_highlight_mode: RegionHighlightMode<'tcx>,
 
@@ -1605,6 +1609,10 @@ impl DerefMut for FmtPrinter<'_, '_> {
 
 impl<'a, 'tcx> FmtPrinter<'a, 'tcx> {
     pub fn new(tcx: TyCtxt<'tcx>, ns: Namespace) -> Self {
+        Self::new_with_limit(tcx, ns, tcx.type_length_limit())
+    }
+
+    pub fn new_with_limit(tcx: TyCtxt<'tcx>, ns: Namespace, type_length_limit: Limit) -> Self {
         FmtPrinter(Box::new(FmtPrinterData {
             tcx,
             // Estimated reasonable capacity to allocate upfront based on a few
@@ -1617,6 +1625,8 @@ impl<'a, 'tcx> FmtPrinter<'a, 'tcx> {
             region_index: 0,
             binder_depth: 0,
             printed_type_count: 0,
+            type_length_limit,
+            truncated: false,
             region_highlight_mode: RegionHighlightMode::new(tcx),
             ty_infer_name_resolver: None,
             const_infer_name_resolver: None,
@@ -1658,6 +1668,12 @@ impl<'t> TyCtxt<'t> {
         let ns = guess_def_namespace(self, def_id);
         debug!("def_path_str: def_id={:?}, ns={:?}", def_id, ns);
         FmtPrinter::new(self, ns).print_def_path(def_id, substs).unwrap().into_buffer()
+    }
+
+    pub fn value_path_str_with_substs(self, def_id: DefId, substs: &'t [GenericArg<'t>]) -> String {
+        let ns = guess_def_namespace(self, def_id);
+        debug!("value_path_str: def_id={:?}, ns={:?}", def_id, ns);
+        FmtPrinter::new(self, ns).print_value_path(def_id, substs).unwrap().into_buffer()
     }
 }
 
@@ -1745,11 +1761,11 @@ impl<'tcx> Printer<'tcx> for FmtPrinter<'_, 'tcx> {
     }
 
     fn print_type(mut self, ty: Ty<'tcx>) -> Result<Self::Type, Self::Error> {
-        let type_length_limit = self.tcx.type_length_limit();
-        if type_length_limit.value_within_limit(self.printed_type_count) {
+        if self.type_length_limit.value_within_limit(self.printed_type_count) {
             self.printed_type_count += 1;
             self.pretty_print_type(ty)
         } else {
+            self.truncated = true;
             write!(self, "...")?;
             Ok(self)
         }
@@ -1757,7 +1773,7 @@ impl<'tcx> Printer<'tcx> for FmtPrinter<'_, 'tcx> {
 
     fn print_dyn_existential(
         self,
-        predicates: &'tcx ty::List<ty::Binder<'tcx, ty::ExistentialPredicate<'tcx>>>,
+        predicates: &'tcx ty::List<ty::PolyExistentialPredicate<'tcx>>,
     ) -> Result<Self::DynExistential, Self::Error> {
         self.pretty_print_dyn_existential(predicates)
     }
@@ -2115,7 +2131,7 @@ impl<'a, 'tcx> ty::TypeFolder<'tcx> for RegionFolder<'a, 'tcx> {
                 // If this is an anonymous placeholder, don't rename. Otherwise, in some
                 // async fns, we get a `for<'r> Send` bound
                 match kind {
-                    ty::BrAnon(_) | ty::BrEnv => r,
+                    ty::BrAnon(..) | ty::BrEnv => r,
                     _ => {
                         // Index doesn't matter, since this is just for naming and these never get bound
                         let br = ty::BoundRegion { var: ty::BoundVar::from_u32(0), kind };
@@ -2188,11 +2204,9 @@ impl<'tcx> FmtPrinter<'_, 'tcx> {
 
         define_scoped_cx!(self);
 
-        let possible_names =
-            ('a'..='z').rev().map(|s| Symbol::intern(&format!("'{s}"))).collect::<Vec<_>>();
+        let possible_names = ('a'..='z').rev().map(|s| Symbol::intern(&format!("'{s}")));
 
         let mut available_names = possible_names
-            .into_iter()
             .filter(|name| !self.used_region_names.contains(&name))
             .collect::<Vec<_>>();
         debug!(?available_names);
@@ -2219,46 +2233,12 @@ impl<'tcx> FmtPrinter<'_, 'tcx> {
         // this is not *quite* right and changes the ordering of some output
         // anyways.
         let (new_value, map) = if self.should_print_verbose() {
-            let regions: Vec<_> = value
-                .bound_vars()
-                .into_iter()
-                .map(|var| {
-                    let ty::BoundVariableKind::Region(var) = var else {
-                    // This doesn't really matter because it doesn't get used,
-                    // it's just an empty value
-                    return ty::BrAnon(0);
-                };
-                    match var {
-                        ty::BrAnon(_) | ty::BrEnv => {
-                            start_or_continue(&mut self, "for<", ", ");
-                            let name = next_name(&self);
-                            debug!(?name);
-                            do_continue(&mut self, name);
-                            ty::BrNamed(CRATE_DEF_ID.to_def_id(), name)
-                        }
-                        ty::BrNamed(def_id, kw::UnderscoreLifetime) => {
-                            start_or_continue(&mut self, "for<", ", ");
-                            let name = next_name(&self);
-                            do_continue(&mut self, name);
-                            ty::BrNamed(def_id, name)
-                        }
-                        ty::BrNamed(def_id, name) => {
-                            start_or_continue(&mut self, "for<", ", ");
-                            do_continue(&mut self, name);
-                            ty::BrNamed(def_id, name)
-                        }
-                    }
-                })
-                .collect();
+            for var in value.bound_vars().iter() {
+                start_or_continue(&mut self, "for<", ", ");
+                write!(self, "{:?}", var)?;
+            }
             start_or_continue(&mut self, "", "> ");
-
-            self.tcx.replace_late_bound_regions(value.clone(), |br| {
-                let kind = regions[br.var.as_usize()];
-                self.tcx.mk_region(ty::ReLateBound(
-                    ty::INNERMOST,
-                    ty::BoundRegion { var: br.var, kind },
-                ))
-            })
+            (value.clone().skip_binder(), BTreeMap::default())
         } else {
             let tcx = self.tcx;
 
@@ -2271,7 +2251,7 @@ impl<'tcx> FmtPrinter<'_, 'tcx> {
                             binder_level_idx: ty::DebruijnIndex,
                             br: ty::BoundRegion| {
                 let (name, kind) = match br.kind {
-                    ty::BrAnon(_) | ty::BrEnv => {
+                    ty::BrAnon(..) | ty::BrEnv => {
                         let name = next_name(&self);
 
                         if let Some(lt_idx) = lifetime_idx {
@@ -2551,12 +2531,12 @@ pub struct PrintClosureAsImpl<'tcx> {
 forward_display_to_print! {
     ty::Region<'tcx>,
     Ty<'tcx>,
-    &'tcx ty::List<ty::Binder<'tcx, ty::ExistentialPredicate<'tcx>>>,
+    &'tcx ty::List<ty::PolyExistentialPredicate<'tcx>>,
     ty::Const<'tcx>,
 
     // HACK(eddyb) these are exhaustive instead of generic,
     // because `for<'tcx>` isn't possible yet.
-    ty::Binder<'tcx, ty::ExistentialPredicate<'tcx>>,
+    ty::PolyExistentialPredicate<'tcx>,
     ty::Binder<'tcx, ty::TraitRef<'tcx>>,
     ty::Binder<'tcx, ty::ExistentialTraitRef<'tcx>>,
     ty::Binder<'tcx, TraitRefPrintOnlyTraitPath<'tcx>>,
@@ -2724,6 +2704,7 @@ define_print_and_forward_display! {
             ty::PredicateKind::TypeWellFormedFromEnv(ty) => {
                 p!("the type `", print(ty), "` is found in the environment")
             }
+            ty::PredicateKind::Ambiguous => p!("ambiguous"),
         }
     }
 

@@ -98,9 +98,10 @@ fn pierce_parens(mut expr: &ast::Expr) -> &ast::Expr {
 impl EarlyLintPass for WhileTrue {
     fn check_expr(&mut self, cx: &EarlyContext<'_>, e: &ast::Expr) {
         if let ast::ExprKind::While(cond, _, label) = &e.kind
-            && let ast::ExprKind::Lit(ref lit) = pierce_parens(cond).kind
-            && let ast::LitKind::Bool(true) = lit.kind
-            && !lit.span.from_expansion()
+            && let cond = pierce_parens(cond)
+            && let ast::ExprKind::Lit(token_lit) = cond.kind
+            && let token::Lit { kind: token::Bool, symbol: kw::True, .. } = token_lit
+            && !cond.span.from_expansion()
         {
             let condition_span = e.span.with_hi(cond.span.hi());
             cx.struct_span_lint(
@@ -185,9 +186,8 @@ impl<'tcx> LateLintPass<'tcx> for BoxPointers {
         // If it's a struct, we also have to check the fields' types
         match it.kind {
             hir::ItemKind::Struct(ref struct_def, _) | hir::ItemKind::Union(ref struct_def, _) => {
-                for struct_field in struct_def.fields() {
-                    let def_id = cx.tcx.hir().local_def_id(struct_field.hir_id);
-                    self.check_heap_type(cx, struct_field.span, cx.tcx.type_of(def_id));
+                for field in struct_def.fields() {
+                    self.check_heap_type(cx, field.span, cx.tcx.type_of(field.def_id));
                 }
             }
             _ => (),
@@ -673,13 +673,12 @@ impl<'tcx> LateLintPass<'tcx> for MissingDoc {
 
     fn check_field_def(&mut self, cx: &LateContext<'_>, sf: &hir::FieldDef<'_>) {
         if !sf.is_positional() {
-            let def_id = cx.tcx.hir().local_def_id(sf.hir_id);
-            self.check_missing_docs_attrs(cx, def_id, "a", "struct field")
+            self.check_missing_docs_attrs(cx, sf.def_id, "a", "struct field")
         }
     }
 
     fn check_variant(&mut self, cx: &LateContext<'_>, v: &hir::Variant<'_>) {
-        self.check_missing_docs_attrs(cx, cx.tcx.hir().local_def_id(v.id), "a", "variant");
+        self.check_missing_docs_attrs(cx, v.def_id, "a", "variant");
     }
 }
 
@@ -1424,11 +1423,10 @@ impl<'tcx> LateLintPass<'tcx> for UnreachablePub {
 
     fn check_field_def(&mut self, cx: &LateContext<'_>, field: &hir::FieldDef<'_>) {
         let map = cx.tcx.hir();
-        let def_id = map.local_def_id(field.hir_id);
         if matches!(map.get(map.get_parent_node(field.hir_id)), Node::Variant(_)) {
             return;
         }
-        self.perform_lint(cx, "field", def_id, field.vis_span, false);
+        self.perform_lint(cx, "field", field.def_id, field.vis_span, false);
     }
 
     fn check_impl_item(&mut self, cx: &LateContext<'_>, impl_item: &hir::ImplItem<'_>) {
@@ -1661,6 +1659,7 @@ impl<'tcx> LateLintPass<'tcx> for TrivialConstraints {
                     Coerce(..) |
                     ConstEvaluatable(..) |
                     ConstEquate(..) |
+                    Ambiguous |
                     TypeWellFormedFromEnv(..) => continue,
                 };
                 if predicate.is_global() {
@@ -2032,10 +2031,10 @@ impl KeywordIdents {
 
 impl EarlyLintPass for KeywordIdents {
     fn check_mac_def(&mut self, cx: &EarlyContext<'_>, mac_def: &ast::MacroDef) {
-        self.check_tokens(cx, mac_def.body.inner_tokens());
+        self.check_tokens(cx, mac_def.body.tokens.clone());
     }
     fn check_mac(&mut self, cx: &EarlyContext<'_>, mac: &ast::MacCall) {
-        self.check_tokens(cx, mac.args.inner_tokens());
+        self.check_tokens(cx, mac.args.tokens.clone());
     }
     fn check_ident(&mut self, cx: &EarlyContext<'_>, ident: Ident) {
         self.check_ident_token(cx, UnderMacro(false), ident);

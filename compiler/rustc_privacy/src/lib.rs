@@ -419,11 +419,6 @@ impl<'tcx> EmbargoVisitor<'tcx> {
         self.effective_visibilities.public_at_level(def_id)
     }
 
-    fn update_with_hir_id(&mut self, hir_id: hir::HirId, level: Option<Level>) -> Option<Level> {
-        let def_id = self.tcx.hir().local_def_id(hir_id);
-        self.update(def_id, level)
-    }
-
     /// Updates node level and returns the updated level.
     fn update(&mut self, def_id: LocalDefId, level: Option<Level>) -> Option<Level> {
         let old_level = self.get(def_id);
@@ -573,10 +568,9 @@ impl<'tcx> EmbargoVisitor<'tcx> {
                     | hir::ItemKind::Union(ref struct_def, _) = item.kind
                     {
                         for field in struct_def.fields() {
-                            let def_id = self.tcx.hir().local_def_id(field.hir_id);
-                            let field_vis = self.tcx.local_visibility(def_id);
+                            let field_vis = self.tcx.local_visibility(field.def_id);
                             if field_vis.is_accessible_from(module, self.tcx) {
-                                self.reach(def_id, level).ty();
+                                self.reach(field.def_id, level).ty();
                             }
                         }
                     } else {
@@ -641,12 +635,12 @@ impl<'tcx> Visitor<'tcx> for EmbargoVisitor<'tcx> {
         match item.kind {
             hir::ItemKind::Enum(ref def, _) => {
                 for variant in def.variants {
-                    let variant_level = self.update_with_hir_id(variant.id, item_level);
-                    if let Some(ctor_hir_id) = variant.data.ctor_hir_id() {
-                        self.update_with_hir_id(ctor_hir_id, item_level);
+                    let variant_level = self.update(variant.def_id, item_level);
+                    if let Some(ctor_def_id) = variant.data.ctor_def_id() {
+                        self.update(ctor_def_id, item_level);
                     }
                     for field in variant.data.fields() {
-                        self.update_with_hir_id(field.hir_id, variant_level);
+                        self.update(field.def_id, variant_level);
                     }
                 }
             }
@@ -665,14 +659,13 @@ impl<'tcx> Visitor<'tcx> for EmbargoVisitor<'tcx> {
                 }
             }
             hir::ItemKind::Struct(ref def, _) | hir::ItemKind::Union(ref def, _) => {
-                if let Some(ctor_hir_id) = def.ctor_hir_id() {
-                    self.update_with_hir_id(ctor_hir_id, item_level);
+                if let Some(ctor_def_id) = def.ctor_def_id() {
+                    self.update(ctor_def_id, item_level);
                 }
                 for field in def.fields() {
-                    let def_id = self.tcx.hir().local_def_id(field.hir_id);
-                    let vis = self.tcx.visibility(def_id);
+                    let vis = self.tcx.visibility(field.def_id);
                     if vis.is_public() {
-                        self.update_with_hir_id(field.hir_id, item_level);
+                        self.update(field.def_id, item_level);
                     }
                 }
             }
@@ -782,18 +775,16 @@ impl<'tcx> Visitor<'tcx> for EmbargoVisitor<'tcx> {
                     self.reach(item.owner_id.def_id, item_level).generics().predicates();
                 }
                 for variant in def.variants {
-                    let variant_level = self.get(self.tcx.hir().local_def_id(variant.id));
+                    let variant_level = self.get(variant.def_id);
                     if variant_level.is_some() {
                         for field in variant.data.fields() {
-                            self.reach(self.tcx.hir().local_def_id(field.hir_id), variant_level)
-                                .ty();
+                            self.reach(field.def_id, variant_level).ty();
                         }
                         // Corner case: if the variant is reachable, but its
                         // enum is not, make the enum reachable as well.
                         self.reach(item.owner_id.def_id, variant_level).ty();
                     }
-                    if let Some(hir_id) = variant.data.ctor_hir_id() {
-                        let ctor_def_id = self.tcx.hir().local_def_id(hir_id);
+                    if let Some(ctor_def_id) = variant.data.ctor_def_id() {
                         let ctor_level = self.get(ctor_def_id);
                         if ctor_level.is_some() {
                             self.reach(item.owner_id.def_id, ctor_level).ty();
@@ -818,15 +809,13 @@ impl<'tcx> Visitor<'tcx> for EmbargoVisitor<'tcx> {
                 if item_level.is_some() {
                     self.reach(item.owner_id.def_id, item_level).generics().predicates();
                     for field in struct_def.fields() {
-                        let def_id = self.tcx.hir().local_def_id(field.hir_id);
-                        let field_level = self.get(def_id);
+                        let field_level = self.get(field.def_id);
                         if field_level.is_some() {
-                            self.reach(def_id, field_level).ty();
+                            self.reach(field.def_id, field_level).ty();
                         }
                     }
                 }
-                if let Some(hir_id) = struct_def.ctor_hir_id() {
-                    let ctor_def_id = self.tcx.hir().local_def_id(hir_id);
+                if let Some(ctor_def_id) = struct_def.ctor_def_id() {
                     let ctor_level = self.get(ctor_def_id);
                     if ctor_level.is_some() {
                         self.reach(item.owner_id.def_id, ctor_level).ty();
@@ -957,26 +946,21 @@ impl<'tcx, 'a> Visitor<'tcx> for TestReachabilityVisitor<'tcx, 'a> {
         match item.kind {
             hir::ItemKind::Enum(ref def, _) => {
                 for variant in def.variants.iter() {
-                    let variant_id = self.tcx.hir().local_def_id(variant.id);
-                    self.effective_visibility_diagnostic(variant_id);
-                    if let Some(ctor_hir_id) = variant.data.ctor_hir_id() {
-                        let ctor_def_id = self.tcx.hir().local_def_id(ctor_hir_id);
+                    self.effective_visibility_diagnostic(variant.def_id);
+                    if let Some(ctor_def_id) = variant.data.ctor_def_id() {
                         self.effective_visibility_diagnostic(ctor_def_id);
                     }
                     for field in variant.data.fields() {
-                        let def_id = self.tcx.hir().local_def_id(field.hir_id);
-                        self.effective_visibility_diagnostic(def_id);
+                        self.effective_visibility_diagnostic(field.def_id);
                     }
                 }
             }
             hir::ItemKind::Struct(ref def, _) | hir::ItemKind::Union(ref def, _) => {
-                if let Some(ctor_hir_id) = def.ctor_hir_id() {
-                    let ctor_def_id = self.tcx.hir().local_def_id(ctor_hir_id);
+                if let Some(ctor_def_id) = def.ctor_def_id() {
                     self.effective_visibility_diagnostic(ctor_def_id);
                 }
                 for field in def.fields() {
-                    let def_id = self.tcx.hir().local_def_id(field.hir_id);
-                    self.effective_visibility_diagnostic(def_id);
+                    self.effective_visibility_diagnostic(field.def_id);
                 }
             }
             _ => {}
@@ -1719,7 +1703,7 @@ impl<'a, 'tcx> Visitor<'tcx> for ObsoleteVisiblePrivateTypesVisitor<'a, 'tcx> {
     }
 
     fn visit_variant(&mut self, v: &'tcx hir::Variant<'tcx>) {
-        if self.effective_visibilities.is_reachable(self.tcx.hir().local_def_id(v.id)) {
+        if self.effective_visibilities.is_reachable(v.def_id) {
             self.in_variant = true;
             intravisit::walk_variant(self, v);
             self.in_variant = false;
@@ -1727,8 +1711,7 @@ impl<'a, 'tcx> Visitor<'tcx> for ObsoleteVisiblePrivateTypesVisitor<'a, 'tcx> {
     }
 
     fn visit_field_def(&mut self, s: &'tcx hir::FieldDef<'tcx>) {
-        let def_id = self.tcx.hir().local_def_id(s.hir_id);
-        let vis = self.tcx.visibility(def_id);
+        let vis = self.tcx.visibility(s.def_id);
         if vis.is_public() || self.in_variant {
             intravisit::walk_field_def(self, s);
         }
@@ -1982,8 +1965,7 @@ impl<'tcx> PrivateItemsInPublicInterfacesChecker<'tcx> {
 
                     for variant in def.variants {
                         for field in variant.data.fields() {
-                            self.check(self.tcx.hir().local_def_id(field.hir_id), item_visibility)
-                                .ty();
+                            self.check(field.def_id, item_visibility).ty();
                         }
                     }
                 }
@@ -2010,9 +1992,8 @@ impl<'tcx> PrivateItemsInPublicInterfacesChecker<'tcx> {
                     self.check(item.owner_id.def_id, item_visibility).generics().predicates();
 
                     for field in struct_def.fields() {
-                        let def_id = tcx.hir().local_def_id(field.hir_id);
-                        let field_visibility = tcx.local_visibility(def_id);
-                        self.check(def_id, min(item_visibility, field_visibility, tcx)).ty();
+                        let field_visibility = tcx.local_visibility(field.def_id);
+                        self.check(field.def_id, min(item_visibility, field_visibility, tcx)).ty();
                     }
                 }
             }

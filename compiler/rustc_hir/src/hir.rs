@@ -487,6 +487,7 @@ pub enum GenericParamKind<'hir> {
 #[derive(Debug, HashStable_Generic)]
 pub struct GenericParam<'hir> {
     pub hir_id: HirId,
+    pub def_id: LocalDefId,
     pub name: ParamName,
     pub span: Span,
     pub pure_wrt_drop: bool,
@@ -921,6 +922,7 @@ pub struct Crate<'hir> {
 
 #[derive(Debug, HashStable_Generic)]
 pub struct Closure<'hir> {
+    pub def_id: LocalDefId,
     pub binder: ClosureBinder,
     pub capture_clause: CaptureBy,
     pub bound_generic_params: &'hir [GenericParam<'hir>],
@@ -1615,7 +1617,7 @@ pub enum ArrayLen {
 impl ArrayLen {
     pub fn hir_id(&self) -> HirId {
         match self {
-            &ArrayLen::Infer(hir_id, _) | &ArrayLen::Body(AnonConst { hir_id, body: _ }) => hir_id,
+            &ArrayLen::Infer(hir_id, _) | &ArrayLen::Body(AnonConst { hir_id, .. }) => hir_id,
         }
     }
 }
@@ -1627,10 +1629,11 @@ impl ArrayLen {
 /// explicit discriminant values for enum variants.
 ///
 /// You can check if this anon const is a default in a const param
-/// `const N: usize = { ... }` with `tcx.hir().opt_const_param_default_param_hir_id(..)`
+/// `const N: usize = { ... }` with `tcx.hir().opt_const_param_default_param_def_id(..)`
 #[derive(Copy, Clone, PartialEq, Eq, Encodable, Debug, HashStable_Generic)]
 pub struct AnonConst {
     pub hir_id: HirId,
+    pub def_id: LocalDefId,
     pub body: BodyId,
 }
 
@@ -2717,6 +2720,12 @@ pub enum IsAsync {
     NotAsync,
 }
 
+impl IsAsync {
+    pub fn is_async(self) -> bool {
+        self == IsAsync::Async
+    }
+}
+
 #[derive(Copy, Clone, PartialEq, Eq, Hash, Debug, Encodable, Decodable, HashStable_Generic)]
 pub enum Defaultness {
     Default { has_value: bool },
@@ -2798,7 +2807,8 @@ pub struct Variant<'hir> {
     /// Name of the variant.
     pub ident: Ident,
     /// Id of the variant (not the constructor, see `VariantData::ctor_hir_id()`).
-    pub id: HirId,
+    pub hir_id: HirId,
+    pub def_id: LocalDefId,
     /// Fields and constructor id of the variant.
     pub data: VariantData<'hir>,
     /// Explicit discriminant (e.g., `Foo = 1`).
@@ -2865,6 +2875,7 @@ pub struct FieldDef<'hir> {
     pub vis_span: Span,
     pub ident: Ident,
     pub hir_id: HirId,
+    pub def_id: LocalDefId,
     pub ty: &'hir Ty<'hir>,
 }
 
@@ -2886,11 +2897,11 @@ pub enum VariantData<'hir> {
     /// A tuple variant.
     ///
     /// E.g., `Bar(..)` as in `enum Foo { Bar(..) }`.
-    Tuple(&'hir [FieldDef<'hir>], HirId),
+    Tuple(&'hir [FieldDef<'hir>], HirId, LocalDefId),
     /// A unit variant.
     ///
     /// E.g., `Bar = ..` as in `enum Foo { Bar = .. }`.
-    Unit(HirId),
+    Unit(HirId, LocalDefId),
 }
 
 impl<'hir> VariantData<'hir> {
@@ -2902,12 +2913,29 @@ impl<'hir> VariantData<'hir> {
         }
     }
 
-    /// Return the `HirId` of this variant's constructor, if it has one.
-    pub fn ctor_hir_id(&self) -> Option<HirId> {
+    pub fn ctor(&self) -> Option<(CtorKind, HirId, LocalDefId)> {
         match *self {
-            VariantData::Struct(_, _) => None,
-            VariantData::Tuple(_, hir_id) | VariantData::Unit(hir_id) => Some(hir_id),
+            VariantData::Tuple(_, hir_id, def_id) => Some((CtorKind::Fn, hir_id, def_id)),
+            VariantData::Unit(hir_id, def_id) => Some((CtorKind::Const, hir_id, def_id)),
+            VariantData::Struct(..) => None,
         }
+    }
+
+    #[inline]
+    pub fn ctor_kind(&self) -> Option<CtorKind> {
+        self.ctor().map(|(kind, ..)| kind)
+    }
+
+    /// Return the `HirId` of this variant's constructor, if it has one.
+    #[inline]
+    pub fn ctor_hir_id(&self) -> Option<HirId> {
+        self.ctor().map(|(_, hir_id, _)| hir_id)
+    }
+
+    /// Return the `LocalDefId` of this variant's constructor, if it has one.
+    #[inline]
+    pub fn ctor_def_id(&self) -> Option<LocalDefId> {
+        self.ctor().map(|(.., def_id)| def_id)
     }
 }
 
@@ -3532,7 +3560,7 @@ impl<'hir> Node<'hir> {
     /// Get the fields for the tuple-constructor,
     /// if this node is a tuple constructor, otherwise None
     pub fn tuple_fields(&self) -> Option<&'hir [FieldDef<'hir>]> {
-        if let Node::Ctor(&VariantData::Tuple(fields, _)) = self { Some(fields) } else { None }
+        if let Node::Ctor(&VariantData::Tuple(fields, _, _)) = self { Some(fields) } else { None }
     }
 }
 
@@ -3548,7 +3576,7 @@ mod size_asserts {
     static_assert_size!(FnDecl<'_>, 40);
     static_assert_size!(ForeignItem<'_>, 72);
     static_assert_size!(ForeignItemKind<'_>, 40);
-    static_assert_size!(GenericArg<'_>, 24);
+    static_assert_size!(GenericArg<'_>, 32);
     static_assert_size!(GenericBound<'_>, 48);
     static_assert_size!(Generics<'_>, 56);
     static_assert_size!(Impl<'_>, 80);
@@ -3566,9 +3594,16 @@ mod size_asserts {
     static_assert_size!(Res, 12);
     static_assert_size!(Stmt<'_>, 32);
     static_assert_size!(StmtKind<'_>, 16);
+    // tidy-alphabetical-end
+    // FIXME: move the tidy directive to the end after the next bootstrap bump
+    #[cfg(bootstrap)]
     static_assert_size!(TraitItem<'_>, 88);
+    #[cfg(not(bootstrap))]
+    static_assert_size!(TraitItem<'_>, 80);
+    #[cfg(bootstrap)]
     static_assert_size!(TraitItemKind<'_>, 48);
+    #[cfg(not(bootstrap))]
+    static_assert_size!(TraitItemKind<'_>, 40);
     static_assert_size!(Ty<'_>, 48);
     static_assert_size!(TyKind<'_>, 32);
-    // tidy-alphabetical-end
 }

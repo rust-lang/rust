@@ -47,12 +47,12 @@ LL |         unsafe { read(self) }
 LL |         ptr.read();
    |         ---------- inside `INNER` at $DIR/detect-extra-ub.rs:38:9
 
-error[E0080]: evaluation of constant value failed
+note: erroneous constant used
   --> $DIR/detect-extra-ub.rs:32:5
    |
 LL |     INNER;
-   |     ^^^^^ referenced constant has errors
+   |     ^^^^^
 
-error: aborting due to 6 previous errors
+error: aborting due to 5 previous errors
 
 For more information about this error, try `rustc --explain E0080`.

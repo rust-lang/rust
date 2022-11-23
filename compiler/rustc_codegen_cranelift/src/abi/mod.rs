@@ -22,7 +22,19 @@ fn clif_sig_from_fn_abi<'tcx>(
     default_call_conv: CallConv,
     fn_abi: &FnAbi<'tcx, Ty<'tcx>>,
 ) -> Signature {
-    let call_conv = match fn_abi.conv {
+    let call_conv = conv_to_call_conv(fn_abi.conv, default_call_conv);
+
+    let inputs = fn_abi.args.iter().map(|arg_abi| arg_abi.get_abi_param(tcx).into_iter()).flatten();
+
+    let (return_ptr, returns) = fn_abi.ret.get_abi_return(tcx);
+    // Sometimes the first param is an pointer to the place where the return value needs to be stored.
+    let params: Vec<_> = return_ptr.into_iter().chain(inputs).collect();
+
+    Signature { params, returns, call_conv }
+}
+
+pub(crate) fn conv_to_call_conv(c: Conv, default_call_conv: CallConv) -> CallConv {
+    match c {
         Conv::Rust | Conv::C => default_call_conv,
         Conv::RustCold => CallConv::Cold,
         Conv::X86_64SysV => CallConv::SystemV,
@@ -38,15 +50,8 @@ fn clif_sig_from_fn_abi<'tcx>(
         | Conv::X86VectorCall
         | Conv::AmdGpuKernel
         | Conv::AvrInterrupt
-        | Conv::AvrNonBlockingInterrupt => todo!("{:?}", fn_abi.conv),
-    };
-    let inputs = fn_abi.args.iter().map(|arg_abi| arg_abi.get_abi_param(tcx).into_iter()).flatten();
-
-    let (return_ptr, returns) = fn_abi.ret.get_abi_return(tcx);
-    // Sometimes the first param is an pointer to the place where the return value needs to be stored.
-    let params: Vec<_> = return_ptr.into_iter().chain(inputs).collect();
-
-    Signature { params, returns, call_conv }
+        | Conv::AvrNonBlockingInterrupt => todo!("{:?}", c),
+    }
 }
 
 pub(crate) fn get_function_sig<'tcx>(

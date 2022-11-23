@@ -142,6 +142,8 @@ impl<'tcx> chalk_solve::RustIrDatabase<RustInterner<'tcx>> for RustIrDatabase<'t
             Some(CoerceUnsized)
         } else if lang_items.dispatch_from_dyn_trait() == Some(def_id) {
             Some(DispatchFromDyn)
+        } else if lang_items.tuple_trait() == Some(def_id) {
+            Some(Tuple)
         } else {
             None
         };
@@ -570,6 +572,7 @@ impl<'tcx> chalk_solve::RustIrDatabase<RustInterner<'tcx>> for RustIrDatabase<'t
             CoerceUnsized => lang_items.coerce_unsized_trait(),
             DiscriminantKind => lang_items.discriminant_kind_trait(),
             DispatchFromDyn => lang_items.dispatch_from_dyn_trait(),
+            Tuple => lang_items.tuple_trait(),
         };
         def_id.map(chalk_ir::TraitId)
     }
@@ -728,7 +731,7 @@ fn bound_vars_for_item<'tcx>(tcx: TyCtxt<'tcx>, def_id: DefId) -> SubstsRef<'tcx
         ty::GenericParamDefKind::Lifetime => {
             let br = ty::BoundRegion {
                 var: ty::BoundVar::from_usize(substs.len()),
-                kind: ty::BrAnon(substs.len() as u32),
+                kind: ty::BrAnon(substs.len() as u32, None),
             };
             tcx.mk_region(ty::ReLateBound(ty::INNERMOST, br)).into()
         }

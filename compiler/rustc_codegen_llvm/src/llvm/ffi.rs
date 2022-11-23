@@ -2127,7 +2127,8 @@ extern "C" {
         Builder: &DIBuilder<'a>,
         Name: *const c_char,
         NameLen: size_t,
-        Value: i64,
+        Value: *const u64,
+        SizeInBits: c_uint,
         IsUnsigned: bool,
     ) -> &'a DIEnumerator;
 
@@ -2210,6 +2211,7 @@ extern "C" {
     ) -> &'a DILocation;
     pub fn LLVMRustDIBuilderCreateOpDeref() -> u64;
     pub fn LLVMRustDIBuilderCreateOpPlusUconst() -> u64;
+    pub fn LLVMRustDIBuilderCreateOpLLVMFragment() -> u64;
 
     #[allow(improper_ctypes)]
     pub fn LLVMRustWriteTypeToString(Type: &Type, s: &RustString);

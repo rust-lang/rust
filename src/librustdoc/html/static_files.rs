@@ -19,9 +19,13 @@ impl StaticFile {
     }
 
     pub(crate) fn minified(&self) -> Vec<u8> {
-        if self.filename.ends_with(".css") {
+        let extension = match self.filename.extension() {
+            Some(e) => e,
+            None => return self.bytes.to_owned(),
+        };
+        if extension == "css" {
             minifier::css::minify(str::from_utf8(self.bytes).unwrap()).unwrap().to_string().into()
-        } else if self.filename.ends_with(".js") {
+        } else if extension == "js" {
             minifier::js::minify(str::from_utf8(self.bytes).unwrap()).to_string().into()
         } else {
             self.bytes.to_owned()
@@ -54,7 +58,7 @@ pub(crate) fn suffix_path(filename: &str, suffix: &str) -> PathBuf {
 }
 
 pub(crate) fn static_filename(filename: &str, contents: &[u8]) -> PathBuf {
-    let filename = filename.rsplit("/").next().unwrap();
+    let filename = filename.rsplit('/').next().unwrap();
     suffix_path(filename, &static_suffix(contents))
 }
 

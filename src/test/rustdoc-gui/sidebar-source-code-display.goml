@@ -29,170 +29,95 @@ assert-local-storage: {"rustdoc-source-sidebar-show": "true"}
 // Now we check the display of the sidebar items.
 show-text: true
 
-// First we start with the light theme.
-local-storage: {"rustdoc-theme": "light", "rustdoc-use-system-theme": "false"}
-reload:
-// Waiting for the sidebar to be displayed...
-wait-for-css: ("#sidebar-toggle", {"visibility": "visible"})
-assert-css: (
-    "#source-sidebar details[open] > .files a.selected",
-    {"color": "rgb(0, 0, 0)", "background-color": "rgb(255, 255, 255)"},
-)
-// Without hover or focus.
-assert-css: ("#sidebar-toggle > button", {"background-color": "rgba(0, 0, 0, 0)"})
-// With focus.
-focus: "#sidebar-toggle > button"
-assert-css: ("#sidebar-toggle > button", {"background-color": "rgb(224, 224, 224)"})
-focus: ".search-input"
-// With hover.
-move-cursor-to: "#sidebar-toggle > button"
-assert-css: ("#sidebar-toggle > button", {"background-color": "rgb(224, 224, 224)"})
-// Without hover.
-assert-css: (
-    "#source-sidebar details[open] > .files a:not(.selected)",
-    {"color": "rgb(0, 0, 0)", "background-color": "rgba(0, 0, 0, 0)"},
-)
-// With focus.
-focus: "#source-sidebar details[open] > .files a:not(.selected)"
-wait-for-css: (
-    "#source-sidebar details[open] > .files a:not(.selected)",
-    {"color": "rgb(0, 0, 0)", "background-color": "rgb(224, 224, 224)"},
-)
-focus: ".search-input"
-// With hover.
-move-cursor-to: "#source-sidebar details[open] > .files a:not(.selected)"
-assert-css: (
-    "#source-sidebar details[open] > .files a:not(.selected)",
-    {"color": "rgb(0, 0, 0)", "background-color": "rgb(224, 224, 224)"},
-)
-// Without hover.
-assert-css: (
-    "#source-sidebar details[open] > .folders > details > summary",
-    {"color": "rgb(0, 0, 0)", "background-color": "rgba(0, 0, 0, 0)"},
-)
-// With focus.
-focus: "#source-sidebar details[open] > .folders > details > summary"
-wait-for-css: (
-    "#source-sidebar details[open] > .folders > details > summary",
-    {"color": "rgb(0, 0, 0)", "background-color": "rgb(224, 224, 224)"},
-)
-focus: ".search-input"
-// With hover.
-move-cursor-to: "#source-sidebar details[open] > .folders > details > summary"
-assert-css: (
-    "#source-sidebar details[open] > .folders > details > summary",
-    {"color": "rgb(0, 0, 0)", "background-color": "rgb(224, 224, 224)"},
-)
-
-// Now with the dark theme.
-local-storage: {"rustdoc-theme": "dark", "rustdoc-use-system-theme": "false"}
-reload:
-// Waiting for the sidebar to be displayed...
-wait-for-css: ("#sidebar-toggle", {"visibility": "visible"})
-assert-css: (
-    "#source-sidebar details[open] > .files > a.selected",
-    {"color": "rgb(221, 221, 221)", "background-color": "rgb(51, 51, 51)"},
-)
-// Without hover or focus.
-assert-css: ("#sidebar-toggle > button", {"background-color": "rgba(0, 0, 0, 0)"})
-// With focus.
-focus: "#sidebar-toggle > button"
-assert-css: ("#sidebar-toggle > button", {"background-color": "rgb(103, 103, 103)"})
-focus: ".search-input"
-// With hover.
-move-cursor-to: "#sidebar-toggle > button"
-assert-css: ("#sidebar-toggle > button", {"background-color": "rgb(103, 103, 103)"})
-// Without hover.
-assert-css: (
-    "#source-sidebar details[open] > .files > a:not(.selected)",
-    {"color": "rgb(221, 221, 221)", "background-color": "rgba(0, 0, 0, 0)"},
-)
-// With focus.
-focus: "#source-sidebar details[open] > .files a:not(.selected)"
-wait-for-css: (
-    "#source-sidebar details[open] > .files a:not(.selected)",
-    {"color": "rgb(221, 221, 221)", "background-color": "rgb(68, 68, 68)"},
-)
-focus: ".search-input"
-// With hover.
-move-cursor-to: "#source-sidebar details[open] > .files a:not(.selected)"
-assert-css: (
-    "#source-sidebar details[open] > .files a:not(.selected)",
-    {"color": "rgb(221, 221, 221)", "background-color": "rgb(68, 68, 68)"},
-)
-// Without hover.
-assert-css: (
-    "#source-sidebar details[open] > .folders > details > summary",
-    {"color": "rgb(221, 221, 221)", "background-color": "rgba(0, 0, 0, 0)"},
-)
-// With focus.
-focus: "#source-sidebar details[open] > .folders > details > summary"
-wait-for-css: (
-    "#source-sidebar details[open] > .folders > details > summary",
-    {"color": "rgb(221, 221, 221)", "background-color": "rgb(68, 68, 68)"},
-)
-focus: ".search-input"
-// With hover.
-move-cursor-to: "#source-sidebar details[open] > .folders > details > summary"
-assert-css: (
-    "#source-sidebar details[open] > .folders > details > summary",
-    {"color": "rgb(221, 221, 221)", "background-color": "rgb(68, 68, 68)"},
+define-function: (
+    "check-colors",
+    (
+        theme, color, color_hover, background, background_hover, background_toggle,
+        background_toggle_hover,
+    ),
+    [
+        ("local-storage", {"rustdoc-theme": |theme|, "rustdoc-use-system-theme": "false"}),
+        ("reload"),
+        ("wait-for-css", ("#sidebar-toggle", {"visibility": "visible"})),
+        ("assert-css", (
+            "#source-sidebar details[open] > .files a.selected",
+            {"color": |color_hover|, "background-color": |background|},
+        )),
+        // Without hover or focus.
+        ("assert-css", ("#sidebar-toggle > button", {"background-color": |background_toggle|})),
+        // With focus.
+        ("focus", "#sidebar-toggle > button"),
+        ("assert-css", ("#sidebar-toggle > button", {"background-color": |background_toggle_hover|})),
+        ("focus", ".search-input"),
+        // With hover.
+        ("move-cursor-to", "#sidebar-toggle > button"),
+        ("assert-css", ("#sidebar-toggle > button", {"background-color": |background_toggle_hover|})),
+        // Without hover.
+        ("assert-css", (
+            "#source-sidebar details[open] > .files a:not(.selected)",
+            {"color": |color|, "background-color": |background_toggle|},
+        )),
+        // With focus.
+        ("focus", "#source-sidebar details[open] > .files a:not(.selected)"),
+        ("wait-for-css", (
+            "#source-sidebar details[open] > .files a:not(.selected)",
+            {"color": |color_hover|, "background-color": |background_hover|},
+        )),
+        ("focus", ".search-input"),
+        // With hover.
+        ("move-cursor-to", "#source-sidebar details[open] > .files a:not(.selected)"),
+        ("assert-css", (
+            "#source-sidebar details[open] > .files a:not(.selected)",
+            {"color": |color_hover|, "background-color": |background_hover|},
+        )),
+        // Without hover.
+        ("assert-css", (
+            "#source-sidebar details[open] > .folders > details > summary",
+            {"color": |color|, "background-color": |background_toggle|},
+        )),
+        // With focus.
+        ("focus", "#source-sidebar details[open] > .folders > details > summary"),
+        ("wait-for-css", (
+            "#source-sidebar details[open] > .folders > details > summary",
+            {"color": |color_hover|, "background-color": |background_hover|},
+        )),
+        ("focus", ".search-input"),
+        // With hover.
+        ("move-cursor-to", "#source-sidebar details[open] > .folders > details > summary"),
+        ("assert-css", (
+            "#source-sidebar details[open] > .folders > details > summary",
+            {"color": |color_hover|, "background-color": |background_hover|},
+        )),
+    ],
 )
 
-// And finally with the ayu theme.
-local-storage: {"rustdoc-theme": "ayu", "rustdoc-use-system-theme": "false"}
-reload:
-// Waiting for the sidebar to be displayed...
-wait-for-css: ("#sidebar-toggle", {"visibility": "visible"})
-assert-css: (
-    "#source-sidebar details[open] > .files a.selected",
-    {"color": "rgb(255, 180, 76)", "background-color": "rgb(20, 25, 31)"},
-)
-// Without hover or focus.
-assert-css: ("#sidebar-toggle > button", {"background-color": "rgba(0, 0, 0, 0)"})
-// With focus.
-focus: "#sidebar-toggle > button"
-assert-css: ("#sidebar-toggle > button", {"background-color": "rgba(70, 70, 70, 0.33)"})
-focus: ".search-input"
-// With hover.
-move-cursor-to: "#sidebar-toggle > button"
-assert-css: ("#sidebar-toggle > button", {"background-color": "rgba(70, 70, 70, 0.33)"})
-// Without hover.
-assert-css: (
-    "#source-sidebar details[open] > .files a:not(.selected)",
-    {"color": "rgb(197, 197, 197)", "background-color": "rgba(0, 0, 0, 0)"},
-)
-// With focus.
-focus: "#source-sidebar details[open] > .files a:not(.selected)"
-wait-for-css: (
-    "#source-sidebar details[open] > .files a:not(.selected)",
-    {"color": "rgb(255, 180, 76)", "background-color": "rgb(20, 25, 31)"},
-)
-focus: ".search-input"
-// With hover.
-move-cursor-to: "#source-sidebar details[open] > .files a:not(.selected)"
-assert-css: (
-    "#source-sidebar details[open] > .files a:not(.selected)",
-    {"color": "rgb(255, 180, 76)", "background-color": "rgb(20, 25, 31)"},
-)
-// Without hover.
-assert-css: (
-    "#source-sidebar details[open] > .folders > details > summary",
-    {"color": "rgb(197, 197, 197)", "background-color": "rgba(0, 0, 0, 0)"},
-)
-// With focus.
-focus: "#source-sidebar details[open] > .folders > details > summary"
-wait-for-css: (
-    "#source-sidebar details[open] > .folders > details > summary",
-    {"color": "rgb(255, 180, 76)", "background-color": "rgb(20, 25, 31)"},
-)
-focus: ".search-input"
-// With hover.
-move-cursor-to: "#source-sidebar details[open] > .folders > details > summary"
-assert-css: (
-    "#source-sidebar details[open] > .folders > details > summary",
-    {"color": "rgb(255, 180, 76)", "background-color": "rgb(20, 25, 31)"},
-)
+call-function: ("check-colors", {
+    "theme": "light",
+    "color": "rgb(0, 0, 0)",
+    "color_hover": "rgb(0, 0, 0)",
+    "background": "rgb(255, 255, 255)",
+    "background_hover": "rgb(224, 224, 224)",
+    "background_toggle": "rgba(0, 0, 0, 0)",
+    "background_toggle_hover": "rgb(224, 224, 224)",
+})
+call-function: ("check-colors", {
+    "theme": "dark",
+    "color": "rgb(221, 221, 221)",
+    "color_hover": "rgb(221, 221, 221)",
+    "background": "rgb(51, 51, 51)",
+    "background_hover": "rgb(68, 68, 68)",
+    "background_toggle": "rgba(0, 0, 0, 0)",
+    "background_toggle_hover": "rgb(103, 103, 103)",
+})
+call-function: ("check-colors", {
+    "theme": "ayu",
+    "color": "rgb(197, 197, 197)",
+    "color_hover": "rgb(255, 180, 76)",
+    "background": "rgb(20, 25, 31)",
+    "background_hover": "rgb(20, 25, 31)",
+    "background_toggle": "rgba(0, 0, 0, 0)",
+    "background_toggle_hover": "rgba(70, 70, 70, 0.33)",
+})
 
 // Now checking on mobile devices.
 size: (500, 700)

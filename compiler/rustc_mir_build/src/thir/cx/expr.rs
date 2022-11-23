@@ -14,11 +14,10 @@ use rustc_middle::thir::*;
 use rustc_middle::ty::adjustment::{
     Adjust, Adjustment, AutoBorrow, AutoBorrowMutability, PointerCast,
 };
-use rustc_middle::ty::subst::{InternalSubsts, SubstsRef};
+use rustc_middle::ty::subst::InternalSubsts;
 use rustc_middle::ty::{
     self, AdtKind, InlineConstSubsts, InlineConstSubstsParts, ScalarInt, Ty, UpvarSubsts, UserType,
 };
-use rustc_span::def_id::DefId;
 use rustc_span::Span;
 use rustc_target::abi::VariantIdx;
 
@@ -51,11 +50,17 @@ impl<'tcx> Cx<'tcx> {
         trace!(?expr.ty);
 
         // Now apply adjustments, if any.
-        for adjustment in self.typeck_results.expr_adjustments(hir_expr) {
-            trace!(?expr, ?adjustment);
-            let span = expr.span;
-            expr =
-                self.apply_adjustment(hir_expr, expr, adjustment, adjustment_span.unwrap_or(span));
+        if self.apply_adjustments {
+            for adjustment in self.typeck_results.expr_adjustments(hir_expr) {
+                trace!(?expr, ?adjustment);
+                let span = expr.span;
+                expr = self.apply_adjustment(
+                    hir_expr,
+                    expr,
+                    adjustment,
+                    adjustment_span.unwrap_or(span),
+                );
+            }
         }
 
         trace!(?expr.ty, "after adjustments");
@@ -602,24 +607,22 @@ impl<'tcx> Cx<'tcx> {
                             out_expr: out_expr.as_ref().map(|expr| self.mirror_expr(expr)),
                         },
                         hir::InlineAsmOperand::Const { ref anon_const } => {
-                            let anon_const_def_id = tcx.hir().local_def_id(anon_const.hir_id);
                             let value = mir::ConstantKind::from_anon_const(
                                 tcx,
-                                anon_const_def_id,
+                                anon_const.def_id,
                                 self.param_env,
                             );
-                            let span = tcx.hir().span(anon_const.hir_id);
+                            let span = tcx.def_span(anon_const.def_id);
 
                             InlineAsmOperand::Const { value, span }
                         }
                         hir::InlineAsmOperand::SymFn { ref anon_const } => {
-                            let anon_const_def_id = tcx.hir().local_def_id(anon_const.hir_id);
                             let value = mir::ConstantKind::from_anon_const(
                                 tcx,
-                                anon_const_def_id,
+                                anon_const.def_id,
                                 self.param_env,
                             );
-                            let span = tcx.hir().span(anon_const.hir_id);
+                            let span = tcx.def_span(anon_const.def_id);
 
                             InlineAsmOperand::SymFn { value, span }
                         }
@@ -634,7 +637,7 @@ impl<'tcx> Cx<'tcx> {
 
             hir::ExprKind::ConstBlock(ref anon_const) => {
                 let ty = self.typeck_results().node_type(anon_const.hir_id);
-                let did = tcx.hir().local_def_id(anon_const.hir_id).to_def_id();
+                let did = anon_const.def_id.to_def_id();
                 let typeck_root_def_id = tcx.typeck_root_def_id(did);
                 let parent_substs =
                     tcx.erase_regions(InternalSubsts::identity_for_item(tcx, typeck_root_def_id));
@@ -802,12 +805,12 @@ impl<'tcx> Cx<'tcx> {
         &mut self,
         expr: &hir::Expr<'_>,
         span: Span,
-        overloaded_callee: Option<(DefId, SubstsRef<'tcx>)>,
+        overloaded_callee: Option<Ty<'tcx>>,
     ) -> Expr<'tcx> {
         let temp_lifetime =
             self.rvalue_scopes.temporary_scope(self.region_scope_tree, expr.hir_id.local_id);
-        let (def_id, substs, user_ty) = match overloaded_callee {
-            Some((def_id, substs)) => (def_id, substs, None),
+        let (ty, user_ty) = match overloaded_callee {
+            Some(fn_def) => (fn_def, None),
             None => {
                 let (kind, def_id) =
                     self.typeck_results().type_dependent_def(expr.hir_id).unwrap_or_else(|| {
@@ -815,10 +818,12 @@ impl<'tcx> Cx<'tcx> {
                     });
                 let user_ty = self.user_substs_applied_to_res(expr.hir_id, Res::Def(kind, def_id));
                 debug!("method_callee: user_ty={:?}", user_ty);
-                (def_id, self.typeck_results().node_substs(expr.hir_id), user_ty)
+                (
+                    self.tcx().mk_fn_def(def_id, self.typeck_results().node_substs(expr.hir_id)),
+                    user_ty,
+                )
             }
         };
-        let ty = self.tcx().mk_fn_def(def_id, substs);
         Expr { temp_lifetime, ty, span, kind: ExprKind::ZstLiteral { user_ty } }
     }
 
@@ -853,9 +858,7 @@ impl<'tcx> Cx<'tcx> {
 
             Res::Def(DefKind::ConstParam, def_id) => {
                 let hir_id = self.tcx.hir().local_def_id_to_hir_id(def_id.expect_local());
-                let item_id = self.tcx.hir().get_parent_node(hir_id);
-                let item_def_id = self.tcx.hir().local_def_id(item_id);
-                let generics = self.tcx.generics_of(item_def_id);
+                let generics = self.tcx.generics_of(hir_id.owner);
                 let index = generics.param_def_id_to_index[&def_id];
                 let name = self.tcx.hir().name(hir_id);
                 let param = ty::ParamConst::new(index, name);
@@ -955,7 +958,7 @@ impl<'tcx> Cx<'tcx> {
         &mut self,
         expr: &'tcx hir::Expr<'tcx>,
         place_ty: Ty<'tcx>,
-        overloaded_callee: Option<(DefId, SubstsRef<'tcx>)>,
+        overloaded_callee: Option<Ty<'tcx>>,
         args: Box<[ExprId]>,
         span: Span,
     ) -> ExprKind<'tcx> {

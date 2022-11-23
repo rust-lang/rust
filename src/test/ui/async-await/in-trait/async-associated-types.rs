@@ -1,8 +1,8 @@
-// check-fail
-// known-bug: #102682
+// check-pass
 // edition: 2021
 
 #![feature(async_fn_in_trait)]
+#![feature(impl_trait_projections)]
 #![allow(incomplete_features)]
 
 use std::fmt::Debug;

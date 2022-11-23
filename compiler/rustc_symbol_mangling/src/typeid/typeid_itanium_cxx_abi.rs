@@ -12,8 +12,8 @@ use rustc_data_structures::fx::FxHashMap;
 use rustc_hir as hir;
 use rustc_middle::ty::subst::{GenericArg, GenericArgKind, SubstsRef};
 use rustc_middle::ty::{
-    self, Binder, Const, ExistentialPredicate, FloatTy, FnSig, IntTy, List, Region, RegionKind,
-    TermKind, Ty, TyCtxt, UintTy,
+    self, Const, ExistentialPredicate, FloatTy, FnSig, IntTy, List, Region, RegionKind, TermKind,
+    Ty, TyCtxt, UintTy,
 };
 use rustc_span::def_id::DefId;
 use rustc_span::symbol::sym;
@@ -226,7 +226,7 @@ fn encode_fnsig<'tcx>(
 /// Rust types that are not used at the FFI boundary.
 fn encode_predicate<'tcx>(
     tcx: TyCtxt<'tcx>,
-    predicate: Binder<'tcx, ExistentialPredicate<'tcx>>,
+    predicate: ty::PolyExistentialPredicate<'tcx>,
     dict: &mut FxHashMap<DictKey<'tcx>, usize>,
     options: EncodeTyOptions,
 ) -> String {
@@ -261,13 +261,13 @@ fn encode_predicate<'tcx>(
 /// Rust types that are not used at the FFI boundary.
 fn encode_predicates<'tcx>(
     tcx: TyCtxt<'tcx>,
-    predicates: &List<Binder<'tcx, ExistentialPredicate<'tcx>>>,
+    predicates: &List<ty::PolyExistentialPredicate<'tcx>>,
     dict: &mut FxHashMap<DictKey<'tcx>, usize>,
     options: EncodeTyOptions,
 ) -> String {
     // <predicate1[..predicateN]>E as part of vendor extended type
     let mut s = String::new();
-    let predicates: Vec<Binder<'tcx, ExistentialPredicate<'tcx>>> =
+    let predicates: Vec<ty::PolyExistentialPredicate<'tcx>> =
         predicates.iter().map(|predicate| predicate).collect();
     for predicate in predicates {
         s.push_str(&encode_predicate(tcx, predicate, dict, options));

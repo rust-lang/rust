@@ -1,19 +1,19 @@
 use clippy_utils::diagnostics::span_lint_and_then;
 use clippy_utils::source::snippet_with_applicability;
-use clippy_utils::ty::{is_type_diagnostic_item, walk_ptrs_ty_depth};
+use clippy_utils::ty::{is_type_lang_item, walk_ptrs_ty_depth};
 use clippy_utils::{match_def_path, paths};
 use if_chain::if_chain;
 use rustc_errors::Applicability;
 use rustc_hir as hir;
 use rustc_lint::LateContext;
 use rustc_middle::ty::{self, Ty};
-use rustc_span::symbol::{sym, Symbol};
+use rustc_span::symbol::{Symbol, sym};
 
 use super::INEFFICIENT_TO_STRING;
 
 /// Checks for the `INEFFICIENT_TO_STRING` lint
-pub fn check<'tcx>(
-    cx: &LateContext<'tcx>,
+pub fn check(
+    cx: &LateContext<'_>,
     expr: &hir::Expr<'_>,
     method_name: Symbol,
     receiver: &hir::Expr<'_>,
@@ -60,7 +60,7 @@ fn specializes_tostring(cx: &LateContext<'_>, ty: Ty<'_>) -> bool {
         return true;
     }
 
-    if is_type_diagnostic_item(cx, ty, sym::String) {
+    if is_type_lang_item(cx, ty, hir::LangItem::String) {
         return true;
     }
 

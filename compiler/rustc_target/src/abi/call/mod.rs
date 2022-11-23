@@ -3,6 +3,7 @@ use crate::abi::{HasDataLayout, TyAbiInterface, TyAndLayout};
 use crate::spec::{self, HasTargetSpec};
 use rustc_span::Symbol;
 use std::fmt;
+use std::str::FromStr;
 
 mod aarch64;
 mod amdgpu;
@@ -10,6 +11,7 @@ mod arm;
 mod avr;
 mod bpf;
 mod hexagon;
+mod loongarch;
 mod m68k;
 mod mips;
 mod mips64;
@@ -696,6 +698,7 @@ impl<'a, Ty> FnAbi<'a, Ty> {
             "amdgpu" => amdgpu::compute_abi_info(cx, self),
             "arm" => arm::compute_abi_info(cx, self),
             "avr" => avr::compute_abi_info(self),
+            "loongarch64" => loongarch::compute_abi_info(cx, self),
             "m68k" => m68k::compute_abi_info(self),
             "mips" => mips::compute_abi_info(cx, self),
             "mips64" => mips64::compute_abi_info(cx, self),
@@ -732,6 +735,33 @@ impl<'a, Ty> FnAbi<'a, Ty> {
         }
 
         Ok(())
+    }
+}
+
+impl FromStr for Conv {
+    type Err = String;
+
+    fn from_str(s: &str) -> Result<Self, Self::Err> {
+        match s {
+            "C" => Ok(Conv::C),
+            "Rust" => Ok(Conv::Rust),
+            "RustCold" => Ok(Conv::Rust),
+            "ArmAapcs" => Ok(Conv::ArmAapcs),
+            "CCmseNonSecureCall" => Ok(Conv::CCmseNonSecureCall),
+            "Msp430Intr" => Ok(Conv::Msp430Intr),
+            "PtxKernel" => Ok(Conv::PtxKernel),
+            "X86Fastcall" => Ok(Conv::X86Fastcall),
+            "X86Intr" => Ok(Conv::X86Intr),
+            "X86Stdcall" => Ok(Conv::X86Stdcall),
+            "X86ThisCall" => Ok(Conv::X86ThisCall),
+            "X86VectorCall" => Ok(Conv::X86VectorCall),
+            "X86_64SysV" => Ok(Conv::X86_64SysV),
+            "X86_64Win64" => Ok(Conv::X86_64Win64),
+            "AmdGpuKernel" => Ok(Conv::AmdGpuKernel),
+            "AvrInterrupt" => Ok(Conv::AvrInterrupt),
+            "AvrNonBlockingInterrupt" => Ok(Conv::AvrNonBlockingInterrupt),
+            _ => Err(format!("'{}' is not a valid value for entry function call convetion.", s)),
+        }
     }
 }
 

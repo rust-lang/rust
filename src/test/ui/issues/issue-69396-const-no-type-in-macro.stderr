@@ -2,10 +2,7 @@ error[E0428]: the name `A` is defined multiple times
   --> $DIR/issue-69396-const-no-type-in-macro.rs:4:13
    |
 LL |               const A = "A".$fn();
-   |               ^^^^^^^^^^^^^^^^^^^^
-   |               |
-   |               `A` redefined here
-   |               previous definition of the value `A` here
+   |               ^^^^^^^^^^^^^^^^^^^^ `A` redefined here
 ...
 LL | / suite! {
 LL | |     len;

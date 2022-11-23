@@ -1051,6 +1051,7 @@ impl<'a> Visitor<'a> for AstValidator<'a> {
 
                     walk_list!(this, visit_assoc_item, items, AssocCtxt::Impl);
                 });
+                walk_list!(self, visit_attribute, &item.attrs);
                 return; // Avoid visiting again.
             }
             ItemKind::Impl(box Impl {
@@ -1168,7 +1169,7 @@ impl<'a> Visitor<'a> for AstValidator<'a> {
                 });
                 walk_list!(self, visit_assoc_item, items, AssocCtxt::Trait);
                 walk_list!(self, visit_attribute, &item.attrs);
-                return;
+                return; // Avoid visiting again
             }
             ItemKind::Mod(unsafety, ref mod_kind) => {
                 if let Unsafe::Yes(span) = unsafety {

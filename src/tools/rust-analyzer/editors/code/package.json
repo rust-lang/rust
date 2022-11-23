@@ -49,7 +49,7 @@
         "esbuild": "^0.14.48",
         "eslint": "^8.19.0",
         "eslint-config-prettier": "^8.5.0",
-        "ovsx": "^0.5.1",
+        "ovsx": "^0.5.2",
         "prettier": "^2.7.1",
         "tslib": "^2.4.0",
         "typescript": "^4.7.4",
@@ -100,22 +100,32 @@
             {
                 "command": "rust-analyzer.syntaxTree",
                 "title": "Show Syntax Tree",
-                "category": "rust-analyzer"
+                "category": "rust-analyzer (debug command)"
             },
             {
                 "command": "rust-analyzer.viewHir",
                 "title": "View Hir",
-                "category": "rust-analyzer"
+                "category": "rust-analyzer (debug command)"
             },
             {
                 "command": "rust-analyzer.viewFileText",
                 "title": "View File Text (as seen by the server)",
-                "category": "rust-analyzer"
+                "category": "rust-analyzer (debug command)"
             },
             {
                 "command": "rust-analyzer.viewItemTree",
                 "title": "Debug ItemTree",
-                "category": "rust-analyzer"
+                "category": "rust-analyzer (debug command)"
+            },
+            {
+                "command": "rust-analyzer.shuffleCrateGraph",
+                "title": "Shuffle Crate Graph",
+                "category": "rust-analyzer (debug command)"
+            },
+            {
+                "command": "rust-analyzer.memoryUsage",
+                "title": "Memory Usage (Clears Database)",
+                "category": "rust-analyzer (debug command)"
             },
             {
                 "command": "rust-analyzer.viewCrateGraph",
@@ -170,16 +180,6 @@
             {
                 "command": "rust-analyzer.analyzerStatus",
                 "title": "Status",
-                "category": "rust-analyzer"
-            },
-            {
-                "command": "rust-analyzer.memoryUsage",
-                "title": "Memory Usage (Clears Database)",
-                "category": "rust-analyzer"
-            },
-            {
-                "command": "rust-analyzer.shuffleCrateGraph",
-                "title": "Shuffle Crate Graph",
                 "category": "rust-analyzer"
             },
             {
@@ -397,6 +397,11 @@
                     "type": "boolean"
                 },
                 "$generated-start": {},
+                "rust-analyzer.assist.emitMustUse": {
+                    "markdownDescription": "Whether to insert #[must_use] when generating `as_` methods\nfor enum variants.",
+                    "default": false,
+                    "type": "boolean"
+                },
                 "rust-analyzer.assist.expressionFillDefault": {
                     "markdownDescription": "Placeholder expression to use for missing expressions in assists.",
                     "default": "todo",

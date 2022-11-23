@@ -131,8 +131,46 @@ fn retry_on_fail() {
     waiter2.join().unwrap();
 }
 
+fn no_data_race_after_complete() {
+    let mut init_once = null_mut();
+    let mut pending = 0;
+
+    unsafe {
+        assert_eq!(InitOnceBeginInitialize(&mut init_once, 0, &mut pending, null_mut()), TRUE);
+        assert_eq!(pending, TRUE);
+    }
+
+    let init_once_ptr = SendPtr(&mut init_once);
+
+    let mut place = 0;
+    let place_ptr = SendPtr(&mut place);
+
+    let reader = thread::spawn(move || unsafe {
+        let mut pending = 0;
+
+        // this doesn't block because reader only executes after `InitOnceComplete` is called
+        assert_eq!(InitOnceBeginInitialize(init_once_ptr.0, 0, &mut pending, null_mut()), TRUE);
+        assert_eq!(pending, FALSE);
+        // this should not data race
+        place_ptr.0.read()
+    });
+
+    unsafe {
+        // this should not data race
+        place_ptr.0.write(1);
+    }
+
+    unsafe {
+        assert_eq!(InitOnceComplete(init_once_ptr.0, 0, null_mut()), TRUE);
+    }
+
+    // run reader (without preemption, it has not taken a step yet)
+    assert_eq!(reader.join().unwrap(), 1);
+}
+
 fn main() {
     single_thread();
     block_until_complete();
     retry_on_fail();
+    no_data_race_after_complete();
 }

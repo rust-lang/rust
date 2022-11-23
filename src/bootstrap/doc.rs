@@ -151,7 +151,7 @@ impl Step for RustbookSrc {
         let index = out.join("index.html");
         let rustbook = builder.tool_exe(Tool::Rustbook);
         let mut rustbook_cmd = builder.tool_cmd(Tool::Rustbook);
-        if builder.config.dry_run || up_to_date(&src, &index) && up_to_date(&rustbook, &index) {
+        if builder.config.dry_run() || up_to_date(&src, &index) && up_to_date(&rustbook, &index) {
             return;
         }
         builder.info(&format!("Rustbook ({}) - {}", target, name));
@@ -331,8 +331,8 @@ impl Step for Standalone {
                 && up_to_date(&footer, &html)
                 && up_to_date(&favicon, &html)
                 && up_to_date(&full_toc, &html)
-                && (builder.config.dry_run || up_to_date(&version_info, &html))
-                && (builder.config.dry_run || up_to_date(&rustdoc, &html))
+                && (builder.config.dry_run() || up_to_date(&version_info, &html))
+                && (builder.config.dry_run() || up_to_date(&rustdoc, &html))
             {
                 continue;
             }
@@ -402,11 +402,11 @@ impl Step for SharedAssets {
 
         let version_input = builder.src.join("src").join("doc").join("version_info.html.template");
         let version_info = out.join("version_info.html");
-        if !builder.config.dry_run && !up_to_date(&version_input, &version_info) {
+        if !builder.config.dry_run() && !up_to_date(&version_input, &version_info) {
             let info = t!(fs::read_to_string(&version_input))
                 .replace("VERSION", &builder.rust_release())
-                .replace("SHORT_HASH", builder.rust_info.sha_short().unwrap_or(""))
-                .replace("STAMP", builder.rust_info.sha().unwrap_or(""));
+                .replace("SHORT_HASH", builder.rust_info().sha_short().unwrap_or(""))
+                .replace("STAMP", builder.rust_info().sha().unwrap_or(""));
             t!(fs::write(&version_info, &info));
         }
 
@@ -564,27 +564,22 @@ fn doc_std(
         );
     }
     let compiler = builder.compiler(stage, builder.config.build);
+
+    let target_doc_dir_name = if format == DocumentationFormat::JSON { "json-doc" } else { "doc" };
+    let target_dir =
+        builder.stage_out(compiler, Mode::Std).join(target.triple).join(target_doc_dir_name);
+
     // This is directory where the compiler will place the output of the command.
     // We will then copy the files from this directory into the final `out` directory, the specified
     // as a function parameter.
-    let out_dir = builder.stage_out(compiler, Mode::Std).join(target.triple).join("doc");
-    // `cargo` uses the same directory for both JSON docs and HTML docs.
-    // This could lead to cross-contamination when copying files into the specified `out` directory.
-    // For example:
-    // ```bash
-    // x doc std
-    // x doc std --json
-    // ```
-    // could lead to HTML docs being copied into the JSON docs output directory.
-    // To avoid this issue, we clean the doc folder before invoking `cargo`.
-    if out_dir.exists() {
-        builder.remove_dir(&out_dir);
-    }
+    let out_dir = target_dir.join(target.triple).join("doc");
 
     let run_cargo_rustdoc_for = |package: &str| {
         let mut cargo = builder.cargo(compiler, Mode::Std, SourceType::InTree, target, "rustdoc");
         compile::std_cargo(builder, target, compiler.stage, &mut cargo);
         cargo
+            .arg("--target-dir")
+            .arg(&*target_dir.to_string_lossy())
             .arg("-p")
             .arg(package)
             .arg("-Zskip-rustdoc-fingerprint")
@@ -900,7 +895,7 @@ impl Step for UnstableBookGen {
 }
 
 fn symlink_dir_force(config: &Config, src: &Path, dst: &Path) -> io::Result<()> {
-    if config.dry_run {
+    if config.dry_run() {
         return Ok(());
     }
     if let Ok(m) = fs::symlink_metadata(dst) {
@@ -965,7 +960,7 @@ impl Step for RustcBook {
         cmd.arg("--rustc");
         cmd.arg(&rustc);
         cmd.arg("--rustc-target").arg(&self.target.rustc_target_arg());
-        if builder.config.verbose() {
+        if builder.is_verbose() {
             cmd.arg("--verbose");
         }
         if self.validate {

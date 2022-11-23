@@ -350,7 +350,7 @@ impl<'cx, 'tcx> MirBorrowckCtxt<'cx, 'tcx> {
                     } else {
                         def.non_enum_variant()
                     };
-                    if !including_tuple_field.0 && variant.ctor_kind == CtorKind::Fn {
+                    if !including_tuple_field.0 && variant.ctor_kind() == Some(CtorKind::Fn) {
                         return None;
                     }
                     Some(variant.fields[field.index()].name.to_string())
@@ -595,11 +595,34 @@ impl UseSpans<'_> {
         }
     }
 
-    // Add a span label to the use of the captured variable, if it exists.
-    // only adds label to the `path_span`
-    pub(super) fn var_span_label_path_only(self, err: &mut Diagnostic, message: impl Into<String>) {
-        if let UseSpans::ClosureUse { path_span, .. } = self {
-            err.span_label(path_span, message);
+    /// Add a span label to the use of the captured variable, if it exists.
+    /// only adds label to the `path_span`
+    pub(super) fn var_path_only_subdiag(
+        self,
+        err: &mut Diagnostic,
+        action: crate::InitializationRequiringAction,
+    ) {
+        use crate::session_diagnostics::CaptureVarPathUseCause::*;
+        use crate::InitializationRequiringAction::*;
+        if let UseSpans::ClosureUse { generator_kind, path_span, .. } = self {
+            match generator_kind {
+                Some(_) => {
+                    err.subdiagnostic(match action {
+                        Borrow => BorrowInGenerator { path_span },
+                        MatchOn | Use => UseInGenerator { path_span },
+                        Assignment => AssignInGenerator { path_span },
+                        PartialAssignment => AssignPartInGenerator { path_span },
+                    });
+                }
+                None => {
+                    err.subdiagnostic(match action {
+                        Borrow => BorrowInClosure { path_span },
+                        MatchOn | Use => UseInClosure { path_span },
+                        Assignment => AssignInClosure { path_span },
+                        PartialAssignment => AssignPartInClosure { path_span },
+                    });
+                }
+            }
         }
     }
 
@@ -620,6 +643,35 @@ impl UseSpans<'_> {
                 err.span_label(capture_kind_span, capture_kind_label);
                 err.span_label(path_span, path_label);
             }
+        }
+    }
+
+    /// Add a subdiagnostic to the use of the captured variable, if it exists.
+    pub(super) fn var_subdiag(
+        self,
+        err: &mut Diagnostic,
+        kind: Option<rustc_middle::mir::BorrowKind>,
+        f: impl Fn(Option<GeneratorKind>, Span) -> crate::session_diagnostics::CaptureVarCause,
+    ) {
+        use crate::session_diagnostics::CaptureVarKind::*;
+        if let UseSpans::ClosureUse { generator_kind, capture_kind_span, path_span, .. } = self {
+            if capture_kind_span != path_span {
+                err.subdiagnostic(match kind {
+                    Some(kd) => match kd {
+                        rustc_middle::mir::BorrowKind::Shared
+                        | rustc_middle::mir::BorrowKind::Shallow
+                        | rustc_middle::mir::BorrowKind::Unique => {
+                            Immute { kind_span: capture_kind_span }
+                        }
+
+                        rustc_middle::mir::BorrowKind::Mut { .. } => {
+                            Mut { kind_span: capture_kind_span }
+                        }
+                    },
+                    None => Move { kind_span: capture_kind_span },
+                });
+            };
+            err.subdiagnostic(f(generator_kind, path_span));
         }
     }
 

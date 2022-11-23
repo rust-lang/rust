@@ -924,10 +924,13 @@ impl ObjectSafetyViolation {
             }
             ObjectSafetyViolation::Method(
                 name,
-                MethodViolationCode::ReferencesImplTraitInTrait,
+                MethodViolationCode::ReferencesImplTraitInTrait(_),
                 _,
             ) => format!("method `{}` references an `impl Trait` type in its return type", name)
                 .into(),
+            ObjectSafetyViolation::Method(name, MethodViolationCode::AsyncFn, _) => {
+                format!("method `{}` is `async`", name).into()
+            }
             ObjectSafetyViolation::Method(
                 name,
                 MethodViolationCode::WhereClauseReferencesSelf,
@@ -1035,7 +1038,10 @@ pub enum MethodViolationCode {
     ReferencesSelfOutput,
 
     /// e.g., `fn foo(&self) -> impl Sized`
-    ReferencesImplTraitInTrait,
+    ReferencesImplTraitInTrait(Span),
+
+    /// e.g., `async fn foo(&self)`
+    AsyncFn,
 
     /// e.g., `fn foo(&self) where Self: Clone`
     WhereClauseReferencesSelf,

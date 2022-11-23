@@ -605,7 +605,7 @@ declare_lint! {
     ///
     /// ### Example
     ///
-    /// ```
+    /// ```rust
     /// #[warn(unused_tuple_struct_fields)]
     /// struct S(i32, i32, i32);
     /// let s = S(1, 2, 3);
@@ -1154,7 +1154,7 @@ declare_lint! {
     ///
     /// ### Example
     ///
-    /// ```compile_fail
+    /// ```rust,compile_fail
     /// #[repr(packed)]
     /// pub struct Foo {
     ///     field1: u64,
@@ -2548,7 +2548,7 @@ declare_lint! {
     ///
     /// ### Example
     ///
-    /// ```compile_fail
+    /// ```rust,compile_fail
     /// # #![allow(unused)]
     /// enum E {
     ///     A,
@@ -3918,7 +3918,7 @@ declare_lint! {
     ///
     /// ### Example
     ///
-    /// ```
+    /// ```rust
     /// #![allow(test_unstable_lint)]
     /// ```
     ///

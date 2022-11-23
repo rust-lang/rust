@@ -57,7 +57,7 @@ error: use of a def path to a `LangItem`
   --> $DIR/unnecessary_def_path.rs:51:13
    |
 LL |     let _ = match_def_path(cx, did, &["alloc", "boxed", "Box"]);
-   |             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: try: `cx.tcx.lang_items().require(LangItem::OwnedBox).ok() == Some(did)`
+   |             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: try: `cx.tcx.lang_items().get(LangItem::OwnedBox) == Some(did)`
 
 error: use of a def path to a diagnostic item
   --> $DIR/unnecessary_def_path.rs:52:13
@@ -69,7 +69,7 @@ error: use of a def path to a `LangItem`
   --> $DIR/unnecessary_def_path.rs:53:13
    |
 LL |     let _ = match_def_path(cx, did, &["core", "option", "Option", "Some"]);
-   |             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: try: `cx.tcx.lang_items().require(LangItem::OptionSome).ok() == Some(did)`
+   |             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: try: `cx.tcx.lang_items().get(LangItem::OptionSome) == Some(did)`
    |
    = help: if this `DefId` came from a constructor expression or pattern then the parent `DefId` should be used instead
 
@@ -89,7 +89,7 @@ error: use of a def path to a `LangItem`
   --> $DIR/unnecessary_def_path.rs:58:13
    |
 LL |     let _ = is_expr_path_def_path(cx, expr, &["core", "iter", "traits", "Iterator", "next"]);
-   |             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: try: `path_res(cx, expr).opt_def_id().map_or(false, |id| cx.tcx.lang_items().require(LangItem::IteratorNext).ok() == Some(id))`
+   |             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: try: `path_res(cx, expr).opt_def_id().map_or(false, |id| cx.tcx.lang_items().get(LangItem::IteratorNext) == Some(id))`
 
 error: use of a def path to a `LangItem`
   --> $DIR/unnecessary_def_path.rs:59:13

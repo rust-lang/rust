@@ -112,7 +112,7 @@ pub struct Memory<'mir, 'tcx, M: Machine<'mir, 'tcx>> {
 /// A reference to some allocation that was already bounds-checked for the given region
 /// and had the on-access machine hooks run.
 #[derive(Copy, Clone)]
-pub struct AllocRef<'a, 'tcx, Prov, Extra> {
+pub struct AllocRef<'a, 'tcx, Prov: Provenance, Extra> {
     alloc: &'a Allocation<Prov, Extra>,
     range: AllocRange,
     tcx: TyCtxt<'tcx>,
@@ -120,7 +120,7 @@ pub struct AllocRef<'a, 'tcx, Prov, Extra> {
 }
 /// A reference to some allocation that was already bounds-checked for the given region
 /// and had the on-access machine hooks run.
-pub struct AllocRefMut<'a, 'tcx, Prov, Extra> {
+pub struct AllocRefMut<'a, 'tcx, Prov: Provenance, Extra> {
     alloc: &'a mut Allocation<Prov, Extra>,
     range: AllocRange,
     tcx: TyCtxt<'tcx>,
@@ -301,8 +301,6 @@ impl<'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
             }
             .into());
         };
-
-        debug!(?alloc);
 
         if alloc.mutability == Mutability::Not {
             throw_ub_format!("deallocating immutable allocation {alloc_id:?}");
@@ -503,8 +501,9 @@ impl<'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
                     throw_unsup!(ReadExternStatic(def_id));
                 }
 
-                // Use a precise span for better cycle errors.
-                (self.tcx.at(self.cur_span()).eval_static_initializer(def_id)?, Some(def_id))
+                // We don't give a span -- statics don't need that, they cannot be generic or associated.
+                let val = self.ctfe_query(None, |tcx| tcx.eval_static_initializer(def_id))?;
+                (val, Some(def_id))
             }
         };
         M::before_access_global(*self.tcx, &self.machine, id, alloc, def_id, is_write)?;
@@ -683,7 +682,7 @@ impl<'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
                 // Use size and align of the type.
                 let ty = self.tcx.type_of(def_id);
                 let layout = self.tcx.layout_of(ParamEnv::empty().and(ty)).unwrap();
-                assert!(!layout.is_unsized());
+                assert!(layout.is_sized());
                 (layout.size, layout.align.abi, AllocKind::LiveData)
             }
             Some(GlobalAlloc::Memory(alloc)) => {
@@ -797,7 +796,7 @@ impl<'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
                     // This is a new allocation, add the allocation it points to `todo`.
                     if let Some((_, alloc)) = self.memory.alloc_map.get(id) {
                         todo.extend(
-                            alloc.provenance().values().filter_map(|prov| prov.get_alloc_id()),
+                            alloc.provenance().provenances().filter_map(|prov| prov.get_alloc_id()),
                         );
                     }
                 }
@@ -833,7 +832,8 @@ impl<'a, 'mir, 'tcx, M: Machine<'mir, 'tcx>> std::fmt::Debug for DumpAllocs<'a, 
             allocs_to_print: &mut VecDeque<AllocId>,
             alloc: &Allocation<Prov, Extra>,
         ) -> std::fmt::Result {
-            for alloc_id in alloc.provenance().values().filter_map(|prov| prov.get_alloc_id()) {
+            for alloc_id in alloc.provenance().provenances().filter_map(|prov| prov.get_alloc_id())
+            {
                 allocs_to_print.push_back(alloc_id);
             }
             write!(fmt, "{}", display_allocation(tcx, alloc))
@@ -962,7 +962,7 @@ impl<'tcx, 'a, Prov: Provenance, Extra> AllocRef<'a, 'tcx, Prov, Extra> {
 
     /// Returns whether the allocation has provenance anywhere in the range of the `AllocRef`.
     pub(crate) fn has_provenance(&self) -> bool {
-        self.alloc.range_has_provenance(&self.tcx, self.range)
+        !self.alloc.provenance().range_empty(self.range, &self.tcx)
     }
 }
 
@@ -1060,7 +1060,7 @@ impl<'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
 
         // Source alloc preparations and access hooks.
         let Some((src_alloc_id, src_offset, src_prov)) = src_parts else {
-            // Zero-sized *source*, that means dst is also zero-sized and we have nothing to do.
+            // Zero-sized *source*, that means dest is also zero-sized and we have nothing to do.
             return Ok(());
         };
         let src_alloc = self.get_alloc_raw(src_alloc_id)?;
@@ -1079,22 +1079,18 @@ impl<'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
             return Ok(());
         };
 
-        // Checks provenance edges on the src, which needs to happen before
-        // `prepare_provenance_copy`.
-        if src_alloc.range_has_provenance(&tcx, alloc_range(src_range.start, Size::ZERO)) {
-            throw_unsup!(PartialPointerCopy(Pointer::new(src_alloc_id, src_range.start)));
-        }
-        if src_alloc.range_has_provenance(&tcx, alloc_range(src_range.end(), Size::ZERO)) {
-            throw_unsup!(PartialPointerCopy(Pointer::new(src_alloc_id, src_range.end())));
-        }
+        // Prepare getting source provenance.
         let src_bytes = src_alloc.get_bytes_unchecked(src_range).as_ptr(); // raw ptr, so we can also get a ptr to the destination allocation
         // first copy the provenance to a temporary buffer, because
         // `get_bytes_mut` will clear the provenance, which is correct,
         // since we don't want to keep any provenance at the target.
-        let provenance =
-            src_alloc.prepare_provenance_copy(self, src_range, dest_offset, num_copies);
+        // This will also error if copying partial provenance is not supported.
+        let provenance = src_alloc
+            .provenance()
+            .prepare_copy(src_range, dest_offset, num_copies, self)
+            .map_err(|e| e.to_interp_error(dest_alloc_id))?;
         // Prepare a copy of the initialization mask.
-        let compressed = src_alloc.compress_uninit_range(src_range);
+        let init = src_alloc.init_mask().prepare_copy(src_range);
 
         // Destination alloc preparations and access hooks.
         let (dest_alloc, extra) = self.get_alloc_raw_mut(dest_alloc_id)?;
@@ -1111,7 +1107,7 @@ impl<'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
             .map_err(|e| e.to_interp_error(dest_alloc_id))?
             .as_mut_ptr();
 
-        if compressed.no_bytes_init() {
+        if init.no_bytes_init() {
             // Fast path: If all bytes are `uninit` then there is nothing to copy. The target range
             // is marked as uninitialized but we otherwise omit changing the byte representation which may
             // be arbitrary for uninitialized bytes.
@@ -1160,13 +1156,13 @@ impl<'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
         }
 
         // now fill in all the "init" data
-        dest_alloc.mark_compressed_init_range(
-            &compressed,
+        dest_alloc.init_mask_apply_copy(
+            init,
             alloc_range(dest_offset, size), // just a single copy (i.e., not full `dest_range`)
             num_copies,
         );
         // copy the provenance to the destination
-        dest_alloc.mark_provenance_range(provenance);
+        dest_alloc.provenance_apply_copy(provenance);
 
         Ok(())
     }

@@ -21,11 +21,6 @@ mod maybe_uninit;
 #[stable(feature = "maybe_uninit", since = "1.36.0")]
 pub use maybe_uninit::MaybeUninit;
 
-// FIXME: This is left here for now to avoid complications around pending reverts.
-// Once <https://github.com/rust-lang/rust/issues/101899> is fully resolved,
-// this should be removed and the references in `alloc::Layout` updated.
-pub(crate) use ptr::Alignment as ValidAlign;
-
 mod transmutability;
 #[unstable(feature = "transmutability", issue = "99571")]
 pub use transmutability::{Assume, BikeshedIntrinsicFrom};
@@ -730,10 +725,7 @@ pub const fn swap<T>(x: &mut T, y: &mut T) {
     // understanding `mem::replace`, `Option::take`, etc. - a better overall
     // solution might be to make `ptr::swap_nonoverlapping` into an intrinsic, which
     // a backend can choose to implement using the block optimization, or not.
-    // NOTE(scottmcm) MIRI is disabled here as reading in smaller units is a
-    // pessimization for it.  Also, if the type contains any unaligned pointers,
-    // copying those over multiple reads is difficult to support.
-    #[cfg(not(any(target_arch = "spirv", miri)))]
+    #[cfg(not(any(target_arch = "spirv")))]
     {
         // For types that are larger multiples of their alignment, the simple way
         // tends to copy the whole thing to stack rather than doing it one part

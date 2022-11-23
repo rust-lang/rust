@@ -7,6 +7,8 @@ Original by Dempfi (https://github.com/dempfi/ayu)
 	--main-background-color: #0f1419;
 	--main-color: #c5c5c5;
 	--settings-input-color: #ffb454;
+	--settings-button-color: #fff;
+	--settings-button-border-focus: #e0e0e0;
 	--sidebar-background-color: #14191f;
 	--sidebar-background-color-hover: rgba(70, 70, 70, 0.33);
 	--code-block-background-color: #191f26;
@@ -39,9 +41,11 @@ Original by Dempfi (https://github.com/dempfi/ayu)
 	--sidebar-current-link-background-color: transparent;
 	--search-result-link-focus-background-color: #3c3c3c;
 	--search-result-border-color: #aaa3;
+	--search-color: #fff;
+	--search-results-alias-color: #c5c5c5;
+	--search-results-grey-color: #999;
 	--stab-background-color: #314559;
 	--stab-code-color: #e6e1cf;
-	--search-color: #fff;
 	--code-highlight-kw-color: #ff7733;
 	--code-highlight-kw-2-color: #ff7733;
 	--code-highlight-lifetime-color: #ff7733;
@@ -63,20 +67,23 @@ Original by Dempfi (https://github.com/dempfi/ayu)
 	--test-arrow-background-color: rgba(57, 175, 215, 0.09);
 	--test-arrow-hover-color: #c5c5c5;
 	--test-arrow-hover-background-color: rgba(57, 175, 215, 0.368);
+	--target-background-color: rgba(255, 236, 164, 0.06);
+	--target-border-color: rgba(255, 180, 76, 0.85);
+	--tooltip-background-color: #314559;
+	--tooltip-color: #c5c5c5;
+	--kbd-color: #c5c5c5;
+	--kbd-background: #314559;
+	--kbd-box-shadow-color: #5c6773;
 	--rust-logo-filter: drop-shadow(1px 0 0px #fff)
 		drop-shadow(0 1px 0 #fff)
 		drop-shadow(-1px 0 0 #fff)
 		drop-shadow(0 -1px 0 #fff);
-}
-
-.slider {
-	background-color: #ccc;
-}
-.slider:before {
-	background-color: white;
-}
-input:focus + .slider {
-	box-shadow: 0 0 0 2px #0a84ff, 0 0 0 6px rgba(10, 132, 255, 0.3);
+	/* match border-color; uses https://codepen.io/sosuke/pen/Pjoqqp */
+	--crate-search-div-filter: invert(41%) sepia(12%) saturate(487%) hue-rotate(171deg)
+		brightness(94%) contrast(94%);
+	--crate-search-div-hover-filter: invert(98%) sepia(12%) saturate(81%) hue-rotate(343deg)
+		brightness(113%) contrast(76%);
+	--crate-search-hover-border: #e0e0e0;
 }
 
 h1, h2, h3, h4 {
@@ -153,17 +160,6 @@ details.rustdoc-toggle > summary::before {
 	filter: invert(100%);
 }
 
-#crate-search-div::after {
-	/* match border-color; uses https://codepen.io/sosuke/pen/Pjoqqp */
-	filter: invert(41%) sepia(12%) saturate(487%) hue-rotate(171deg) brightness(94%) contrast(94%);
-}
-#crate-search:hover, #crate-search:focus {
-	border-color: #e0e0e0 !important;
-}
-#crate-search-div:hover::after, #crate-search-div:focus-within::after {
-	filter: invert(98%) sepia(12%) saturate(81%) hue-rotate(343deg) brightness(113%) contrast(76%);
-}
-
 .module-item .stab,
 .import-item .stab {
 	color: #000;
@@ -171,28 +167,6 @@ details.rustdoc-toggle > summary::before {
 
 .result-name .primitive > i, .result-name .keyword > i {
 	color: #788797;
-}
-
-:target {
-	background: rgba(255, 236, 164, 0.06);
-	border-right: 3px solid rgba(255, 180, 76, 0.85);
-}
-
-.search-failed a {
-	color: #39AFD7;
-}
-
-.tooltip::after {
-	background-color: #314559;
-	color: #c5c5c5;
-}
-
-.tooltip::before {
-	border-color: transparent #314559 transparent transparent;
-}
-
-.notable-traits-tooltiptext {
-	background-color: #314559;
 }
 
 #titles > button.selected {
@@ -226,30 +200,8 @@ pre.rust .kw {}
 pre.rust .self, pre.rust .bool-val, pre.rust .prelude-val, pre.rust .attribute {}
 pre.rust .kw-2, pre.rust .prelude-ty {}
 
-kbd {
-	color: #c5c5c5;
-	background-color: #314559;
-	box-shadow: inset 0 -1px 0 #5c6773;
-}
-
-#settings-menu > a, #help-button > a {
-	color: #fff;
-}
-
 #settings-menu > a img {
 	filter: invert(100);
-}
-
-#settings-menu > a:hover, #settings-menu > a:focus,
-#help-button > a:hover, #help-button > a:focus {
-	border-color: #e0e0e0;
-}
-
-.search-results .result-name span.alias {
-	color: #c5c5c5;
-}
-.search-results .result-name span.grey {
-	color: #999;
 }
 
 #source-sidebar > .title {

@@ -3,7 +3,6 @@ use core::iter::TrustedLen;
 use super::*;
 
 #[bench]
-#[cfg_attr(miri, ignore)] // isolated Miri does not support benchmarks
 fn bench_push_back_100(b: &mut test::Bencher) {
     let mut deq = VecDeque::with_capacity(101);
     b.iter(|| {
@@ -16,7 +15,6 @@ fn bench_push_back_100(b: &mut test::Bencher) {
 }
 
 #[bench]
-#[cfg_attr(miri, ignore)] // isolated Miri does not support benchmarks
 fn bench_push_front_100(b: &mut test::Bencher) {
     let mut deq = VecDeque::with_capacity(101);
     b.iter(|| {
@@ -29,12 +27,15 @@ fn bench_push_front_100(b: &mut test::Bencher) {
 }
 
 #[bench]
-#[cfg_attr(miri, ignore)] // isolated Miri does not support benchmarks
 fn bench_pop_back_100(b: &mut test::Bencher) {
-    let mut deq = VecDeque::<i32>::with_capacity(101);
+    let size = 100;
+    let mut deq = VecDeque::<i32>::with_capacity(size + 1);
+    // We'll mess with private state to pretend like `deq` is filled.
+    // Make sure the buffer is initialized so that we don't read uninit memory.
+    unsafe { deq.ptr().write_bytes(0u8, size + 1) };
 
     b.iter(|| {
-        deq.head = 100;
+        deq.head = size;
         deq.tail = 0;
         while !deq.is_empty() {
             test::black_box(deq.pop_back());
@@ -43,9 +44,9 @@ fn bench_pop_back_100(b: &mut test::Bencher) {
 }
 
 #[bench]
-#[cfg_attr(miri, ignore)] // isolated Miri does not support benchmarks
 fn bench_retain_whole_10000(b: &mut test::Bencher) {
-    let v = (1..100000).collect::<VecDeque<u32>>();
+    let size = if cfg!(miri) { 1000 } else { 100000 };
+    let v = (1..size).collect::<VecDeque<u32>>();
 
     b.iter(|| {
         let mut v = v.clone();
@@ -54,9 +55,9 @@ fn bench_retain_whole_10000(b: &mut test::Bencher) {
 }
 
 #[bench]
-#[cfg_attr(miri, ignore)] // isolated Miri does not support benchmarks
 fn bench_retain_odd_10000(b: &mut test::Bencher) {
-    let v = (1..100000).collect::<VecDeque<u32>>();
+    let size = if cfg!(miri) { 1000 } else { 100000 };
+    let v = (1..size).collect::<VecDeque<u32>>();
 
     b.iter(|| {
         let mut v = v.clone();
@@ -65,23 +66,26 @@ fn bench_retain_odd_10000(b: &mut test::Bencher) {
 }
 
 #[bench]
-#[cfg_attr(miri, ignore)] // isolated Miri does not support benchmarks
 fn bench_retain_half_10000(b: &mut test::Bencher) {
-    let v = (1..100000).collect::<VecDeque<u32>>();
+    let size = if cfg!(miri) { 1000 } else { 100000 };
+    let v = (1..size).collect::<VecDeque<u32>>();
 
     b.iter(|| {
         let mut v = v.clone();
-        v.retain(|x| *x > 50000)
+        v.retain(|x| *x > size / 2)
     })
 }
 
 #[bench]
-#[cfg_attr(miri, ignore)] // isolated Miri does not support benchmarks
 fn bench_pop_front_100(b: &mut test::Bencher) {
-    let mut deq = VecDeque::<i32>::with_capacity(101);
+    let size = 100;
+    let mut deq = VecDeque::<i32>::with_capacity(size + 1);
+    // We'll mess with private state to pretend like `deq` is filled.
+    // Make sure the buffer is initialized so that we don't read uninit memory.
+    unsafe { deq.ptr().write_bytes(0u8, size + 1) };
 
     b.iter(|| {
-        deq.head = 100;
+        deq.head = size;
         deq.tail = 0;
         while !deq.is_empty() {
             test::black_box(deq.pop_front());

@@ -3,7 +3,8 @@
 use crate::parse_in;
 
 use rustc_ast::tokenstream::DelimSpan;
-use rustc_ast::{self as ast, Attribute, MacArgs, MacArgsEq, MacDelimiter, MetaItem, MetaItemKind};
+use rustc_ast::MetaItemKind;
+use rustc_ast::{self as ast, AttrArgs, AttrArgsEq, Attribute, DelimArgs, MacDelimiter, MetaItem};
 use rustc_ast_pretty::pprust;
 use rustc_errors::{Applicability, FatalError, PResult};
 use rustc_feature::{AttributeTemplate, BuiltinAttribute, BUILTIN_ATTRIBUTE_MAP};
@@ -24,7 +25,7 @@ pub fn check_meta(sess: &ParseSess, attr: &Attribute) {
         Some(BuiltinAttribute { name, template, .. }) if *name != sym::rustc_dummy => {
             check_builtin_attribute(sess, attr, *name, *template)
         }
-        _ if let MacArgs::Eq(..) = attr.get_normal_item().args => {
+        _ if let AttrArgs::Eq(..) = attr.get_normal_item().args => {
             // All key-value attributes are restricted to meta-item syntax.
             parse_meta(sess, attr)
                 .map_err(|mut err| {
@@ -42,17 +43,19 @@ pub fn parse_meta<'a>(sess: &'a ParseSess, attr: &Attribute) -> PResult<'a, Meta
         span: attr.span,
         path: item.path.clone(),
         kind: match &item.args {
-            MacArgs::Empty => MetaItemKind::Word,
-            MacArgs::Delimited(dspan, delim, t) => {
+            AttrArgs::Empty => MetaItemKind::Word,
+            AttrArgs::Delimited(DelimArgs { dspan, delim, tokens }) => {
                 check_meta_bad_delim(sess, *dspan, *delim, "wrong meta list delimiters");
-                let nmis = parse_in(sess, t.clone(), "meta list", |p| p.parse_meta_seq_top())?;
+                let nmis = parse_in(sess, tokens.clone(), "meta list", |p| p.parse_meta_seq_top())?;
                 MetaItemKind::List(nmis)
             }
-            MacArgs::Eq(_, MacArgsEq::Ast(expr)) => {
-                if let ast::ExprKind::Lit(lit) = &expr.kind {
-                    if !lit.kind.is_unsuffixed() {
+            AttrArgs::Eq(_, AttrArgsEq::Ast(expr)) => {
+                if let ast::ExprKind::Lit(token_lit) = expr.kind
+                    && let Ok(lit) = ast::Lit::from_token_lit(token_lit, expr.span)
+                {
+                    if token_lit.suffix.is_some() {
                         let mut err = sess.span_diagnostic.struct_span_err(
-                            lit.span,
+                            expr.span,
                             "suffixed literals are not allowed in attributes",
                         );
                         err.help(
@@ -61,7 +64,7 @@ pub fn parse_meta<'a>(sess: &'a ParseSess, attr: &Attribute) -> PResult<'a, Meta
                         );
                         return Err(err);
                     } else {
-                        MetaItemKind::NameValue(lit.clone())
+                        MetaItemKind::NameValue(lit)
                     }
                 } else {
                     // The non-error case can happen with e.g. `#[foo = 1+1]`. The error case can
@@ -76,7 +79,7 @@ pub fn parse_meta<'a>(sess: &'a ParseSess, attr: &Attribute) -> PResult<'a, Meta
                     return Err(err);
                 }
             }
-            MacArgs::Eq(_, MacArgsEq::Hir(lit)) => MetaItemKind::NameValue(lit.clone()),
+            AttrArgs::Eq(_, AttrArgsEq::Hir(lit)) => MetaItemKind::NameValue(lit.clone()),
         },
     })
 }

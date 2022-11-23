@@ -1,4 +1,5 @@
 // edition:2018
+// gate-test-impl_trait_projections
 
 // This test checks that `Self` is prohibited as a return type. See #61949 for context.
 
@@ -19,6 +20,7 @@ async fn foo() {
     let x = {
         let bar = 22;
         Foo::new(&bar).await
+        //~^ ERROR `bar` does not live long enough
     };
     drop(x);
 }

@@ -8,7 +8,6 @@ use core::{mem, slice};
 struct Bytes<'a>(&'a [u8]);
 
 impl<'a> Hash for Bytes<'a> {
-    #[allow(unused_must_use)]
     fn hash<H: Hasher>(&self, state: &mut H) {
         let Bytes(v) = *self;
         state.write(v);
@@ -22,6 +21,20 @@ fn hash_with<H: Hasher, T: Hash>(mut st: H, x: &T) -> u64 {
 
 fn hash<T: Hash>(x: &T) -> u64 {
     hash_with(SipHasher::new(), x)
+}
+
+#[test]
+const fn test_const_sip() {
+    let val1 = 0x45;
+    let val2 = 0xfeed;
+
+    const fn const_hash<T: ~const Hash>(x: &T) -> u64 {
+        let mut st = SipHasher::new();
+        x.hash(&mut st);
+        st.finish()
+    }
+
+    assert!(const_hash(&(val1)) != const_hash(&(val2)));
 }
 
 #[test]

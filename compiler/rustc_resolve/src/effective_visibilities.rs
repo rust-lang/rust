@@ -72,7 +72,7 @@ impl<'r, 'a> EffectiveVisibilitiesVisitor<'r, 'a> {
                 update(node_id);
                 if let ImportKind::Single { additional_ids: (id1, id2), .. } = import.kind {
                     // In theory all the single import IDs have individual visibilities and
-                    // effective visibilities, but in practice these IDs go straigth to HIR
+                    // effective visibilities, but in practice these IDs go straight to HIR
                     // where all their few uses assume that their (effective) visibility
                     // applies to the whole syntactic `use` item. So they all get the same
                     // value which is the maximum of all bindings. Maybe HIR for imports

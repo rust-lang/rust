@@ -175,6 +175,8 @@ impl<'tcx> TyCtxt<'tcx> {
 
 impl<'tcx> TyCtxtAt<'tcx> {
     /// Evaluate a static's initializer, returning the allocation of the initializer's memory.
+    ///
+    /// The span is entirely ignored here, but still helpful for better query cycle errors.
     pub fn eval_static_initializer(
         self,
         def_id: DefId,
@@ -187,6 +189,8 @@ impl<'tcx> TyCtxtAt<'tcx> {
     }
 
     /// Evaluate anything constant-like, returning the allocation of the final memory.
+    ///
+    /// The span is entirely ignored here, but still helpful for better query cycle errors.
     fn eval_to_allocation(
         self,
         gid: GlobalId<'tcx>,

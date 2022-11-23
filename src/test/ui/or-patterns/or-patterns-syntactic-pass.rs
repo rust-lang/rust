@@ -21,27 +21,27 @@ accept_pat!([p | q]);
 #[cfg(FALSE)]
 fn or_patterns() {
     // Top level of `let`:
-    let (A | B);
+    let (| A | B);
     let (A | B);
     let (A | B): u8;
     let (A | B) = 0;
     let (A | B): u8 = 0;
 
     // Top level of `for`:
-    for A | B in 0 {}
+    for | A | B in 0 {}
     for A | B in 0 {}
 
     // Top level of `while`:
-    while let A | B = 0 {}
+    while let | A | B = 0 {}
     while let A | B = 0 {}
 
     // Top level of `if`:
-    if let A | B = 0 {}
+    if let | A | B = 0 {}
     if let A | B = 0 {}
 
     // Top level of `match` arms:
     match 0 {
-        A | B => {}
+        | A | B => {}
         A | B => {}
     }
 

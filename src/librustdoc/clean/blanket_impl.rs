@@ -76,6 +76,7 @@ impl<'a, 'tcx> BlanketImplFinder<'a, 'tcx> {
                 for predicate in predicates {
                     debug!("testing predicate {:?}", predicate);
                     let obligation = traits::Obligation::new(
+                        infcx.tcx,
                         traits::ObligationCause::dummy(),
                         param_env,
                         predicate,

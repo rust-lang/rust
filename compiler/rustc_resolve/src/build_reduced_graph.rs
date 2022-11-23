@@ -469,9 +469,11 @@ impl<'a, 'b> BuildReducedGraphVisitor<'a, 'b> {
                         }
 
                         // Replace `use foo::{ self };` with `use foo;`
+                        let self_span = source.ident.span;
                         source = module_path.pop().unwrap();
                         if rename.is_none() {
-                            ident = source.ident;
+                            // Keep the span of `self`, but the name of `foo`
+                            ident = Ident { name: source.ident.name, span: self_span };
                         }
                     }
                 } else {
@@ -745,7 +747,7 @@ impl<'a, 'b> BuildReducedGraphVisitor<'a, 'b> {
 
                 // If this is a tuple or unit struct, define a name
                 // in the value namespace as well.
-                if let Some(ctor_node_id) = vdata.ctor_id() {
+                if let Some((ctor_kind, ctor_node_id)) = CtorKind::from_ast(vdata) {
                     // If the structure is marked as non_exhaustive then lower the visibility
                     // to within the crate.
                     let mut ctor_vis = if vis.is_public()
@@ -771,10 +773,8 @@ impl<'a, 'b> BuildReducedGraphVisitor<'a, 'b> {
                         ret_fields.push(field_vis.to_def_id());
                     }
                     let ctor_def_id = self.r.local_def_id(ctor_node_id);
-                    let ctor_res = Res::Def(
-                        DefKind::Ctor(CtorOf::Struct, CtorKind::from_ast(vdata)),
-                        ctor_def_id.to_def_id(),
-                    );
+                    let ctor_res =
+                        Res::Def(DefKind::Ctor(CtorOf::Struct, ctor_kind), ctor_def_id.to_def_id());
                     self.r.define(parent, ident, ValueNS, (ctor_res, ctor_vis, sp, expansion));
                     self.r.visibilities.insert(ctor_def_id, ctor_vis);
 
@@ -997,8 +997,7 @@ impl<'a, 'b> BuildReducedGraphVisitor<'a, 'b> {
             Res::Def(DefKind::Struct, def_id) => {
                 let field_names =
                     cstore.struct_field_names_untracked(def_id, self.r.session).collect();
-                let ctor = cstore.ctor_def_id_and_kind_untracked(def_id);
-                if let Some((ctor_def_id, ctor_kind)) = ctor {
+                if let Some((ctor_kind, ctor_def_id)) = cstore.ctor_untracked(def_id) {
                     let ctor_res = Res::Def(DefKind::Ctor(CtorOf::Struct, ctor_kind), ctor_def_id);
                     let ctor_vis = cstore.visibility_untracked(ctor_def_id);
                     let field_visibilities =
@@ -1515,20 +1514,20 @@ impl<'a, 'b> Visitor<'b> for BuildReducedGraphVisitor<'a, 'b> {
         };
 
         // Define a constructor name in the value namespace.
-        // Braced variants, unlike structs, generate unusable names in
-        // value namespace, they are reserved for possible future use.
-        // It's ok to use the variant's id as a ctor id since an
-        // error will be reported on any use of such resolution anyway.
-        let ctor_node_id = variant.data.ctor_id().unwrap_or(variant.id);
-        let ctor_def_id = self.r.local_def_id(ctor_node_id);
-        let ctor_kind = CtorKind::from_ast(&variant.data);
-        let ctor_res = Res::Def(DefKind::Ctor(CtorOf::Variant, ctor_kind), ctor_def_id.to_def_id());
-        self.r.define(parent, ident, ValueNS, (ctor_res, ctor_vis, variant.span, expn_id));
-        if ctor_def_id != def_id {
+        let fields_id = if let Some((ctor_kind, ctor_node_id)) = CtorKind::from_ast(&variant.data) {
+            let ctor_def_id = self.r.local_def_id(ctor_node_id);
+            let ctor_res =
+                Res::Def(DefKind::Ctor(CtorOf::Variant, ctor_kind), ctor_def_id.to_def_id());
+            self.r.define(parent, ident, ValueNS, (ctor_res, ctor_vis, variant.span, expn_id));
             self.r.visibilities.insert(ctor_def_id, ctor_vis);
-        }
+            ctor_def_id
+        } else {
+            def_id
+        };
+
         // Record field names for error reporting.
-        self.insert_field_names_local(ctor_def_id.to_def_id(), &variant.data);
+        // FIXME: Always use non-ctor id as the key.
+        self.insert_field_names_local(fields_id.to_def_id(), &variant.data);
 
         visit::walk_variant(self, variant);
     }

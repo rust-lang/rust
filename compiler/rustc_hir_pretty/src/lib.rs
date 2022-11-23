@@ -754,7 +754,7 @@ impl<'a> State<'a> {
         for v in variants {
             self.space_if_not_bol();
             self.maybe_print_comment(v.span.lo());
-            self.print_outer_attributes(self.attrs(v.id));
+            self.print_outer_attributes(self.attrs(v.hir_id));
             self.ibox(INDENT_UNIT);
             self.print_variant(v);
             self.word(",");
@@ -1481,6 +1481,7 @@ impl<'a> State<'a> {
                 body,
                 fn_decl_span: _,
                 movability: _,
+                def_id: _,
             }) => {
                 self.print_closure_binder(binder, bound_generic_params);
                 self.print_capture_clause(capture_clause);

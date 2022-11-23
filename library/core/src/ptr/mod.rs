@@ -35,7 +35,8 @@
 //!   be used for inter-thread synchronization.
 //! * The result of casting a reference to a pointer is valid for as long as the
 //!   underlying object is live and no reference (just raw pointers) is used to
-//!   access the same memory.
+//!   access the same memory. That is, reference and pointer accesses cannot be
+//!   interleaved.
 //!
 //! These axioms, along with careful use of [`offset`] for pointer arithmetic,
 //! are enough to correctly implement many useful things in unsafe code. Stronger guarantees
@@ -63,7 +64,6 @@
 //! Common examples of allocated objects include stack-allocated variables (each variable is a
 //! separate allocated object), heap allocations (each allocation created by the global allocator is
 //! a separate allocated object), and `static` variables.
-//!
 //!
 //! # Strict Provenance
 //!
@@ -616,6 +616,7 @@ pub const fn invalid_mut<T>(addr: usize) -> *mut T {
 #[inline]
 #[unstable(feature = "strict_provenance", issue = "95228")]
 #[cfg_attr(miri, track_caller)] // even without panics, this helps for Miri backtraces
+#[allow(fuzzy_provenance_casts)] // this *is* the strict provenance API one should use instead
 pub fn from_exposed_addr<T>(addr: usize) -> *const T
 where
     T: Sized,
@@ -653,6 +654,7 @@ where
 #[inline]
 #[unstable(feature = "strict_provenance", issue = "95228")]
 #[cfg_attr(miri, track_caller)] // even without panics, this helps for Miri backtraces
+#[allow(fuzzy_provenance_casts)] // this *is* the strict provenance API one should use instead
 pub fn from_exposed_addr_mut<T>(addr: usize) -> *mut T
 where
     T: Sized,
@@ -908,21 +910,15 @@ pub const unsafe fn swap_nonoverlapping<T>(x: *mut T, y: *mut T, count: usize) {
         );
     }
 
-    // NOTE(scottmcm) Miri is disabled here as reading in smaller units is a
-    // pessimization for it.  Also, if the type contains any unaligned pointers,
-    // copying those over multiple reads is difficult to support.
-    #[cfg(not(miri))]
+    // Split up the slice into small power-of-two-sized chunks that LLVM is able
+    // to vectorize (unless it's a special type with more-than-pointer alignment,
+    // because we don't want to pessimize things like slices of SIMD vectors.)
+    if mem::align_of::<T>() <= mem::size_of::<usize>()
+        && (!mem::size_of::<T>().is_power_of_two()
+            || mem::size_of::<T>() > mem::size_of::<usize>() * 2)
     {
-        // Split up the slice into small power-of-two-sized chunks that LLVM is able
-        // to vectorize (unless it's a special type with more-than-pointer alignment,
-        // because we don't want to pessimize things like slices of SIMD vectors.)
-        if mem::align_of::<T>() <= mem::size_of::<usize>()
-            && (!mem::size_of::<T>().is_power_of_two()
-                || mem::size_of::<T>() > mem::size_of::<usize>() * 2)
-        {
-            attempt_swap_as_chunks!(usize);
-            attempt_swap_as_chunks!(u8);
-        }
+        attempt_swap_as_chunks!(usize);
+        attempt_swap_as_chunks!(u8);
     }
 
     // SAFETY: Same preconditions as this function
@@ -1580,10 +1576,14 @@ pub unsafe fn write_volatile<T>(dst: *mut T, src: T) {
 
 /// Align pointer `p`.
 ///
-/// Calculate offset (in terms of elements of `stride` stride) that has to be applied
+/// Calculate offset (in terms of elements of `size_of::<T>()` stride) that has to be applied
 /// to pointer `p` so that pointer `p` would get aligned to `a`.
 ///
-/// Note: This implementation has been carefully tailored to not panic. It is UB for this to panic.
+/// # Safety
+/// `a` must be a power of two.
+///
+/// # Notes
+/// This implementation has been carefully tailored to not panic. It is UB for this to panic.
 /// The only real change that can be made here is change of `INV_TABLE_MOD_16` and associated
 /// constants.
 ///
@@ -1593,12 +1593,12 @@ pub unsafe fn write_volatile<T>(dst: *mut T, src: T) {
 ///
 /// Any questions go to @nagisa.
 #[lang = "align_offset"]
-pub(crate) unsafe fn align_offset<T: Sized>(p: *const T, a: usize) -> usize {
+pub(crate) const unsafe fn align_offset<T: Sized>(p: *const T, a: usize) -> usize {
     // FIXME(#75598): Direct use of these intrinsics improves codegen significantly at opt-level <=
     // 1, where the method versions of these operations are not inlined.
     use intrinsics::{
-        cttz_nonzero, exact_div, unchecked_rem, unchecked_shl, unchecked_shr, unchecked_sub,
-        wrapping_add, wrapping_mul, wrapping_sub,
+        cttz_nonzero, exact_div, mul_with_overflow, unchecked_rem, unchecked_shl, unchecked_shr,
+        unchecked_sub, wrapping_add, wrapping_mul, wrapping_sub,
     };
 
     /// Calculate multiplicative modular inverse of `x` modulo `m`.
@@ -1610,7 +1610,7 @@ pub(crate) unsafe fn align_offset<T: Sized>(p: *const T, a: usize) -> usize {
     ///
     /// Implementation of this function shall not panic. Ever.
     #[inline]
-    unsafe fn mod_inv(x: usize, m: usize) -> usize {
+    const unsafe fn mod_inv(x: usize, m: usize) -> usize {
         /// Multiplicative modular inverse table modulo 2⁴ = 16.
         ///
         /// Note, that this table does not contain values where inverse does not exist (i.e., for
@@ -1618,40 +1618,48 @@ pub(crate) unsafe fn align_offset<T: Sized>(p: *const T, a: usize) -> usize {
         const INV_TABLE_MOD_16: [u8; 8] = [1, 11, 13, 7, 9, 3, 5, 15];
         /// Modulo for which the `INV_TABLE_MOD_16` is intended.
         const INV_TABLE_MOD: usize = 16;
-        /// INV_TABLE_MOD²
-        const INV_TABLE_MOD_SQUARED: usize = INV_TABLE_MOD * INV_TABLE_MOD;
 
-        let table_inverse = INV_TABLE_MOD_16[(x & (INV_TABLE_MOD - 1)) >> 1] as usize;
         // SAFETY: `m` is required to be a power-of-two, hence non-zero.
         let m_minus_one = unsafe { unchecked_sub(m, 1) };
-        if m <= INV_TABLE_MOD {
-            table_inverse & m_minus_one
-        } else {
-            // We iterate "up" using the following formula:
+        let mut inverse = INV_TABLE_MOD_16[(x & (INV_TABLE_MOD - 1)) >> 1] as usize;
+        let mut mod_gate = INV_TABLE_MOD;
+        // We iterate "up" using the following formula:
+        //
+        // $$ xy ≡ 1 (mod 2ⁿ) → xy (2 - xy) ≡ 1 (mod 2²ⁿ) $$
+        //
+        // This application needs to be applied at least until `2²ⁿ ≥ m`, at which point we can
+        // finally reduce the computation to our desired `m` by taking `inverse mod m`.
+        //
+        // This computation is `O(log log m)`, which is to say, that on 64-bit machines this loop
+        // will always finish in at most 4 iterations.
+        loop {
+            // y = y * (2 - xy) mod n
             //
-            // $$ xy ≡ 1 (mod 2ⁿ) → xy (2 - xy) ≡ 1 (mod 2²ⁿ) $$
-            //
-            // until 2²ⁿ ≥ m. Then we can reduce to our desired `m` by taking the result `mod m`.
-            let mut inverse = table_inverse;
-            let mut going_mod = INV_TABLE_MOD_SQUARED;
-            loop {
-                // y = y * (2 - xy) mod n
-                //
-                // Note, that we use wrapping operations here intentionally – the original formula
-                // uses e.g., subtraction `mod n`. It is entirely fine to do them `mod
-                // usize::MAX` instead, because we take the result `mod n` at the end
-                // anyway.
-                inverse = wrapping_mul(inverse, wrapping_sub(2usize, wrapping_mul(x, inverse)));
-                if going_mod >= m {
-                    return inverse & m_minus_one;
-                }
-                going_mod = wrapping_mul(going_mod, going_mod);
+            // Note, that we use wrapping operations here intentionally – the original formula
+            // uses e.g., subtraction `mod n`. It is entirely fine to do them `mod
+            // usize::MAX` instead, because we take the result `mod n` at the end
+            // anyway.
+            if mod_gate >= m {
+                break;
             }
+            inverse = wrapping_mul(inverse, wrapping_sub(2usize, wrapping_mul(x, inverse)));
+            let (new_gate, overflow) = mul_with_overflow(mod_gate, mod_gate);
+            if overflow {
+                break;
+            }
+            mod_gate = new_gate;
         }
+        inverse & m_minus_one
     }
 
-    let addr = p.addr();
     let stride = mem::size_of::<T>();
+
+    // SAFETY: This is just an inlined `p.addr()` (which is not
+    // a `const fn` so we cannot call it).
+    // During const eval, we hook this function to ensure that the pointer never
+    // has provenance, making this sound.
+    let addr: usize = unsafe { mem::transmute(p) };
+
     // SAFETY: `a` is a power-of-two, therefore non-zero.
     let a_minus_one = unsafe { unchecked_sub(a, 1) };
 
@@ -1862,7 +1870,6 @@ macro_rules! fnptr_impls_safety_abi {
         fnptr_impls_safety_abi! { #[stable(feature = "fnptr_impls", since = "1.4.0")] $FnTy, $($Arg),* }
     };
     (@c_unwind $FnTy: ty, $($Arg: ident),*) => {
-        #[cfg(not(bootstrap))]
         fnptr_impls_safety_abi! { #[unstable(feature = "c_unwind", issue = "74990")] $FnTy, $($Arg),* }
     };
     (#[$meta:meta] $FnTy: ty, $($Arg: ident),*) => {

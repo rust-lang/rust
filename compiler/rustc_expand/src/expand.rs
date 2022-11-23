@@ -1,7 +1,7 @@
 use crate::base::*;
 use crate::config::StripUnconfigured;
 use crate::hygiene::SyntaxContext;
-use crate::mbe::macro_rules::annotate_err_with_kind;
+use crate::mbe::diagnostics::annotate_err_with_kind;
 use crate::module::{mod_dir_path, parse_external_mod, DirOwnership, ParsedExternalMod};
 use crate::placeholders::{placeholder, PlaceholderExpander};
 
@@ -11,9 +11,9 @@ use rustc_ast::ptr::P;
 use rustc_ast::token::{self, Delimiter};
 use rustc_ast::tokenstream::TokenStream;
 use rustc_ast::visit::{self, AssocCtxt, Visitor};
-use rustc_ast::{AssocItemKind, AstNodeWrapper, AttrStyle, AttrVec, ExprKind, ForeignItemKind};
-use rustc_ast::{HasAttrs, HasNodeId};
-use rustc_ast::{Inline, ItemKind, MacArgs, MacStmtStyle, MetaItemKind, ModKind};
+use rustc_ast::{AssocItemKind, AstNodeWrapper, AttrArgs, AttrStyle, AttrVec, ExprKind};
+use rustc_ast::{ForeignItemKind, HasAttrs, HasNodeId};
+use rustc_ast::{Inline, ItemKind, MacStmtStyle, MetaItemKind, ModKind};
 use rustc_ast::{NestedMetaItem, NodeId, PatKind, StmtKind, TyKind};
 use rustc_ast_pretty::pprust;
 use rustc_data_structures::map_in_place::MapInPlace;
@@ -337,6 +337,7 @@ pub enum InvocationKind {
     },
     Derive {
         path: ast::Path,
+        is_const: bool,
         item: Annotatable,
     },
 }
@@ -478,13 +479,13 @@ impl<'a, 'b> MacroExpander<'a, 'b> {
                             derive_invocations.reserve(derives.len());
                             derives
                                 .into_iter()
-                                .map(|(path, item, _exts)| {
+                                .map(|(path, item, _exts, is_const)| {
                                     // FIXME: Consider using the derive resolutions (`_exts`)
                                     // instead of enqueuing the derives to be resolved again later.
                                     let expn_id = LocalExpnId::fresh_empty();
                                     derive_invocations.push((
                                         Invocation {
-                                            kind: InvocationKind::Derive { path, item },
+                                            kind: InvocationKind::Derive { path, item, is_const },
                                             fragment_kind,
                                             expansion_data: ExpansionData {
                                                 id: expn_id,
@@ -653,7 +654,7 @@ impl<'a, 'b> MacroExpander<'a, 'b> {
         ExpandResult::Ready(match invoc.kind {
             InvocationKind::Bang { mac, .. } => match ext {
                 SyntaxExtensionKind::Bang(expander) => {
-                    let Ok(tok_result) = expander.expand(self.cx, span, mac.args.inner_tokens()) else {
+                    let Ok(tok_result) = expander.expand(self.cx, span, mac.args.tokens.clone()) else {
                         return ExpandResult::Ready(fragment_kind.dummy(span));
                     };
                     self.parse_ast_fragment(tok_result, fragment_kind, &mac.path, span)
@@ -661,7 +662,7 @@ impl<'a, 'b> MacroExpander<'a, 'b> {
                 SyntaxExtensionKind::LegacyBang(expander) => {
                     let prev = self.cx.current_expansion.prior_type_ascription;
                     self.cx.current_expansion.prior_type_ascription = mac.prior_type_ascription;
-                    let tok_result = expander.expand(self.cx, span, mac.args.inner_tokens());
+                    let tok_result = expander.expand(self.cx, span, mac.args.tokens.clone());
                     let result = if let Some(result) = fragment_kind.make_from(tok_result) {
                         result
                     } else {
@@ -705,7 +706,7 @@ impl<'a, 'b> MacroExpander<'a, 'b> {
                         _ => item.to_tokens(),
                     };
                     let attr_item = attr.unwrap_normal_item();
-                    if let MacArgs::Eq(..) = attr_item.args {
+                    if let AttrArgs::Eq(..) = attr_item.args {
                         self.cx.span_err(span, "key-value macro attributes are not supported");
                     }
                     let inner_tokens = attr_item.args.inner_tokens();
@@ -717,7 +718,7 @@ impl<'a, 'b> MacroExpander<'a, 'b> {
                 SyntaxExtensionKind::LegacyAttr(expander) => {
                     match validate_attr::parse_meta(&self.cx.sess.parse_sess, &attr) {
                         Ok(meta) => {
-                            let items = match expander.expand(self.cx, span, &meta, item) {
+                            let items = match expander.expand(self.cx, span, &meta, item, false) {
                                 ExpandResult::Ready(items) => items,
                                 ExpandResult::Retry(item) => {
                                     // Reassemble the original invocation for retrying.
@@ -749,19 +750,19 @@ impl<'a, 'b> MacroExpander<'a, 'b> {
                 }
                 _ => unreachable!(),
             },
-            InvocationKind::Derive { path, item } => match ext {
+            InvocationKind::Derive { path, item, is_const } => match ext {
                 SyntaxExtensionKind::Derive(expander)
                 | SyntaxExtensionKind::LegacyDerive(expander) => {
                     if let SyntaxExtensionKind::Derive(..) = ext {
                         self.gate_proc_macro_input(&item);
                     }
                     let meta = ast::MetaItem { kind: MetaItemKind::Word, span, path };
-                    let items = match expander.expand(self.cx, span, &meta, item) {
+                    let items = match expander.expand(self.cx, span, &meta, item, is_const) {
                         ExpandResult::Ready(items) => items,
                         ExpandResult::Retry(item) => {
                             // Reassemble the original invocation for retrying.
                             return ExpandResult::Retry(Invocation {
-                                kind: InvocationKind::Derive { path: meta.path, item },
+                                kind: InvocationKind::Derive { path: meta.path, item, is_const },
                                 ..invoc
                             });
                         }

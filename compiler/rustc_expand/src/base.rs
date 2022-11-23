@@ -250,6 +250,7 @@ pub trait MultiItemModifier {
         span: Span,
         meta_item: &ast::MetaItem,
         item: Annotatable,
+        is_derive_const: bool,
     ) -> ExpandResult<Vec<Annotatable>, Annotatable>;
 }
 
@@ -263,6 +264,7 @@ where
         span: Span,
         meta_item: &ast::MetaItem,
         item: Annotatable,
+        _is_derive_const: bool,
     ) -> ExpandResult<Vec<Annotatable>, Annotatable> {
         ExpandResult::Ready(self(ecx, span, meta_item, item))
     }
@@ -505,7 +507,7 @@ impl MacResult for MacEager {
             return Some(p);
         }
         if let Some(e) = self.expr {
-            if let ast::ExprKind::Lit(_) = e.kind {
+            if matches!(e.kind, ast::ExprKind::Lit(_) | ast::ExprKind::IncludedBytes(_)) {
                 return Some(P(ast::Pat {
                     id: ast::DUMMY_NODE_ID,
                     span: e.span,
@@ -873,7 +875,7 @@ impl SyntaxExtension {
 /// Error type that denotes indeterminacy.
 pub struct Indeterminate;
 
-pub type DeriveResolutions = Vec<(ast::Path, Annotatable, Option<Lrc<SyntaxExtension>>)>;
+pub type DeriveResolutions = Vec<(ast::Path, Annotatable, Option<Lrc<SyntaxExtension>>, bool)>;
 
 pub trait ResolverExpand {
     fn next_node_id(&mut self) -> NodeId;
@@ -1224,10 +1226,10 @@ pub fn expr_to_spanned_string<'a>(
     let expr = cx.expander().fully_expand_fragment(AstFragment::Expr(expr)).make_expr();
 
     Err(match expr.kind {
-        ast::ExprKind::Lit(ref l) => match l.kind {
-            ast::LitKind::Str(s, style) => return Ok((s, style, expr.span)),
-            ast::LitKind::ByteStr(_) => {
-                let mut err = cx.struct_span_err(l.span, err_msg);
+        ast::ExprKind::Lit(token_lit) => match ast::LitKind::from_token_lit(token_lit) {
+            Ok(ast::LitKind::Str(s, style)) => return Ok((s, style, expr.span)),
+            Ok(ast::LitKind::ByteStr(_)) => {
+                let mut err = cx.struct_span_err(expr.span, err_msg);
                 let span = expr.span.shrink_to_lo();
                 err.span_suggestion(
                     span.with_hi(span.lo() + BytePos(1)),
@@ -1237,8 +1239,9 @@ pub fn expr_to_spanned_string<'a>(
                 );
                 Some((err, true))
             }
-            ast::LitKind::Err => None,
-            _ => Some((cx.struct_span_err(l.span, err_msg), false)),
+            Ok(ast::LitKind::Err) => None,
+            Err(_) => None,
+            _ => Some((cx.struct_span_err(expr.span, err_msg), false)),
         },
         ast::ExprKind::Err => None,
         _ => Some((cx.struct_span_err(expr.span, err_msg), false)),
@@ -1433,7 +1436,7 @@ fn pretty_printing_compatibility_hack(item: &Item, sess: &ParseSess) -> bool {
                             let crate_matches = if c.starts_with("allsorts-rental") {
                                 true
                             } else {
-                                let mut version = c.trim_start_matches("rental-").split(".");
+                                let mut version = c.trim_start_matches("rental-").split('.');
                                 version.next() == Some("0")
                                     && version.next() == Some("5")
                                     && version

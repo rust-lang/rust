@@ -116,13 +116,25 @@ struct RwLock {
 
 declare_id!(CondvarId);
 
+#[derive(Debug, Copy, Clone)]
+pub enum RwLockMode {
+    Read,
+    Write,
+}
+
+#[derive(Debug)]
+pub enum CondvarLock {
+    Mutex(MutexId),
+    RwLock { id: RwLockId, mode: RwLockMode },
+}
+
 /// A thread waiting on a conditional variable.
 #[derive(Debug)]
 struct CondvarWaiter {
     /// The thread that is waiting on this variable.
     thread: ThreadId,
-    /// The mutex on which the thread is waiting.
-    mutex: MutexId,
+    /// The mutex or rwlock on which the thread is waiting.
+    lock: CondvarLock,
 }
 
 /// The conditional variable state.
@@ -181,8 +193,9 @@ impl<'mir, 'tcx: 'mir> EvalContextExtPriv<'mir, 'tcx> for crate::MiriInterpCx<'m
 pub(super) trait EvalContextExtPriv<'mir, 'tcx: 'mir>:
     crate::MiriInterpCxExt<'mir, 'tcx>
 {
+    /// Lazily initialize the ID of this Miri sync structure.
+    /// ('0' indicates uninit.)
     #[inline]
-    // Miri sync structures contain zero-initialized ids stored at some offset behind a pointer
     fn get_or_create_id<Id: SyncId>(
         &mut self,
         next_id: Id,
@@ -193,6 +206,7 @@ pub(super) trait EvalContextExtPriv<'mir, 'tcx: 'mir>:
         let value_place =
             this.deref_operand_and_offset(lock_op, offset, this.machine.layouts.u32)?;
 
+        // Since we are lazy, this update has to be atomic.
         let (old, success) = this
             .atomic_compare_exchange_scalar(
                 &value_place,
@@ -569,16 +583,16 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriInterpCxExt<'mir, 'tcx> {
     }
 
     /// Mark that the thread is waiting on the conditional variable.
-    fn condvar_wait(&mut self, id: CondvarId, thread: ThreadId, mutex: MutexId) {
+    fn condvar_wait(&mut self, id: CondvarId, thread: ThreadId, lock: CondvarLock) {
         let this = self.eval_context_mut();
         let waiters = &mut this.machine.threads.sync.condvars[id].waiters;
         assert!(waiters.iter().all(|waiter| waiter.thread != thread), "thread is already waiting");
-        waiters.push_back(CondvarWaiter { thread, mutex });
+        waiters.push_back(CondvarWaiter { thread, lock });
     }
 
     /// Wake up some thread (if there is any) sleeping on the conditional
     /// variable.
-    fn condvar_signal(&mut self, id: CondvarId) -> Option<(ThreadId, MutexId)> {
+    fn condvar_signal(&mut self, id: CondvarId) -> Option<(ThreadId, CondvarLock)> {
         let this = self.eval_context_mut();
         let current_thread = this.get_active_thread();
         let condvar = &mut this.machine.threads.sync.condvars[id];
@@ -592,7 +606,7 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriInterpCxExt<'mir, 'tcx> {
             if let Some(data_race) = data_race {
                 data_race.validate_lock_acquire(&condvar.data_race, waiter.thread);
             }
-            (waiter.thread, waiter.mutex)
+            (waiter.thread, waiter.lock)
         })
     }
 

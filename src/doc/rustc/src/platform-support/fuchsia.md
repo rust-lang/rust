@@ -641,8 +641,66 @@ available on the [Fuchsia devsite].
 
 ### Running the compiler test suite
 
-Running the Rust test suite on Fuchsia is [not currently supported], but work is
-underway to enable it.
+Pre-requisites for running the Rust test suite on Fuchsia are:
+1. Checkout of Rust source.
+1. Setup of `config-env.sh` and `config.toml` from "[Targeting Fuchsia with a compiler built from source](#targeting-fuchsia-with-a-compiler-built-from-source)".
+1. Download of the Fuchsia SDK. Minimum supported SDK version is [9.20220726.1.1](https://chrome-infra-packages.appspot.com/p/fuchsia/sdk/core/linux-amd64/+/version:9.20220726.1.1)
+
+Interfacing with the Fuchsia emulator is handled by our test runner script located
+at `${RUST_SRC_PATH}/src/ci/docker/scripts/fuchsia-test-runner.py`.
+
+We start by activating our Fuchsia test environment. From a terminal:
+
+**Issue command from ${RUST_SRC_PATH}**
+```sh
+src/ci/docker/scripts/fuchsia-test-runner.py start
+    --rust .
+    --sdk ${SDK_PATH}
+    --target-arch {x64,arm64}
+```
+
+Next, for ease of commands, we copy `config-env.sh` and `config.toml` into our Rust source
+code path, `${RUST_SRC_PATH}`.
+
+From there, we utilize `x.py` to run our tests, using the test runner script to
+run the tests on our emulator. To run the full `src/test/ui` test suite:
+
+**Run from ${RUST_SRC_PATH}**
+```sh
+( \
+    source config-env.sh &&                                                   \
+    ./x.py                                                                    \
+    --config config.toml                                                      \
+    --stage=2                                                                 \
+    test src/test/ui                                                          \
+    --target x86_64-fuchsia                                                   \
+    --run=always --jobs 1                                                     \
+    --test-args --target-rustcflags                                           \
+    --test-args -L                                                            \
+    --test-args --target-rustcflags                                           \
+    --test-args ${SDK_PATH}/arch/{x64|arm64}/sysroot/lib                      \
+    --test-args --target-rustcflags                                           \
+    --test-args -L                                                            \
+    --test-args --target-rustcflags                                           \
+    --test-args ${SDK_PATH}/arch/{x64|arm64}/lib                              \
+    --test-args --target-rustcflags                                           \
+    --test-args -Cpanic=abort                                                 \
+    --test-args --target-rustcflags                                           \
+    --test-args -Zpanic_abort_tests                                           \
+    --test-args --remote-test-client                                          \
+    --test-args src/ci/docker/scripts/fuchsia-test-runner.py                  \
+)
+```
+
+*Note: The test suite cannot be run in parallel at the moment, so `x.py`
+must be run with `--jobs 1` to ensure only one test runs at a time.*
+
+When finished, stop the test environment:
+
+**Issue command from ${RUST_SRC_PATH}**
+```sh
+src/ci/docker/scripts/fuchsia-test-runner.py stop
+```
 
 ## Debugging
 

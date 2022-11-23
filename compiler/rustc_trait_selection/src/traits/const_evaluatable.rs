@@ -198,13 +198,6 @@ pub fn is_const_evaluatable<'tcx>(
                     .sess
                     .delay_span_bug(span, "Missing value for constant, but no error reported?"),
             )),
-            Err(ErrorHandled::Linted) => {
-                let reported = infcx
-                    .tcx
-                    .sess
-                    .delay_span_bug(span, "constant in type had error reported as lint");
-                Err(NotConstEvaluatable::Error(reported))
-            }
             Err(ErrorHandled::Reported(e)) => Err(NotConstEvaluatable::Error(e)),
             Ok(_) => Ok(()),
         }
@@ -254,11 +247,6 @@ pub fn is_const_evaluatable<'tcx>(
 
                 Err(err)
             },
-            Err(ErrorHandled::Linted) => {
-                let reported =
-                    infcx.tcx.sess.delay_span_bug(span, "constant in type had error reported as lint");
-                Err(NotConstEvaluatable::Error(reported))
-            }
             Err(ErrorHandled::Reported(e)) => Err(NotConstEvaluatable::Error(e)),
             Ok(_) => Ok(()),
         }

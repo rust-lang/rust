@@ -230,20 +230,8 @@ fn main() {
     check_once();
     park_timeout();
     park_unpark();
-
-    if !cfg!(windows) {
-        // ignore-target-windows: Condvars on Windows are not supported yet
-        check_barriers();
-        check_conditional_variables_notify_one();
-        check_conditional_variables_timed_wait_timeout();
-        check_conditional_variables_timed_wait_notimeout();
-    } else {
-        // We need to fake the same output...
-        for _ in 0..10 {
-            println!("before wait");
-        }
-        for _ in 0..10 {
-            println!("after wait");
-        }
-    }
+    check_barriers();
+    check_conditional_variables_notify_one();
+    check_conditional_variables_timed_wait_timeout();
+    check_conditional_variables_timed_wait_notimeout();
 }

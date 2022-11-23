@@ -43,15 +43,6 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriInterpCxExt<'mir, 'tcx> {
                 this.write_scalar(result, dest)?;
             }
 
-            // Time related shims
-            "clock_gettime" => {
-                // This is a POSIX function but it has only been tested on linux.
-                let [clk_id, tp] =
-                    this.check_shim(abi, Abi::C { unwind: false }, link_name, args)?;
-                let result = this.clock_gettime(clk_id, tp)?;
-                this.write_scalar(result, dest)?;
-            }
-
             // Threading
             "pthread_condattr_setclock" => {
                 let [attr, clock_id] =

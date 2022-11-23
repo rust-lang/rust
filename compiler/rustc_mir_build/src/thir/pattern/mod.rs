@@ -565,8 +565,7 @@ impl<'a, 'tcx> PatCtxt<'a, 'tcx> {
         id: hir::HirId,
         span: Span,
     ) -> PatKind<'tcx> {
-        let anon_const_def_id = self.tcx.hir().local_def_id(anon_const.hir_id);
-        let value = mir::ConstantKind::from_inline_const(self.tcx, anon_const_def_id);
+        let value = mir::ConstantKind::from_inline_const(self.tcx, anon_const.def_id);
 
         // Evaluate early like we do in `lower_path`.
         let value = value.eval(self.tcx, self.param_env);
@@ -575,6 +574,9 @@ impl<'a, 'tcx> PatCtxt<'a, 'tcx> {
             mir::ConstantKind::Ty(c) => match c.kind() {
                 ConstKind::Param(_) => {
                     self.errors.push(PatternError::ConstParamInPattern(span));
+                    return PatKind::Wild;
+                }
+                ConstKind::Error(_) => {
                     return PatKind::Wild;
                 }
                 _ => bug!("Expected ConstKind::Param"),
@@ -614,7 +616,7 @@ impl<'a, 'tcx> PatCtxt<'a, 'tcx> {
             LitToConstInput { lit: &lit.node, ty: self.typeck_results.expr_ty(expr), neg };
         match self.tcx.at(expr.span).lit_to_mir_constant(lit_input) {
             Ok(constant) => self.const_to_pat(constant, expr.hir_id, lit.span, false).kind,
-            Err(LitToConstError::Reported) => PatKind::Wild,
+            Err(LitToConstError::Reported(_)) => PatKind::Wild,
             Err(LitToConstError::TypeError) => bug!("lower_lit: had type error"),
         }
     }

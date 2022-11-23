@@ -37,7 +37,6 @@
           StorageLive(_4);                 // scope 0 at $DIR/issue_101973.rs:+1:5: +1:17
           StorageLive(_5);                 // scope 0 at $DIR/issue_101973.rs:+1:10: +1:16
           _5 = _1;                         // scope 0 at $DIR/issue_101973.rs:+1:10: +1:16
-          _4 = const 0_u32;                // scope 1 at $DIR/issue_101973.rs:6:19: 6:23
           StorageLive(_12);                // scope 2 at $DIR/issue_101973.rs:7:12: 7:27
           StorageLive(_13);                // scope 2 at $DIR/issue_101973.rs:7:12: 7:20
           StorageLive(_14);                // scope 2 at $DIR/issue_101973.rs:7:13: 7:14
@@ -73,7 +72,7 @@
           StorageDead(_14);                // scope 2 at $DIR/issue_101973.rs:7:19: 7:20
           _12 = BitAnd(move _13, const 255_u32); // scope 2 at $DIR/issue_101973.rs:7:12: 7:27
           StorageDead(_13);                // scope 2 at $DIR/issue_101973.rs:7:26: 7:27
-          _4 = BitOr(_4, move _12);        // scope 2 at $DIR/issue_101973.rs:7:5: 7:27
+          _4 = BitOr(const 0_u32, move _12); // scope 2 at $DIR/issue_101973.rs:7:5: 7:27
           StorageDead(_12);                // scope 2 at $DIR/issue_101973.rs:7:26: 7:27
           StorageDead(_5);                 // scope 0 at $DIR/issue_101973.rs:+1:16: +1:17
           StorageLive(_6);                 // scope 0 at $DIR/issue_101973.rs:+1:31: +1:57

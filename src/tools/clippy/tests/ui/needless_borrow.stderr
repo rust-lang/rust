@@ -210,5 +210,11 @@ error: the borrowed expression implements the required traits
 LL |         use_x(&x);
    |               ^^ help: change this to: `x`
 
-error: aborting due to 35 previous errors
+error: the borrowed expression implements the required traits
+  --> $DIR/needless_borrow.rs:474:13
+   |
+LL |         foo(&a);
+   |             ^^ help: change this to: `a`
+
+error: aborting due to 36 previous errors
 

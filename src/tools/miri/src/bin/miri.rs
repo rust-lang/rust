@@ -394,10 +394,9 @@ fn main() {
             if miri_config.seed.is_some() {
                 show_error!("Cannot specify -Zmiri-seed multiple times!");
             }
-            let seed = u64::from_str_radix(param, 16)
-                        .unwrap_or_else(|_| show_error!(
-                            "-Zmiri-seed should only contain valid hex digits [0-9a-fA-F] and must fit into a u64 (max 16 characters)"
-                        ));
+            let seed = param.parse::<u64>().unwrap_or_else(|_| {
+                show_error!("-Zmiri-seed must be an integer that fits into u64")
+            });
             miri_config.seed = Some(seed);
         } else if let Some(_param) = arg.strip_prefix("-Zmiri-env-exclude=") {
             show_error!(

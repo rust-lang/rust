@@ -12,7 +12,7 @@ use rustc_middle::ty::fold::{TypeFolder, TypeSuperFoldable};
 use rustc_middle::ty::visit::TypeVisitable;
 use rustc_middle::ty::{PolyTraitRef, Region, RegionVid};
 
-use rustc_data_structures::fx::{FxHashMap, FxHashSet};
+use rustc_data_structures::fx::{FxHashMap, FxHashSet, FxIndexSet};
 
 use std::collections::hash_map::Entry;
 use std::collections::VecDeque;
@@ -27,8 +27,8 @@ pub enum RegionTarget<'tcx> {
 
 #[derive(Default, Debug, Clone)]
 pub struct RegionDeps<'tcx> {
-    larger: FxHashSet<RegionTarget<'tcx>>,
-    smaller: FxHashSet<RegionTarget<'tcx>>,
+    larger: FxIndexSet<RegionTarget<'tcx>>,
+    smaller: FxIndexSet<RegionTarget<'tcx>>,
 }
 
 pub enum AutoTraitResult<A> {
@@ -86,7 +86,7 @@ impl<'tcx> AutoTraitFinder<'tcx> {
     ) -> AutoTraitResult<A> {
         let tcx = self.tcx;
 
-        let trait_ref = ty::TraitRef { def_id: trait_did, substs: tcx.mk_substs_trait(ty, &[]) };
+        let trait_ref = tcx.mk_trait_ref(trait_did, [ty]);
 
         let trait_pred = ty::Binder::dummy(trait_ref);
 
@@ -96,8 +96,12 @@ impl<'tcx> AutoTraitFinder<'tcx> {
             PolyTraitRef::to_poly_trait_predicate,
             PolyTraitRef::to_poly_trait_predicate_negative_polarity,
         ] {
-            let result =
-                selcx.select(&Obligation::new(ObligationCause::dummy(), orig_env, f(&trait_pred)));
+            let result = selcx.select(&Obligation::new(
+                tcx,
+                ObligationCause::dummy(),
+                orig_env,
+                f(&trait_pred),
+            ));
             if let Ok(Some(ImplSource::UserDefined(_))) = result {
                 debug!(
                     "find_auto_trait_generics({:?}): \
@@ -256,17 +260,15 @@ impl<'tcx> AutoTraitFinder<'tcx> {
         let mut already_visited = FxHashSet::default();
         let mut predicates = VecDeque::new();
         predicates.push_back(ty::Binder::dummy(ty::TraitPredicate {
-            trait_ref: ty::TraitRef {
-                def_id: trait_did,
-                substs: infcx.tcx.mk_substs_trait(ty, &[]),
-            },
+            trait_ref: infcx.tcx.mk_trait_ref(trait_did, [ty]),
+
             constness: ty::BoundConstness::NotConst,
             // Auto traits are positive
             polarity: ty::ImplPolarity::Positive,
         }));
 
         let computed_preds = param_env.caller_bounds().iter();
-        let mut user_computed_preds: FxHashSet<_> = user_env.caller_bounds().iter().collect();
+        let mut user_computed_preds: FxIndexSet<_> = user_env.caller_bounds().iter().collect();
 
         let mut new_env = param_env;
         let dummy_cause = ObligationCause::dummy();
@@ -280,8 +282,12 @@ impl<'tcx> AutoTraitFinder<'tcx> {
 
             // Call `infcx.resolve_vars_if_possible` to see if we can
             // get rid of any inference variables.
-            let obligation =
-                infcx.resolve_vars_if_possible(Obligation::new(dummy_cause.clone(), new_env, pred));
+            let obligation = infcx.resolve_vars_if_possible(Obligation::new(
+                tcx,
+                dummy_cause.clone(),
+                new_env,
+                pred,
+            ));
             let result = select.select(&obligation);
 
             match result {
@@ -389,7 +395,7 @@ impl<'tcx> AutoTraitFinder<'tcx> {
     /// not just one specific lifetime (e.g., `'static`).
     fn add_user_pred(
         &self,
-        user_computed_preds: &mut FxHashSet<ty::Predicate<'tcx>>,
+        user_computed_preds: &mut FxIndexSet<ty::Predicate<'tcx>>,
         new_pred: ty::Predicate<'tcx>,
     ) {
         let mut should_add_new = true;
@@ -585,7 +591,7 @@ impl<'tcx> AutoTraitFinder<'tcx> {
         &self,
         ty: Ty<'_>,
         nested: impl Iterator<Item = Obligation<'tcx, ty::Predicate<'tcx>>>,
-        computed_preds: &mut FxHashSet<ty::Predicate<'tcx>>,
+        computed_preds: &mut FxIndexSet<ty::Predicate<'tcx>>,
         fresh_preds: &mut FxHashSet<ty::Predicate<'tcx>>,
         predicates: &mut VecDeque<ty::PolyTraitPredicate<'tcx>>,
         select: &mut SelectionContext<'_, 'tcx>,
@@ -706,7 +712,10 @@ impl<'tcx> AutoTraitFinder<'tcx> {
                     // and turn them into an explicit negative impl for our type.
                     debug!("Projecting and unifying projection predicate {:?}", predicate);
 
-                    match project::poly_project_and_unify_type(select, &obligation.with(p)) {
+                    match project::poly_project_and_unify_type(
+                        select,
+                        &obligation.with(self.tcx, p),
+                    ) {
                         ProjectAndUnifyResult::MismatchedProjectionTypes(e) => {
                             debug!(
                                 "evaluate_nested_obligations: Unable to unify predicate \
@@ -832,6 +841,7 @@ impl<'tcx> AutoTraitFinder<'tcx> {
                 | ty::PredicateKind::ConstEvaluatable(..)
                 | ty::PredicateKind::Coerce(..)
                 | ty::PredicateKind::TypeWellFormedFromEnv(..) => {}
+                ty::PredicateKind::Ambiguous => return false,
             };
         }
         true

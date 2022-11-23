@@ -10,7 +10,6 @@ static _FOO: () = panic!(true);
 const fn _foo() {
     panic!(&1);
     //~^ ERROR: argument to `panic!()` in a const context must have type `&str`
-    //~| ERROR: erroneous constant used
 }
 
 // ensure that conforming panics don't cause an error

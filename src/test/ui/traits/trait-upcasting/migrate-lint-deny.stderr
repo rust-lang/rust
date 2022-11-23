@@ -1,4 +1,4 @@
-error: `dyn B` implements `Deref` with supertrait `(dyn A + 'static)` as output
+error: `dyn B` implements `Deref` with supertrait `A` as output
   --> $DIR/migrate-lint-deny.rs:20:12
    |
 LL |     take_a(b)

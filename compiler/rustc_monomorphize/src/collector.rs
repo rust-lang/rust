@@ -187,6 +187,7 @@ use rustc_middle::mir::visit::Visitor as MirVisitor;
 use rustc_middle::mir::{self, Local, Location};
 use rustc_middle::ty::adjustment::{CustomCoerceUnsized, PointerCast};
 use rustc_middle::ty::print::with_no_trimmed_paths;
+use rustc_middle::ty::query::TyCtxtAt;
 use rustc_middle::ty::subst::{GenericArgKind, InternalSubsts};
 use rustc_middle::ty::{
     self, GenericParamDefKind, Instance, Ty, TyCtxt, TypeFoldable, TypeVisitable, VtblEntry,
@@ -197,7 +198,6 @@ use rustc_session::lint::builtin::LARGE_ASSIGNMENTS;
 use rustc_session::Limit;
 use rustc_span::source_map::{dummy_spanned, respan, Span, Spanned, DUMMY_SP};
 use rustc_target::abi::Size;
-use std::iter;
 use std::ops::Range;
 use std::path::PathBuf;
 
@@ -456,7 +456,7 @@ fn collect_items_rec<'tcx>(
             recursion_depth_reset = None;
 
             if let Ok(alloc) = tcx.eval_static_initializer(def_id) {
-                for &id in alloc.inner().provenance().values() {
+                for &id in alloc.inner().provenance().ptrs().values() {
                     collect_miri(tcx, id, &mut neighbors);
                 }
             }
@@ -541,29 +541,23 @@ fn collect_items_rec<'tcx>(
 }
 
 /// Format instance name that is already known to be too long for rustc.
-/// Show only the first and last 32 characters to avoid blasting
+/// Show only the first 2 types if it is longer than 32 characters to avoid blasting
 /// the user's terminal with thousands of lines of type-name.
 ///
 /// If the type name is longer than before+after, it will be written to a file.
 fn shrunk_instance_name<'tcx>(
     tcx: TyCtxt<'tcx>,
     instance: &Instance<'tcx>,
-    before: usize,
-    after: usize,
 ) -> (String, Option<PathBuf>) {
     let s = instance.to_string();
 
     // Only use the shrunk version if it's really shorter.
     // This also avoids the case where before and after slices overlap.
-    if s.chars().nth(before + after + 1).is_some() {
-        // An iterator of all byte positions including the end of the string.
-        let positions = || s.char_indices().map(|(i, _)| i).chain(iter::once(s.len()));
-
-        let shrunk = format!(
-            "{before}...{after}",
-            before = &s[..positions().nth(before).unwrap_or(s.len())],
-            after = &s[positions().rev().nth(after).unwrap_or(0)..],
-        );
+    if s.chars().nth(33).is_some() {
+        let shrunk = format!("{}", ty::ShortInstance(instance, 4));
+        if shrunk == s {
+            return (s, None);
+        }
 
         let path = tcx.output_filenames(()).temp_path_ext("long-type.txt", None);
         let written_to_path = std::fs::write(&path, s).ok().map(|_| path);
@@ -599,7 +593,7 @@ fn check_recursion_limit<'tcx>(
     if !recursion_limit.value_within_limit(adjusted_recursion_depth) {
         let def_span = tcx.def_span(def_id);
         let def_path_str = tcx.def_path_str(def_id);
-        let (shrunk, written_to_path) = shrunk_instance_name(tcx, &instance, 32, 32);
+        let (shrunk, written_to_path) = shrunk_instance_name(tcx, &instance);
         let mut path = PathBuf::new();
         let was_written = if written_to_path.is_some() {
             path = written_to_path.unwrap();
@@ -641,7 +635,7 @@ fn check_type_length_limit<'tcx>(tcx: TyCtxt<'tcx>, instance: Instance<'tcx>) {
     //
     // Bail out in these cases to avoid that bad user experience.
     if !tcx.type_length_limit().value_within_limit(type_length) {
-        let (shrunk, written_to_path) = shrunk_instance_name(tcx, &instance, 32, 32);
+        let (shrunk, written_to_path) = shrunk_instance_name(tcx, &instance);
         let span = tcx.def_span(instance.def_id());
         let mut path = PathBuf::new();
         let was_written = if written_to_path.is_some() {
@@ -695,7 +689,7 @@ impl<'a, 'tcx> MirVisitor<'tcx> for MirNeighborCollector<'a, 'tcx> {
                 let source_ty = operand.ty(self.body, self.tcx);
                 let source_ty = self.monomorphize(source_ty);
                 let (source_ty, target_ty) =
-                    find_vtable_types_for_unsizing(self.tcx, source_ty, target_ty);
+                    find_vtable_types_for_unsizing(self.tcx.at(span), source_ty, target_ty);
                 // This could also be a different Unsize instruction, like
                 // from a fixed sized array to a slice. But we are only
                 // interested in things that produce a vtable.
@@ -773,7 +767,7 @@ impl<'a, 'tcx> MirVisitor<'tcx> for MirNeighborCollector<'a, 'tcx> {
                     match self.tcx.const_eval_resolve(param_env, ct.expand(), None) {
                         // The `monomorphize` call should have evaluated that constant already.
                         Ok(val) => val,
-                        Err(ErrorHandled::Reported(_) | ErrorHandled::Linted) => return,
+                        Err(ErrorHandled::Reported(_)) => return,
                         Err(ErrorHandled::TooGeneric) => span_bug!(
                             self.body.source_info(location).span,
                             "collection encountered polymorphic constant: {:?}",
@@ -788,7 +782,7 @@ impl<'a, 'tcx> MirVisitor<'tcx> for MirNeighborCollector<'a, 'tcx> {
                 match self.tcx.const_eval_resolve(param_env, uv, None) {
                     // The `monomorphize` call should have evaluated that constant already.
                     Ok(val) => val,
-                    Err(ErrorHandled::Reported(_) | ErrorHandled::Linted) => return,
+                    Err(ErrorHandled::Reported(_)) => return,
                     Err(ErrorHandled::TooGeneric) => span_bug!(
                         self.body.source_info(location).span,
                         "collection encountered polymorphic constant: {:?}",
@@ -1060,14 +1054,14 @@ fn should_codegen_locally<'tcx>(tcx: TyCtxt<'tcx>, instance: &Instance<'tcx>) ->
 /// Finally, there is also the case of custom unsizing coercions, e.g., for
 /// smart pointers such as `Rc` and `Arc`.
 fn find_vtable_types_for_unsizing<'tcx>(
-    tcx: TyCtxt<'tcx>,
+    tcx: TyCtxtAt<'tcx>,
     source_ty: Ty<'tcx>,
     target_ty: Ty<'tcx>,
 ) -> (Ty<'tcx>, Ty<'tcx>) {
     let ptr_vtable = |inner_source: Ty<'tcx>, inner_target: Ty<'tcx>| {
         let param_env = ty::ParamEnv::reveal_all();
         let type_has_metadata = |ty: Ty<'tcx>| -> bool {
-            if ty.is_sized(tcx, param_env) {
+            if ty.is_sized(tcx.tcx, param_env) {
                 return false;
             }
             let tail = tcx.struct_tail_erasing_lifetimes(ty, param_env);
@@ -1111,8 +1105,8 @@ fn find_vtable_types_for_unsizing<'tcx>(
 
             find_vtable_types_for_unsizing(
                 tcx,
-                source_fields[coerce_index].ty(tcx, source_substs),
-                target_fields[coerce_index].ty(tcx, target_substs),
+                source_fields[coerce_index].ty(*tcx, source_substs),
+                target_fields[coerce_index].ty(*tcx, target_substs),
             )
         }
         _ => bug!(
@@ -1404,7 +1398,7 @@ fn collect_miri<'tcx>(tcx: TyCtxt<'tcx>, alloc_id: AllocId, output: &mut MonoIte
         }
         GlobalAlloc::Memory(alloc) => {
             trace!("collecting {:?} with {:#?}", alloc_id, alloc);
-            for &inner in alloc.inner().provenance().values() {
+            for &inner in alloc.inner().provenance().ptrs().values() {
                 rustc_data_structures::stack::ensure_sufficient_stack(|| {
                     collect_miri(tcx, inner, output);
                 });
@@ -1443,7 +1437,7 @@ fn collect_const_value<'tcx>(
     match value {
         ConstValue::Scalar(Scalar::Ptr(ptr, _size)) => collect_miri(tcx, ptr.provenance, output),
         ConstValue::Slice { data: alloc, start: _, end: _ } | ConstValue::ByRef { alloc, .. } => {
-            for &id in alloc.inner().provenance().values() {
+            for &id in alloc.inner().provenance().ptrs().values() {
                 collect_miri(tcx, id, output);
             }
         }

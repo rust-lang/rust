@@ -10,6 +10,7 @@ extern crate tracing;
 
 use fluent_bundle::FluentResource;
 use fluent_syntax::parser::ParserError;
+use icu_provider_adapters::fallback::{LocaleFallbackProvider, LocaleFallbacker};
 use rustc_data_structures::sync::Lrc;
 use rustc_macros::{fluent_messages, Decodable, Encodable};
 use rustc_span::Span;
@@ -30,7 +31,7 @@ use intl_memoizer::concurrent::IntlLangMemoizer;
 #[cfg(not(parallel_compiler))]
 use intl_memoizer::IntlLangMemoizer;
 
-pub use fluent_bundle::{FluentArgs, FluentError, FluentValue};
+pub use fluent_bundle::{self, types::FluentType, FluentArgs, FluentError, FluentValue};
 pub use unic_langid::{langid, LanguageIdentifier};
 
 // Generates `DEFAULT_LOCALE_RESOURCES` static and `fluent_generated` module.
@@ -42,6 +43,7 @@ fluent_messages! {
     borrowck => "../locales/en-US/borrowck.ftl",
     builtin_macros => "../locales/en-US/builtin_macros.ftl",
     codegen_gcc => "../locales/en-US/codegen_gcc.ftl",
+    codegen_llvm => "../locales/en-US/codegen_llvm.ftl",
     codegen_ssa => "../locales/en-US/codegen_ssa.ftl",
     compiletest => "../locales/en-US/compiletest.ftl",
     const_eval => "../locales/en-US/const_eval.ftl",
@@ -49,6 +51,7 @@ fluent_messages! {
     errors => "../locales/en-US/errors.ftl",
     expand => "../locales/en-US/expand.ftl",
     hir_analysis => "../locales/en-US/hir_analysis.ftl",
+    hir_typeck => "../locales/en-US/hir_typeck.ftl",
     infer => "../locales/en-US/infer.ftl",
     interface => "../locales/en-US/interface.ftl",
     lint => "../locales/en-US/lint.ftl",
@@ -56,11 +59,12 @@ fluent_messages! {
     middle => "../locales/en-US/middle.ftl",
     mir_dataflow => "../locales/en-US/mir_dataflow.ftl",
     monomorphize => "../locales/en-US/monomorphize.ftl",
-    parser => "../locales/en-US/parser.ftl",
+    parse => "../locales/en-US/parse.ftl",
     passes => "../locales/en-US/passes.ftl",
     plugin_impl => "../locales/en-US/plugin_impl.ftl",
     privacy => "../locales/en-US/privacy.ftl",
     query_system => "../locales/en-US/query_system.ftl",
+    resolve => "../locales/en-US/resolve.ftl",
     save_analysis => "../locales/en-US/save_analysis.ftl",
     session => "../locales/en-US/session.ftl",
     symbol_mangling => "../locales/en-US/symbol_mangling.ftl",
@@ -538,4 +542,93 @@ impl From<Vec<Span>> for MultiSpan {
     fn from(spans: Vec<Span>) -> MultiSpan {
         MultiSpan::from_spans(spans)
     }
+}
+
+fn icu_locale_from_unic_langid(lang: LanguageIdentifier) -> Option<icu_locid::Locale> {
+    icu_locid::Locale::try_from_bytes(lang.to_string().as_bytes()).ok()
+}
+
+pub fn fluent_value_from_str_list_sep_by_and<'source>(
+    l: Vec<Cow<'source, str>>,
+) -> FluentValue<'source> {
+    // Fluent requires 'static value here for its AnyEq usages.
+    #[derive(Clone, PartialEq, Debug)]
+    struct FluentStrListSepByAnd(Vec<String>);
+
+    impl FluentType for FluentStrListSepByAnd {
+        fn duplicate(&self) -> Box<dyn FluentType + Send> {
+            Box::new(self.clone())
+        }
+
+        fn as_string(&self, intls: &intl_memoizer::IntlLangMemoizer) -> Cow<'static, str> {
+            let result = intls
+                .with_try_get::<MemoizableListFormatter, _, _>((), |list_formatter| {
+                    list_formatter.format_to_string(self.0.iter())
+                })
+                .unwrap();
+            Cow::Owned(result)
+        }
+
+        #[cfg(not(parallel_compiler))]
+        fn as_string_threadsafe(
+            &self,
+            _intls: &intl_memoizer::concurrent::IntlLangMemoizer,
+        ) -> Cow<'static, str> {
+            unreachable!("`as_string_threadsafe` is not used in non-parallel rustc")
+        }
+
+        #[cfg(parallel_compiler)]
+        fn as_string_threadsafe(
+            &self,
+            intls: &intl_memoizer::concurrent::IntlLangMemoizer,
+        ) -> Cow<'static, str> {
+            let result = intls
+                .with_try_get::<MemoizableListFormatter, _, _>((), |list_formatter| {
+                    list_formatter.format_to_string(self.0.iter())
+                })
+                .unwrap();
+            Cow::Owned(result)
+        }
+    }
+
+    struct MemoizableListFormatter(icu_list::ListFormatter);
+
+    impl std::ops::Deref for MemoizableListFormatter {
+        type Target = icu_list::ListFormatter;
+        fn deref(&self) -> &Self::Target {
+            &self.0
+        }
+    }
+
+    impl intl_memoizer::Memoizable for MemoizableListFormatter {
+        type Args = ();
+        type Error = ();
+
+        fn construct(lang: LanguageIdentifier, _args: Self::Args) -> Result<Self, Self::Error>
+        where
+            Self: Sized,
+        {
+            let baked_data_provider = rustc_baked_icu_data::baked_data_provider();
+            let locale_fallbacker =
+                LocaleFallbacker::try_new_with_any_provider(&baked_data_provider)
+                    .expect("Failed to create fallback provider");
+            let data_provider =
+                LocaleFallbackProvider::new_with_fallbacker(baked_data_provider, locale_fallbacker);
+            let locale = icu_locale_from_unic_langid(lang)
+                .unwrap_or_else(|| rustc_baked_icu_data::supported_locales::EN);
+            let list_formatter =
+                icu_list::ListFormatter::try_new_and_with_length_with_any_provider(
+                    &data_provider,
+                    &locale.into(),
+                    icu_list::ListLength::Wide,
+                )
+                .expect("Failed to create list formatter");
+
+            Ok(MemoizableListFormatter(list_formatter))
+        }
+    }
+
+    let l = l.into_iter().map(|x| x.into_owned()).collect();
+
+    FluentValue::Custom(Box::new(FluentStrListSepByAnd(l)))
 }

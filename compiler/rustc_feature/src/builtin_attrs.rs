@@ -147,7 +147,7 @@ pub enum AttributeDuplicates {
     FutureWarnPreceding,
 }
 
-/// A conveniece macro to deal with `$($expr)?`.
+/// A convenience macro to deal with `$($expr)?`.
 macro_rules! or_default {
     ($default:expr,) => {
         $default
@@ -692,6 +692,10 @@ pub const BUILTIN_ATTRIBUTES: &[BuiltinAttribute] = &[
         "#[rustc_allow_incoherent_impl] has to be added to all impl items of an incoherent inherent impl."
     ),
     rustc_attr!(
+        rustc_deny_explicit_impl, AttributeType::Normal, template!(Word), ErrorFollowing, @only_local: false,
+        "#[rustc_deny_explicit_impl] enforces that a trait can have no user-provided impls"
+    ),
+    rustc_attr!(
         rustc_has_incoherent_inherent_impls, AttributeType::Normal, template!(Word), ErrorFollowing,
         "#[rustc_has_incoherent_inherent_impls] allows the addition of incoherent inherent impls for \
          the given type by annotating all impl items with #[rustc_allow_incoherent_impl]."
@@ -810,6 +814,10 @@ pub const BUILTIN_ATTRIBUTES: &[BuiltinAttribute] = &[
     rustc_attr!(TEST, rustc_polymorphize_error, Normal, template!(Word), WarnFollowing),
     rustc_attr!(TEST, rustc_def_path, Normal, template!(Word), WarnFollowing),
     rustc_attr!(TEST, rustc_mir, Normal, template!(List: "arg1, arg2, ..."), DuplicatesOk),
+    gated!(
+        custom_mir, Normal, template!(List: r#"dialect = "...", phase = "...""#),
+        ErrorFollowing, "the `#[custom_mir]` attribute is just used for the Rust test suite",
+    ),
     rustc_attr!(TEST, rustc_dump_program_clauses, Normal, template!(Word), WarnFollowing),
     rustc_attr!(TEST, rustc_dump_env_program_clauses, Normal, template!(Word), WarnFollowing),
     rustc_attr!(TEST, rustc_object_lifetime_default, Normal, template!(Word), WarnFollowing),

@@ -1,0 +1,5 @@
+goto: "file://" + |DOC_PATH| + "/test_docs/struct.StructWithPublicUndocumentedFields.html"
+
+// Both fields must be on their own line. In other words, they have display: block.
+store-property: (first_top, "//*[@id='structfield.first']", "offsetTop")
+assert-property-false: ("//*[@id='structfield.second']", { "offsetTop": |first_top| })

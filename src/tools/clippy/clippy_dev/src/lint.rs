@@ -36,20 +36,12 @@ pub fn run<'a>(path: &str, args: impl Iterator<Item = &'a String>) {
     } else {
         exit_if_err(Command::new("cargo").arg("build").status());
 
-        // Run in a tempdir as changes to clippy do not retrigger linting
-        let target = tempfile::Builder::new()
-            .prefix("clippy")
-            .tempdir()
-            .expect("failed to create tempdir");
-
         let status = Command::new(cargo_clippy_path())
             .arg("clippy")
             .args(args)
             .current_dir(path)
-            .env("CARGO_TARGET_DIR", target.as_ref())
             .status();
 
-        target.close().expect("failed to remove tempdir");
         exit_if_err(status);
     }
 }

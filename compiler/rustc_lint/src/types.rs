@@ -360,7 +360,7 @@ fn lint_int_literal<'tcx>(
         }
 
         if lint_overflowing_range_endpoint(cx, lit, v, max, e, t.name_str()) {
-            // The overflowing literal lint was emited by `lint_overflowing_range_endpoint`.
+            // The overflowing literal lint was emitted by `lint_overflowing_range_endpoint`.
             return;
         }
 
@@ -429,7 +429,7 @@ fn lint_uint_literal<'tcx>(
             }
         }
         if lint_overflowing_range_endpoint(cx, lit, lit_val, max, e, t.name_str()) {
-            // The overflowing literal lint was emited by `lint_overflowing_range_endpoint`.
+            // The overflowing literal lint was emitted by `lint_overflowing_range_endpoint`.
             return;
         }
         if let Some(repr_str) = get_bin_hex_repr(cx, lit) {
@@ -1195,35 +1195,30 @@ impl<'a, 'tcx> ImproperCTypesVisitor<'a, 'tcx> {
     }
 
     fn check_for_opaque_ty(&mut self, sp: Span, ty: Ty<'tcx>) -> bool {
-        struct ProhibitOpaqueTypes<'a, 'tcx> {
-            cx: &'a LateContext<'tcx>,
-        }
-
-        impl<'a, 'tcx> ty::visit::TypeVisitor<'tcx> for ProhibitOpaqueTypes<'a, 'tcx> {
+        struct ProhibitOpaqueTypes;
+        impl<'tcx> ty::visit::TypeVisitor<'tcx> for ProhibitOpaqueTypes {
             type BreakTy = Ty<'tcx>;
 
             fn visit_ty(&mut self, ty: Ty<'tcx>) -> ControlFlow<Self::BreakTy> {
-                match ty.kind() {
-                    ty::Opaque(..) => ControlFlow::Break(ty),
-                    // Consider opaque types within projections FFI-safe if they do not normalize
-                    // to more opaque types.
-                    ty::Projection(..) => {
-                        let ty = self.cx.tcx.normalize_erasing_regions(self.cx.param_env, ty);
+                if !ty.has_opaque_types() {
+                    return ControlFlow::CONTINUE;
+                }
 
-                        // If `ty` is an opaque type directly then `super_visit_with` won't invoke
-                        // this function again.
-                        if ty.has_opaque_types() {
-                            self.visit_ty(ty)
-                        } else {
-                            ControlFlow::CONTINUE
-                        }
-                    }
-                    _ => ty.super_visit_with(self),
+                if let ty::Opaque(..) = ty.kind() {
+                    ControlFlow::Break(ty)
+                } else {
+                    ty.super_visit_with(self)
                 }
             }
         }
 
-        if let Some(ty) = ty.visit_with(&mut ProhibitOpaqueTypes { cx: self.cx }).break_value() {
+        if let Some(ty) = self
+            .cx
+            .tcx
+            .normalize_erasing_regions(self.cx.param_env, ty)
+            .visit_with(&mut ProhibitOpaqueTypes)
+            .break_value()
+        {
             self.emit_ffi_unsafe_type_lint(ty, sp, fluent::lint_improper_ctypes_opaque, None);
             true
         } else {

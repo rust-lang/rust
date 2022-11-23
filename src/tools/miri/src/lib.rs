@@ -3,7 +3,6 @@
 #![feature(never_type)]
 #![feature(try_blocks)]
 #![feature(io_error_more)]
-#![feature(int_log)]
 #![feature(variant_count)]
 #![feature(yeet_expr)]
 #![feature(is_some_and)]
@@ -47,6 +46,7 @@ extern crate rustc_ast;
 extern crate rustc_middle;
 extern crate rustc_const_eval;
 extern crate rustc_data_structures;
+extern crate rustc_errors;
 extern crate rustc_hir;
 extern crate rustc_index;
 extern crate rustc_session;

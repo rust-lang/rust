@@ -63,7 +63,7 @@ pub trait Printer<'tcx>: Sized {
 
     fn print_dyn_existential(
         self,
-        predicates: &'tcx ty::List<ty::Binder<'tcx, ty::ExistentialPredicate<'tcx>>>,
+        predicates: &'tcx ty::List<ty::PolyExistentialPredicate<'tcx>>,
     ) -> Result<Self::DynExistential, Self::Error>;
 
     fn print_const(self, ct: ty::Const<'tcx>) -> Result<Self::Const, Self::Error>;
@@ -308,9 +308,7 @@ impl<'tcx, P: Printer<'tcx>> Print<'tcx, P> for Ty<'tcx> {
     }
 }
 
-impl<'tcx, P: Printer<'tcx>> Print<'tcx, P>
-    for &'tcx ty::List<ty::Binder<'tcx, ty::ExistentialPredicate<'tcx>>>
-{
+impl<'tcx, P: Printer<'tcx>> Print<'tcx, P> for &'tcx ty::List<ty::PolyExistentialPredicate<'tcx>> {
     type Output = P::DynExistential;
     type Error = P::Error;
     fn print(&self, cx: P) -> Result<Self::Output, Self::Error> {

@@ -352,8 +352,8 @@ impl<'a, 'tcx> ExprUseVisitor<'a, 'tcx> {
                 self.consume_expr(base);
             }
 
-            hir::ExprKind::Closure { .. } => {
-                self.walk_captures(expr);
+            hir::ExprKind::Closure(closure) => {
+                self.walk_captures(closure);
             }
 
             hir::ExprKind::Box(ref base) => {
@@ -745,7 +745,7 @@ impl<'a, 'tcx> ExprUseVisitor<'a, 'tcx> {
     ///
     /// - When reporting the Place back to the Delegate, ensure that the UpvarId uses the enclosing
     /// closure as the DefId.
-    fn walk_captures(&mut self, closure_expr: &hir::Expr<'_>) {
+    fn walk_captures(&mut self, closure_expr: &hir::Closure<'_>) {
         fn upvar_is_local_variable<'tcx>(
             upvars: Option<&'tcx FxIndexMap<hir::HirId, hir::Upvar>>,
             upvar_id: hir::HirId,
@@ -757,7 +757,7 @@ impl<'a, 'tcx> ExprUseVisitor<'a, 'tcx> {
         debug!("walk_captures({:?})", closure_expr);
 
         let tcx = self.tcx();
-        let closure_def_id = tcx.hir().local_def_id(closure_expr.hir_id);
+        let closure_def_id = closure_expr.def_id;
         let upvars = tcx.upvars_mentioned(self.body_owner);
 
         // For purposes of this function, generator and closures are equivalent.
@@ -829,10 +829,11 @@ impl<'a, 'tcx> ExprUseVisitor<'a, 'tcx> {
                         // be a local variable
                         PlaceBase::Local(*var_hir_id)
                     };
+                    let closure_hir_id = tcx.hir().local_def_id_to_hir_id(closure_def_id);
                     let place_with_id = PlaceWithHirId::new(
-                        capture_info.path_expr_id.unwrap_or(
-                            capture_info.capture_kind_expr_id.unwrap_or(closure_expr.hir_id),
-                        ),
+                        capture_info
+                            .path_expr_id
+                            .unwrap_or(capture_info.capture_kind_expr_id.unwrap_or(closure_hir_id)),
                         place.base_ty,
                         place_base,
                         place.projections.clone(),

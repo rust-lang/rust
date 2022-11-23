@@ -198,7 +198,7 @@ impl<'cx, 'tcx> FallibleTypeFolder<'tcx> for QueryNormalizer<'cx, 'tcx> {
             // This is really important. While we *can* handle this, this has
             // severe performance implications for large opaque types with
             // late-bound regions. See `issue-88862` benchmark.
-            ty::Opaque(def_id, substs) => {
+            ty::Opaque(def_id, substs) if !substs.has_escaping_bound_vars() => {
                 // Only normalize `impl Trait` outside of type inference, usually in codegen.
                 match self.param_env.reveal() {
                     Reveal::UserFacing => ty.try_super_fold_with(self),
@@ -208,6 +208,7 @@ impl<'cx, 'tcx> FallibleTypeFolder<'tcx> for QueryNormalizer<'cx, 'tcx> {
                         let recursion_limit = self.tcx().recursion_limit();
                         if !recursion_limit.value_within_limit(self.anon_depth) {
                             let obligation = Obligation::with_depth(
+                                self.tcx(),
                                 self.cause.clone(),
                                 recursion_limit.0,
                                 self.param_env,

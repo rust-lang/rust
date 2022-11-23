@@ -8,9 +8,18 @@ impl<'cx, 'tcx> crate::MirBorrowckCtxt<'cx, 'tcx> {
     pub(crate) fn cannot_move_when_borrowed(
         &self,
         span: Span,
-        desc: &str,
+        borrow_span: Span,
+        place: &str,
+        borrow_place: &str,
+        value_place: &str,
     ) -> DiagnosticBuilder<'cx, ErrorGuaranteed> {
-        struct_span_err!(self, span, E0505, "cannot move out of {} because it is borrowed", desc,)
+        self.infcx.tcx.sess.create_err(crate::session_diagnostics::MoveBorrow {
+            place,
+            span,
+            borrow_place,
+            value_place,
+            borrow_span,
+        })
     }
 
     pub(crate) fn cannot_use_when_mutably_borrowed(

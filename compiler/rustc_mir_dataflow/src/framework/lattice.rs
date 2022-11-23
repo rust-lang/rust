@@ -73,6 +73,16 @@ pub trait MeetSemiLattice: Eq {
     fn meet(&mut self, other: &Self) -> bool;
 }
 
+/// A set that has a "bottom" element, which is less than or equal to any other element.
+pub trait HasBottom {
+    fn bottom() -> Self;
+}
+
+/// A set that has a "top" element, which is greater than or equal to any other element.
+pub trait HasTop {
+    fn top() -> Self;
+}
+
 /// A `bool` is a "two-point" lattice with `true` as the top element and `false` as the bottom:
 ///
 /// ```text
@@ -99,6 +109,18 @@ impl MeetSemiLattice for bool {
         }
 
         false
+    }
+}
+
+impl HasBottom for bool {
+    fn bottom() -> Self {
+        false
+    }
+}
+
+impl HasTop for bool {
+    fn top() -> Self {
+        true
     }
 }
 
@@ -248,5 +270,17 @@ impl<T: Clone + Eq> MeetSemiLattice for FlatSet<T> {
 
         *self = result;
         true
+    }
+}
+
+impl<T> HasBottom for FlatSet<T> {
+    fn bottom() -> Self {
+        Self::Bottom
+    }
+}
+
+impl<T> HasTop for FlatSet<T> {
+    fn top() -> Self {
+        Self::Top
     }
 }

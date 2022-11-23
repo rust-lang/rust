@@ -16,6 +16,7 @@ pub fn expand_deriving_default(
     mitem: &ast::MetaItem,
     item: &Annotatable,
     push: &mut dyn FnMut(Annotatable),
+    is_const: bool,
 ) {
     item.visit_with(&mut DetectNonVariantDefaultAttr { cx });
 
@@ -26,7 +27,6 @@ pub fn expand_deriving_default(
         path: Path::new(vec![kw::Default, sym::Default]),
         skip_path_as_bound: has_a_default_variant(item),
         additional_bounds: Vec::new(),
-        generics: Bounds::empty(),
         supports_unions: false,
         methods: vec![MethodDef {
             name: kw::Default,
@@ -47,6 +47,7 @@ pub fn expand_deriving_default(
             })),
         }],
         associated_types: Vec::new(),
+        is_const,
     };
     trait_def.expand(cx, mitem, item, push)
 }

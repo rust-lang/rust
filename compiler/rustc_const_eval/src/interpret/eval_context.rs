@@ -2,10 +2,12 @@ use std::cell::Cell;
 use std::fmt;
 use std::mem;
 
+use either::{Either, Left, Right};
+
 use rustc_hir::{self as hir, def_id::DefId, definitions::DefPathData};
 use rustc_index::vec::IndexVec;
 use rustc_middle::mir;
-use rustc_middle::mir::interpret::{InterpError, InvalidProgramInfo};
+use rustc_middle::mir::interpret::{ErrorHandled, InterpError, InvalidProgramInfo};
 use rustc_middle::ty::layout::{
     self, FnAbiError, FnAbiOfHelpers, FnAbiRequest, LayoutError, LayoutOf, LayoutOfHelpers,
     TyAndLayout,
@@ -23,7 +25,7 @@ use super::{
     MemPlaceMeta, Memory, MemoryKind, Operand, Place, PlaceTy, PointerArithmetic, Provenance,
     Scalar, StackPopJump,
 };
-use crate::transform::validate::equal_up_to_regions;
+use crate::util;
 
 pub struct InterpCx<'mir, 'tcx, M: Machine<'mir, 'tcx>> {
     /// Stores the `Machine` instance.
@@ -121,13 +123,12 @@ pub struct Frame<'mir, 'tcx, Prov: Provenance = AllocId, Extra = ()> {
     ////////////////////////////////////////////////////////////////////////////////
     // Current position within the function
     ////////////////////////////////////////////////////////////////////////////////
-    /// If this is `Err`, we are not currently executing any particular statement in
+    /// If this is `Right`, we are not currently executing any particular statement in
     /// this frame (can happen e.g. during frame initialization, and during unwinding on
     /// frames without cleanup code).
-    /// We basically abuse `Result` as `Either`.
     ///
     /// Needs to be public because ConstProp does unspeakable things to it.
-    pub loc: Result<mir::Location, Span>,
+    pub loc: Either<mir::Location, Span>,
 }
 
 /// What we store about a frame in an interpreter backtrace.
@@ -227,25 +228,24 @@ impl<'mir, 'tcx, Prov: Provenance> Frame<'mir, 'tcx, Prov> {
 impl<'mir, 'tcx, Prov: Provenance, Extra> Frame<'mir, 'tcx, Prov, Extra> {
     /// Get the current location within the Frame.
     ///
-    /// If this is `Err`, we are not currently executing any particular statement in
+    /// If this is `Left`, we are not currently executing any particular statement in
     /// this frame (can happen e.g. during frame initialization, and during unwinding on
     /// frames without cleanup code).
-    /// We basically abuse `Result` as `Either`.
     ///
     /// Used by priroda.
-    pub fn current_loc(&self) -> Result<mir::Location, Span> {
+    pub fn current_loc(&self) -> Either<mir::Location, Span> {
         self.loc
     }
 
     /// Return the `SourceInfo` of the current instruction.
     pub fn current_source_info(&self) -> Option<&mir::SourceInfo> {
-        self.loc.ok().map(|loc| self.body.source_info(loc))
+        self.loc.left().map(|loc| self.body.source_info(loc))
     }
 
     pub fn current_span(&self) -> Span {
         match self.loc {
-            Ok(loc) => self.body.source_info(loc).span,
-            Err(span) => span,
+            Left(loc) => self.body.source_info(loc).span,
+            Right(span) => span,
         }
     }
 }
@@ -354,8 +354,8 @@ pub(super) fn mir_assign_valid_types<'tcx>(
     // Type-changing assignments can happen when subtyping is used. While
     // all normal lifetimes are erased, higher-ranked types with their
     // late-bound lifetimes are still around and can lead to type
-    // differences. So we compare ignoring lifetimes.
-    if equal_up_to_regions(tcx, param_env, src.ty, dest.ty) {
+    // differences.
+    if util::is_subtype(tcx, param_env, src.ty, dest.ty) {
         // Make sure the layout is equal, too -- just to be safe. Miri really
         // needs layout equality. For performance reason we skip this check when
         // the types are equal. Equal types *can* have different layouts when
@@ -572,7 +572,7 @@ impl<'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
         metadata: &MemPlaceMeta<M::Provenance>,
         layout: &TyAndLayout<'tcx>,
     ) -> InterpResult<'tcx, Option<(Size, Align)>> {
-        if !layout.is_unsized() {
+        if layout.is_sized() {
             return Ok(Some((layout.size, layout.align.abi)));
         }
         match layout.ty.kind() {
@@ -679,7 +679,7 @@ impl<'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
         // first push a stack frame so we have access to the local substs
         let pre_frame = Frame {
             body,
-            loc: Err(body.span), // Span used for errors caused during preamble.
+            loc: Right(body.span), // Span used for errors caused during preamble.
             return_to_block,
             return_place: return_place.clone(),
             // empty local array, we fill it in below, after we are inside the stack frame and
@@ -696,12 +696,7 @@ impl<'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
         for ct in &body.required_consts {
             let span = ct.span;
             let ct = self.subst_from_current_frame_and_normalize_erasing_regions(ct.literal)?;
-            self.const_to_op(&ct, None).map_err(|err| {
-                // If there was an error, set the span of the current frame to this constant.
-                // Avoiding doing this when evaluation succeeds.
-                self.frame_mut().loc = Err(span);
-                err
-            })?;
+            self.eval_mir_constant(&ct, Some(span), None)?;
         }
 
         // Most locals are initially dead.
@@ -718,7 +713,7 @@ impl<'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
         // done
         self.frame_mut().locals = locals;
         M::after_stack_push(self)?;
-        self.frame_mut().loc = Ok(mir::Location::START);
+        self.frame_mut().loc = Left(mir::Location::START);
 
         let span = info_span!("frame", "{}", instance);
         self.frame_mut().tracing_span.enter(span);
@@ -729,7 +724,7 @@ impl<'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
     /// Jump to the given block.
     #[inline]
     pub fn go_to_block(&mut self, target: mir::BasicBlock) {
-        self.frame_mut().loc = Ok(mir::Location { block: target, statement_index: 0 });
+        self.frame_mut().loc = Left(mir::Location { block: target, statement_index: 0 });
     }
 
     /// *Return* to the given `target` basic block.
@@ -755,8 +750,8 @@ impl<'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
     /// unwinding, and doing so is UB.
     pub fn unwind_to_block(&mut self, target: StackPopUnwind) -> InterpResult<'tcx> {
         self.frame_mut().loc = match target {
-            StackPopUnwind::Cleanup(block) => Ok(mir::Location { block, statement_index: 0 }),
-            StackPopUnwind::Skip => Err(self.frame_mut().body.span),
+            StackPopUnwind::Cleanup(block) => Left(mir::Location { block, statement_index: 0 }),
+            StackPopUnwind::Skip => Right(self.frame_mut().body.span),
             StackPopUnwind::NotAllowed => {
                 throw_ub_format!("unwinding past a stack frame that does not allow unwinding")
             }
@@ -788,8 +783,8 @@ impl<'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
         assert_eq!(
             unwinding,
             match self.frame().loc {
-                Ok(loc) => self.body().basic_blocks[loc.block].is_cleanup,
-                Err(_) => true,
+                Left(loc) => self.body().basic_blocks[loc.block].is_cleanup,
+                Right(_) => true,
             }
         );
         if unwinding && self.frame_idx() == 0 {
@@ -912,9 +907,32 @@ impl<'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
         Ok(())
     }
 
-    pub fn eval_to_allocation(
+    /// Call a query that can return `ErrorHandled`. If `span` is `Some`, point to that span when an error occurs.
+    pub fn ctfe_query<T>(
+        &self,
+        span: Option<Span>,
+        query: impl FnOnce(TyCtxtAt<'tcx>) -> Result<T, ErrorHandled>,
+    ) -> InterpResult<'tcx, T> {
+        // Use a precise span for better cycle errors.
+        query(self.tcx.at(span.unwrap_or_else(|| self.cur_span()))).map_err(|err| {
+            match err {
+                ErrorHandled::Reported(err) => {
+                    if let Some(span) = span {
+                        // To make it easier to figure out where this error comes from, also add a note at the current location.
+                        self.tcx.sess.span_note_without_error(span, "erroneous constant used");
+                    }
+                    err_inval!(AlreadyReported(err))
+                }
+                ErrorHandled::TooGeneric => err_inval!(TooGeneric),
+            }
+            .into()
+        })
+    }
+
+    pub fn eval_global(
         &self,
         gid: GlobalId<'tcx>,
+        span: Option<Span>,
     ) -> InterpResult<'tcx, MPlaceTy<'tcx, M::Provenance>> {
         // For statics we pick `ParamEnv::reveal_all`, because statics don't have generics
         // and thus don't care about the parameter environment. While we could just use
@@ -927,8 +945,7 @@ impl<'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
             self.param_env
         };
         let param_env = param_env.with_const();
-        // Use a precise span for better cycle errors.
-        let val = self.tcx.at(self.cur_span()).eval_to_allocation_raw(param_env.and(gid))?;
+        let val = self.ctfe_query(span, |tcx| tcx.eval_to_allocation_raw(param_env.and(gid)))?;
         self.raw_const_to_mplace(val)
     }
 

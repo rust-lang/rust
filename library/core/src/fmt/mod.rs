@@ -510,7 +510,7 @@ impl<'a> Arguments<'a> {
     /// assert_eq!(format_args!("{}", 1).as_str(), None);
     /// ```
     #[stable(feature = "fmt_as_str", since = "1.52.0")]
-    #[rustc_const_unstable(feature = "const_arguments_as_str", issue = "none")]
+    #[rustc_const_unstable(feature = "const_arguments_as_str", issue = "103900")]
     #[must_use]
     #[inline]
     pub const fn as_str(&self) -> Option<&'static str> {
@@ -1054,7 +1054,6 @@ pub trait UpperHex {
 pub trait Pointer {
     /// Formats the value using the given formatter.
     #[stable(feature = "rust1", since = "1.0.0")]
-    #[rustc_diagnostic_item = "pointer_trait_fmt"]
     fn fmt(&self, f: &mut Formatter<'_>) -> Result;
 }
 

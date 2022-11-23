@@ -10,6 +10,7 @@ mod suggest;
 pub use self::suggest::SelfSource;
 pub use self::MethodError::*;
 
+use crate::errors::OpMethodGenericParams;
 use crate::{Expectation, FnCtxt};
 use rustc_data_structures::sync::Lrc;
 use rustc_errors::{Applicability, Diagnostic};
@@ -19,7 +20,7 @@ use rustc_hir::def_id::DefId;
 use rustc_infer::infer::{self, InferOk};
 use rustc_middle::traits::ObligationCause;
 use rustc_middle::ty::subst::{InternalSubsts, SubstsRef};
-use rustc_middle::ty::{self, DefIdTree, GenericParamDefKind, ToPredicate, Ty, TypeVisitable};
+use rustc_middle::ty::{self, DefIdTree, GenericParamDefKind, Ty, TypeVisitable};
 use rustc_span::symbol::Ident;
 use rustc_span::Span;
 use rustc_trait_selection::traits;
@@ -92,17 +93,22 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         call_expr_id: hir::HirId,
         allow_private: bool,
     ) -> bool {
-        let mode = probe::Mode::MethodCall;
         match self.probe_for_name(
-            method_name.span,
-            mode,
+            probe::Mode::MethodCall,
             method_name,
             IsSuggestion(false),
             self_ty,
             call_expr_id,
             ProbeScope::TraitsInScope,
         ) {
-            Ok(..) => true,
+            Ok(pick) => {
+                pick.maybe_emit_unstable_name_collision_hint(
+                    self.tcx,
+                    method_name.span,
+                    call_expr_id,
+                );
+                true
+            }
             Err(NoMatch(..)) => false,
             Err(Ambiguity(..)) => true,
             Err(PrivateMatch(..)) => allow_private,
@@ -124,10 +130,9 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
     ) {
         let params = self
             .probe_for_name(
-                method_name.span,
                 probe::Mode::MethodCall,
                 method_name,
-                IsSuggestion(false),
+                IsSuggestion(true),
                 self_ty,
                 call_expr.hir_id,
                 ProbeScope::TraitsInScope,
@@ -174,7 +179,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         args: &'tcx [hir::Expr<'tcx>],
     ) -> Result<MethodCallee<'tcx>, MethodError<'tcx>> {
         let pick =
-            self.lookup_probe(span, segment.ident, self_ty, call_expr, ProbeScope::TraitsInScope)?;
+            self.lookup_probe(segment.ident, self_ty, call_expr, ProbeScope::TraitsInScope)?;
 
         self.lint_dot_call_from_2018(self_ty, segment, span, call_expr, self_expr, &pick, args);
 
@@ -199,13 +204,12 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                     .mk_ref(*region, ty::TypeAndMut { ty: *t_type, mutbl: mutability.invert() });
                 // We probe again to see if there might be a borrow mutability discrepancy.
                 match self.lookup_probe(
-                    span,
                     segment.ident,
                     trait_type,
                     call_expr,
                     ProbeScope::TraitsInScope,
                 ) {
-                    Ok(ref new_pick) if *new_pick != pick => {
+                    Ok(ref new_pick) if pick.differs_from(new_pick) => {
                         needs_mut = true;
                     }
                     _ => {}
@@ -213,28 +217,25 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             }
 
             // We probe again, taking all traits into account (not only those in scope).
-            let mut candidates = match self.lookup_probe(
-                span,
-                segment.ident,
-                self_ty,
-                call_expr,
-                ProbeScope::AllTraits,
-            ) {
-                // If we find a different result the caller probably forgot to import a trait.
-                Ok(ref new_pick) if *new_pick != pick => vec![new_pick.item.container_id(self.tcx)],
-                Err(Ambiguity(ref sources)) => sources
-                    .iter()
-                    .filter_map(|source| {
-                        match *source {
-                            // Note: this cannot come from an inherent impl,
-                            // because the first probing succeeded.
-                            CandidateSource::Impl(def) => self.tcx.trait_id_of_impl(def),
-                            CandidateSource::Trait(_) => None,
-                        }
-                    })
-                    .collect(),
-                _ => Vec::new(),
-            };
+            let mut candidates =
+                match self.lookup_probe(segment.ident, self_ty, call_expr, ProbeScope::AllTraits) {
+                    // If we find a different result the caller probably forgot to import a trait.
+                    Ok(ref new_pick) if pick.differs_from(new_pick) => {
+                        vec![new_pick.item.container_id(self.tcx)]
+                    }
+                    Err(Ambiguity(ref sources)) => sources
+                        .iter()
+                        .filter_map(|source| {
+                            match *source {
+                                // Note: this cannot come from an inherent impl,
+                                // because the first probing succeeded.
+                                CandidateSource::Impl(def) => self.tcx.trait_id_of_impl(def),
+                                CandidateSource::Trait(_) => None,
+                            }
+                        })
+                        .collect(),
+                    _ => Vec::new(),
+                };
             candidates.retain(|candidate| *candidate != self.tcx.parent(result.callee.def_id));
 
             return Err(IllegalSizedBound(candidates, needs_mut, span));
@@ -246,23 +247,21 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
     #[instrument(level = "debug", skip(self, call_expr))]
     pub fn lookup_probe(
         &self,
-        span: Span,
         method_name: Ident,
         self_ty: Ty<'tcx>,
         call_expr: &'tcx hir::Expr<'tcx>,
         scope: ProbeScope,
     ) -> probe::PickResult<'tcx> {
-        let mode = probe::Mode::MethodCall;
-        let self_ty = self.resolve_vars_if_possible(self_ty);
-        self.probe_for_name(
-            span,
-            mode,
+        let pick = self.probe_for_name(
+            probe::Mode::MethodCall,
             method_name,
             IsSuggestion(false),
             self_ty,
             call_expr.hir_id,
             scope,
-        )
+        )?;
+        pick.maybe_emit_unstable_name_collision_hint(self.tcx, method_name.span, call_expr.hir_id);
+        Ok(pick)
     }
 
     pub(super) fn obligation_for_method(
@@ -294,10 +293,11 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         let poly_trait_ref = ty::Binder::dummy(trait_ref);
         (
             traits::Obligation::misc(
+                self.tcx,
                 span,
                 self.body_id,
                 self.param_env,
-                poly_trait_ref.without_const().to_predicate(self.tcx),
+                poly_trait_ref.without_const(),
             ),
             substs,
         )
@@ -336,6 +336,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
 
         (
             traits::Obligation::new(
+                self.tcx,
                 traits::ObligationCause::new(
                     span,
                     self.body_id,
@@ -347,7 +348,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                     },
                 ),
                 self.param_env,
-                poly_trait_ref.without_const().to_predicate(self.tcx),
+                poly_trait_ref.without_const(),
             ),
             substs,
         )
@@ -443,7 +444,13 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         };
         let def_id = method_item.def_id;
         let generics = tcx.generics_of(def_id);
-        assert_eq!(generics.params.len(), 0);
+
+        if generics.params.len() != 0 {
+            tcx.sess.emit_fatal(OpMethodGenericParams {
+                span: tcx.def_span(method_item.def_id),
+                method_name: m_name.to_string(),
+            });
+        }
 
         debug!("lookup_in_trait_adjusted: method_item={:?}", method_item);
         let mut obligations = vec![];
@@ -518,9 +525,10 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             method_ty, obligation
         );
         obligations.push(traits::Obligation::new(
+            tcx,
             cause,
             self.param_env,
-            ty::Binder::dummy(ty::PredicateKind::WellFormed(method_ty.into())).to_predicate(tcx),
+            ty::Binder::dummy(ty::PredicateKind::WellFormed(method_ty.into())),
         ));
 
         let callee = MethodCallee { def_id, substs, sig: fn_sig };
@@ -558,6 +566,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         let tcx = self.tcx;
 
         // Check if we have an enum variant.
+        let mut struct_variant = None;
         if let ty::Adt(adt_def, _) = self_ty.kind() {
             if adt_def.is_enum() {
                 let variant_def = adt_def
@@ -565,29 +574,36 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                     .iter()
                     .find(|vd| tcx.hygienic_eq(method_name, vd.ident(tcx), adt_def.did()));
                 if let Some(variant_def) = variant_def {
-                    // Braced variants generate unusable names in value namespace (reserved for
-                    // possible future use), so variants resolved as associated items may refer to
-                    // them as well. It's ok to use the variant's id as a ctor id since an
-                    // error will be reported on any use of such resolution anyway.
-                    let ctor_def_id = variant_def.ctor_def_id.unwrap_or(variant_def.def_id);
-                    tcx.check_stability(ctor_def_id, Some(expr_id), span, Some(method_name.span));
-                    return Ok((
-                        DefKind::Ctor(CtorOf::Variant, variant_def.ctor_kind),
-                        ctor_def_id,
-                    ));
+                    if let Some((ctor_kind, ctor_def_id)) = variant_def.ctor {
+                        tcx.check_stability(
+                            ctor_def_id,
+                            Some(expr_id),
+                            span,
+                            Some(method_name.span),
+                        );
+                        return Ok((DefKind::Ctor(CtorOf::Variant, ctor_kind), ctor_def_id));
+                    } else {
+                        struct_variant = Some((DefKind::Variant, variant_def.def_id));
+                    }
                 }
             }
         }
 
         let pick = self.probe_for_name(
-            span,
             probe::Mode::Path,
             method_name,
             IsSuggestion(false),
             self_ty,
             expr_id,
             ProbeScope::TraitsInScope,
-        )?;
+        );
+        let pick = match (pick, struct_variant) {
+            // Fall back to a resolution that will produce an error later.
+            (Err(_), Some(res)) => return Ok(res),
+            (pick, _) => pick?,
+        };
+
+        pick.maybe_emit_unstable_name_collision_hint(self.tcx, span, expr_id);
 
         self.lint_fully_qualified_call_from_2018(
             span,

@@ -110,11 +110,6 @@ where
     }
 }
 
-/// A helper trait so that `Interned` things can cache stable hashes reproducibly.
-pub trait InternedHashingContext {
-    fn with_def_path_and_no_spans(&mut self, f: impl FnOnce(&mut Self));
-}
-
 /// A helper type that you can wrap round your own type in order to automatically
 /// cache the stable hash on creation and not recompute it whenever the stable hash
 /// of the type is computed.
@@ -161,11 +156,15 @@ impl<T> Deref for WithStableHash<T> {
 impl<T: Hash> Hash for WithStableHash<T> {
     #[inline]
     fn hash<H: Hasher>(&self, s: &mut H) {
-        self.internee.hash(s)
+        if self.stable_hash != Fingerprint::ZERO {
+            self.stable_hash.hash(s)
+        } else {
+            self.internee.hash(s)
+        }
     }
 }
 
-impl<T: HashStable<CTX>, CTX: InternedHashingContext> HashStable<CTX> for WithStableHash<T> {
+impl<T: HashStable<CTX>, CTX> HashStable<CTX> for WithStableHash<T> {
     fn hash_stable(&self, hcx: &mut CTX, hasher: &mut StableHasher) {
         if self.stable_hash == Fingerprint::ZERO || cfg!(debug_assertions) {
             // No cached hash available. This can only mean that incremental is disabled.
@@ -176,7 +175,7 @@ impl<T: HashStable<CTX>, CTX: InternedHashingContext> HashStable<CTX> for WithSt
             // otherwise the hashes will differ between cached and non-cached mode.
             let stable_hash: Fingerprint = {
                 let mut hasher = StableHasher::new();
-                hcx.with_def_path_and_no_spans(|hcx| self.internee.hash_stable(hcx, &mut hasher));
+                self.internee.hash_stable(hcx, &mut hasher);
                 hasher.finish()
             };
             if cfg!(debug_assertions) && self.stable_hash != Fingerprint::ZERO {

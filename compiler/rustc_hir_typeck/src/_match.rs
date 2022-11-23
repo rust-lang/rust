@@ -4,7 +4,7 @@ use rustc_errors::{Applicability, Diagnostic, MultiSpan};
 use rustc_hir::{self as hir, ExprKind};
 use rustc_infer::infer::type_variable::{TypeVariableOrigin, TypeVariableOriginKind};
 use rustc_infer::traits::Obligation;
-use rustc_middle::ty::{self, ToPredicate, Ty};
+use rustc_middle::ty::{self, Ty};
 use rustc_span::Span;
 use rustc_trait_selection::traits::query::evaluate_obligation::InferCtxtExt;
 use rustc_trait_selection::traits::{
@@ -538,23 +538,23 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                         .bound_explicit_item_bounds(rpit_def_id)
                         .subst_iter_copied(self.tcx, substs)
                     {
-                        let pred = match pred.kind().skip_binder() {
-                            ty::PredicateKind::Trait(mut trait_pred) => {
+                        let pred = pred.kind().rebind(match pred.kind().skip_binder() {
+                            ty::PredicateKind::Trait(trait_pred) => {
                                 assert_eq!(trait_pred.trait_ref.self_ty(), opaque_ty);
-                                trait_pred.trait_ref.substs =
-                                    self.tcx.mk_substs_trait(ty, &trait_pred.trait_ref.substs[1..]);
-                                pred.kind().rebind(trait_pred).to_predicate(self.tcx)
+                                ty::PredicateKind::Trait(trait_pred.with_self_type(self.tcx, ty))
                             }
                             ty::PredicateKind::Projection(mut proj_pred) => {
                                 assert_eq!(proj_pred.projection_ty.self_ty(), opaque_ty);
-                                proj_pred.projection_ty.substs = self
-                                    .tcx
-                                    .mk_substs_trait(ty, &proj_pred.projection_ty.substs[1..]);
-                                pred.kind().rebind(proj_pred).to_predicate(self.tcx)
+                                proj_pred.projection_ty.substs = self.tcx.mk_substs_trait(
+                                    ty,
+                                    proj_pred.projection_ty.substs.iter().skip(1),
+                                );
+                                ty::PredicateKind::Projection(proj_pred)
                             }
                             _ => continue,
-                        };
+                        });
                         if !self.predicate_must_hold_modulo_regions(&Obligation::new(
+                            self.tcx,
                             ObligationCause::misc(span, self.body_id),
                             self.param_env,
                             pred,

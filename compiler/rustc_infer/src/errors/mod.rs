@@ -180,6 +180,18 @@ pub enum SourceKindMultiSuggestion<'a> {
     },
 }
 
+#[derive(Subdiagnostic)]
+#[suggestion(
+    infer_suggest_add_let_for_letchains,
+    style = "verbose",
+    applicability = "machine-applicable",
+    code = "let "
+)]
+pub(crate) struct SuggAddLetForLetChains {
+    #[primary_span]
+    pub span: Span,
+}
+
 impl<'a> SourceKindMultiSuggestion<'a> {
     pub fn new_fully_qualified(
         span: Span,

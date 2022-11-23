@@ -7,6 +7,7 @@
 // test of the JSON error format.
 
 #![feature(custom_inner_attributes)]
+#![feature(closure_lifetime_binder)]
 #![rustfmt::skip]
 
 #![deny(clippy::unused_unit)]
@@ -86,4 +87,10 @@ fn macro_expr() {
         () => (());
     }
     e!()
+}
+
+mod issue9748 {
+    fn main() {
+        let _ = for<'a> |_: &'a u32| -> () {};
+    }
 }

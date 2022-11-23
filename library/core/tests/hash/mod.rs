@@ -9,16 +9,19 @@ struct MyHasher {
     hash: u64,
 }
 
-impl Default for MyHasher {
+impl const Default for MyHasher {
     fn default() -> MyHasher {
         MyHasher { hash: 0 }
     }
 }
 
-impl Hasher for MyHasher {
+impl const Hasher for MyHasher {
     fn write(&mut self, buf: &[u8]) {
-        for byte in buf {
-            self.hash += *byte as u64;
+        // FIXME(const_trait_impl): change to for loop
+        let mut i = 0;
+        while i < buf.len() {
+            self.hash += buf[i] as u64;
+            i += 1;
         }
     }
     fn write_str(&mut self, s: &str) {
@@ -32,11 +35,24 @@ impl Hasher for MyHasher {
 
 #[test]
 fn test_writer_hasher() {
-    fn hash<T: Hash>(t: &T) -> u64 {
+    const fn hash<T: ~const Hash>(t: &T) -> u64 {
         let mut s = MyHasher { hash: 0 };
         t.hash(&mut s);
         s.finish()
     }
+
+    const {
+        // FIXME(fee1-dead): assert_eq
+        assert!(hash(&()) == 0);
+        assert!(hash(&5_u8) == 5);
+        assert!(hash(&5_u16) == 5);
+        assert!(hash(&5_u32) == 5);
+
+        assert!(hash(&'a') == 97);
+
+        let s: &str = "a";
+        assert!(hash(&s) == 97 + 0xFF);
+    };
 
     assert_eq!(hash(&()), 0);
 
@@ -97,7 +113,7 @@ struct CustomHasher {
     output: u64,
 }
 
-impl Hasher for CustomHasher {
+impl const Hasher for CustomHasher {
     fn finish(&self) -> u64 {
         self.output
     }
@@ -109,27 +125,29 @@ impl Hasher for CustomHasher {
     }
 }
 
-impl Default for CustomHasher {
+impl const Default for CustomHasher {
     fn default() -> CustomHasher {
         CustomHasher { output: 0 }
     }
 }
 
-impl Hash for Custom {
-    fn hash<H: Hasher>(&self, state: &mut H) {
+impl const Hash for Custom {
+    fn hash<H: ~const Hasher>(&self, state: &mut H) {
         state.write_u64(self.hash);
     }
 }
 
 #[test]
 fn test_custom_state() {
-    fn hash<T: Hash>(t: &T) -> u64 {
+    const fn hash<T: ~const Hash>(t: &T) -> u64 {
         let mut c = CustomHasher { output: 0 };
         t.hash(&mut c);
         c.finish()
     }
 
     assert_eq!(hash(&Custom { hash: 5 }), 5);
+
+    const { assert!(hash(&Custom { hash: 6 }) == 6) };
 }
 
 // FIXME: Instantiated functions with i128 in the signature is not supported in Emscripten.

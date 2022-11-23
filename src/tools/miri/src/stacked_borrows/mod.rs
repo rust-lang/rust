@@ -14,7 +14,6 @@ use rustc_middle::mir::RetagKind;
 use rustc_middle::ty::{
     self,
     layout::{HasParamEnv, LayoutOf},
-    Ty,
 };
 use rustc_target::abi::Abi;
 use rustc_target::abi::Size;
@@ -252,7 +251,7 @@ pub fn err_sb_ub<'tcx>(
 /// We need to make at least the following things true:
 ///
 /// U1: After creating a `Uniq`, it is at the top.
-/// U2: If the top is `Uniq`, accesses must be through that `Uniq` or remove it it.
+/// U2: If the top is `Uniq`, accesses must be through that `Uniq` or remove it.
 /// U3: If an access happens with a `Uniq`, it requires the `Uniq` to be in the stack.
 ///
 /// F1: After creating a `&`, the parts outside `UnsafeCell` have our `SharedReadOnly` on top.
@@ -983,28 +982,6 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriInterpCxExt<'mir, 'tcx> {
         let mut visitor = RetagVisitor { ecx: this, kind, retag_cause, retag_fields };
         return visitor.visit_value(place);
 
-        // Determine mutability and whether to add a protector.
-        // Cannot use `builtin_deref` because that reports *immutable* for `Box`,
-        // making it useless.
-        fn qualify(ty: Ty<'_>, kind: RetagKind) -> Option<(RefKind, bool)> {
-            match ty.kind() {
-                // References are simple.
-                ty::Ref(_, _, Mutability::Mut) =>
-                    Some((
-                        RefKind::Unique { two_phase: kind == RetagKind::TwoPhase },
-                        kind == RetagKind::FnEntry,
-                    )),
-                ty::Ref(_, _, Mutability::Not) =>
-                    Some((RefKind::Shared, kind == RetagKind::FnEntry)),
-                // Raw pointers need to be enabled.
-                ty::RawPtr(tym) if kind == RetagKind::Raw =>
-                    Some((RefKind::Raw { mutable: tym.mutbl == Mutability::Mut }, false)),
-                // Boxes are handled separately due to that allocator situation,
-                // see the visitor below.
-                _ => None,
-            }
-        }
-
         // The actual visitor.
         struct RetagVisitor<'ecx, 'mir, 'tcx> {
             ecx: &'ecx mut MiriInterpCx<'mir, 'tcx>,
@@ -1053,38 +1030,62 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriInterpCxExt<'mir, 'tcx> {
                 // pointers we need to retag, so we can stop recursion early.
                 // This optimization is crucial for ZSTs, because they can contain way more fields
                 // than we can ever visit.
-                if !place.layout.is_unsized() && place.layout.size < self.ecx.pointer_size() {
+                if place.layout.is_sized() && place.layout.size < self.ecx.pointer_size() {
                     return Ok(());
                 }
 
-                let recurse_for_fields = || {
-                    match self.retag_fields {
-                        RetagFields::No => false,
-                        RetagFields::Yes => true,
-                        RetagFields::OnlyScalar => {
-                            // Matching `ArgAbi::new` at the time of writing, only fields of
-                            // `Scalar` and `ScalarPair` ABI are considered.
-                            matches!(place.layout.abi, Abi::Scalar(..) | Abi::ScalarPair(..))
+                // Check the type of this value to see what to do with it (retag, or recurse).
+                match place.layout.ty.kind() {
+                    ty::Ref(_, _, mutbl) => {
+                        let ref_kind = match mutbl {
+                            Mutability::Mut =>
+                                RefKind::Unique { two_phase: self.kind == RetagKind::TwoPhase },
+                            Mutability::Not => RefKind::Shared,
+                        };
+                        self.retag_place(
+                            place,
+                            ref_kind,
+                            self.retag_cause,
+                            /*protector*/ self.kind == RetagKind::FnEntry,
+                        )?;
+                    }
+                    ty::RawPtr(tym) => {
+                        // We definitely do *not* want to recurse into raw pointers -- wide raw
+                        // pointers have fields, and for dyn Trait pointees those can have reference
+                        // type!
+                        if self.kind == RetagKind::Raw {
+                            // Raw pointers need to be enabled.
+                            self.retag_place(
+                                place,
+                                RefKind::Raw { mutable: tym.mutbl == Mutability::Mut },
+                                self.retag_cause,
+                                /*protector*/ false,
+                            )?;
                         }
                     }
-                };
-
-                if let Some((ref_kind, protector)) = qualify(place.layout.ty, self.kind) {
-                    self.retag_place(place, ref_kind, self.retag_cause, protector)?;
-                } else if matches!(place.layout.ty.kind(), ty::RawPtr(..)) {
-                    // Wide raw pointers *do* have fields and their types are strange.
-                    // vtables have a type like `&[*const (); 3]` or so!
-                    // Do *not* recurse into them.
-                    // (No need to worry about wide references, those always "qualify". And Boxes
-                    // are handles specially by the visitor anyway.)
-                } else if recurse_for_fields()
-                    || place.layout.ty.ty_adt_def().is_some_and(|adt| adt.is_box())
-                {
-                    // Recurse deeper. Need to always recurse for `Box` to even hit `visit_box`.
-                    // (Yes this means we technically also recursively retag the allocator itself
-                    // even if field retagging is not enabled. *shrug*)
-                    self.walk_value(place)?;
+                    _ if place.layout.ty.ty_adt_def().is_some_and(|adt| adt.is_box()) => {
+                        // Recurse for boxes, they require some tricky handling and will end up in `visit_box` above.
+                        // (Yes this means we technically also recursively retag the allocator itself
+                        // even if field retagging is not enabled. *shrug*)
+                        self.walk_value(place)?;
+                    }
+                    _ => {
+                        // Not a reference/pointer/box. Only recurse if configured appropriately.
+                        let recurse = match self.retag_fields {
+                            RetagFields::No => false,
+                            RetagFields::Yes => true,
+                            RetagFields::OnlyScalar => {
+                                // Matching `ArgAbi::new` at the time of writing, only fields of
+                                // `Scalar` and `ScalarPair` ABI are considered.
+                                matches!(place.layout.abi, Abi::Scalar(..) | Abi::ScalarPair(..))
+                            }
+                        };
+                        if recurse {
+                            self.walk_value(place)?;
+                        }
+                    }
                 }
+
                 Ok(())
             }
         }

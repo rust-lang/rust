@@ -57,3 +57,20 @@ fn issue6922() {
     // do not lint from an external macro
     mut_mut!();
 }
+
+mod issue9035 {
+    use std::fmt::Display;
+
+    struct Foo<'a> {
+        inner: &'a mut dyn Display,
+    }
+
+    impl Foo<'_> {
+        fn foo(&mut self) {
+            let hlp = &mut self.inner;
+            bar(hlp);
+        }
+    }
+
+    fn bar(_: &mut impl Display) {}
+}

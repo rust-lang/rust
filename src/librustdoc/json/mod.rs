@@ -223,7 +223,7 @@ impl<'tcx> FormatRenderer<'tcx> for JsonRenderer<'tcx> {
                     false
                 }
 
-                types::ItemEnum::Method(_)
+                types::ItemEnum::Function(_)
                 | types::ItemEnum::Module(_)
                 | types::ItemEnum::AssocConst { .. }
                 | types::ItemEnum::AssocType { .. } => true,
@@ -231,7 +231,6 @@ impl<'tcx> FormatRenderer<'tcx> for JsonRenderer<'tcx> {
                 | types::ItemEnum::Import(_)
                 | types::ItemEnum::StructField(_)
                 | types::ItemEnum::Variant(_)
-                | types::ItemEnum::Function(_)
                 | types::ItemEnum::TraitAlias(_)
                 | types::ItemEnum::Impl(_)
                 | types::ItemEnum::Typedef(_)
@@ -277,7 +276,7 @@ impl<'tcx> FormatRenderer<'tcx> for JsonRenderer<'tcx> {
 
         let e = ExternalCrate { crate_num: LOCAL_CRATE };
 
-        // FIXME(adotinthevoid): Remove this, as it's not consistant with not
+        // FIXME(adotinthevoid): Remove this, as it's not consistent with not
         // inlining foreign items.
         let foreign_trait_items = self.get_trait_items();
         let mut index = (*self.index).clone().into_inner();

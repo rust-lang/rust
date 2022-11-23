@@ -1,8 +1,3 @@
-hir_analysis_field_multiply_specified_in_initializer =
-    field `{$ident}` specified more than once
-    .label = used more than once
-    .previous_use_label = first use of `{$ident}`
-
 hir_analysis_unrecognized_atomic_operation =
     unrecognized atomic operation function: `{$op}`
     .label = unrecognized atomic operation
@@ -54,43 +49,15 @@ hir_analysis_assoc_type_binding_not_allowed =
     associated type bindings are not allowed here
     .label = associated type not allowed here
 
-hir_analysis_functional_record_update_on_non_struct =
-    functional record update syntax requires a struct
-
 hir_analysis_typeof_reserved_keyword_used =
     `typeof` is a reserved keyword but unimplemented
     .suggestion = consider replacing `typeof(...)` with an actual type
     .label = reserved keyword
 
-hir_analysis_return_stmt_outside_of_fn_body =
-    return statement outside of function body
-    .encl_body_label = the return is part of this body...
-    .encl_fn_label = ...not the enclosing function body
-
-hir_analysis_yield_expr_outside_of_generator =
-    yield expression outside of generator literal
-
-hir_analysis_struct_expr_non_exhaustive =
-    cannot create non-exhaustive {$what} using struct expression
-
-hir_analysis_method_call_on_unknown_type =
-    the type of this value must be known to call a method on a raw pointer on it
-
 hir_analysis_value_of_associated_struct_already_specified =
     the value of the associated type `{$item_name}` (from trait `{$def_path}`) is already specified
     .label = re-bound here
     .previous_bound_label = `{$item_name}` bound here first
-
-hir_analysis_address_of_temporary_taken = cannot take address of a temporary
-    .label = temporary value
-
-hir_analysis_add_return_type_add = try adding a return type
-
-hir_analysis_add_return_type_missing_here = a return type might be missing here
-
-hir_analysis_expected_default_return_type = expected `()` because of default return type
-
-hir_analysis_expected_return_type = expected `{$expected}` because of return type
 
 hir_analysis_unconstrained_opaque_type = unconstrained opaque type
     .note = `{$name}` must be used in combination with a concrete type within the same {$what}
@@ -133,10 +100,6 @@ hir_analysis_extern_crate_not_idiomatic =
     .suggestion = convert it to a `{$msg_code}`
 
 hir_analysis_expected_used_symbol = expected `used`, `used(compiler)` or `used(linker)`
-
-hir_analysis_missing_parentheses_in_range = can't call method `{$method_name}` on type `{$ty_str}`
-
-hir_analysis_add_missing_parentheses_in_range = you must surround the range in parentheses to call its `{$func_name}` function
 
 hir_analysis_const_impl_for_non_const_trait =
     const `impl` for trait `{$trait_name}` which is not marked with `#[const_trait]`

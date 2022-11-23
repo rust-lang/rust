@@ -1,4 +1,3 @@
-use crate::build::matches::ArmHasGuard;
 use crate::build::ForGuard::OutsideGuard;
 use crate::build::{BlockAnd, BlockAndExtension, BlockFrame, Builder};
 use rustc_middle::middle::region::Scope;
@@ -118,7 +117,7 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
                     else_block: Some(else_block),
                 } => {
                     // When lowering the statement `let <pat> = <expr> else { <else> };`,
-                    // the `<else>` block is nested in the parent scope enclosing this statment.
+                    // the `<else>` block is nested in the parent scope enclosing this statement.
                     // That scope is usually either the enclosing block scope,
                     // or the remainder scope of the last statement.
                     // This is to make sure that temporaries instantiated in `<expr>` are dropped
@@ -231,7 +230,7 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
                                         visibility_scope,
                                         remainder_span,
                                         pattern,
-                                        ArmHasGuard(false),
+                                        None,
                                         Some((None, initializer_span)),
                                     );
                                     this.visit_primary_bindings(
@@ -308,7 +307,7 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
                                             visibility_scope,
                                             remainder_span,
                                             pattern,
-                                            ArmHasGuard(false),
+                                            None,
                                             Some((None, initializer_span)),
                                         );
                                         this.expr_into_pattern(block, &pattern, init)
@@ -324,7 +323,7 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
                                 visibility_scope,
                                 remainder_span,
                                 pattern,
-                                ArmHasGuard(false),
+                                None,
                                 None,
                             );
                             block.unit()

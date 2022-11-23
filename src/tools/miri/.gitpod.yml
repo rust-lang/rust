@@ -4,6 +4,6 @@ tasks:
   - before: echo "..."
     init: |
       cargo install rustup-toolchain-install-master
-      ./rustup-toolchain
+      ./miri toolchain
       ./miri build
     command: echo "Run tests with ./miri test"

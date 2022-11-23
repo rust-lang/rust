@@ -155,3 +155,12 @@ fn issue_8154() {
     let s = S3(&mut s);
     std::mem::swap(&mut s.0.x, &mut s.0.y);
 }
+
+const fn issue_9864(mut u: u32) -> u32 {
+    let mut v = 10;
+
+    let temp = u;
+    u = v;
+    v = temp;
+    u + v
+}

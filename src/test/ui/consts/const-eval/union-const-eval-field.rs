@@ -29,7 +29,6 @@ const fn read_field3() -> Field3 {
     //~^ ERROR evaluation of constant value failed
     //~| uninitialized
     FIELD3
-    //~^ ERROR erroneous constant used [E0080]
 }
 
 fn main() {

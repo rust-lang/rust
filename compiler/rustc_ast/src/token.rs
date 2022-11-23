@@ -5,6 +5,7 @@ pub use TokenKind::*;
 
 use crate::ast;
 use crate::ptr::P;
+use crate::util::case::Case;
 
 use rustc_data_structures::stable_hasher::{HashStable, StableHasher};
 use rustc_data_structures::sync::Lrc;
@@ -58,13 +59,17 @@ pub enum Delimiter {
     Invisible,
 }
 
+// Note that the suffix is *not* considered when deciding the `LitKind` in this
+// type. This means that float literals like `1f32` are classified by this type
+// as `Int`. Only upon conversion to `ast::LitKind` will such a literal be
+// given the `Float` kind.
 #[derive(Clone, Copy, PartialEq, Encodable, Decodable, Debug, HashStable_Generic)]
 pub enum LitKind {
     Bool, // AST only, must never appear in a `Token`
     Byte,
     Char,
-    Integer,
-    Float,
+    Integer, // e.g. `1`, `1u8`, `1f32`
+    Float,   // e.g. `1.`, `1.0`, `1e3f32`
     Str,
     StrRaw(u8), // raw string delimited by `n` hash symbols
     ByteStr,
@@ -78,6 +83,42 @@ pub struct Lit {
     pub kind: LitKind,
     pub symbol: Symbol,
     pub suffix: Option<Symbol>,
+}
+
+impl Lit {
+    pub fn new(kind: LitKind, symbol: Symbol, suffix: Option<Symbol>) -> Lit {
+        Lit { kind, symbol, suffix }
+    }
+
+    /// Returns `true` if this is semantically a float literal. This includes
+    /// ones like `1f32` that have an `Integer` kind but a float suffix.
+    pub fn is_semantic_float(&self) -> bool {
+        match self.kind {
+            LitKind::Float => true,
+            LitKind::Integer => match self.suffix {
+                Some(sym) => sym == sym::f32 || sym == sym::f64,
+                None => false,
+            },
+            _ => false,
+        }
+    }
+
+    /// Keep this in sync with `Token::can_begin_literal_or_bool` excluding unary negation.
+    pub fn from_token(token: &Token) -> Option<Lit> {
+        match token.uninterpolate().kind {
+            Ident(name, false) if name.is_bool_lit() => {
+                Some(Lit::new(Bool, name, None))
+            }
+            Literal(token_lit) => Some(token_lit),
+            Interpolated(ref nt)
+                if let NtExpr(expr) | NtLiteral(expr) = &**nt
+                && let ast::ExprKind::Lit(token_lit) = expr.kind =>
+            {
+                Some(token_lit.clone())
+            }
+            _ => None,
+        }
+    }
 }
 
 impl fmt::Display for Lit {
@@ -135,12 +176,6 @@ impl LitKind {
 
     pub(crate) fn may_have_suffix(self) -> bool {
         matches!(self, Integer | Float | Err)
-    }
-}
-
-impl Lit {
-    pub fn new(kind: LitKind, symbol: Symbol, suffix: Option<Symbol>) -> Lit {
-        Lit { kind, symbol, suffix }
     }
 }
 
@@ -566,9 +601,10 @@ impl Token {
 
     /// Returns `true` if the token is an interpolated path.
     fn is_path(&self) -> bool {
-        if let Interpolated(ref nt) = self.kind && let NtPath(..) = **nt {
+        if let Interpolated(nt) = &self.kind && let NtPath(..) = **nt {
             return true;
         }
+
         false
     }
 
@@ -576,7 +612,7 @@ impl Token {
     /// That is, is this a pre-parsed expression dropped into the token stream
     /// (which happens while parsing the result of macro expansion)?
     pub fn is_whole_expr(&self) -> bool {
-        if let Interpolated(ref nt) = self.kind
+        if let Interpolated(nt) = &self.kind
             && let NtExpr(_) | NtLiteral(_) | NtPath(_) | NtBlock(_) = **nt
         {
             return true;
@@ -587,9 +623,10 @@ impl Token {
 
     // Is the token an interpolated block (`$b:block`)?
     pub fn is_whole_block(&self) -> bool {
-        if let Interpolated(ref nt) = self.kind && let NtBlock(..) = **nt {
+        if let Interpolated(nt) = &self.kind && let NtBlock(..) = **nt {
             return true;
         }
+
         false
     }
 
@@ -613,6 +650,15 @@ impl Token {
     /// Returns `true` if the token is a given keyword, `kw`.
     pub fn is_keyword(&self, kw: Symbol) -> bool {
         self.is_non_raw_ident_where(|id| id.name == kw)
+    }
+
+    /// Returns `true` if the token is a given keyword, `kw` or if `case` is `Insensitive` and this token is an identifier equal to `kw` ignoring the case.
+    pub fn is_keyword_case(&self, kw: Symbol, case: Case) -> bool {
+        self.is_keyword(kw)
+            || (case == Case::Insensitive
+                && self.is_non_raw_ident_where(|id| {
+                    id.name.as_str().to_lowercase() == kw.as_str().to_lowercase()
+                }))
     }
 
     pub fn is_path_segment_keyword(&self) -> bool {

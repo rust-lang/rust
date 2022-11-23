@@ -847,6 +847,17 @@ macro_rules! make_mir_visitor {
                             PlaceContext::NonUse(NonUseContext::VarDebugInfo),
                             location
                         ),
+                    VarDebugInfoContents::Composite { ty, fragments } => {
+                        // FIXME(eddyb) use a better `TyContext` here.
+                        self.visit_ty($(& $mutability)? *ty, TyContext::Location(location));
+                        for VarDebugInfoFragment { projection: _, contents } in fragments {
+                            self.visit_place(
+                                contents,
+                                PlaceContext::NonUse(NonUseContext::VarDebugInfo),
+                                location,
+                            );
+                        }
+                    }
                 }
             }
 
@@ -1317,6 +1328,15 @@ impl PlaceContext {
                     | NonMutatingUseContext::ShallowBorrow
                     | NonMutatingUseContext::UniqueBorrow
             ) | PlaceContext::MutatingUse(MutatingUseContext::Borrow)
+        )
+    }
+
+    /// Returns `true` if this place context represents an address-of.
+    pub fn is_address_of(&self) -> bool {
+        matches!(
+            self,
+            PlaceContext::NonMutatingUse(NonMutatingUseContext::AddressOf)
+                | PlaceContext::MutatingUse(MutatingUseContext::AddressOf)
         )
     }
 

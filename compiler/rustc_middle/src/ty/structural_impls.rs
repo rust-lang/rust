@@ -68,7 +68,7 @@ impl<'tcx> fmt::Debug for ty::adjustment::Adjustment<'tcx> {
 impl fmt::Debug for ty::BoundRegionKind {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         match *self {
-            ty::BrAnon(n) => write!(f, "BrAnon({:?})", n),
+            ty::BrAnon(n, span) => write!(f, "BrAnon({n:?}, {span:?})"),
             ty::BrNamed(did, name) => {
                 if did.is_crate_root() {
                     write!(f, "BrNamed({})", name)
@@ -173,6 +173,7 @@ impl<'tcx> fmt::Debug for ty::PredicateKind<'tcx> {
             ty::PredicateKind::TypeWellFormedFromEnv(ty) => {
                 write!(f, "TypeWellFormedFromEnv({:?})", ty)
             }
+            ty::PredicateKind::Ambiguous => write!(f, "Ambiguous"),
         }
     }
 }
@@ -586,7 +587,7 @@ impl<'tcx, T: TypeVisitable<'tcx>> TypeSuperVisitable<'tcx> for ty::Binder<'tcx,
     }
 }
 
-impl<'tcx> TypeFoldable<'tcx> for &'tcx ty::List<ty::Binder<'tcx, ty::ExistentialPredicate<'tcx>>> {
+impl<'tcx> TypeFoldable<'tcx> for &'tcx ty::List<ty::PolyExistentialPredicate<'tcx>> {
     fn try_fold_with<F: FallibleTypeFolder<'tcx>>(self, folder: &mut F) -> Result<Self, F::Error> {
         ty::util::fold_list(self, folder, |tcx, v| tcx.intern_poly_existential_predicates(v))
     }

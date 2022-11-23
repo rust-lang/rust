@@ -4,6 +4,7 @@ use crate::{
     SubdiagnosticMessage, Substitution, SubstitutionPart, SuggestionStyle,
 };
 use rustc_data_structures::fx::FxHashMap;
+use rustc_error_messages::fluent_value_from_str_list_sep_by_and;
 use rustc_error_messages::FluentValue;
 use rustc_lint_defs::{Applicability, LintExpectationId};
 use rustc_span::edition::LATEST_STABLE_EDITION;
@@ -34,6 +35,7 @@ pub type DiagnosticArgName<'source> = Cow<'source, str>;
 pub enum DiagnosticArgValue<'source> {
     Str(Cow<'source, str>),
     Number(usize),
+    StrListSepByAnd(Vec<Cow<'source, str>>),
 }
 
 /// Converts a value of a type into a `DiagnosticArg` (typically a field of an `IntoDiagnostic`
@@ -44,19 +46,31 @@ pub trait IntoDiagnosticArg {
     fn into_diagnostic_arg(self) -> DiagnosticArgValue<'static>;
 }
 
+impl<'source> IntoDiagnosticArg for DiagnosticArgValue<'source> {
+    fn into_diagnostic_arg(self) -> DiagnosticArgValue<'static> {
+        match self {
+            DiagnosticArgValue::Str(s) => DiagnosticArgValue::Str(Cow::Owned(s.into_owned())),
+            DiagnosticArgValue::Number(n) => DiagnosticArgValue::Number(n),
+            DiagnosticArgValue::StrListSepByAnd(l) => DiagnosticArgValue::StrListSepByAnd(
+                l.into_iter().map(|s| Cow::Owned(s.into_owned())).collect(),
+            ),
+        }
+    }
+}
+
 impl<'source> Into<FluentValue<'source>> for DiagnosticArgValue<'source> {
     fn into(self) -> FluentValue<'source> {
         match self {
             DiagnosticArgValue::Str(s) => From::from(s),
             DiagnosticArgValue::Number(n) => From::from(n),
+            DiagnosticArgValue::StrListSepByAnd(l) => fluent_value_from_str_list_sep_by_and(l),
         }
     }
 }
 
 /// Trait implemented by error types. This should not be implemented manually. Instead, use
 /// `#[derive(Subdiagnostic)]` -- see [rustc_macros::Subdiagnostic].
-#[cfg_attr(bootstrap, rustc_diagnostic_item = "AddSubdiagnostic")]
-#[cfg_attr(not(bootstrap), rustc_diagnostic_item = "AddToDiagnostic")]
+#[rustc_diagnostic_item = "AddToDiagnostic"]
 pub trait AddToDiagnostic
 where
     Self: Sized,
@@ -202,6 +216,22 @@ impl Diagnostic {
     #[track_caller]
     pub fn new<M: Into<DiagnosticMessage>>(level: Level, message: M) -> Self {
         Diagnostic::new_with_code(level, None, message)
+    }
+
+    #[track_caller]
+    pub fn new_with_messages(level: Level, messages: Vec<(DiagnosticMessage, Style)>) -> Self {
+        Diagnostic {
+            level,
+            message: messages,
+            code: None,
+            span: MultiSpan::new(),
+            children: vec![],
+            suggestions: Ok(vec![]),
+            args: Default::default(),
+            sort_span: DUMMY_SP,
+            is_lint: false,
+            emitted_at: DiagnosticLocation::caller(),
+        }
     }
 
     #[track_caller]
@@ -717,7 +747,7 @@ impl Diagnostic {
         &mut self,
         sp: Span,
         msg: impl Into<SubdiagnosticMessage>,
-        suggestions: impl Iterator<Item = String>,
+        suggestions: impl IntoIterator<Item = String>,
         applicability: Applicability,
     ) -> &mut Self {
         self.span_suggestions_with_style(
@@ -734,11 +764,11 @@ impl Diagnostic {
         &mut self,
         sp: Span,
         msg: impl Into<SubdiagnosticMessage>,
-        suggestions: impl Iterator<Item = String>,
+        suggestions: impl IntoIterator<Item = String>,
         applicability: Applicability,
         style: SuggestionStyle,
     ) -> &mut Self {
-        let mut suggestions: Vec<_> = suggestions.collect();
+        let mut suggestions: Vec<_> = suggestions.into_iter().collect();
         suggestions.sort();
 
         debug_assert!(
@@ -765,10 +795,10 @@ impl Diagnostic {
     pub fn multipart_suggestions(
         &mut self,
         msg: impl Into<SubdiagnosticMessage>,
-        suggestions: impl Iterator<Item = Vec<(Span, String)>>,
+        suggestions: impl IntoIterator<Item = Vec<(Span, String)>>,
         applicability: Applicability,
     ) -> &mut Self {
-        let suggestions: Vec<_> = suggestions.collect();
+        let suggestions: Vec<_> = suggestions.into_iter().collect();
         debug_assert!(
             !(suggestions
                 .iter()
@@ -929,6 +959,13 @@ impl Diagnostic {
     ) -> &mut Self {
         self.args.insert(name.into(), arg.into_diagnostic_arg());
         self
+    }
+
+    pub fn replace_args(
+        &mut self,
+        args: FxHashMap<DiagnosticArgName<'static>, DiagnosticArgValue<'static>>,
+    ) {
+        self.args = args;
     }
 
     pub fn styled_message(&self) -> &[(DiagnosticMessage, Style)] {

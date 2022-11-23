@@ -1,6 +1,7 @@
 use rustc_ast as ast;
 use rustc_ast::tokenstream::TokenStream;
 use rustc_expand::base::{self, DummyResult};
+use rustc_session::errors::report_lit_error;
 use rustc_span::symbol::Symbol;
 
 use std::string::String;
@@ -18,31 +19,34 @@ pub fn expand_concat(
     let mut has_errors = false;
     for e in es {
         match e.kind {
-            ast::ExprKind::Lit(ref lit) => match lit.kind {
-                ast::LitKind::Str(ref s, _) | ast::LitKind::Float(ref s, _) => {
+            ast::ExprKind::Lit(token_lit) => match ast::LitKind::from_token_lit(token_lit) {
+                Ok(ast::LitKind::Str(ref s, _) | ast::LitKind::Float(ref s, _)) => {
                     accumulator.push_str(s.as_str());
                 }
-                ast::LitKind::Char(c) => {
+                Ok(ast::LitKind::Char(c)) => {
                     accumulator.push(c);
                 }
-                ast::LitKind::Int(
-                    i,
-                    ast::LitIntType::Unsigned(_)
-                    | ast::LitIntType::Signed(_)
-                    | ast::LitIntType::Unsuffixed,
-                ) => {
+                Ok(ast::LitKind::Int(i, _)) => {
                     accumulator.push_str(&i.to_string());
                 }
-                ast::LitKind::Bool(b) => {
+                Ok(ast::LitKind::Bool(b)) => {
                     accumulator.push_str(&b.to_string());
                 }
-                ast::LitKind::Byte(..) | ast::LitKind::ByteStr(..) => {
+                Ok(ast::LitKind::Byte(..) | ast::LitKind::ByteStr(..)) => {
                     cx.span_err(e.span, "cannot concatenate a byte string literal");
+                    has_errors = true;
                 }
-                ast::LitKind::Err => {
+                Ok(ast::LitKind::Err) => {
+                    has_errors = true;
+                }
+                Err(err) => {
+                    report_lit_error(&cx.sess.parse_sess, err, token_lit, e.span);
                     has_errors = true;
                 }
             },
+            ast::ExprKind::IncludedBytes(..) => {
+                cx.span_err(e.span, "cannot concatenate a byte string literal")
+            }
             ast::ExprKind::Err => {
                 has_errors = true;
             }

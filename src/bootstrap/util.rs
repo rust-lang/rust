@@ -44,7 +44,13 @@ pub use t;
 /// Given an executable called `name`, return the filename for the
 /// executable for a particular target.
 pub fn exe(name: &str, target: TargetSelection) -> String {
-    if target.contains("windows") { format!("{}.exe", name) } else { name.to_string() }
+    if target.contains("windows") {
+        format!("{}.exe", name)
+    } else if target.contains("uefi") {
+        format!("{}.efi", name)
+    } else {
+        name.to_string()
+    }
 }
 
 /// Returns `true` if the file name given looks like a dynamic library.
@@ -105,7 +111,7 @@ pub struct TimeIt(bool, Instant);
 
 /// Returns an RAII structure that prints out how long it took to drop.
 pub fn timeit(builder: &Builder<'_>) -> TimeIt {
-    TimeIt(builder.config.dry_run, Instant::now())
+    TimeIt(builder.config.dry_run(), Instant::now())
 }
 
 impl Drop for TimeIt {
@@ -128,7 +134,7 @@ pub(crate) fn program_out_of_date(stamp: &Path, key: &str) -> bool {
 /// Symlinks two directories, using junctions on Windows and normal symlinks on
 /// Unix.
 pub fn symlink_dir(config: &Config, src: &Path, dest: &Path) -> io::Result<()> {
-    if config.dry_run {
+    if config.dry_run() {
         return Ok(());
     }
     let _ = fs::remove_dir(dest);

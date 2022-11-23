@@ -2,7 +2,7 @@ use clippy_utils::diagnostics::span_lint_and_sugg;
 use clippy_utils::source::snippet_with_applicability;
 use clippy_utils::{path_to_local_id, peel_blocks, strip_pat_refs};
 use rustc_errors::Applicability;
-use rustc_hir::{ExprKind, Local, MatchSource, PatKind, QPath};
+use rustc_hir::{ByRef, ExprKind, Local, MatchSource, PatKind, QPath};
 use rustc_lint::LateContext;
 
 use super::INFALLIBLE_DESTRUCTURING_MATCH;
@@ -16,7 +16,7 @@ pub(crate) fn check(cx: &LateContext<'_>, local: &Local<'_>) -> bool {
         if let PatKind::TupleStruct(
             QPath::Resolved(None, variant_name), args, _) = arms[0].pat.kind;
         if args.len() == 1;
-        if let PatKind::Binding(_, arg, ..) = strip_pat_refs(&args[0]).kind;
+        if let PatKind::Binding(binding, arg, ..) = strip_pat_refs(&args[0]).kind;
         let body = peel_blocks(arms[0].body);
         if path_to_local_id(body, arg);
 
@@ -30,8 +30,9 @@ pub(crate) fn check(cx: &LateContext<'_>, local: &Local<'_>) -> bool {
                 Consider using `let`",
                 "try this",
                 format!(
-                    "let {}({}) = {};",
+                    "let {}({}{}) = {};",
                     snippet_with_applicability(cx, variant_name.span, "..", &mut applicability),
+                    if binding.0 == ByRef::Yes { "ref " } else { "" },
                     snippet_with_applicability(cx, local.pat.span, "..", &mut applicability),
                     snippet_with_applicability(cx, target.span, "..", &mut applicability),
                 ),

@@ -728,7 +728,8 @@ impl<'a, 'tcx> WrongNumberOfGenericArgs<'a, 'tcx> {
         && let Some(trait_path_segment) = path.segments.get(0) {
             let num_generic_args_supplied_to_trait = trait_path_segment.args().num_generic_params();
 
-            if num_assoc_fn_excess_args == num_trait_generics_except_self - num_generic_args_supplied_to_trait {
+            if num_generic_args_supplied_to_trait + num_assoc_fn_excess_args == num_trait_generics_except_self
+            {
                 if let Some(span) = self.gen_args.span_ext()
                 && let Ok(snippet) = self.tcx.sess.source_map().span_to_snippet(span) {
                     let sugg = vec![

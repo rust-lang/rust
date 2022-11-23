@@ -81,6 +81,7 @@ pub struct AttrShouldBeAppliedToFn {
     pub attr_span: Span,
     #[label]
     pub defn_span: Span,
+    pub on_crate: bool,
 }
 
 #[derive(Diagnostic)]
@@ -97,6 +98,7 @@ pub struct TrackedCallerWrongLocation {
     pub attr_span: Span,
     #[label]
     pub defn_span: Span,
+    pub on_crate: bool,
 }
 
 #[derive(Diagnostic)]
@@ -367,6 +369,7 @@ pub struct MustNotSuspend {
 pub struct Cold {
     #[label]
     pub span: Span,
+    pub on_crate: bool,
 }
 
 #[derive(LintDiagnostic)]

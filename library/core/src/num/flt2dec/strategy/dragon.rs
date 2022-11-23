@@ -366,7 +366,7 @@ pub fn format_exact<'a>(
     if order == Ordering::Greater
         || (order == Ordering::Equal
             // SAFETY: `buf[len-1]` is initialized.
-            && (len == 0 || unsafe { buf[len - 1].assume_init() } & 1 == 1))
+            && len > 0 && unsafe { buf[len - 1].assume_init() } & 1 == 1)
     {
         // if rounding up changes the length, the exponent should also change.
         // but we've been requested a fixed number of digits, so do not alter the buffer...

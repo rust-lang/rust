@@ -928,6 +928,8 @@ fn should_encode_variances(def_kind: DefKind) -> bool {
         | DefKind::Union
         | DefKind::Enum
         | DefKind::Variant
+        | DefKind::OpaqueTy
+        | DefKind::ImplTraitPlaceholder
         | DefKind::Fn
         | DefKind::Ctor(..)
         | DefKind::AssocFn => true,
@@ -941,8 +943,6 @@ fn should_encode_variances(def_kind: DefKind) -> bool {
         | DefKind::Const
         | DefKind::ForeignMod
         | DefKind::TyAlias
-        | DefKind::OpaqueTy
-        | DefKind::ImplTraitPlaceholder
         | DefKind::Impl
         | DefKind::Trait
         | DefKind::TraitAlias
@@ -1221,9 +1221,8 @@ impl<'a, 'tcx> EncodeContext<'a, 'tcx> {
         debug!("EncodeContext::encode_enum_variant_info({:?})", def_id);
 
         let data = VariantData {
-            ctor_kind: variant.ctor_kind,
             discr: variant.discr,
-            ctor: variant.ctor_def_id.map(|did| did.index),
+            ctor: variant.ctor.map(|(kind, def_id)| (kind, def_id.index)),
             is_non_exhaustive: variant.is_field_list_non_exhaustive(),
         };
 
@@ -1233,32 +1232,28 @@ impl<'a, 'tcx> EncodeContext<'a, 'tcx> {
             assert!(f.did.is_local());
             f.did.index
         }));
-        if variant.ctor_kind == CtorKind::Fn {
+        if let Some((CtorKind::Fn, ctor_def_id)) = variant.ctor {
             // FIXME(eddyb) encode signature only in `encode_enum_variant_ctor`.
-            if let Some(ctor_def_id) = variant.ctor_def_id {
-                record!(self.tables.fn_sig[def_id] <- tcx.fn_sig(ctor_def_id));
-            }
+            record!(self.tables.fn_sig[def_id] <- tcx.fn_sig(ctor_def_id));
         }
     }
 
     fn encode_enum_variant_ctor(&mut self, def: ty::AdtDef<'tcx>, index: VariantIdx) {
-        let tcx = self.tcx;
         let variant = &def.variant(index);
-        let def_id = variant.ctor_def_id.unwrap();
+        let Some((ctor_kind, def_id)) = variant.ctor else { return };
         debug!("EncodeContext::encode_enum_variant_ctor({:?})", def_id);
 
         // FIXME(eddyb) encode only the `CtorKind` for constructors.
         let data = VariantData {
-            ctor_kind: variant.ctor_kind,
             discr: variant.discr,
-            ctor: Some(def_id.index),
+            ctor: Some((ctor_kind, def_id.index)),
             is_non_exhaustive: variant.is_field_list_non_exhaustive(),
         };
 
         record!(self.tables.variant_data[def_id] <- data);
         self.tables.constness.set(def_id.index, hir::Constness::Const);
-        if variant.ctor_kind == CtorKind::Fn {
-            record!(self.tables.fn_sig[def_id] <- tcx.fn_sig(def_id));
+        if ctor_kind == CtorKind::Fn {
+            record!(self.tables.fn_sig[def_id] <- self.tcx.fn_sig(def_id));
         }
     }
 
@@ -1313,23 +1308,22 @@ impl<'a, 'tcx> EncodeContext<'a, 'tcx> {
         }
     }
 
-    fn encode_struct_ctor(&mut self, adt_def: ty::AdtDef<'tcx>, def_id: DefId) {
-        debug!("EncodeContext::encode_struct_ctor({:?})", def_id);
-        let tcx = self.tcx;
+    fn encode_struct_ctor(&mut self, adt_def: ty::AdtDef<'tcx>) {
         let variant = adt_def.non_enum_variant();
+        let Some((ctor_kind, def_id)) = variant.ctor else { return };
+        debug!("EncodeContext::encode_struct_ctor({:?})", def_id);
 
         let data = VariantData {
-            ctor_kind: variant.ctor_kind,
             discr: variant.discr,
-            ctor: Some(def_id.index),
+            ctor: Some((ctor_kind, def_id.index)),
             is_non_exhaustive: variant.is_field_list_non_exhaustive(),
         };
 
         record!(self.tables.repr_options[def_id] <- adt_def.repr());
         record!(self.tables.variant_data[def_id] <- data);
         self.tables.constness.set(def_id.index, hir::Constness::Const);
-        if variant.ctor_kind == CtorKind::Fn {
-            record!(self.tables.fn_sig[def_id] <- tcx.fn_sig(def_id));
+        if ctor_kind == CtorKind::Fn {
+            record!(self.tables.fn_sig[def_id] <- self.tcx.fn_sig(def_id));
         }
     }
 
@@ -1550,23 +1544,15 @@ impl<'a, 'tcx> EncodeContext<'a, 'tcx> {
                 let adt_def = self.tcx.adt_def(def_id);
                 record!(self.tables.repr_options[def_id] <- adt_def.repr());
             }
-            hir::ItemKind::Struct(ref struct_def, _) => {
+            hir::ItemKind::Struct(..) => {
                 let adt_def = self.tcx.adt_def(def_id);
                 record!(self.tables.repr_options[def_id] <- adt_def.repr());
                 self.tables.constness.set(def_id.index, hir::Constness::Const);
 
-                // Encode def_ids for each field and method
-                // for methods, write all the stuff get_trait_method
-                // needs to know
-                let ctor = struct_def
-                    .ctor_hir_id()
-                    .map(|ctor_hir_id| self.tcx.hir().local_def_id(ctor_hir_id).local_def_index);
-
                 let variant = adt_def.non_enum_variant();
                 record!(self.tables.variant_data[def_id] <- VariantData {
-                    ctor_kind: variant.ctor_kind,
                     discr: variant.discr,
-                    ctor,
+                    ctor: variant.ctor.map(|(kind, def_id)| (kind, def_id.index)),
                     is_non_exhaustive: variant.is_field_list_non_exhaustive(),
                 });
             }
@@ -1576,9 +1562,8 @@ impl<'a, 'tcx> EncodeContext<'a, 'tcx> {
 
                 let variant = adt_def.non_enum_variant();
                 record!(self.tables.variant_data[def_id] <- VariantData {
-                    ctor_kind: variant.ctor_kind,
                     discr: variant.discr,
-                    ctor: None,
+                    ctor: variant.ctor.map(|(kind, def_id)| (kind, def_id.index)),
                     is_non_exhaustive: variant.is_field_list_non_exhaustive(),
                 });
             }
@@ -1631,7 +1616,7 @@ impl<'a, 'tcx> EncodeContext<'a, 'tcx> {
                     for variant in tcx.adt_def(def_id).variants() {
                         yield variant.def_id.index;
                         // Encode constructors which take a separate slot in value namespace.
-                        if let Some(ctor_def_id) = variant.ctor_def_id {
+                        if let Some(ctor_def_id) = variant.ctor_def_id() {
                             yield ctor_def_id.index;
                         }
                     }
@@ -1674,21 +1659,14 @@ impl<'a, 'tcx> EncodeContext<'a, 'tcx> {
         match item.kind {
             hir::ItemKind::Enum(..) => {
                 let def = self.tcx.adt_def(item.owner_id.to_def_id());
-                for (i, variant) in def.variants().iter_enumerated() {
+                for (i, _) in def.variants().iter_enumerated() {
                     self.encode_enum_variant_info(def, i);
-
-                    if let Some(_ctor_def_id) = variant.ctor_def_id {
-                        self.encode_enum_variant_ctor(def, i);
-                    }
+                    self.encode_enum_variant_ctor(def, i);
                 }
             }
-            hir::ItemKind::Struct(ref struct_def, _) => {
+            hir::ItemKind::Struct(..) => {
                 let def = self.tcx.adt_def(item.owner_id.to_def_id());
-                // If the struct has a constructor, encode it.
-                if let Some(ctor_hir_id) = struct_def.ctor_hir_id() {
-                    let ctor_def_id = self.tcx.hir().local_def_id(ctor_hir_id);
-                    self.encode_struct_ctor(def, ctor_def_id.to_def_id());
-                }
+                self.encode_struct_ctor(def);
             }
             hir::ItemKind::Impl { .. } => {
                 for &trait_item_def_id in
@@ -1708,12 +1686,12 @@ impl<'a, 'tcx> EncodeContext<'a, 'tcx> {
         }
     }
 
-    fn encode_info_for_closure(&mut self, hir_id: hir::HirId) {
-        let def_id = self.tcx.hir().local_def_id(hir_id);
-        debug!("EncodeContext::encode_info_for_closure({:?})", def_id);
+    #[instrument(level = "debug", skip(self))]
+    fn encode_info_for_closure(&mut self, def_id: LocalDefId) {
         // NOTE(eddyb) `tcx.type_of(def_id)` isn't used because it's fully generic,
         // including on the signature, which is inferred in `typeck.
         let typeck_result: &'tcx ty::TypeckResults<'tcx> = self.tcx.typeck(def_id);
+        let hir_id = self.tcx.hir().local_def_id_to_hir_id(def_id);
         let ty = typeck_result.node_type(hir_id);
         match ty.kind() {
             ty::Generator(..) => {
@@ -2101,11 +2079,10 @@ impl<'a, 'tcx> Visitor<'tcx> for EncodeContext<'a, 'tcx> {
 impl<'a, 'tcx> EncodeContext<'a, 'tcx> {
     fn encode_info_for_generics(&mut self, generics: &hir::Generics<'tcx>) {
         for param in generics.params {
-            let def_id = self.tcx.hir().local_def_id(param.hir_id);
             match param.kind {
                 hir::GenericParamKind::Lifetime { .. } | hir::GenericParamKind::Type { .. } => {}
                 hir::GenericParamKind::Const { ref default, .. } => {
-                    let def_id = def_id.to_def_id();
+                    let def_id = param.def_id.to_def_id();
                     if default.is_some() {
                         record!(self.tables.const_param_default[def_id] <- self.tcx.const_param_default(def_id))
                     }
@@ -2115,8 +2092,8 @@ impl<'a, 'tcx> EncodeContext<'a, 'tcx> {
     }
 
     fn encode_info_for_expr(&mut self, expr: &hir::Expr<'_>) {
-        if let hir::ExprKind::Closure { .. } = expr.kind {
-            self.encode_info_for_closure(expr.hir_id);
+        if let hir::ExprKind::Closure(closure) = expr.kind {
+            self.encode_info_for_closure(closure.def_id);
         }
     }
 }

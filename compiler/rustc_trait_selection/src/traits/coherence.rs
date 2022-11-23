@@ -18,7 +18,7 @@ use rustc_data_structures::fx::FxIndexSet;
 use rustc_errors::Diagnostic;
 use rustc_hir::def_id::{DefId, CRATE_DEF_ID, LOCAL_CRATE};
 use rustc_hir::CRATE_HIR_ID;
-use rustc_infer::infer::{InferCtxt, TyCtxtInferExt};
+use rustc_infer::infer::{DefiningAnchor, InferCtxt, TyCtxtInferExt};
 use rustc_infer::traits::util;
 use rustc_middle::traits::specialization_graph::OverlapMode;
 use rustc_middle::ty::fast_reject::{DeepRejectCtxt, TreatParams};
@@ -64,13 +64,13 @@ pub fn add_placeholder_note(err: &mut Diagnostic) {
 /// with a suitably-freshened `ImplHeader` with those types
 /// substituted. Otherwise, returns `None`.
 #[instrument(skip(tcx, skip_leak_check), level = "debug")]
-pub fn overlapping_impls(
-    tcx: TyCtxt<'_>,
+pub fn overlapping_impls<'tcx>(
+    tcx: TyCtxt<'tcx>,
     impl1_def_id: DefId,
     impl2_def_id: DefId,
     skip_leak_check: SkipLeakCheck,
     overlap_mode: OverlapMode,
-) -> Option<OverlapResult<'_>> {
+) -> Option<OverlapResult<'tcx>> {
     // Before doing expensive operations like entering an inference context, do
     // a quick check via fast_reject to tell if the impl headers could possibly
     // unify.
@@ -94,8 +94,9 @@ pub fn overlapping_impls(
         return None;
     }
 
-    let infcx = tcx.infer_ctxt().build();
-    let selcx = &mut SelectionContext::intercrate(&infcx);
+    let infcx =
+        tcx.infer_ctxt().with_opaque_type_inference(DefiningAnchor::Bubble).intercrate().build();
+    let selcx = &mut SelectionContext::new(&infcx);
     let overlaps =
         overlap(selcx, skip_leak_check, impl1_def_id, impl2_def_id, overlap_mode).is_some();
     if !overlaps {
@@ -105,8 +106,9 @@ pub fn overlapping_impls(
     // In the case where we detect an error, run the check again, but
     // this time tracking intercrate ambiguity causes for better
     // diagnostics. (These take time and can lead to false errors.)
-    let infcx = tcx.infer_ctxt().build();
-    let selcx = &mut SelectionContext::intercrate(&infcx);
+    let infcx =
+        tcx.infer_ctxt().with_opaque_type_inference(DefiningAnchor::Bubble).intercrate().build();
+    let selcx = &mut SelectionContext::new(&infcx);
     selcx.enable_tracking_intercrate_ambiguity_causes();
     Some(overlap(selcx, skip_leak_check, impl1_def_id, impl2_def_id, overlap_mode).unwrap())
 }
@@ -162,8 +164,8 @@ fn overlap_within_probe<'cx, 'tcx>(
     let infcx = selcx.infcx();
 
     if overlap_mode.use_negative_impl() {
-        if negative_impl(selcx, impl1_def_id, impl2_def_id)
-            || negative_impl(selcx, impl2_def_id, impl1_def_id)
+        if negative_impl(infcx.tcx, impl1_def_id, impl2_def_id)
+            || negative_impl(infcx.tcx, impl2_def_id, impl1_def_id)
         {
             return None;
         }
@@ -279,13 +281,8 @@ fn implicit_negative<'cx, 'tcx>(
 
 /// Given impl1 and impl2 check if both impls are never satisfied by a common type (including
 /// where-clauses) If so, return true, they are disjoint and false otherwise.
-fn negative_impl<'cx, 'tcx>(
-    selcx: &mut SelectionContext<'cx, 'tcx>,
-    impl1_def_id: DefId,
-    impl2_def_id: DefId,
-) -> bool {
+fn negative_impl<'tcx>(tcx: TyCtxt<'tcx>, impl1_def_id: DefId, impl2_def_id: DefId) -> bool {
     debug!("negative_impl(impl1_def_id={:?}, impl2_def_id={:?})", impl1_def_id, impl2_def_id);
-    let tcx = selcx.infcx().tcx;
 
     // Create an infcx, taking the predicates of impl1 as assumptions:
     let infcx = tcx.infer_ctxt().build();
@@ -332,11 +329,10 @@ fn equate<'tcx>(
         return true;
     };
 
-    let selcx = &mut SelectionContext::new(&infcx);
     let opt_failing_obligation = obligations
         .into_iter()
         .chain(more_obligations)
-        .find(|o| negative_impl_exists(selcx, o, body_def_id));
+        .find(|o| negative_impl_exists(infcx, o, body_def_id));
 
     if let Some(failing_obligation) = opt_failing_obligation {
         debug!("overlap: obligation unsatisfiable {:?}", failing_obligation);
@@ -347,19 +343,19 @@ fn equate<'tcx>(
 }
 
 /// Try to prove that a negative impl exist for the given obligation and its super predicates.
-#[instrument(level = "debug", skip(selcx))]
-fn negative_impl_exists<'cx, 'tcx>(
-    selcx: &SelectionContext<'cx, 'tcx>,
+#[instrument(level = "debug", skip(infcx))]
+fn negative_impl_exists<'tcx>(
+    infcx: &InferCtxt<'tcx>,
     o: &PredicateObligation<'tcx>,
     body_def_id: DefId,
 ) -> bool {
-    if resolve_negative_obligation(selcx.infcx().fork(), o, body_def_id) {
+    if resolve_negative_obligation(infcx.fork(), o, body_def_id) {
         return true;
     }
 
     // Try to prove a negative obligation exists for super predicates
-    for o in util::elaborate_predicates(selcx.tcx(), iter::once(o.predicate)) {
-        if resolve_negative_obligation(selcx.infcx().fork(), &o, body_def_id) {
+    for o in util::elaborate_predicates(infcx.tcx, iter::once(o.predicate)) {
+        if resolve_negative_obligation(infcx.fork(), &o, body_def_id) {
             return true;
         }
     }

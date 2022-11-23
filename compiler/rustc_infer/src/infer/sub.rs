@@ -6,7 +6,7 @@ use crate::traits::Obligation;
 use rustc_middle::ty::relate::{Cause, Relate, RelateResult, TypeRelation};
 use rustc_middle::ty::visit::TypeVisitable;
 use rustc_middle::ty::TyVar;
-use rustc_middle::ty::{self, ToPredicate, Ty, TyCtxt};
+use rustc_middle::ty::{self, Ty, TyCtxt};
 use std::mem;
 
 /// Ensures `a` is made a subtype of `b`. Returns `a` on success.
@@ -35,6 +35,11 @@ impl<'tcx> TypeRelation<'tcx> for Sub<'_, '_, 'tcx> {
     fn tag(&self) -> &'static str {
         "Sub"
     }
+
+    fn intercrate(&self) -> bool {
+        self.fields.infcx.intercrate
+    }
+
     fn tcx(&self) -> TyCtxt<'tcx> {
         self.fields.infcx.tcx
     }
@@ -45,6 +50,10 @@ impl<'tcx> TypeRelation<'tcx> for Sub<'_, '_, 'tcx> {
 
     fn a_is_expected(&self) -> bool {
         self.a_is_expected
+    }
+
+    fn mark_ambiguous(&mut self) {
+        self.fields.mark_ambiguous()
     }
 
     fn with_cause<F, R>(&mut self, cause: Cause, f: F) -> R
@@ -95,14 +104,14 @@ impl<'tcx> TypeRelation<'tcx> for Sub<'_, '_, 'tcx> {
                 // can't make progress on `A <: B` if both A and B are
                 // type variables, so record an obligation.
                 self.fields.obligations.push(Obligation::new(
+                    self.tcx(),
                     self.fields.trace.cause.clone(),
                     self.fields.param_env,
                     ty::Binder::dummy(ty::PredicateKind::Subtype(ty::SubtypePredicate {
                         a_is_expected: self.a_is_expected,
                         a,
                         b,
-                    }))
-                    .to_predicate(self.tcx()),
+                    })),
                 ));
 
                 Ok(a)
@@ -116,9 +125,9 @@ impl<'tcx> TypeRelation<'tcx> for Sub<'_, '_, 'tcx> {
                 Ok(a)
             }
 
-            (&ty::Error(_), _) | (_, &ty::Error(_)) => {
-                infcx.set_tainted_by_errors();
-                Ok(self.tcx().ty_error())
+            (&ty::Error(e), _) | (_, &ty::Error(e)) => {
+                infcx.set_tainted_by_errors(e);
+                Ok(self.tcx().ty_error_with_guaranteed(e))
             }
 
             (&ty::Opaque(a_def_id, _), &ty::Opaque(b_def_id, _)) if a_def_id == b_def_id => {

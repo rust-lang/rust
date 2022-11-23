@@ -580,7 +580,7 @@ pub(super) fn display_macro_source(
     def_id: DefId,
     vis: ty::Visibility<DefId>,
 ) -> String {
-    let tts: Vec<_> = def.body.inner_tokens().into_trees().collect();
+    let tts: Vec<_> = def.body.tokens.clone().into_trees().collect();
     // Extract the spans of all matchers. They represent the "interface" of the macro.
     let matchers = tts.chunks(4).map(|arm| &arm[0]);
 

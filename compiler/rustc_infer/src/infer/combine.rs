@@ -37,7 +37,7 @@ use rustc_middle::traits::ObligationCause;
 use rustc_middle::ty::error::{ExpectedFound, TypeError};
 use rustc_middle::ty::relate::{self, Relate, RelateResult, TypeRelation};
 use rustc_middle::ty::subst::SubstsRef;
-use rustc_middle::ty::{self, InferConst, ToPredicate, Ty, TyCtxt, TypeVisitable};
+use rustc_middle::ty::{self, InferConst, Ty, TyCtxt, TypeVisitable};
 use rustc_middle::ty::{IntType, UintType};
 use rustc_span::{Span, DUMMY_SP};
 
@@ -347,10 +347,10 @@ impl<'infcx, 'tcx> CombineFields<'infcx, 'tcx> {
 
         if needs_wf {
             self.obligations.push(Obligation::new(
+                self.tcx(),
                 self.trace.cause.clone(),
                 self.param_env,
-                ty::Binder::dummy(ty::PredicateKind::WellFormed(b_ty.into()))
-                    .to_predicate(self.infcx.tcx),
+                ty::Binder::dummy(ty::PredicateKind::WellFormed(b_ty.into())),
             ));
         }
 
@@ -444,9 +444,19 @@ impl<'infcx, 'tcx> CombineFields<'infcx, 'tcx> {
             ty::PredicateKind::ConstEquate(b, a)
         };
         self.obligations.push(Obligation::new(
+            self.tcx(),
             self.trace.cause.clone(),
             self.param_env,
-            ty::Binder::dummy(predicate).to_predicate(self.tcx()),
+            ty::Binder::dummy(predicate),
+        ));
+    }
+
+    pub fn mark_ambiguous(&mut self) {
+        self.obligations.push(Obligation::new(
+            self.tcx(),
+            self.trace.cause.clone(),
+            self.param_env,
+            ty::Binder::dummy(ty::PredicateKind::Ambiguous),
         ));
     }
 }
@@ -520,6 +530,11 @@ impl<'tcx> TypeRelation<'tcx> for Generalizer<'_, 'tcx> {
     fn tcx(&self) -> TyCtxt<'tcx> {
         self.infcx.tcx
     }
+
+    fn intercrate(&self) -> bool {
+        self.infcx.intercrate
+    }
+
     fn param_env(&self) -> ty::ParamEnv<'tcx> {
         self.param_env
     }
@@ -530,6 +545,10 @@ impl<'tcx> TypeRelation<'tcx> for Generalizer<'_, 'tcx> {
 
     fn a_is_expected(&self) -> bool {
         true
+    }
+
+    fn mark_ambiguous(&mut self) {
+        span_bug!(self.cause.span, "opaque types are handled in `tys`");
     }
 
     fn binders<T>(
@@ -563,6 +582,7 @@ impl<'tcx> TypeRelation<'tcx> for Generalizer<'_, 'tcx> {
                 &opt_variances,
                 a_subst,
                 b_subst,
+                true,
             )
         }
     }
@@ -654,6 +674,10 @@ impl<'tcx> TypeRelation<'tcx> for Generalizer<'_, 'tcx> {
                 // integer/floating-point types must be equal to be
                 // relatable.
                 Ok(t)
+            }
+            ty::Opaque(def_id, substs) => {
+                let s = self.relate(substs, substs)?;
+                Ok(if s == substs { t } else { self.infcx.tcx.mk_opaque(def_id, s) })
             }
             _ => relate::super_relate_tys(self, t, t),
         }?;
@@ -797,6 +821,11 @@ impl<'tcx> TypeRelation<'tcx> for ConstInferUnifier<'_, 'tcx> {
         self.infcx.tcx
     }
 
+    fn intercrate(&self) -> bool {
+        assert!(!self.infcx.intercrate);
+        false
+    }
+
     fn param_env(&self) -> ty::ParamEnv<'tcx> {
         self.param_env
     }
@@ -807,6 +836,10 @@ impl<'tcx> TypeRelation<'tcx> for ConstInferUnifier<'_, 'tcx> {
 
     fn a_is_expected(&self) -> bool {
         true
+    }
+
+    fn mark_ambiguous(&mut self) {
+        bug!()
     }
 
     fn relate_with_variance<T: Relate<'tcx>>(

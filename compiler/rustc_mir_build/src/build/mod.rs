@@ -481,6 +481,22 @@ fn construct_fn<'tcx>(
         (None, fn_sig.output())
     };
 
+    if let Some(custom_mir_attr) =
+        tcx.hir().attrs(fn_id).iter().find(|attr| attr.name_or_empty() == sym::custom_mir)
+    {
+        return custom::build_custom_mir(
+            tcx,
+            fn_def.did.to_def_id(),
+            thir,
+            expr,
+            arguments,
+            return_ty,
+            return_ty_span,
+            span,
+            custom_mir_attr,
+        );
+    }
+
     let infcx = tcx.infer_ctxt().build();
     let mut builder = Builder::new(
         thir,
@@ -908,7 +924,7 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
                         scope,
                         expr.span,
                         &pat,
-                        matches::ArmHasGuard(false),
+                        None,
                         Some((Some(&place), span)),
                     );
                     let place_builder = PlaceBuilder::from(local);
@@ -1033,6 +1049,7 @@ pub(crate) fn parse_float_into_scalar(
 
 mod block;
 mod cfg;
+mod custom;
 mod expr;
 mod matches;
 mod misc;

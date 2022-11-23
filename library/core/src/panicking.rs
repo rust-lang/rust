@@ -70,8 +70,7 @@ pub const fn panic_fmt(fmt: fmt::Arguments<'_>) -> ! {
 #[cold]
 #[cfg_attr(not(feature = "panic_immediate_abort"), inline(never))]
 #[cfg_attr(feature = "panic_immediate_abort", inline)]
-#[cfg_attr(not(bootstrap), rustc_nounwind)]
-#[cfg_attr(bootstrap, rustc_allocator_nounwind)]
+#[rustc_nounwind]
 pub fn panic_str_nounwind(msg: &'static str) -> ! {
     if cfg!(feature = "panic_immediate_abort") {
         super::intrinsics::abort()
@@ -158,8 +157,7 @@ fn panic_bounds_check(index: usize, len: usize) -> ! {
 #[cold]
 #[inline(never)]
 #[lang = "panic_no_unwind"] // needed by codegen for panic in nounwind function
-#[cfg_attr(not(bootstrap), rustc_nounwind)]
-#[cfg_attr(bootstrap, rustc_allocator_nounwind)]
+#[rustc_nounwind]
 fn panic_no_unwind() -> ! {
     panic_str_nounwind("panic in a function that cannot unwind")
 }

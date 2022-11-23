@@ -10,6 +10,7 @@ pub(crate) use self::undo_log::{InferCtxtUndoLogs, Snapshot, UndoLog};
 
 use crate::traits::{self, ObligationCause, PredicateObligations, TraitEngine, TraitEngineExt};
 
+use rustc_data_structures::fx::FxIndexMap;
 use rustc_data_structures::fx::{FxHashMap, FxHashSet};
 use rustc_data_structures::sync::Lrc;
 use rustc_data_structures::undo_log::Rollback;
@@ -33,7 +34,7 @@ pub use rustc_middle::ty::IntVarValue;
 use rustc_middle::ty::{self, GenericParamDefKind, InferConst, Ty, TyCtxt};
 use rustc_middle::ty::{ConstVid, FloatVid, IntVid, TyVid};
 use rustc_span::symbol::Symbol;
-use rustc_span::{Span, DUMMY_SP};
+use rustc_span::Span;
 
 use std::cell::{Cell, RefCell};
 use std::fmt;
@@ -294,7 +295,7 @@ pub struct InferCtxt<'tcx> {
 
     /// the set of predicates on which errors have been reported, to
     /// avoid reporting the same error twice.
-    pub reported_trait_errors: RefCell<FxHashMap<Span, Vec<ty::Predicate<'tcx>>>>,
+    pub reported_trait_errors: RefCell<FxIndexMap<Span, Vec<ty::Predicate<'tcx>>>>,
 
     pub reported_closure_mismatch: RefCell<FxHashSet<(Span, Option<Span>)>>,
 
@@ -336,6 +337,26 @@ pub struct InferCtxt<'tcx> {
 
     normalize_fn_sig_for_diagnostic:
         Option<Lrc<dyn Fn(&InferCtxt<'tcx>, ty::PolyFnSig<'tcx>) -> ty::PolyFnSig<'tcx>>>,
+
+    /// During coherence we have to assume that other crates may add
+    /// additional impls which we currently don't know about.
+    ///
+    /// To deal with this evaluation should be conservative
+    /// and consider the possibility of impls from outside this crate.
+    /// This comes up primarily when resolving ambiguity. Imagine
+    /// there is some trait reference `$0: Bar` where `$0` is an
+    /// inference variable. If `intercrate` is true, then we can never
+    /// say for sure that this reference is not implemented, even if
+    /// there are *no impls at all for `Bar`*, because `$0` could be
+    /// bound to some type that in a downstream crate that implements
+    /// `Bar`.
+    ///
+    /// Outside of coherence we set this to false because we are only
+    /// interested in types that the user could actually have written.
+    /// In other words, we consider `$0: Bar` to be unimplemented if
+    /// there is no type that the user could *actually name* that
+    /// would satisfy it. This avoids crippling inference, basically.
+    pub intercrate: bool,
 }
 
 /// See the `error_reporting` module for more details.
@@ -551,6 +572,8 @@ pub struct InferCtxtBuilder<'tcx> {
     tcx: TyCtxt<'tcx>,
     defining_use_anchor: DefiningAnchor,
     considering_regions: bool,
+    /// Whether we are in coherence mode.
+    intercrate: bool,
     normalize_fn_sig_for_diagnostic:
         Option<Lrc<dyn Fn(&InferCtxt<'tcx>, ty::PolyFnSig<'tcx>) -> ty::PolyFnSig<'tcx>>>,
 }
@@ -566,6 +589,7 @@ impl<'tcx> TyCtxtInferExt<'tcx> for TyCtxt<'tcx> {
             defining_use_anchor: DefiningAnchor::Error,
             considering_regions: true,
             normalize_fn_sig_for_diagnostic: None,
+            intercrate: false,
         }
     }
 }
@@ -579,6 +603,11 @@ impl<'tcx> InferCtxtBuilder<'tcx> {
     /// in mir borrowck.
     pub fn with_opaque_type_inference(mut self, defining_use_anchor: DefiningAnchor) -> Self {
         self.defining_use_anchor = defining_use_anchor;
+        self
+    }
+
+    pub fn intercrate(mut self) -> Self {
+        self.intercrate = true;
         self
     }
 
@@ -621,6 +650,7 @@ impl<'tcx> InferCtxtBuilder<'tcx> {
             defining_use_anchor,
             considering_regions,
             ref normalize_fn_sig_for_diagnostic,
+            intercrate,
         } = *self;
         InferCtxt {
             tcx,
@@ -640,6 +670,7 @@ impl<'tcx> InferCtxtBuilder<'tcx> {
             normalize_fn_sig_for_diagnostic: normalize_fn_sig_for_diagnostic
                 .as_ref()
                 .map(|f| f.clone()),
+            intercrate,
         }
     }
 }
@@ -775,32 +806,6 @@ impl<'tcx> InferCtxt<'tcx> {
             obligations: PredicateObligations::new(),
             define_opaque_types,
         }
-    }
-
-    /// Clear the "currently in a snapshot" flag, invoke the closure,
-    /// then restore the flag to its original value. This flag is a
-    /// debugging measure designed to detect cases where we start a
-    /// snapshot, create type variables, and register obligations
-    /// which may involve those type variables in the fulfillment cx,
-    /// potentially leaving "dangling type variables" behind.
-    /// In such cases, an assertion will fail when attempting to
-    /// register obligations, within a snapshot. Very useful, much
-    /// better than grovelling through megabytes of `RUSTC_LOG` output.
-    ///
-    /// HOWEVER, in some cases the flag is unhelpful. In particular, we
-    /// sometimes create a "mini-fulfilment-cx" in which we enroll
-    /// obligations. As long as this fulfillment cx is fully drained
-    /// before we return, this is not a problem, as there won't be any
-    /// escaping obligations in the main cx. In those cases, you can
-    /// use this function.
-    pub fn save_and_restore_in_snapshot_flag<F, R>(&self, func: F) -> R
-    where
-        F: FnOnce(&Self) -> R,
-    {
-        let flag = self.in_snapshot.replace(false);
-        let result = func(self);
-        self.in_snapshot.set(flag);
-        result
     }
 
     fn start_snapshot(&self) -> CombinedSnapshot<'tcx> {
@@ -1233,7 +1238,8 @@ impl<'tcx> InferCtxt<'tcx> {
     /// reporting errors that often occur as a result of earlier
     /// errors, but where it's hard to be 100% sure (e.g., unresolved
     /// inference variables, regionck errors).
-    pub fn is_tainted_by_errors(&self) -> bool {
+    #[must_use = "this method does not have any side effects"]
+    pub fn tainted_by_errors(&self) -> Option<ErrorGuaranteed> {
         debug!(
             "is_tainted_by_errors(err_count={}, err_count_on_creation={}, \
              tainted_by_errors={})",
@@ -1242,19 +1248,25 @@ impl<'tcx> InferCtxt<'tcx> {
             self.tainted_by_errors.get().is_some()
         );
 
-        if self.tcx.sess.err_count() > self.err_count_on_creation {
-            return true; // errors reported since this infcx was made
+        if let Some(e) = self.tainted_by_errors.get() {
+            return Some(e);
         }
-        self.tainted_by_errors.get().is_some()
+
+        if self.tcx.sess.err_count() > self.err_count_on_creation {
+            // errors reported since this infcx was made
+            let e = self.tcx.sess.has_errors().unwrap();
+            self.set_tainted_by_errors(e);
+            return Some(e);
+        }
+
+        None
     }
 
     /// Set the "tainted by errors" flag to true. We call this when we
     /// observe an error from a prior pass.
-    pub fn set_tainted_by_errors(&self) {
-        debug!("set_tainted_by_errors()");
-        self.tainted_by_errors.set(Some(
-            self.tcx.sess.delay_span_bug(DUMMY_SP, "`InferCtxt` incorrectly tainted by errors"),
-        ));
+    pub fn set_tainted_by_errors(&self, e: ErrorGuaranteed) {
+        debug!("set_tainted_by_errors(ErrorGuaranteed)");
+        self.tainted_by_errors.set(Some(e));
     }
 
     pub fn skip_region_resolution(&self) {
@@ -1295,7 +1307,7 @@ impl<'tcx> InferCtxt<'tcx> {
             let mut inner = self.inner.borrow_mut();
             let inner = &mut *inner;
             assert!(
-                self.is_tainted_by_errors() || inner.region_obligations.is_empty(),
+                self.tainted_by_errors().is_some() || inner.region_obligations.is_empty(),
                 "region_obligations not empty: {:#?}",
                 inner.region_obligations
             );
@@ -1732,7 +1744,7 @@ impl<'tcx> TypeErrCtxt<'_, 'tcx> {
     ) {
         let errors = self.resolve_regions(outlives_env);
 
-        if !self.is_tainted_by_errors() {
+        if let None = self.tainted_by_errors() {
             // As a heuristic, just skip reporting region errors
             // altogether if other errors have been reported while
             // this infcx was in use.  This is totally hokey but

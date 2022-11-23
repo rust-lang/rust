@@ -340,17 +340,26 @@ impl<'ll, 'tcx> IntrinsicCallMethods<'tcx> for Builder<'_, 'll, 'tcx> {
 
             sym::black_box => {
                 args[0].val.store(self, result);
-
+                let result_val_span = [result.llval];
                 // We need to "use" the argument in some way LLVM can't introspect, and on
                 // targets that support it we can typically leverage inline assembly to do
                 // this. LLVM's interpretation of inline assembly is that it's, well, a black
                 // box. This isn't the greatest implementation since it probably deoptimizes
                 // more than we want, but it's so far good enough.
+                //
+                // For zero-sized types, the location pointed to by the result may be
+                // uninitialized. Do not "use" the result in this case; instead just clobber
+                // the memory.
+                let (constraint, inputs): (&str, &[_]) = if result.layout.is_zst() {
+                    ("~{memory}", &[])
+                } else {
+                    ("r,~{memory}", &result_val_span)
+                };
                 crate::asm::inline_asm_call(
                     self,
                     "",
-                    "r,~{memory}",
-                    &[result.llval],
+                    constraint,
+                    inputs,
                     self.type_void(),
                     true,
                     false,

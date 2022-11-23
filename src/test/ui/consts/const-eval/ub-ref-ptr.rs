@@ -33,11 +33,9 @@ const REF_AS_USIZE: usize = unsafe { mem::transmute(&0) };
 
 const REF_AS_USIZE_SLICE: &[usize] = &[unsafe { mem::transmute(&0) }];
 //~^ ERROR evaluation of constant value failed
-//~| ERROR evaluation of constant value failed
 
 const REF_AS_USIZE_BOX_SLICE: Box<[usize]> = unsafe { mem::transmute::<&[usize], _>(&[mem::transmute(&0)]) };
 //~^ ERROR evaluation of constant value failed
-//~| ERROR evaluation of constant value failed
 
 const USIZE_AS_REF: &'static u8 = unsafe { mem::transmute(1337usize) };
 //~^ ERROR it is undefined behavior to use this value

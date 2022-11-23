@@ -87,6 +87,7 @@ use self::VarKind::*;
 use rustc_ast::InlineAsmOptions;
 use rustc_data_structures::fx::FxIndexMap;
 use rustc_errors::Applicability;
+use rustc_errors::Diagnostic;
 use rustc_hir as hir;
 use rustc_hir::def::*;
 use rustc_hir::def_id::{DefId, LocalDefId};
@@ -412,7 +413,7 @@ impl<'tcx> Visitor<'tcx> for IrMaps<'tcx> {
                 }
                 intravisit::walk_expr(self, expr);
             }
-            hir::ExprKind::Closure { .. } => {
+            hir::ExprKind::Closure(closure) => {
                 // Interesting control flow (for loops can contain labeled
                 // breaks or continues)
                 self.add_live_node_for_node(expr.hir_id, ExprNode(expr.span, expr.hir_id));
@@ -422,8 +423,7 @@ impl<'tcx> Visitor<'tcx> for IrMaps<'tcx> {
                 // in better error messages than just pointing at the closure
                 // construction site.
                 let mut call_caps = Vec::new();
-                let closure_def_id = self.tcx.hir().local_def_id(expr.hir_id);
-                if let Some(upvars) = self.tcx.upvars_mentioned(closure_def_id) {
+                if let Some(upvars) = self.tcx.upvars_mentioned(closure.def_id) {
                     call_caps.extend(upvars.keys().map(|var_id| {
                         let upvar = upvars[var_id];
                         let upvar_ln = self.add_live_node(UpvarNode(upvar.span));
@@ -1284,20 +1284,19 @@ impl<'a, 'tcx> Liveness<'a, 'tcx> {
     fn check_is_ty_uninhabited(&mut self, expr: &Expr<'_>, succ: LiveNode) -> LiveNode {
         let ty = self.typeck_results.expr_ty(expr);
         let m = self.ir.tcx.parent_module(expr.hir_id).to_def_id();
-        if self.ir.tcx.is_ty_uninhabited_from(m, ty, self.param_env) {
-            match self.ir.lnks[succ] {
-                LiveNodeKind::ExprNode(succ_span, succ_id) => {
-                    self.warn_about_unreachable(expr.span, ty, succ_span, succ_id, "expression");
-                }
-                LiveNodeKind::VarDefNode(succ_span, succ_id) => {
-                    self.warn_about_unreachable(expr.span, ty, succ_span, succ_id, "definition");
-                }
-                _ => {}
-            };
-            self.exit_ln
-        } else {
-            succ
+        if ty.is_inhabited_from(self.ir.tcx, m, self.param_env) {
+            return succ;
         }
+        match self.ir.lnks[succ] {
+            LiveNodeKind::ExprNode(succ_span, succ_id) => {
+                self.warn_about_unreachable(expr.span, ty, succ_span, succ_id, "expression");
+            }
+            LiveNodeKind::VarDefNode(succ_span, succ_id) => {
+                self.warn_about_unreachable(expr.span, ty, succ_span, succ_id, "definition");
+            }
+            _ => {}
+        };
+        self.exit_ln
     }
 
     fn warn_about_unreachable(
@@ -1690,7 +1689,7 @@ impl<'tcx> Liveness<'_, 'tcx> {
         &self,
         name: &str,
         opt_body: Option<&hir::Body<'_>>,
-        err: &mut rustc_errors::DiagnosticBuilder<'_, ()>,
+        err: &mut Diagnostic,
     ) -> bool {
         let mut has_litstring = false;
         let Some(opt_body) = opt_body else {return false;};

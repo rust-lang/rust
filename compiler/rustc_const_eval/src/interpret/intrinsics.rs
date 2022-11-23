@@ -177,8 +177,9 @@ impl<'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
                     sym::type_name => self.tcx.mk_static_str(),
                     _ => bug!(),
                 };
-                let val =
-                    self.tcx.const_eval_global_id(self.param_env, gid, Some(self.tcx.span))?;
+                let val = self.ctfe_query(None, |tcx| {
+                    tcx.const_eval_global_id(self.param_env, gid, Some(tcx.span))
+                })?;
                 let val = self.const_val_to_op(val, ty, Some(dest.layout))?;
                 self.copy_op(&val, dest, /*allow_transmute*/ false)?;
             }
@@ -241,6 +242,11 @@ impl<'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
                 let place = self.deref_operand(&args[0])?;
                 let discr_val = self.read_discriminant(&place.into())?.0;
                 self.write_scalar(discr_val, dest)?;
+            }
+            sym::exact_div => {
+                let l = self.read_immediate(&args[0])?;
+                let r = self.read_immediate(&args[1])?;
+                self.exact_div(&l, &r, dest)?;
             }
             sym::unchecked_shl
             | sym::unchecked_shr
@@ -713,7 +719,7 @@ impl<'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
         rhs: &OpTy<'tcx, <M as Machine<'mir, 'tcx>>::Provenance>,
     ) -> InterpResult<'tcx, Scalar<M::Provenance>> {
         let layout = self.layout_of(lhs.layout.ty.builtin_deref(true).unwrap().ty)?;
-        assert!(!layout.is_unsized());
+        assert!(layout.is_sized());
 
         let get_bytes = |this: &InterpCx<'mir, 'tcx, M>,
                          op: &OpTy<'tcx, <M as Machine<'mir, 'tcx>>::Provenance>,
