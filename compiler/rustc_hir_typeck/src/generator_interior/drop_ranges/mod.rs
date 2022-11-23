@@ -45,6 +45,7 @@ pub fn compute_drop_ranges<'a, 'tcx>(
         let (mut drop_ranges, borrowed_temporaries) = build_control_flow_graph(
             &fcx,
             typeck_results,
+            fcx.param_env,
             consumed_borrowed_places,
             body,
             num_exprs,

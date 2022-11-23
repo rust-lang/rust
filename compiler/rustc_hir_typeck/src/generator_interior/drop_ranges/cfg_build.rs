@@ -12,7 +12,7 @@ use rustc_index::vec::IndexVec;
 use rustc_infer::infer::InferCtxt;
 use rustc_middle::{
     hir::map::Map,
-    ty::{TyCtxt, TypeVisitable, TypeckResults},
+    ty::{ParamEnv, TyCtxt, TypeVisitable, TypeckResults},
 };
 use std::mem::swap;
 
@@ -24,12 +24,18 @@ use std::mem::swap;
 pub(super) fn build_control_flow_graph<'tcx>(
     infcx: &InferCtxt<'tcx>,
     typeck_results: &TypeckResults<'tcx>,
+    param_env: ParamEnv<'tcx>,
     consumed_borrowed_places: ConsumedAndBorrowedPlaces,
     body: &'tcx Body<'tcx>,
     num_exprs: usize,
 ) -> (DropRangesBuilder, FxHashSet<HirId>) {
-    let mut drop_range_visitor =
-        DropRangeVisitor::new(infcx, typeck_results, consumed_borrowed_places, num_exprs);
+    let mut drop_range_visitor = DropRangeVisitor::new(
+        infcx,
+        typeck_results,
+        param_env,
+        consumed_borrowed_places,
+        num_exprs,
+    );
     intravisit::walk_body(&mut drop_range_visitor, body);
 
     drop_range_visitor.drop_ranges.process_deferred_edges();
@@ -88,6 +94,7 @@ pub(super) fn build_control_flow_graph<'tcx>(
 struct DropRangeVisitor<'a, 'tcx> {
     typeck_results: &'a TypeckResults<'tcx>,
     infcx: &'a InferCtxt<'tcx>,
+    param_env: ParamEnv<'tcx>,
     places: ConsumedAndBorrowedPlaces,
     drop_ranges: DropRangesBuilder,
     expr_index: PostOrderId,
@@ -98,6 +105,7 @@ impl<'a, 'tcx> DropRangeVisitor<'a, 'tcx> {
     fn new(
         infcx: &'a InferCtxt<'tcx>,
         typeck_results: &'a TypeckResults<'tcx>,
+        param_env: ParamEnv<'tcx>,
         places: ConsumedAndBorrowedPlaces,
         num_exprs: usize,
     ) -> Self {
@@ -110,6 +118,7 @@ impl<'a, 'tcx> DropRangeVisitor<'a, 'tcx> {
         Self {
             infcx,
             typeck_results,
+            param_env,
             places,
             drop_ranges,
             expr_index: PostOrderId::from_u32(0),
@@ -220,15 +229,14 @@ impl<'a, 'tcx> DropRangeVisitor<'a, 'tcx> {
     fn handle_uninhabited_return(&mut self, expr: &Expr<'tcx>) {
         let ty = self.typeck_results.expr_ty(expr);
         let ty = self.infcx.resolve_vars_if_possible(ty);
-        let ty = self.tcx().erase_regions(ty);
-        let m = self.tcx().parent_module(expr.hir_id).to_def_id();
-        let param_env = self.tcx().param_env(m.expect_local());
         if ty.has_non_region_infer() {
             self.tcx()
                 .sess
                 .delay_span_bug(expr.span, format!("could not resolve infer vars in `{ty}`"));
         }
-        if !ty.is_inhabited_from(self.tcx(), m, param_env) {
+        let ty = self.tcx().erase_regions(ty);
+        let m = self.tcx().parent_module(expr.hir_id).to_def_id();
+        if !ty.is_inhabited_from(self.tcx(), m, self.param_env) {
             // This function will not return. We model this fact as an infinite loop.
             self.drop_ranges.add_control_edge(self.expr_index + 1, self.expr_index + 1);
         }
