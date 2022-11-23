@@ -397,13 +397,49 @@ impl<'tcx> PlaceBuilder<'tcx> {
                 .all_fields()
                 .nth(field_idx)
                 .unwrap_or_else(|| {
-                    bug!("expected to take field idx {:?} of fields of {:?}", field_idx, adt_def)
+                    bug!(
+                        "expected to take field with idx {:?} of fields of {:?}",
+                        field_idx,
+                        adt_def
+                    )
                 })
                 .ty(cx.tcx, substs),
             ty::Tuple(elems) => elems.iter().nth(field_idx).unwrap_or_else(|| {
-                bug!("expected to take field idx {:?} of {:?}", field_idx, elems)
+                bug!("expected to take field with idx {:?} of {:?}", field_idx, elems)
             }),
-            _ => return None,
+            ty::Closure(_, substs) => {
+                let substs = substs.as_closure();
+                let Some(f_ty) = substs.upvar_tys().nth(field_idx) else {
+                    bug!("expected to take field with idx {:?} of {:?}", field_idx, substs.upvar_tys().collect::<Vec<_>>());
+                };
+
+                f_ty
+            }
+            &ty::Generator(def_id, substs, _) => {
+                if let Some(var) = variant_index {
+                    let gen_body = cx.tcx.optimized_mir(def_id);
+                    let Some(layout) = gen_body.generator_layout() else {
+                        bug!("No generator layout for {:?}", base_ty);
+                    };
+
+                    let Some(&local) = layout.variant_fields[var].get(field) else {
+                        bug!("expected to take field {:?} of {:?}", field, layout.variant_fields[var]);
+                    };
+
+                    let Some(&f_ty) = layout.field_tys.get(local) else {
+                        bug!("expected to get element for {:?} in {:?}", local, layout.field_tys);
+                    };
+
+                    f_ty
+                } else {
+                    let Some(f_ty) = substs.as_generator().prefix_tys().nth(field.index()) else {
+                        bug!("expected to take index {:?} in {:?}", field.index(), substs.as_generator().prefix_tys().collect::<Vec<_>>());
+                    };
+
+                    f_ty
+                }
+            }
+            _ => bug!("couldn't create field type, unexpected base type: {:?}", base_ty),
         };
 
         Some(cx.tcx.normalize_erasing_regions(cx.param_env, field_ty))
