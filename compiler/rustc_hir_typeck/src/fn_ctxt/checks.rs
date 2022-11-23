@@ -2157,11 +2157,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                             self.tcx,
                             traits::ObligationCause::dummy(),
                             self.param_env,
-                            ty::Binder::dummy(ty::TraitPredicate {
-                                trait_ref,
-                                constness: ty::BoundConstness::NotConst,
-                                polarity: ty::ImplPolarity::Positive,
-                            }),
+                            ty::Binder::dummy(trait_ref),
                         );
                         match SelectionContext::new(&self).select(&obligation) {
                             Ok(Some(traits::ImplSource::UserDefined(impl_source))) => {

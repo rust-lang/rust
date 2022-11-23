@@ -10,7 +10,7 @@ use rustc_middle::mir::visit::{MutatingUseContext, NonMutatingUseContext, PlaceC
 use rustc_middle::mir::*;
 use rustc_middle::ty::subst::{GenericArgKind, InternalSubsts};
 use rustc_middle::ty::{self, adjustment::PointerCast, Instance, InstanceDef, Ty, TyCtxt};
-use rustc_middle::ty::{Binder, TraitPredicate, TraitRef, TypeVisitable};
+use rustc_middle::ty::{Binder, TraitRef, TypeVisitable};
 use rustc_mir_dataflow::{self, Analysis};
 use rustc_span::{sym, Span, Symbol};
 use rustc_trait_selection::traits::error_reporting::TypeErrCtxtExt as _;
@@ -726,11 +726,8 @@ impl<'tcx> Visitor<'tcx> for Checker<'_, 'tcx> {
                     }
 
                     let trait_ref = TraitRef::from_method(tcx, trait_id, substs);
-                    let poly_trait_pred = Binder::dummy(TraitPredicate {
-                        trait_ref,
-                        constness: ty::BoundConstness::ConstIfConst,
-                        polarity: ty::ImplPolarity::Positive,
-                    });
+                    let poly_trait_pred =
+                        Binder::dummy(trait_ref).with_constness(ty::BoundConstness::ConstIfConst);
                     let obligation =
                         Obligation::new(tcx, ObligationCause::dummy(), param_env, poly_trait_pred);
 
@@ -819,9 +816,7 @@ impl<'tcx> Visitor<'tcx> for Checker<'_, 'tcx> {
                                     tcx,
                                     ObligationCause::dummy_with_span(*fn_span),
                                     param_env,
-                                    tcx.mk_predicate(
-                                        poly_trait_pred.map_bound(ty::PredicateKind::Trait),
-                                    ),
+                                    poly_trait_pred,
                                 );
 
                                 // improve diagnostics by showing what failed. Our requirements are stricter this time

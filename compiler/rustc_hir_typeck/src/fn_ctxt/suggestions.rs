@@ -1096,8 +1096,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                 ty::Binder::dummy(self.tcx.mk_trait_ref(
                     into_def_id,
                     [expr_ty, expected_ty]
-                ))
-                .to_poly_trait_predicate(),
+                )),
             ))
         {
             let sugg = if expr.precedence().order() >= PREC_POSTFIX {
