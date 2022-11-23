@@ -5,7 +5,7 @@
 pub mod m {} //~ ERROR module has missing stability attribute
 
 pub mod m { //~ ERROR the name `m` is defined multiple times
-    // mod inner {} - ICE
+    mod inner {}
     type Inner = u8;
 }
 

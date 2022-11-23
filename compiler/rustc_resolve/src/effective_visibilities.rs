@@ -9,7 +9,7 @@ use rustc_hir::def_id::LocalDefId;
 use rustc_hir::def_id::CRATE_DEF_ID;
 use rustc_middle::middle::privacy::{EffectiveVisibilities, EffectiveVisibility};
 use rustc_middle::middle::privacy::{IntoDefIdTree, Level};
-use rustc_middle::ty::Visibility;
+use rustc_middle::ty::{DefIdTree, Visibility};
 
 type ImportId<'a> = Interned<'a, NameBinding<'a>>;
 
@@ -54,10 +54,12 @@ impl Resolver<'_> {
     }
 
     fn private_vis_def(&mut self, def_id: LocalDefId) -> Visibility {
-        if def_id == CRATE_DEF_ID {
-            Visibility::Public
+        // For mod items `nearest_normal_mod` returns its argument, but we actually need its parent.
+        let normal_mod_id = self.nearest_normal_mod(def_id);
+        if normal_mod_id == def_id {
+            self.opt_local_parent(def_id).map_or(Visibility::Public, Visibility::Restricted)
         } else {
-            Visibility::Restricted(self.nearest_normal_mod(def_id))
+            Visibility::Restricted(normal_mod_id)
         }
     }
 }
