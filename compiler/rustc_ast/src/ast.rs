@@ -789,7 +789,7 @@ impl Mutability {
     }
 
     /// Returns `""` (empty string) or `"mut "` depending on the mutability.
-    pub fn prefix_str(&self) -> &'static str {
+    pub fn prefix_str(self) -> &'static str {
         match self {
             Mutability::Mut => "mut ",
             Mutability::Not => "",
@@ -797,7 +797,7 @@ impl Mutability {
     }
 
     /// Returns `"&"` or `"&mut "` depending on the mutability.
-    pub fn ref_prefix_str(&self) -> &'static str {
+    pub fn ref_prefix_str(self) -> &'static str {
         match self {
             Mutability::Not => "&",
             Mutability::Mut => "&mut ",
