@@ -491,9 +491,9 @@ impl<P: Deref<Target: Unpin>> Pin<P> {
     /// ```
     /// use std::pin::Pin;
     ///
-    /// let val: u8 = 5;
+    /// let mut val: u8 = 5;
     /// // We can pin the value, since it doesn't care about being moved
-    /// let pinned: Pin<&u8> = Pin::new(&val);
+    /// let mut pinned: Pin<&mut u8> = Pin::new(&mut val);
     /// ```
     #[inline(always)]
     #[rustc_const_unstable(feature = "const_pin", issue = "76654")]
@@ -514,7 +514,8 @@ impl<P: Deref<Target: Unpin>> Pin<P> {
     /// ```
     /// use std::pin::Pin;
     ///
-    /// let pinned: Pin<&u8> = Pin::new(&5);
+    /// let mut val: u8 = 5;
+    /// let pinned: Pin<&mut u8> = Pin::new(&mut val);
     /// // Unwrap the pin to get a reference to the value
     /// let r = Pin::into_inner(pinned);
     /// assert_eq!(*r, 5);
@@ -728,6 +729,18 @@ impl<P: DerefMut> Pin<P> {
     ///
     /// This overwrites pinned data, but that is okay: its destructor gets
     /// run before being overwritten, so no pinning guarantee is violated.
+    ///
+    /// # Example
+    ///
+    /// ```
+    /// use std::pin::Pin;
+    ///
+    /// let mut val: u8 = 5;
+    /// let mut pinned: Pin<&mut u8> = Pin::new(&mut val);
+    /// println!("{}", pinned); // 5
+    /// pinned.as_mut().set(10);
+    /// println!("{}", pinned); // 10
+    /// ```
     #[stable(feature = "pin", since = "1.33.0")]
     #[inline(always)]
     pub fn set(&mut self, value: P::Target)
