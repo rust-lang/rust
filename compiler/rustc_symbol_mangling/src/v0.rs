@@ -621,7 +621,7 @@ impl<'tcx> Printer<'tcx> for &mut SymbolMangler<'tcx> {
                 });
 
                 match inner_ty.kind() {
-                    ty::Str if *mutbl == hir::Mutability::Not => {
+                    ty::Str if mutbl.is_not() => {
                         match ct.kind() {
                             ty::ConstKind::Value(valtree) => {
                                 let slice =

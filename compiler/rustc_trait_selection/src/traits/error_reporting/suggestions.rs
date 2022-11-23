@@ -1059,7 +1059,7 @@ impl<'tcx> TypeErrCtxtExt<'tcx> for TypeErrCtxt<'_, 'tcx> {
                 {
                     (
                         mk_result(old_pred.map_bound(|trait_pred| (trait_pred, *ty))),
-                        matches!(mutability, hir::Mutability::Mut),
+                        mutability.is_mut(),
                     )
                 } else {
                     (false, false)
@@ -1348,7 +1348,7 @@ impl<'tcx> TypeErrCtxtExt<'tcx> for TypeErrCtxt<'_, 'tcx> {
                         .sess
                         .source_map()
                         .span_take_while(span, |c| c.is_whitespace() || *c == '&');
-                    if points_at_arg && mutability == hir::Mutability::Not && refs_number > 0 {
+                    if points_at_arg && mutability.is_not() && refs_number > 0 {
                         err.span_suggestion_verbose(
                             sp,
                             "consider changing this borrow's mutability",

@@ -702,7 +702,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             };
 
             let mut_var_suggestion = 'block: {
-                if !matches!(mutbl, ast::Mutability::Mut) {
+                if mutbl.is_not() {
                     break 'block None;
                 }
 

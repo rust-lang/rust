@@ -856,7 +856,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                             ..
                         })) = self.tcx.hir().find(self.tcx.hir().get_parent_node(expr.hir_id))
                         {
-                            if mutability == hir::Mutability::Mut {
+                            if mutability.is_mut() {
                                 // Suppressing this diagnostic, we'll properly print it in `check_expr_assign`
                                 return None;
                             }

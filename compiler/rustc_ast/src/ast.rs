@@ -803,6 +803,16 @@ impl Mutability {
             Mutability::Mut => "&mut ",
         }
     }
+
+    /// Return `true` if self is mutable
+    pub fn is_mut(self) -> bool {
+        matches!(self, Self::Mut)
+    }
+
+    /// Return `true` if self is **not** mutable
+    pub fn is_not(self) -> bool {
+        matches!(self, Self::Not)
+    }
 }
 
 /// The kind of borrow in an `AddrOf` expression,

@@ -398,7 +398,7 @@ impl<'a> State<'a> {
             }
             hir::ForeignItemKind::Static(t, m) => {
                 self.head("static");
-                if m == hir::Mutability::Mut {
+                if m.is_mut() {
                     self.word_space("mut");
                 }
                 self.print_ident(item.ident);
@@ -519,7 +519,7 @@ impl<'a> State<'a> {
             }
             hir::ItemKind::Static(ty, m, expr) => {
                 self.head("static");
-                if m == hir::Mutability::Mut {
+                if m.is_mut() {
                     self.word_space("mut");
                 }
                 self.print_ident(item.ident);

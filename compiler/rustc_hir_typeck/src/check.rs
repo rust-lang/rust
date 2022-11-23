@@ -197,7 +197,7 @@ fn check_panic_info_fn(
     let arg_is_panic_info = match *inputs[0].kind() {
         ty::Ref(region, ty, mutbl) => match *ty.kind() {
             ty::Adt(ref adt, _) => {
-                adt.did() == panic_info_did && mutbl == hir::Mutability::Not && !region.is_static()
+                adt.did() == panic_info_did && mutbl.is_not() && !region.is_static()
             }
             _ => false,
         },

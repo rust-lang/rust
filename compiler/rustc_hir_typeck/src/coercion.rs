@@ -452,7 +452,7 @@ impl<'f, 'tcx> Coerce<'f, 'tcx> {
             return Err(err);
         };
 
-        if ty == a && mt_a.mutbl == hir::Mutability::Not && autoderef.step_count() == 1 {
+        if ty == a && mt_a.mutbl.is_not() && autoderef.step_count() == 1 {
             // As a special case, if we would produce `&'a *x`, that's
             // a total no-op. We end up with the type `&'a T` just as
             // we started with.  In that case, just skip it
