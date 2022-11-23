@@ -220,6 +220,7 @@
 #![allow(explicit_outlives_requirements)]
 #![allow(unused_lifetimes)]
 #![deny(rustc::existing_doc_keyword)]
+#![deny(fuzzy_provenance_casts)]
 // Ensure that std can be linked against panic_abort despite compiled with `-C panic=unwind`
 #![deny(ffi_unwind_calls)]
 // std may use features in a platform-specific way
@@ -598,7 +599,7 @@ mod panicking;
 mod personality;
 
 #[path = "../../backtrace/src/lib.rs"]
-#[allow(dead_code, unused_attributes)]
+#[allow(dead_code, unused_attributes, fuzzy_provenance_casts)]
 mod backtrace_rs;
 
 // Re-export macros defined in libcore.
