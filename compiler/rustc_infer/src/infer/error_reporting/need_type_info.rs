@@ -571,7 +571,7 @@ impl<'tcx> InferCtxt<'tcx> {
         &self,
         kind: hir::GeneratorKind,
         span: Span,
-        ty: Ty<'tcx>,
+        ty: ty::Term<'tcx>,
     ) -> DiagnosticBuilder<'tcx, ErrorGuaranteed> {
         let ty = self.resolve_vars_if_possible(ty);
         let data = self.extract_inference_diagnostics_data(ty.into(), None);

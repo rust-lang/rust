@@ -140,6 +140,15 @@ impl<'tcx> From<ty::Const<'tcx>> for GenericArg<'tcx> {
     }
 }
 
+impl<'tcx> From<ty::Term<'tcx>> for GenericArg<'tcx> {
+    fn from(value: ty::Term<'tcx>) -> Self {
+        match value.unpack() {
+            ty::TermKind::Ty(t) => t.into(),
+            ty::TermKind::Const(c) => c.into(),
+        }
+    }
+}
+
 impl<'tcx> GenericArg<'tcx> {
     #[inline]
     pub fn unpack(self) -> GenericArgKind<'tcx> {

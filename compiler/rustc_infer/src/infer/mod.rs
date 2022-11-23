@@ -1421,16 +1421,15 @@ impl<'tcx> InferCtxt<'tcx> {
         value.fold_with(&mut r)
     }
 
-    /// Returns the first unresolved variable contained in `T`. In the
-    /// process of visiting `T`, this will resolve (where possible)
-    /// type variables in `T`, but it never constructs the final,
-    /// resolved type, so it's more efficient than
-    /// `resolve_vars_if_possible()`.
-    pub fn unresolved_type_vars<T>(&self, value: &T) -> Option<(Ty<'tcx>, Option<Span>)>
+    /// Returns the first unresolved type or const variable contained in `T`.
+    pub fn first_unresolved_const_or_ty_var<T>(
+        &self,
+        value: &T,
+    ) -> Option<(ty::Term<'tcx>, Option<Span>)>
     where
         T: TypeVisitable<'tcx>,
     {
-        value.visit_with(&mut resolve::UnresolvedTypeFinder::new(self)).break_value()
+        value.visit_with(&mut resolve::UnresolvedTypeOrConstFinder::new(self)).break_value()
     }
 
     pub fn probe_const_var(
