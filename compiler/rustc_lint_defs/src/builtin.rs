@@ -1026,10 +1026,11 @@ declare_lint! {
     /// ### Example
     ///
     /// ```rust,compile_fail
+    /// #![feature(const_ptr_read)]
     /// const FOO: () = unsafe {
-    ///     let x = [0_u8; 10];
-    ///     let y = x.as_ptr() as *const u32;
-    ///     *y; // the address of a `u8` array is unknown and thus we don't know if
+    ///     let x = &[0_u8; 4];
+    ///     let y = x.as_ptr().cast::<u32>();
+    ///     y.read(); // the address of a `u8` array is unknown and thus we don't know if
     ///     // it is aligned enough for reading a `u32`.
     /// };
     /// ```
