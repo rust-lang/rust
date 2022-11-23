@@ -9,7 +9,7 @@ trait A {}
 trait B: A {}
 
 impl<'a> Deref for dyn 'a + B {
-    //~^ ERROR `(dyn B + 'a)` implements `Deref` with supertrait `A` as output
+    //~^ ERROR `(dyn B + 'a)` implements `Deref` with supertrait `A` as target
     //~| WARN this was previously accepted by the compiler but is being phased out;
 
     type Target = dyn A;

@@ -3,6 +3,7 @@ use crate::{LateContext, LateLintPass, LintContext};
 use rustc_errors::DelayDm;
 use rustc_hir as hir;
 use rustc_middle::{traits::util::supertraits, ty};
+use rustc_span::sym;
 
 declare_lint! {
     /// The `deref_into_dyn_supertrait` lint is output whenever there is a use of the
@@ -72,13 +73,19 @@ impl<'tcx> LateLintPass<'tcx> for DerefIntoDynSupertrait {
         {
             cx.struct_span_lint(
                 DEREF_INTO_DYN_SUPERTRAIT,
-                item.span,
+                cx.tcx.def_span(item.owner_id.def_id),
                 DelayDm(|| {
                     format!(
-                        "`{t}` implements `Deref` with supertrait `{target_principal}` as output"
+                        "`{t}` implements `Deref` with supertrait `{target_principal}` as target"
                     )
                 }),
-                |lint| lint,
+                |lint| {
+                    if let Some(target_span) = impl_.items.iter().find_map(|i| (i.ident.name == sym::Target).then_some(i.span)) {
+                        lint.span_label(target_span, "target type is set here");
+                    }
+
+                    lint
+                },
             )
         }
     }
