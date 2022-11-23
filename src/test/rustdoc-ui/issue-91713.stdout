@@ -5,11 +5,9 @@ check_doc_test_visibility - run various visibility-related lints on doctests
   strip-priv-imports - strips all private import statements (`use`, `extern crate`) from a crate
    propagate-doc-cfg - propagates `#[doc(cfg(...))]` to child items
 collect-intra-doc-links - resolves intra-doc links
-check-code-block-syntax - validates syntax inside Rust code blocks
  collect-trait-impls - retrieves trait impls for items in the crate
 calculate-doc-coverage - counts the number of items with and without documentation
-check-invalid-html-tags - detects invalid HTML tags in doc comments
-     check-bare-urls - detects URLs that are not hyperlinks
+           run-lints - runs some of rustdoc's lints
 
 Default passes for rustdoc:
  collect-trait-impls
@@ -18,10 +16,8 @@ check_doc_test_visibility
        strip-private  (when not --document-private-items)
   strip-priv-imports  (when --document-private-items)
 collect-intra-doc-links
-check-code-block-syntax
-check-invalid-html-tags
    propagate-doc-cfg
-     check-bare-urls
+           run-lints
 
 Passes run with `--show-coverage`:
         strip-hidden  (when not --document-hidden-items)
