@@ -15,7 +15,7 @@ use rustc_hir::intravisit::{self, Visitor};
 use rustc_hir::{Body, Closure, Expr, ExprKind, FnRetTy, HirId, Local, LocalSource};
 use rustc_middle::hir::nested_filter;
 use rustc_middle::infer::unify_key::{ConstVariableOrigin, ConstVariableOriginKind};
-use rustc_middle::ty::adjustment::{Adjust, Adjustment, AutoBorrow, AutoBorrowMutability};
+use rustc_middle::ty::adjustment::{Adjust, Adjustment, AutoBorrow};
 use rustc_middle::ty::print::{FmtPrinter, PrettyPrinter, Print, Printer};
 use rustc_middle::ty::{self, DefIdTree, InferConst};
 use rustc_middle::ty::{GenericArg, GenericArgKind, SubstsRef};
@@ -508,10 +508,7 @@ impl<'tcx> TypeErrCtxt<'_, 'tcx> {
                     [
                         ..,
                         Adjustment { kind: Adjust::Borrow(AutoBorrow::Ref(_, mut_)), target: _ },
-                    ] => match mut_ {
-                        AutoBorrowMutability::Mut { .. } => "&mut ",
-                        AutoBorrowMutability::Not => "&",
-                    },
+                    ] => hir::Mutability::from(*mut_).ref_prefix_str(),
                     _ => "",
                 };
 

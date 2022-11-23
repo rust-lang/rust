@@ -5,7 +5,6 @@ use crate::{
 use hir::def_id::DefId;
 use hir::HirId;
 use hir::ItemKind;
-use rustc_ast::Mutability;
 use rustc_errors::Applicability;
 use rustc_hir as hir;
 use rustc_infer::infer::type_variable::{TypeVariableOrigin, TypeVariableOriginKind};
@@ -88,14 +87,9 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                     let derefs = "*".repeat(pick.autoderefs);
 
                     let autoref = match pick.autoref_or_ptr_adjustment {
-                        Some(probe::AutorefOrPtrAdjustment::Autoref {
-                            mutbl: Mutability::Mut,
-                            ..
-                        }) => "&mut ",
-                        Some(probe::AutorefOrPtrAdjustment::Autoref {
-                            mutbl: Mutability::Not,
-                            ..
-                        }) => "&",
+                        Some(probe::AutorefOrPtrAdjustment::Autoref { mutbl, .. }) => {
+                            mutbl.ref_prefix_str()
+                        }
                         Some(probe::AutorefOrPtrAdjustment::ToConstPtr) | None => "",
                     };
                     if let Ok(self_expr) = self.sess().source_map().span_to_snippet(self_expr.span)
@@ -386,8 +380,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         let derefs = "*".repeat(pick.autoderefs);
 
         let autoref = match pick.autoref_or_ptr_adjustment {
-            Some(probe::AutorefOrPtrAdjustment::Autoref { mutbl: Mutability::Mut, .. }) => "&mut ",
-            Some(probe::AutorefOrPtrAdjustment::Autoref { mutbl: Mutability::Not, .. }) => "&",
+            Some(probe::AutorefOrPtrAdjustment::Autoref { mutbl, .. }) => mutbl.ref_prefix_str(),
             Some(probe::AutorefOrPtrAdjustment::ToConstPtr) | None => "",
         };
 

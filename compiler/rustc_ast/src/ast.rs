@@ -775,8 +775,9 @@ pub enum PatKind {
 #[derive(Clone, PartialEq, Eq, PartialOrd, Ord, Hash, Debug, Copy)]
 #[derive(HashStable_Generic, Encodable, Decodable)]
 pub enum Mutability {
-    Mut,
+    // N.B. Order is deliberate, so that Not < Mut
     Not,
+    Mut,
 }
 
 impl Mutability {
@@ -787,10 +788,19 @@ impl Mutability {
         }
     }
 
+    /// Returns `""` (empty string) or `"mut "` depending on the mutability.
     pub fn prefix_str(&self) -> &'static str {
         match self {
             Mutability::Mut => "mut ",
             Mutability::Not => "",
+        }
+    }
+
+    /// Returns `"&"` or `"&mut "` depending on the mutability.
+    pub fn ref_prefix_str(&self) -> &'static str {
+        match self {
+            Mutability::Not => "&",
+            Mutability::Mut => "&mut ",
         }
     }
 }
