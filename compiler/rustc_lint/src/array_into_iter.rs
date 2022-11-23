@@ -1,5 +1,3 @@
-#![deny(rustc::untranslatable_diagnostic)]
-#![deny(rustc::diagnostic_outside_of_impl)]
 use crate::lints::{ArrayIntoIterDiag, ArrayIntoIterDiagSub};
 use crate::{LateContext, LateLintPass, LintContext};
 use rustc_hir as hir;

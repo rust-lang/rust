@@ -1,5 +1,3 @@
-#![deny(rustc::untranslatable_diagnostic)]
-#![deny(rustc::diagnostic_outside_of_impl)]
 use crate::lints::{Expectation, ExpectationNote};
 use rustc_middle::ty::query::Providers;
 use rustc_middle::ty::TyCtxt;

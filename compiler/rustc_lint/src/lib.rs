@@ -38,8 +38,8 @@
 #![feature(never_type)]
 #![feature(rustc_attrs)]
 #![recursion_limit = "256"]
-// #![deny(rustc::untranslatable_diagnostic)]
-// #![deny(rustc::diagnostic_outside_of_impl)]
+#![deny(rustc::untranslatable_diagnostic)]
+#![deny(rustc::diagnostic_outside_of_impl)]
 
 #[macro_use]
 extern crate rustc_middle;

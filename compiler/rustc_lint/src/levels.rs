@@ -1,5 +1,3 @@
-#![deny(rustc::untranslatable_diagnostic)]
-#![deny(rustc::diagnostic_outside_of_impl)]
 use crate::context::{CheckLintNameResult, LintStore};
 use crate::late::unerased_lint_store;
 use crate::lints::{

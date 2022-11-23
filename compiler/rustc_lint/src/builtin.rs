@@ -1,5 +1,3 @@
-// #![deny(rustc::untranslatable_diagnostic)]
-// #![deny(rustc::diagnostic_outside_of_impl)]
 //! Lints in the Rust compiler.
 //!
 //! This contains lints which can feasibly be implemented as their own
@@ -2956,11 +2954,6 @@ impl<'tcx> LateLintPass<'tcx> for ClashingExternDeclarations {
                         };
 
                     // Finally, emit the diagnostic.
-                    let mut expected_str = DiagnosticStyledString::new();
-                    expected_str.push(existing_decl_ty.fn_sig(tcx).to_string(), false);
-                    let mut found_str = DiagnosticStyledString::new();
-                    found_str.push(this_decl_ty.fn_sig(tcx).to_string(), true);
-
                     let this = this_fi.ident.name;
                     let orig = orig.get_name();
                     let previous_decl_label = get_relevant_span(orig_fi);
@@ -3119,6 +3112,7 @@ declare_lint! {
 declare_lint_pass!(NamedAsmLabels => [NAMED_ASM_LABELS]);
 
 impl<'tcx> LateLintPass<'tcx> for NamedAsmLabels {
+    #[allow(rustc::diagnostic_outside_of_impl)]
     fn check_expr(&mut self, cx: &LateContext<'tcx>, expr: &'tcx hir::Expr<'tcx>) {
         if let hir::Expr {
             kind: hir::ExprKind::InlineAsm(hir::InlineAsm { template_strs, .. }),

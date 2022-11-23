@@ -1,5 +1,3 @@
-#![deny(rustc::untranslatable_diagnostic)]
-#![deny(rustc::diagnostic_outside_of_impl)]
 use crate::lints::CStringPtr;
 use crate::LateContext;
 use crate::LateLintPass;

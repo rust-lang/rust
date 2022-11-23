@@ -13,8 +13,6 @@
 //! previous lint state is pushed onto a stack and the ast is then recursed
 //! upon. As the ast is traversed, this keeps track of the current lint level
 //! for all lint attributes.
-#![deny(rustc::untranslatable_diagnostic)]
-#![deny(rustc::diagnostic_outside_of_impl)]
 
 use self::TargetLint::*;
 

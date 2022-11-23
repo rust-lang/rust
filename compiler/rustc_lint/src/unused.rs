@@ -1,5 +1,3 @@
-#![deny(rustc::untranslatable_diagnostic)]
-#![deny(rustc::diagnostic_outside_of_impl)]
 use crate::lints::{
     PathStatementDrop, PathStatementDropSub, PathStatementNoEffect, UnusedAllocationDiag,
     UnusedAllocationMutDiag, UnusedClosure, UnusedDef, UnusedDelim, UnusedDelimSuggestion,

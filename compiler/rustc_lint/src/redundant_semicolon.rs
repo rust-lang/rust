@@ -1,5 +1,3 @@
-#![deny(rustc::untranslatable_diagnostic)]
-#![deny(rustc::diagnostic_outside_of_impl)]
 use crate::{lints::RedundantSemicolonsDiag, EarlyContext, EarlyLintPass, LintContext};
 use rustc_ast::{Block, StmtKind};
 use rustc_span::Span;

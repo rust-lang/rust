@@ -1,5 +1,3 @@
-#![deny(rustc::untranslatable_diagnostic)]
-#![deny(rustc::diagnostic_outside_of_impl)]
 //! Implementation of lint checking.
 //!
 //! The lint checking is mostly consolidated into one pass which runs
