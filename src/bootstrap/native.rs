@@ -823,8 +823,7 @@ impl Step for Lld {
         }
         let target = self.target;
 
-        let LlvmResult { llvm_config, llvm_cmake_dir } =
-            builder.ensure(Llvm { target: self.target });
+        let LlvmResult { llvm_config, llvm_cmake_dir } = builder.ensure(Llvm { target });
 
         // The `dist` step packages LLD next to LLVM's binaries for download-ci-llvm. The root path
         // we usually expect here is `./build/$triple/ci-llvm/`, with the binaries in its `bin`
