@@ -723,8 +723,7 @@ fn receiver_is_dispatchable<'tcx>(
     let obligation = {
         let predicate = ty::Binder::dummy(
             tcx.mk_trait_ref(dispatch_from_dyn_did, [receiver_ty, unsized_receiver_ty]),
-        )
-        .without_const();
+        );
 
         Obligation::new(tcx, ObligationCause::dummy(), param_env, predicate)
     };

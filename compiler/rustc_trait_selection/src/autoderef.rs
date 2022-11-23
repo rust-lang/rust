@@ -130,7 +130,7 @@ impl<'a, 'tcx> Autoderef<'a, 'tcx> {
             tcx,
             cause.clone(),
             self.param_env,
-            ty::Binder::dummy(trait_ref).without_const(),
+            ty::Binder::dummy(trait_ref),
         );
         if !self.infcx.predicate_may_hold(&obligation) {
             debug!("overloaded_deref_ty: cannot match obligation");

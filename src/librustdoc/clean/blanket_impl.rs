@@ -67,12 +67,7 @@ impl<'a, 'tcx> BlanketImplFinder<'a, 'tcx> {
                     .instantiate(cx.tcx, impl_substs)
                     .predicates
                     .into_iter()
-                    .chain(Some(
-                        ty::Binder::dummy(impl_trait_ref)
-                            .to_poly_trait_predicate()
-                            .map_bound(ty::PredicateKind::Trait)
-                            .to_predicate(infcx.tcx),
-                    ));
+                    .chain(Some(ty::Binder::dummy(impl_trait_ref).to_predicate(infcx.tcx)));
                 for predicate in predicates {
                     debug!("testing predicate {:?}", predicate);
                     let obligation = traits::Obligation::new(

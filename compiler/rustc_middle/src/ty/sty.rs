@@ -853,23 +853,6 @@ impl<'tcx> PolyTraitRef<'tcx> {
     pub fn def_id(&self) -> DefId {
         self.skip_binder().def_id
     }
-
-    pub fn to_poly_trait_predicate(&self) -> ty::PolyTraitPredicate<'tcx> {
-        self.map_bound(|trait_ref| ty::TraitPredicate {
-            trait_ref,
-            constness: ty::BoundConstness::NotConst,
-            polarity: ty::ImplPolarity::Positive,
-        })
-    }
-
-    /// Same as [`PolyTraitRef::to_poly_trait_predicate`] but sets a negative polarity instead.
-    pub fn to_poly_trait_predicate_negative_polarity(&self) -> ty::PolyTraitPredicate<'tcx> {
-        self.map_bound(|trait_ref| ty::TraitPredicate {
-            trait_ref,
-            constness: ty::BoundConstness::NotConst,
-            polarity: ty::ImplPolarity::Negative,
-        })
-    }
 }
 
 impl rustc_errors::IntoDiagnosticArg for PolyTraitRef<'_> {

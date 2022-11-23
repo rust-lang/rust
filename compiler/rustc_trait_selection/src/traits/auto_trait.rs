@@ -10,7 +10,7 @@ use crate::traits::project::ProjectAndUnifyResult;
 use rustc_middle::mir::interpret::ErrorHandled;
 use rustc_middle::ty::fold::{TypeFolder, TypeSuperFoldable};
 use rustc_middle::ty::visit::TypeVisitable;
-use rustc_middle::ty::{PolyTraitRef, Region, RegionVid};
+use rustc_middle::ty::{ImplPolarity, Region, RegionVid};
 
 use rustc_data_structures::fx::{FxHashMap, FxHashSet, FxIndexSet};
 
@@ -88,19 +88,22 @@ impl<'tcx> AutoTraitFinder<'tcx> {
 
         let trait_ref = tcx.mk_trait_ref(trait_did, [ty]);
 
-        let trait_pred = ty::Binder::dummy(trait_ref);
-
         let infcx = tcx.infer_ctxt().build();
         let mut selcx = SelectionContext::new(&infcx);
-        for f in [
-            PolyTraitRef::to_poly_trait_predicate,
-            PolyTraitRef::to_poly_trait_predicate_negative_polarity,
-        ] {
+        for polarity in [true, false] {
             let result = selcx.select(&Obligation::new(
                 tcx,
                 ObligationCause::dummy(),
                 orig_env,
-                f(&trait_pred),
+                ty::Binder::dummy(ty::TraitPredicate {
+                    trait_ref,
+                    constness: ty::BoundConstness::NotConst,
+                    polarity: if polarity {
+                        ImplPolarity::Positive
+                    } else {
+                        ImplPolarity::Negative
+                    },
+                }),
             ));
             if let Ok(Some(ImplSource::UserDefined(_))) = result {
                 debug!(

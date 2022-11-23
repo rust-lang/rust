@@ -39,8 +39,7 @@ pub fn codegen_select_candidate<'tcx>(
     let mut selcx = SelectionContext::new(&infcx);
 
     let obligation_cause = ObligationCause::dummy();
-    let obligation =
-        Obligation::new(tcx, obligation_cause, param_env, trait_ref.to_poly_trait_predicate());
+    let obligation = Obligation::new(tcx, obligation_cause, param_env, trait_ref);
 
     let selection = match selcx.select(&obligation) {
         Ok(Some(selection)) => selection,
