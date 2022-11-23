@@ -564,7 +564,6 @@ pub fn register_plugins(store: &mut rustc_lint::LintStore, sess: &Session, conf:
     let allow_unwrap_in_tests = conf.allow_unwrap_in_tests;
     let suppress_restriction_lint_in_const = conf.suppress_restriction_lint_in_const;
     store.register_late_pass(move |_| Box::new(approx_const::ApproxConstant::new(msrv())));
-    store.register_late_pass(move |_| Box::new(approx_const::ApproxConstant::new(msrv)));
     store.register_late_pass(move |_| {
         Box::new(methods::Methods::new(
             avoid_breaking_exported_api,
