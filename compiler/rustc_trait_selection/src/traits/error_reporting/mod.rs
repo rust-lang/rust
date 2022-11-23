@@ -1168,6 +1168,8 @@ impl<'tcx> TypeErrCtxtExt<'tcx> for TypeErrCtxt<'_, 'tcx> {
                         )
                     }
 
+                    ty::PredicateKind::Ambiguous => span_bug!(span, "ambiguous"),
+
                     ty::PredicateKind::TypeWellFormedFromEnv(..) => span_bug!(
                         span,
                         "TypeWellFormedFromEnv predicate should only exist in the environment"

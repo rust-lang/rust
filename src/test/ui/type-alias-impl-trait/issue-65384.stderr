@@ -1,14 +1,12 @@
-error: cannot implement trait on type alias impl trait
-  --> $DIR/issue-65384.rs:10:18
+error[E0119]: conflicting implementations of trait `MyTrait` for type `()`
+  --> $DIR/issue-65384.rs:10:1
    |
+LL | impl MyTrait for () {}
+   | ------------------- first implementation here
+...
 LL | impl MyTrait for Bar {}
-   |                  ^^^
-   |
-note: type alias impl trait defined here
-  --> $DIR/issue-65384.rs:8:12
-   |
-LL | type Bar = impl MyTrait;
-   |            ^^^^^^^^^^^^
+   | ^^^^^^^^^^^^^^^^^^^^ conflicting implementation for `()`
 
 error: aborting due to previous error
 
+For more information about this error, try `rustc --explain E0119`.
