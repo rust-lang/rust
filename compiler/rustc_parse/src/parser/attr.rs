@@ -315,8 +315,9 @@ impl<'a> Parser<'a> {
         Ok(attrs)
     }
 
-    pub(crate) fn parse_unsuffixed_lit(&mut self) -> PResult<'a, ast::Lit> {
-        let lit = self.parse_ast_lit()?;
+    // Note: must be unsuffixed.
+    pub(crate) fn parse_unsuffixed_meta_item_lit(&mut self) -> PResult<'a, ast::MetaItemLit> {
+        let lit = self.parse_meta_item_lit()?;
         debug!("checking if {:?} is unsuffixed", lit);
 
         if !lit.kind.is_unsuffixed() {
@@ -391,7 +392,7 @@ impl<'a> Parser<'a> {
 
     pub(crate) fn parse_meta_item_kind(&mut self) -> PResult<'a, ast::MetaItemKind> {
         Ok(if self.eat(&token::Eq) {
-            ast::MetaItemKind::NameValue(self.parse_unsuffixed_lit()?)
+            ast::MetaItemKind::NameValue(self.parse_unsuffixed_meta_item_lit()?)
         } else if self.check(&token::OpenDelim(Delimiter::Parenthesis)) {
             // Matches `meta_seq = ( COMMASEP(meta_item_inner) )`.
             let (list, _) = self.parse_paren_comma_seq(|p| p.parse_meta_item_inner())?;
@@ -403,7 +404,7 @@ impl<'a> Parser<'a> {
 
     /// Matches `meta_item_inner : (meta_item | UNSUFFIXED_LIT) ;`.
     fn parse_meta_item_inner(&mut self) -> PResult<'a, ast::NestedMetaItem> {
-        match self.parse_unsuffixed_lit() {
+        match self.parse_unsuffixed_meta_item_lit() {
             Ok(lit) => return Ok(ast::NestedMetaItem::Literal(lit)),
             Err(err) => err.cancel(),
         }

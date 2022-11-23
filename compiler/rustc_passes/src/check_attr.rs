@@ -8,7 +8,7 @@ use crate::errors::{
     self, AttrApplication, DebugVisualizerUnreadable, InvalidAttrAtCrateLevel, ObjectLifetimeErr,
     OnlyHasEffectOn, TransparentIncompatible, UnrecognizedReprHint,
 };
-use rustc_ast::{ast, AttrStyle, Attribute, Lit, LitKind, MetaItemKind, NestedMetaItem};
+use rustc_ast::{ast, AttrStyle, Attribute, LitKind, MetaItemKind, MetaItemLit, NestedMetaItem};
 use rustc_data_structures::fx::FxHashMap;
 use rustc_errors::{fluent, Applicability, MultiSpan};
 use rustc_expand::base::resolve_path;
@@ -1355,7 +1355,10 @@ impl CheckAttrVisitor<'_> {
             return false;
         };
 
-        if matches!(&list[..], &[NestedMetaItem::Literal(Lit { kind: LitKind::Int(..), .. })]) {
+        if matches!(
+            &list[..],
+            &[NestedMetaItem::Literal(MetaItemLit { kind: LitKind::Int(..), .. })]
+        ) {
             true
         } else {
             self.tcx.sess.emit_err(errors::RustcLayoutScalarValidRangeArg { attr_span: attr.span });

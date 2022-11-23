@@ -33,10 +33,10 @@ use rustc_ast::util::case::Case;
 use rustc_ast::util::classify;
 use rustc_ast::util::parser::{prec_let_scrutinee_needs_par, AssocOp, Fixity};
 use rustc_ast::visit::Visitor;
-use rustc_ast::{self as ast, AttrStyle, AttrVec, CaptureBy, ExprField, Lit, UnOp, DUMMY_NODE_ID};
+use rustc_ast::{self as ast, AttrStyle, AttrVec, CaptureBy, ExprField, UnOp, DUMMY_NODE_ID};
 use rustc_ast::{AnonConst, BinOp, BinOpKind, FnDecl, FnRetTy, MacCall, Param, Ty, TyKind};
 use rustc_ast::{Arm, Async, BlockCheckMode, Expr, ExprKind, Label, Movability, RangeLimits};
-use rustc_ast::{ClosureBinder, StmtKind};
+use rustc_ast::{ClosureBinder, MetaItemLit, StmtKind};
 use rustc_ast_pretty::pprust;
 use rustc_errors::{
     Applicability, Diagnostic, DiagnosticBuilder, ErrorGuaranteed, IntoDiagnostic, PResult,
@@ -1631,7 +1631,7 @@ impl<'a> Parser<'a> {
         &self,
         lifetime: Ident,
         err: impl FnOnce(&Self) -> DiagnosticBuilder<'a, ErrorGuaranteed>,
-    ) -> ast::Lit {
+    ) -> ast::MetaItemLit {
         if let Some(mut diag) =
             self.sess.span_diagnostic.steal_diagnostic(lifetime.span, StashKey::LifetimeIsChar)
         {
@@ -1653,7 +1653,7 @@ impl<'a> Parser<'a> {
                 .emit();
         }
         let name = lifetime.without_first_quote().name;
-        ast::Lit {
+        ast::MetaItemLit {
             token_lit: token::Lit::new(token::LitKind::Char, name, None),
             kind: ast::LitKind::Char(name.as_str().chars().next().unwrap_or('_')),
             span: lifetime.span,
@@ -1768,8 +1768,8 @@ impl<'a> Parser<'a> {
     /// Returns a string literal if the next token is a string literal.
     /// In case of error returns `Some(lit)` if the next token is a literal with a wrong kind,
     /// and returns `None` if the next token is not literal at all.
-    pub fn parse_str_lit(&mut self) -> Result<ast::StrLit, Option<Lit>> {
-        match self.parse_opt_ast_lit() {
+    pub fn parse_str_lit(&mut self) -> Result<ast::StrLit, Option<MetaItemLit>> {
+        match self.parse_opt_meta_item_lit() {
             Some(lit) => match lit.kind {
                 ast::LitKind::Str(symbol_unescaped, style) => Ok(ast::StrLit {
                     style,
@@ -1784,7 +1784,7 @@ impl<'a> Parser<'a> {
         }
     }
 
-    fn handle_missing_lit(&mut self) -> PResult<'a, Lit> {
+    fn handle_missing_lit(&mut self) -> PResult<'a, MetaItemLit> {
         if let token::Interpolated(inner) = &self.token.kind {
             let expr = match inner.as_ref() {
                 token::NtExpr(expr) => Some(expr),
@@ -1820,8 +1820,8 @@ impl<'a> Parser<'a> {
             .or_else(|()| self.handle_missing_lit().map(|lit| (lit.token_lit, lit.span)))
     }
 
-    pub(super) fn parse_ast_lit(&mut self) -> PResult<'a, Lit> {
-        self.parse_opt_ast_lit().ok_or(()).or_else(|()| self.handle_missing_lit())
+    pub(super) fn parse_meta_item_lit(&mut self) -> PResult<'a, MetaItemLit> {
+        self.parse_opt_meta_item_lit().ok_or(()).or_else(|()| self.handle_missing_lit())
     }
 
     fn recover_after_dot(&mut self) -> Option<Token> {
@@ -1867,12 +1867,12 @@ impl<'a> Parser<'a> {
 
     /// Matches `lit = true | false | token_lit`.
     /// Returns `None` if the next token is not a literal.
-    pub(super) fn parse_opt_ast_lit(&mut self) -> Option<Lit> {
+    pub(super) fn parse_opt_meta_item_lit(&mut self) -> Option<MetaItemLit> {
         let recovered = self.recover_after_dot();
         let token = recovered.as_ref().unwrap_or(&self.token);
         match token::Lit::from_token(token) {
             Some(token_lit) => {
-                match Lit::from_token_lit(token_lit, token.span) {
+                match MetaItemLit::from_token_lit(token_lit, token.span) {
                     Ok(lit) => {
                         self.bump();
                         Some(lit)
@@ -1889,7 +1889,10 @@ impl<'a> Parser<'a> {
                         let suffixless_lit = token::Lit::new(lit.kind, lit.symbol, None);
                         let symbol = Symbol::intern(&suffixless_lit.to_string());
                         let lit = token::Lit::new(token::Err, symbol, lit.suffix);
-                        Some(Lit::from_token_lit(lit, span).unwrap_or_else(|_| unreachable!()))
+                        Some(
+                            MetaItemLit::from_token_lit(lit, span)
+                                .unwrap_or_else(|_| unreachable!()),
+                        )
                     }
                 }
             }

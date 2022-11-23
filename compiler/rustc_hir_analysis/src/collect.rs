@@ -2146,7 +2146,7 @@ fn should_inherit_track_caller(tcx: TyCtxt<'_>, def_id: DefId) -> bool {
 }
 
 fn check_link_ordinal(tcx: TyCtxt<'_>, attr: &ast::Attribute) -> Option<u16> {
-    use rustc_ast::{Lit, LitIntType, LitKind};
+    use rustc_ast::{LitIntType, LitKind, MetaItemLit};
     if !tcx.features().raw_dylib && tcx.sess.target.arch == "x86" {
         feature_err(
             &tcx.sess.parse_sess,
@@ -2169,7 +2169,9 @@ fn check_link_ordinal(tcx: TyCtxt<'_>, attr: &ast::Attribute) -> Option<u16> {
         }
         _ => None,
     };
-    if let Some(Lit { kind: LitKind::Int(ordinal, LitIntType::Unsuffixed), .. }) = sole_meta_list {
+    if let Some(MetaItemLit { kind: LitKind::Int(ordinal, LitIntType::Unsuffixed), .. }) =
+        sole_meta_list
+    {
         // According to the table at https://docs.microsoft.com/en-us/windows/win32/debug/pe-format#import-header,
         // the ordinal must fit into 16 bits.  Similarly, the Ordinal field in COFFShortExport (defined
         // in llvm/include/llvm/Object/COFFImportFile.h), which we use to communicate import information
