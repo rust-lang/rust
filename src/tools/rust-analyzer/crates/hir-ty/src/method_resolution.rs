@@ -541,7 +541,7 @@ pub struct ReceiverAdjustments {
 
 impl ReceiverAdjustments {
     pub(crate) fn apply(&self, table: &mut InferenceTable<'_>, ty: Ty) -> (Ty, Vec<Adjustment>) {
-        let mut ty = ty;
+        let mut ty = table.resolve_ty_shallow(&ty);
         let mut adjust = Vec::new();
         for _ in 0..self.autoderefs {
             match autoderef::autoderef_step(table, ty.clone()) {

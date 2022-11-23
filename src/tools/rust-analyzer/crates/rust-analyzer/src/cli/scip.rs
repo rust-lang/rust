@@ -47,30 +47,27 @@ impl flags::Scip {
 
         let si = StaticIndex::compute(&analysis);
 
-        let mut index = scip_types::Index {
-            metadata: Some(scip_types::Metadata {
-                version: scip_types::ProtocolVersion::UnspecifiedProtocolVersion.into(),
-                tool_info: Some(scip_types::ToolInfo {
-                    name: "rust-analyzer".to_owned(),
-                    version: "0.1".to_owned(),
-                    arguments: vec![],
-                    ..Default::default()
-                })
-                .into(),
-                project_root: format!(
-                    "file://{}",
-                    path.normalize()
-                        .as_os_str()
-                        .to_str()
-                        .ok_or(anyhow::anyhow!("Unable to normalize project_root path"))?
-                        .to_string()
-                ),
-                text_document_encoding: scip_types::TextEncoding::UTF8.into(),
-                ..Default::default()
+        let metadata = scip_types::Metadata {
+            version: scip_types::ProtocolVersion::UnspecifiedProtocolVersion.into(),
+            tool_info: Some(scip_types::ToolInfo {
+                name: "rust-analyzer".to_owned(),
+                version: "0.1".to_owned(),
+                arguments: vec![],
+                special_fields: Default::default(),
             })
             .into(),
-            ..Default::default()
+            project_root: format!(
+                "file://{}",
+                path.normalize()
+                    .as_os_str()
+                    .to_str()
+                    .ok_or(anyhow::anyhow!("Unable to normalize project_root path"))?
+                    .to_string()
+            ),
+            text_document_encoding: scip_types::TextEncoding::UTF8.into(),
+            special_fields: Default::default(),
         };
+        let mut documents = Vec::new();
 
         let mut symbols_emitted: HashSet<TokenId> = HashSet::default();
         let mut tokens_to_symbol: HashMap<TokenId, String> = HashMap::new();
@@ -95,18 +92,14 @@ impl flags::Scip {
                 endings: LineEndings::Unix,
             };
 
-            let mut doc = scip_types::Document {
-                relative_path,
-                language: "rust".to_string(),
-                ..Default::default()
-            };
+            let mut occurrences = Vec::new();
+            let mut symbols = Vec::new();
 
-            tokens.into_iter().for_each(|(range, id)| {
+            tokens.into_iter().for_each(|(text_range, id)| {
                 let token = si.tokens.get(id).unwrap();
 
-                let mut occurrence = scip_types::Occurrence::default();
-                occurrence.range = text_range_to_scip_range(&line_index, range);
-                occurrence.symbol = tokens_to_symbol
+                let range = text_range_to_scip_range(&line_index, text_range);
+                let symbol = tokens_to_symbol
                     .entry(id)
                     .or_insert_with(|| {
                         let symbol = token_to_symbol(&token).unwrap_or_else(&mut new_local_symbol);
@@ -114,33 +107,61 @@ impl flags::Scip {
                     })
                     .clone();
 
+                let mut symbol_roles = Default::default();
+
                 if let Some(def) = token.definition {
-                    if def.range == range {
-                        occurrence.symbol_roles |= scip_types::SymbolRole::Definition as i32;
+                    if def.range == text_range {
+                        symbol_roles |= scip_types::SymbolRole::Definition as i32;
                     }
 
                     if symbols_emitted.insert(id) {
-                        let mut symbol_info = scip_types::SymbolInformation::default();
-                        symbol_info.symbol = occurrence.symbol.clone();
-                        if let Some(hover) = &token.hover {
-                            if !hover.markup.as_str().is_empty() {
-                                symbol_info.documentation = vec![hover.markup.as_str().to_string()];
-                            }
-                        }
+                        let documentation = token
+                            .hover
+                            .as_ref()
+                            .map(|hover| hover.markup.as_str())
+                            .filter(|it| !it.is_empty())
+                            .map(|it| vec![it.to_owned()]);
+                        let symbol_info = scip_types::SymbolInformation {
+                            symbol: symbol.clone(),
+                            documentation: documentation.unwrap_or_default(),
+                            relationships: Vec::new(),
+                            special_fields: Default::default(),
+                        };
 
-                        doc.symbols.push(symbol_info)
+                        symbols.push(symbol_info)
                     }
                 }
 
-                doc.occurrences.push(occurrence);
+                occurrences.push(scip_types::Occurrence {
+                    range,
+                    symbol,
+                    symbol_roles,
+                    override_documentation: Vec::new(),
+                    syntax_kind: Default::default(),
+                    diagnostics: Vec::new(),
+                    special_fields: Default::default(),
+                });
             });
 
-            if doc.occurrences.is_empty() {
+            if occurrences.is_empty() {
                 continue;
             }
 
-            index.documents.push(doc);
+            documents.push(scip_types::Document {
+                relative_path,
+                language: "rust".to_string(),
+                occurrences,
+                symbols,
+                special_fields: Default::default(),
+            });
         }
+
+        let index = scip_types::Index {
+            metadata: Some(metadata).into(),
+            documents,
+            external_symbols: Vec::new(),
+            special_fields: Default::default(),
+        };
 
         scip::write_message_to_file("index.scip", index)
             .map_err(|err| anyhow::anyhow!("Failed to write scip to file: {}", err))?;
@@ -181,7 +202,7 @@ fn new_descriptor_str(
         name: name.to_string(),
         disambiguator: "".to_string(),
         suffix: suffix.into(),
-        ..Default::default()
+        special_fields: Default::default(),
     }
 }
 
@@ -232,11 +253,11 @@ fn token_to_symbol(token: &TokenStaticData) -> Option<scip_types::Symbol> {
             manager: "cargo".to_string(),
             name: package_name,
             version: version.unwrap_or_else(|| ".".to_string()),
-            ..Default::default()
+            special_fields: Default::default(),
         })
         .into(),
         descriptors,
-        ..Default::default()
+        special_fields: Default::default(),
     })
 }
 

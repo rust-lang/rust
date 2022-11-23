@@ -9,10 +9,7 @@ pub(crate) fn unresolved_macro_call(
     d: &hir::UnresolvedMacroCall,
 ) -> Diagnostic {
     // Use more accurate position if available.
-    let display_range = d
-        .precise_location
-        .unwrap_or_else(|| ctx.sema.diagnostics_display_range(d.macro_call.clone()).range);
-
+    let display_range = ctx.resolve_precise_location(&d.macro_call, d.precise_location);
     let bang = if d.is_bang { "!" } else { "" };
     Diagnostic::new(
         "unresolved-macro-call",

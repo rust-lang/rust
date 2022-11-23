@@ -157,7 +157,7 @@ fn complete_trait_impl(
                     add_function_impl(acc, ctx, replacement_range, func, hir_impl)
                 }
                 (hir::AssocItem::TypeAlias(type_alias), All | TypeAlias) => {
-                    add_type_alias_impl(acc, ctx, replacement_range, type_alias)
+                    add_type_alias_impl(acc, ctx, replacement_range, type_alias, hir_impl)
                 }
                 (hir::AssocItem::Const(const_), All | Const) => {
                     add_const_impl(acc, ctx, replacement_range, const_, hir_impl)
@@ -236,9 +236,7 @@ fn get_transformed_assoc_item(
     );
 
     transform.apply(assoc_item.syntax());
-    if let ast::AssocItem::Fn(func) = &assoc_item {
-        func.remove_attrs_and_docs();
-    }
+    assoc_item.remove_attrs_and_docs();
     Some(assoc_item)
 }
 
@@ -247,24 +245,50 @@ fn add_type_alias_impl(
     ctx: &CompletionContext<'_>,
     replacement_range: TextRange,
     type_alias: hir::TypeAlias,
+    impl_def: hir::Impl,
 ) {
-    let alias_name = type_alias.name(ctx.db);
-    let (alias_name, escaped_name) =
-        (alias_name.unescaped().to_smol_str(), alias_name.to_smol_str());
+    let alias_name = type_alias.name(ctx.db).unescaped().to_smol_str();
 
     let label = format!("type {} =", alias_name);
-    let replacement = format!("type {} = ", escaped_name);
 
     let mut item = CompletionItem::new(SymbolKind::TypeAlias, replacement_range, label);
     item.lookup_by(format!("type {}", alias_name))
         .set_documentation(type_alias.docs(ctx.db))
         .set_relevance(CompletionRelevance { is_item_from_trait: true, ..Default::default() });
-    match ctx.config.snippet_cap {
-        Some(cap) => item
-            .snippet_edit(cap, TextEdit::replace(replacement_range, format!("{}$0;", replacement))),
-        None => item.text_edit(TextEdit::replace(replacement_range, replacement)),
-    };
-    item.add_to(acc);
+
+    if let Some(source) = ctx.sema.source(type_alias) {
+        let assoc_item = ast::AssocItem::TypeAlias(source.value);
+        if let Some(transformed_item) = get_transformed_assoc_item(ctx, assoc_item, impl_def) {
+            let transformed_ty = match transformed_item {
+                ast::AssocItem::TypeAlias(ty) => ty,
+                _ => unreachable!(),
+            };
+
+            let start = transformed_ty.syntax().text_range().start();
+            let Some(end) = transformed_ty
+                .eq_token()
+                .map(|tok| tok.text_range().start())
+                .or(transformed_ty.semicolon_token().map(|tok| tok.text_range().start())) else { return };
+
+            let len = end - start;
+            let mut decl = transformed_ty.syntax().text().slice(..len).to_string();
+            if !decl.ends_with(' ') {
+                decl.push(' ');
+            }
+            decl.push_str("= ");
+
+            match ctx.config.snippet_cap {
+                Some(cap) => {
+                    let snippet = format!("{}$0;", decl);
+                    item.snippet_edit(cap, TextEdit::replace(replacement_range, snippet));
+                }
+                None => {
+                    item.text_edit(TextEdit::replace(replacement_range, decl));
+                }
+            };
+            item.add_to(acc);
+        }
+    }
 }
 
 fn add_const_impl(
@@ -309,7 +333,6 @@ fn add_const_impl(
 }
 
 fn make_const_compl_syntax(const_: &ast::Const, needs_whitespace: bool) -> String {
-    const_.remove_attrs_and_docs();
     let const_ = if needs_whitespace {
         insert_whitespace_into_node::insert_ws_into(const_.syntax().clone())
     } else {
@@ -333,8 +356,6 @@ fn make_const_compl_syntax(const_: &ast::Const, needs_whitespace: bool) -> Strin
 }
 
 fn function_declaration(node: &ast::Fn, needs_whitespace: bool) -> String {
-    node.remove_attrs_and_docs();
-
     let node = if needs_whitespace {
         insert_whitespace_into_node::insert_ws_into(node.syntax().clone())
     } else {
@@ -350,9 +371,7 @@ fn function_declaration(node: &ast::Fn, needs_whitespace: bool) -> String {
         .map_or(end, |f| f.text_range().start());
 
     let len = end - start;
-    let range = TextRange::new(0.into(), len);
-
-    let syntax = node.text().slice(range).to_string();
+    let syntax = node.text().slice(..len).to_string();
 
     syntax.trim_end().to_owned()
 }
@@ -1159,6 +1178,106 @@ impl Foo for Test {
     fn foo(&mut self,bar:i64,baz: &mut u32) -> Result<(),u32> {
     $0
 }
+}
+"#,
+        );
+    }
+
+    #[test]
+    fn includes_gat_generics() {
+        check_edit(
+            "type Ty",
+            r#"
+trait Tr<'b> {
+    type Ty<'a: 'b, T: Copy, const C: usize>;
+}
+
+impl<'b> Tr<'b> for () {
+    $0
+}
+"#,
+            r#"
+trait Tr<'b> {
+    type Ty<'a: 'b, T: Copy, const C: usize>;
+}
+
+impl<'b> Tr<'b> for () {
+    type Ty<'a: 'b, T: Copy, const C: usize> = $0;
+}
+"#,
+        );
+    }
+
+    #[test]
+    fn strips_comments() {
+        check_edit(
+            "fn func",
+            r#"
+trait Tr {
+    /// docs
+    #[attr]
+    fn func();
+}
+impl Tr for () {
+    $0
+}
+"#,
+            r#"
+trait Tr {
+    /// docs
+    #[attr]
+    fn func();
+}
+impl Tr for () {
+    fn func() {
+    $0
+}
+}
+"#,
+        );
+        check_edit(
+            "const C",
+            r#"
+trait Tr {
+    /// docs
+    #[attr]
+    const C: usize;
+}
+impl Tr for () {
+    $0
+}
+"#,
+            r#"
+trait Tr {
+    /// docs
+    #[attr]
+    const C: usize;
+}
+impl Tr for () {
+    const C: usize = $0;
+}
+"#,
+        );
+        check_edit(
+            "type Item",
+            r#"
+trait Tr {
+    /// docs
+    #[attr]
+    type Item;
+}
+impl Tr for () {
+    $0
+}
+"#,
+            r#"
+trait Tr {
+    /// docs
+    #[attr]
+    type Item;
+}
+impl Tr for () {
+    type Item = $0;
 }
 "#,
         );
