@@ -1011,7 +1011,6 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         hir_id: hir::HirId,
     ) -> (Ty<'tcx>, Res) {
         let tcx = self.tcx;
-        assert_eq!(res.ns(), Some(rustc_hir::def::Namespace::ValueNS));
 
         let path_segs = match res {
             Res::Local(_) | Res::SelfCtor(_) => vec![],
