@@ -948,12 +948,12 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
             AttrArgs::Eq(eq_span, AttrArgsEq::Ast(expr)) => {
                 // In valid code the value always ends up as a single literal. Otherwise, a dummy
                 // literal suffices because the error is handled elsewhere.
-                let lit = if let ExprKind::Lit(token_lit) = expr.kind 
-                    && let Ok(lit) = Lit::from_token_lit(token_lit, expr.span)
+                let lit = if let ExprKind::Lit(token_lit) = expr.kind
+                    && let Ok(lit) = MetaItemLit::from_token_lit(token_lit, expr.span)
                 {
                     lit
                 } else {
-                    Lit {
+                    MetaItemLit {
                         token_lit: token::Lit::new(token::LitKind::Err, kw::Empty, None),
                         kind: LitKind::Err,
                         span: DUMMY_SP,

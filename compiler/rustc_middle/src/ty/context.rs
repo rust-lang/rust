@@ -1191,8 +1191,9 @@ impl<'tcx> TyCtxt<'tcx> {
             debug!("layout_scalar_valid_range: attr={:?}", attr);
             if let Some(
                 &[
-                    ast::NestedMetaItem::Literal(ast::Lit {
-                        kind: ast::LitKind::Int(a, _), ..
+                    ast::NestedMetaItem::Literal(ast::MetaItemLit {
+                        kind: ast::LitKind::Int(a, _),
+                        ..
                     }),
                 ],
             ) = attr.meta_item_list().as_deref()

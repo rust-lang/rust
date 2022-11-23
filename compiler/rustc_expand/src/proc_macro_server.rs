@@ -527,10 +527,7 @@ impl server::TokenStream for Rustc<'_, '_> {
             }
             ast::ExprKind::IncludedBytes(bytes) => {
                 let lit = ast::LitKind::ByteStr(bytes.clone()).to_token_lit();
-                Ok(tokenstream::TokenStream::token_alone(
-                    token::TokenKind::Literal(lit),
-                    expr.span,
-                ))
+                Ok(tokenstream::TokenStream::token_alone(token::TokenKind::Literal(lit), expr.span))
             }
             ast::ExprKind::Unary(ast::UnOp::Neg, e) => match &e.kind {
                 ast::ExprKind::Lit(token_lit) => match token_lit {

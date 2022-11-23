@@ -51,7 +51,7 @@ pub fn parse_meta<'a>(sess: &'a ParseSess, attr: &Attribute) -> PResult<'a, Meta
             }
             AttrArgs::Eq(_, AttrArgsEq::Ast(expr)) => {
                 if let ast::ExprKind::Lit(token_lit) = expr.kind
-                    && let Ok(lit) = ast::Lit::from_token_lit(token_lit, expr.span)
+                    && let Ok(lit) = ast::MetaItemLit::from_token_lit(token_lit, expr.span)
                 {
                     if token_lit.suffix.is_some() {
                         let mut err = sess.span_diagnostic.struct_span_err(
