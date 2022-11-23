@@ -130,10 +130,7 @@ impl hir::Pat<'_> {
     pub fn contains_explicit_ref_binding(&self) -> Option<hir::Mutability> {
         let mut result = None;
         self.each_binding(|annotation, _, _, _| match annotation {
-            hir::BindingAnnotation::REF => match result {
-                None | Some(hir::Mutability::Not) => result = Some(hir::Mutability::Not),
-                _ => {}
-            },
+            hir::BindingAnnotation::REF if result.is_none() => result = Some(hir::Mutability::Not),
             hir::BindingAnnotation::REF_MUT => result = Some(hir::Mutability::Mut),
             _ => {}
         });
