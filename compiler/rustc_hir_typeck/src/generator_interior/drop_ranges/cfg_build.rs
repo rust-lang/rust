@@ -9,9 +9,10 @@ use hir::{
 use rustc_data_structures::fx::{FxHashMap, FxHashSet};
 use rustc_hir as hir;
 use rustc_index::vec::IndexVec;
+use rustc_infer::infer::InferCtxt;
 use rustc_middle::{
     hir::map::Map,
-    ty::{TyCtxt, TypeckResults},
+    ty::{TyCtxt, TypeVisitable, TypeckResults},
 };
 use std::mem::swap;
 
@@ -21,20 +22,23 @@ use std::mem::swap;
 /// The resulting structure still needs to be iterated to a fixed point, which
 /// can be done with propagate_to_fixpoint in cfg_propagate.
 pub(super) fn build_control_flow_graph<'tcx>(
-    hir: Map<'tcx>,
-    tcx: TyCtxt<'tcx>,
+    infcx: &InferCtxt<'tcx>,
     typeck_results: &TypeckResults<'tcx>,
     consumed_borrowed_places: ConsumedAndBorrowedPlaces,
     body: &'tcx Body<'tcx>,
     num_exprs: usize,
 ) -> (DropRangesBuilder, FxHashSet<HirId>) {
     let mut drop_range_visitor =
-        DropRangeVisitor::new(hir, tcx, typeck_results, consumed_borrowed_places, num_exprs);
+        DropRangeVisitor::new(infcx, typeck_results, consumed_borrowed_places, num_exprs);
     intravisit::walk_body(&mut drop_range_visitor, body);
 
     drop_range_visitor.drop_ranges.process_deferred_edges();
-    if let Some(filename) = &tcx.sess.opts.unstable_opts.dump_drop_tracking_cfg {
-        super::cfg_visualize::write_graph_to_file(&drop_range_visitor.drop_ranges, filename, tcx);
+    if let Some(filename) = &infcx.tcx.sess.opts.unstable_opts.dump_drop_tracking_cfg {
+        super::cfg_visualize::write_graph_to_file(
+            &drop_range_visitor.drop_ranges,
+            filename,
+            infcx.tcx,
+        );
     }
 
     (drop_range_visitor.drop_ranges, drop_range_visitor.places.borrowed_temporaries)
@@ -82,19 +86,17 @@ pub(super) fn build_control_flow_graph<'tcx>(
 /// ```
 
 struct DropRangeVisitor<'a, 'tcx> {
-    hir: Map<'tcx>,
+    typeck_results: &'a TypeckResults<'tcx>,
+    infcx: &'a InferCtxt<'tcx>,
     places: ConsumedAndBorrowedPlaces,
     drop_ranges: DropRangesBuilder,
     expr_index: PostOrderId,
-    tcx: TyCtxt<'tcx>,
-    typeck_results: &'a TypeckResults<'tcx>,
     label_stack: Vec<(Option<rustc_ast::Label>, PostOrderId)>,
 }
 
 impl<'a, 'tcx> DropRangeVisitor<'a, 'tcx> {
     fn new(
-        hir: Map<'tcx>,
-        tcx: TyCtxt<'tcx>,
+        infcx: &'a InferCtxt<'tcx>,
         typeck_results: &'a TypeckResults<'tcx>,
         places: ConsumedAndBorrowedPlaces,
         num_exprs: usize,
@@ -102,18 +104,21 @@ impl<'a, 'tcx> DropRangeVisitor<'a, 'tcx> {
         debug!("consumed_places: {:?}", places.consumed);
         let drop_ranges = DropRangesBuilder::new(
             places.consumed.iter().flat_map(|(_, places)| places.iter().cloned()),
-            hir,
+            infcx.tcx.hir(),
             num_exprs,
         );
         Self {
-            hir,
+            infcx,
+            typeck_results,
             places,
             drop_ranges,
             expr_index: PostOrderId::from_u32(0),
-            typeck_results,
-            tcx,
             label_stack: vec![],
         }
+    }
+
+    fn tcx(&self) -> TyCtxt<'tcx> {
+        self.infcx.tcx
     }
 
     fn record_drop(&mut self, value: TrackedValue) {
@@ -137,7 +142,7 @@ impl<'a, 'tcx> DropRangeVisitor<'a, 'tcx> {
             .map_or(vec![], |places| places.iter().cloned().collect());
         for place in places {
             trace!(?place, "consuming place");
-            for_each_consumable(self.hir, place, |value| self.record_drop(value));
+            for_each_consumable(self.tcx().hir(), place, |value| self.record_drop(value));
         }
     }
 
@@ -214,10 +219,16 @@ impl<'a, 'tcx> DropRangeVisitor<'a, 'tcx> {
     /// return.
     fn handle_uninhabited_return(&mut self, expr: &Expr<'tcx>) {
         let ty = self.typeck_results.expr_ty(expr);
-        let ty = self.tcx.erase_regions(ty);
-        let m = self.tcx.parent_module(expr.hir_id).to_def_id();
-        let param_env = self.tcx.param_env(m.expect_local());
-        if !ty.is_inhabited_from(self.tcx, m, param_env) {
+        let ty = self.infcx.resolve_vars_if_possible(ty);
+        let ty = self.tcx().erase_regions(ty);
+        let m = self.tcx().parent_module(expr.hir_id).to_def_id();
+        let param_env = self.tcx().param_env(m.expect_local());
+        if ty.has_non_region_infer() {
+            self.tcx()
+                .sess
+                .delay_span_bug(expr.span, format!("could not resolve infer vars in `{ty}`"));
+        }
+        if !ty.is_inhabited_from(self.tcx(), m, param_env) {
             // This function will not return. We model this fact as an infinite loop.
             self.drop_ranges.add_control_edge(self.expr_index + 1, self.expr_index + 1);
         }
@@ -238,7 +249,7 @@ impl<'a, 'tcx> DropRangeVisitor<'a, 'tcx> {
         destination: hir::Destination,
     ) -> Result<HirId, LoopIdError> {
         destination.target_id.map(|target| {
-            let node = self.hir.get(target);
+            let node = self.tcx().hir().get(target);
             match node {
                 hir::Node::Expr(_) => target,
                 hir::Node::Block(b) => find_last_block_expression(b),
