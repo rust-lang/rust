@@ -63,13 +63,13 @@ impl LdFlags {
     }
 }
 
-// This returns whether we've already previously built LLVM.
-//
-// It's used to avoid busting caches during x.py check -- if we've already built
-// LLVM, it's fine for us to not try to avoid doing so.
-//
-// This will return the llvm-config if it can get it (but it will not build it
-// if not).
+/// This returns whether we've already previously built LLVM.
+///
+/// It's used to avoid busting caches during x.py check -- if we've already built
+/// LLVM, it's fine for us to not try to avoid doing so.
+///
+/// This will return the llvm-config if it can get it (but it will not build it
+/// if not).
 pub fn prebuilt_llvm_config(
     builder: &Builder<'_>,
     target: TargetSelection,
