@@ -110,25 +110,6 @@ pub struct SelectionContext<'cx, 'tcx> {
     /// require themselves.
     freshener: TypeFreshener<'cx, 'tcx>,
 
-    /// During coherence we have to assume that other crates may add
-    /// additional impls which we currently don't know about.
-    ///
-    /// To deal with this evaluation should be conservative
-    /// and consider the possibility of impls from outside this crate.
-    /// This comes up primarily when resolving ambiguity. Imagine
-    /// there is some trait reference `$0: Bar` where `$0` is an
-    /// inference variable. If `intercrate` is true, then we can never
-    /// say for sure that this reference is not implemented, even if
-    /// there are *no impls at all for `Bar`*, because `$0` could be
-    /// bound to some type that in a downstream crate that implements
-    /// `Bar`.
-    ///
-    /// Outside of coherence we set this to false because we are only
-    /// interested in types that the user could actually have written.
-    /// In other words, we consider `$0: Bar` to be unimplemented if
-    /// there is no type that the user could *actually name* that
-    /// would satisfy it. This avoids crippling inference, basically.
-    intercrate: bool,
     /// If `intercrate` is set, we remember predicates which were
     /// considered ambiguous because of impls potentially added in other crates.
     /// This is used in coherence to give improved diagnostics.
@@ -226,14 +207,9 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
         SelectionContext {
             infcx,
             freshener: infcx.freshener_keep_static(),
-            intercrate: false,
             intercrate_ambiguity_causes: None,
             query_mode: TraitQueryMode::Standard,
         }
-    }
-
-    pub fn intercrate(infcx: &'cx InferCtxt<'tcx>) -> SelectionContext<'cx, 'tcx> {
-        SelectionContext { intercrate: true, ..SelectionContext::new(infcx) }
     }
 
     pub fn with_query_mode(
@@ -247,7 +223,7 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
     /// Enables tracking of intercrate ambiguity causes. See
     /// the documentation of [`Self::intercrate_ambiguity_causes`] for more.
     pub fn enable_tracking_intercrate_ambiguity_causes(&mut self) {
-        assert!(self.intercrate);
+        assert!(self.is_intercrate());
         assert!(self.intercrate_ambiguity_causes.is_none());
         self.intercrate_ambiguity_causes = Some(FxIndexSet::default());
         debug!("selcx: enable_tracking_intercrate_ambiguity_causes");
@@ -257,7 +233,7 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
     /// was enabled and disables tracking at the same time. If
     /// tracking is not enabled, just returns an empty vector.
     pub fn take_intercrate_ambiguity_causes(&mut self) -> FxIndexSet<IntercrateAmbiguityCause> {
-        assert!(self.intercrate);
+        assert!(self.is_intercrate());
         self.intercrate_ambiguity_causes.take().unwrap_or_default()
     }
 
@@ -270,7 +246,7 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
     }
 
     pub fn is_intercrate(&self) -> bool {
-        self.intercrate
+        self.infcx.intercrate
     }
 
     ///////////////////////////////////////////////////////////////////////////
@@ -741,6 +717,7 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
                 ty::PredicateKind::TypeWellFormedFromEnv(..) => {
                     bug!("TypeWellFormedFromEnv is only used for chalk")
                 }
+                ty::PredicateKind::Ambiguous => Ok(EvaluatedToAmbig),
             }
         })
     }
@@ -751,7 +728,7 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
         previous_stack: TraitObligationStackList<'o, 'tcx>,
         mut obligation: TraitObligation<'tcx>,
     ) -> Result<EvaluationResult, OverflowError> {
-        if !self.intercrate
+        if !self.is_intercrate()
             && obligation.is_global()
             && obligation.param_env.caller_bounds().iter().all(|bound| bound.needs_subst())
         {
@@ -1014,7 +991,7 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
         // mode, so don't do any caching. In particular, we might
         // re-use the same `InferCtxt` with both an intercrate
         // and non-intercrate `SelectionContext`
-        if self.intercrate {
+        if self.is_intercrate() {
             return None;
         }
 
@@ -1044,7 +1021,7 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
         // mode, so don't do any caching. In particular, we might
         // re-use the same `InferCtxt` with both an intercrate
         // and non-intercrate `SelectionContext`
-        if self.intercrate {
+        if self.is_intercrate() {
             return;
         }
 
@@ -1225,9 +1202,9 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
     }
 
     fn is_knowable<'o>(&mut self, stack: &TraitObligationStack<'o, 'tcx>) -> Result<(), Conflict> {
-        debug!("is_knowable(intercrate={:?})", self.intercrate);
+        debug!("is_knowable(intercrate={:?})", self.is_intercrate());
 
-        if !self.intercrate || stack.obligation.polarity() == ty::ImplPolarity::Negative {
+        if !self.is_intercrate() || stack.obligation.polarity() == ty::ImplPolarity::Negative {
             return Ok(());
         }
 
@@ -1258,7 +1235,7 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
         // the master cache. Since coherence executes pretty quickly,
         // it's not worth going to more trouble to increase the
         // hit-rate, I don't think.
-        if self.intercrate {
+        if self.is_intercrate() {
             return false;
         }
 
@@ -1275,7 +1252,7 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
         // mode, so don't do any caching. In particular, we might
         // re-use the same `InferCtxt` with both an intercrate
         // and non-intercrate `SelectionContext`
-        if self.intercrate {
+        if self.is_intercrate() {
             return None;
         }
         let tcx = self.tcx();
@@ -1314,7 +1291,7 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
         // mode, so don't do any caching. In particular, we might
         // re-use the same `InferCtxt` with both an intercrate
         // and non-intercrate `SelectionContext`
-        if self.intercrate {
+        if self.is_intercrate() {
             return false;
         }
         match result {
@@ -2191,7 +2168,7 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
             .map_err(|e| debug!("match_impl: failed eq_trait_refs due to `{e}`"))?;
         nested_obligations.extend(obligations);
 
-        if !self.intercrate
+        if !self.is_intercrate()
             && self.tcx().impl_polarity(impl_def_id) == ty::ImplPolarity::Reservation
         {
             debug!("reservation impls only apply in intercrate mode");

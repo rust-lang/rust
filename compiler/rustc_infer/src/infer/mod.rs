@@ -337,6 +337,26 @@ pub struct InferCtxt<'tcx> {
 
     normalize_fn_sig_for_diagnostic:
         Option<Lrc<dyn Fn(&InferCtxt<'tcx>, ty::PolyFnSig<'tcx>) -> ty::PolyFnSig<'tcx>>>,
+
+    /// During coherence we have to assume that other crates may add
+    /// additional impls which we currently don't know about.
+    ///
+    /// To deal with this evaluation should be conservative
+    /// and consider the possibility of impls from outside this crate.
+    /// This comes up primarily when resolving ambiguity. Imagine
+    /// there is some trait reference `$0: Bar` where `$0` is an
+    /// inference variable. If `intercrate` is true, then we can never
+    /// say for sure that this reference is not implemented, even if
+    /// there are *no impls at all for `Bar`*, because `$0` could be
+    /// bound to some type that in a downstream crate that implements
+    /// `Bar`.
+    ///
+    /// Outside of coherence we set this to false because we are only
+    /// interested in types that the user could actually have written.
+    /// In other words, we consider `$0: Bar` to be unimplemented if
+    /// there is no type that the user could *actually name* that
+    /// would satisfy it. This avoids crippling inference, basically.
+    pub intercrate: bool,
 }
 
 /// See the `error_reporting` module for more details.
@@ -552,6 +572,8 @@ pub struct InferCtxtBuilder<'tcx> {
     tcx: TyCtxt<'tcx>,
     defining_use_anchor: DefiningAnchor,
     considering_regions: bool,
+    /// Whether we are in coherence mode.
+    intercrate: bool,
     normalize_fn_sig_for_diagnostic:
         Option<Lrc<dyn Fn(&InferCtxt<'tcx>, ty::PolyFnSig<'tcx>) -> ty::PolyFnSig<'tcx>>>,
 }
@@ -567,6 +589,7 @@ impl<'tcx> TyCtxtInferExt<'tcx> for TyCtxt<'tcx> {
             defining_use_anchor: DefiningAnchor::Error,
             considering_regions: true,
             normalize_fn_sig_for_diagnostic: None,
+            intercrate: false,
         }
     }
 }
@@ -580,6 +603,11 @@ impl<'tcx> InferCtxtBuilder<'tcx> {
     /// in mir borrowck.
     pub fn with_opaque_type_inference(mut self, defining_use_anchor: DefiningAnchor) -> Self {
         self.defining_use_anchor = defining_use_anchor;
+        self
+    }
+
+    pub fn intercrate(mut self) -> Self {
+        self.intercrate = true;
         self
     }
 
@@ -622,6 +650,7 @@ impl<'tcx> InferCtxtBuilder<'tcx> {
             defining_use_anchor,
             considering_regions,
             ref normalize_fn_sig_for_diagnostic,
+            intercrate,
         } = *self;
         InferCtxt {
             tcx,
@@ -641,6 +670,7 @@ impl<'tcx> InferCtxtBuilder<'tcx> {
             normalize_fn_sig_for_diagnostic: normalize_fn_sig_for_diagnostic
                 .as_ref()
                 .map(|f| f.clone()),
+            intercrate,
         }
     }
 }
