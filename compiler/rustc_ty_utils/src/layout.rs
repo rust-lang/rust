@@ -138,8 +138,18 @@ fn univariant_uninterned<'tcx>(
     if optimize {
         let end = if let StructKind::MaybeUnsized = kind { fields.len() - 1 } else { fields.len() };
         let optimizing = &mut inverse_memory_index[..end];
-        let field_align = |f: &TyAndLayout<'_>| {
-            if let Some(pack) = pack { f.align.abi.min(pack) } else { f.align.abi }
+        let effective_field_align = |f: &TyAndLayout<'_>| {
+            if let Some(pack) = pack {
+                // return the packed alignment in bytes
+                f.align.abi.min(pack).bytes()
+            } else {
+                // returns log2(effective-align).
+                // This is ok since `pack` applies to all fields equally.
+                // The calculation assumes that size is an integer multiple of align, except for ZSTs.
+                //
+                // group [u8; 4] with align-4 or [u8; 6] with align-2 fields
+                f.align.abi.bytes().max(f.size.bytes()).trailing_zeros() as u64
+            }
         };
 
         // If `-Z randomize-layout` was enabled for the type definition we can shuffle
@@ -160,15 +170,23 @@ fn univariant_uninterned<'tcx>(
                     optimizing.sort_by_key(|&x| {
                         // Place ZSTs first to avoid "interesting offsets",
                         // especially with only one or two non-ZST fields.
+                        // Then place largest alignments first, largest niches within an alignment group last
                         let f = &fields[x as usize];
-                        (!f.is_zst(), cmp::Reverse(field_align(f)))
+                        let niche_size = f.largest_niche.map_or(0, |n| n.available(cx));
+                        (!f.is_zst(), cmp::Reverse(effective_field_align(f)), niche_size)
                     });
                 }
 
                 StructKind::Prefixed(..) => {
                     // Sort in ascending alignment so that the layout stays optimal
-                    // regardless of the prefix
-                    optimizing.sort_by_key(|&x| field_align(&fields[x as usize]));
+                    // regardless of the prefix.
+                    // And put the largest niche in an alignment group at the end
+                    // so it can be used as discriminant in jagged enums
+                    optimizing.sort_by_key(|&x| {
+                        let f = &fields[x as usize];
+                        let niche_size = f.largest_niche.map_or(0, |n| n.available(cx));
+                        (effective_field_align(f), niche_size)
+                    });
                 }
             }
 

@@ -2,12 +2,12 @@ ast-stats-1 PRE EXPANSION AST STATS
 ast-stats-1 Name                Accumulated Size         Count     Item Size
 ast-stats-1 ----------------------------------------------------------------
 ast-stats-1 ExprField                 48 ( 0.6%)             1            48
+ast-stats-1 GenericArgs               56 ( 0.8%)             1            56
+ast-stats-1 - AngleBracketed            56 ( 0.8%)             1
 ast-stats-1 Crate                     56 ( 0.8%)             1            56
 ast-stats-1 Attribute                 64 ( 0.9%)             2            32
 ast-stats-1 - Normal                    32 ( 0.4%)             1
 ast-stats-1 - DocComment                32 ( 0.4%)             1
-ast-stats-1 GenericArgs               64 ( 0.9%)             1            64
-ast-stats-1 - AngleBracketed            64 ( 0.9%)             1
 ast-stats-1 Local                     72 ( 1.0%)             1            72
 ast-stats-1 WherePredicate            72 ( 1.0%)             1            72
 ast-stats-1 - BoundPredicate            72 ( 1.0%)             1
@@ -53,15 +53,15 @@ ast-stats-1 - Impl                     184 ( 2.5%)             1
 ast-stats-1 - Fn                       368 ( 5.0%)             2
 ast-stats-1 - Use                      552 ( 7.4%)             3
 ast-stats-1 ----------------------------------------------------------------
-ast-stats-1 Total                  7_424
+ast-stats-1 Total                  7_416
 ast-stats-1
 ast-stats-2 POST EXPANSION AST STATS
 ast-stats-2 Name                Accumulated Size         Count     Item Size
 ast-stats-2 ----------------------------------------------------------------
 ast-stats-2 ExprField                 48 ( 0.6%)             1            48
+ast-stats-2 GenericArgs               56 ( 0.7%)             1            56
+ast-stats-2 - AngleBracketed            56 ( 0.7%)             1
 ast-stats-2 Crate                     56 ( 0.7%)             1            56
-ast-stats-2 GenericArgs               64 ( 0.8%)             1            64
-ast-stats-2 - AngleBracketed            64 ( 0.8%)             1
 ast-stats-2 Local                     72 ( 0.9%)             1            72
 ast-stats-2 WherePredicate            72 ( 0.9%)             1            72
 ast-stats-2 - BoundPredicate            72 ( 0.9%)             1
@@ -80,9 +80,9 @@ ast-stats-2 - Expr                      96 ( 1.2%)             3
 ast-stats-2 Param                    160 ( 2.0%)             4            40
 ast-stats-2 FnDecl                   200 ( 2.5%)             5            40
 ast-stats-2 Variant                  240 ( 3.0%)             2           120
-ast-stats-2 GenericBound             288 ( 3.5%)             4            72
-ast-stats-2 - Trait                    288 ( 3.5%)             4
-ast-stats-2 Block                    288 ( 3.5%)             6            48
+ast-stats-2 GenericBound             288 ( 3.6%)             4            72
+ast-stats-2 - Trait                    288 ( 3.6%)             4
+ast-stats-2 Block                    288 ( 3.6%)             6            48
 ast-stats-2 AssocItem                416 ( 5.1%)             4           104
 ast-stats-2 - Type                     208 ( 2.6%)             2
 ast-stats-2 - Fn                       208 ( 2.6%)             2
@@ -104,7 +104,7 @@ ast-stats-2 - Rptr                      64 ( 0.8%)             1
 ast-stats-2 - Ptr                       64 ( 0.8%)             1
 ast-stats-2 - ImplicitSelf             128 ( 1.6%)             2
 ast-stats-2 - Path                     640 ( 7.9%)            10
-ast-stats-2 Item                   2_024 (24.9%)            11           184
+ast-stats-2 Item                   2_024 (25.0%)            11           184
 ast-stats-2 - Trait                    184 ( 2.3%)             1
 ast-stats-2 - Enum                     184 ( 2.3%)             1
 ast-stats-2 - ExternCrate              184 ( 2.3%)             1
@@ -113,7 +113,7 @@ ast-stats-2 - Impl                     184 ( 2.3%)             1
 ast-stats-2 - Fn                       368 ( 4.5%)             2
 ast-stats-2 - Use                      736 ( 9.1%)             4
 ast-stats-2 ----------------------------------------------------------------
-ast-stats-2 Total                  8_120
+ast-stats-2 Total                  8_112
 ast-stats-2
 hir-stats HIR STATS
 hir-stats Name                Accumulated Size         Count     Item Size
