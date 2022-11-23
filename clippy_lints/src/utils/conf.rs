@@ -408,8 +408,12 @@ define_Conf! {
     (allow_mixed_uninlined_format_args: bool = true),
     /// Lint: INDEXING_SLICING
     ///
-    /// Whether to suppress lint in const function
-    (suppress_lint_in_const: bool = true),
+    /// Whether to suppress a restriction lint in constant code. In same
+    /// cases the restructured operation might not be unavoidable, as the
+    /// suggested counterparts are unavailable in constant code. This
+    /// configuration will cause restriction lints to trigger even
+    /// if no suggestion can be made.
+    (suppress_restriction_lint_in_const: bool = true),
 }
 
 /// Search for the configuration file.

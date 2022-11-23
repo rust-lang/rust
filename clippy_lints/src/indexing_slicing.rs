@@ -1,9 +1,10 @@
 //! lint on indexing and slicing operations
 
 use clippy_utils::consts::{constant, Constant};
-use clippy_utils::diagnostics::{span_lint, span_lint_and_help};
+use clippy_utils::diagnostics::{span_lint, span_lint_and_then};
 use clippy_utils::higher;
 use rustc_ast::ast::RangeLimits;
+use rustc_errors::Applicability;
 use rustc_hir::{Expr, ExprKind};
 use rustc_lint::{LateContext, LateLintPass};
 use rustc_middle::ty;
@@ -86,18 +87,20 @@ impl_lint_pass!(IndexingSlicing => [INDEXING_SLICING, OUT_OF_BOUNDS_INDEXING]);
 
 #[derive(Copy, Clone)]
 pub struct IndexingSlicing {
-    suppress_lint_in_const: bool,
+    suppress_restriction_lint_in_const: bool,
 }
 
 impl IndexingSlicing {
-    pub fn new(suppress_lint_in_const: bool) -> Self {
-        Self { suppress_lint_in_const }
+    pub fn new(suppress_restriction_lint_in_const: bool) -> Self {
+        Self {
+            suppress_restriction_lint_in_const,
+        }
     }
 }
 
 impl<'tcx> LateLintPass<'tcx> for IndexingSlicing {
     fn check_expr(&mut self, cx: &LateContext<'tcx>, expr: &'tcx Expr<'_>) {
-        if self.suppress_lint_in_const && cx.tcx.hir().is_inside_const_context(expr.hir_id) {
+        if self.suppress_restriction_lint_in_const && cx.tcx.hir().is_inside_const_context(expr.hir_id) {
             return;
         }
 
@@ -152,12 +155,19 @@ impl<'tcx> LateLintPass<'tcx> for IndexingSlicing {
                     (None, None) => return, // [..] is ok.
                 };
 
-                span_lint_and_help(cx, INDEXING_SLICING, expr.span, "slicing may panic", None, help_msg);
+                span_lint_and_then(cx, INDEXING_SLICING, expr.span, "slicing may panic", |diag| {
+                    let note = if cx.tcx.hir().is_inside_const_context(expr.hir_id) {
+                        "the suggestion might not be applicable in constant blocks"
+                    } else {
+                        ""
+                    };
+                    diag.span_suggestion(expr.span, help_msg, note, Applicability::MachineApplicable);
+                });
             } else {
                 // Catchall non-range index, i.e., [n] or [n << m]
                 if let ty::Array(..) = ty.kind() {
                     // Index is a const block.
-                    if self.suppress_lint_in_const && let ExprKind::ConstBlock(..) = index.kind {
+                    if self.suppress_restriction_lint_in_const && let ExprKind::ConstBlock(..) = index.kind {
                         return;
                     }
                     // Index is a constant uint.
@@ -167,14 +177,19 @@ impl<'tcx> LateLintPass<'tcx> for IndexingSlicing {
                     }
                 }
 
-                span_lint_and_help(
-                    cx,
-                    INDEXING_SLICING,
-                    expr.span,
-                    "indexing may panic",
-                    None,
-                    "consider using `.get(n)` or `.get_mut(n)` instead",
-                );
+                span_lint_and_then(cx, INDEXING_SLICING, expr.span, "indexing may panic", |diag| {
+                    let note = if cx.tcx.hir().is_inside_const_context(expr.hir_id) {
+                        "the suggestion might not be applicable in constant blocks"
+                    } else {
+                        ""
+                    };
+                    diag.span_suggestion(
+                        expr.span,
+                        "consider using `.get(n)` or `.get_mut(n)` instead",
+                        note,
+                        Applicability::MachineApplicable,
+                    );
+                });
             }
         }
     }
