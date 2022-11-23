@@ -10,6 +10,7 @@ use rustc_hir::def_id::CRATE_DEF_ID;
 use rustc_middle::middle::privacy::{EffectiveVisibilities, EffectiveVisibility};
 use rustc_middle::middle::privacy::{IntoDefIdTree, Level};
 use rustc_middle::ty::{DefIdTree, Visibility};
+use std::mem;
 
 type ImportId<'a> = Interned<'a, NameBinding<'a>>;
 
@@ -35,6 +36,8 @@ pub struct EffectiveVisibilitiesVisitor<'r, 'a> {
     /// keys in `Resolver::effective_visibilities` are not enough for that, because multiple
     /// bindings can correspond to a single def id in imports. So we keep a separate table.
     import_effective_visibilities: EffectiveVisibilities<ImportId<'a>>,
+    // It's possible to recalculate this at any point, but it's relatively expensive.
+    current_private_vis: Visibility,
     changed: bool,
 }
 
@@ -80,10 +83,12 @@ impl<'r, 'a> EffectiveVisibilitiesVisitor<'r, 'a> {
             r,
             def_effective_visibilities: Default::default(),
             import_effective_visibilities: Default::default(),
+            current_private_vis: Visibility::Public,
             changed: false,
         };
 
         visitor.update(CRATE_DEF_ID, CRATE_DEF_ID);
+        visitor.current_private_vis = Visibility::Restricted(CRATE_DEF_ID);
         visitor.set_bindings_effective_visibilities(CRATE_DEF_ID);
 
         while visitor.changed {
@@ -155,6 +160,10 @@ impl<'r, 'a> EffectiveVisibilitiesVisitor<'r, 'a> {
         }
     }
 
+    fn cheap_private_vis(&self, parent_id: ParentId<'_>) -> Option<Visibility> {
+        matches!(parent_id, ParentId::Def(_)).then_some(self.current_private_vis)
+    }
+
     fn effective_vis_or_private(&mut self, parent_id: ParentId<'a>) -> EffectiveVisibility {
         // Private nodes are only added to the table for caching, they could be added or removed at
         // any moment without consequences, so we don't set `changed` to true when adding them.
@@ -170,11 +179,12 @@ impl<'r, 'a> EffectiveVisibilitiesVisitor<'r, 'a> {
 
     fn update_import(&mut self, binding: ImportId<'a>, parent_id: ParentId<'a>) {
         let nominal_vis = binding.vis.expect_local();
+        let private_vis = self.cheap_private_vis(parent_id);
         let inherited_eff_vis = self.effective_vis_or_private(parent_id);
         self.changed |= self.import_effective_visibilities.update(
             binding,
             nominal_vis,
-            |r| (r.private_vis_import(binding), r),
+            |r| (private_vis.unwrap_or_else(|| r.private_vis_import(binding)), r),
             inherited_eff_vis,
             parent_id.level(),
             &mut *self.r,
@@ -182,11 +192,12 @@ impl<'r, 'a> EffectiveVisibilitiesVisitor<'r, 'a> {
     }
 
     fn update_def(&mut self, def_id: LocalDefId, nominal_vis: Visibility, parent_id: ParentId<'a>) {
+        let private_vis = self.cheap_private_vis(parent_id);
         let inherited_eff_vis = self.effective_vis_or_private(parent_id);
         self.changed |= self.def_effective_visibilities.update(
             def_id,
             nominal_vis,
-            |r| (r.private_vis_def(def_id), r),
+            |r| (private_vis.unwrap_or_else(|| r.private_vis_def(def_id)), r),
             inherited_eff_vis,
             parent_id.level(),
             &mut *self.r,
@@ -213,8 +224,11 @@ impl<'r, 'ast> Visitor<'ast> for EffectiveVisibilitiesVisitor<'ast, 'r> {
             ),
 
             ast::ItemKind::Mod(..) => {
+                let prev_private_vis =
+                    mem::replace(&mut self.current_private_vis, Visibility::Restricted(def_id));
                 self.set_bindings_effective_visibilities(def_id);
                 visit::walk_item(self, item);
+                self.current_private_vis = prev_private_vis;
             }
 
             ast::ItemKind::Enum(EnumDef { ref variants }, _) => {
