@@ -2392,26 +2392,49 @@ impl<T: Clone, A: Allocator> Vec<T, A> {
         self.spec_extend(other.iter())
     }
 
-    /// Copies elements from `src` range to the end of the vector.
+    /// Appends elements specified by the `src` parameter to the end of the vector.
+    /// The `src` parameter is of type [`RangeBounds`], which means that
+    /// it can be used to specify a range of elements in the vector.
+    /// 
+    /// [`RangeBounds`]: ../../std/ops/trait.RangeBounds.html
     ///
     /// # Panics
     ///
-    /// Panics if the starting point is greater than the end point or if
-    /// the end point is greater than the length of the vector.
+    /// Panics if the starting index is greater than the end index.
+    /// Panics if the end index is greater than the length of the vector.
     ///
     /// # Examples
+    /// 
+    /// With numbers:
     ///
     /// ```
-    /// let mut vec = vec![0, 1, 2, 3, 4];
+    /// let mut numbers1 = vec![0, 1, 2, 3, 4];
+    /// numbers1.extend_from_within(2..);
+    /// assert_eq!(numbers1, [0, 1, 2, 3, 4, 2, 3, 4]);
     ///
-    /// vec.extend_from_within(2..);
-    /// assert_eq!(vec, [0, 1, 2, 3, 4, 2, 3, 4]);
+    /// let mut numbers2 = vec![0, 1, 2, 3, 4];
+    /// numbers2.extend_from_within(..2);
+    /// assert_eq!(numbers2, [0, 1, 2, 3, 4, 0, 1]);
     ///
-    /// vec.extend_from_within(..2);
-    /// assert_eq!(vec, [0, 1, 2, 3, 4, 2, 3, 4, 0, 1]);
-    ///
-    /// vec.extend_from_within(4..8);
-    /// assert_eq!(vec, [0, 1, 2, 3, 4, 2, 3, 4, 0, 1, 4, 2, 3, 4]);
+    /// let mut numbers3 = vec![0, 1, 2, 3, 4];
+    /// numbers3.extend_from_within(1..3);
+    /// assert_eq!(numbers3, [0, 1, 2, 3, 4, 1, 2]);
+    /// ```
+    /// 
+    /// With characters:
+    /// 
+    /// ```
+    /// let mut characters1 = vec!['a', 'b', 'c', 'd', 'e'];
+    /// characters1.extend_from_within(2..);
+    /// assert_eq!(characters1, ['a', 'b', 'c', 'd', 'e', 'c', 'd', 'e']);
+    /// 
+    /// let mut characters2 = vec!['a', 'b', 'c', 'd', 'e'];
+    /// characters2.extend_from_within(..2);
+    /// assert_eq!(characters2, ['a', 'b', 'c', 'd', 'e', 'a', 'b']);
+    /// 
+    /// let mut characters3 = vec!['a', 'b', 'c', 'd', 'e'];
+    /// characters3.extend_from_within(1..3);
+    /// assert_eq!(characters3, ['a', 'b', 'c', 'd', 'e', 'b', 'c']);
     /// ```
     #[cfg(not(no_global_oom_handling))]
     #[stable(feature = "vec_extend_from_within", since = "1.53.0")]
