@@ -369,14 +369,14 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         }
     }
 
-    pub fn create_raw_ty(&self, span: Span, ty: Ty<'tcx>) -> RawTy<'tcx> {
+    pub fn handle_raw_ty(&self, span: Span, ty: Ty<'tcx>) -> RawTy<'tcx> {
         RawTy { raw: ty, normalized: self.normalize(span, ty) }
     }
 
     pub fn to_ty(&self, ast_t: &hir::Ty<'_>) -> RawTy<'tcx> {
         let t = <dyn AstConv<'_>>::ast_ty_to_ty(self, ast_t);
         self.register_wf_obligation(t.into(), ast_t.span, traits::WellFormed(None));
-        self.create_raw_ty(ast_t.span, t)
+        self.handle_raw_ty(ast_t.span, t)
     }
 
     pub fn to_ty_saving_user_provided_ty(&self, ast_ty: &hir::Ty<'_>) -> Ty<'tcx> {
@@ -767,7 +767,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                 // We manually call `register_wf_obligation` in the success path
                 // below.
                 let ty = <dyn AstConv<'_>>::ast_ty_to_ty_in_path(self, qself);
-                (self.create_raw_ty(span, ty), qself, segment)
+                (self.handle_raw_ty(span, ty), qself, segment)
             }
             QPath::LangItem(..) => {
                 bug!("`resolve_ty_and_res_fully_qualified_call` called on `LangItem`")

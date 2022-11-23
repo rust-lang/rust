@@ -1683,7 +1683,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             QPath::Resolved(ref maybe_qself, ref path) => {
                 let self_ty = maybe_qself.as_ref().map(|qself| self.to_ty(qself).raw);
                 let ty = <dyn AstConv<'_>>::res_to_ty(self, self_ty, path, true);
-                (path.res, self.create_raw_ty(path_span, ty))
+                (path.res, self.handle_raw_ty(path_span, ty))
             }
             QPath::TypeRelative(ref qself, ref segment) => {
                 let ty = self.to_ty(qself);
@@ -1692,7 +1692,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                     self, hir_id, path_span, ty.raw, qself, segment, true,
                 );
                 let ty = result.map(|(ty, _, _)| ty).unwrap_or_else(|_| self.tcx().ty_error());
-                let ty = self.create_raw_ty(path_span, ty);
+                let ty = self.handle_raw_ty(path_span, ty);
                 let result = result.map(|(_, kind, def_id)| (kind, def_id));
 
                 // Write back the new resolution.
@@ -1702,7 +1702,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             }
             QPath::LangItem(lang_item, span, id) => {
                 let (res, ty) = self.resolve_lang_item_path(lang_item, span, hir_id, id);
-                (res, self.create_raw_ty(path_span, ty))
+                (res, self.handle_raw_ty(path_span, ty))
             }
         }
     }
