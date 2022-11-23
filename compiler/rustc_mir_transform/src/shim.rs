@@ -37,7 +37,7 @@ fn make_shim<'tcx>(tcx: TyCtxt<'tcx>, instance: ty::InstanceDef<'tcx>) -> Body<'
         }
         ty::InstanceDef::FnPtrShim(def_id, ty) => {
             let trait_ = tcx.trait_of_item(def_id).unwrap();
-            let adjustment = match tcx.fn_trait_kind_from_lang_item(trait_) {
+            let adjustment = match tcx.fn_trait_kind_from_def_id(trait_) {
                 Some(ty::ClosureKind::FnOnce) => Adjustment::Identity,
                 Some(ty::ClosureKind::FnMut | ty::ClosureKind::Fn) => Adjustment::Deref,
                 None => bug!("fn pointer {:?} is not an fn", ty),

@@ -358,7 +358,8 @@ impl<'tcx> InferCtxtExt<'tcx> for InferCtxt<'tcx> {
                 fulfill_cx.register_predicate_obligation(self, obligation);
                 if fulfill_cx.select_all_or_error(self).is_empty() {
                     return Ok((
-                        ty::ClosureKind::from_def_id(self.tcx, trait_def_id)
+                        self.tcx
+                            .fn_trait_kind_from_def_id(trait_def_id)
                             .expect("expected to map DefId to ClosureKind"),
                         ty.rebind(self.resolve_vars_if_possible(var)),
                     ));
@@ -687,7 +688,7 @@ impl<'tcx> TypeErrCtxtExt<'tcx> for TypeErrCtxt<'_, 'tcx> {
                                 }
                                 ObligationCauseCode::BindingObligation(def_id, _)
                                 | ObligationCauseCode::ItemObligation(def_id)
-                                    if ty::ClosureKind::from_def_id(tcx, *def_id).is_some() =>
+                                    if tcx.is_fn_trait(*def_id) =>
                                 {
                                     err.code(rustc_errors::error_code!(E0059));
                                     err.set_primary_message(format!(
@@ -847,8 +848,7 @@ impl<'tcx> TypeErrCtxtExt<'tcx> for TypeErrCtxt<'_, 'tcx> {
                             );
                         }
 
-                        let is_fn_trait =
-                            ty::ClosureKind::from_def_id(tcx, trait_ref.def_id()).is_some();
+                        let is_fn_trait = tcx.is_fn_trait(trait_ref.def_id());
                         let is_target_feature_fn = if let ty::FnDef(def_id, _) =
                             *trait_ref.skip_binder().self_ty().kind()
                         {
@@ -878,7 +878,7 @@ impl<'tcx> TypeErrCtxtExt<'tcx> for TypeErrCtxt<'_, 'tcx> {
                             // Note if the `FnMut` or `FnOnce` is less general than the trait we're trying
                             // to implement.
                             let selected_kind =
-                                ty::ClosureKind::from_def_id(self.tcx, trait_ref.def_id())
+                                self.tcx.fn_trait_kind_from_def_id(trait_ref.def_id())
                                     .expect("expected to map DefId to ClosureKind");
                             if !implemented_kind.extends(selected_kind) {
                                 err.note(
@@ -2154,7 +2154,7 @@ impl<'tcx> InferCtxtPrivExt<'tcx> for TypeErrCtxt<'_, 'tcx> {
                     if generics.params.iter().any(|p| p.name != kw::SelfUpper)
                         && !snippet.ends_with('>')
                         && !generics.has_impl_trait()
-                        && !self.tcx.fn_trait_kind_from_lang_item(def_id).is_some()
+                        && !self.tcx.is_fn_trait(def_id)
                     {
                         // FIXME: To avoid spurious suggestions in functions where type arguments
                         // where already supplied, we check the snippet to make sure it doesn't
