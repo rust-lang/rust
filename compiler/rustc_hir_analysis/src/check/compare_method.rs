@@ -218,14 +218,11 @@ fn compare_predicate_entailment<'tcx>(
 
     debug!("compare_impl_method: caller_bounds={:?}", param_env.caller_bounds());
 
-    let mut selcx = traits::SelectionContext::new(&infcx);
     let impl_m_own_bounds = impl_m_predicates.instantiate_own(tcx, impl_to_placeholder_substs);
     for (predicate, span) in iter::zip(impl_m_own_bounds.predicates, impl_m_own_bounds.spans) {
         let normalize_cause = traits::ObligationCause::misc(span, impl_m_hir_id);
-        let traits::Normalized { value: predicate, obligations } =
-            traits::normalize(&mut selcx, param_env, normalize_cause, predicate);
+        let predicate = ocx.normalize(normalize_cause, param_env, predicate);
 
-        ocx.register_obligations(obligations);
         let cause = ObligationCause::new(
             span,
             impl_m_hir_id,
@@ -1555,14 +1552,11 @@ fn compare_type_predicate_entailment<'tcx>(
 
     debug!("compare_type_predicate_entailment: caller_bounds={:?}", param_env.caller_bounds());
 
-    let mut selcx = traits::SelectionContext::new(&infcx);
-
     assert_eq!(impl_ty_own_bounds.predicates.len(), impl_ty_own_bounds.spans.len());
     for (span, predicate) in std::iter::zip(impl_ty_own_bounds.spans, impl_ty_own_bounds.predicates)
     {
         let cause = ObligationCause::misc(span, impl_ty_hir_id);
-        let traits::Normalized { value: predicate, obligations } =
-            traits::normalize(&mut selcx, param_env, cause, predicate);
+        let predicate = ocx.normalize(cause, param_env, predicate);
 
         let cause = ObligationCause::new(
             span,
@@ -1573,7 +1567,6 @@ fn compare_type_predicate_entailment<'tcx>(
                 kind: impl_ty.kind,
             },
         );
-        ocx.register_obligations(obligations);
         ocx.register_obligation(traits::Obligation::new(tcx, cause, param_env, predicate));
     }
 
@@ -1756,7 +1749,6 @@ pub fn check_type_bounds<'tcx>(
     let assumed_wf_types =
         ocx.assumed_wf_types(param_env, impl_ty_span, impl_ty.def_id.expect_local());
 
-    let mut selcx = traits::SelectionContext::new(&infcx);
     let normalize_cause = ObligationCause::new(
         impl_ty_span,
         impl_ty_hir_id,
@@ -1785,16 +1777,11 @@ pub fn check_type_bounds<'tcx>(
     debug!("check_type_bounds: item_bounds={:?}", obligations);
 
     for mut obligation in util::elaborate_obligations(tcx, obligations) {
-        let traits::Normalized { value: normalized_predicate, obligations } = traits::normalize(
-            &mut selcx,
-            normalize_param_env,
-            normalize_cause.clone(),
-            obligation.predicate,
-        );
+        let normalized_predicate =
+            ocx.normalize(normalize_cause.clone(), normalize_param_env, obligation.predicate);
         debug!("compare_projection_bounds: normalized predicate = {:?}", normalized_predicate);
         obligation.predicate = normalized_predicate;
 
-        ocx.register_obligations(obligations);
         ocx.register_obligation(obligation);
     }
     // Check that all obligations are satisfied by the implementation's
