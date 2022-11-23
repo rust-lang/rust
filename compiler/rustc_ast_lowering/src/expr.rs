@@ -588,17 +588,12 @@ impl<'hir> LoweringContext<'_, 'hir> {
         &mut self,
         capture_clause: CaptureBy,
         closure_node_id: NodeId,
-        ret_ty: Option<AstP<Ty>>,
+        ret_ty: Option<hir::FnRetTy<'hir>>,
         span: Span,
         async_gen_kind: hir::AsyncGeneratorKind,
         body: impl FnOnce(&mut Self) -> hir::Expr<'hir>,
     ) -> hir::ExprKind<'hir> {
-        let output = match ret_ty {
-            Some(ty) => hir::FnRetTy::Return(
-                self.lower_ty(&ty, &ImplTraitContext::Disallowed(ImplTraitPosition::AsyncBlock)),
-            ),
-            None => hir::FnRetTy::DefaultReturn(self.lower_span(span)),
-        };
+        let output = ret_ty.unwrap_or_else(|| hir::FnRetTy::DefaultReturn(self.lower_span(span)));
 
         // Resume argument type. We let the compiler infer this to simplify the lowering. It is
         // fully constrained by `future::from_generator`.
@@ -1003,8 +998,13 @@ impl<'hir> LoweringContext<'_, 'hir> {
             // Transform `async |x: u8| -> X { ... }` into
             // `|x: u8| future_from_generator(|| -> X { ... })`.
             let body_id = this.lower_fn_body(&outer_decl, |this| {
-                let async_ret_ty =
-                    if let FnRetTy::Ty(ty) = &decl.output { Some(ty.clone()) } else { None };
+                let async_ret_ty = if let FnRetTy::Ty(ty) = &decl.output {
+                    let itctx = ImplTraitContext::Disallowed(ImplTraitPosition::AsyncBlock);
+                    Some(hir::FnRetTy::Return(this.lower_ty(&ty, &itctx)))
+                } else {
+                    None
+                };
+
                 let async_body = this.make_async_expr(
                     capture_clause,
                     inner_closure_id,

@@ -36,7 +36,7 @@ test = false
 
 [dependencies]
 cmake = "0.1.38"
-fd-lock = "3.0.7"
+fd-lock = "3.0.8"
 filetime = "0.2"
 getopts = "0.2.19"
 cc = "1.0.69"

@@ -136,6 +136,11 @@ impl<'tcx> TypeRelation<'tcx> for Match<'tcx> {
     fn tag(&self) -> &'static str {
         "Match"
     }
+
+    fn intercrate(&self) -> bool {
+        false
+    }
+
     fn tcx(&self) -> TyCtxt<'tcx> {
         self.tcx
     }
@@ -145,6 +150,10 @@ impl<'tcx> TypeRelation<'tcx> for Match<'tcx> {
     fn a_is_expected(&self) -> bool {
         true
     } // irrelevant
+
+    fn mark_ambiguous(&mut self) {
+        bug!()
+    }
 
     fn relate_with_variance<T: Relate<'tcx>>(
         &mut self,
