@@ -236,11 +236,19 @@ impl TraitData {
             .by_key("rustc_skip_array_during_method_dispatch")
             .exists();
 
-        let mut collector =
-            AssocItemCollector::new(db, module_id, tree_id.file_id(), ItemContainerId::TraitId(tr));
-        collector.collect(&item_tree, tree_id.tree_id(), &tr_def.items);
-        let (items, attribute_calls, diagnostics) = collector.finish();
-
+        let (items, attribute_calls, diagnostics) = match &tr_def.items {
+            Some(items) => {
+                let mut collector = AssocItemCollector::new(
+                    db,
+                    module_id,
+                    tree_id.file_id(),
+                    ItemContainerId::TraitId(tr),
+                );
+                collector.collect(&item_tree, tree_id.tree_id(), items);
+                collector.finish()
+            }
+            None => Default::default(),
+        };
         (
             Arc::new(TraitData {
                 name,

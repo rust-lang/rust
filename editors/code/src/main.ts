@@ -48,6 +48,30 @@ async function activateServer(ctx: Ctx): Promise<RustAnalyzerExtensionApi> {
         ctx.pushExtCleanup(activateTaskProvider(ctx.config));
     }
 
+    ctx.pushExtCleanup(
+        vscode.workspace.registerTextDocumentContentProvider(
+            "rust-analyzer-diagnostics-view",
+            new (class implements vscode.TextDocumentContentProvider {
+                async provideTextDocumentContent(uri: vscode.Uri): Promise<string> {
+                    const diags = ctx.client?.diagnostics?.get(
+                        vscode.Uri.parse(uri.fragment, true)
+                    );
+                    if (!diags) {
+                        return "Unable to find original rustc diagnostic";
+                    }
+
+                    const diag = diags[parseInt(uri.query)];
+                    if (!diag) {
+                        return "Unable to find original rustc diagnostic";
+                    }
+                    const rendered = (diag as unknown as { data?: { rendered?: string } }).data
+                        ?.rendered;
+                    return rendered ?? "Unable to find original rustc diagnostic";
+                }
+            })()
+        )
+    );
+
     vscode.workspace.onDidChangeWorkspaceFolders(
         async (_) => ctx.onWorkspaceFolderChanges(),
         null,

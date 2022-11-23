@@ -69,7 +69,7 @@ impl WorkspaceBuildScripts {
                 cmd.args(&["check", "--quiet", "--workspace", "--message-format=json"]);
 
                 // --all-targets includes tests, benches and examples in addition to the
-                // default lib and bins. This is an independent concept from the --targets
+                // default lib and bins. This is an independent concept from the --target
                 // flag below.
                 cmd.arg("--all-targets");
 

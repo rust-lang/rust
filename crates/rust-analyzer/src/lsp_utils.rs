@@ -1,5 +1,5 @@
 //! Utilities for LSP-related boilerplate code.
-use std::{ops::Range, sync::Arc};
+use std::{mem, ops::Range, sync::Arc};
 
 use lsp_server::Notification;
 
@@ -133,11 +133,37 @@ impl GlobalState {
 }
 
 pub(crate) fn apply_document_changes(
-    old_text: &mut String,
-    content_changes: Vec<lsp_types::TextDocumentContentChangeEvent>,
-) {
+    file_contents: impl FnOnce() -> String,
+    mut content_changes: Vec<lsp_types::TextDocumentContentChangeEvent>,
+) -> String {
+    // Skip to the last full document change, as it invalidates all previous changes anyways.
+    let mut start = content_changes
+        .iter()
+        .rev()
+        .position(|change| change.range.is_none())
+        .map(|idx| content_changes.len() - idx - 1)
+        .unwrap_or(0);
+
+    let mut text: String = match content_changes.get_mut(start) {
+        // peek at the first content change as an optimization
+        Some(lsp_types::TextDocumentContentChangeEvent { range: None, text, .. }) => {
+            let text = mem::take(text);
+            start += 1;
+
+            // The only change is a full document update
+            if start == content_changes.len() {
+                return text;
+            }
+            text
+        }
+        Some(_) => file_contents(),
+        // we received no content changes
+        None => return file_contents(),
+    };
+
     let mut line_index = LineIndex {
-        index: Arc::new(ide::LineIndex::new(old_text)),
+        // the index will be overwritten in the bottom loop's first iteration
+        index: Arc::new(ide::LineIndex::new(&text)),
         // We don't care about line endings or offset encoding here.
         endings: LineEndings::Unix,
         encoding: PositionEncoding::Utf16,
@@ -148,38 +174,20 @@ pub(crate) fn apply_document_changes(
     // Some clients (e.g. Code) sort the ranges in reverse. As an optimization, we
     // remember the last valid line in the index and only rebuild it if needed.
     // The VFS will normalize the end of lines to `\n`.
-    enum IndexValid {
-        All,
-        UpToLineExclusive(u32),
-    }
-
-    impl IndexValid {
-        fn covers(&self, line: u32) -> bool {
-            match *self {
-                IndexValid::UpToLineExclusive(to) => to > line,
-                _ => true,
-            }
-        }
-    }
-
-    let mut index_valid = IndexValid::All;
+    let mut index_valid = !0u32;
     for change in content_changes {
-        match change.range {
-            Some(range) => {
-                if !index_valid.covers(range.end.line) {
-                    line_index.index = Arc::new(ide::LineIndex::new(old_text));
-                }
-                index_valid = IndexValid::UpToLineExclusive(range.start.line);
-                if let Ok(range) = from_proto::text_range(&line_index, range) {
-                    old_text.replace_range(Range::<usize>::from(range), &change.text);
-                }
+        // The None case can't happen as we have handled it above already
+        if let Some(range) = change.range {
+            if index_valid <= range.end.line {
+                *Arc::make_mut(&mut line_index.index) = ide::LineIndex::new(&text);
             }
-            None => {
-                *old_text = change.text;
-                index_valid = IndexValid::UpToLineExclusive(0);
+            index_valid = range.start.line;
+            if let Ok(range) = from_proto::text_range(&line_index, range) {
+                text.replace_range(Range::<usize>::from(range), &change.text);
             }
         }
     }
+    text
 }
 
 /// Checks that the edits inside the completion and the additional edits do not overlap.
@@ -242,11 +250,10 @@ mod tests {
             };
         }
 
-        let mut text = String::new();
-        apply_document_changes(&mut text, vec![]);
+        let text = apply_document_changes(|| String::new(), vec![]);
         assert_eq!(text, "");
-        apply_document_changes(
-            &mut text,
+        let text = apply_document_changes(
+            || text,
             vec![TextDocumentContentChangeEvent {
                 range: None,
                 range_length: None,
@@ -254,39 +261,39 @@ mod tests {
             }],
         );
         assert_eq!(text, "the");
-        apply_document_changes(&mut text, c![0, 3; 0, 3 => " quick"]);
+        let text = apply_document_changes(|| text, c![0, 3; 0, 3 => " quick"]);
         assert_eq!(text, "the quick");
-        apply_document_changes(&mut text, c![0, 0; 0, 4 => "", 0, 5; 0, 5 => " foxes"]);
+        let text = apply_document_changes(|| text, c![0, 0; 0, 4 => "", 0, 5; 0, 5 => " foxes"]);
         assert_eq!(text, "quick foxes");
-        apply_document_changes(&mut text, c![0, 11; 0, 11 => "\ndream"]);
+        let text = apply_document_changes(|| text, c![0, 11; 0, 11 => "\ndream"]);
         assert_eq!(text, "quick foxes\ndream");
-        apply_document_changes(&mut text, c![1, 0; 1, 0 => "have "]);
+        let text = apply_document_changes(|| text, c![1, 0; 1, 0 => "have "]);
         assert_eq!(text, "quick foxes\nhave dream");
-        apply_document_changes(
-            &mut text,
+        let text = apply_document_changes(
+            || text,
             c![0, 0; 0, 0 => "the ", 1, 4; 1, 4 => " quiet", 1, 16; 1, 16 => "s\n"],
         );
         assert_eq!(text, "the quick foxes\nhave quiet dreams\n");
-        apply_document_changes(&mut text, c![0, 15; 0, 15 => "\n", 2, 17; 2, 17 => "\n"]);
+        let text = apply_document_changes(|| text, c![0, 15; 0, 15 => "\n", 2, 17; 2, 17 => "\n"]);
         assert_eq!(text, "the quick foxes\n\nhave quiet dreams\n\n");
-        apply_document_changes(
-            &mut text,
+        let text = apply_document_changes(
+            || text,
             c![1, 0; 1, 0 => "DREAM", 2, 0; 2, 0 => "they ", 3, 0; 3, 0 => "DON'T THEY?"],
         );
         assert_eq!(text, "the quick foxes\nDREAM\nthey have quiet dreams\nDON'T THEY?\n");
-        apply_document_changes(&mut text, c![0, 10; 1, 5 => "", 2, 0; 2, 12 => ""]);
+        let text = apply_document_changes(|| text, c![0, 10; 1, 5 => "", 2, 0; 2, 12 => ""]);
         assert_eq!(text, "the quick \nthey have quiet dreams\n");
 
-        text = String::from("❤️");
-        apply_document_changes(&mut text, c![0, 0; 0, 0 => "a"]);
+        let text = String::from("❤️");
+        let text = apply_document_changes(|| text, c![0, 0; 0, 0 => "a"]);
         assert_eq!(text, "a❤️");
 
-        text = String::from("a\nb");
-        apply_document_changes(&mut text, c![0, 1; 1, 0 => "\nțc", 0, 1; 1, 1 => "d"]);
+        let text = String::from("a\nb");
+        let text = apply_document_changes(|| text, c![0, 1; 1, 0 => "\nțc", 0, 1; 1, 1 => "d"]);
         assert_eq!(text, "adcb");
 
-        text = String::from("a\nb");
-        apply_document_changes(&mut text, c![0, 1; 1, 0 => "ț\nc", 0, 2; 0, 2 => "c"]);
+        let text = String::from("a\nb");
+        let text = apply_document_changes(|| text, c![0, 1; 1, 0 => "ț\nc", 0, 2; 0, 2 => "c"]);
         assert_eq!(text, "ațc\ncb");
     }
 

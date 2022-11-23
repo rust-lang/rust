@@ -245,3 +245,35 @@ impl Test for () {
         "#]],
     );
 }
+
+#[test]
+fn after_unit_struct() {
+    check(
+        r#"struct S; f$0"#,
+        expect![[r#"
+            ma makro!(…)           macro_rules! makro
+            md module
+            kw const
+            kw crate::
+            kw enum
+            kw extern
+            kw fn
+            kw impl
+            kw mod
+            kw pub
+            kw pub(crate)
+            kw pub(super)
+            kw self::
+            kw static
+            kw struct
+            kw trait
+            kw type
+            kw union
+            kw unsafe
+            kw use
+            sn macro_rules
+            sn tfn (Test function)
+            sn tmod (Test module)
+        "#]],
+    );
+}

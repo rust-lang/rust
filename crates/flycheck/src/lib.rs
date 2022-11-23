@@ -10,11 +10,12 @@ use std::{
     time::Duration,
 };
 
+use command_group::{CommandGroup, GroupChild};
 use crossbeam_channel::{never, select, unbounded, Receiver, Sender};
 use paths::AbsPathBuf;
 use rustc_hash::FxHashMap;
 use serde::Deserialize;
-use stdx::{process::streaming_output, JodChild};
+use stdx::process::streaming_output;
 
 pub use cargo_metadata::diagnostic::{
     Applicability, Diagnostic, DiagnosticCode, DiagnosticLevel, DiagnosticSpan,
@@ -39,7 +40,7 @@ pub enum InvocationLocation {
 pub enum FlycheckConfig {
     CargoCommand {
         command: String,
-        target_triple: Option<String>,
+        target_triples: Vec<String>,
         all_targets: bool,
         no_default_features: bool,
         all_features: bool,
@@ -285,7 +286,7 @@ impl FlycheckActor {
         let (mut cmd, args) = match &self.config {
             FlycheckConfig::CargoCommand {
                 command,
-                target_triple,
+                target_triples,
                 no_default_features,
                 all_targets,
                 all_features,
@@ -299,7 +300,7 @@ impl FlycheckActor {
                 cmd.args(&["--workspace", "--message-format=json", "--manifest-path"])
                     .arg(self.root.join("Cargo.toml").as_os_str());
 
-                if let Some(target) = target_triple {
+                for target in target_triples {
                     cmd.args(&["--target", target.as_str()]);
                 }
                 if *all_targets {
@@ -359,10 +360,12 @@ impl FlycheckActor {
     }
 }
 
+struct JodChild(GroupChild);
+
 /// A handle to a cargo process used for fly-checking.
 struct CargoHandle {
     /// The handle to the actual cargo process. As we cannot cancel directly from with
-    /// a read syscall dropping and therefor terminating the process is our best option.
+    /// a read syscall dropping and therefore terminating the process is our best option.
     child: JodChild,
     thread: jod_thread::JoinHandle<io::Result<(bool, String)>>,
     receiver: Receiver<CargoMessage>,
@@ -371,10 +374,10 @@ struct CargoHandle {
 impl CargoHandle {
     fn spawn(mut command: Command) -> std::io::Result<CargoHandle> {
         command.stdout(Stdio::piped()).stderr(Stdio::piped()).stdin(Stdio::null());
-        let mut child = JodChild::spawn(command)?;
+        let mut child = command.group_spawn().map(JodChild)?;
 
-        let stdout = child.stdout.take().unwrap();
-        let stderr = child.stderr.take().unwrap();
+        let stdout = child.0.inner().stdout.take().unwrap();
+        let stderr = child.0.inner().stderr.take().unwrap();
 
         let (sender, receiver) = unbounded();
         let actor = CargoActor::new(sender, stdout, stderr);
@@ -386,13 +389,13 @@ impl CargoHandle {
     }
 
     fn cancel(mut self) {
-        let _ = self.child.kill();
-        let _ = self.child.wait();
+        let _ = self.child.0.kill();
+        let _ = self.child.0.wait();
     }
 
     fn join(mut self) -> io::Result<()> {
-        let _ = self.child.kill();
-        let exit_status = self.child.wait()?;
+        let _ = self.child.0.kill();
+        let exit_status = self.child.0.wait()?;
         let (read_at_least_one_message, error) = self.thread.join()?;
         if read_at_least_one_message || exit_status.success() {
             Ok(())

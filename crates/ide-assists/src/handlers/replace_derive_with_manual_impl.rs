@@ -1019,8 +1019,6 @@ struct Foo {
 impl foo::Bar for Foo {
     $0type Qux;
 
-    const Baz: usize = 42;
-
     const Fez: usize;
 
     fn foo() {

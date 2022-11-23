@@ -1324,7 +1324,7 @@ fn foo() {
             generate_function,
             r"
 mod bar {
-    mod baz {}
+    pub mod baz {}
 }
 
 fn foo() {
@@ -1333,7 +1333,7 @@ fn foo() {
 ",
             r"
 mod bar {
-    mod baz {
+    pub mod baz {
         pub(crate) fn my_fn() {
             ${0:todo!()}
         }
