@@ -877,9 +877,9 @@ pub struct Place<'tcx> {
 
 #[derive(Copy, Clone, Debug, PartialEq, Eq, PartialOrd, Ord, Hash)]
 #[derive(TyEncodable, TyDecodable, HashStable, TypeFoldable, TypeVisitable)]
-pub enum ProjectionElem<V, T> {
+pub enum ProjectionElem<V, T1, T2> {
     Deref,
-    Field(Field, T),
+    Field(Field, T1),
     /// Index into a slice/array.
     ///
     /// Note that this does not also dereference, and so it does not exactly correspond to slice
@@ -935,12 +935,36 @@ pub enum ProjectionElem<V, T> {
 
     /// Like an explicit cast from an opaque type to a concrete type, but without
     /// requiring an intermediate variable.
-    OpaqueCast(T),
+    OpaqueCast(T2),
 }
 
 /// Alias for projections as they appear in places, where the base is a place
 /// and the index is a local.
-pub type PlaceElem<'tcx> = ProjectionElem<Local, Ty<'tcx>>;
+pub type PlaceElem<'tcx> = ProjectionElem<Local, Ty<'tcx>, Ty<'tcx>>;
+
+/// Alias for projections that appear in `PlaceBuilder::UpVar`, for which
+/// we cannot provide any field types.
+pub type UpvarProjectionElem<'tcx> = ProjectionElem<Local, (), Ty<'tcx>>;
+
+impl<'tcx> From<PlaceElem<'tcx>> for UpvarProjectionElem<'tcx> {
+    fn from(elem: PlaceElem<'tcx>) -> Self {
+        match elem {
+            ProjectionElem::Deref => ProjectionElem::Deref,
+            ProjectionElem::Field(field, _) => ProjectionElem::Field(field, ()),
+            ProjectionElem::Index(v) => ProjectionElem::Index(v),
+            ProjectionElem::ConstantIndex { offset, min_length, from_end } => {
+                ProjectionElem::ConstantIndex { offset, min_length, from_end }
+            }
+            ProjectionElem::Subslice { from, to, from_end } => {
+                ProjectionElem::Subslice { from, to, from_end }
+            }
+            ProjectionElem::Downcast(opt_sym, variant_idx) => {
+                ProjectionElem::Downcast(opt_sym, variant_idx)
+            }
+            ProjectionElem::OpaqueCast(ty) => ProjectionElem::OpaqueCast(ty),
+        }
+    }
+}
 
 ///////////////////////////////////////////////////////////////////////////
 // Operands

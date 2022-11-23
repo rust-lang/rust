@@ -777,10 +777,10 @@ pub enum TrackElem {
     Field(Field),
 }
 
-impl<V, T> TryFrom<ProjectionElem<V, T>> for TrackElem {
+impl<V, T1, T2> TryFrom<ProjectionElem<V, T1, T2>> for TrackElem {
     type Error = ();
 
-    fn try_from(value: ProjectionElem<V, T>) -> Result<Self, Self::Error> {
+    fn try_from(value: ProjectionElem<V, T1, T2>) -> Result<Self, Self::Error> {
         match value {
             ProjectionElem::Field(field, _) => Ok(TrackElem::Field(field)),
             _ => Err(()),
