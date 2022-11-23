@@ -878,7 +878,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             format!("impl {}", all_bounds_str),
             Applicability::MaybeIncorrect,
         );
-        err.span_note(fn_return.span(), "generic type variables are chosen by the caller");
+        err.note("generic type variables are chosen by the caller");
     }
 
     pub(in super::super) fn suggest_missing_break_or_return_expr(
