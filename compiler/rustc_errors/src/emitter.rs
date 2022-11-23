@@ -2282,7 +2282,7 @@ impl FileWithAnnotatedLines {
         }
 
         // Find overlapping multiline annotations, put them at different depths
-        multiline_annotations.sort_by_key(|&(_, ref ml)| (ml.line_start, ml.line_end));
+        multiline_annotations.sort_by_key(|&(_, ref ml)| (ml.line_start, usize::MAX - ml.line_end));
         for (_, ann) in multiline_annotations.clone() {
             for (_, a) in multiline_annotations.iter_mut() {
                 // Move all other multiline annotations overlapping with this one

@@ -9,12 +9,10 @@ LL |    fn oom(
    | ||
 LL | ||     info: Layout,
 LL | || ) {
-   | || -
-   | ||_|
-   |  | arguments to this function are incorrect
-LL |  |     loop {}
-LL |  | }
-   |  |_^ expected struct `Layout`, found struct `core::alloc::Layout`
+   | ||_- arguments to this function are incorrect
+LL | |      loop {}
+LL | |  }
+   | |__^ expected struct `Layout`, found struct `core::alloc::Layout`
    |
    = note: struct `core::alloc::Layout` and struct `Layout` have similar names, but are actually distinct types
 note: struct `core::alloc::Layout` is defined in crate `core`
@@ -47,12 +45,10 @@ LL |    fn oom(
    | ||
 LL | ||     info: Layout,
 LL | || ) {
-   | || ^
-   | ||_|
-   |  | expected `!`, found `()`
-LL |  |     loop {}
-LL |  | }
-   |  |_- expected `!` because of return type
+   | ||_^ expected `!`, found `()`
+LL | |      loop {}
+LL | |  }
+   | |__- expected `!` because of return type
    |
    = note:   expected type `!`
            found unit type `()`

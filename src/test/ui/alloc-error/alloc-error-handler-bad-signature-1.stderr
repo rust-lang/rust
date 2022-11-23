@@ -10,10 +10,10 @@ LL |    fn oom(
 LL | ||     info: &Layout,
 LL | || ) -> ()
    | ||_______- arguments to this function are incorrect
-LL |  | {
-LL |  |     loop {}
-LL |  | }
-   |  |_^ expected `&Layout`, found struct `Layout`
+LL | |  {
+LL | |      loop {}
+LL | |  }
+   | |__^ expected `&Layout`, found struct `Layout`
    |
 note: function defined here
   --> $DIR/alloc-error-handler-bad-signature-1.rs:10:4
@@ -36,10 +36,10 @@ LL |    fn oom(
 LL | ||     info: &Layout,
 LL | || ) -> ()
    | ||_______^ expected `!`, found `()`
-LL |  | {
-LL |  |     loop {}
-LL |  | }
-   |  |_- expected `!` because of return type
+LL | |  {
+LL | |      loop {}
+LL | |  }
+   | |__- expected `!` because of return type
    |
    = note:   expected type `!`
            found unit type `()`
