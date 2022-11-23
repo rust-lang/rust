@@ -213,14 +213,21 @@ impl<Id: Eq + Hash> EffectiveVisibilities<Id> {
         self.map.get(&id)
     }
 
-    // `parent_id` is not necessarily a parent in source code tree,
-    // it is the node from which the maximum effective visibility is inherited.
+    // FIXME: Share code with `fn update`.
+    pub fn effective_vis_or_private(
+        &mut self,
+        id: Id,
+        lazy_private_vis: impl FnOnce() -> Visibility,
+    ) -> &EffectiveVisibility {
+        self.map.entry(id).or_insert_with(|| EffectiveVisibility::from_vis(lazy_private_vis()))
+    }
+
     pub fn update<T: IntoDefIdTree>(
         &mut self,
         id: Id,
         nominal_vis: Visibility,
         lazy_private_vis: impl FnOnce(T) -> (Visibility, T),
-        inherited_eff_vis: Option<EffectiveVisibility>,
+        inherited_effective_vis: EffectiveVisibility,
         level: Level,
         mut into_tree: T,
     ) -> bool {
@@ -235,39 +242,36 @@ impl<Id: Eq + Hash> EffectiveVisibilities<Id> {
         };
         let tree = into_tree.tree();
 
-        if let Some(inherited_effective_vis) = inherited_eff_vis {
-            let mut inherited_effective_vis_at_prev_level =
-                *inherited_effective_vis.at_level(level);
-            let mut calculated_effective_vis = inherited_effective_vis_at_prev_level;
-            for l in Level::all_levels() {
-                if level >= l {
-                    let inherited_effective_vis_at_level = *inherited_effective_vis.at_level(l);
-                    let current_effective_vis_at_level = current_effective_vis.at_level_mut(l);
-                    // effective visibility for id shouldn't be recalculated if
-                    // inherited from parent_id effective visibility isn't changed at next level
-                    if !(inherited_effective_vis_at_prev_level == inherited_effective_vis_at_level
-                        && level != l)
-                    {
-                        calculated_effective_vis =
-                            if nominal_vis.is_at_least(inherited_effective_vis_at_level, tree) {
-                                inherited_effective_vis_at_level
-                            } else {
-                                nominal_vis
-                            };
-                    }
-                    // effective visibility can't be decreased at next update call for the
-                    // same id
-                    if *current_effective_vis_at_level != calculated_effective_vis
-                        && calculated_effective_vis
-                            .is_at_least(*current_effective_vis_at_level, tree)
-                    {
-                        changed = true;
-                        *current_effective_vis_at_level = calculated_effective_vis;
-                    }
-                    inherited_effective_vis_at_prev_level = inherited_effective_vis_at_level;
+        let mut inherited_effective_vis_at_prev_level = *inherited_effective_vis.at_level(level);
+        let mut calculated_effective_vis = inherited_effective_vis_at_prev_level;
+        for l in Level::all_levels() {
+            if level >= l {
+                let inherited_effective_vis_at_level = *inherited_effective_vis.at_level(l);
+                let current_effective_vis_at_level = current_effective_vis.at_level_mut(l);
+                // effective visibility for id shouldn't be recalculated if
+                // inherited from parent_id effective visibility isn't changed at next level
+                if !(inherited_effective_vis_at_prev_level == inherited_effective_vis_at_level
+                    && level != l)
+                {
+                    calculated_effective_vis =
+                        if nominal_vis.is_at_least(inherited_effective_vis_at_level, tree) {
+                            inherited_effective_vis_at_level
+                        } else {
+                            nominal_vis
+                        };
                 }
+                // effective visibility can't be decreased at next update call for the
+                // same id
+                if *current_effective_vis_at_level != calculated_effective_vis
+                    && calculated_effective_vis.is_at_least(*current_effective_vis_at_level, tree)
+                {
+                    changed = true;
+                    *current_effective_vis_at_level = calculated_effective_vis;
+                }
+                inherited_effective_vis_at_prev_level = inherited_effective_vis_at_level;
             }
         }
+
         self.map.insert(id, current_effective_vis);
         changed
     }

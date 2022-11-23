@@ -155,32 +155,39 @@ impl<'r, 'a> EffectiveVisibilitiesVisitor<'r, 'a> {
         }
     }
 
-    fn effective_vis(&self, parent_id: ParentId<'a>) -> Option<EffectiveVisibility> {
-        match parent_id {
-            ParentId::Def(def_id) => self.def_effective_visibilities.effective_vis(def_id),
-            ParentId::Import(binding) => self.import_effective_visibilities.effective_vis(binding),
+    fn effective_vis_or_private(&mut self, parent_id: ParentId<'a>) -> EffectiveVisibility {
+        // Private nodes are only added to the table for caching, they could be added or removed at
+        // any moment without consequences, so we don't set `changed` to true when adding them.
+        *match parent_id {
+            ParentId::Def(def_id) => self
+                .def_effective_visibilities
+                .effective_vis_or_private(def_id, || self.r.private_vis_def(def_id)),
+            ParentId::Import(binding) => self
+                .import_effective_visibilities
+                .effective_vis_or_private(binding, || self.r.private_vis_import(binding)),
         }
-        .copied()
     }
 
     fn update_import(&mut self, binding: ImportId<'a>, parent_id: ParentId<'a>) {
         let nominal_vis = binding.vis.expect_local();
+        let inherited_eff_vis = self.effective_vis_or_private(parent_id);
         self.changed |= self.import_effective_visibilities.update(
             binding,
             nominal_vis,
             |r| (r.private_vis_import(binding), r),
-            self.effective_vis(parent_id),
+            inherited_eff_vis,
             parent_id.level(),
             &mut *self.r,
         );
     }
 
     fn update_def(&mut self, def_id: LocalDefId, nominal_vis: Visibility, parent_id: ParentId<'a>) {
+        let inherited_eff_vis = self.effective_vis_or_private(parent_id);
         self.changed |= self.def_effective_visibilities.update(
             def_id,
             nominal_vis,
             |r| (r.private_vis_def(def_id), r),
-            self.effective_vis(parent_id),
+            inherited_eff_vis,
             parent_id.level(),
             &mut *self.r,
         );
