@@ -676,8 +676,13 @@ pub enum SyntaxExtensionKind {
 
     /// A token-based derive macro.
     Derive(
-        /// An expander with signature TokenStream -> TokenStream (not yet).
+        /// An expander with signature TokenStream -> TokenStream.
         /// The produced TokenSteam is appended to the input TokenSteam.
+        ///
+        /// FIXME: The text above describes how this should work. Currently it
+        /// is handled identically to `LegacyDerive`. It should be migrated to
+        /// a token-based representation like `Bang` and `Attr`, instead of
+        /// using `MultiItemModifier`.
         Box<dyn MultiItemModifier + sync::Sync + sync::Send>,
     ),
 
