@@ -12,9 +12,9 @@ use rustc_errors::Applicability;
 use rustc_lint::{EarlyContext, EarlyLintPass};
 use rustc_session::{declare_tool_lint, impl_lint_pass};
 use rustc_span::DUMMY_SP;
-
 use std::cell::Cell;
 use std::mem;
+use thin_vec::{thin_vec, ThinVec};
 
 declare_clippy_lint! {
     /// ### What it does
@@ -214,7 +214,7 @@ macro_rules! always_pat {
 /// Focus on `focus_idx` in `alternatives`,
 /// attempting to extend it with elements of the same constructor `C`
 /// in `alternatives[focus_idx + 1..]`.
-fn transform_with_focus_on_idx(alternatives: &mut Vec<P<Pat>>, focus_idx: usize) -> bool {
+fn transform_with_focus_on_idx(alternatives: &mut ThinVec<P<Pat>>, focus_idx: usize) -> bool {
     // Extract the kind; we'll need to make some changes in it.
     let mut focus_kind = mem::replace(&mut alternatives[focus_idx].kind, PatKind::Wild);
     // We'll focus on `alternatives[focus_idx]`,
@@ -296,7 +296,7 @@ fn extend_with_struct_pat(
     fps1: &mut [ast::PatField],
     rest1: bool,
     start: usize,
-    alternatives: &mut Vec<P<Pat>>,
+    alternatives: &mut ThinVec<P<Pat>>,
 ) -> bool {
     (0..fps1.len()).any(|idx| {
         let pos_in_2 = Cell::new(None); // The element `k`.
@@ -336,9 +336,9 @@ fn extend_with_struct_pat(
 fn extend_with_matching_product(
     targets: &mut [P<Pat>],
     start: usize,
-    alternatives: &mut Vec<P<Pat>>,
+    alternatives: &mut ThinVec<P<Pat>>,
     predicate: impl Fn(&PatKind, &[P<Pat>], usize) -> bool,
-    extract: impl Fn(PatKind) -> Vec<P<Pat>>,
+    extract: impl Fn(PatKind) -> ThinVec<P<Pat>>,
 ) -> bool {
     (0..targets.len()).any(|idx| {
         let tail_or = drain_matching(
@@ -365,14 +365,14 @@ fn take_pat(from: &mut Pat) -> Pat {
 
 /// Extend `target` as an or-pattern with the alternatives
 /// in `tail_or` if there are any and return if there were.
-fn extend_with_tail_or(target: &mut Pat, tail_or: Vec<P<Pat>>) -> bool {
-    fn extend(target: &mut Pat, mut tail_or: Vec<P<Pat>>) {
+fn extend_with_tail_or(target: &mut Pat, tail_or: ThinVec<P<Pat>>) -> bool {
+    fn extend(target: &mut Pat, mut tail_or: ThinVec<P<Pat>>) {
         match target {
             // On an existing or-pattern in the target, append to it.
             Pat { kind: Or(ps), .. } => ps.append(&mut tail_or),
             // Otherwise convert the target to an or-pattern.
             target => {
-                let mut init_or = vec![P(take_pat(target))];
+                let mut init_or = thin_vec![P(take_pat(target))];
                 init_or.append(&mut tail_or);
                 target.kind = Or(init_or);
             },
@@ -391,26 +391,42 @@ fn extend_with_tail_or(target: &mut Pat, tail_or: Vec<P<Pat>>) -> bool {
 // Only elements beginning with `start` are considered for extraction.
 fn drain_matching(
     start: usize,
-    alternatives: &mut Vec<P<Pat>>,
+    alternatives: &mut ThinVec<P<Pat>>,
     predicate: impl Fn(&PatKind) -> bool,
     extract: impl Fn(PatKind) -> P<Pat>,
-) -> Vec<P<Pat>> {
-    let mut tail_or = vec![];
+) -> ThinVec<P<Pat>> {
+    let mut tail_or = ThinVec::new();
     let mut idx = 0;
-    for pat in alternatives.drain_filter(|p| {
-        // Check if we should extract, but only if `idx >= start`.
+
+    // If `ThinVec` had the `drain_filter` method, this loop could be rewritten
+    // like so:
+    // 
+    //   for pat in alternatives.drain_filter(|p| {
+    //       // Check if we should extract, but only if `idx >= start`.
+    //       idx += 1;
+    //       idx > start && predicate(&p.kind)
+    //   }) {
+    //       tail_or.push(extract(pat.into_inner().kind));
+    //   }
+    let mut i = 0;
+    while i < alternatives.len() {
         idx += 1;
-        idx > start && predicate(&p.kind)
-    }) {
-        tail_or.push(extract(pat.into_inner().kind));
+        // Check if we should extract, but only if `idx >= start`.
+	if idx > start && predicate(&alternatives[i].kind) {
+	    let pat = alternatives.remove(i);
+            tail_or.push(extract(pat.into_inner().kind));
+	} else {
+	    i += 1;
+	}
     }
+
     tail_or
 }
 
 fn extend_with_matching(
     target: &mut Pat,
     start: usize,
-    alternatives: &mut Vec<P<Pat>>,
+    alternatives: &mut ThinVec<P<Pat>>,
     predicate: impl Fn(&PatKind) -> bool,
     extract: impl Fn(PatKind) -> P<Pat>,
 ) -> bool {
