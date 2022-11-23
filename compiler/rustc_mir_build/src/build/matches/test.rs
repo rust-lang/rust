@@ -150,11 +150,11 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
         match_start_span: Span,
         scrutinee_span: Span,
         block: BasicBlock,
-        place_builder: PlaceBuilder<'tcx>,
+        place_builder: &PlaceBuilder<'tcx>,
         test: &Test<'tcx>,
         make_target_blocks: impl FnOnce(&mut Self) -> Vec<BasicBlock>,
     ) {
-        let place = place_builder.into_place(self);
+        let place = place_builder.to_place(self);
         let place_ty = place.ty(&self.local_decls, self.tcx);
         debug!(?place, ?place_ty,);
 
@@ -760,7 +760,8 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
         let downcast_place = match_pair.place.downcast(adt_def, variant_index); // `(x as Variant)`
         let consequent_match_pairs = subpatterns.iter().map(|subpattern| {
             // e.g., `(x as Variant).0`
-            let place = downcast_place.clone().field(subpattern.field, subpattern.pattern.ty);
+            let place = downcast_place
+                .clone_project(PlaceElem::Field(subpattern.field, subpattern.pattern.ty));
             // e.g., `(x as Variant).0 @ P1`
             MatchPair::new(place, &subpattern.pattern, self)
         });

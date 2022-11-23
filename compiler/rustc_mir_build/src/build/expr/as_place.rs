@@ -65,7 +65,7 @@ pub(crate) enum PlaceBase {
 
 /// `PlaceBuilder` is used to create places during MIR construction. It allows you to "build up" a
 /// place by pushing more and more projections onto the end, and then convert the final set into a
-/// place using the `into_place` method.
+/// place using the `to_place` method.
 ///
 /// This is used internally when building a place for an expression like `a.b.c`. The fields `b`
 /// and `c` can be progressively pushed onto the place builder that is created when converting `a`.
@@ -167,59 +167,54 @@ fn find_capture_matching_projections<'a, 'tcx>(
     })
 }
 
-/// Takes a PlaceBuilder and resolves the upvar (if any) within it, so that the
-/// `PlaceBuilder` now starts from `PlaceBase::Local`.
-///
-/// Returns a Result with the error being the PlaceBuilder (`from_builder`) that was not found.
+/// Takes an upvar place and tries to resolve it into a `PlaceBuilder`
+/// with `PlaceBase::Local`
 #[instrument(level = "trace", skip(cx), ret)]
 fn to_upvars_resolved_place_builder<'tcx>(
-    from_builder: PlaceBuilder<'tcx>,
     cx: &Builder<'_, 'tcx>,
-) -> Result<PlaceBuilder<'tcx>, PlaceBuilder<'tcx>> {
-    match from_builder.base {
-        PlaceBase::Local(_) => Ok(from_builder),
-        PlaceBase::Upvar { var_hir_id, closure_def_id } => {
-            let Some((capture_index, capture)) =
-                find_capture_matching_projections(
-                    &cx.upvars,
-                    var_hir_id,
-                    &from_builder.projection,
-                ) else {
-                let closure_span = cx.tcx.def_span(closure_def_id);
-                if !enable_precise_capture(cx.tcx, closure_span) {
-                    bug!(
-                        "No associated capture found for {:?}[{:#?}] even though \
-                            capture_disjoint_fields isn't enabled",
-                        var_hir_id,
-                        from_builder.projection
-                    )
-                } else {
-                    debug!(
-                        "No associated capture found for {:?}[{:#?}]",
-                        var_hir_id, from_builder.projection,
-                    );
-                }
-                return Err(from_builder);
-            };
-
-            // Access the capture by accessing the field within the Closure struct.
-            let capture_info = &cx.upvars[capture_index];
-
-            let mut upvar_resolved_place_builder = PlaceBuilder::from(capture_info.use_place);
-
-            // We used some of the projections to build the capture itself,
-            // now we apply the remaining to the upvar resolved place.
-            trace!(?capture.captured_place, ?from_builder.projection);
-            let remaining_projections = strip_prefix(
-                capture.captured_place.place.base_ty,
-                from_builder.projection,
-                &capture.captured_place.place.projections,
+    var_hir_id: LocalVarId,
+    closure_def_id: LocalDefId,
+    projection: &[PlaceElem<'tcx>],
+) -> Option<PlaceBuilder<'tcx>> {
+    let Some((capture_index, capture)) =
+        find_capture_matching_projections(
+            &cx.upvars,
+            var_hir_id,
+            &projection,
+        ) else {
+        let closure_span = cx.tcx.def_span(closure_def_id);
+        if !enable_precise_capture(cx.tcx, closure_span) {
+            bug!(
+                "No associated capture found for {:?}[{:#?}] even though \
+                    capture_disjoint_fields isn't enabled",
+                var_hir_id,
+                projection
+            )
+        } else {
+            debug!(
+                "No associated capture found for {:?}[{:#?}]",
+                var_hir_id, projection,
             );
-            upvar_resolved_place_builder.projection.extend(remaining_projections);
-
-            Ok(upvar_resolved_place_builder)
         }
-    }
+        return None;
+    };
+
+    // Access the capture by accessing the field within the Closure struct.
+    let capture_info = &cx.upvars[capture_index];
+
+    let mut upvar_resolved_place_builder = PlaceBuilder::from(capture_info.use_place);
+
+    // We used some of the projections to build the capture itself,
+    // now we apply the remaining to the upvar resolved place.
+    trace!(?capture.captured_place, ?projection);
+    let remaining_projections = strip_prefix(
+        capture.captured_place.place.base_ty,
+        projection,
+        &capture.captured_place.place.projections,
+    );
+    upvar_resolved_place_builder.projection.extend(remaining_projections);
+
+    Some(upvar_resolved_place_builder)
 }
 
 /// Returns projections remaining after stripping an initial prefix of HIR
@@ -228,13 +223,14 @@ fn to_upvars_resolved_place_builder<'tcx>(
 /// Supports only HIR projection kinds that represent a path that might be
 /// captured by a closure or a generator, i.e., an `Index` or a `Subslice`
 /// projection kinds are unsupported.
-fn strip_prefix<'tcx>(
+fn strip_prefix<'a, 'tcx>(
     mut base_ty: Ty<'tcx>,
-    projections: Vec<PlaceElem<'tcx>>,
+    projections: &'a [PlaceElem<'tcx>],
     prefix_projections: &[HirProjection<'tcx>],
-) -> impl Iterator<Item = PlaceElem<'tcx>> {
+) -> impl Iterator<Item = PlaceElem<'tcx>> + 'a {
     let mut iter = projections
-        .into_iter()
+        .iter()
+        .copied()
         // Filter out opaque casts, they are unnecessary in the prefix.
         .filter(|elem| !matches!(elem, ProjectionElem::OpaqueCast(..)));
     for projection in prefix_projections {
@@ -258,21 +254,21 @@ fn strip_prefix<'tcx>(
 }
 
 impl<'tcx> PlaceBuilder<'tcx> {
-    pub(in crate::build) fn into_place(self, cx: &Builder<'_, 'tcx>) -> Place<'tcx> {
-        if let PlaceBase::Local(local) = self.base {
-            Place { local, projection: cx.tcx.intern_place_elems(&self.projection) }
-        } else {
-            self.expect_upvars_resolved(cx).into_place(cx)
-        }
+    pub(in crate::build) fn to_place(&self, cx: &Builder<'_, 'tcx>) -> Place<'tcx> {
+        self.try_to_place(cx).unwrap()
     }
 
-    fn expect_upvars_resolved(self, cx: &Builder<'_, 'tcx>) -> PlaceBuilder<'tcx> {
-        to_upvars_resolved_place_builder(self, cx).unwrap()
+    /// Creates a `Place` or returns `None` if an upvar cannot be resolved
+    pub(in crate::build) fn try_to_place(&self, cx: &Builder<'_, 'tcx>) -> Option<Place<'tcx>> {
+        let resolved = self.resolve_upvar(cx);
+        let builder = resolved.as_ref().unwrap_or(self);
+        let PlaceBase::Local(local) = builder.base else { return None };
+        let projection = cx.tcx.intern_place_elems(&builder.projection);
+        Some(Place { local, projection })
     }
 
     /// Attempts to resolve the `PlaceBuilder`.
-    /// On success, it will return the resolved `PlaceBuilder`.
-    /// On failure, it will return itself.
+    /// Returns `None` if this is not an upvar.
     ///
     /// Upvars resolve may fail for a `PlaceBuilder` when attempting to
     /// resolve a disjoint field whose root variable is not captured
@@ -281,11 +277,14 @@ impl<'tcx> PlaceBuilder<'tcx> {
     /// not captured. This can happen because the final mir that will be
     /// generated doesn't require a read for this place. Failures will only
     /// happen inside closures.
-    pub(in crate::build) fn try_upvars_resolved(
-        self,
+    pub(in crate::build) fn resolve_upvar(
+        &self,
         cx: &Builder<'_, 'tcx>,
-    ) -> Result<PlaceBuilder<'tcx>, PlaceBuilder<'tcx>> {
-        to_upvars_resolved_place_builder(self, cx)
+    ) -> Option<PlaceBuilder<'tcx>> {
+        let PlaceBase::Upvar { var_hir_id, closure_def_id } = self.base else {
+            return None;
+        };
+        to_upvars_resolved_place_builder(cx, var_hir_id, closure_def_id, &self.projection)
     }
 
     pub(crate) fn base(&self) -> PlaceBase {
@@ -315,6 +314,14 @@ impl<'tcx> PlaceBuilder<'tcx> {
     pub(crate) fn project(mut self, elem: PlaceElem<'tcx>) -> Self {
         self.projection.push(elem);
         self
+    }
+
+    /// Same as `.clone().project(..)` but more efficient
+    pub(crate) fn clone_project(&self, elem: PlaceElem<'tcx>) -> Self {
+        Self {
+            base: self.base,
+            projection: Vec::from_iter(self.projection.iter().copied().chain([elem])),
+        }
     }
 }
 
@@ -355,7 +362,7 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
         expr: &Expr<'tcx>,
     ) -> BlockAnd<Place<'tcx>> {
         let place_builder = unpack!(block = self.as_place_builder(block, expr));
-        block.and(place_builder.into_place(self))
+        block.and(place_builder.to_place(self))
     }
 
     /// This is used when constructing a compound `Place`, so that we can avoid creating
@@ -379,7 +386,7 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
         expr: &Expr<'tcx>,
     ) -> BlockAnd<Place<'tcx>> {
         let place_builder = unpack!(block = self.as_read_only_place_builder(block, expr));
-        block.and(place_builder.into_place(self))
+        block.and(place_builder.to_place(self))
     }
 
     /// This is used when constructing a compound `Place`, so that we can avoid creating
@@ -474,7 +481,7 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
                             inferred_ty: expr.ty,
                         });
 
-                    let place = place_builder.clone().into_place(this);
+                    let place = place_builder.to_place(this);
                     this.cfg.push(
                         block,
                         Statement {
@@ -599,7 +606,7 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
         let is_outermost_index = fake_borrow_temps.is_none();
         let fake_borrow_temps = fake_borrow_temps.unwrap_or(base_fake_borrow_temps);
 
-        let mut base_place =
+        let base_place =
             unpack!(block = self.expr_as_place(block, base, mutability, Some(fake_borrow_temps),));
 
         // Making this a *fresh* temporary means we do not have to worry about
@@ -607,14 +614,13 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
         // The "retagging" transformation (for Stacked Borrows) relies on this.
         let idx = unpack!(block = self.as_temp(block, temp_lifetime, index, Mutability::Not,));
 
-        block = self.bounds_check(block, base_place.clone(), idx, expr_span, source_info);
+        block = self.bounds_check(block, &base_place, idx, expr_span, source_info);
 
         if is_outermost_index {
             self.read_fake_borrows(block, fake_borrow_temps, source_info)
         } else {
-            base_place = base_place.expect_upvars_resolved(self);
             self.add_fake_borrows_of_base(
-                &base_place,
+                base_place.to_place(self),
                 block,
                 fake_borrow_temps,
                 expr_span,
@@ -628,7 +634,7 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
     fn bounds_check(
         &mut self,
         block: BasicBlock,
-        slice: PlaceBuilder<'tcx>,
+        slice: &PlaceBuilder<'tcx>,
         index: Local,
         expr_span: Span,
         source_info: SourceInfo,
@@ -640,7 +646,7 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
         let lt = self.temp(bool_ty, expr_span);
 
         // len = len(slice)
-        self.cfg.push_assign(block, source_info, len, Rvalue::Len(slice.into_place(self)));
+        self.cfg.push_assign(block, source_info, len, Rvalue::Len(slice.to_place(self)));
         // lt = idx < len
         self.cfg.push_assign(
             block,
@@ -658,19 +664,15 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
 
     fn add_fake_borrows_of_base(
         &mut self,
-        base_place: &PlaceBuilder<'tcx>,
+        base_place: Place<'tcx>,
         block: BasicBlock,
         fake_borrow_temps: &mut Vec<Local>,
         expr_span: Span,
         source_info: SourceInfo,
     ) {
         let tcx = self.tcx;
-        let local = match base_place.base {
-            PlaceBase::Local(local) => local,
-            PlaceBase::Upvar { .. } => bug!("Expected PlacseBase::Local found Upvar"),
-        };
 
-        let place_ty = Place::ty_from(local, &base_place.projection, &self.local_decls, tcx);
+        let place_ty = base_place.ty(&self.local_decls, tcx);
         if let ty::Slice(_) = place_ty.ty.kind() {
             // We need to create fake borrows to ensure that the bounds
             // check that we just did stays valid. Since we can't assign to
@@ -680,7 +682,7 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
                 match elem {
                     ProjectionElem::Deref => {
                         let fake_borrow_deref_ty = Place::ty_from(
-                            local,
+                            base_place.local,
                             &base_place.projection[..idx],
                             &self.local_decls,
                             tcx,
@@ -698,14 +700,14 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
                             Rvalue::Ref(
                                 tcx.lifetimes.re_erased,
                                 BorrowKind::Shallow,
-                                Place { local, projection },
+                                Place { local: base_place.local, projection },
                             ),
                         );
                         fake_borrow_temps.push(fake_borrow_temp);
                     }
                     ProjectionElem::Index(_) => {
                         let index_ty = Place::ty_from(
-                            local,
+                            base_place.local,
                             &base_place.projection[..idx],
                             &self.local_decls,
                             tcx,
