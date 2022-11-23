@@ -586,6 +586,13 @@ pub struct ErroneousConstant {
 }
 
 #[derive(Diagnostic)]
+#[diag(codegen_ssa_polymorphic_constant_too_generic)]
+pub struct PolymorphicConstantTooGeneric {
+    #[primary_span]
+    pub span: Span,
+}
+
+#[derive(Diagnostic)]
 #[diag(codegen_ssa_shuffle_indices_evaluation)]
 pub struct ShuffleIndicesEvaluation {
     #[primary_span]

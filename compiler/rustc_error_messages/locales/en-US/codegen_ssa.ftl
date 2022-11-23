@@ -225,3 +225,5 @@ codegen_ssa_invalid_monomorphization_floating_point_vector = invalid monomorphiz
 codegen_ssa_invalid_monomorphization_floating_point_type = invalid monomorphization of `{$name}` intrinsic: `{$in_ty}` is not a floating-point type
 
 codegen_ssa_invalid_monomorphization_unrecognized_intrinsic = invalid monomorphization of `{$name}` intrinsic: unrecognized intrinsic `{$name}`
+
+codegen_ssa_polymorphic_constant_too_generic = codegen encountered polymorphic constant: TooGeneric

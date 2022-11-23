@@ -1127,6 +1127,20 @@ impl Handler {
         self.create_fatal(fatal).emit()
     }
 
+    pub fn create_bug<'a>(
+        &'a self,
+        bug: impl IntoDiagnostic<'a, diagnostic_builder::Bug>,
+    ) -> DiagnosticBuilder<'a, diagnostic_builder::Bug> {
+        bug.into_diagnostic(self)
+    }
+
+    pub fn emit_bug<'a>(
+        &'a self,
+        bug: impl IntoDiagnostic<'a, diagnostic_builder::Bug>,
+    ) -> diagnostic_builder::Bug {
+        self.create_bug(bug).emit()
+    }
+
     fn emit_diag_at_span(
         &self,
         mut diag: Diagnostic,

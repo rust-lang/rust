@@ -48,7 +48,11 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
                     self.cx.tcx().sess.emit_err(errors::ErroneousConstant { span: constant.span });
                 }
                 ErrorHandled::TooGeneric => {
-                    span_bug!(constant.span, "codegen encountered polymorphic constant: {:?}", err);
+                    self.cx
+                        .tcx()
+                        .sess
+                        .diagnostic()
+                        .emit_bug(errors::PolymorphicConstantTooGeneric { span: constant.span });
                 }
             }
             err
