@@ -376,9 +376,8 @@ impl Layout {
     /// # assert_eq!(repr_c(&[u64, u32, u16, u32]), Ok((s, vec![0, 8, 12, 16])));
     /// ```
     #[stable(feature = "alloc_layout_manipulation", since = "1.44.0")]
-    #[rustc_const_unstable(feature = "const_alloc_layout", issue = "67521")]
     #[inline]
-    pub const fn extend(&self, next: Self) -> Result<(Self, usize), LayoutError> {
+    pub fn extend(&self, next: Self) -> Result<(Self, usize), LayoutError> {
         let new_align = cmp::max(self.align, next.align);
         let pad = self.padding_needed_for(next.align());
 

@@ -170,7 +170,7 @@ impl From<Alignment> for usize {
 
 #[rustc_const_unstable(feature = "const_alloc_layout", issue = "67521")]
 #[unstable(feature = "ptr_alignment_type", issue = "102070")]
-impl const cmp::Ord for Alignment {
+impl cmp::Ord for Alignment {
     #[inline]
     fn cmp(&self, other: &Self) -> cmp::Ordering {
         self.as_nonzero().get().cmp(&other.as_nonzero().get())
@@ -179,7 +179,7 @@ impl const cmp::Ord for Alignment {
 
 #[rustc_const_unstable(feature = "const_alloc_layout", issue = "67521")]
 #[unstable(feature = "ptr_alignment_type", issue = "102070")]
-impl const cmp::PartialOrd for Alignment {
+impl cmp::PartialOrd for Alignment {
     #[inline]
     fn partial_cmp(&self, other: &Self) -> Option<cmp::Ordering> {
         Some(self.cmp(other))
