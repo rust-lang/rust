@@ -199,7 +199,7 @@ impl<'a, 'tcx> ConfirmContext<'a, 'tcx> {
             Some(probe::AutorefOrPtrAdjustment::ToConstPtr) => {
                 target = match target.kind() {
                     &ty::RawPtr(ty::TypeAndMut { ty, mutbl }) => {
-                        assert_eq!(mutbl, hir::Mutability::Mut);
+                        assert!(mutbl.is_mut());
                         self.tcx.mk_ptr(ty::TypeAndMut { mutbl: hir::Mutability::Not, ty })
                     }
                     other => panic!("Cannot adjust receiver type {:?} to const ptr", other),

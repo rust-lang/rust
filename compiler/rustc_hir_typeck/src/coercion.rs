@@ -464,7 +464,7 @@ impl<'f, 'tcx> Coerce<'f, 'tcx> {
             // `self.x` both have `&mut `type would be a move of
             // `self.x`, but we auto-coerce it to `foo(&mut *self.x)`,
             // which is a borrow.
-            assert_eq!(mutbl_b, hir::Mutability::Not); // can only coerce &T -> &U
+            assert!(mutbl_b.is_not()); // can only coerce &T -> &U
             return success(vec![], ty, obligations);
         }
 
