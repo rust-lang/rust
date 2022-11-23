@@ -564,27 +564,22 @@ fn doc_std(
         );
     }
     let compiler = builder.compiler(stage, builder.config.build);
+
+    let target_doc_dir_name = if format == DocumentationFormat::JSON { "json-doc" } else { "doc" };
+    let target_dir =
+        builder.stage_out(compiler, Mode::Std).join(target.triple).join(target_doc_dir_name);
+
     // This is directory where the compiler will place the output of the command.
     // We will then copy the files from this directory into the final `out` directory, the specified
     // as a function parameter.
-    let out_dir = builder.stage_out(compiler, Mode::Std).join(target.triple).join("doc");
-    // `cargo` uses the same directory for both JSON docs and HTML docs.
-    // This could lead to cross-contamination when copying files into the specified `out` directory.
-    // For example:
-    // ```bash
-    // x doc std
-    // x doc std --json
-    // ```
-    // could lead to HTML docs being copied into the JSON docs output directory.
-    // To avoid this issue, we clean the doc folder before invoking `cargo`.
-    if out_dir.exists() {
-        builder.remove_dir(&out_dir);
-    }
+    let out_dir = target_dir.join(target.triple).join("doc");
 
     let run_cargo_rustdoc_for = |package: &str| {
         let mut cargo = builder.cargo(compiler, Mode::Std, SourceType::InTree, target, "rustdoc");
         compile::std_cargo(builder, target, compiler.stage, &mut cargo);
         cargo
+            .arg("--target-dir")
+            .arg(&*target_dir.to_string_lossy())
             .arg("-p")
             .arg(package)
             .arg("-Zskip-rustdoc-fingerprint")
