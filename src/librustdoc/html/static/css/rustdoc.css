@@ -701,6 +701,8 @@ a {
 }
 
 .small-section-header {
+	/* fields use <span> tags, but should get their own lines */
+	display: block;
 	position: relative;
 }
 
