@@ -31,8 +31,8 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
         let mut stmts = SmallVec::<[hir::Stmt<'hir>; 8]>::new();
         let mut expr = None;
         while let [s, tail @ ..] = ast_stmts {
-            match s.kind {
-                StmtKind::Local(ref local) => {
+            match &s.kind {
+                StmtKind::Local(local) => {
                     let hir_id = self.lower_node_id(s.id);
                     let local = self.lower_local(local);
                     self.alias_attrs(hir_id, local.hir_id);
@@ -40,7 +40,7 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
                     let span = self.lower_span(s.span);
                     stmts.push(hir::Stmt { hir_id, kind, span });
                 }
-                StmtKind::Item(ref it) => {
+                StmtKind::Item(it) => {
                     stmts.extend(self.lower_item_ref(it).into_iter().enumerate().map(
                         |(i, item_id)| {
                             let hir_id = match i {
@@ -53,7 +53,7 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
                         },
                     ));
                 }
-                StmtKind::Expr(ref e) => {
+                StmtKind::Expr(e) => {
                     let e = self.lower_expr(e);
                     if tail.is_empty() {
                         expr = Some(e);
@@ -65,7 +65,7 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
                         stmts.push(hir::Stmt { hir_id, kind, span });
                     }
                 }
-                StmtKind::Semi(ref e) => {
+                StmtKind::Semi(e) => {
                     let e = self.lower_expr(e);
                     let hir_id = self.lower_node_id(s.id);
                     self.alias_attrs(hir_id, e.hir_id);

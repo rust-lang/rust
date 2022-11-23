@@ -384,8 +384,8 @@ enum TokenType {
 
 impl TokenType {
     fn to_string(&self) -> String {
-        match *self {
-            TokenType::Token(ref t) => format!("`{}`", pprust::token_kind_to_string(t)),
+        match self {
+            TokenType::Token(t) => format!("`{}`", pprust::token_kind_to_string(t)),
             TokenType::Keyword(kw) => format!("`{}`", kw),
             TokenType::Operator => "an operator".to_string(),
             TokenType::Lifetime => "lifetime".to_string(),
@@ -738,8 +738,8 @@ impl<'a> Parser<'a> {
 
     fn check_inline_const(&self, dist: usize) -> bool {
         self.is_keyword_ahead(dist, &[kw::Const])
-            && self.look_ahead(dist + 1, |t| match t.kind {
-                token::Interpolated(ref nt) => matches!(**nt, token::NtBlock(..)),
+            && self.look_ahead(dist + 1, |t| match &t.kind {
+                token::Interpolated(nt) => matches!(**nt, token::NtBlock(..)),
                 token::OpenDelim(Delimiter::Brace) => true,
                 _ => false,
             })
@@ -860,7 +860,7 @@ impl<'a> Parser<'a> {
             if let token::CloseDelim(..) | token::Eof = self.token.kind {
                 break;
             }
-            if let Some(ref t) = sep.sep {
+            if let Some(t) = &sep.sep {
                 if first {
                     first = false;
                 } else {
@@ -895,7 +895,7 @@ impl<'a> Parser<'a> {
 
                                 _ => {
                                     // Attempt to keep parsing if it was a similar separator.
-                                    if let Some(ref tokens) = t.similar_tokens() {
+                                    if let Some(tokens) = t.similar_tokens() {
                                         if tokens.contains(&self.token.kind) && !unclosed_delims {
                                             self.bump();
                                         }

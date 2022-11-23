@@ -485,7 +485,7 @@ impl<'a> Parser<'a> {
         let mut rhs = self.parse_pat_no_top_alt(None)?;
         let sp = lhs.span.to(rhs.span);
 
-        if let PatKind::Ident(_, _, ref mut sub @ None) = rhs.kind {
+        if let PatKind::Ident(_, _, sub @ None) = &mut rhs.kind {
             // The user inverted the order, so help them fix that.
             let mut applicability = Applicability::MachineApplicable;
             // FIXME(bindings_after_at): Remove this code when stabilizing the feature.
@@ -595,7 +595,7 @@ impl<'a> Parser<'a> {
         self.recover_additional_muts();
 
         // Make sure we don't allow e.g. `let mut $p;` where `$p:pat`.
-        if let token::Interpolated(ref nt) = self.token.kind {
+        if let token::Interpolated(nt) = &self.token.kind {
             if let token::NtPat(_) = **nt {
                 self.expected_ident_found().emit();
             }
@@ -796,7 +796,7 @@ impl<'a> Parser<'a> {
     /// expression syntax `...expr` for splatting in expressions.
     fn parse_pat_range_to(&mut self, mut re: Spanned<RangeEnd>) -> PResult<'a, PatKind> {
         let end = self.parse_pat_range_end()?;
-        if let RangeEnd::Included(ref mut syn @ RangeSyntax::DotDotDot) = &mut re.node {
+        if let RangeEnd::Included(syn @ RangeSyntax::DotDotDot) = &mut re.node {
             *syn = RangeSyntax::DotDotEq;
             self.struct_span_err(re.span, "range-to patterns with `...` are not allowed")
                 .span_suggestion_short(
