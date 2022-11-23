@@ -826,6 +826,20 @@ impl Step for Lld {
         let LlvmResult { llvm_config, llvm_cmake_dir } =
             builder.ensure(Llvm { target: self.target });
 
+        // The `dist` step packages LLD next to LLVM's binaries for download-ci-llvm. The root path
+        // we usually expect here is `./build/$triple/ci-llvm/`, with the binaries in its `bin`
+        // subfolder. We check if that's the case, and if LLD's binary already exists there next to
+        // `llvm-config`: if so, we can use it instead of building LLVM/LLD from source.
+        let ci_llvm_bin = llvm_config.parent().unwrap();
+        if ci_llvm_bin.is_dir() && ci_llvm_bin.file_name().unwrap() == "bin" {
+            let lld_path = ci_llvm_bin.join(exe("lld", target));
+            if lld_path.exists() {
+                // The following steps copying `lld` as `rust-lld` to the sysroot, expect it in the
+                // `bin` subfolder of this step's out dir.
+                return ci_llvm_bin.parent().unwrap().to_path_buf();
+            }
+        }
+
         let out_dir = builder.lld_out(target);
         let done_stamp = out_dir.join("lld-finished-building");
         if done_stamp.exists() {
