@@ -2395,7 +2395,7 @@ impl<T: Clone, A: Allocator> Vec<T, A> {
     /// Appends elements specified by the `src` parameter to the end of the vector.
     /// The `src` parameter is of type [`RangeBounds`], which means that
     /// it can be used to specify a range of elements in the vector.
-    /// 
+    ///
     /// [`RangeBounds`]: ../../std/ops/trait.RangeBounds.html
     ///
     /// # Panics
@@ -2404,7 +2404,7 @@ impl<T: Clone, A: Allocator> Vec<T, A> {
     /// Panics if the end index is greater than the length of the vector.
     ///
     /// # Examples
-    /// 
+    ///
     /// With numbers:
     ///
     /// ```
@@ -2420,18 +2420,18 @@ impl<T: Clone, A: Allocator> Vec<T, A> {
     /// numbers3.extend_from_within(1..3);
     /// assert_eq!(numbers3, [0, 1, 2, 3, 4, 1, 2]);
     /// ```
-    /// 
+    ///
     /// With characters:
-    /// 
+    ///
     /// ```
     /// let mut characters1 = vec!['a', 'b', 'c', 'd', 'e'];
     /// characters1.extend_from_within(2..);
     /// assert_eq!(characters1, ['a', 'b', 'c', 'd', 'e', 'c', 'd', 'e']);
-    /// 
+    ///
     /// let mut characters2 = vec!['a', 'b', 'c', 'd', 'e'];
     /// characters2.extend_from_within(..2);
     /// assert_eq!(characters2, ['a', 'b', 'c', 'd', 'e', 'a', 'b']);
-    /// 
+    ///
     /// let mut characters3 = vec!['a', 'b', 'c', 'd', 'e'];
     /// characters3.extend_from_within(1..3);
     /// assert_eq!(characters3, ['a', 'b', 'c', 'd', 'e', 'b', 'c']);
