@@ -10,6 +10,8 @@ use rustc_span::source_map::Spanned;
 use rustc_span::symbol::sym;
 use rustc_span::Span;
 use rustc_target::spec::abi;
+use thin_vec::ThinVec;
+use tracing::debug;
 
 use crate::errors::ForbiddenLifetimeBound;
 
@@ -250,7 +252,7 @@ impl<'a> Visitor<'a> for PostExpansionVisitor<'a> {
 
             ast::ItemKind::Struct(..) => {
                 for attr in self.sess.filter_by_name(&i.attrs, sym::repr) {
-                    for item in attr.meta_item_list().unwrap_or_else(Vec::new) {
+                    for item in attr.meta_item_list().unwrap_or_else(ThinVec::new) {
                         if item.has_name(sym::simd) {
                             gate_feature_post!(
                                 &self,

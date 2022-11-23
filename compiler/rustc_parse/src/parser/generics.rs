@@ -18,7 +18,7 @@ use thin_vec::ThinVec;
 
 enum PredicateOrStructBody {
     Predicate(ast::WherePredicate),
-    StructBody(Vec<ast::FieldDef>),
+    StructBody(ThinVec<ast::FieldDef>),
 }
 
 impl<'a> Parser<'a> {
@@ -278,14 +278,14 @@ impl<'a> Parser<'a> {
         &mut self,
         struct_name: Ident,
         body_insertion_point: Span,
-    ) -> PResult<'a, (WhereClause, Option<Vec<ast::FieldDef>>)> {
+    ) -> PResult<'a, (WhereClause, Option<ThinVec<ast::FieldDef>>)> {
         self.parse_where_clause_common(Some((struct_name, body_insertion_point)))
     }
 
     fn parse_where_clause_common(
         &mut self,
         struct_: Option<(Ident, Span)>,
-    ) -> PResult<'a, (WhereClause, Option<Vec<ast::FieldDef>>)> {
+    ) -> PResult<'a, (WhereClause, Option<ThinVec<ast::FieldDef>>)> {
         let mut where_clause = WhereClause {
             has_where_token: false,
             predicates: ThinVec::new(),

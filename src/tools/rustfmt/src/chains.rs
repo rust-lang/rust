@@ -74,6 +74,8 @@ use crate::utils::{
     rewrite_ident, trimmed_last_line_width, wrap_str,
 };
 
+use thin_vec::ThinVec;
+
 /// Provides the original input contents from the span
 /// of a chain element with trailing spaces trimmed.
 fn format_overflow_style(span: Span, context: &RewriteContext<'_>) -> Option<String> {
@@ -168,7 +170,7 @@ enum ChainItemKind {
     MethodCall(
         ast::PathSegment,
         Vec<ast::GenericArg>,
-        Vec<ptr::P<ast::Expr>>,
+        ThinVec<ptr::P<ast::Expr>>,
     ),
     StructField(symbol::Ident),
     TupleField(symbol::Ident, bool),

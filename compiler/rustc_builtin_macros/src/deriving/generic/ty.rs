@@ -103,7 +103,7 @@ impl Ty {
             Path(p) => p.to_ty(cx, span, self_ty, self_generics),
             Self_ => cx.ty_path(self.to_path(cx, span, self_ty, self_generics)),
             Unit => {
-                let ty = ast::TyKind::Tup(vec![]);
+                let ty = ast::TyKind::Tup(ThinVec::new());
                 cx.ty(span, ty)
             }
         }

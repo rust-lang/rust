@@ -31,6 +31,7 @@ use rustc_session::lint::BuiltinLintDiagnostics;
 use rustc_span::source_map::{self, Span, Spanned};
 use rustc_span::symbol::{kw, sym, Ident, Symbol};
 use rustc_span::{BytePos, Pos};
+use thin_vec::{thin_vec, ThinVec};
 
 /// Possibly accepts an `token::Interpolated` expression (a pre-parsed expression
 /// dropped into the token stream, which happens while parsing the result of
@@ -124,7 +125,7 @@ impl<'a> Parser<'a> {
     }
 
     /// Parses a sequence of expressions delimited by parentheses.
-    fn parse_paren_expr_seq(&mut self) -> PResult<'a, Vec<P<Expr>>> {
+    fn parse_paren_expr_seq(&mut self) -> PResult<'a, ThinVec<P<Expr>>> {
         self.parse_paren_comma_seq(|p| p.parse_expr_catch_underscore()).map(|(r, _)| r)
     }
 
@@ -1450,7 +1451,7 @@ impl<'a> Parser<'a> {
         let close = &token::CloseDelim(close_delim);
         let kind = if self.eat(close) {
             // Empty vector
-            ExprKind::Array(Vec::new())
+            ExprKind::Array(ThinVec::new())
         } else {
             // Non-empty vector
             let first_expr = self.parse_expr()?;
@@ -1468,7 +1469,7 @@ impl<'a> Parser<'a> {
             } else {
                 // Vector with one element
                 self.expect(close)?;
-                ExprKind::Array(vec![first_expr])
+                ExprKind::Array(thin_vec![first_expr])
             }
         };
         let expr = self.mk_expr(lo.to(self.prev_token.span), kind);
@@ -2187,7 +2188,7 @@ impl<'a> Parser<'a> {
         let arg_start = self.token.span.lo();
 
         let inputs = if self.eat(&token::OrOr) {
-            Vec::new()
+            ThinVec::new()
         } else {
             self.expect(&token::BinOp(token::Or))?;
             let args = self
@@ -3211,7 +3212,7 @@ impl<'a> Parser<'a> {
         ExprKind::Index(expr, idx)
     }
 
-    fn mk_call(&self, f: P<Expr>, args: Vec<P<Expr>>) -> ExprKind {
+    fn mk_call(&self, f: P<Expr>, args: ThinVec<P<Expr>>) -> ExprKind {
         ExprKind::Call(f, args)
     }
 

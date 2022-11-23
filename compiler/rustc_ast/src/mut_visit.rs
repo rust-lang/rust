@@ -370,6 +370,11 @@ pub fn visit_exprs<T: MutVisitor>(exprs: &mut Vec<P<Expr>>, vis: &mut T) {
 }
 
 // No `noop_` prefix because there isn't a corresponding method in `MutVisitor`.
+pub fn visit_thin_exprs<T: MutVisitor>(exprs: &mut ThinVec<P<Expr>>, vis: &mut T) {
+    exprs.flat_map_in_place(|expr| vis.filter_map_expr(expr))
+}
+
+// No `noop_` prefix because there isn't a corresponding method in `MutVisitor`.
 pub fn visit_bounds<T: MutVisitor>(bounds: &mut GenericBounds, vis: &mut T) {
     visit_vec(bounds, |bound| vis.visit_param_bound(bound));
 }
@@ -485,7 +490,7 @@ pub fn noop_visit_ty<T: MutVisitor>(ty: &mut P<Ty>, vis: &mut T) {
             vis.visit_fn_decl(decl);
             vis.visit_span(decl_span);
         }
-        TyKind::Tup(tys) => visit_vec(tys, |ty| vis.visit_ty(ty)),
+        TyKind::Tup(tys) => visit_thin_vec(tys, |ty| vis.visit_ty(ty)),
         TyKind::Paren(ty) => vis.visit_ty(ty),
         TyKind::Path(qself, path) => {
             vis.visit_qself(qself);
@@ -584,7 +589,7 @@ pub fn noop_visit_parenthesized_parameter_data<T: MutVisitor>(
     vis: &mut T,
 ) {
     let ParenthesizedArgs { inputs, output, span, .. } = args;
-    visit_vec(inputs, |input| vis.visit_ty(input));
+    visit_thin_vec(inputs, |input| vis.visit_ty(input));
     noop_visit_fn_ret_ty(output, vis);
     vis.visit_span(span);
 }
@@ -647,7 +652,7 @@ pub fn noop_visit_meta_item<T: MutVisitor>(mi: &mut MetaItem, vis: &mut T) {
     let MetaItem { path: _, kind, span } = mi;
     match kind {
         MetaItemKind::Word => {}
-        MetaItemKind::List(mis) => visit_vec(mis, |mi| vis.visit_meta_list_item(mi)),
+        MetaItemKind::List(mis) => visit_thin_vec(mis, |mi| vis.visit_meta_list_item(mi)),
         MetaItemKind::NameValue(_s) => {}
     }
     vis.visit_span(span);
@@ -1236,7 +1241,7 @@ pub fn noop_visit_pat<T: MutVisitor>(pat: &mut P<Pat>, vis: &mut T) {
         PatKind::TupleStruct(qself, path, elems) => {
             vis.visit_qself(qself);
             vis.visit_path(path);
-            visit_vec(elems, |elem| vis.visit_pat(elem));
+            visit_thin_vec(elems, |elem| vis.visit_pat(elem));
         }
         PatKind::Path(qself, path) => {
             vis.visit_qself(qself);
@@ -1255,7 +1260,7 @@ pub fn noop_visit_pat<T: MutVisitor>(pat: &mut P<Pat>, vis: &mut T) {
             vis.visit_span(span);
         }
         PatKind::Tuple(elems) | PatKind::Slice(elems) | PatKind::Or(elems) => {
-            visit_vec(elems, |elem| vis.visit_pat(elem))
+            visit_thin_vec(elems, |elem| vis.visit_pat(elem))
         }
         PatKind::Paren(inner) => vis.visit_pat(inner),
         PatKind::MacCall(mac) => vis.visit_mac_call(mac),
@@ -1312,7 +1317,7 @@ pub fn noop_visit_expr<T: MutVisitor>(
 ) {
     match kind {
         ExprKind::Box(expr) => vis.visit_expr(expr),
-        ExprKind::Array(exprs) => visit_exprs(exprs, vis),
+        ExprKind::Array(exprs) => visit_thin_exprs(exprs, vis),
         ExprKind::ConstBlock(anon_const) => {
             vis.visit_anon_const(anon_const);
         }
@@ -1320,10 +1325,10 @@ pub fn noop_visit_expr<T: MutVisitor>(
             vis.visit_expr(expr);
             vis.visit_anon_const(count);
         }
-        ExprKind::Tup(exprs) => visit_exprs(exprs, vis),
+        ExprKind::Tup(exprs) => visit_thin_exprs(exprs, vis),
         ExprKind::Call(f, args) => {
             vis.visit_expr(f);
-            visit_exprs(args, vis);
+            visit_thin_exprs(args, vis);
         }
         ExprKind::MethodCall(box MethodCall {
             seg: PathSegment { ident, id, args: seg_args },
@@ -1335,7 +1340,7 @@ pub fn noop_visit_expr<T: MutVisitor>(
             vis.visit_id(id);
             visit_opt(seg_args, |args| vis.visit_generic_args(args));
             vis.visit_method_receiver_expr(receiver);
-            visit_exprs(call_args, vis);
+            visit_thin_exprs(call_args, vis);
             vis.visit_span(span);
         }
         ExprKind::Binary(_binop, lhs, rhs) => {

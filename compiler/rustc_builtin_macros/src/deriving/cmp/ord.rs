@@ -64,7 +64,7 @@ pub fn cs_cmp(cx: &mut ExtCtxt<'_>, span: Span, substr: &Substructure<'_>) -> Bl
                 let [other_expr] = &field.other_selflike_exprs[..] else {
                         cx.span_bug(field.span, "not exactly 2 arguments in `derive(Ord)`");
                     };
-                let args = vec![field.self_expr.clone(), other_expr.clone()];
+                let args = thin_vec![field.self_expr.clone(), other_expr.clone()];
                 cx.expr_call_global(field.span, cmp_path.clone(), args)
             }
             CsFold::Combine(span, expr1, expr2) => {

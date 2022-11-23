@@ -162,7 +162,7 @@ fn cs_clone(
     let all_fields;
     let fn_path = cx.std_path(&[sym::clone, sym::Clone, sym::clone]);
     let subcall = |cx: &mut ExtCtxt<'_>, field: &FieldInfo| {
-        let args = vec![field.self_expr.clone()];
+        let args = thin_vec![field.self_expr.clone()];
         cx.expr_call_global(field.span, fn_path.clone(), args)
     };
 
