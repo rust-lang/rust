@@ -536,7 +536,7 @@ impl<'a> Parser<'a> {
         };
         let span_start = self.token.span;
         let ast::FnHeader { ext, unsafety, constness, asyncness } =
-            self.parse_fn_front_matter(&inherited_vis)?;
+            self.parse_fn_front_matter(&inherited_vis, Case::Sensitive)?;
         if self.may_recover() && self.token.kind == TokenKind::Lt {
             self.recover_fn_ptr_with_generics(lo, &mut params, param_insertion_point)?;
         }

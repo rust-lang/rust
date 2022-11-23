@@ -222,7 +222,8 @@ impl<'a> Parser<'a> {
             self.parse_use_item()?
         } else if self.check_fn_front_matter(def_final, case) {
             // FUNCTION ITEM
-            let (ident, sig, generics, body) = self.parse_fn(attrs, fn_parse_mode, lo, vis)?;
+            let (ident, sig, generics, body) =
+                self.parse_fn(attrs, fn_parse_mode, lo, vis, case)?;
             (ident, ItemKind::Fn(Box::new(Fn { defaultness: def_(), sig, generics, body })))
         } else if self.eat_keyword(kw::Extern) {
             if self.eat_keyword(kw::Crate) {
@@ -1793,7 +1794,13 @@ impl<'a> Parser<'a> {
                 };
                 // We use `parse_fn` to get a span for the function
                 let fn_parse_mode = FnParseMode { req_name: |_| true, req_body: true };
-                match self.parse_fn(&mut AttrVec::new(), fn_parse_mode, lo, &inherited_vis) {
+                match self.parse_fn(
+                    &mut AttrVec::new(),
+                    fn_parse_mode,
+                    lo,
+                    &inherited_vis,
+                    Case::Insensitive,
+                ) {
                     Ok(_) => {
                         let mut err = self.struct_span_err(
                             lo.to(self.prev_token.span),
@@ -2114,8 +2121,9 @@ impl<'a> Parser<'a> {
         fn_parse_mode: FnParseMode,
         sig_lo: Span,
         vis: &Visibility,
+        case: Case,
     ) -> PResult<'a, (Ident, FnSig, Generics, Option<P<Block>>)> {
-        let header = self.parse_fn_front_matter(vis)?; // `const ... fn`
+        let header = self.parse_fn_front_matter(vis, case)?; // `const ... fn`
         let ident = self.parse_ident()?; // `foo`
         let mut generics = self.parse_generics()?; // `<'a, T, ...>`
         let decl =
@@ -2239,24 +2247,28 @@ impl<'a> Parser<'a> {
     ///
     /// `vis` represents the visibility that was already parsed, if any. Use
     /// `Visibility::Inherited` when no visibility is known.
-    pub(super) fn parse_fn_front_matter(&mut self, orig_vis: &Visibility) -> PResult<'a, FnHeader> {
+    pub(super) fn parse_fn_front_matter(
+        &mut self,
+        orig_vis: &Visibility,
+        case: Case,
+    ) -> PResult<'a, FnHeader> {
         let sp_start = self.token.span;
-        let constness = self.parse_constness(Case::Insensitive);
+        let constness = self.parse_constness(case);
 
         let async_start_sp = self.token.span;
-        let asyncness = self.parse_asyncness(Case::Insensitive);
+        let asyncness = self.parse_asyncness(case);
 
         let unsafe_start_sp = self.token.span;
-        let unsafety = self.parse_unsafety(Case::Insensitive);
+        let unsafety = self.parse_unsafety(case);
 
         let ext_start_sp = self.token.span;
-        let ext = self.parse_extern(Case::Insensitive);
+        let ext = self.parse_extern(case);
 
         if let Async::Yes { span, .. } = asyncness {
             self.ban_async_in_2015(span);
         }
 
-        if !self.eat_keyword_case(kw::Fn, Case::Insensitive) {
+        if !self.eat_keyword_case(kw::Fn, case) {
             // It is possible for `expect_one_of` to recover given the contents of
             // `self.expected_tokens`, therefore, do not use `self.unexpected()` which doesn't
             // account for this.
