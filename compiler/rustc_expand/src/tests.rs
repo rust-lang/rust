@@ -272,13 +272,13 @@ error: foo
  --> test.rs:3:3
   |
 3 |      X0 Y0
-  |  ____^__-
-  | | ___|
+  |   ___^__-
+  |  |___|
   | ||
 4 | ||   X1 Y1
 5 | ||   X2 Y2
   | ||____^__- `Y` is a good letter too
-  |  |____|
+  | |_____|
   |       `X` is a good letter
 
 "#,
@@ -311,12 +311,12 @@ error: foo
  --> test.rs:3:3
   |
 3 |      X0 Y0
-  |  ____^__-
-  | | ___|
+  |   ___^__-
+  |  |___|
   | ||
 4 | ||   Y1 X1
   | ||____-__^ `X` is a good letter
-  | |_____|
+  |  |____|
   |       `Y` is a good letter too
 
 "#,
@@ -351,13 +351,13 @@ error: foo
  --> test.rs:3:6
   |
 3 |      X0 Y0 Z0
-  |   ______^
-4 |  |   X1 Y1 Z1
-  |  |_________-
+  |  _______^
+4 | |    X1 Y1 Z1
+  | | _________-
 5 | ||   X2 Y2 Z2
   | ||____^ `X` is a good letter
-6 | |    X3 Y3 Z3
-  | |_____- `Y` is a good letter too
+6 |  |   X3 Y3 Z3
+  |  |____- `Y` is a good letter too
 
 "#,
     );
@@ -395,15 +395,15 @@ error: foo
  --> test.rs:3:3
   |
 3 |       X0 Y0 Z0
-  |  _____^__-__-
-  | | ____|__|
-  | || ___|
+  |    ___^__-__-
+  |   |___|__|
+  |  ||___|
   | |||
 4 | |||   X1 Y1 Z1
 5 | |||   X2 Y2 Z2
   | |||____^__-__- `Z` label
-  |  ||____|__|
-  |   |____|  `Y` is a good letter too
+  | ||_____|__|
+  | |______|  `Y` is a good letter too
   |        `X` is a good letter
 
 "#,
@@ -487,17 +487,17 @@ error: foo
  --> test.rs:3:6
   |
 3 |      X0 Y0 Z0
-  |   ______^
-4 |  |   X1 Y1 Z1
-  |  |____^_-
+  |  _______^
+4 | |    X1 Y1 Z1
+  | | ____^_-
   | ||____|
-  | |     `X` is a good letter
-5 | |    X2 Y2 Z2
-  | |____-______- `Y` is a good letter too
-  |  ____|
-  | |
-6 | |    X3 Y3 Z3
-  | |________- `Z`
+  |  |    `X` is a good letter
+5 |  |   X2 Y2 Z2
+  |  |___-______- `Y` is a good letter too
+  |   ___|
+  |  |
+6 |  |   X3 Y3 Z3
+  |  |_______- `Z`
 
 "#,
     );
@@ -570,14 +570,14 @@ error: foo
  --> test.rs:3:6
   |
 3 |      X0 Y0 Z0
-  |   ______^
-4 |  |   X1 Y1 Z1
-  |  |____^____-
+  |  _______^
+4 | |    X1 Y1 Z1
+  | | ____^____-
   | ||____|
-  | |     `X` is a good letter
-5 | |    X2 Y2 Z2
-6 | |    X3 Y3 Z3
-  | |___________- `Y` is a good letter too
+  |  |    `X` is a good letter
+5 |  |   X2 Y2 Z2
+6 |  |   X3 Y3 Z3
+  |  |__________- `Y` is a good letter too
 
 "#,
     );
@@ -941,18 +941,18 @@ error: foo
   --> test.rs:3:6
    |
 3  |      X0 Y0 Z0
-   |   ______^
-4  |  |   X1 Y1 Z1
-   |  |____^____-
+   |  _______^
+4  | |    X1 Y1 Z1
+   | | ____^____-
    | ||____|
-   | |     `X` is a good letter
-5  | |  1
-6  | |  2
-7  | |  3
-...  |
-15 | |    X2 Y2 Z2
-16 | |    X3 Y3 Z3
-   | |___________- `Y` is a good letter too
+   |  |    `X` is a good letter
+5  |  | 1
+6  |  | 2
+7  |  | 3
+...   |
+15 |  |   X2 Y2 Z2
+16 |  |   X3 Y3 Z3
+   |  |__________- `Y` is a good letter too
 
 "#,
     );
@@ -996,21 +996,21 @@ error: foo
   --> test.rs:3:6
    |
 3  |      X0 Y0 Z0
-   |   ______^
-4  |  | 1
-5  |  | 2
-6  |  | 3
-7  |  |   X1 Y1 Z1
-   |  |_________-
+   |  _______^
+4  | |  1
+5  | |  2
+6  | |  3
+7  | |    X1 Y1 Z1
+   | | _________-
 8  | || 4
 9  | || 5
 10 | || 6
 11 | ||   X2 Y2 Z2
    | ||__________- `Z` is a good letter too
-...   |
-15 |  | 10
-16 |  |   X3 Y3 Z3
-   |  |_______^ `Y` is a good letter
+...  |
+15 | |  10
+16 | |    X3 Y3 Z3
+   | |________^ `Y` is a good letter
 
 "#,
     );
