@@ -136,7 +136,7 @@ impl<'hir> LoweringContext<'_, 'hir> {
                         this.lower_block(body, false),
                         this.lower_label(*opt_label),
                         hir::LoopSource::Loop,
-                        this.lower_span(span),
+                        this.lower_span(*span),
                     )
                 }),
                 ExprKind::TryBlock(body) => self.lower_expr_try_block(body),

@@ -740,8 +740,7 @@ impl<'cx, 'tcx> MirBorrowckCtxt<'cx, 'tcx> {
         if infcx
             .type_implements_trait(
                 tcx.lang_items().clone_trait().unwrap(),
-                tcx.erase_regions(ty),
-                ty::List::empty(),
+                [tcx.erase_regions(ty)],
                 self.param_env,
             )
             .must_apply_modulo_regions()
