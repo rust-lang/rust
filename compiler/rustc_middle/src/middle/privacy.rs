@@ -4,7 +4,6 @@
 use crate::ty::{DefIdTree, TyCtxt, Visibility};
 use rustc_data_structures::fx::FxHashMap;
 use rustc_data_structures::stable_hasher::{HashStable, StableHasher};
-use rustc_hir::def::DefKind;
 use rustc_macros::HashStable;
 use rustc_query_system::ich::StableHashingContext;
 use rustc_span::def_id::LocalDefId;
@@ -185,7 +184,6 @@ impl EffectiveVisibilities {
                 );
             }
             let nominal_vis = tcx.visibility(def_id);
-            let def_kind = tcx.opt_def_kind(def_id);
             // FIXME: `rustc_privacy` is not yet updated for the new logic and can set
             // effective visibilities that are larger than the nominal one.
             if !nominal_vis.is_at_least(ev.reachable_through_impl_trait, tcx) && early {
@@ -196,11 +194,6 @@ impl EffectiveVisibilities {
                     ev.reachable_through_impl_trait,
                     nominal_vis
                 );
-            }
-            // Fully private items are never put into the table, this is important for performance.
-            // FIXME: Fully private `mod` items are currently put into the table.
-            if ev.reachable_through_impl_trait == private_vis && def_kind != Some(DefKind::Mod) {
-                span_bug!(span, "fully private item in the table {:?}: {:?}", def_id, ev.direct);
             }
         }
     }
