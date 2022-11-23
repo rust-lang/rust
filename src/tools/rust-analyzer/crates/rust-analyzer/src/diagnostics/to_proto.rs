@@ -359,14 +359,15 @@ pub(crate) fn map_rust_diagnostic_to_lsp(
         .iter()
         .flat_map(|primary_span| {
             let primary_location = primary_location(config, workspace_root, primary_span, snap);
-
-            let mut message = message.clone();
-            if needs_primary_span_label {
-                if let Some(primary_span_label) = &primary_span.label {
-                    format_to!(message, "\n{}", primary_span_label);
+            let message = {
+                let mut message = message.clone();
+                if needs_primary_span_label {
+                    if let Some(primary_span_label) = &primary_span.label {
+                        format_to!(message, "\n{}", primary_span_label);
+                    }
                 }
-            }
-
+                message
+            };
             // Each primary diagnostic span may result in multiple LSP diagnostics.
             let mut diagnostics = Vec::new();
 
@@ -417,7 +418,7 @@ pub(crate) fn map_rust_diagnostic_to_lsp(
                     message: message.clone(),
                     related_information: Some(information_for_additional_diagnostic),
                     tags: if tags.is_empty() { None } else { Some(tags.clone()) },
-                    data: None,
+                    data: Some(serde_json::json!({ "rendered": rd.rendered })),
                 };
                 diagnostics.push(MappedRustDiagnostic {
                     url: secondary_location.uri,
@@ -449,7 +450,7 @@ pub(crate) fn map_rust_diagnostic_to_lsp(
                         }
                     },
                     tags: if tags.is_empty() { None } else { Some(tags.clone()) },
-                    data: None,
+                    data: Some(serde_json::json!({ "rendered": rd.rendered })),
                 },
                 fix: None,
             });
@@ -534,7 +535,8 @@ mod tests {
             Config::new(workspace_root.to_path_buf(), ClientCapabilities::default()),
         );
         let snap = state.snapshot();
-        let actual = map_rust_diagnostic_to_lsp(&config, &diagnostic, workspace_root, &snap);
+        let mut actual = map_rust_diagnostic_to_lsp(&config, &diagnostic, workspace_root, &snap);
+        actual.iter_mut().for_each(|diag| diag.diagnostic.data = None);
         expect.assert_debug_eq(&actual)
     }
 

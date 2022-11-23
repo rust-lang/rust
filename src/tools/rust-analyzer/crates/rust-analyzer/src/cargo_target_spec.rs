@@ -3,11 +3,11 @@
 use std::mem;
 
 use cfg::{CfgAtom, CfgExpr};
-use ide::{FileId, RunnableKind, TestId};
+use ide::{Cancellable, FileId, RunnableKind, TestId};
 use project_model::{self, CargoFeatures, ManifestPath, TargetKind};
 use vfs::AbsPathBuf;
 
-use crate::{global_state::GlobalStateSnapshot, Result};
+use crate::global_state::GlobalStateSnapshot;
 
 /// Abstract representation of Cargo target.
 ///
@@ -29,7 +29,7 @@ impl CargoTargetSpec {
         spec: Option<CargoTargetSpec>,
         kind: &RunnableKind,
         cfg: &Option<CfgExpr>,
-    ) -> Result<(Vec<String>, Vec<String>)> {
+    ) -> (Vec<String>, Vec<String>) {
         let mut args = Vec::new();
         let mut extra_args = Vec::new();
 
@@ -111,13 +111,13 @@ impl CargoTargetSpec {
                 }
             }
         }
-        Ok((args, extra_args))
+        (args, extra_args)
     }
 
     pub(crate) fn for_file(
         global_state_snapshot: &GlobalStateSnapshot,
         file_id: FileId,
-    ) -> Result<Option<CargoTargetSpec>> {
+    ) -> Cancellable<Option<CargoTargetSpec>> {
         let crate_id = match &*global_state_snapshot.analysis.crates_for(file_id)? {
             &[crate_id, ..] => crate_id,
             _ => return Ok(None),
