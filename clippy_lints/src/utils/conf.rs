@@ -413,7 +413,7 @@ define_Conf! {
     /// suggested counterparts are unavailable in constant code. This
     /// configuration will cause restriction lints to trigger even
     /// if no suggestion can be made.
-    (suppress_restriction_lint_in_const: bool = true),
+    (suppress_restriction_lint_in_const: bool = false),
 }
 
 /// Search for the configuration file.
