@@ -263,14 +263,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                 let by_ref_binop = !op.node.is_by_value();
                 if is_assign == IsAssign::Yes || by_ref_binop {
                     if let ty::Ref(region, _, mutbl) = method.sig.inputs()[0].kind() {
-                        let mutbl = match mutbl {
-                            hir::Mutability::Not => AutoBorrowMutability::Not,
-                            hir::Mutability::Mut => AutoBorrowMutability::Mut {
-                                // Allow two-phase borrows for binops in initial deployment
-                                // since they desugar to methods
-                                allow_two_phase_borrow: AllowTwoPhase::Yes,
-                            },
-                        };
+                        let mutbl = AutoBorrowMutability::new(*mutbl, AllowTwoPhase::Yes);
                         let autoref = Adjustment {
                             kind: Adjust::Borrow(AutoBorrow::Ref(*region, mutbl)),
                             target: method.sig.inputs()[0],
@@ -280,14 +273,10 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                 }
                 if by_ref_binop {
                     if let ty::Ref(region, _, mutbl) = method.sig.inputs()[1].kind() {
-                        let mutbl = match mutbl {
-                            hir::Mutability::Not => AutoBorrowMutability::Not,
-                            hir::Mutability::Mut => AutoBorrowMutability::Mut {
-                                // Allow two-phase borrows for binops in initial deployment
-                                // since they desugar to methods
-                                allow_two_phase_borrow: AllowTwoPhase::Yes,
-                            },
-                        };
+                        // Allow two-phase borrows for binops in initial deployment
+                        // since they desugar to methods
+                        let mutbl = AutoBorrowMutability::new(*mutbl, AllowTwoPhase::Yes);
+
                         let autoref = Adjustment {
                             kind: Adjust::Borrow(AutoBorrow::Ref(*region, mutbl)),
                             target: method.sig.inputs()[1],

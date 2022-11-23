@@ -170,14 +170,11 @@ impl<'a, 'tcx> ConfirmContext<'a, 'tcx> {
                 let base_ty = target;
 
                 target = self.tcx.mk_ref(region, ty::TypeAndMut { mutbl, ty: target });
-                let mutbl = match mutbl {
-                    hir::Mutability::Not => AutoBorrowMutability::Not,
-                    hir::Mutability::Mut => AutoBorrowMutability::Mut {
-                        // Method call receivers are the primary use case
-                        // for two-phase borrows.
-                        allow_two_phase_borrow: AllowTwoPhase::Yes,
-                    },
-                };
+
+                // Method call receivers are the primary use case
+                // for two-phase borrows.
+                let mutbl = AutoBorrowMutability::new(mutbl, AllowTwoPhase::Yes);
+
                 adjustments.push(Adjustment {
                     kind: Adjust::Borrow(AutoBorrow::Ref(region, mutbl)),
                     target,
