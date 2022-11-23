@@ -396,6 +396,11 @@
                     "default": true,
                     "type": "boolean"
                 },
+                "rust-analyzer.diagnostics.previewRustcOutput": {
+                    "markdownDescription": "Whether to show the main part of the rendered rustc output of a diagnostic message.",
+                    "default": false,
+                    "type": "boolean"
+                },
                 "$generated-start": {},
                 "rust-analyzer.assist.emitMustUse": {
                     "markdownDescription": "Whether to insert #[must_use] when generating `as_` methods\nfor enum variants.",
@@ -623,7 +628,7 @@
                     ]
                 },
                 "rust-analyzer.checkOnSave.overrideCommand": {
-                    "markdownDescription": "Override the command rust-analyzer uses instead of `cargo check` for\ndiagnostics on save. The command is required to output json and\nshould therefor include `--message-format=json` or a similar option.\n\nIf you're changing this because you're using some tool wrapping\nCargo, you might also want to change\n`#rust-analyzer.cargo.buildScripts.overrideCommand#`.\n\nIf there are multiple linked projects, this command is invoked for\neach of them, with the working directory being the project root\n(i.e., the folder containing the `Cargo.toml`).\n\nAn example command would be:\n\n```bash\ncargo check --workspace --message-format=json --all-targets\n```\n.",
+                    "markdownDescription": "Override the command rust-analyzer uses instead of `cargo check` for\ndiagnostics on save. The command is required to output json and\nshould therefore include `--message-format=json` or a similar option.\n\nIf you're changing this because you're using some tool wrapping\nCargo, you might also want to change\n`#rust-analyzer.cargo.buildScripts.overrideCommand#`.\n\nIf there are multiple linked projects, this command is invoked for\neach of them, with the working directory being the project root\n(i.e., the folder containing the `Cargo.toml`).\n\nAn example command would be:\n\n```bash\ncargo check --workspace --message-format=json --all-targets\n```\n.",
                     "default": null,
                     "type": [
                         "null",
@@ -634,11 +639,18 @@
                     }
                 },
                 "rust-analyzer.checkOnSave.target": {
-                    "markdownDescription": "Check for a specific target. Defaults to\n`#rust-analyzer.cargo.target#`.",
-                    "default": null,
-                    "type": [
-                        "null",
-                        "string"
+                    "markdownDescription": "Check for specific targets. Defaults to `#rust-analyzer.cargo.target#` if empty.\n\nCan be a single target, e.g. `\"x86_64-unknown-linux-gnu\"` or a list of targets, e.g.\n`[\"aarch64-apple-darwin\", \"x86_64-apple-darwin\"]`.\n\nAliased as `\"checkOnSave.targets\"`.",
+                    "default": [],
+                    "anyOf": [
+                        {
+                            "type": "string"
+                        },
+                        {
+                            "type": "array",
+                            "items": {
+                                "type": "string"
+                            }
+                        }
                     ]
                 },
                 "rust-analyzer.completion.autoimport.enable": {
@@ -935,6 +947,21 @@
                         "Only show type hints for return types of closures with blocks."
                     ]
                 },
+                "rust-analyzer.inlayHints.expressionAdjustmentHints.enable": {
+                    "markdownDescription": "Whether to show inlay hints for type adjustments.",
+                    "default": "never",
+                    "type": "string",
+                    "enum": [
+                        "always",
+                        "never",
+                        "reborrow"
+                    ],
+                    "enumDescriptions": [
+                        "Always show all adjustment hints.",
+                        "Never show adjustment hints.",
+                        "Only show auto borrow and dereference adjustment hints."
+                    ]
+                },
                 "rust-analyzer.inlayHints.lifetimeElisionHints.enable": {
                     "markdownDescription": "Whether to show inlay type hints for elided lifetimes in function signatures.",
                     "default": "never",
@@ -970,7 +997,7 @@
                     "type": "boolean"
                 },
                 "rust-analyzer.inlayHints.reborrowHints.enable": {
-                    "markdownDescription": "Whether to show inlay type hints for compiler inserted reborrows.",
+                    "markdownDescription": "Whether to show inlay hints for compiler inserted reborrows.\nThis setting is deprecated in favor of #rust-analyzer.inlayHints.expressionAdjustmentHints.enable#.",
                     "default": "never",
                     "type": "string",
                     "enum": [
@@ -1274,6 +1301,11 @@
                     ]
                 },
                 "$generated-end": {}
+            }
+        },
+        "configurationDefaults": {
+            "explorer.fileNesting.patterns": {
+                "Cargo.toml": "Cargo.lock"
             }
         },
         "problemPatterns": [

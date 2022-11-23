@@ -5,10 +5,7 @@ use crate::{Diagnostic, DiagnosticsContext};
 // This diagnostic is shown for macro expansion errors.
 pub(crate) fn macro_error(ctx: &DiagnosticsContext<'_>, d: &hir::MacroError) -> Diagnostic {
     // Use more accurate position if available.
-    let display_range = d
-        .precise_location
-        .unwrap_or_else(|| ctx.sema.diagnostics_display_range(d.node.clone()).range);
-
+    let display_range = ctx.resolve_precise_location(&d.node, d.precise_location);
     Diagnostic::new("macro-error", d.message.clone(), display_range).experimental()
 }
 
