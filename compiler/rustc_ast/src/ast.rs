@@ -804,6 +804,14 @@ impl Mutability {
         }
     }
 
+    /// Returns `""` (empty string) or `"mutably "` depending on the mutability.
+    pub fn mutably_str(self) -> &'static str {
+        match self {
+            Mutability::Not => "",
+            Mutability::Mut => "mutably ",
+        }
+    }
+
     /// Return `true` if self is mutable
     pub fn is_mut(self) -> bool {
         matches!(self, Self::Mut)

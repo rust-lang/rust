@@ -576,10 +576,7 @@ impl<'cx, 'tcx> MirBorrowckCtxt<'cx, 'tcx> {
             })
             .collect();
         err.multipart_suggestion_verbose(
-            &format!(
-                "consider {}borrowing {value_name}",
-                if borrow_level.is_mut() { "mutably " } else { "" }
-            ),
+            format!("consider {}borrowing {value_name}", borrow_level.mutably_str()),
             sugg,
             Applicability::MaybeIncorrect,
         );

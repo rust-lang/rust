@@ -863,24 +863,14 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                         }
 
                         let sugg_expr = if needs_parens { format!("({src})") } else { src };
-                        return Some(match mutability {
-                            hir::Mutability::Mut => (
-                                sp,
-                                "consider mutably borrowing here".to_string(),
-                                format!("{prefix}&mut {sugg_expr}"),
-                                Applicability::MachineApplicable,
-                                false,
-                                false,
-                            ),
-                            hir::Mutability::Not => (
-                                sp,
-                                "consider borrowing here".to_string(),
-                                format!("{prefix}&{sugg_expr}"),
-                                Applicability::MachineApplicable,
-                                false,
-                                false,
-                            ),
-                        });
+                        return Some((
+                            sp,
+                            format!("consider {}borrowing here", mutability.mutably_str()),
+                            format!("{prefix}{}{sugg_expr}", mutability.ref_prefix_str()),
+                            Applicability::MachineApplicable,
+                            false,
+                            false,
+                        ));
                     }
                 }
             }
