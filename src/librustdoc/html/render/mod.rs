@@ -1071,7 +1071,7 @@ fn write_impl_section_heading(w: &mut Buffer, title: &str, id: &str) {
         w,
         "<h2 id=\"{id}\" class=\"small-section-header\">\
             {title}\
-            <a href=\"#{id}\" class=\"anchor\"></a>\
+            <a href=\"#{id}\" class=\"anchor\">§</a>\
          </h2>"
     );
 }
@@ -1536,7 +1536,7 @@ fn render_impl(
                     render_rightside(w, cx, item, containing_item, render_mode);
                     if trait_.is_some() {
                         // Anchors are only used on trait impls.
-                        write!(w, "<a href=\"#{}\" class=\"anchor\"></a>", id);
+                        write!(w, "<a href=\"#{}\" class=\"anchor\">§</a>", id);
                     }
                     w.write_str("<h4 class=\"code-header\">");
                     render_assoc_item(
@@ -1562,7 +1562,7 @@ fn render_impl(
                 render_rightside(w, cx, item, containing_item, render_mode);
                 if trait_.is_some() {
                     // Anchors are only used on trait impls.
-                    write!(w, "<a href=\"#{}\" class=\"anchor\"></a>", id);
+                    write!(w, "<a href=\"#{}\" class=\"anchor\">§</a>", id);
                 }
                 w.write_str("<h4 class=\"code-header\">");
                 assoc_const(
@@ -1587,7 +1587,7 @@ fn render_impl(
                 write!(w, "<section id=\"{}\" class=\"{}{}\">", id, item_type, in_trait_class);
                 if trait_.is_some() {
                     // Anchors are only used on trait impls.
-                    write!(w, "<a href=\"#{}\" class=\"anchor\"></a>", id);
+                    write!(w, "<a href=\"#{}\" class=\"anchor\">§</a>", id);
                 }
                 w.write_str("<h4 class=\"code-header\">");
                 assoc_type(
@@ -1613,7 +1613,7 @@ fn render_impl(
                 );
                 if trait_.is_some() {
                     // Anchors are only used on trait impls.
-                    write!(w, "<a href=\"#{}\" class=\"anchor\"></a>", id);
+                    write!(w, "<a href=\"#{}\" class=\"anchor\">§</a>", id);
                 }
                 w.write_str("<h4 class=\"code-header\">");
                 assoc_type(
@@ -1846,7 +1846,7 @@ pub(crate) fn render_impl_summary(
     };
     write!(w, "<section id=\"{}\" class=\"impl has-srclink\"{}>", id, aliases);
     render_rightside(w, cx, &i.impl_item, containing_item, RenderMode::Normal);
-    write!(w, "<a href=\"#{}\" class=\"anchor\"></a>", id);
+    write!(w, "<a href=\"#{}\" class=\"anchor\">§</a>", id);
     write!(w, "<h3 class=\"code-header\">");
 
     if let Some(use_absolute) = use_absolute {
