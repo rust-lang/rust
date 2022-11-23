@@ -563,9 +563,9 @@ impl<'a> Parser<'a> {
         };
 
         let mut eat_semi = true;
-        match stmt.kind {
+        match &mut stmt.kind {
             // Expression without semicolon.
-            StmtKind::Expr(ref mut expr)
+            StmtKind::Expr(expr)
                 if self.token != token::Eof && classify::expr_requires_semi_to_be_stmt(expr) => {
                 // Just check for errors and recover; do not eat semicolon yet.
                 // `expect_one_of` returns PResult<'a, bool /* recovered */>
@@ -611,7 +611,7 @@ impl<'a> Parser<'a> {
                 }
             }
             StmtKind::Expr(_) | StmtKind::MacCall(_) => {}
-            StmtKind::Local(ref mut local) if let Err(e) = self.expect_semi() => {
+            StmtKind::Local(local) if let Err(e) = self.expect_semi() => {
                 // We might be at the `,` in `let x = foo<bar, baz>;`. Try to recover.
                 match &mut local.kind {
                     LocalKind::Init(expr) | LocalKind::InitElse(expr, _) => {

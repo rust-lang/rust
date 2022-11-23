@@ -1255,8 +1255,8 @@ impl<'a> Parser<'a> {
             }
         };
 
-        match impl_info.1 {
-            ItemKind::Impl(box Impl { of_trait: Some(ref trai), ref mut constness, .. }) => {
+        match &mut impl_info.1 {
+            ItemKind::Impl(box Impl { of_trait: Some(trai), constness, .. }) => {
                 *constness = Const::Yes(const_span);
 
                 let before_trait = trai.path.span.shrink_to_lo();
@@ -2585,8 +2585,8 @@ impl<'a> Parser<'a> {
     }
 
     fn is_named_param(&self) -> bool {
-        let offset = match self.token.kind {
-            token::Interpolated(ref nt) => match **nt {
+        let offset = match &self.token.kind {
+            token::Interpolated(nt) => match **nt {
                 token::NtPat(..) => return self.look_ahead(1, |t| t == &token::Colon),
                 _ => 0,
             },
