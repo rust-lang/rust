@@ -618,9 +618,12 @@ impl MetaItemKind {
             }) => MetaItemKind::list_from_tokens(tokens.clone()),
             AttrArgs::Delimited(..) => None,
             AttrArgs::Eq(_, AttrArgsEq::Ast(expr)) => match expr.kind {
-                ast::ExprKind::Lit(token_lit) => Some(MetaItemKind::NameValue(
-                    Lit::from_token_lit(token_lit, expr.span).expect("token_lit in from_attr_args"),
-                )),
+                ast::ExprKind::Lit(token_lit) => {
+                    // Turn failures to `None`, we'll get parse errors elsewhere.
+                    Lit::from_token_lit(token_lit, expr.span)
+                        .ok()
+                        .map(|lit| MetaItemKind::NameValue(lit))
+                }
                 _ => None,
             },
             AttrArgs::Eq(_, AttrArgsEq::Hir(lit)) => Some(MetaItemKind::NameValue(lit.clone())),
