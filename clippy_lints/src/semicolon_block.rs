@@ -8,7 +8,7 @@ use rustc_span::Span;
 declare_clippy_lint! {
     /// ### What it does
     ///
-    /// For () returning expressions, check that the semicolon is inside the block.
+    /// Checks for semicolon terminated blocks containing only a single expression.
     ///
     /// ### Why is this bad?
     ///
@@ -36,7 +36,7 @@ declare_clippy_lint! {
 declare_clippy_lint! {
     /// ### What it does
     ///
-    /// For () returning expressions, check that the semicolon is outside the block.
+    /// Checks for blocks containing only a single semicolon terminated statement.
     ///
     /// ### Why is this bad?
     ///
