@@ -631,6 +631,15 @@ pub fn super_relate_consts<'tcx, R: TypeRelation<'tcx>>(
         b = b.eval(tcx, relation.param_env());
     }
 
+    if tcx.features().generic_const_exprs {
+        if let Ok(Some(a2)) = tcx.expand_abstract_consts(a) {
+            a = a2;
+        }
+        if let Ok(Some(b2)) = tcx.expand_abstract_consts(b) {
+            b = b2
+        }
+    }
+
     // Currently, the values that can be unified are primitive types,
     // and those that derive both `PartialEq` and `Eq`, corresponding
     // to structural-match types.
@@ -646,22 +655,6 @@ pub fn super_relate_consts<'tcx, R: TypeRelation<'tcx>>(
         (ty::ConstKind::Param(a_p), ty::ConstKind::Param(b_p)) => a_p.index == b_p.index,
         (ty::ConstKind::Placeholder(p1), ty::ConstKind::Placeholder(p2)) => p1 == p2,
         (ty::ConstKind::Value(a_val), ty::ConstKind::Value(b_val)) => a_val == b_val,
-
-        (ty::ConstKind::Unevaluated(_), ty::ConstKind::Unevaluated(_))
-            if tcx.features().generic_const_exprs =>
-        {
-            // FIXME(generic_const_exprs): this spurriously fails when relating two assoc consts
-            // i.e. `<T as Trait>::ASSOC eq <T as Trait>::ASSOC` would return `false`. Wheras if
-            // both were behind an anon const that gets normalized away here it would succeed.
-            if let (Ok(Some(a)), Ok(Some(b))) = (
-                tcx.expand_abstract_consts(a),
-                tcx.expand_abstract_consts(b),
-            ) && a.ty() == b.ty() {
-                return relation.consts(a, b);
-            } else {
-                false
-            }
-        }
 
         // While this is slightly incorrect, it shouldn't matter for `min_const_generics`
         // and is the better alternative to waiting until `generic_const_exprs` can
