@@ -606,7 +606,10 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
         debug!(?obligation, "confirm_fn_pointer_candidate");
 
         // Okay to skip binder; it is reintroduced below.
-        let self_ty = self.infcx.shallow_resolve(obligation.self_ty().skip_binder());
+        let self_ty = self
+            .infcx
+            .shallow_resolve(obligation.self_ty().no_bound_vars())
+            .expect("fn pointer should not capture bound vars from predicate");
         let sig = self_ty.fn_sig(self.tcx());
         let trait_ref = closure_trait_ref_and_return_type(
             self.tcx(),
