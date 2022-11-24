@@ -82,6 +82,10 @@ name = "issue_rust_86261"
 version = "0.1.0"
 
 [[package]]
+name = "no-std-smoke"
+version = "0.1.0"
+
+[[package]]
 name = "proc-macro2"
 version = "1.0.44"
 source = "registry+https://github.com/rust-lang/crates.io-index"
