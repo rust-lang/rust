@@ -489,7 +489,7 @@ pub enum NestedMetaItem {
     /// A literal.
     ///
     /// E.g., `"foo"`, `64`, `true`.
-    Literal(MetaItemLit),
+    Lit(MetaItemLit),
 }
 
 /// A spanned compile-time attribute item.

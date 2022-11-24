@@ -498,7 +498,7 @@ pub trait PrintState<'a>: std::ops::Deref<Target = pp::Printer> + std::ops::Dere
     fn print_meta_list_item(&mut self, item: &ast::NestedMetaItem) {
         match item {
             ast::NestedMetaItem::MetaItem(ref mi) => self.print_meta_item(mi),
-            ast::NestedMetaItem::Literal(ref lit) => self.print_meta_item_lit(lit),
+            ast::NestedMetaItem::Lit(ref lit) => self.print_meta_item_lit(lit),
         }
     }
 

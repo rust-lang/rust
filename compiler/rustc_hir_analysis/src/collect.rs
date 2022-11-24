@@ -2159,7 +2159,7 @@ fn check_link_ordinal(tcx: TyCtxt<'_>, attr: &ast::Attribute) -> Option<u16> {
     let meta_item_list = attr.meta_item_list();
     let meta_item_list = meta_item_list.as_deref();
     let sole_meta_list = match meta_item_list {
-        Some([item]) => item.literal(),
+        Some([item]) => item.lit(),
         Some(_) => {
             tcx.sess
                 .struct_span_err(attr.span, "incorrect number of arguments to `#[link_ordinal]`")

@@ -48,7 +48,7 @@ impl MultiItemModifier for Expander {
                     .into_iter()
                     .filter_map(|nested_meta| match nested_meta {
                         NestedMetaItem::MetaItem(meta) => Some(meta),
-                        NestedMetaItem::Literal(lit) => {
+                        NestedMetaItem::Lit(lit) => {
                             // Reject `#[derive("Debug")]`.
                             report_unexpected_meta_item_lit(sess, &lit);
                             None

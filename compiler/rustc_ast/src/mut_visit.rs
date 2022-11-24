@@ -628,7 +628,7 @@ pub fn noop_visit_macro_def<T: MutVisitor>(macro_def: &mut MacroDef, vis: &mut T
 pub fn noop_visit_meta_list_item<T: MutVisitor>(li: &mut NestedMetaItem, vis: &mut T) {
     match li {
         NestedMetaItem::MetaItem(mi) => vis.visit_meta_item(mi),
-        NestedMetaItem::Literal(_lit) => {}
+        NestedMetaItem::Lit(_lit) => {}
     }
 }
 
