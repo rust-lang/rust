@@ -1180,7 +1180,7 @@ impl<'hir> LoweringContext<'_, 'hir> {
                 },
             );
 
-            (this.arena.alloc_from_iter(parameters), this.expr(body.span, async_expr))
+            (this.arena.alloc_from_iter(parameters), async_expr)
         })
     }
 

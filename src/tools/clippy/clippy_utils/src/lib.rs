@@ -1904,16 +1904,7 @@ pub fn is_async_fn(kind: FnKind<'_>) -> bool {
 
 /// Peels away all the compiler generated code surrounding the body of an async function,
 pub fn get_async_fn_body<'tcx>(tcx: TyCtxt<'tcx>, body: &Body<'_>) -> Option<&'tcx Expr<'tcx>> {
-    if let ExprKind::Call(
-        _,
-        &[
-            Expr {
-                kind: ExprKind::Closure(&Closure { body, .. }),
-                ..
-            },
-        ],
-    ) = body.value.kind
-    {
+    if let ExprKind::Closure(&Closure { body, .. }) = body.value.kind {
         if let ExprKind::Block(
             Block {
                 stmts: [],

@@ -1,12 +1,12 @@
-error[E0739]: attribute should be applied to a function definition
+error[E0658]: `#[track_caller]` on closures is currently unstable
   --> $DIR/async-block.rs:6:13
    |
-LL |       let _ = #[track_caller] async {
-   |  _____________^^^^^^^^^^^^^^^_-
-LL | |
-LL | |     };
-   | |_____- not a function definition
+LL |     let _ = #[track_caller] async {
+   |             ^^^^^^^^^^^^^^^
+   |
+   = note: see issue #87417 <https://github.com/rust-lang/rust/issues/87417> for more information
+   = help: add `#![feature(closure_track_caller)]` to the crate attributes to enable
 
 error: aborting due to previous error
 
-For more information about this error, try `rustc --explain E0739`.
+For more information about this error, try `rustc --explain E0658`.
