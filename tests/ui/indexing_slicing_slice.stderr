@@ -2,39 +2,50 @@ error: slicing may panic
   --> $DIR/indexing_slicing_slice.rs:12:6
    |
 LL |     &x[index..];
-   |      ^^^^^^^^^^ help: consider using `.get(n..)` or .get_mut(n..)` instead
+   |      ^^^^^^^^^^
    |
+   = help: consider using `.get(n..)` or .get_mut(n..)` instead
    = note: `-D clippy::indexing-slicing` implied by `-D warnings`
 
 error: slicing may panic
   --> $DIR/indexing_slicing_slice.rs:13:6
    |
 LL |     &x[..index];
-   |      ^^^^^^^^^^ help: consider using `.get(..n)`or `.get_mut(..n)` instead
+   |      ^^^^^^^^^^
+   |
+   = help: consider using `.get(..n)`or `.get_mut(..n)` instead
 
 error: slicing may panic
   --> $DIR/indexing_slicing_slice.rs:14:6
    |
 LL |     &x[index_from..index_to];
-   |      ^^^^^^^^^^^^^^^^^^^^^^^ help: consider using `.get(n..m)` or `.get_mut(n..m)` instead
+   |      ^^^^^^^^^^^^^^^^^^^^^^^
+   |
+   = help: consider using `.get(n..m)` or `.get_mut(n..m)` instead
 
 error: slicing may panic
   --> $DIR/indexing_slicing_slice.rs:15:6
    |
 LL |     &x[index_from..][..index_to]; // Two lint reports, one for [index_from..] and another for [..index_to].
-   |      ^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: consider using `.get(..n)`or `.get_mut(..n)` instead
+   |      ^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+   = help: consider using `.get(..n)`or `.get_mut(..n)` instead
 
 error: slicing may panic
   --> $DIR/indexing_slicing_slice.rs:15:6
    |
 LL |     &x[index_from..][..index_to]; // Two lint reports, one for [index_from..] and another for [..index_to].
-   |      ^^^^^^^^^^^^^^^ help: consider using `.get(n..)` or .get_mut(n..)` instead
+   |      ^^^^^^^^^^^^^^^
+   |
+   = help: consider using `.get(n..)` or .get_mut(n..)` instead
 
 error: slicing may panic
   --> $DIR/indexing_slicing_slice.rs:16:6
    |
 LL |     &x[5..][..10]; // Two lint reports, one for out of bounds [5..] and another for slicing [..10].
-   |      ^^^^^^^^^^^^ help: consider using `.get(..n)`or `.get_mut(..n)` instead
+   |      ^^^^^^^^^^^^
+   |
+   = help: consider using `.get(..n)`or `.get_mut(..n)` instead
 
 error: range is out of bounds
   --> $DIR/indexing_slicing_slice.rs:16:8
@@ -48,13 +59,17 @@ error: slicing may panic
   --> $DIR/indexing_slicing_slice.rs:17:6
    |
 LL |     &x[0..][..3];
-   |      ^^^^^^^^^^^ help: consider using `.get(..n)`or `.get_mut(..n)` instead
+   |      ^^^^^^^^^^^
+   |
+   = help: consider using `.get(..n)`or `.get_mut(..n)` instead
 
 error: slicing may panic
   --> $DIR/indexing_slicing_slice.rs:18:6
    |
 LL |     &x[1..][..5];
-   |      ^^^^^^^^^^^ help: consider using `.get(..n)`or `.get_mut(..n)` instead
+   |      ^^^^^^^^^^^
+   |
+   = help: consider using `.get(..n)`or `.get_mut(..n)` instead
 
 error: range is out of bounds
   --> $DIR/indexing_slicing_slice.rs:25:12
@@ -72,13 +87,17 @@ error: slicing may panic
   --> $DIR/indexing_slicing_slice.rs:31:6
    |
 LL |     &v[10..100];
-   |      ^^^^^^^^^^ help: consider using `.get(n..m)` or `.get_mut(n..m)` instead
+   |      ^^^^^^^^^^
+   |
+   = help: consider using `.get(n..m)` or `.get_mut(n..m)` instead
 
 error: slicing may panic
   --> $DIR/indexing_slicing_slice.rs:32:6
    |
 LL |     &x[10..][..100]; // Two lint reports, one for [10..] and another for [..100].
-   |      ^^^^^^^^^^^^^^ help: consider using `.get(..n)`or `.get_mut(..n)` instead
+   |      ^^^^^^^^^^^^^^
+   |
+   = help: consider using `.get(..n)`or `.get_mut(..n)` instead
 
 error: range is out of bounds
   --> $DIR/indexing_slicing_slice.rs:32:8
@@ -90,13 +109,17 @@ error: slicing may panic
   --> $DIR/indexing_slicing_slice.rs:33:6
    |
 LL |     &v[10..];
-   |      ^^^^^^^ help: consider using `.get(n..)` or .get_mut(n..)` instead
+   |      ^^^^^^^
+   |
+   = help: consider using `.get(n..)` or .get_mut(n..)` instead
 
 error: slicing may panic
   --> $DIR/indexing_slicing_slice.rs:34:6
    |
 LL |     &v[..100];
-   |      ^^^^^^^^ help: consider using `.get(..n)`or `.get_mut(..n)` instead
+   |      ^^^^^^^^
+   |
+   = help: consider using `.get(..n)`or `.get_mut(..n)` instead
 
 error: aborting due to 16 previous errors
 

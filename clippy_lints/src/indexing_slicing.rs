@@ -4,7 +4,6 @@ use clippy_utils::consts::{constant, Constant};
 use clippy_utils::diagnostics::{span_lint, span_lint_and_then};
 use clippy_utils::higher;
 use rustc_ast::ast::RangeLimits;
-use rustc_errors::Applicability;
 use rustc_hir::{Expr, ExprKind};
 use rustc_lint::{LateContext, LateLintPass};
 use rustc_middle::ty;
@@ -105,6 +104,7 @@ impl<'tcx> LateLintPass<'tcx> for IndexingSlicing {
         }
 
         if let ExprKind::Index(array, index) = &expr.kind {
+            let note = "the suggestion might not be applicable in constant blocks";
             let ty = cx.typeck_results().expr_ty(array).peel_refs();
             if let Some(range) = higher::Range::hir(index) {
                 // Ranged indexes, i.e., &x[n..m], &x[n..], &x[..n] and &x[..]
@@ -156,12 +156,11 @@ impl<'tcx> LateLintPass<'tcx> for IndexingSlicing {
                 };
 
                 span_lint_and_then(cx, INDEXING_SLICING, expr.span, "slicing may panic", |diag| {
-                    let note = if cx.tcx.hir().is_inside_const_context(expr.hir_id) {
-                        "the suggestion might not be applicable in constant blocks"
-                    } else {
-                        ""
-                    };
-                    diag.span_suggestion(expr.span, help_msg, note, Applicability::MachineApplicable);
+                    diag.help(help_msg);
+
+                    if cx.tcx.hir().is_inside_const_context(expr.hir_id) {
+                        diag.note(note);
+                    }
                 });
             } else {
                 // Catchall non-range index, i.e., [n] or [n << m]
@@ -178,17 +177,11 @@ impl<'tcx> LateLintPass<'tcx> for IndexingSlicing {
                 }
 
                 span_lint_and_then(cx, INDEXING_SLICING, expr.span, "indexing may panic", |diag| {
-                    let note = if cx.tcx.hir().is_inside_const_context(expr.hir_id) {
-                        "the suggestion might not be applicable in constant blocks"
-                    } else {
-                        ""
-                    };
-                    diag.span_suggestion(
-                        expr.span,
-                        "consider using `.get(n)` or `.get_mut(n)` instead",
-                        note,
-                        Applicability::MachineApplicable,
-                    );
+                    diag.help("consider using `.get(n)` or `.get_mut(n)` instead");
+
+                    if cx.tcx.hir().is_inside_const_context(expr.hir_id) {
+                        diag.note(note);
+                    }
                 });
             }
         }

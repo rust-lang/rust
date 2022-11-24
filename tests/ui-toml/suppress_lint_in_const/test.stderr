@@ -2,8 +2,10 @@ error: indexing may panic
   --> $DIR/test.rs:11:9
    |
 LL |         self.value[0] & 0b1000_0000 != 0
-   |         ^^^^^^^^^^^^^ help: consider using `.get(n)` or `.get_mut(n)` instead: `the suggestion might not be applicable in constant blocks`
+   |         ^^^^^^^^^^^^^
    |
+   = help: consider using `.get(n)` or `.get_mut(n)` instead
+   = note: the suggestion might not be applicable in constant blocks
    = note: `-D clippy::indexing-slicing` implied by `-D warnings`
 
 error: aborting due to previous error

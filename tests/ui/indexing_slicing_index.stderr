@@ -1,3 +1,22 @@
+error: indexing may panic
+  --> $DIR/indexing_slicing_index.rs:9:20
+   |
+LL | const REF: &i32 = &ARR[idx()]; // Ok, should not produce stderr.
+   |                    ^^^^^^^^^^
+   |
+   = help: consider using `.get(n)` or `.get_mut(n)` instead
+   = note: the suggestion might not be applicable in constant blocks
+   = note: `-D clippy::indexing-slicing` implied by `-D warnings`
+
+error: indexing may panic
+  --> $DIR/indexing_slicing_index.rs:10:24
+   |
+LL | const REF_ERR: &i32 = &ARR[idx4()]; // Ok, let rustc handle const contexts.
+   |                        ^^^^^^^^^^^
+   |
+   = help: consider using `.get(n)` or `.get_mut(n)` instead
+   = note: the suggestion might not be applicable in constant blocks
+
 error[E0080]: evaluation of `main::{constant#3}` failed
   --> $DIR/indexing_slicing_index.rs:31:14
    |
@@ -14,39 +33,83 @@ error: indexing may panic
   --> $DIR/indexing_slicing_index.rs:22:5
    |
 LL |     x[index];
-   |     ^^^^^^^^ help: consider using `.get(n)` or `.get_mut(n)` instead
+   |     ^^^^^^^^
    |
-   = note: `-D clippy::indexing-slicing` implied by `-D warnings`
+   = help: consider using `.get(n)` or `.get_mut(n)` instead
+
+error: indexing may panic
+  --> $DIR/indexing_slicing_index.rs:28:5
+   |
+LL |     x[const { idx() }]; // Ok, should not produce stderr.
+   |     ^^^^^^^^^^^^^^^^^^
+   |
+   = help: consider using `.get(n)` or `.get_mut(n)` instead
+
+error: indexing may panic
+  --> $DIR/indexing_slicing_index.rs:29:5
+   |
+LL |     x[const { idx4() }]; // Ok, let rustc's `unconditional_panic` lint handle `usize` indexing on arrays.
+   |     ^^^^^^^^^^^^^^^^^^^
+   |
+   = help: consider using `.get(n)` or `.get_mut(n)` instead
+
+error: indexing may panic
+  --> $DIR/indexing_slicing_index.rs:30:14
+   |
+LL |     const { &ARR[idx()] }; // Ok, should not produce stderr.
+   |              ^^^^^^^^^^
+   |
+   = help: consider using `.get(n)` or `.get_mut(n)` instead
+   = note: the suggestion might not be applicable in constant blocks
+
+error: indexing may panic
+  --> $DIR/indexing_slicing_index.rs:31:14
+   |
+LL |     const { &ARR[idx4()] }; // Ok, let rustc handle const contexts.
+   |              ^^^^^^^^^^^
+   |
+   = help: consider using `.get(n)` or `.get_mut(n)` instead
+   = note: the suggestion might not be applicable in constant blocks
 
 error: indexing may panic
   --> $DIR/indexing_slicing_index.rs:38:5
    |
 LL |     v[0];
-   |     ^^^^ help: consider using `.get(n)` or `.get_mut(n)` instead
+   |     ^^^^
+   |
+   = help: consider using `.get(n)` or `.get_mut(n)` instead
 
 error: indexing may panic
   --> $DIR/indexing_slicing_index.rs:39:5
    |
 LL |     v[10];
-   |     ^^^^^ help: consider using `.get(n)` or `.get_mut(n)` instead
+   |     ^^^^^
+   |
+   = help: consider using `.get(n)` or `.get_mut(n)` instead
 
 error: indexing may panic
   --> $DIR/indexing_slicing_index.rs:40:5
    |
 LL |     v[1 << 3];
-   |     ^^^^^^^^^ help: consider using `.get(n)` or `.get_mut(n)` instead
+   |     ^^^^^^^^^
+   |
+   = help: consider using `.get(n)` or `.get_mut(n)` instead
 
 error: indexing may panic
   --> $DIR/indexing_slicing_index.rs:46:5
    |
 LL |     v[N];
-   |     ^^^^ help: consider using `.get(n)` or `.get_mut(n)` instead
+   |     ^^^^
+   |
+   = help: consider using `.get(n)` or `.get_mut(n)` instead
 
 error: indexing may panic
   --> $DIR/indexing_slicing_index.rs:47:5
    |
 LL |     v[M];
-   |     ^^^^ help: consider using `.get(n)` or `.get_mut(n)` instead
+   |     ^^^^
+   |
+   = help: consider using `.get(n)` or `.get_mut(n)` instead
 
 error[E0080]: evaluation of constant value failed
   --> $DIR/indexing_slicing_index.rs:10:24
@@ -54,6 +117,6 @@ error[E0080]: evaluation of constant value failed
 LL | const REF_ERR: &i32 = &ARR[idx4()]; // Ok, let rustc handle const contexts.
    |                        ^^^^^^^^^^^ index out of bounds: the length is 2 but the index is 4
 
-error: aborting due to 8 previous errors
+error: aborting due to 14 previous errors
 
 For more information about this error, try `rustc --explain E0080`.
