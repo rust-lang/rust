@@ -97,10 +97,10 @@ pub trait TypeVisitable<'tcx>: fmt::Debug + Clone {
     }
     fn error_reported(&self) -> Result<(), ErrorGuaranteed> {
         if self.references_error() {
-            if let Some(reported) = ty::tls::with(|tcx| tcx.sess.has_errors()) {
+            if let Some(reported) = ty::tls::with(|tcx| tcx.sess.is_compilation_going_to_fail()) {
                 Err(reported)
             } else {
-                bug!("expect tcx.sess.has_errors return true");
+                bug!("expect tcx.sess.is_compilation_going_to_fail return `Some`");
             }
         } else {
             Ok(())
