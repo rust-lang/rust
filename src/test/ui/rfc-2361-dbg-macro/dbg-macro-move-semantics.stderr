@@ -7,6 +7,12 @@ LL |     let _ = dbg!(a);
    |             ------- value moved here
 LL |     let _ = dbg!(a);
    |                  ^ value used here after move
+   |
+help: borrow this binding in the pattern to avoid moving the value
+  --> $SRC_DIR/std/src/macros.rs:LL:COL
+   |
+LL |             ref tmp => {
+   |             +++
 
 error: aborting due to previous error
 

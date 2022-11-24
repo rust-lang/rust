@@ -1044,11 +1044,19 @@ fn check_borrow_conflicts_in_at_patterns(cx: &MatchVisitor<'_, '_, '_>, pat: &Pa
                     name,
                     typeck_results.node_type(pat.hir_id),
                 );
-                sess.struct_span_err(pat.span, "borrow of moved value")
-                    .span_label(binding_span, format!("value moved into `{}` here", name))
+                let mut err = sess.struct_span_err(pat.span, "borrow of moved value");
+                err.span_label(binding_span, format!("value moved into `{}` here", name))
                     .span_label(binding_span, occurs_because)
-                    .span_labels(conflicts_ref, "value borrowed here after move")
-                    .emit();
+                    .span_labels(conflicts_ref, "value borrowed here after move");
+                if pat.span.contains(binding_span) {
+                    err.span_suggestion_verbose(
+                        binding_span.shrink_to_lo(),
+                        "borrow this binding in the pattern to avoid moving the value",
+                        "ref ".to_string(),
+                        Applicability::MachineApplicable,
+                    );
+                }
+                err.emit();
             }
             return;
         }

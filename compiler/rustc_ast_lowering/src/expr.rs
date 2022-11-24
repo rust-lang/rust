@@ -131,12 +131,12 @@ impl<'hir> LoweringContext<'_, 'hir> {
                     let span = this.mark_span_with_reason(DesugaringKind::WhileLoop, e.span, None);
                     this.lower_expr_while_in_loop_scope(span, cond, body, *opt_label)
                 }),
-                ExprKind::Loop(body, opt_label) => self.with_loop_scope(e.id, |this| {
+                ExprKind::Loop(body, opt_label, span) => self.with_loop_scope(e.id, |this| {
                     hir::ExprKind::Loop(
                         this.lower_block(body, false),
                         this.lower_label(*opt_label),
                         hir::LoopSource::Loop,
-                        DUMMY_SP,
+                        this.lower_span(*span),
                     )
                 }),
                 ExprKind::TryBlock(body) => self.lower_expr_try_block(body),

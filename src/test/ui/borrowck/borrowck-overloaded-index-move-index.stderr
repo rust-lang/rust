@@ -33,6 +33,11 @@ LL |     println!("{}", f[s]);
 ...
 LL |     f[s] = 10;
    |       ^ value used here after move
+   |
+help: consider cloning the value if the performance cost is acceptable
+   |
+LL |     println!("{}", f[s.clone()]);
+   |                       ++++++++
 
 error: aborting due to 3 previous errors
 

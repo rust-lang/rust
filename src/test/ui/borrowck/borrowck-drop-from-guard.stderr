@@ -9,6 +9,11 @@ LL |         Some(_) if { drop(my_str); false } => {}
 LL |         Some(_) => {}
 LL |         None => { foo(my_str); }
    |                       ^^^^^^ value used here after move
+   |
+help: consider cloning the value if the performance cost is acceptable
+   |
+LL |         Some(_) if { drop(my_str.clone()); false } => {}
+   |                                 ++++++++
 
 error: aborting due to previous error
 

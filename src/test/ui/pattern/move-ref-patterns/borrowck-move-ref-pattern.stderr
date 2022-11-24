@@ -129,6 +129,10 @@ LL |     drop(tup.1);
    |          ^^^^^ value used here after move
    |
    = note: move occurs because `tup.1` has type `U`, which does not implement the `Copy` trait
+help: borrow this binding in the pattern to avoid moving the value
+   |
+LL |     let (ref _x0, ref _x1, ref _x2, ..) = tup;
+   |                   +++
 
 error[E0382]: borrow of moved value: `tup.1`
   --> $DIR/borrowck-move-ref-pattern.rs:29:20
