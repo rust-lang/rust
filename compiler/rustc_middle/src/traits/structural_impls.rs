@@ -17,10 +17,6 @@ impl<'tcx, N: fmt::Debug> fmt::Debug for traits::ImplSource<'tcx, N> {
 
             super::ImplSource::FnPointer(ref d) => write!(f, "({:?})", d),
 
-            super::ImplSource::DiscriminantKind(ref d) => write!(f, "{:?}", d),
-
-            super::ImplSource::Pointee(ref d) => write!(f, "{:?}", d),
-
             super::ImplSource::Object(ref d) => write!(f, "{:?}", d),
 
             super::ImplSource::Param(ref n, ct) => {
@@ -124,12 +120,4 @@ impl<N: fmt::Debug> fmt::Debug for traits::ImplSourceConstDestructData<N> {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         write!(f, "ImplSourceConstDestructData(nested={:?})", self.nested)
     }
-}
-
-///////////////////////////////////////////////////////////////////////////
-// Lift implementations
-
-TrivialTypeTraversalAndLiftImpls! {
-    super::ImplSourceDiscriminantKindData,
-    super::ImplSourcePointeeData,
 }
