@@ -1,6 +1,6 @@
 use clippy_utils::diagnostics::span_lint_and_then;
 use clippy_utils::source::snippet_opt;
-use clippy_utils::ty::{get_associated_type, implements_trait, is_copy};
+use clippy_utils::ty::{implements_trait, is_copy};
 use rustc_errors::Applicability;
 use rustc_hir::Expr;
 use rustc_lint::LateContext;
@@ -25,7 +25,7 @@ pub(super) fn check<'tcx>(
         && let Some(method_id) = typeck.type_dependent_def_id(cloned_call.hir_id)
         && cx.tcx.trait_of_item(method_id) == Some(iter_id)
         && let cloned_recv_ty = typeck.expr_ty_adjusted(cloned_recv)
-        && let Some(iter_assoc_ty) = get_associated_type(cx, cloned_recv_ty, iter_id, "Item")
+        && let Some(iter_assoc_ty) = cx.get_associated_type(cloned_recv_ty, iter_id, "Item")
         && matches!(*iter_assoc_ty.kind(), ty::Ref(_, ty, _) if !is_copy(cx, ty))
     {
         if needs_into_iter
