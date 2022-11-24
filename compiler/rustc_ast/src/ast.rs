@@ -479,20 +479,6 @@ pub struct Crate {
     pub is_placeholder: bool,
 }
 
-/// Values inside meta item lists.
-///
-/// E.g., each of `Clone`, `Copy` in `#[derive(Clone, Copy)]`.
-#[derive(Clone, Encodable, Decodable, Debug, HashStable_Generic)]
-pub enum NestedMetaItem {
-    /// A full MetaItem, for recursive meta items.
-    MetaItem(MetaItem),
-
-    /// A literal.
-    ///
-    /// E.g., `"foo"`, `64`, `true`.
-    Lit(MetaItemLit),
-}
-
 /// A semantic representation of a meta item. A meta item is a slightly
 /// restricted form of an attribute -- it can only contain expressions in
 /// certain leaf positions, rather than arbitrary token streams -- that is used
@@ -523,6 +509,20 @@ pub enum MetaItemKind {
     ///
     /// E.g., `#[feature = "foo"]`, where the field represents the `"foo"`.
     NameValue(MetaItemLit),
+}
+
+/// Values inside meta item lists.
+///
+/// E.g., each of `Clone`, `Copy` in `#[derive(Clone, Copy)]`.
+#[derive(Clone, Encodable, Decodable, Debug, HashStable_Generic)]
+pub enum NestedMetaItem {
+    /// A full MetaItem, for recursive meta items.
+    MetaItem(MetaItem),
+
+    /// A literal.
+    ///
+    /// E.g., `"foo"`, `64`, `true`.
+    Lit(MetaItemLit),
 }
 
 /// A block (`{ .. }`).
@@ -2574,13 +2574,6 @@ impl<D: Decoder> Decodable<D> for AttrId {
     }
 }
 
-#[derive(Clone, Encodable, Decodable, Debug, HashStable_Generic)]
-pub struct AttrItem {
-    pub path: Path,
-    pub args: AttrArgs,
-    pub tokens: Option<LazyAttrTokenStream>,
-}
-
 /// A list of attributes.
 pub type AttrVec = ThinVec<Attribute>;
 
@@ -2596,12 +2589,6 @@ pub struct Attribute {
 }
 
 #[derive(Clone, Encodable, Decodable, Debug)]
-pub struct NormalAttr {
-    pub item: AttrItem,
-    pub tokens: Option<LazyAttrTokenStream>,
-}
-
-#[derive(Clone, Encodable, Decodable, Debug)]
 pub enum AttrKind {
     /// A normal attribute.
     Normal(P<NormalAttr>),
@@ -2610,6 +2597,19 @@ pub enum AttrKind {
     /// Doc attributes (e.g. `#[doc="..."]`) are represented with the `Normal`
     /// variant (which is much less compact and thus more expensive).
     DocComment(CommentKind, Symbol),
+}
+
+#[derive(Clone, Encodable, Decodable, Debug)]
+pub struct NormalAttr {
+    pub item: AttrItem,
+    pub tokens: Option<LazyAttrTokenStream>,
+}
+
+#[derive(Clone, Encodable, Decodable, Debug, HashStable_Generic)]
+pub struct AttrItem {
+    pub path: Path,
+    pub args: AttrArgs,
+    pub tokens: Option<LazyAttrTokenStream>,
 }
 
 /// `TraitRef`s appear in impls.
