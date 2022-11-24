@@ -1781,12 +1781,10 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
                     // Given we are only considering `ImplicitSelf` types, we needn't consider
                     // the case where we have a mutable pattern to a reference as that would
                     // no longer be an `ImplicitSelf`.
-                    TyKind::Rptr(_, mt) if mt.ty.kind.is_implicit_self() && mt.mutbl.is_mut() => {
-                        hir::ImplicitSelfKind::MutRef
-                    }
-                    TyKind::Rptr(_, mt) if mt.ty.kind.is_implicit_self() => {
-                        hir::ImplicitSelfKind::ImmRef
-                    }
+                    TyKind::Rptr(_, mt) if mt.ty.kind.is_implicit_self() => match mt.mutbl {
+                        hir::Mutability::Not => hir::ImplicitSelfKind::ImmRef,
+                        hir::Mutability::Mut => hir::ImplicitSelfKind::MutRef,
+                    },
                     _ => hir::ImplicitSelfKind::None,
                 }
             }),
