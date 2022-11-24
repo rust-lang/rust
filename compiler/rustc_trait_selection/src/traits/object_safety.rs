@@ -288,11 +288,11 @@ fn predicate_references_self<'tcx>(
     let self_ty = tcx.types.self_param;
     let has_self_ty = |arg: &GenericArg<'tcx>| arg.walk().any(|arg| arg == self_ty.into());
     match predicate.kind().skip_binder() {
-        ty::PredicateKind::Trait(ref data) => {
+        ty::PredicateKind::Clause(ty::Clause::Trait(ref data)) => {
             // In the case of a trait predicate, we can skip the "self" type.
             if data.trait_ref.substs[1..].iter().any(has_self_ty) { Some(sp) } else { None }
         }
-        ty::PredicateKind::Projection(ref data) => {
+        ty::PredicateKind::Clause(ty::Clause::Projection(ref data)) => {
             // And similarly for projections. This should be redundant with
             // the previous check because any projection should have a
             // matching `Trait` predicate with the same inputs, but we do
@@ -312,8 +312,8 @@ fn predicate_references_self<'tcx>(
         }
         ty::PredicateKind::WellFormed(..)
         | ty::PredicateKind::ObjectSafe(..)
-        | ty::PredicateKind::TypeOutlives(..)
-        | ty::PredicateKind::RegionOutlives(..)
+        | ty::PredicateKind::Clause(ty::Clause::TypeOutlives(..))
+        | ty::PredicateKind::Clause(ty::Clause::RegionOutlives(..))
         | ty::PredicateKind::ClosureKind(..)
         | ty::PredicateKind::Subtype(..)
         | ty::PredicateKind::Coerce(..)
@@ -338,17 +338,17 @@ fn generics_require_sized_self(tcx: TyCtxt<'_>, def_id: DefId) -> bool {
     let predicates = predicates.instantiate_identity(tcx).predicates;
     elaborate_predicates(tcx, predicates.into_iter()).any(|obligation| {
         match obligation.predicate.kind().skip_binder() {
-            ty::PredicateKind::Trait(ref trait_pred) => {
+            ty::PredicateKind::Clause(ty::Clause::Trait(ref trait_pred)) => {
                 trait_pred.def_id() == sized_def_id && trait_pred.self_ty().is_param(0)
             }
-            ty::PredicateKind::Projection(..)
+            ty::PredicateKind::Clause(ty::Clause::Projection(..))
             | ty::PredicateKind::Subtype(..)
             | ty::PredicateKind::Coerce(..)
-            | ty::PredicateKind::RegionOutlives(..)
+            | ty::PredicateKind::Clause(ty::Clause::RegionOutlives(..))
             | ty::PredicateKind::WellFormed(..)
             | ty::PredicateKind::ObjectSafe(..)
             | ty::PredicateKind::ClosureKind(..)
-            | ty::PredicateKind::TypeOutlives(..)
+            | ty::PredicateKind::Clause(ty::Clause::TypeOutlives(..))
             | ty::PredicateKind::ConstEvaluatable(..)
             | ty::PredicateKind::ConstEquate(..)
             | ty::PredicateKind::Ambiguous

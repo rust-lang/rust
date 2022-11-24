@@ -121,14 +121,14 @@ pub fn predicate_obligations<'tcx>(
 
     // It's ok to skip the binder here because wf code is prepared for it
     match predicate.kind().skip_binder() {
-        ty::PredicateKind::Trait(t) => {
+        ty::PredicateKind::Clause(ty::Clause::Trait(t)) => {
             wf.compute_trait_pred(&t, Elaborate::None);
         }
-        ty::PredicateKind::RegionOutlives(..) => {}
-        ty::PredicateKind::TypeOutlives(ty::OutlivesPredicate(ty, _reg)) => {
+        ty::PredicateKind::Clause(ty::Clause::RegionOutlives(..)) => {}
+        ty::PredicateKind::Clause(ty::Clause::TypeOutlives(ty::OutlivesPredicate(ty, _reg))) => {
             wf.compute(ty.into());
         }
-        ty::PredicateKind::Projection(t) => {
+        ty::PredicateKind::Clause(ty::Clause::Projection(t)) => {
             wf.compute_projection(t.projection_ty);
             wf.compute(match t.term.unpack() {
                 ty::TermKind::Ty(ty) => ty.into(),
@@ -228,7 +228,7 @@ fn extend_cause_with_original_assoc_item_obligation<'tcx>(
 
     // It is fine to skip the binder as we don't care about regions here.
     match pred.kind().skip_binder() {
-        ty::PredicateKind::Projection(proj) => {
+        ty::PredicateKind::Clause(ty::Clause::Projection(proj)) => {
             // The obligation comes not from the current `impl` nor the `trait` being implemented,
             // but rather from a "second order" obligation, where an associated type has a
             // projection coming from another associated type. See
@@ -245,7 +245,7 @@ fn extend_cause_with_original_assoc_item_obligation<'tcx>(
                 cause.span = impl_item_span;
             }
         }
-        ty::PredicateKind::Trait(pred) => {
+        ty::PredicateKind::Clause(ty::Clause::Trait(pred)) => {
             // An associated item obligation born out of the `trait` failed to be met. An example
             // can be seen in `ui/associated-types/point-at-type-on-obligation-failure-2.rs`.
             debug!("extended_cause_with_original_assoc_item_obligation trait proj {:?}", pred);
@@ -561,9 +561,9 @@ impl<'tcx> WfPredicates<'tcx> {
                             cause,
                             depth,
                             param_env,
-                            ty::Binder::dummy(ty::PredicateKind::TypeOutlives(
+                            ty::Binder::dummy(ty::PredicateKind::Clause(ty::Clause::TypeOutlives(
                                 ty::OutlivesPredicate(rty, r),
-                            )),
+                            ))),
                         ));
                     }
                 }
@@ -866,19 +866,22 @@ pub(crate) fn required_region_bounds<'tcx>(
         .filter_map(|obligation| {
             debug!(?obligation);
             match obligation.predicate.kind().skip_binder() {
-                ty::PredicateKind::Projection(..)
-                | ty::PredicateKind::Trait(..)
+                ty::PredicateKind::Clause(ty::Clause::Projection(..))
+                | ty::PredicateKind::Clause(ty::Clause::Trait(..))
                 | ty::PredicateKind::Subtype(..)
                 | ty::PredicateKind::Coerce(..)
                 | ty::PredicateKind::WellFormed(..)
                 | ty::PredicateKind::ObjectSafe(..)
                 | ty::PredicateKind::ClosureKind(..)
-                | ty::PredicateKind::RegionOutlives(..)
+                | ty::PredicateKind::Clause(ty::Clause::RegionOutlives(..))
                 | ty::PredicateKind::ConstEvaluatable(..)
                 | ty::PredicateKind::ConstEquate(..)
                 | ty::PredicateKind::Ambiguous
                 | ty::PredicateKind::TypeWellFormedFromEnv(..) => None,
-                ty::PredicateKind::TypeOutlives(ty::OutlivesPredicate(ref t, ref r)) => {
+                ty::PredicateKind::Clause(ty::Clause::TypeOutlives(ty::OutlivesPredicate(
+                    ref t,
+                    ref r,
+                ))) => {
                     // Search for a bound of the form `erased_self_ty
                     // : 'a`, but be wary of something like `for<'a>
                     // erased_self_ty : 'a` (we interpret a

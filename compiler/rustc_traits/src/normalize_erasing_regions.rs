@@ -56,9 +56,10 @@ fn try_normalize_after_erasing_regions<'tcx, T: TypeFoldable<'tcx> + PartialEq +
 
 fn not_outlives_predicate<'tcx>(p: ty::Predicate<'tcx>) -> bool {
     match p.kind().skip_binder() {
-        ty::PredicateKind::RegionOutlives(..) | ty::PredicateKind::TypeOutlives(..) => false,
-        ty::PredicateKind::Trait(..)
-        | ty::PredicateKind::Projection(..)
+        ty::PredicateKind::Clause(ty::Clause::RegionOutlives(..))
+        | ty::PredicateKind::Clause(ty::Clause::TypeOutlives(..)) => false,
+        ty::PredicateKind::Clause(ty::Clause::Trait(..))
+        | ty::PredicateKind::Clause(ty::Clause::Projection(..))
         | ty::PredicateKind::WellFormed(..)
         | ty::PredicateKind::ObjectSafe(..)
         | ty::PredicateKind::ClosureKind(..)

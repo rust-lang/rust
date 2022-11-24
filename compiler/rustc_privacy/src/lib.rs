@@ -146,19 +146,23 @@ where
 
     fn visit_predicate(&mut self, predicate: ty::Predicate<'tcx>) -> ControlFlow<V::BreakTy> {
         match predicate.kind().skip_binder() {
-            ty::PredicateKind::Trait(ty::TraitPredicate {
+            ty::PredicateKind::Clause(ty::Clause::Trait(ty::TraitPredicate {
                 trait_ref,
                 constness: _,
                 polarity: _,
-            }) => self.visit_trait(trait_ref),
-            ty::PredicateKind::Projection(ty::ProjectionPredicate { projection_ty, term }) => {
+            })) => self.visit_trait(trait_ref),
+            ty::PredicateKind::Clause(ty::Clause::Projection(ty::ProjectionPredicate {
+                projection_ty,
+                term,
+            })) => {
                 term.visit_with(self)?;
                 self.visit_projection_ty(projection_ty)
             }
-            ty::PredicateKind::TypeOutlives(ty::OutlivesPredicate(ty, _region)) => {
-                ty.visit_with(self)
-            }
-            ty::PredicateKind::RegionOutlives(..) => ControlFlow::CONTINUE,
+            ty::PredicateKind::Clause(ty::Clause::TypeOutlives(ty::OutlivesPredicate(
+                ty,
+                _region,
+            ))) => ty.visit_with(self),
+            ty::PredicateKind::Clause(ty::Clause::RegionOutlives(..)) => ControlFlow::CONTINUE,
             ty::PredicateKind::ConstEvaluatable(ct) => ct.visit_with(self),
             ty::PredicateKind::WellFormed(arg) => arg.visit_with(self),
             _ => bug!("unexpected predicate: {:?}", predicate),

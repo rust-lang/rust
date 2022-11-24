@@ -141,7 +141,7 @@ impl<'tcx> Elaborator<'tcx> {
 
         let bound_predicate = obligation.predicate.kind();
         match bound_predicate.skip_binder() {
-            ty::PredicateKind::Trait(data) => {
+            ty::PredicateKind::Clause(ty::Clause::Trait(data)) => {
                 // Get predicates declared on the trait.
                 let predicates = tcx.super_predicates_of(data.def_id());
 
@@ -184,7 +184,7 @@ impl<'tcx> Elaborator<'tcx> {
                 // Currently, we do not "elaborate" predicates like `X -> Y`,
                 // though conceivably we might.
             }
-            ty::PredicateKind::Projection(..) => {
+            ty::PredicateKind::Clause(ty::Clause::Projection(..)) => {
                 // Nothing to elaborate in a projection predicate.
             }
             ty::PredicateKind::ClosureKind(..) => {
@@ -198,10 +198,13 @@ impl<'tcx> Elaborator<'tcx> {
                 // Currently, we do not elaborate const-equate
                 // predicates.
             }
-            ty::PredicateKind::RegionOutlives(..) => {
+            ty::PredicateKind::Clause(ty::Clause::RegionOutlives(..)) => {
                 // Nothing to elaborate from `'a: 'b`.
             }
-            ty::PredicateKind::TypeOutlives(ty::OutlivesPredicate(ty_max, r_min)) => {
+            ty::PredicateKind::Clause(ty::Clause::TypeOutlives(ty::OutlivesPredicate(
+                ty_max,
+                r_min,
+            ))) => {
                 // We know that `T: 'a` for some type `T`. We can
                 // often elaborate this. For example, if we know that
                 // `[U]: 'a`, that implies that `U: 'a`. Similarly, if
@@ -231,16 +234,16 @@ impl<'tcx> Elaborator<'tcx> {
                                 if r.is_late_bound() {
                                     None
                                 } else {
-                                    Some(ty::PredicateKind::RegionOutlives(ty::OutlivesPredicate(
-                                        r, r_min,
+                                    Some(ty::PredicateKind::Clause(ty::Clause::RegionOutlives(
+                                        ty::OutlivesPredicate(r, r_min),
                                     )))
                                 }
                             }
 
                             Component::Param(p) => {
                                 let ty = tcx.mk_ty_param(p.index, p.name);
-                                Some(ty::PredicateKind::TypeOutlives(ty::OutlivesPredicate(
-                                    ty, r_min,
+                                Some(ty::PredicateKind::Clause(ty::Clause::TypeOutlives(
+                                    ty::OutlivesPredicate(ty, r_min),
                                 )))
                             }
 
@@ -248,8 +251,8 @@ impl<'tcx> Elaborator<'tcx> {
 
                             Component::Opaque(def_id, substs) => {
                                 let ty = tcx.mk_opaque(def_id, substs);
-                                Some(ty::PredicateKind::TypeOutlives(ty::OutlivesPredicate(
-                                    ty, r_min,
+                                Some(ty::PredicateKind::Clause(ty::Clause::TypeOutlives(
+                                    ty::OutlivesPredicate(ty, r_min),
                                 )))
                             }
 
@@ -258,8 +261,8 @@ impl<'tcx> Elaborator<'tcx> {
                                 // With this, we can deduce that `<Bar as Baz>::Assoc: 'a`.
                                 let ty =
                                     tcx.mk_projection(projection.item_def_id, projection.substs);
-                                Some(ty::PredicateKind::TypeOutlives(ty::OutlivesPredicate(
-                                    ty, r_min,
+                                Some(ty::PredicateKind::Clause(ty::Clause::TypeOutlives(
+                                    ty::OutlivesPredicate(ty, r_min),
                                 )))
                             }
 

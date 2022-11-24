@@ -595,7 +595,9 @@ impl<'tcx> InferCtxt<'tcx> {
                 ct_op: |ct| ct,
             });
 
-            if let ty::PredicateKind::Projection(projection) = predicate.kind().skip_binder() {
+            if let ty::PredicateKind::Clause(ty::Clause::Projection(projection)) =
+                predicate.kind().skip_binder()
+            {
                 if projection.term.references_error() {
                     // No point on adding these obligations since there's a type error involved.
                     return Ok(InferOk { value: (), obligations: vec![] });

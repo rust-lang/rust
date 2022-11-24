@@ -785,7 +785,7 @@ impl<'a, 'tcx> ProbeContext<'a, 'tcx> {
         let bounds = self.param_env.caller_bounds().iter().filter_map(|predicate| {
             let bound_predicate = predicate.kind();
             match bound_predicate.skip_binder() {
-                ty::PredicateKind::Trait(trait_predicate) => {
+                ty::PredicateKind::Clause(ty::Clause::Trait(trait_predicate)) => {
                     match *trait_predicate.trait_ref.self_ty().kind() {
                         ty::Param(p) if p == param_ty => {
                             Some(bound_predicate.rebind(trait_predicate.trait_ref))
@@ -795,12 +795,12 @@ impl<'a, 'tcx> ProbeContext<'a, 'tcx> {
                 }
                 ty::PredicateKind::Subtype(..)
                 | ty::PredicateKind::Coerce(..)
-                | ty::PredicateKind::Projection(..)
-                | ty::PredicateKind::RegionOutlives(..)
+                | ty::PredicateKind::Clause(ty::Clause::Projection(..))
+                | ty::PredicateKind::Clause(ty::Clause::RegionOutlives(..))
                 | ty::PredicateKind::WellFormed(..)
                 | ty::PredicateKind::ObjectSafe(..)
                 | ty::PredicateKind::ClosureKind(..)
-                | ty::PredicateKind::TypeOutlives(..)
+                | ty::PredicateKind::Clause(ty::Clause::TypeOutlives(..))
                 | ty::PredicateKind::ConstEvaluatable(..)
                 | ty::PredicateKind::ConstEquate(..)
                 | ty::PredicateKind::Ambiguous

@@ -476,7 +476,9 @@ pub(crate) fn to_pretty_impl_header(tcx: TyCtxt<'_>, impl_def_id: DefId) -> Opti
                     trait_pred
                 });
 
-                p = tcx.mk_predicate(new_trait_pred.map_bound(ty::PredicateKind::Trait))
+                p = tcx.mk_predicate(
+                    new_trait_pred.map_bound(|p| ty::PredicateKind::Clause(ty::Clause::Trait(p))),
+                )
             }
         }
         pretty_predicates.push(p.to_string());

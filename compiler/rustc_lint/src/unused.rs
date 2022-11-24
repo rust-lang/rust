@@ -258,8 +258,9 @@ impl<'tcx> LateLintPass<'tcx> for UnusedResults {
                     )
                     .filter_map(|obligation| {
                         // We only look at the `DefId`, so it is safe to skip the binder here.
-                        if let ty::PredicateKind::Trait(ref poly_trait_predicate) =
-                            obligation.predicate.kind().skip_binder()
+                        if let ty::PredicateKind::Clause(ty::Clause::Trait(
+                            ref poly_trait_predicate,
+                        )) = obligation.predicate.kind().skip_binder()
                         {
                             let def_id = poly_trait_predicate.trait_ref.def_id;
 

@@ -2824,7 +2824,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
     ) {
         for error in errors {
             match error.obligation.predicate.kind().skip_binder() {
-                ty::PredicateKind::Trait(predicate)
+                ty::PredicateKind::Clause(ty::Clause::Trait(predicate))
                     if self.tcx.is_diagnostic_item(sym::SliceIndex, predicate.trait_ref.def_id) => {
                 }
                 _ => continue,

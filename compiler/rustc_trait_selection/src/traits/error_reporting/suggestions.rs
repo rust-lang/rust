@@ -810,7 +810,7 @@ impl<'tcx> TypeErrCtxtExt<'tcx> for TypeErrCtxt<'_, 'tcx> {
         err: &mut Diagnostic,
         trait_pred: ty::PolyTraitPredicate<'tcx>,
     ) -> bool {
-        if let ty::PredicateKind::Trait(trait_pred) = obligation.predicate.kind().skip_binder()
+        if let ty::PredicateKind::Clause(ty::Clause::Trait(trait_pred)) = obligation.predicate.kind().skip_binder()
             && Some(trait_pred.def_id()) == self.tcx.lang_items().sized_trait()
         {
             // Don't suggest calling to turn an unsized type into a sized type
@@ -839,7 +839,7 @@ impl<'tcx> TypeErrCtxtExt<'tcx> for TypeErrCtxt<'_, 'tcx> {
             }
             ty::Opaque(def_id, substs) => {
                 self.tcx.bound_item_bounds(def_id).subst(self.tcx, substs).iter().find_map(|pred| {
-                    if let ty::PredicateKind::Projection(proj) = pred.kind().skip_binder()
+                    if let ty::PredicateKind::Clause(ty::Clause::Projection(proj)) = pred.kind().skip_binder()
                     && Some(proj.projection_ty.item_def_id) == self.tcx.lang_items().fn_once_output()
                     // args tuple will always be substs[1]
                     && let ty::Tuple(args) = proj.projection_ty.substs.type_at(1).kind()
@@ -873,7 +873,7 @@ impl<'tcx> TypeErrCtxtExt<'tcx> for TypeErrCtxt<'_, 'tcx> {
             }
             ty::Param(_) => {
                 obligation.param_env.caller_bounds().iter().find_map(|pred| {
-                    if let ty::PredicateKind::Projection(proj) = pred.kind().skip_binder()
+                    if let ty::PredicateKind::Clause(ty::Clause::Projection(proj)) = pred.kind().skip_binder()
                     && Some(proj.projection_ty.item_def_id) == self.tcx.lang_items().fn_once_output()
                     && proj.projection_ty.self_ty() == found
                     // args tuple will always be substs[1]
@@ -1256,7 +1256,7 @@ impl<'tcx> TypeErrCtxtExt<'tcx> for TypeErrCtxt<'_, 'tcx> {
                     );
                     // FIXME: account for associated `async fn`s.
                     if let hir::Expr { span, kind: hir::ExprKind::Call(base, _), .. } = expr {
-                        if let ty::PredicateKind::Trait(pred) =
+                        if let ty::PredicateKind::Clause(ty::Clause::Trait(pred)) =
                             obligation.predicate.kind().skip_binder()
                         {
                             err.span_label(
@@ -1755,7 +1755,7 @@ impl<'tcx> TypeErrCtxtExt<'tcx> for TypeErrCtxt<'_, 'tcx> {
         if let ObligationCauseCode::ExprBindingObligation(def_id, _, _, idx) = cause
             && let predicates = self.tcx.predicates_of(def_id).instantiate_identity(self.tcx)
             && let Some(pred) = predicates.predicates.get(*idx)
-            && let ty::PredicateKind::Trait(trait_pred) = pred.kind().skip_binder()
+            && let ty::PredicateKind::Clause(ty::Clause::Trait(trait_pred)) = pred.kind().skip_binder()
             && ty::ClosureKind::from_def_id(self.tcx, trait_pred.def_id()).is_some()
         {
             let expected_self =
@@ -1769,7 +1769,7 @@ impl<'tcx> TypeErrCtxtExt<'tcx> for TypeErrCtxt<'_, 'tcx> {
             let other_pred = std::iter::zip(&predicates.predicates, &predicates.spans)
                 .enumerate()
                 .find(|(other_idx, (pred, _))| match pred.kind().skip_binder() {
-                    ty::PredicateKind::Trait(trait_pred)
+                    ty::PredicateKind::Clause(ty::Clause::Trait(trait_pred))
                         if ty::ClosureKind::from_def_id(self.tcx, trait_pred.def_id())
                             .is_some()
                             && other_idx != idx
@@ -1896,7 +1896,7 @@ impl<'tcx> TypeErrCtxtExt<'tcx> for TypeErrCtxt<'_, 'tcx> {
         // bound was introduced. At least one generator should be present for this diagnostic to be
         // modified.
         let (mut trait_ref, mut target_ty) = match obligation.predicate.kind().skip_binder() {
-            ty::PredicateKind::Trait(p) => (Some(p), Some(p.self_ty())),
+            ty::PredicateKind::Clause(ty::Clause::Trait(p)) => (Some(p), Some(p.self_ty())),
             _ => (None, None),
         };
         let mut generator = None;

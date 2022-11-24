@@ -124,7 +124,7 @@ impl<'tcx> LateLintPass<'tcx> for NeedlessPassByValue {
             .filter_map(|obligation| {
                 // Note that we do not want to deal with qualified predicates here.
                 match obligation.predicate.kind().no_bound_vars() {
-                    Some(ty::PredicateKind::Trait(pred)) if pred.def_id() != sized_trait => Some(pred),
+                    Some(ty::PredicateKind::Clause(ty::Clause::Trait(pred))) if pred.def_id() != sized_trait => Some(pred),
                     _ => None,
                 }
             })

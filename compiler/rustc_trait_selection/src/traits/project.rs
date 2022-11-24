@@ -1476,7 +1476,9 @@ fn assemble_candidates_from_predicates<'cx, 'tcx>(
     let infcx = selcx.infcx();
     for predicate in env_predicates {
         let bound_predicate = predicate.kind();
-        if let ty::PredicateKind::Projection(data) = predicate.kind().skip_binder() {
+        if let ty::PredicateKind::Clause(ty::Clause::Projection(data)) =
+            predicate.kind().skip_binder()
+        {
             let data = bound_predicate.rebind(data);
             if data.projection_def_id() != obligation.predicate.item_def_id {
                 continue;

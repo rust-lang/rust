@@ -17,7 +17,7 @@ use rustc_middle::mir::Mutability;
 use rustc_middle::ty::adjustment::{Adjust, Adjustment, OverloadedDeref};
 use rustc_middle::ty::subst::{GenericArg, GenericArgKind, SubstsRef};
 use rustc_middle::ty::EarlyBinder;
-use rustc_middle::ty::{self, ParamTy, PredicateKind, ProjectionPredicate, TraitPredicate, Ty};
+use rustc_middle::ty::{self, Clause, ParamTy, PredicateKind, ProjectionPredicate, TraitPredicate, Ty};
 use rustc_semver::RustcVersion;
 use rustc_span::{sym, Symbol};
 use rustc_trait_selection::traits::{
@@ -341,12 +341,12 @@ fn get_input_traits_and_projections<'tcx>(
     let mut projection_predicates = Vec::new();
     for predicate in cx.tcx.param_env(callee_def_id).caller_bounds() {
         match predicate.kind().skip_binder() {
-            PredicateKind::Trait(trait_predicate) => {
+            PredicateKind::Clause(Clause::Trait(trait_predicate)) => {
                 if trait_predicate.trait_ref.self_ty() == input {
                     trait_predicates.push(trait_predicate);
                 }
             }
-            PredicateKind::Projection(projection_predicate) => {
+            PredicateKind::Clause(Clause::Projection(projection_predicate)) => {
                 if projection_predicate.projection_ty.self_ty() == input {
                     projection_predicates.push(projection_predicate);
                 }
@@ -403,7 +403,7 @@ fn can_change_type<'a>(cx: &LateContext<'a>, mut expr: &'a Expr<'a>, mut ty: Ty<
 
                         let mut trait_predicates = cx.tcx.param_env(callee_def_id)
                             .caller_bounds().iter().filter(|predicate| {
-                            if let PredicateKind::Trait(trait_predicate) =  predicate.kind().skip_binder()
+                            if let PredicateKind::Clause(Clause::Trait(trait_predicate)) =  predicate.kind().skip_binder()
                                 && trait_predicate.trait_ref.self_ty() == *param_ty {
                                     true
                                 } else {

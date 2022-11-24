@@ -302,12 +302,16 @@ pub(crate) fn clean_predicate<'tcx>(
 ) -> Option<WherePredicate> {
     let bound_predicate = predicate.kind();
     match bound_predicate.skip_binder() {
-        ty::PredicateKind::Trait(pred) => {
+        ty::PredicateKind::Clause(ty::Clause::Trait(pred)) => {
             clean_poly_trait_predicate(bound_predicate.rebind(pred), cx)
         }
-        ty::PredicateKind::RegionOutlives(pred) => clean_region_outlives_predicate(pred),
-        ty::PredicateKind::TypeOutlives(pred) => clean_type_outlives_predicate(pred, cx),
-        ty::PredicateKind::Projection(pred) => {
+        ty::PredicateKind::Clause(ty::Clause::RegionOutlives(pred)) => {
+            clean_region_outlives_predicate(pred)
+        }
+        ty::PredicateKind::Clause(ty::Clause::TypeOutlives(pred)) => {
+            clean_type_outlives_predicate(pred, cx)
+        }
+        ty::PredicateKind::Clause(ty::Clause::Projection(pred)) => {
             Some(clean_projection_predicate(bound_predicate.rebind(pred), cx))
         }
         ty::PredicateKind::ConstEvaluatable(..) => None,
@@ -689,17 +693,20 @@ fn clean_ty_generics<'tcx>(
             let param_idx = (|| {
                 let bound_p = p.kind();
                 match bound_p.skip_binder() {
-                    ty::PredicateKind::Trait(pred) => {
+                    ty::PredicateKind::Clause(ty::Clause::Trait(pred)) => {
                         if let ty::Param(param) = pred.self_ty().kind() {
                             return Some(param.index);
                         }
                     }
-                    ty::PredicateKind::TypeOutlives(ty::OutlivesPredicate(ty, _reg)) => {
+                    ty::PredicateKind::Clause(ty::Clause::TypeOutlives(ty::OutlivesPredicate(
+                        ty,
+                        _reg,
+                    ))) => {
                         if let ty::Param(param) = ty.kind() {
                             return Some(param.index);
                         }
                     }
-                    ty::PredicateKind::Projection(p) => {
+                    ty::PredicateKind::Clause(ty::Clause::Projection(p)) => {
                         if let ty::Param(param) = p.projection_ty.self_ty().kind() {
                             projection = Some(bound_p.rebind(p));
                             return Some(param.index);
@@ -1772,8 +1779,13 @@ fn clean_middle_opaque_bounds<'tcx>(
         .filter_map(|bound| {
             let bound_predicate = bound.kind();
             let trait_ref = match bound_predicate.skip_binder() {
-                ty::PredicateKind::Trait(tr) => bound_predicate.rebind(tr.trait_ref),
-                ty::PredicateKind::TypeOutlives(ty::OutlivesPredicate(_ty, reg)) => {
+                ty::PredicateKind::Clause(ty::Clause::Trait(tr)) => {
+                    bound_predicate.rebind(tr.trait_ref)
+                }
+                ty::PredicateKind::Clause(ty::Clause::TypeOutlives(ty::OutlivesPredicate(
+                    _ty,
+                    reg,
+                ))) => {
                     if let Some(r) = clean_middle_region(reg) {
                         regions.push(GenericBound::Outlives(r));
                     }
@@ -1792,7 +1804,9 @@ fn clean_middle_opaque_bounds<'tcx>(
             let bindings: ThinVec<_> = bounds
                 .iter()
                 .filter_map(|bound| {
-                    if let ty::PredicateKind::Projection(proj) = bound.kind().skip_binder() {
+                    if let ty::PredicateKind::Clause(ty::Clause::Projection(proj)) =
+                        bound.kind().skip_binder()
+                    {
                         if proj.projection_ty.trait_ref(cx.tcx) == trait_ref.skip_binder() {
                             Some(TypeBinding {
                                 assoc: projection_to_path_segment(proj.projection_ty, cx),

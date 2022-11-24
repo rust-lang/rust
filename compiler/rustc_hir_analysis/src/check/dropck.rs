@@ -183,19 +183,27 @@ fn ensure_drop_predicates_are_implied_by_item_defn<'tcx>(
             let predicate = predicate.kind();
             let p = p.kind();
             match (predicate.skip_binder(), p.skip_binder()) {
-                (ty::PredicateKind::Trait(a), ty::PredicateKind::Trait(b)) => {
-                    relator.relate(predicate.rebind(a), p.rebind(b)).is_ok()
-                }
-                (ty::PredicateKind::Projection(a), ty::PredicateKind::Projection(b)) => {
-                    relator.relate(predicate.rebind(a), p.rebind(b)).is_ok()
-                }
+                (
+                    ty::PredicateKind::Clause(ty::Clause::Trait(a)),
+                    ty::PredicateKind::Clause(ty::Clause::Trait(b)),
+                ) => relator.relate(predicate.rebind(a), p.rebind(b)).is_ok(),
+                (
+                    ty::PredicateKind::Clause(ty::Clause::Projection(a)),
+                    ty::PredicateKind::Clause(ty::Clause::Projection(b)),
+                ) => relator.relate(predicate.rebind(a), p.rebind(b)).is_ok(),
                 (
                     ty::PredicateKind::ConstEvaluatable(a),
                     ty::PredicateKind::ConstEvaluatable(b),
                 ) => relator.relate(predicate.rebind(a), predicate.rebind(b)).is_ok(),
                 (
-                    ty::PredicateKind::TypeOutlives(ty::OutlivesPredicate(ty_a, lt_a)),
-                    ty::PredicateKind::TypeOutlives(ty::OutlivesPredicate(ty_b, lt_b)),
+                    ty::PredicateKind::Clause(ty::Clause::TypeOutlives(ty::OutlivesPredicate(
+                        ty_a,
+                        lt_a,
+                    ))),
+                    ty::PredicateKind::Clause(ty::Clause::TypeOutlives(ty::OutlivesPredicate(
+                        ty_b,
+                        lt_b,
+                    ))),
                 ) => {
                     relator.relate(predicate.rebind(ty_a), p.rebind(ty_b)).is_ok()
                         && relator.relate(predicate.rebind(lt_a), p.rebind(lt_b)).is_ok()
