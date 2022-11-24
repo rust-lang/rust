@@ -33,14 +33,15 @@ impl MultiItemModifier for Expander {
             ecx.resolver.resolve_derives(ecx.current_expansion.id, ecx.force_mode, &|| {
                 let template =
                     AttributeTemplate { list: Some("Trait1, Trait2, ..."), ..Default::default() };
-                let attr =
-                    attr::mk_attr_outer(&sess.parse_sess.attr_id_generator, meta_item.clone());
-                validate_attr::check_builtin_attribute(
+                validate_attr::check_builtin_meta_item(
                     &sess.parse_sess,
-                    &attr,
+                    &meta_item,
+                    ast::AttrStyle::Outer,
                     sym::derive,
                     template,
                 );
+                let attr =
+                    attr::mk_attr_outer(&sess.parse_sess.attr_id_generator, meta_item.clone());
 
                 let mut resolutions: Vec<_> = attr
                     .meta_item_list()
