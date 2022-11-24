@@ -25,7 +25,7 @@ fn else_if_option(string: Option<&str>) -> Option<(bool, &str)> {
 fn unop_bad(string: &Option<&str>, mut num: Option<i32>) {
     let _ = string.map_or(0, |s| s.len());
     let _ = num.as_ref().map_or(&0, |s| s);
-    let _ = num.as_mut().map_or(&mut 0, |s| {
+    let _ = num.as_mut().map_or(&0, |s| {
         *s += 1;
         s
     });
@@ -34,7 +34,7 @@ fn unop_bad(string: &Option<&str>, mut num: Option<i32>) {
         s += 1;
         s
     });
-    let _ = num.as_mut().map_or(&mut 0, |s| {
+    let _ = num.as_mut().map_or(&0, |s| {
         *s += 1;
         s
     });

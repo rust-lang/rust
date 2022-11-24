@@ -79,7 +79,7 @@ impl<'cx, 'tcx> Visitor<'tcx> for InvalidationGenerator<'cx, 'tcx> {
             }
             // Only relevant for mir typeck
             StatementKind::AscribeUserType(..)
-            // Only relevant for unsafeck
+            // Only relevant for liveness and unsafeck
             | StatementKind::PlaceMention(..)
             // Doesn't have any language semantics
             | StatementKind::Coverage(..)

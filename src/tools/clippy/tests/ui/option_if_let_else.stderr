@@ -30,13 +30,13 @@ LL |       let _ = if let Some(s) = &mut num {
 LL | |         *s += 1;
 LL | |         s
 LL | |     } else {
-LL | |         &mut 0
+LL | |         &0
 LL | |     };
    | |_____^
    |
 help: try
    |
-LL ~     let _ = num.as_mut().map_or(&mut 0, |s| {
+LL ~     let _ = num.as_mut().map_or(&0, |s| {
 LL +         *s += 1;
 LL +         s
 LL ~     });
@@ -76,13 +76,13 @@ LL |       let _ = if let Some(ref mut s) = num {
 LL | |         *s += 1;
 LL | |         s
 LL | |     } else {
-LL | |         &mut 0
+LL | |         &0
 LL | |     };
    | |_____^
    |
 help: try
    |
-LL ~     let _ = num.as_mut().map_or(&mut 0, |s| {
+LL ~     let _ = num.as_mut().map_or(&0, |s| {
 LL +         *s += 1;
 LL +         s
 LL ~     });

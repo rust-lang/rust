@@ -113,8 +113,14 @@ impl<'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
 
             Intrinsic(box intrinsic) => self.emulate_nondiverging_intrinsic(intrinsic)?,
 
-            // Statements we do not track.
-            PlaceMention(..) | AscribeUserType(..) => {}
+            // Evaluate the place expression, without reading from it.
+            PlaceMention(box place) => {
+                let _ = self.eval_place(*place)?;
+            }
+
+            // This exists purely to guide borrowck lifetime inference, and does not have
+            // an operational effect.
+            AscribeUserType(..) => {}
 
             // Currently, Miri discards Coverage statements. Coverage statements are only injected
             // via an optional compile time MIR pass and have no side effects. Since Coverage

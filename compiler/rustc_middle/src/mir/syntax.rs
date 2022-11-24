@@ -331,7 +331,8 @@ pub enum StatementKind<'tcx> {
     /// This is especially useful for `let _ = PLACE;` bindings that desugar to a single
     /// `PlaceMention(PLACE)`.
     ///
-    /// When executed at runtime this is a nop.
+    /// When executed at runtime, this computes the given place, but then discards
+    /// it without doing a load. It is UB if the place is not pointing to live memory.
     ///
     /// Disallowed after drop elaboration.
     PlaceMention(Box<Place<'tcx>>),
