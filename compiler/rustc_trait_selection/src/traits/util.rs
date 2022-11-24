@@ -8,7 +8,9 @@ use rustc_hir::def_id::DefId;
 use rustc_middle::ty::{self, ImplSubject, ToPredicate, Ty, TyCtxt, TypeVisitable};
 use rustc_middle::ty::{GenericArg, SubstsRef};
 
-use super::{Normalized, Obligation, ObligationCause, PredicateObligation, SelectionContext};
+use super::{Obligation, ObligationCause, PredicateObligation, SelectionContext};
+use crate::infer::InferCtxtExt;
+use rustc_infer::infer::InferOk;
 pub use rustc_infer::traits::{self, util::*};
 
 ///////////////////////////////////////////////////////////////////////////
@@ -200,13 +202,15 @@ pub fn impl_subject_and_oblig<'a, 'tcx>(
 ) -> (ImplSubject<'tcx>, impl Iterator<Item = PredicateObligation<'tcx>>) {
     let subject = selcx.tcx().bound_impl_subject(impl_def_id);
     let subject = subject.subst(selcx.tcx(), impl_substs);
-    let Normalized { value: subject, obligations: normalization_obligations1 } =
-        super::normalize(selcx, param_env, ObligationCause::dummy(), subject);
+    let InferOk { value: subject, obligations: normalization_obligations1 } = selcx
+        .infcx()
+        .partially_normalize_associated_types_in(ObligationCause::dummy(), param_env, subject);
 
     let predicates = selcx.tcx().predicates_of(impl_def_id);
     let predicates = predicates.instantiate(selcx.tcx(), impl_substs);
-    let Normalized { value: predicates, obligations: normalization_obligations2 } =
-        super::normalize(selcx, param_env, ObligationCause::dummy(), predicates);
+    let InferOk { value: predicates, obligations: normalization_obligations2 } = selcx
+        .infcx()
+        .partially_normalize_associated_types_in(ObligationCause::dummy(), param_env, predicates);
     let impl_obligations =
         super::predicates_for_generics(|_, _| ObligationCause::dummy(), param_env, predicates);
 

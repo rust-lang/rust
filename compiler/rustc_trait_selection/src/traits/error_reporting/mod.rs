@@ -9,6 +9,7 @@ use super::{
 };
 use crate::infer::error_reporting::{TyCategory, TypeAnnotationNeeded as ErrorCode};
 use crate::infer::type_variable::{TypeVariableOrigin, TypeVariableOriginKind};
+use crate::infer::InferCtxtExt as _;
 use crate::infer::{self, InferCtxt, TyCtxtInferExt};
 use crate::traits::query::evaluate_obligation::InferCtxtExt as _;
 use crate::traits::query::normalize::AtExt as _;
@@ -28,7 +29,7 @@ use rustc_hir::GenericParam;
 use rustc_hir::Item;
 use rustc_hir::Node;
 use rustc_infer::infer::error_reporting::TypeErrCtxt;
-use rustc_infer::infer::TypeTrace;
+use rustc_infer::infer::{InferOk, TypeTrace};
 use rustc_middle::traits::select::OverflowError;
 use rustc_middle::ty::abstract_const::NotConstEvaluatable;
 use rustc_middle::ty::error::ExpectedFound;
@@ -2528,18 +2529,15 @@ impl<'tcx> InferCtxtPrivExt<'tcx> for TypeErrCtxt<'_, 'tcx> {
         }
 
         self.probe(|_| {
-            let mut selcx = SelectionContext::new(self);
-
             let cleaned_pred =
                 pred.fold_with(&mut ParamToVarFolder { infcx: self, var_map: Default::default() });
 
-            let cleaned_pred = super::project::normalize(
-                &mut selcx,
-                param_env,
-                ObligationCause::dummy(),
-                cleaned_pred,
-            )
-            .value;
+            let InferOk { value: cleaned_pred, .. } =
+                self.infcx.partially_normalize_associated_types_in(
+                    ObligationCause::dummy(),
+                    param_env,
+                    cleaned_pred,
+                );
 
             let obligation =
                 Obligation::new(self.tcx, ObligationCause::dummy(), param_env, cleaned_pred);
