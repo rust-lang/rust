@@ -13,7 +13,8 @@ use syntax::{AstNode, SyntaxKind::*, SyntaxToken, TextRange, T};
 
 use crate::{
     hover::hover_for_definition,
-    moniker::{crate_for_file, def_to_moniker, MonikerResult},
+    moniker::{def_to_moniker, MonikerResult},
+    parent_module::crates_for,
     Analysis, Fold, HoverConfig, HoverDocFormat, HoverResult, InlayHint, InlayHintsConfig,
     TryToNav,
 };
@@ -99,7 +100,7 @@ fn all_modules(db: &dyn HirDatabase) -> Vec<Module> {
 
 impl StaticIndex<'_> {
     fn add_file(&mut self, file_id: FileId) {
-        let current_crate = crate_for_file(self.db, file_id);
+        let current_crate = crates_for(self.db, file_id).pop().map(Into::into);
         let folds = self.analysis.folding_ranges(file_id).unwrap();
         let inlay_hints = self
             .analysis
@@ -111,7 +112,7 @@ impl StaticIndex<'_> {
                     chaining_hints: true,
                     closure_return_type_hints: crate::ClosureReturnTypeHints::WithBlock,
                     lifetime_elision_hints: crate::LifetimeElisionHints::Never,
-                    reborrow_hints: crate::ReborrowHints::Never,
+                    adjustment_hints: crate::AdjustmentHints::Never,
                     hide_named_constructor_hints: false,
                     hide_closure_initialization_hints: false,
                     param_names_for_lifetime_elision_hints: false,

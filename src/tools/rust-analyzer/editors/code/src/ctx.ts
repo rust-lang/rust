@@ -179,7 +179,8 @@ export class Ctx {
                 this.traceOutputChannel,
                 this.outputChannel,
                 initializationOptions,
-                serverOptions
+                serverOptions,
+                this.config
             );
             this.pushClientCleanup(
                 this._client.onNotification(ra.serverStatus, (params) =>

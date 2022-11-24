@@ -666,7 +666,8 @@ pub struct Trait {
     pub generic_params: Interned<GenericParams>,
     pub is_auto: bool,
     pub is_unsafe: bool,
-    pub items: Box<[AssocItem]>,
+    /// This is [`None`] if this Trait is a trait alias.
+    pub items: Option<Box<[AssocItem]>>,
     pub ast_id: FileAstId<ast::Trait>,
 }
 

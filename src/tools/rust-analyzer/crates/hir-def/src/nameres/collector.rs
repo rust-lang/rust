@@ -212,6 +212,7 @@ impl Import {
 
 #[derive(Debug, Eq, PartialEq)]
 struct ImportDirective {
+    /// The module this import directive is in.
     module_id: LocalModuleId,
     import: Import,
     status: PartialResolvedImport,
@@ -963,8 +964,10 @@ impl DefCollector<'_> {
 
     fn update(
         &mut self,
+        // The module for which `resolutions` have been resolve
         module_id: LocalModuleId,
         resolutions: &[(Option<Name>, PerNs)],
+        // Visibility this import will have
         vis: Visibility,
         import_type: ImportType,
     ) {
@@ -974,6 +977,7 @@ impl DefCollector<'_> {
 
     fn update_recursive(
         &mut self,
+        // The module for which `resolutions` have been resolve
         module_id: LocalModuleId,
         resolutions: &[(Option<Name>, PerNs)],
         // All resolutions are imported with this visibility; the visibilities in
