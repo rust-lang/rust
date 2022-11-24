@@ -23,10 +23,11 @@ use crate::traits::{
     BuiltinDerivedObligation, ImplDerivedObligation, ImplDerivedObligationCause, ImplSource,
     ImplSourceAutoImplData, ImplSourceBuiltinData, ImplSourceClosureData,
     ImplSourceConstDestructData, ImplSourceDiscriminantKindData, ImplSourceFnPointerData,
-    ImplSourceGeneratorData, ImplSourceObjectData, ImplSourcePointeeData, ImplSourceTraitAliasData,
-    ImplSourceTraitUpcastingData, ImplSourceUserDefinedData, Normalized, ObjectCastObligation,
-    Obligation, ObligationCause, OutputTypeParameterMismatch, PredicateObligation, Selection,
-    SelectionError, TraitNotObjectSafe, TraitObligation, Unimplemented, VtblSegment,
+    ImplSourceFutureData, ImplSourceGeneratorData, ImplSourceObjectData, ImplSourcePointeeData,
+    ImplSourceTraitAliasData, ImplSourceTraitUpcastingData, ImplSourceUserDefinedData, Normalized,
+    ObjectCastObligation, Obligation, ObligationCause, OutputTypeParameterMismatch,
+    PredicateObligation, Selection, SelectionError, TraitNotObjectSafe, TraitObligation,
+    Unimplemented, VtblSegment,
 };
 
 use super::BuiltinImplConditions;
@@ -87,6 +88,11 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
             GeneratorCandidate => {
                 let vtable_generator = self.confirm_generator_candidate(obligation)?;
                 ImplSource::Generator(vtable_generator)
+            }
+
+            FutureCandidate => {
+                let vtable_future = self.confirm_future_candidate(obligation)?;
+                ImplSource::Future(vtable_future)
             }
 
             FnPointerCandidate { .. } => {
@@ -685,12 +691,56 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
 
         debug!(?obligation, ?generator_def_id, ?substs, "confirm_generator_candidate");
 
-        let trait_ref = self.generator_trait_ref_unnormalized(obligation, substs);
+        let gen_sig = substs.as_generator().poly_sig();
+
+        // (1) Feels icky to skip the binder here, but OTOH we know
+        // that the self-type is an generator type and hence is
+        // in fact unparameterized (or at least does not reference any
+        // regions bound in the obligation). Still probably some
+        // refactoring could make this nicer.
+
+        let trait_ref = super::util::generator_trait_ref_and_outputs(
+            self.tcx(),
+            obligation.predicate.def_id(),
+            obligation.predicate.skip_binder().self_ty(), // (1)
+            gen_sig,
+        )
+        .map_bound(|(trait_ref, ..)| trait_ref);
 
         let nested = self.confirm_poly_trait_refs(obligation, trait_ref)?;
         debug!(?trait_ref, ?nested, "generator candidate obligations");
 
         Ok(ImplSourceGeneratorData { generator_def_id, substs, nested })
+    }
+
+    fn confirm_future_candidate(
+        &mut self,
+        obligation: &TraitObligation<'tcx>,
+    ) -> Result<ImplSourceFutureData<'tcx, PredicateObligation<'tcx>>, SelectionError<'tcx>> {
+        // Okay to skip binder because the substs on generator types never
+        // touch bound regions, they just capture the in-scope
+        // type/region parameters.
+        let self_ty = self.infcx.shallow_resolve(obligation.self_ty().skip_binder());
+        let ty::Generator(generator_def_id, substs, _) = *self_ty.kind() else {
+            bug!("closure candidate for non-closure {:?}", obligation);
+        };
+
+        debug!(?obligation, ?generator_def_id, ?substs, "confirm_future_candidate");
+
+        let gen_sig = substs.as_generator().poly_sig();
+
+        let trait_ref = super::util::future_trait_ref_and_outputs(
+            self.tcx(),
+            obligation.predicate.def_id(),
+            obligation.predicate.no_bound_vars().expect("future has no bound vars").self_ty(),
+            gen_sig,
+        )
+        .map_bound(|(trait_ref, ..)| trait_ref);
+
+        let nested = self.confirm_poly_trait_refs(obligation, trait_ref)?;
+        debug!(?trait_ref, ?nested, "future candidate obligations");
+
+        Ok(ImplSourceFutureData { generator_def_id, substs, nested })
     }
 
     #[instrument(skip(self), level = "debug")]

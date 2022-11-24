@@ -1734,14 +1734,6 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         let hir = self.tcx.hir();
         let hir::Node::Expr(expr) = hir.get(hir_id) else { return false; };
 
-        // Skip over mentioning async lang item
-        if Some(def_id) == self.tcx.lang_items().from_generator_fn()
-            && error.obligation.cause.span.desugaring_kind()
-                == Some(rustc_span::DesugaringKind::Async)
-        {
-            return false;
-        }
-
         let Some(unsubstituted_pred) =
             self.tcx.predicates_of(def_id).instantiate_identity(self.tcx).predicates.into_iter().nth(idx)
             else { return false; };

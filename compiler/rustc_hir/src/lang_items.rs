@@ -280,10 +280,14 @@ language_item_table! {
 
     PointerSized,            sym::pointer_sized,       pointer_sized,              Target::Trait,          GenericRequirement::Exact(0);
 
+    Poll,                    sym::Poll,                poll,                       Target::Enum,           GenericRequirement::None;
     PollReady,               sym::Ready,               poll_ready_variant,         Target::Variant,        GenericRequirement::None;
     PollPending,             sym::Pending,             poll_pending_variant,       Target::Variant,        GenericRequirement::None;
 
-    FromGenerator,           sym::from_generator,      from_generator_fn,          Target::Fn,             GenericRequirement::None;
+    // FIXME(swatinem): the following lang items are used for async lowering and
+    // should become obsolete eventually.
+    ResumeTy,                sym::ResumeTy,            resume_ty,                  Target::Struct,         GenericRequirement::None;
+    IdentityFuture,          sym::identity_future,     identity_future_fn,         Target::Fn,             GenericRequirement::None;
     GetContext,              sym::get_context,         get_context_fn,             Target::Fn,             GenericRequirement::None;
 
     FuturePoll,              sym::poll,                future_poll_fn,             Target::Method(MethodKind::Trait { body: false }), GenericRequirement::None;

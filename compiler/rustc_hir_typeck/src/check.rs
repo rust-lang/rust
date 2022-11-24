@@ -56,10 +56,15 @@ pub(super) fn check_fn<'a, 'tcx>(
 
     fn_maybe_err(tcx, span, fn_sig.abi);
 
-    if body.generator_kind.is_some() && can_be_generator.is_some() {
-        let yield_ty = fcx
-            .next_ty_var(TypeVariableOrigin { kind: TypeVariableOriginKind::TypeInference, span });
-        fcx.require_type_is_sized(yield_ty, span, traits::SizedYieldType);
+    if let Some(kind) = body.generator_kind && can_be_generator.is_some() {
+        let yield_ty = if kind == hir::GeneratorKind::Gen {
+            let yield_ty = fcx
+                .next_ty_var(TypeVariableOrigin { kind: TypeVariableOriginKind::TypeInference, span });
+            fcx.require_type_is_sized(yield_ty, span, traits::SizedYieldType);
+            yield_ty
+        } else {
+            tcx.mk_unit()
+        };
 
         // Resume type defaults to `()` if the generator has no argument.
         let resume_ty = fn_sig.inputs().get(0).copied().unwrap_or_else(|| tcx.mk_unit());

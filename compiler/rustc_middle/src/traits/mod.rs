@@ -660,6 +660,9 @@ pub enum ImplSource<'tcx, N> {
     /// ImplSource automatically generated for a generator.
     Generator(ImplSourceGeneratorData<'tcx, N>),
 
+    /// ImplSource automatically generated for a generator backing an async future.
+    Future(ImplSourceFutureData<'tcx, N>),
+
     /// ImplSource for a trait alias.
     TraitAlias(ImplSourceTraitAliasData<'tcx, N>),
 
@@ -676,6 +679,7 @@ impl<'tcx, N> ImplSource<'tcx, N> {
             ImplSource::AutoImpl(d) => d.nested,
             ImplSource::Closure(c) => c.nested,
             ImplSource::Generator(c) => c.nested,
+            ImplSource::Future(c) => c.nested,
             ImplSource::Object(d) => d.nested,
             ImplSource::FnPointer(d) => d.nested,
             ImplSource::DiscriminantKind(ImplSourceDiscriminantKindData)
@@ -694,6 +698,7 @@ impl<'tcx, N> ImplSource<'tcx, N> {
             ImplSource::AutoImpl(d) => &d.nested,
             ImplSource::Closure(c) => &c.nested,
             ImplSource::Generator(c) => &c.nested,
+            ImplSource::Future(c) => &c.nested,
             ImplSource::Object(d) => &d.nested,
             ImplSource::FnPointer(d) => &d.nested,
             ImplSource::DiscriminantKind(ImplSourceDiscriminantKindData)
@@ -733,6 +738,11 @@ impl<'tcx, N> ImplSource<'tcx, N> {
                 nested: c.nested.into_iter().map(f).collect(),
             }),
             ImplSource::Generator(c) => ImplSource::Generator(ImplSourceGeneratorData {
+                generator_def_id: c.generator_def_id,
+                substs: c.substs,
+                nested: c.nested.into_iter().map(f).collect(),
+            }),
+            ImplSource::Future(c) => ImplSource::Future(ImplSourceFutureData {
                 generator_def_id: c.generator_def_id,
                 substs: c.substs,
                 nested: c.nested.into_iter().map(f).collect(),
@@ -789,6 +799,16 @@ pub struct ImplSourceUserDefinedData<'tcx, N> {
 #[derive(Clone, PartialEq, Eq, TyEncodable, TyDecodable, HashStable, Lift)]
 #[derive(TypeFoldable, TypeVisitable)]
 pub struct ImplSourceGeneratorData<'tcx, N> {
+    pub generator_def_id: DefId,
+    pub substs: SubstsRef<'tcx>,
+    /// Nested obligations. This can be non-empty if the generator
+    /// signature contains associated types.
+    pub nested: Vec<N>,
+}
+
+#[derive(Clone, PartialEq, Eq, TyEncodable, TyDecodable, HashStable, Lift)]
+#[derive(TypeFoldable, TypeVisitable)]
+pub struct ImplSourceFutureData<'tcx, N> {
     pub generator_def_id: DefId,
     pub substs: SubstsRef<'tcx>,
     /// Nested obligations. This can be non-empty if the generator

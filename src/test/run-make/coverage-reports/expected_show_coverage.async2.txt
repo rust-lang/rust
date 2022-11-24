@@ -72,7 +72,7 @@
    67|       |        }
    68|      2|    }
   ------------------
-  | async2::executor::block_on::<core::future::from_generator::GenFuture<async2::async_func::{closure#0}>>:
+  | async2::executor::block_on::<async2::async_func::{closure#0}>:
   |   51|      1|    pub fn block_on<F: Future>(mut future: F) -> F::Output {
   |   52|      1|        let mut future = unsafe { Pin::new_unchecked(&mut future) };
   |   53|      1|        use std::hint::unreachable_unchecked;
@@ -92,7 +92,7 @@
   |   67|       |        }
   |   68|      1|    }
   ------------------
-  | async2::executor::block_on::<core::future::from_generator::GenFuture<async2::async_func_just_println::{closure#0}>>:
+  | async2::executor::block_on::<async2::async_func_just_println::{closure#0}>:
   |   51|      1|    pub fn block_on<F: Future>(mut future: F) -> F::Output {
   |   52|      1|        let mut future = unsafe { Pin::new_unchecked(&mut future) };
   |   53|      1|        use std::hint::unreachable_unchecked;

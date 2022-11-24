@@ -12,7 +12,8 @@ use super::SelectionContext;
 use super::SelectionError;
 use super::{
     ImplSourceClosureData, ImplSourceDiscriminantKindData, ImplSourceFnPointerData,
-    ImplSourceGeneratorData, ImplSourcePointeeData, ImplSourceUserDefinedData,
+    ImplSourceFutureData, ImplSourceGeneratorData, ImplSourcePointeeData,
+    ImplSourceUserDefinedData,
 };
 use super::{Normalized, NormalizedTy, ProjectionCacheEntry, ProjectionCacheKey};
 
@@ -1544,6 +1545,7 @@ fn assemble_candidates_from_impls<'cx, 'tcx>(
         let eligible = match &impl_source {
             super::ImplSource::Closure(_)
             | super::ImplSource::Generator(_)
+            | super::ImplSource::Future(_)
             | super::ImplSource::FnPointer(_)
             | super::ImplSource::TraitAlias(_) => true,
             super::ImplSource::UserDefined(impl_data) => {
@@ -1832,6 +1834,7 @@ fn confirm_select_candidate<'cx, 'tcx>(
     match impl_source {
         super::ImplSource::UserDefined(data) => confirm_impl_candidate(selcx, obligation, data),
         super::ImplSource::Generator(data) => confirm_generator_candidate(selcx, obligation, data),
+        super::ImplSource::Future(data) => confirm_future_candidate(selcx, obligation, data),
         super::ImplSource::Closure(data) => confirm_closure_candidate(selcx, obligation, data),
         super::ImplSource::FnPointer(data) => confirm_fn_pointer_candidate(selcx, obligation, data),
         super::ImplSource::DiscriminantKind(data) => {
@@ -1897,6 +1900,48 @@ fn confirm_generator_candidate<'cx, 'tcx>(
                 item_def_id: obligation.predicate.item_def_id,
             },
             term: ty.into(),
+        }
+    });
+
+    confirm_param_env_candidate(selcx, obligation, predicate, false)
+        .with_addl_obligations(impl_source.nested)
+        .with_addl_obligations(obligations)
+}
+
+fn confirm_future_candidate<'cx, 'tcx>(
+    selcx: &mut SelectionContext<'cx, 'tcx>,
+    obligation: &ProjectionTyObligation<'tcx>,
+    impl_source: ImplSourceFutureData<'tcx, PredicateObligation<'tcx>>,
+) -> Progress<'tcx> {
+    let gen_sig = impl_source.substs.as_generator().poly_sig();
+    let Normalized { value: gen_sig, obligations } = normalize_with_depth(
+        selcx,
+        obligation.param_env,
+        obligation.cause.clone(),
+        obligation.recursion_depth + 1,
+        gen_sig,
+    );
+
+    debug!(?obligation, ?gen_sig, ?obligations, "confirm_future_candidate");
+
+    let tcx = selcx.tcx();
+    let fut_def_id = tcx.require_lang_item(LangItem::Future, None);
+
+    let predicate = super::util::future_trait_ref_and_outputs(
+        tcx,
+        fut_def_id,
+        obligation.predicate.self_ty(),
+        gen_sig,
+    )
+    .map_bound(|(trait_ref, return_ty)| {
+        debug_assert_eq!(tcx.associated_item(obligation.predicate.item_def_id).name, sym::Output);
+
+        ty::ProjectionPredicate {
+            projection_ty: ty::ProjectionTy {
+                substs: trait_ref.substs,
+                item_def_id: obligation.predicate.item_def_id,
+            },
+            term: return_ty.into(),
         }
     });
 

@@ -413,7 +413,11 @@ impl<'tcx> LowerInto<'tcx, Ty<'tcx>> for &chalk_ir::Ty<RustInterner<'tcx>> {
             TyKind::Closure(closure, substitution) => {
                 ty::Closure(closure.0, substitution.lower_into(interner))
             }
-            TyKind::Generator(..) => unimplemented!(),
+            TyKind::Generator(generator, substitution) => ty::Generator(
+                generator.0,
+                substitution.lower_into(interner),
+                ast::Movability::Static,
+            ),
             TyKind::GeneratorWitness(..) => unimplemented!(),
             TyKind::Never => ty::Never,
             TyKind::Tuple(_len, substitution) => {
