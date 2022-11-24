@@ -926,7 +926,6 @@ extern "system" {
     pub fn GetCurrentProcess() -> HANDLE;
     pub fn GetCurrentThread() -> HANDLE;
     pub fn GetStdHandle(which: DWORD) -> HANDLE;
-    pub fn ExitProcess(uExitCode: c_uint) -> !;
     pub fn DeviceIoControl(
         hDevice: HANDLE,
         dwIoControlCode: DWORD,

@@ -320,7 +320,8 @@ pub fn home_dir() -> Option<PathBuf> {
 }
 
 pub fn exit(code: i32) -> ! {
-    unsafe { c::ExitProcess(code as c::UINT) }
+    // To get the atexit handlers to work, we use exit instead of ExitProcess.
+    unsafe { libc::exit(code) }
 }
 
 pub fn getpid() -> u32 {
