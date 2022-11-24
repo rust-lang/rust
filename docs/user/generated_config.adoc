@@ -190,7 +190,7 @@ cargo check --workspace --message-format=json --all-targets
 ```
 .
 --
-[[rust-analyzer.checkOnSave.target]]rust-analyzer.checkOnSave.target (default: `[]`)::
+[[rust-analyzer.checkOnSave.target]]rust-analyzer.checkOnSave.target (default: `null`)::
 +
 --
 Check for specific targets. Defaults to `#rust-analyzer.cargo.target#` if empty.
