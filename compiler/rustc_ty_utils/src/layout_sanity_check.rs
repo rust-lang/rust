@@ -249,27 +249,27 @@ pub(super) fn sanity_check_layout<'tcx>(
         if let Variants::Multiple { variants, .. } = &layout.variants {
             for variant in variants.iter() {
                 // No nested "multiple".
-                assert!(matches!(variant.variants(), Variants::Single { .. }));
+                assert!(matches!(variant.variants, Variants::Single { .. }));
                 // Variants should have the same or a smaller size as the full thing,
                 // and same for alignment.
-                if variant.size() > layout.size {
+                if variant.size > layout.size {
                     bug!(
                         "Type with size {} bytes has variant with size {} bytes: {layout:#?}",
                         layout.size.bytes(),
-                        variant.size().bytes(),
+                        variant.size.bytes(),
                     )
                 }
-                if variant.align().abi > layout.align.abi {
+                if variant.align.abi > layout.align.abi {
                     bug!(
                         "Type with alignment {} bytes has variant with alignment {} bytes: {layout:#?}",
                         layout.align.abi.bytes(),
-                        variant.align().abi.bytes(),
+                        variant.align.abi.bytes(),
                     )
                 }
                 // Skip empty variants.
-                if variant.size() == Size::ZERO
-                    || variant.fields().count() == 0
-                    || variant.abi().is_uninhabited()
+                if variant.size == Size::ZERO
+                    || variant.fields.count() == 0
+                    || variant.abi.is_uninhabited()
                 {
                     // These are never actually accessed anyway, so we can skip the coherence check
                     // for them. They also fail that check, since they have
@@ -282,7 +282,7 @@ pub(super) fn sanity_check_layout<'tcx>(
                 let scalar_coherent = |s1: Scalar, s2: Scalar| {
                     s1.size(cx) == s2.size(cx) && s1.align(cx) == s2.align(cx)
                 };
-                let abi_coherent = match (layout.abi, variant.abi()) {
+                let abi_coherent = match (layout.abi, variant.abi) {
                     (Abi::Scalar(s1), Abi::Scalar(s2)) => scalar_coherent(s1, s2),
                     (Abi::ScalarPair(a1, b1), Abi::ScalarPair(a2, b2)) => {
                         scalar_coherent(a1, a2) && scalar_coherent(b1, b2)

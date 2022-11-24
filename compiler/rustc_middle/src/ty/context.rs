@@ -148,7 +148,7 @@ pub struct CtxtInterners<'tcx> {
     const_: InternedSet<'tcx, ConstS<'tcx>>,
     const_allocation: InternedSet<'tcx, Allocation>,
     bound_variable_kinds: InternedSet<'tcx, List<ty::BoundVariableKind>>,
-    layout: InternedSet<'tcx, LayoutS<'tcx>>,
+    layout: InternedSet<'tcx, LayoutS<VariantIdx>>,
     adt_def: InternedSet<'tcx, AdtDefData>,
 }
 
@@ -1233,7 +1233,7 @@ impl<'tcx> TyCtxt<'tcx> {
             global_ctxt: untracked_resolutions,
             ast_lowering: untracked_resolver_for_lowering,
         } = resolver_outputs;
-        let data_layout = TargetDataLayout::parse(&s.target).unwrap_or_else(|err| {
+        let data_layout = s.target.parse_data_layout().unwrap_or_else(|err| {
             s.emit_fatal(err);
         });
         let interners = CtxtInterners::new(arena);
@@ -2244,7 +2244,7 @@ direct_interners! {
     region: mk_region(RegionKind<'tcx>): Region -> Region<'tcx>,
     const_: mk_const_internal(ConstS<'tcx>): Const -> Const<'tcx>,
     const_allocation: intern_const_alloc(Allocation): ConstAllocation -> ConstAllocation<'tcx>,
-    layout: intern_layout(LayoutS<'tcx>): Layout -> Layout<'tcx>,
+    layout: intern_layout(LayoutS<VariantIdx>): Layout -> Layout<'tcx>,
     adt_def: intern_adt_def(AdtDefData): AdtDef -> AdtDef<'tcx>,
 }
 

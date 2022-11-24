@@ -1,3 +1,4 @@
+#[cfg(feature = "rustc_serialize")]
 use rustc_serialize::{Decodable, Decoder, Encodable, Encoder};
 
 use std::fmt;
@@ -61,12 +62,14 @@ pub struct IndexVec<I: Idx, T> {
 // not the phantom data.
 unsafe impl<I: Idx, T> Send for IndexVec<I, T> where T: Send {}
 
+#[cfg(feature = "rustc_serialize")]
 impl<S: Encoder, I: Idx, T: Encodable<S>> Encodable<S> for IndexVec<I, T> {
     fn encode(&self, s: &mut S) {
         Encodable::encode(&self.raw, s);
     }
 }
 
+#[cfg(feature = "rustc_serialize")]
 impl<D: Decoder, I: Idx, T: Decodable<D>> Decodable<D> for IndexVec<I, T> {
     fn decode(d: &mut D) -> Self {
         IndexVec { raw: Decodable::decode(d), _marker: PhantomData }
@@ -359,11 +362,13 @@ impl<I: Idx, T> Extend<T> for IndexVec<I, T> {
     }
 
     #[inline]
+    #[cfg(feature = "nightly")]
     fn extend_one(&mut self, item: T) {
         self.raw.push(item);
     }
 
     #[inline]
+    #[cfg(feature = "nightly")]
     fn extend_reserve(&mut self, additional: usize) {
         self.raw.reserve(additional);
     }
