@@ -479,20 +479,24 @@ pub struct Crate {
     pub is_placeholder: bool,
 }
 
-/// Possible values inside of compile-time attribute lists.
+/// Values inside meta item lists.
 ///
-/// E.g., the '..' in `#[name(..)]`.
+/// E.g., each of `Clone`, `Copy` in `#[derive(Clone, Copy)]`.
 #[derive(Clone, Encodable, Decodable, Debug, HashStable_Generic)]
 pub enum NestedMetaItem {
     /// A full MetaItem, for recursive meta items.
     MetaItem(MetaItem),
+
     /// A literal.
     ///
     /// E.g., `"foo"`, `64`, `true`.
     Lit(MetaItemLit),
 }
 
-/// A spanned compile-time attribute item.
+/// A semantic representation of a meta item. A meta item is a slightly
+/// restricted form of an attribute -- it can only contain expressions in
+/// certain leaf positions, rather than arbitrary token streams -- that is used
+/// for most built-in attributes.
 ///
 /// E.g., `#[test]`, `#[derive(..)]`, `#[rustfmt::skip]` or `#[feature = "foo"]`.
 #[derive(Clone, Encodable, Decodable, Debug, HashStable_Generic)]
@@ -502,22 +506,22 @@ pub struct MetaItem {
     pub span: Span,
 }
 
-/// A compile-time attribute item.
-///
-/// E.g., `#[test]`, `#[derive(..)]` or `#[feature = "foo"]`.
+/// The meta item kind, containing the data after the initial path.
 #[derive(Clone, Encodable, Decodable, Debug, HashStable_Generic)]
 pub enum MetaItemKind {
     /// Word meta item.
     ///
-    /// E.g., `test` as in `#[test]`.
+    /// E.g., `#[test]`, which lacks any arguments after `test`.
     Word,
+
     /// List meta item.
     ///
-    /// E.g., `derive(..)` as in `#[derive(..)]`.
+    /// E.g., `#[derive(..)]`, where the field represents the `..`.
     List(Vec<NestedMetaItem>),
+
     /// Name value meta item.
     ///
-    /// E.g., `feature = "foo"` as in `#[feature = "foo"]`.
+    /// E.g., `#[feature = "foo"]`, where the field represents the `"foo"`.
     NameValue(MetaItemLit),
 }
 
@@ -2580,7 +2584,7 @@ pub struct AttrItem {
 /// A list of attributes.
 pub type AttrVec = ThinVec<Attribute>;
 
-/// Metadata associated with an item.
+/// A syntax-level representation of an attribute.
 #[derive(Clone, Encodable, Decodable, Debug)]
 pub struct Attribute {
     pub kind: AttrKind,
