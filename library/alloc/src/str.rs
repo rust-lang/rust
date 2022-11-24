@@ -269,7 +269,7 @@ impl str {
     #[stable(feature = "rust1", since = "1.0.0")]
     #[inline]
     pub fn replace<'a, P: Pattern<'a>>(&'a self, from: P, to: &str) -> String {
-        let mut result = String::new();
+        let mut result = String::with_capacity(32);
         let mut last_end = 0;
         for (start, part) in self.match_indices(from) {
             result.push_str(unsafe { self.get_unchecked(last_end..start) });
