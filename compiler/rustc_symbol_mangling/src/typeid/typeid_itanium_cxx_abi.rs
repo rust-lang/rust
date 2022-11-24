@@ -525,12 +525,7 @@ fn encode_ty<'tcx>(
             // u3patI<element-type><pattern>E as vendor extended type
             let mut s = String::from("u3patI");
             s.push_str(&encode_ty(tcx, *ty0, dict, options));
-            match **pat {
-                ty::PatternKind::Range { start, end } => {
-                    s.push_str(&encode_const(tcx, start, dict, options));
-                    s.push_str(&encode_const(tcx, end, dict, options));
-                }
-            }
+            write!(s, "{:?}", **pat).unwrap();
             s.push('E');
             compress(dict, DictKey::Ty(ty, TyQ::None), &mut s);
             typeid.push_str(&s);

@@ -44,5 +44,5 @@ impl<'tcx> fmt::Debug for PatternKind<'tcx> {
 #[derive(Clone, PartialEq, Eq, PartialOrd, Ord, Hash)]
 #[derive(HashStable, TyEncodable, TyDecodable, TypeVisitable, TypeFoldable)]
 pub enum PatternKind<'tcx> {
-    Range { start: ty::Const<'tcx>, end: ty::Const<'tcx> },
+    Range { start: Option<ty::Const<'tcx>>, end: Option<ty::Const<'tcx>>, include_end: bool },
 }

@@ -116,11 +116,19 @@ fn layout_of_uncached<'tcx>(
             let layout = cx.layout_of(ty)?.layout;
             let mut abi = layout.abi();
             match *pat {
-                ty::PatternKind::Range { start, end } => {
+                ty::PatternKind::Range { start, end, include_end } => {
                     if let Abi::Scalar(scalar) | Abi::ScalarPair(scalar, _) = &mut abi {
-                        scalar.valid_range_mut().start =
-                            start.eval_bits(tcx, param_env, start.ty());
-                        scalar.valid_range_mut().end = end.eval_bits(tcx, param_env, end.ty());
+                        if let Some(start) = start {
+                            scalar.valid_range_mut().start =
+                                start.eval_bits(tcx, param_env, start.ty());
+                        }
+                        if let Some(end) = end {
+                            let mut end = end.eval_bits(tcx, param_env, end.ty());
+                            if !include_end {
+                                end = end.wrapping_sub(1);
+                            }
+                            scalar.valid_range_mut().end = end;
+                        }
 
                         tcx.intern_layout(LayoutS { abi, ..LayoutS::clone(&layout.0) })
                     } else {
