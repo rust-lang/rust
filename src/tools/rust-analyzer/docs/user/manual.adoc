@@ -367,7 +367,7 @@ if executable('rust-analyzer')
 endif
 ----
 
-There is no dedicated UI for the server configuration, so you would need to send any options as a value of the `initialization_options` field, as described in the <<_configuration,Configuration>> section.
+There is no dedicated UI for the server configuration, so you would need to send any options as a value of the `initialization_options` field, as described in the <<configuration,Configuration>> section.
 Here is an example of how to enable the proc-macro support:
 
 [source,vim]

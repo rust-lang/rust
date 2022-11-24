@@ -800,7 +800,7 @@ LLVMRustOptimize(
       auto Plugin = PassPlugin::Load(PluginPath.str());
       if (!Plugin) {
         LLVMRustSetLastError(("Failed to load pass plugin" + PluginPath.str()).c_str());
-        continue;
+        return LLVMRustResult::Failure;
       }
       Plugin->registerPassBuilderCallbacks(PB);
     }

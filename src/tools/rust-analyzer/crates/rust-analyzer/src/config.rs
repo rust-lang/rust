@@ -118,9 +118,11 @@ config_data! {
         /// This option does not take effect until rust-analyzer is restarted.
         cargo_sysroot: Option<String>    = "\"discover\"",
         /// Compilation target override (target triple).
+        // FIXME(@poliorcetics): move to multiple targets here too, but this will need more work
+        // than `checkOnSave_target`
         cargo_target: Option<String>     = "null",
         /// Unsets `#[cfg(test)]` for the specified crates.
-        cargo_unsetTest: Vec<String>   = "[\"core\"]",
+        cargo_unsetTest: Vec<String>     = "[\"core\"]",
 
         /// Check all targets and tests (`--all-targets`).
         checkOnSave_allTargets: bool                     = "true",
@@ -157,7 +159,7 @@ config_data! {
         checkOnSave_noDefaultFeatures: Option<bool>      = "null",
         /// Override the command rust-analyzer uses instead of `cargo check` for
         /// diagnostics on save. The command is required to output json and
-        /// should therefor include `--message-format=json` or a similar option.
+        /// should therefore include `--message-format=json` or a similar option.
         ///
         /// If you're changing this because you're using some tool wrapping
         /// Cargo, you might also want to change
@@ -174,9 +176,13 @@ config_data! {
         /// ```
         /// .
         checkOnSave_overrideCommand: Option<Vec<String>> = "null",
-        /// Check for a specific target. Defaults to
-        /// `#rust-analyzer.cargo.target#`.
-        checkOnSave_target: Option<String>               = "null",
+        /// Check for specific targets. Defaults to `#rust-analyzer.cargo.target#` if empty.
+        ///
+        /// Can be a single target, e.g. `"x86_64-unknown-linux-gnu"` or a list of targets, e.g.
+        /// `["aarch64-apple-darwin", "x86_64-apple-darwin"]`.
+        ///
+        /// Aliased as `"checkOnSave.targets"`.
+        checkOnSave_target | checkOnSave_targets: CheckOnSaveTargets           = "[]",
 
         /// Toggles the additional completions that automatically add imports when completed.
         /// Note that your client must specify the `additionalTextEdits` LSP client capability to truly have this feature enabled.
@@ -261,6 +267,7 @@ config_data! {
         files_excludeDirs: Vec<PathBuf> = "[]",
         /// Controls file watching implementation.
         files_watcher: FilesWatcherDef = "\"client\"",
+
         /// Enables highlighting of related references while the cursor is on `break`, `loop`, `while`, or `for` keywords.
         highlightRelated_breakPoints_enable: bool = "true",
         /// Enables highlighting of all exit points while the cursor is on any `return`, `?`, `fn`, or return type arrow (`->`).
@@ -320,6 +327,8 @@ config_data! {
         inlayHints_closingBraceHints_minLines: usize               = "25",
         /// Whether to show inlay type hints for return types of closures.
         inlayHints_closureReturnTypeHints_enable: ClosureReturnTypeHintsDef  = "\"never\"",
+        /// Whether to show inlay hints for type adjustments.
+        inlayHints_expressionAdjustmentHints_enable: AdjustmentHintsDef = "\"never\"",
         /// Whether to show inlay type hints for elided lifetimes in function signatures.
         inlayHints_lifetimeElisionHints_enable: LifetimeElisionDef = "\"never\"",
         /// Whether to prefer using parameter names as the name for elided lifetime hints if possible.
@@ -329,7 +338,8 @@ config_data! {
         /// Whether to show function parameter name inlay hints at the call
         /// site.
         inlayHints_parameterHints_enable: bool                     = "true",
-        /// Whether to show inlay type hints for compiler inserted reborrows.
+        /// Whether to show inlay hints for compiler inserted reborrows.
+        /// This setting is deprecated in favor of #rust-analyzer.inlayHints.expressionAdjustmentHints.enable#.
         inlayHints_reborrowHints_enable: ReborrowHintsDef          = "\"never\"",
         /// Whether to render leading colons for type hints, and trailing colons for parameter hints.
         inlayHints_renderColons: bool                              = "true",
@@ -1143,11 +1153,10 @@ impl Config {
             }
             Some(_) | None => FlycheckConfig::CargoCommand {
                 command: self.data.checkOnSave_command.clone(),
-                target_triple: self
-                    .data
-                    .checkOnSave_target
-                    .clone()
-                    .or_else(|| self.data.cargo_target.clone()),
+                target_triples: match &self.data.checkOnSave_target.0[..] {
+                    [] => self.data.cargo_target.clone().into_iter().collect(),
+                    targets => targets.into(),
+                },
                 all_targets: self.data.checkOnSave_allTargets,
                 no_default_features: self
                     .data
@@ -1200,10 +1209,15 @@ impl Config {
             hide_closure_initialization_hints: self
                 .data
                 .inlayHints_typeHints_hideClosureInitialization,
-            reborrow_hints: match self.data.inlayHints_reborrowHints_enable {
-                ReborrowHintsDef::Always => ide::ReborrowHints::Always,
-                ReborrowHintsDef::Never => ide::ReborrowHints::Never,
-                ReborrowHintsDef::Mutable => ide::ReborrowHints::MutableOnly,
+            adjustment_hints: match self.data.inlayHints_expressionAdjustmentHints_enable {
+                AdjustmentHintsDef::Always => ide::AdjustmentHints::Always,
+                AdjustmentHintsDef::Never => match self.data.inlayHints_reborrowHints_enable {
+                    ReborrowHintsDef::Always | ReborrowHintsDef::Mutable => {
+                        ide::AdjustmentHints::ReborrowOnly
+                    }
+                    ReborrowHintsDef::Never => ide::AdjustmentHints::Never,
+                },
+                AdjustmentHintsDef::Reborrow => ide::AdjustmentHints::ReborrowOnly,
             },
             binding_mode_hints: self.data.inlayHints_bindingModeHints_enable,
             param_names_for_lifetime_elision_hints: self
@@ -1538,6 +1552,7 @@ mod de_unit_v {
     named_unit_variant!(all);
     named_unit_variant!(skip_trivial);
     named_unit_variant!(mutable);
+    named_unit_variant!(reborrow);
     named_unit_variant!(with_block);
 }
 
@@ -1648,6 +1663,9 @@ enum InvocationStrategy {
 }
 
 #[derive(Deserialize, Debug, Clone)]
+struct CheckOnSaveTargets(#[serde(deserialize_with = "single_or_array")] Vec<String>);
+
+#[derive(Deserialize, Debug, Clone)]
 #[serde(rename_all = "snake_case")]
 enum InvocationLocation {
     Root,
@@ -1685,6 +1703,17 @@ enum ReborrowHintsDef {
     Never,
     #[serde(deserialize_with = "de_unit_v::mutable")]
     Mutable,
+}
+
+#[derive(Deserialize, Debug, Clone)]
+#[serde(untagged)]
+enum AdjustmentHintsDef {
+    #[serde(deserialize_with = "true_or_always")]
+    Always,
+    #[serde(deserialize_with = "false_or_never")]
+    Never,
+    #[serde(deserialize_with = "de_unit_v::reborrow")]
+    Reborrow,
 }
 
 #[derive(Deserialize, Debug, Clone)]
@@ -1996,6 +2025,19 @@ fn field_props(field: &str, ty: &str, doc: &[&str], default: &str) -> serde_json
                 "Only show mutable reborrow hints."
             ]
         },
+        "AdjustmentHintsDef" => set! {
+            "type": "string",
+            "enum": [
+                "always",
+                "never",
+                "reborrow"
+            ],
+            "enumDescriptions": [
+                "Always show all adjustment hints.",
+                "Never show adjustment hints.",
+                "Only show auto borrow and dereference adjustment hints."
+            ]
+        },
         "CargoFeaturesDef" => set! {
             "anyOf": [
                 {
@@ -2082,6 +2124,17 @@ fn field_props(field: &str, ty: &str, doc: &[&str], default: &str) -> serde_json
             "enumDescriptions": [
                 "The command will be executed in the corresponding workspace root.",
                 "The command will be executed in the project root."
+            ],
+        },
+        "CheckOnSaveTargets" => set! {
+            "anyOf": [
+                {
+                    "type": "string",
+                },
+                {
+                    "type": "array",
+                    "items": { "type": "string" }
+                },
             ],
         },
         _ => panic!("missing entry for {}: {}", ty, default),

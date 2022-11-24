@@ -49,6 +49,7 @@ extern crate tracing;
 mod array_into_iter;
 pub mod builtin;
 mod context;
+mod deref_into_dyn_supertrait;
 mod early;
 mod enum_intrinsics_non_enums;
 mod errors;
@@ -87,6 +88,7 @@ use rustc_span::Span;
 
 use array_into_iter::ArrayIntoIter;
 use builtin::*;
+use deref_into_dyn_supertrait::*;
 use enum_intrinsics_non_enums::EnumIntrinsicsNonEnums;
 use for_loops_over_fallibles::*;
 use hidden_unicode_codepoints::*;
@@ -192,6 +194,7 @@ macro_rules! late_lint_mod_passes {
             $args,
             [
                 ForLoopsOverFallibles: ForLoopsOverFallibles,
+                DerefIntoDynSupertrait: DerefIntoDynSupertrait,
                 HardwiredLints: HardwiredLints,
                 ImproperCTypesDeclarations: ImproperCTypesDeclarations,
                 ImproperCTypesDefinitions: ImproperCTypesDefinitions,

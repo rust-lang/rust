@@ -7,6 +7,11 @@ LL |     let _y = {x} + x.clone(); // the `{x}` forces a move to occur
    |               -    ^^^^^^^^^ value borrowed here after move
    |               |
    |               value moved here
+   |
+help: consider cloning the value if the performance cost is acceptable
+   |
+LL |     let _y = {x.clone()} + x.clone(); // the `{x}` forces a move to occur
+   |                ++++++++
 
 error: aborting due to previous error
 

@@ -3841,7 +3841,9 @@ impl<'a: 'ast, 'b, 'ast> LateResolutionVisitor<'a, 'b, 'ast> {
                 }
             }
 
-            ExprKind::Loop(ref block, label) => self.resolve_labeled_block(label, expr.id, &block),
+            ExprKind::Loop(ref block, label, _) => {
+                self.resolve_labeled_block(label, expr.id, &block)
+            }
 
             ExprKind::While(ref cond, ref block, label) => {
                 self.with_resolved_label(label, expr.id, |this| {
