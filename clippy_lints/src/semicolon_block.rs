@@ -67,25 +67,21 @@ impl LateLintPass<'_> for SemicolonBlock {
     fn check_stmt(&mut self, cx: &LateContext<'_>, stmt: &Stmt<'_>) {
         match stmt.kind {
             StmtKind::Expr(Expr {
-                kind:
-                    ExprKind::Block(
-                        block @ Block {
-                            expr: None,
-                            stmts:
-                                &[
-                                    ..,
-                                    Stmt {
-                                        kind: StmtKind::Semi(expr),
-                                        span,
-                                        ..
-                                    },
-                                ],
-                            ..
-                        },
-                        _,
-                    ),
+                kind: ExprKind::Block(block, _),
                 ..
-            }) if !block.span.from_expansion() => semicolon_outside_block(cx, block, expr, span),
+            }) if !block.span.from_expansion() => {
+                let Block {
+                    expr: None,
+                    stmts: [.., stmt],
+                    ..
+                } = block else { return };
+                let &Stmt {
+                    kind: StmtKind::Semi(expr),
+                    span,
+                    ..
+                } = stmt else { return };
+                semicolon_outside_block(cx, block, expr, span)
+            },
             StmtKind::Semi(Expr {
                 kind: ExprKind::Block(block @ Block { expr: Some(tail), .. }, _),
                 ..
@@ -96,8 +92,7 @@ impl LateLintPass<'_> for SemicolonBlock {
 }
 
 fn semicolon_inside_block(cx: &LateContext<'_>, block: &Block<'_>, tail: &Expr<'_>, semi_span: Span) {
-    let tail_span_end = tail.span.source_callsite().hi();
-    let insert_span = Span::with_root_ctxt(tail_span_end, tail_span_end);
+    let insert_span = tail.span.source_callsite().shrink_to_hi();
     let remove_span = semi_span.with_lo(block.span.hi());
 
     span_lint_and_then(
