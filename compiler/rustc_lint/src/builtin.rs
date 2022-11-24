@@ -1404,10 +1404,16 @@ impl<'tcx> LateLintPass<'tcx> for UngatedAsyncFnTrackCaller {
             if let Some(attr) = maybe_track_caller {
                 cx.struct_span_lint(
                     UNGATED_ASYNC_FN_TRACK_CALLER,
-                    span.with_hi(attr.span.hi()),
+                    attr.span,
                     fluent::lint_ungated_async_fn_track_caller,
-                    |lint| lint,
-                    );
+                    |lint| {
+                        lint.span_label(span, "this function will not propagate the caller location");
+                        if cx.tcx.sess.is_nightly_build() {
+                            lint.span_suggestion(attr.span, fluent::suggestion, "#[closure_track_caller]", Applicability::MachineApplicable);
+                        }
+                        lint
+                    }
+                );
             }
         }
     }
