@@ -381,15 +381,19 @@ impl<'a, 'gcc, 'tcx> AsmBuilderMethods<'tcx> for Builder<'a, 'gcc, 'tcx> {
         for piece in template {
             match *piece {
                 InlineAsmTemplatePiece::String(ref string) => {
-                    // TODO(@Commeownist): switch to `Iterator::intersperse` once it's stable
-                    let mut iter = string.split('%');
-                    if let Some(s) = iter.next() {
-                        template_str.push_str(s);
-                    }
-
-                    for s in iter {
-                        template_str.push_str("%%");
-                        template_str.push_str(s);
+                    for char in string.chars() {
+                        // TODO(antoyo): might also need to escape | if rustc doesn't do it.
+                        let escaped_char =
+                            match char {
+                                '%' => "%%",
+                                '{' => "%{",
+                                '}' => "%}",
+                                _ => {
+                                    template_str.push(char);
+                                    continue;
+                                },
+                            };
+                        template_str.push_str(escaped_char);
                     }
                 }
                 InlineAsmTemplatePiece::Placeholder { operand_idx, modifier, span: _ } => {
