@@ -32,8 +32,7 @@ use rustc_query_system::query::*;
 #[cfg(parallel_compiler)]
 pub use rustc_query_system::query::{deadlock, QueryContext};
 
-mod keys;
-use keys::Key;
+use rustc_middle::query::Key;
 
 pub use rustc_query_system::query::QueryConfig;
 pub(crate) use rustc_query_system::query::QueryVTable;

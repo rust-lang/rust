@@ -1,19 +1,22 @@
 //! Defines the set of legal keys that can be used in queries.
 
+use crate::infer::canonical::Canonical;
+use crate::mir;
+use crate::traits;
+use crate::ty::fast_reject::SimplifiedType;
+use crate::ty::subst::{GenericArg, SubstsRef};
+use crate::ty::{self, layout::TyAndLayout, Ty, TyCtxt};
 use rustc_hir::def_id::{CrateNum, DefId, LocalDefId, LOCAL_CRATE};
 use rustc_hir::hir_id::{HirId, OwnerId};
-use rustc_middle::infer::canonical::Canonical;
-use rustc_middle::mir;
-use rustc_middle::traits;
-use rustc_middle::ty::fast_reject::SimplifiedType;
-use rustc_middle::ty::subst::{GenericArg, SubstsRef};
-use rustc_middle::ty::{self, layout::TyAndLayout, Ty, TyCtxt};
+use rustc_query_system::query::{DefaultCacheSelector, VecCacheSelector};
 use rustc_span::symbol::{Ident, Symbol};
 use rustc_span::{Span, DUMMY_SP};
 
 /// The `Key` trait controls what types can legally be used as the key
 /// for a query.
-pub trait Key {
+pub trait Key: Sized {
+    type CacheSelector = DefaultCacheSelector<Self>;
+
     /// Given an instance of this key, what crate is it referring to?
     /// This is used to find the provider.
     fn query_crate_is_local(&self) -> bool;
@@ -100,6 +103,8 @@ impl<'tcx> Key for mir::interpret::LitToConstInput<'tcx> {
 }
 
 impl Key for CrateNum {
+    type CacheSelector = VecCacheSelector<Self>;
+
     #[inline(always)]
     fn query_crate_is_local(&self) -> bool {
         *self == LOCAL_CRATE
@@ -110,6 +115,8 @@ impl Key for CrateNum {
 }
 
 impl Key for OwnerId {
+    type CacheSelector = VecCacheSelector<Self>;
+
     #[inline(always)]
     fn query_crate_is_local(&self) -> bool {
         true
@@ -123,6 +130,8 @@ impl Key for OwnerId {
 }
 
 impl Key for LocalDefId {
+    type CacheSelector = VecCacheSelector<Self>;
+
     #[inline(always)]
     fn query_crate_is_local(&self) -> bool {
         true

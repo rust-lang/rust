@@ -15,6 +15,7 @@ use crate::mir::interpret::{
 };
 use crate::mir::interpret::{LitToConstError, LitToConstInput};
 use crate::mir::mono::CodegenUnit;
+use crate::query::Key;
 use crate::thir;
 use crate::traits::query::{
     CanonicalPredicateGoal, CanonicalProjectionGoal, CanonicalTyGoal,
@@ -121,10 +122,10 @@ macro_rules! query_helper_param_ty {
 
 macro_rules! query_storage {
     ([][$K:ty, $V:ty]) => {
-        <DefaultCacheSelector as CacheSelector<$K, $V>>::Cache
+        <<$K as Key>::CacheSelector as CacheSelector<'tcx, $V>>::Cache
     };
     ([(arena_cache) $($rest:tt)*][$K:ty, $V:ty]) => {
-        <ArenaCacheSelector<'tcx> as CacheSelector<$K, $V>>::Cache
+        <<$K as Key>::CacheSelector as CacheSelector<'tcx, $V>>::ArenaCache
     };
     ([$other:tt $($modifiers:tt)*][$($args:tt)*]) => {
         query_storage!([$($modifiers)*][$($args)*])
