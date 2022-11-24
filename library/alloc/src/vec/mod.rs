@@ -2405,24 +2405,6 @@ impl<T: Clone, A: Allocator> Vec<T, A> {
     ///
     /// # Examples
     ///
-    /// With numbers:
-    ///
-    /// ```
-    /// let mut numbers1 = vec![0, 1, 2, 3, 4];
-    /// numbers1.extend_from_within(2..);
-    /// assert_eq!(numbers1, [0, 1, 2, 3, 4, 2, 3, 4]);
-    ///
-    /// let mut numbers2 = vec![0, 1, 2, 3, 4];
-    /// numbers2.extend_from_within(..2);
-    /// assert_eq!(numbers2, [0, 1, 2, 3, 4, 0, 1]);
-    ///
-    /// let mut numbers3 = vec![0, 1, 2, 3, 4];
-    /// numbers3.extend_from_within(1..3);
-    /// assert_eq!(numbers3, [0, 1, 2, 3, 4, 1, 2]);
-    /// ```
-    ///
-    /// With characters:
-    ///
     /// ```
     /// let mut characters1 = vec!['a', 'b', 'c', 'd', 'e'];
     /// characters1.extend_from_within(2..);
