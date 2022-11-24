@@ -1480,7 +1480,7 @@ pub fn get_cmd_lint_options(
 
 /// Parses the `--color` flag.
 pub fn parse_color(matches: &getopts::Matches) -> ColorConfig {
-    match matches.opt_str("color").as_ref().map(|s| &s[..]) {
+    match matches.opt_str("color").as_deref() {
         Some("auto") => ColorConfig::Auto,
         Some("always") => ColorConfig::Always,
         Some("never") => ColorConfig::Never,
@@ -1589,7 +1589,7 @@ pub fn parse_error_format(
     // is unstable, it will not be present. We have to use `opts_present` not
     // `opt_present` because the latter will panic.
     let error_format = if matches.opts_present(&["error-format".to_owned()]) {
-        match matches.opt_str("error-format").as_ref().map(|s| &s[..]) {
+        match matches.opt_str("error-format").as_deref() {
             None | Some("human") => {
                 ErrorOutputType::HumanReadable(HumanReadableErrorType::Default(color))
             }

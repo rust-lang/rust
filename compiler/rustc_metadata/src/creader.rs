@@ -162,7 +162,7 @@ impl CStore {
     pub(crate) fn iter_crate_data(&self) -> impl Iterator<Item = (CrateNum, &CrateMetadata)> {
         self.metas
             .iter_enumerated()
-            .filter_map(|(cnum, data)| data.as_ref().map(|data| (cnum, &**data)))
+            .filter_map(|(cnum, data)| data.as_deref().map(|data| (cnum, data)))
     }
 
     fn push_dependencies_in_postorder(&self, deps: &mut Vec<CrateNum>, cnum: CrateNum) {

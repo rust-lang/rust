@@ -33,11 +33,7 @@ pub struct Query<T> {
 
 impl<T> Query<T> {
     fn compute<F: FnOnce() -> Result<T>>(&self, f: F) -> Result<&Query<T>> {
-        let mut result = self.result.borrow_mut();
-        if result.is_none() {
-            *result = Some(f());
-        }
-        result.as_ref().unwrap().as_ref().map(|_| self).map_err(|err| *err)
+        self.result.borrow_mut().get_or_insert_with(f).as_ref().map(|_| self).map_err(|&err| err)
     }
 
     /// Takes ownership of the query result. Further attempts to take or peek the query

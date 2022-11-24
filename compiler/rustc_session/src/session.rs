@@ -1357,7 +1357,7 @@ pub fn build_session(
         let profiler = SelfProfiler::new(
             directory,
             sopts.crate_name.as_deref(),
-            sopts.unstable_opts.self_profile_events.as_ref().map(|xs| &xs[..]),
+            sopts.unstable_opts.self_profile_events.as_deref(),
             &sopts.unstable_opts.self_profile_counter,
         );
         match profiler {
@@ -1391,7 +1391,7 @@ pub fn build_session(
         local_crate_source_file.map(|path| file_path_mapping.map_prefix(path).0);
 
     let optimization_fuel = Lock::new(OptimizationFuel {
-        remaining: sopts.unstable_opts.fuel.as_ref().map_or(0, |i| i.1),
+        remaining: sopts.unstable_opts.fuel.as_ref().map_or(0, |&(_, i)| i),
         out_of_fuel: false,
     });
     let print_fuel = AtomicU64::new(0);

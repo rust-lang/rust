@@ -564,7 +564,7 @@ fn expand_preparsed_asm(ecx: &mut ExtCtxt<'_>, args: AsmArgs) -> Option<ast::Inl
         let template_snippet = ecx.source_map().span_to_snippet(template_sp).ok();
         template_strs.push((
             template_str,
-            template_snippet.as_ref().map(|s| Symbol::intern(s)),
+            template_snippet.as_deref().map(Symbol::intern),
             template_sp,
         ));
         let template_str = template_str.as_str();

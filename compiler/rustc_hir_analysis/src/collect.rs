@@ -2157,7 +2157,7 @@ fn check_link_ordinal(tcx: TyCtxt<'_>, attr: &ast::Attribute) -> Option<u16> {
         .emit();
     }
     let meta_item_list = attr.meta_item_list();
-    let meta_item_list: Option<&[ast::NestedMetaItem]> = meta_item_list.as_ref().map(Vec::as_ref);
+    let meta_item_list = meta_item_list.as_deref();
     let sole_meta_list = match meta_item_list {
         Some([item]) => item.literal(),
         Some(_) => {

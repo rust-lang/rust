@@ -588,7 +588,7 @@ impl<'f, 'tcx> Coerce<'f, 'tcx> {
             }
             _ => None,
         };
-        let coerce_source = reborrow.as_ref().map_or(source, |&(_, ref r)| r.target);
+        let coerce_source = reborrow.as_ref().map_or(source, |(_, r)| r.target);
 
         // Setup either a subtyping or a LUB relationship between
         // the `CoerceUnsized` target type and the expected type.

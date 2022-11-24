@@ -216,7 +216,7 @@ impl<'a, 'tcx> PatCtxt<'a, 'tcx> {
                 let lo = lo_expr.map(|e| self.lower_range_expr(e));
                 let hi = hi_expr.map(|e| self.lower_range_expr(e));
 
-                let (lp, hp) = (lo.as_ref().map(|x| &x.0), hi.as_ref().map(|x| &x.0));
+                let (lp, hp) = (lo.as_ref().map(|(x, _)| x), hi.as_ref().map(|(x, _)| x));
                 let mut kind = match self.normalize_range_pattern_ends(ty, lp, hp) {
                     Some((lc, hc)) => self.lower_pattern_range(ty, lc, hc, end, lo_span),
                     None => {
@@ -358,7 +358,7 @@ impl<'a, 'tcx> PatCtxt<'a, 'tcx> {
         &mut self,
         pat: &'tcx Option<&'tcx hir::Pat<'tcx>>,
     ) -> Option<Box<Pat<'tcx>>> {
-        pat.as_ref().map(|p| self.lower_pattern(p))
+        pat.map(|p| self.lower_pattern(p))
     }
 
     fn slice_or_array_pattern(
