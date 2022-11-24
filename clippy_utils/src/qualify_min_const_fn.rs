@@ -25,13 +25,13 @@ pub fn is_min_const_fn<'tcx>(tcx: TyCtxt<'tcx>, body: &Body<'tcx>, msrv: Option<
         let predicates = tcx.predicates_of(current);
         for (predicate, _) in predicates.predicates {
             match predicate.kind().skip_binder() {
-                ty::PredicateKind::RegionOutlives(_)
-                | ty::PredicateKind::TypeOutlives(_)
+                ty::PredicateKind::Clause(ty::Clause::RegionOutlives(_))
+                | ty::PredicateKind::Clause(ty::Clause::TypeOutlives(_))
                 | ty::PredicateKind::WellFormed(_)
-                | ty::PredicateKind::Projection(_)
+                | ty::PredicateKind::Clause(ty::Clause::Projection(_))
                 | ty::PredicateKind::ConstEvaluatable(..)
                 | ty::PredicateKind::ConstEquate(..)
-                | ty::PredicateKind::Trait(..)
+                | ty::PredicateKind::Clause(ty::Clause::Trait(..))
                 | ty::PredicateKind::TypeWellFormedFromEnv(..) => continue,
                 ty::PredicateKind::ObjectSafe(_) => panic!("object safe predicate on function: {predicate:#?}"),
                 ty::PredicateKind::ClosureKind(..) => panic!("closure kind predicate on function: {predicate:#?}"),
