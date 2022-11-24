@@ -2112,10 +2112,7 @@ impl<'tcx> InferCtxtPrivExt<'tcx> for TypeErrCtxt<'_, 'tcx> {
                 };
 
                 let obligation = obligation.with(self.tcx, trait_ref.to_poly_trait_predicate());
-                let mut selcx = SelectionContext::with_query_mode(
-                    &self,
-                    crate::traits::TraitQueryMode::Standard,
-                );
+                let mut selcx = SelectionContext::new(&self);
                 match selcx.select_from_obligation(&obligation) {
                     Ok(None) => {
                         let impls = ambiguity::recompute_applicable_impls(self.infcx, &obligation);
