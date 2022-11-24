@@ -1,4 +1,4 @@
-// known-bug: unknown
+// known-bug: #104800
 
 #![feature(dyn_star, trait_upcasting)]
 

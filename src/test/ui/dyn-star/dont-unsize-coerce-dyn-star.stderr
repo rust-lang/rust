@@ -1,5 +1,5 @@
 warning: the feature `dyn_star` is incomplete and may not be safe to use and/or cause compiler crashes
-  --> $DIR/dispatch-on-pin-mut.rs:5:12
+  --> $DIR/dont-unsize-coerce-dyn-star.rs:4:12
    |
 LL | #![feature(dyn_star)]
    |            ^^^^^^^^
