@@ -2,9 +2,7 @@ use rustc_middle::ty;
 
 use crate::infer::canonical::OriginalQueryValues;
 use crate::infer::InferCtxt;
-use crate::traits::{
-    EvaluationResult, OverflowError, PredicateObligation, SelectionContext, TraitQueryMode,
-};
+use crate::traits::{EvaluationResult, OverflowError, PredicateObligation, SelectionContext};
 
 pub trait InferCtxtExt<'tcx> {
     fn predicate_may_hold(&self, obligation: &PredicateObligation<'tcx>) -> bool;
@@ -97,7 +95,7 @@ impl<'tcx> InferCtxtExt<'tcx> for InferCtxt<'tcx> {
         match self.evaluate_obligation(obligation) {
             Ok(result) => result,
             Err(OverflowError::Canonical) => {
-                let mut selcx = SelectionContext::with_query_mode(&self, TraitQueryMode::Standard);
+                let mut selcx = SelectionContext::new(&self);
                 selcx.evaluate_root_obligation(obligation).unwrap_or_else(|r| match r {
                     OverflowError::Canonical => {
                         span_bug!(
