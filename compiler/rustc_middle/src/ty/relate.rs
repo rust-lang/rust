@@ -650,6 +650,9 @@ pub fn super_relate_consts<'tcx, R: TypeRelation<'tcx>>(
         (ty::ConstKind::Unevaluated(_), ty::ConstKind::Unevaluated(_))
             if tcx.features().generic_const_exprs =>
         {
+            // FIXME(generic_const_exprs): this spurriously fails when relating two assoc consts
+            // i.e. `<T as Trait>::ASSOC eq <T as Trait>::ASSOC` would return `false`. Wheras if
+            // both were behind an anon const that gets normalized away here it would succeed.
             if let (Ok(Some(a)), Ok(Some(b))) = (
                 tcx.expand_abstract_consts(a),
                 tcx.expand_abstract_consts(b),
