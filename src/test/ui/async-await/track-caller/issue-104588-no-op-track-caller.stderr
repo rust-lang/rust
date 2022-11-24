@@ -2,7 +2,7 @@ warning: `#[track_caller]` on async functions is a no-op
   --> $DIR/issue-104588-no-op-track-caller.rs:4:1
    |
 LL | #[track_caller]
-   | ^^^^^^^^^^^^^^^ help: enable this feature: `#[closure_track_caller]`
+   | ^^^^^^^^^^^^^^^ help: enable this unstable feature: `closure_track_caller`
 LL | async fn foo() {}
    | ----------------- this function will not propagate the caller location
    |

@@ -1409,7 +1409,7 @@ impl<'tcx> LateLintPass<'tcx> for UngatedAsyncFnTrackCaller {
                     |lint| {
                         lint.span_label(span, "this function will not propagate the caller location");
                         if cx.tcx.sess.is_nightly_build() {
-                            lint.span_suggestion(attr.span, fluent::suggestion, "#[closure_track_caller]", Applicability::MachineApplicable);
+                            lint.span_suggestion(attr.span, fluent::suggestion, "closure_track_caller", Applicability::MachineApplicable);
                         }
                         lint
                     }
