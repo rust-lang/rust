@@ -1,3 +1,5 @@
+<!--lint disable maximum-line-length-->
+
 - Feature Name: syntax-tree-patterns
 - Start Date: 2019-03-12
 - RFC PR: (leave this empty)
@@ -6,13 +8,11 @@
 > Note: This project is part of my Master's Thesis (supervised by [@oli-obk](https://github.com/oli-obk))
 
 # Summary
-[summary]: #summary
 
 Introduce a domain-specific language (similar to regular expressions) that allows to describe lints using *syntax tree patterns*.
 
 
 # Motivation
-[motivation]: #motivation
 
 
 Finding parts of a syntax tree (AST, HIR, ...) that have certain properties (e.g. "*an if that has a block as its condition*") is a major task when writing lints. For non-trivial lints, it often requires nested pattern matching of AST / HIR nodes. For example, testing that an expression is a boolean literal requires the following checks:
@@ -68,7 +68,6 @@ A lot of complexity in writing lints currently seems to come from having to manu
 While regular expressions are very useful when searching for patterns in flat character sequences, they cannot easily be applied to hierarchical data structures like syntax trees. This RFC therefore proposes a pattern matching system that is inspired by regular expressions and designed for hierarchical syntax trees.
 
 # Guide-level explanation
-[guide-level-explanation]: #guide-level-explanation
 
 This proposal adds a `pattern!` macro that can be used to specify a syntax tree pattern to search for. A simple pattern is shown below:
 
@@ -281,7 +280,6 @@ The following table gives an summary of the pattern syntax:
 
 
 ## The result type
-[the-result-type]: #the-result-type
 
 A lot of lints require checks that go beyond what the pattern syntax described above can express. For example, a lint might want to check whether a node was created as part of a macro expansion or whether there's no comment above a node. Another example would be a lint that wants to match two nodes that have the same value (as needed by lints like `almost_swapped`). Instead of allowing users to write these checks into the pattern directly (which might make patterns hard to read), the proposed solution allows users to assign names to parts of a pattern expression. When matching a pattern against a syntax tree node, the return value will contain references to all nodes that were matched by these named subpatterns. This is similar to capture groups in regular expressions.
 
@@ -372,7 +370,6 @@ As a "real-world" example, I re-implemented the `collapsible_if` lint using patt
 
 
 # Reference-level explanation
-[reference-level-explanation]: #reference-level-explanation
 
 ## Overview
 
@@ -517,7 +514,6 @@ All `IsMatch` implementations for matching the current *PatternTree* against `sy
 
 
 # Drawbacks
-[drawbacks]: #drawbacks
 
 #### Performance
 
@@ -571,7 +567,6 @@ Even though I'd expect that a lot of lints can be written using the proposed pat
 
 
 # Rationale and alternatives
-[rationale-and-alternatives]: #rationale-and-alternatives
 
 Specifying lints using syntax tree patterns has a couple of advantages compared to the current approach of manually writing matching code. First, syntax tree patterns allow users to describe patterns in a simple and expressive way. This makes it easier to write new lints for both novices and experts and also makes reading / modifying existing lints simpler. 
 
@@ -632,14 +627,12 @@ The issue of users not knowing about the *PatternTree* structure could be solved
 For some simple cases (like the first example above), it might be possible to successfully mix Rust and pattern syntax. This space could be further explored in a future extension.
 
 # Prior art
-[prior-art]: #prior-art
 
 The pattern syntax is heavily inspired by regular expressions (repetitions, alternatives, sequences, ...).
 
 From what I've seen until now, other linters also implement lints that directly work on syntax tree data structures, just like clippy does currently. I would therefore consider the pattern syntax to be *new*, but please correct me if I'm wrong.
 
 # Unresolved questions
-[unresolved-questions]: #unresolved-questions
 
 #### How to handle multiple matches?
 
@@ -657,7 +650,6 @@ This pattern matches arrays that end with at least one literal. Now given the ar
 I haven't looked much into this yet because I don't know how relevant it is for most lints. The current implementation simply returns the first match it finds.
 
 # Future possibilities
-[future-possibilities]: #future-possibilities
 
 #### Implement rest of Rust Syntax
 
