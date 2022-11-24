@@ -21,7 +21,7 @@ use rustc_middle::middle::stability::EvalResult;
 use rustc_middle::ty::layout::{LayoutError, MAX_SIMD_LANES};
 use rustc_middle::ty::subst::GenericArgKind;
 use rustc_middle::ty::util::{Discr, IntTypeExt};
-use rustc_middle::ty::{self, ParamEnv, Ty, TyCtxt, TypeSuperVisitable, TypeVisitable};
+use rustc_middle::ty::{self, AdtDef, ParamEnv, Ty, TyCtxt, TypeSuperVisitable, TypeVisitable};
 use rustc_session::lint::builtin::{UNINHABITED_STATIC, UNSUPPORTED_CALLING_CONVENTIONS};
 use rustc_span::symbol::sym;
 use rustc_span::{self, Span};
@@ -479,10 +479,29 @@ fn check_opaque_meets_bounds<'tcx>(
     let _ = infcx.inner.borrow_mut().opaque_type_storage.take_opaque_types();
 }
 
+fn is_enum_of_nonnullable_ptr<'tcx>(
+    tcx: TyCtxt<'tcx>,
+    adt_def: AdtDef<'tcx>,
+    substs: SubstsRef<'tcx>,
+) -> bool {
+    if adt_def.repr().inhibit_enum_layout_opt() {
+        return false;
+    }
+
+    let [var_one, var_two] = &adt_def.variants().raw[..] else {
+        return false;
+    };
+    let (([], [field]) | ([field], [])) = (&var_one.fields[..], &var_two.fields[..]) else {
+        return false;
+    };
+    matches!(field.ty(tcx, substs).kind(), ty::FnPtr(..) | ty::Ref(..))
+}
+
 fn check_static_linkage<'tcx>(tcx: TyCtxt<'tcx>, def_id: LocalDefId) {
     if tcx.codegen_fn_attrs(def_id).import_linkage.is_some() {
         if match tcx.type_of(def_id).kind() {
             ty::RawPtr(_) => false,
+            ty::Adt(adt_def, substs) => !is_enum_of_nonnullable_ptr(tcx, *adt_def, *substs),
             _ => true,
         } {
             tcx.sess.emit_err(LinkageType { span: tcx.def_span(def_id) });

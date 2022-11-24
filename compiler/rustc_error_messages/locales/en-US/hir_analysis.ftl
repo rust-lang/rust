@@ -115,4 +115,4 @@ hir_analysis_self_in_impl_self =
     .note = replace `Self` with a different type
 
 hir_analysis_linkage_type =
-    must have type `*const T` or `*mut T` due to `#[linkage]` attribute
+    invalid type for variable with `#[linkage]` attribute
