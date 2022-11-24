@@ -1494,6 +1494,11 @@
                 "superType": "attribute"
             },
             {
+                "id": "deriveHelper",
+                "description": "Style for derive helpers",
+                "superType": "attribute"
+            },
+            {
                 "id": "dot",
                 "description": "Style for .",
                 "superType": "punctuation"
