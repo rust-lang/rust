@@ -605,7 +605,6 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
     {
         debug!(?obligation, "confirm_fn_pointer_candidate");
 
-        // Okay to skip binder; it is reintroduced below.
         let self_ty = self
             .infcx
             .shallow_resolve(obligation.self_ty().no_bound_vars())
@@ -624,15 +623,7 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
 
         // Confirm the `type Output: Sized;` bound that is present on `FnOnce`
         let cause = obligation.derived_cause(BuiltinDerivedObligation);
-        // The binder on the Fn obligation is "less" important than the one on
-        // the signature, as evidenced by how we treat it during projection.
-        // The safe thing to do here is to liberate it, though, which should
-        // have no worse effect than skipping the binder here.
-        let liberated_fn_ty =
-            self.infcx.replace_bound_vars_with_placeholders(obligation.predicate.rebind(self_ty));
-        let output_ty = self
-            .infcx
-            .replace_bound_vars_with_placeholders(liberated_fn_ty.fn_sig(self.tcx()).output());
+        let output_ty = self.infcx.replace_bound_vars_with_placeholders(sig.output());
         let output_ty = normalize_with_depth_to(
             self,
             obligation.param_env,
