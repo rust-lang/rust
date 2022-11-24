@@ -255,11 +255,14 @@ changelog-seen = 2
 # Defaults to the Python interpreter used to execute x.py
 #python = "python"
 
-# The path to the REUSE executable to use. REUSE will be used to gather
-# the licensing information of the codebase.
+# The path to the REUSE executable to use. Note that REUSE is not required in
+# most cases, as our tooling relies on a cached (and shrinked) copy of the
+# REUSE output present in the git repository and in our source tarballs.
 #
-# If this is omitted, the cached licensing information present in the source
-# tarball will have to be present.
+# REUSE is only needed if your changes caused the overral licensing of the
+# repository to change, and the cached copy has to be regenerated.
+#
+# Defaults to the "reuse" command in the system path.
 #reuse = "reuse"
 
 # Force Cargo to check that Cargo.lock describes the precise dependency

@@ -22,7 +22,7 @@ fn main() -> Result<(), Error> {
     std::fs::write(
         &dest,
         &serde_json::to_vec_pretty(&serde_json::json!({
-            "files": crate::path_tree::strip_interning(tree, &interner),
+            "files": crate::path_tree::expand_interned_licenses(tree, &interner),
         }))?,
     )?;
 

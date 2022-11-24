@@ -270,7 +270,9 @@ pub(crate) fn build(mut input: Vec<(PathBuf, LicenseId)>) -> Node<LicenseId> {
     Node::Root { childs }
 }
 
-pub(crate) fn strip_interning(
+/// Convert a `Node<LicenseId>` into a `Node<&License>`, expanding all interned license IDs with a
+/// reference to the actual license metadata.
+pub(crate) fn expand_interned_licenses(
     node: Node<LicenseId>,
     interner: &LicensesInterner,
 ) -> Node<&License> {
