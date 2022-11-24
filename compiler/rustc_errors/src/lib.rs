@@ -1044,13 +1044,24 @@ impl Handler {
     }
     pub fn has_errors_or_lint_errors(&self) -> Option<ErrorGuaranteed> {
         if self.inner.borrow().has_errors_or_lint_errors() {
-            Some(ErrorGuaranteed(()))
+            Some(ErrorGuaranteed::unchecked_claim_error_was_emitted())
         } else {
             None
         }
     }
-    pub fn has_errors_or_delayed_span_bugs(&self) -> bool {
-        self.inner.borrow().has_errors_or_delayed_span_bugs()
+    pub fn has_errors_or_delayed_span_bugs(&self) -> Option<ErrorGuaranteed> {
+        if self.inner.borrow().has_errors_or_delayed_span_bugs() {
+            Some(ErrorGuaranteed::unchecked_claim_error_was_emitted())
+        } else {
+            None
+        }
+    }
+    pub fn is_compilation_going_to_fail(&self) -> Option<ErrorGuaranteed> {
+        if self.inner.borrow().is_compilation_going_to_fail() {
+            Some(ErrorGuaranteed::unchecked_claim_error_was_emitted())
+        } else {
+            None
+        }
     }
 
     pub fn print_error_count(&self, registry: &Registry) {
@@ -1482,6 +1493,10 @@ impl HandlerInner {
     }
     fn has_any_message(&self) -> bool {
         self.err_count() > 0 || self.lint_err_count > 0 || self.warn_count > 0
+    }
+
+    fn is_compilation_going_to_fail(&self) -> bool {
+        self.has_errors() || self.lint_err_count > 0 || !self.delayed_span_bugs.is_empty()
     }
 
     fn abort_if_errors(&mut self) {
