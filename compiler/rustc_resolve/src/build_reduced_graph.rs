@@ -30,7 +30,7 @@ use rustc_middle::metadata::ModChild;
 use rustc_middle::ty::{self, DefIdTree};
 use rustc_session::cstore::CrateStore;
 use rustc_span::hygiene::{ExpnId, LocalExpnId, MacroKind};
-use rustc_span::source_map::{respan, Spanned};
+use rustc_span::source_map::respan;
 use rustc_span::symbol::{kw, sym, Ident, Symbol};
 use rustc_span::Span;
 
@@ -329,10 +329,12 @@ impl<'a, 'b> BuildReducedGraphVisitor<'a, 'b> {
             .iter()
             .map(|field| respan(field.span, field.ident.map_or(kw::Empty, |ident| ident.name)))
             .collect();
-        self.insert_field_names(def_id, field_names);
+        self.r.field_names.insert(def_id, field_names);
     }
 
-    fn insert_field_names(&mut self, def_id: DefId, field_names: Vec<Spanned<Symbol>>) {
+    fn insert_field_names_extern(&mut self, def_id: DefId) {
+        let field_names =
+            self.r.cstore().struct_field_names_untracked(def_id, self.r.session).collect();
         self.r.field_names.insert(def_id, field_names);
     }
 
@@ -995,8 +997,6 @@ impl<'a, 'b> BuildReducedGraphVisitor<'a, 'b> {
         let cstore = self.r.cstore();
         match res {
             Res::Def(DefKind::Struct, def_id) => {
-                let field_names =
-                    cstore.struct_field_names_untracked(def_id, self.r.session).collect();
                 if let Some((ctor_kind, ctor_def_id)) = cstore.ctor_untracked(def_id) {
                     let ctor_res = Res::Def(DefKind::Ctor(CtorOf::Struct, ctor_kind), ctor_def_id);
                     let ctor_vis = cstore.visibility_untracked(ctor_def_id);
@@ -1006,13 +1006,9 @@ impl<'a, 'b> BuildReducedGraphVisitor<'a, 'b> {
                         .struct_constructors
                         .insert(def_id, (ctor_res, ctor_vis, field_visibilities));
                 }
-                self.insert_field_names(def_id, field_names);
+                self.insert_field_names_extern(def_id)
             }
-            Res::Def(DefKind::Union, def_id) => {
-                let field_names =
-                    cstore.struct_field_names_untracked(def_id, self.r.session).collect();
-                self.insert_field_names(def_id, field_names);
-            }
+            Res::Def(DefKind::Union, def_id) => self.insert_field_names_extern(def_id),
             Res::Def(DefKind::AssocFn, def_id) => {
                 if cstore.fn_has_self_parameter_untracked(def_id, self.r.session) {
                     self.r.has_self.insert(def_id);
@@ -1514,20 +1510,16 @@ impl<'a, 'b> Visitor<'b> for BuildReducedGraphVisitor<'a, 'b> {
         };
 
         // Define a constructor name in the value namespace.
-        let fields_id = if let Some((ctor_kind, ctor_node_id)) = CtorKind::from_ast(&variant.data) {
+        if let Some((ctor_kind, ctor_node_id)) = CtorKind::from_ast(&variant.data) {
             let ctor_def_id = self.r.local_def_id(ctor_node_id);
             let ctor_res =
                 Res::Def(DefKind::Ctor(CtorOf::Variant, ctor_kind), ctor_def_id.to_def_id());
             self.r.define(parent, ident, ValueNS, (ctor_res, ctor_vis, variant.span, expn_id));
             self.r.visibilities.insert(ctor_def_id, ctor_vis);
-            ctor_def_id
-        } else {
-            def_id
-        };
+        }
 
         // Record field names for error reporting.
-        // FIXME: Always use non-ctor id as the key.
-        self.insert_field_names_local(fields_id.to_def_id(), &variant.data);
+        self.insert_field_names_local(def_id.to_def_id(), &variant.data);
 
         visit::walk_variant(self, variant);
     }

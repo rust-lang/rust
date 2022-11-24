@@ -215,6 +215,7 @@ const HEXAGON_ALLOWED_FEATURES: &[(&str, Option<Symbol>)] = &[
 const POWERPC_ALLOWED_FEATURES: &[(&str, Option<Symbol>)] = &[
     // tidy-alphabetical-start
     ("altivec", Some(sym::powerpc_target_feature)),
+    ("power10-vector", Some(sym::powerpc_target_feature)),
     ("power8-altivec", Some(sym::powerpc_target_feature)),
     ("power8-vector", Some(sym::powerpc_target_feature)),
     ("power9-altivec", Some(sym::powerpc_target_feature)),

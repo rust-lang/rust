@@ -784,8 +784,7 @@ table,
 	margin-top: 0;
 	white-space: nowrap;
 	/* flex layout allows shrinking the <select> appropriately if it becomes too large */
-	display: inline-flex;
-	max-width: 100%;
+	display: flex;
 	/* make things look like in a line, despite the fact that we're using a layout
 	with boxes (i.e. from the flex layout) */
 	align-items: baseline;

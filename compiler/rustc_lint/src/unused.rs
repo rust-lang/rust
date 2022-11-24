@@ -1015,6 +1015,7 @@ impl EarlyLintPass for UnusedParens {
         if let ast::TyKind::Paren(r) = &ty.kind {
             match &r.kind {
                 ast::TyKind::TraitObject(..) => {}
+                ast::TyKind::BareFn(b) if b.generic_params.len() > 0 => {}
                 ast::TyKind::ImplTrait(_, bounds) if bounds.len() > 1 => {}
                 ast::TyKind::Array(_, len) => {
                     self.check_unused_delims_expr(
