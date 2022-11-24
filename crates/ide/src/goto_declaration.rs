@@ -36,11 +36,11 @@ pub(crate) fn goto_declaration(
                 match parent {
                     ast::NameRef(name_ref) => match NameRefClass::classify(&sema, &name_ref)? {
                         NameRefClass::Definition(it) => Some(it),
-                        _ => None
+                        NameRefClass::FieldShorthand { field_ref, .. } => return field_ref.try_to_nav(db),
                     },
                     ast::Name(name) => match NameClass::classify(&sema, &name)? {
-                        NameClass::Definition(it) => Some(it),
-                        _ => None
+                        NameClass::Definition(it) | NameClass::ConstReference(it) => Some(it),
+                        NameClass::PatFieldShorthand { field_ref, .. } => return field_ref.try_to_nav(db),
                     },
                     _ => None
                 }
@@ -179,6 +179,33 @@ trait Trait {
 }
 impl Trait for () {
     const C$0: () = ();
+}
+"#,
+        );
+    }
+
+    #[test]
+    fn goto_decl_field_pat_shorthand() {
+        check(
+            r#"
+struct Foo { field: u32 }
+           //^^^^^
+fn main() {
+    let Foo { field$0 };
+}
+"#,
+        );
+    }
+
+    #[test]
+    fn goto_decl_constructor_shorthand() {
+        check(
+            r#"
+struct Foo { field: u32 }
+           //^^^^^
+fn main() {
+    let field = 0;
+    Foo { field$0 };
 }
 "#,
         );
