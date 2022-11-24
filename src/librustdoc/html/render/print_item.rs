@@ -717,7 +717,7 @@ fn item_trait(w: &mut Buffer, cx: &mut Context<'_>, it: &clean::Item, t: &clean:
         write!(
             w,
             "<h2 id=\"{0}\" class=\"small-section-header\">\
-                {1}<a href=\"#{0}\" class=\"anchor\"></a>\
+                {1}<a href=\"#{0}\" class=\"anchor\">§</a>\
              </h2>{2}",
             id, title, extra_content
         )
@@ -1147,7 +1147,7 @@ fn item_union(w: &mut Buffer, cx: &mut Context<'_>, it: &clean::Item, s: &clean:
         write!(
             w,
             "<h2 id=\"fields\" class=\"fields small-section-header\">\
-                Fields<a href=\"#fields\" class=\"anchor\"></a>\
+                Fields<a href=\"#fields\" class=\"anchor\">§</a>\
             </h2>"
         );
         for (field, ty) in fields {
@@ -1156,7 +1156,7 @@ fn item_union(w: &mut Buffer, cx: &mut Context<'_>, it: &clean::Item, s: &clean:
             write!(
                 w,
                 "<span id=\"{id}\" class=\"{shortty} small-section-header\">\
-                     <a href=\"#{id}\" class=\"anchor field\"></a>\
+                     <a href=\"#{id}\" class=\"anchor field\">§</a>\
                      <code>{name}: {ty}</code>\
                  </span>",
                 id = id,
@@ -1262,7 +1262,7 @@ fn item_enum(w: &mut Buffer, cx: &mut Context<'_>, it: &clean::Item, e: &clean::
         write!(
             w,
             "<h2 id=\"variants\" class=\"variants small-section-header\">\
-                Variants{}<a href=\"#variants\" class=\"anchor\"></a>\
+                Variants{}<a href=\"#variants\" class=\"anchor\">§</a>\
             </h2>",
             document_non_exhaustive_header(it)
         );
@@ -1273,7 +1273,7 @@ fn item_enum(w: &mut Buffer, cx: &mut Context<'_>, it: &clean::Item, e: &clean::
             write!(
                 w,
                 "<section id=\"{id}\" class=\"variant\">\
-                    <a href=\"#{id}\" class=\"anchor\"></a>",
+                    <a href=\"#{id}\" class=\"anchor\">§</a>",
                 id = id,
             );
             render_stability_since_raw_with_extra(
@@ -1325,7 +1325,7 @@ fn item_enum(w: &mut Buffer, cx: &mut Context<'_>, it: &clean::Item, e: &clean::
                                 w,
                                 "<div class=\"sub-variant-field\">\
                                  <span id=\"{id}\" class=\"small-section-header\">\
-                                     <a href=\"#{id}\" class=\"anchor field\"></a>\
+                                     <a href=\"#{id}\" class=\"anchor field\">§</a>\
                                      <code>{f}:&nbsp;{t}</code>\
                                  </span>",
                                 id = id,
@@ -1477,7 +1477,7 @@ fn item_struct(w: &mut Buffer, cx: &mut Context<'_>, it: &clean::Item, s: &clean
             write!(
                 w,
                 "<h2 id=\"fields\" class=\"fields small-section-header\">\
-                     {}{}<a href=\"#fields\" class=\"anchor\"></a>\
+                     {}{}<a href=\"#fields\" class=\"anchor\">§</a>\
                  </h2>",
                 if s.ctor_kind.is_none() { "Fields" } else { "Tuple Fields" },
                 document_non_exhaustive_header(it)
@@ -1490,7 +1490,7 @@ fn item_struct(w: &mut Buffer, cx: &mut Context<'_>, it: &clean::Item, s: &clean
                 write!(
                     w,
                     "<span id=\"{id}\" class=\"{item_type} small-section-header\">\
-                         <a href=\"#{id}\" class=\"anchor field\"></a>\
+                         <a href=\"#{id}\" class=\"anchor field\">§</a>\
                          <code>{name}: {ty}</code>\
                      </span>",
                     item_type = ItemType::StructField,
@@ -1908,7 +1908,7 @@ fn document_type_layout(w: &mut Buffer, cx: &Context<'_>, ty_def_id: DefId) {
     writeln!(
         w,
         "<h2 id=\"layout\" class=\"small-section-header\"> \
-        Layout<a href=\"#layout\" class=\"anchor\"></a></h2>"
+        Layout<a href=\"#layout\" class=\"anchor\">§</a></h2>"
     );
     writeln!(w, "<div class=\"docblock\">");
 
