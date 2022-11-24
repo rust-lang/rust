@@ -212,13 +212,6 @@ pub(crate) struct InvalidMonomorphizationUnsupportedOperation<'a> {
 }
 
 #[derive(Diagnostic)]
-#[diag(codegen_gcc_linkage_const_or_mut_type)]
-pub(crate) struct LinkageConstOrMutType {
-    #[primary_span]
-    pub span: Span,
-}
-
-#[derive(Diagnostic)]
 #[diag(codegen_gcc_lto_not_supported)]
 pub(crate) struct LTONotSupported;
 
