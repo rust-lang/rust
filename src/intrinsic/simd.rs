@@ -351,7 +351,7 @@ pub fn generic_simd_intrinsic<'a, 'gcc, 'tcx>(bx: &mut Builder<'a, 'gcc, 'tcx>, 
         let mut result = bx.context.new_rvalue_zero(result_type);
 
         let elem_size = elem_type.get_size() * 8;
-        let sign_shift = bx.context.new_rvalue_from_int(elem_type, elem_size as i32);
+        let sign_shift = bx.context.new_rvalue_from_int(elem_type, elem_size as i32 - 1);
         let one = bx.context.new_rvalue_one(elem_type);
 
         let mut shift = 0;
