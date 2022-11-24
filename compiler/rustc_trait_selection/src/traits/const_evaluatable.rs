@@ -52,7 +52,7 @@ pub fn is_const_evaluatable<'tcx>(
         };
 
         if !is_anon_ct {
-            if satisfied_from_param_env(tcx, infcx, ct, param_env)? {
+            if satisfied_from_param_env(tcx, infcx, ct, param_env) {
                 return Ok(());
             }
             if ct.has_non_region_infer() {
@@ -87,8 +87,14 @@ pub fn is_const_evaluatable<'tcx>(
             // If we're evaluating a generic foreign constant, under a nightly compiler while
             // the current crate does not enable `feature(generic_const_exprs)`, abort
             // compilation with a useful error.
-            Err(_) if tcx.sess.is_nightly_build()
-                && let ty::ConstKind::Expr(_) = tcx.expand_abstract_consts(ct).kind() =>
+            Err(_)
+                if tcx.sess.is_nightly_build()
+                    && satisfied_from_param_env(
+                        tcx,
+                        infcx,
+                        tcx.expand_abstract_consts(ct),
+                        param_env,
+                    ) =>
             {
                 tcx.sess
                     .struct_span_fatal(
@@ -112,12 +118,15 @@ pub fn is_const_evaluatable<'tcx>(
                 } else if uv.has_non_region_param() {
                     NotConstEvaluatable::MentionsParam
                 } else {
-                    let guar = infcx.tcx.sess.delay_span_bug(span, format!("Missing value for constant, but no error reported?"));
+                    let guar = infcx.tcx.sess.delay_span_bug(
+                        span,
+                        format!("Missing value for constant, but no error reported?"),
+                    );
                     NotConstEvaluatable::Error(guar)
                 };
 
                 Err(err)
-            },
+            }
             Err(ErrorHandled::Reported(e)) => Err(NotConstEvaluatable::Error(e)),
             Ok(_) => Ok(()),
         }
@@ -130,7 +139,7 @@ fn satisfied_from_param_env<'tcx>(
     infcx: &InferCtxt<'tcx>,
     ct: ty::Const<'tcx>,
     param_env: ty::ParamEnv<'tcx>,
-) -> Result<bool, NotConstEvaluatable> {
+) -> bool {
     // Try to unify with each subtree in the AbstractConst to allow for
     // `N + 1` being const evaluatable even if theres only a `ConstEvaluatable`
     // predicate for `(N + 1) * 2`
@@ -179,12 +188,12 @@ fn satisfied_from_param_env<'tcx>(
 
                 if let ControlFlow::Break(()) = result {
                     debug!("is_const_evaluatable: abstract_const ~~> ok");
-                    return Ok(true);
+                    return true;
                 }
             }
             _ => {} // don't care
         }
     }
 
-    Ok(false)
+    false
 }
