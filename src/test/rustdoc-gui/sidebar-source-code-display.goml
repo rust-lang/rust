@@ -43,6 +43,7 @@ define-function: (
             "#source-sidebar details[open] > .files a.selected",
             {"color": |color_hover|, "background-color": |background|},
         )),
+
         // Without hover or focus.
         ("assert-css", ("#sidebar-toggle > button", {"background-color": |background_toggle|})),
         // With focus.
@@ -52,7 +53,8 @@ define-function: (
         // With hover.
         ("move-cursor-to", "#sidebar-toggle > button"),
         ("assert-css", ("#sidebar-toggle > button", {"background-color": |background_toggle_hover|})),
-        // Without hover.
+
+        // Without hover or focus.
         ("assert-css", (
             "#source-sidebar details[open] > .files a:not(.selected)",
             {"color": |color|, "background-color": |background_toggle|},
@@ -70,7 +72,27 @@ define-function: (
             "#source-sidebar details[open] > .files a:not(.selected)",
             {"color": |color_hover|, "background-color": |background_hover|},
         )),
-        // Without hover.
+
+        // Without hover or focus.
+        ("assert-css", (
+            "#source-sidebar .dir-entry summary",
+            {"color": |color|, "background-color": |background_toggle|},
+        )),
+        // With focus.
+        ("focus", "#source-sidebar .dir-entry summary"),
+        ("wait-for-css", (
+            "#source-sidebar .dir-entry summary:focus",
+            {"color": |color_hover|, "background-color": |background_hover|},
+        )),
+        ("focus", ".search-input"),
+        // With hover.
+        ("move-cursor-to", "#source-sidebar .dir-entry summary"),
+        ("assert-css", (
+            "#source-sidebar .dir-entry summary:hover",
+            {"color": |color_hover|, "background-color": |background_hover|},
+        )),
+
+        // Without hover or focus.
         ("assert-css", (
             "#source-sidebar details[open] > .folders > details > summary",
             {"color": |color|, "background-color": |background_toggle|},
