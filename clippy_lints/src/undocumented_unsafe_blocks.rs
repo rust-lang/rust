@@ -89,7 +89,7 @@ declare_clippy_lint! {
     #[clippy::version = "1.67.0"]
     pub UNNECESSARY_SAFETY_COMMENT,
     restriction,
-    "creating an unsafe block without explaining why it is safe"
+    "annotating safe code with a safety comment"
 }
 
 declare_lint_pass!(UndocumentedUnsafeBlocks => [UNDOCUMENTED_UNSAFE_BLOCKS, UNNECESSARY_SAFETY_COMMENT]);
@@ -138,12 +138,11 @@ impl<'tcx> LateLintPass<'tcx> for UndocumentedUnsafeBlocks {
     }
 
     fn check_stmt(&mut self, cx: &LateContext<'tcx>, stmt: &hir::Stmt<'tcx>) {
-        let expr = match stmt.kind {
+        let (
             hir::StmtKind::Local(&hir::Local { init: Some(expr), .. })
             | hir::StmtKind::Expr(expr)
-            | hir::StmtKind::Semi(expr) => expr,
-            _ => return,
-        };
+            | hir::StmtKind::Semi(expr)
+        ) = stmt.kind else { return };
         if !is_lint_allowed(cx, UNNECESSARY_SAFETY_COMMENT, stmt.hir_id)
             && !in_external_macro(cx.tcx.sess, stmt.span)
             && let HasSafetyComment::Yes(pos) = stmt_has_safety_comment(cx, stmt.span, stmt.hir_id)
