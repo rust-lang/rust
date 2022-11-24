@@ -48,11 +48,17 @@ define-function: (
         ("assert-css", ("#sidebar-toggle > button", {"background-color": |background_toggle|})),
         // With focus.
         ("focus", "#sidebar-toggle > button"),
-        ("assert-css", ("#sidebar-toggle > button", {"background-color": |background_toggle_hover|})),
+        ("assert-css", (
+            "#sidebar-toggle > button:focus",
+            {"background-color": |background_toggle_hover|},
+        )),
         ("focus", ".search-input"),
         // With hover.
         ("move-cursor-to", "#sidebar-toggle > button"),
-        ("assert-css", ("#sidebar-toggle > button", {"background-color": |background_toggle_hover|})),
+        ("assert-css", (
+            "#sidebar-toggle > button:hover",
+            {"background-color": |background_toggle_hover|},
+        )),
 
         // Without hover or focus.
         ("assert-css", (
@@ -62,14 +68,14 @@ define-function: (
         // With focus.
         ("focus", "#source-sidebar details[open] > .files a:not(.selected)"),
         ("wait-for-css", (
-            "#source-sidebar details[open] > .files a:not(.selected)",
+            "#source-sidebar details[open] > .files a:not(.selected):focus",
             {"color": |color_hover|, "background-color": |background_hover|},
         )),
         ("focus", ".search-input"),
         // With hover.
         ("move-cursor-to", "#source-sidebar details[open] > .files a:not(.selected)"),
         ("assert-css", (
-            "#source-sidebar details[open] > .files a:not(.selected)",
+            "#source-sidebar details[open] > .files a:not(.selected):hover",
             {"color": |color_hover|, "background-color": |background_hover|},
         )),
 
@@ -100,14 +106,14 @@ define-function: (
         // With focus.
         ("focus", "#source-sidebar details[open] > .folders > details > summary"),
         ("wait-for-css", (
-            "#source-sidebar details[open] > .folders > details > summary",
+            "#source-sidebar details[open] > .folders > details > summary:focus",
             {"color": |color_hover|, "background-color": |background_hover|},
         )),
         ("focus", ".search-input"),
         // With hover.
         ("move-cursor-to", "#source-sidebar details[open] > .folders > details > summary"),
         ("assert-css", (
-            "#source-sidebar details[open] > .folders > details > summary",
+            "#source-sidebar details[open] > .folders > details > summary:hover",
             {"color": |color_hover|, "background-color": |background_hover|},
         )),
     ],
