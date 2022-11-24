@@ -26,8 +26,8 @@ impl Node<LicenseId> {
         self.remove_empty();
     }
 
-    /// Initially, trees are built by the build() function with each file practically having a
-    /// separate directory tree, like so:
+    /// Initially, the build() function constructs a list of separate paths from the file
+    /// system root down to each file, like so:
     ///
     /// ```text
     ///         ┌─► ./ ──► compiler/ ──► rustc/ ──► src/ ──► main.rs
