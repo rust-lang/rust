@@ -405,7 +405,7 @@ impl<'a> Parser<'a> {
     /// Matches `meta_item_inner : (meta_item | UNSUFFIXED_LIT) ;`.
     fn parse_meta_item_inner(&mut self) -> PResult<'a, ast::NestedMetaItem> {
         match self.parse_unsuffixed_meta_item_lit() {
-            Ok(lit) => return Ok(ast::NestedMetaItem::Literal(lit)),
+            Ok(lit) => return Ok(ast::NestedMetaItem::Lit(lit)),
             Err(err) => err.cancel(),
         }
 

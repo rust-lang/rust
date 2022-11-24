@@ -486,7 +486,7 @@ where
                                     continue 'outer;
                                 }
                             },
-                            NestedMetaItem::Literal(lit) => {
+                            NestedMetaItem::Lit(lit) => {
                                 handle_errors(
                                     &sess.parse_sess,
                                     lit.span,
@@ -658,13 +658,11 @@ pub fn eval_condition(
         ast::MetaItemKind::List(ref mis) if cfg.name_or_empty() == sym::version => {
             try_gate_cfg(sym::version, cfg.span, sess, features);
             let (min_version, span) = match &mis[..] {
+                [NestedMetaItem::Lit(MetaItemLit { kind: LitKind::Str(sym, ..), span, .. })] => {
+                    (sym, span)
+                }
                 [
-                    NestedMetaItem::Literal(MetaItemLit {
-                        kind: LitKind::Str(sym, ..), span, ..
-                    }),
-                ] => (sym, span),
-                [
-                    NestedMetaItem::Literal(MetaItemLit { span, .. })
+                    NestedMetaItem::Lit(MetaItemLit { span, .. })
                     | NestedMetaItem::MetaItem(MetaItem { span, .. }),
                 ] => {
                     sess.emit_err(session_diagnostics::ExpectedVersionLiteral { span: *span });
@@ -901,7 +899,7 @@ where
                                 continue 'outer;
                             }
                         },
-                        NestedMetaItem::Literal(lit) => {
+                        NestedMetaItem::Lit(lit) => {
                             handle_errors(
                                 &sess.parse_sess,
                                 lit.span,

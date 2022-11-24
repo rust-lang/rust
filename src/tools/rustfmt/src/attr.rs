@@ -260,9 +260,7 @@ impl Rewrite for ast::NestedMetaItem {
     fn rewrite(&self, context: &RewriteContext<'_>, shape: Shape) -> Option<String> {
         match self {
             ast::NestedMetaItem::MetaItem(ref meta_item) => meta_item.rewrite(context, shape),
-            ast::NestedMetaItem::Literal(ref l) => {
-                rewrite_literal(context, l.token_lit, l.span, shape)
-            }
+            ast::NestedMetaItem::Lit(ref l) => rewrite_literal(context, l.token_lit, l.span, shape),
         }
     }
 }
@@ -537,7 +535,7 @@ pub(crate) trait MetaVisitor<'ast> {
     fn visit_nested_meta_item(&mut self, nm: &'ast ast::NestedMetaItem) {
         match nm {
             ast::NestedMetaItem::MetaItem(ref meta_item) => self.visit_meta_item(meta_item),
-            ast::NestedMetaItem::Literal(ref lit) => self.visit_meta_item_lit(lit),
+            ast::NestedMetaItem::Lit(ref lit) => self.visit_meta_item_lit(lit),
         }
     }
 

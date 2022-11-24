@@ -1191,7 +1191,7 @@ impl<'tcx> TyCtxt<'tcx> {
             debug!("layout_scalar_valid_range: attr={:?}", attr);
             if let Some(
                 &[
-                    ast::NestedMetaItem::Literal(ast::MetaItemLit {
+                    ast::NestedMetaItem::Lit(ast::MetaItemLit {
                         kind: ast::LitKind::Int(a, _),
                         ..
                     }),

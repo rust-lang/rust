@@ -51,9 +51,9 @@ impl NestedMetaItem {
     }
 
     /// Returns the `MetaItemLit` if `self` is a `NestedMetaItem::Literal`s.
-    pub fn literal(&self) -> Option<&MetaItemLit> {
+    pub fn lit(&self) -> Option<&MetaItemLit> {
         match self {
-            NestedMetaItem::Literal(lit) => Some(lit),
+            NestedMetaItem::Lit(lit) => Some(lit),
             _ => None,
         }
     }
@@ -83,7 +83,7 @@ impl NestedMetaItem {
             meta_item.meta_item_list().and_then(|meta_item_list| {
                 if meta_item_list.len() == 1
                     && let Some(ident) = meta_item.ident()
-                    && let Some(lit) = meta_item_list[0].literal()
+                    && let Some(lit) = meta_item_list[0].lit()
                 {
                     return Some((ident.name, lit));
                 }
@@ -655,14 +655,14 @@ impl NestedMetaItem {
     pub fn span(&self) -> Span {
         match self {
             NestedMetaItem::MetaItem(item) => item.span,
-            NestedMetaItem::Literal(lit) => lit.span,
+            NestedMetaItem::Lit(lit) => lit.span,
         }
     }
 
     fn token_trees(&self) -> Vec<TokenTree> {
         match self {
             NestedMetaItem::MetaItem(item) => item.token_trees(),
-            NestedMetaItem::Literal(lit) => {
+            NestedMetaItem::Lit(lit) => {
                 vec![TokenTree::Token(lit.to_token(), Spacing::Alone)]
             }
         }
@@ -677,7 +677,7 @@ impl NestedMetaItem {
                 if let Some(lit) = MetaItemLit::from_token(token) =>
             {
                 tokens.next();
-                return Some(NestedMetaItem::Literal(lit));
+                return Some(NestedMetaItem::Lit(lit));
             }
             Some(TokenTree::Delimited(_, Delimiter::Invisible, inner_tokens)) => {
                 let inner_tokens = inner_tokens.clone();

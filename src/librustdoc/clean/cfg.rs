@@ -50,7 +50,7 @@ impl Cfg {
     ) -> Result<Option<Cfg>, InvalidCfgError> {
         match nested_cfg {
             NestedMetaItem::MetaItem(ref cfg) => Cfg::parse_without(cfg, exclude),
-            NestedMetaItem::Literal(ref lit) => {
+            NestedMetaItem::Lit(ref lit) => {
                 Err(InvalidCfgError { msg: "unexpected literal", span: lit.span })
             }
         }
