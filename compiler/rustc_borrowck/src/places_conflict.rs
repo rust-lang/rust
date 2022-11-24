@@ -320,16 +320,10 @@ fn place_projection_conflict<'tcx>(
             debug!("place_element_conflict: DISJOINT-OR-EQ-DEREF");
             Overlap::EqualOrDisjoint
         }
-        (ProjectionElem::OpaqueCast(v1), ProjectionElem::OpaqueCast(v2)) => {
-            if v1 == v2 {
-                // same type - recur.
-                debug!("place_element_conflict: DISJOINT-OR-EQ-OPAQUE");
-                Overlap::EqualOrDisjoint
-            } else {
-                // Different types. Disjoint!
-                debug!("place_element_conflict: DISJOINT-OPAQUE");
-                Overlap::Disjoint
-            }
+        (ProjectionElem::OpaqueCast(_), ProjectionElem::OpaqueCast(_)) => {
+            // casts to other types may always conflict irrespective of the type being cast to.
+            debug!("place_element_conflict: DISJOINT-OR-EQ-OPAQUE");
+            Overlap::EqualOrDisjoint
         }
         (ProjectionElem::Field(f1, _), ProjectionElem::Field(f2, _)) => {
             if f1 == f2 {
