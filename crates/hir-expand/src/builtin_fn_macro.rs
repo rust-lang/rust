@@ -379,15 +379,10 @@ fn compile_error_expand(
     tt: &tt::Subtree,
 ) -> ExpandResult<ExpandedEager> {
     let err = match &*tt.token_trees {
-        [tt::TokenTree::Leaf(tt::Leaf::Literal(it))] => {
-            let text = it.text.as_str();
-            if text.starts_with('"') && text.ends_with('"') {
-                // FIXME: does not handle raw strings
-                ExpandError::Other(text[1..text.len() - 1].into())
-            } else {
-                ExpandError::Other("`compile_error!` argument must be a string".into())
-            }
-        }
+        [tt::TokenTree::Leaf(tt::Leaf::Literal(it))] => match unquote_str(it) {
+            Some(unquoted) => ExpandError::Other(unquoted.into()),
+            None => ExpandError::Other("`compile_error!` argument must be a string".into()),
+        },
         _ => ExpandError::Other("`compile_error!` argument must be a string".into()),
     };
 
