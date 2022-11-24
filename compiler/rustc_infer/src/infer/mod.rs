@@ -1621,20 +1621,18 @@ impl<'tcx> InferCtxt<'tcx> {
         // variables
         let tcx = self.tcx;
         if substs.has_non_region_infer() {
-            let ac = tcx.expand_unevaluated_abstract_const(unevaluated.def, unevaluated.substs);
-            match ac {
-                Ok(None) => {
-                    substs = InternalSubsts::identity_for_item(tcx, unevaluated.def.did);
-                    param_env = tcx.param_env(unevaluated.def.did);
+            if let Some(ct) = tcx.bound_abstract_const(unevaluated.def)? {
+                let ct = tcx.expand_abstract_consts(ct.subst(tcx, substs));
+                if let Err(e) = ct.error_reported() {
+                    return Err(ErrorHandled::Reported(e));
+                } else if ct.has_non_region_infer() || ct.has_non_region_param() {
+                    return Err(ErrorHandled::TooGeneric);
+                } else {
+                    substs = replace_param_and_infer_substs_with_placeholder(tcx, substs);
                 }
-                Ok(Some(ct)) => {
-                    if ct.has_non_region_infer() || ct.has_non_region_param() {
-                        return Err(ErrorHandled::TooGeneric);
-                    } else {
-                        substs = replace_param_and_infer_substs_with_placeholder(tcx, substs);
-                    }
-                }
-                Err(guar) => return Err(ErrorHandled::Reported(guar)),
+            } else {
+                substs = InternalSubsts::identity_for_item(tcx, unevaluated.def.did);
+                param_env = tcx.param_env(unevaluated.def.did);
             }
         }
 

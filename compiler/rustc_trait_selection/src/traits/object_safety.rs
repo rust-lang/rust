@@ -837,24 +837,9 @@ fn contains_illegal_self_type_reference<'tcx, T: TypeVisitable<'tcx>>(
         }
 
         fn visit_const(&mut self, ct: ty::Const<'tcx>) -> ControlFlow<Self::BreakTy> {
-            // Constants can only influence object safety if they reference `Self`.
+            // Constants can only influence object safety if they are generic and reference `Self`.
             // This is only possible for unevaluated constants, so we walk these here.
-            //
-            // If `AbstractConst::from_const` returned an error we already failed compilation
-            // so we don't have to emit an additional error here.
-            //
-            // We currently recurse into abstract consts here but do not recurse in
-            // `is_const_evaluatable`. This means that the object safety check is more
-            // liberal than the const eval check.
-            //
-            // This shouldn't really matter though as we can't really use any
-            // constants which are not considered const evaluatable.
-            if let ty::ConstKind::Unevaluated(_uv) = ct.kind() &&
-                let Ok(Some(ct)) = self.tcx.expand_abstract_consts(ct){
-                self.visit_const(ct)
-            } else {
-                ct.super_visit_with(self)
-            }
+            self.tcx.expand_abstract_consts(ct).super_visit_with(self)
         }
     }
 

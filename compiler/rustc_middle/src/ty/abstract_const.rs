@@ -1,7 +1,7 @@
 //! A subset of a mir body used for const evaluatability checking.
 use crate::ty::{
-    self, subst::SubstsRef, Const, EarlyBinder, FallibleTypeFolder, Ty, TyCtxt, TypeFoldable,
-    TypeSuperFoldable, TypeVisitable,
+    self, Const, EarlyBinder, Ty, TyCtxt, TypeFoldable, TypeFolder, TypeSuperFoldable,
+    TypeVisitable,
 };
 use rustc_errors::ErrorGuaranteed;
 use rustc_hir::def_id::DefId;
@@ -36,7 +36,10 @@ pub type BoundAbstractConst<'tcx> = Result<Option<EarlyBinder<ty::Const<'tcx>>>,
 
 impl<'tcx> TyCtxt<'tcx> {
     /// Returns a const without substs applied
-    fn bound_abstract_const(self, uv: ty::WithOptConstParam<DefId>) -> BoundAbstractConst<'tcx> {
+    pub fn bound_abstract_const(
+        self,
+        uv: ty::WithOptConstParam<DefId>,
+    ) -> BoundAbstractConst<'tcx> {
         let ac = if let Some((did, param_did)) = uv.as_const_arg() {
             self.thir_abstract_const_of_const_arg((did, param_did))
         } else {
@@ -45,70 +48,37 @@ impl<'tcx> TyCtxt<'tcx> {
         Ok(ac?.map(|ac| EarlyBinder(ac)))
     }
 
-    pub fn expand_abstract_consts<T: TypeFoldable<'tcx>>(
-        self,
-        ac: T,
-    ) -> Result<Option<T>, ErrorGuaranteed> {
-        self._expand_abstract_consts(ac, true)
-    }
-
-    pub fn expand_unevaluated_abstract_const(
-        self,
-        did: ty::WithOptConstParam<DefId>,
-        substs: SubstsRef<'tcx>,
-    ) -> Result<Option<ty::Const<'tcx>>, ErrorGuaranteed> {
-        let Some(ac) = self.bound_abstract_const(did)? else {
-            return Ok(None);
-        };
-        let substs = self.erase_regions(substs);
-        let ac = ac.subst(self, substs);
-        self._expand_abstract_consts(ac, false)
-    }
-
-    fn _expand_abstract_consts<T: TypeFoldable<'tcx>>(
-        self,
-        ac: T,
-        first: bool,
-    ) -> Result<Option<T>, ErrorGuaranteed> {
+    pub fn expand_abstract_consts<T: TypeFoldable<'tcx>>(self, ac: T) -> T {
         struct Expander<'tcx> {
             tcx: TyCtxt<'tcx>,
-            first: bool,
         }
 
-        impl<'tcx> FallibleTypeFolder<'tcx> for Expander<'tcx> {
-            type Error = Option<ErrorGuaranteed>;
+        impl<'tcx> TypeFolder<'tcx> for Expander<'tcx> {
             fn tcx(&self) -> TyCtxt<'tcx> {
                 self.tcx
             }
-            fn try_fold_ty(&mut self, ty: Ty<'tcx>) -> Result<Ty<'tcx>, Self::Error> {
+            fn fold_ty(&mut self, ty: Ty<'tcx>) -> Ty<'tcx> {
                 if ty.has_type_flags(ty::TypeFlags::HAS_CT_PROJECTION) {
-                    ty.try_super_fold_with(self)
+                    ty.super_fold_with(self)
                 } else {
-                    Ok(ty)
+                    ty
                 }
             }
-            fn try_fold_const(&mut self, c: Const<'tcx>) -> Result<Const<'tcx>, Self::Error> {
+            fn fold_const(&mut self, c: Const<'tcx>) -> Const<'tcx> {
                 let ct = match c.kind() {
-                    ty::ConstKind::Unevaluated(uv) => {
-                        if let Some(bac) = self.tcx.bound_abstract_const(uv.def)? {
+                    ty::ConstKind::Unevaluated(uv) => match self.tcx.bound_abstract_const(uv.def) {
+                        Err(e) => self.tcx.const_error_with_guaranteed(c.ty(), e),
+                        Ok(Some(bac)) => {
                             let substs = self.tcx.erase_regions(uv.substs);
                             bac.subst(self.tcx, substs)
-                        } else if self.first {
-                            return Err(None);
-                        } else {
-                            c
                         }
-                    }
+                        Ok(None) => c,
+                    },
                     _ => c,
                 };
-                self.first = false;
-                ct.try_super_fold_with(self)
+                ct.super_fold_with(self)
             }
         }
-        match ac.try_fold_with(&mut Expander { tcx: self, first }) {
-            Ok(c) => Ok(Some(c)),
-            Err(None) => Ok(None),
-            Err(Some(e)) => Err(e),
-        }
+        ac.fold_with(&mut Expander { tcx: self })
     }
 }

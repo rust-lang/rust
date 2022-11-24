@@ -664,10 +664,8 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
                     );
 
                     {
-                        let c1 =
-                            if let Ok(Some(a)) = tcx.expand_abstract_consts(c1) { a } else { c1 };
-                        let c2 =
-                            if let Ok(Some(b)) = tcx.expand_abstract_consts(c2) { b } else { c2 };
+                        let c1 = tcx.expand_abstract_consts(c1);
+                        let c2 = tcx.expand_abstract_consts(c2);
                         debug!(
                             "evalaute_predicate_recursively: equating consts:\nc1= {:?}\nc2= {:?}",
                             c1, c2

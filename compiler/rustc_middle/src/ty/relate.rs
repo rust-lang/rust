@@ -632,12 +632,8 @@ pub fn super_relate_consts<'tcx, R: TypeRelation<'tcx>>(
     }
 
     if tcx.features().generic_const_exprs {
-        if let Ok(Some(a2)) = tcx.expand_abstract_consts(a) {
-            a = a2;
-        }
-        if let Ok(Some(b2)) = tcx.expand_abstract_consts(b) {
-            b = b2
-        }
+        a = tcx.expand_abstract_consts(a);
+        b = tcx.expand_abstract_consts(b);
     }
 
     // Currently, the values that can be unified are primitive types,

@@ -8,6 +8,7 @@
 //! In this case we try to build an abstract representation of this constant using
 //! `thir_abstract_const` which can then be checked for structural equality with other
 //! generic constants mentioned in the `caller_bounds` of the current environment.
+use rustc_hir::def::DefKind;
 use rustc_infer::infer::InferCtxt;
 use rustc_middle::mir::interpret::ErrorHandled;
 
@@ -42,7 +43,15 @@ pub fn is_const_evaluatable<'tcx>(
     };
 
     if tcx.features().generic_const_exprs {
-        if let Some(ct) = tcx.expand_abstract_consts(ct)? {
+        let ct = tcx.expand_abstract_consts(ct);
+
+        let is_anon_ct = if let ty::ConstKind::Unevaluated(uv) = ct.kind() {
+            tcx.def_kind(uv.def.did) == DefKind::AnonConst
+        } else {
+            false
+        };
+
+        if !is_anon_ct {
             if satisfied_from_param_env(tcx, infcx, ct, param_env)? {
                 return Ok(());
             }
@@ -52,6 +61,7 @@ pub fn is_const_evaluatable<'tcx>(
                 return Err(NotConstEvaluatable::MentionsParam);
             }
         }
+
         let concrete = infcx.const_eval_resolve(param_env, uv, Some(span));
         match concrete {
             Err(ErrorHandled::TooGeneric) => Err(NotConstEvaluatable::Error(
@@ -78,8 +88,7 @@ pub fn is_const_evaluatable<'tcx>(
             // the current crate does not enable `feature(generic_const_exprs)`, abort
             // compilation with a useful error.
             Err(_) if tcx.sess.is_nightly_build()
-                && let Ok(Some(ac)) = tcx.expand_abstract_consts(ct)
-                && let ty::ConstKind::Expr(_) = ac.kind() =>
+                && let ty::ConstKind::Expr(_) = tcx.expand_abstract_consts(ct).kind() =>
             {
                 tcx.sess
                     .struct_span_fatal(
@@ -164,8 +173,7 @@ fn satisfied_from_param_env<'tcx>(
     for pred in param_env.caller_bounds() {
         match pred.kind().skip_binder() {
             ty::PredicateKind::ConstEvaluatable(ce) => {
-                let b_ct = tcx.expand_abstract_consts(ce)?.unwrap_or(ce);
-
+                let b_ct = tcx.expand_abstract_consts(ce);
                 let mut v = Visitor { ct, infcx, param_env };
                 let result = b_ct.visit_with(&mut v);
 
