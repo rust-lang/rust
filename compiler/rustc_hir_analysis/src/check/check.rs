@@ -1,4 +1,5 @@
 use crate::check::intrinsicck::InlineAsmCtxt;
+use crate::errors::LinkageType;
 
 use super::compare_method::check_type_bounds;
 use super::compare_method::{compare_impl_method, compare_ty_impl};
@@ -478,6 +479,17 @@ fn check_opaque_meets_bounds<'tcx>(
     let _ = infcx.inner.borrow_mut().opaque_type_storage.take_opaque_types();
 }
 
+fn check_static_linkage<'tcx>(tcx: TyCtxt<'tcx>, def_id: LocalDefId) {
+    if tcx.codegen_fn_attrs(def_id).import_linkage.is_some() {
+        if match tcx.type_of(def_id).kind() {
+            ty::RawPtr(_) => false,
+            _ => true,
+        } {
+            tcx.sess.emit_err(LinkageType { span: tcx.def_span(def_id) });
+        }
+    }
+}
+
 fn check_item_type<'tcx>(tcx: TyCtxt<'tcx>, id: hir::ItemId) {
     debug!(
         "check_item_type(it.def_id={:?}, it.name={})",
@@ -490,6 +502,7 @@ fn check_item_type<'tcx>(tcx: TyCtxt<'tcx>, id: hir::ItemId) {
             tcx.ensure().typeck(id.owner_id.def_id);
             maybe_check_static_with_link_section(tcx, id.owner_id.def_id);
             check_static_inhabited(tcx, id.owner_id.def_id);
+            check_static_linkage(tcx, id.owner_id.def_id);
         }
         DefKind::Const => {
             tcx.ensure().typeck(id.owner_id.def_id);
@@ -627,6 +640,7 @@ fn check_item_type<'tcx>(tcx: TyCtxt<'tcx>, id: hir::ItemId) {
                         }
                         hir::ForeignItemKind::Static(..) => {
                             check_static_inhabited(tcx, def_id);
+                            check_static_linkage(tcx, def_id);
                         }
                         _ => {}
                     }

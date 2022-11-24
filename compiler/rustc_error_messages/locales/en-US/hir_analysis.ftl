@@ -113,3 +113,6 @@ hir_analysis_const_bound_for_non_const_trait =
 hir_analysis_self_in_impl_self =
     `Self` is not valid in the self type of an impl block
     .note = replace `Self` with a different type
+
+hir_analysis_linkage_type =
+    must have type `*const T` or `*mut T` due to `#[linkage]` attribute

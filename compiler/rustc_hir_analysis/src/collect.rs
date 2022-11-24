@@ -1814,7 +1814,12 @@ fn codegen_fn_attrs(tcx: TyCtxt<'_>, did: DefId) -> CodegenFnAttrs {
             );
         } else if attr.has_name(sym::linkage) {
             if let Some(val) = attr.value_str() {
-                codegen_fn_attrs.linkage = Some(linkage_by_name(tcx, did, val.as_str()));
+                let linkage = Some(linkage_by_name(tcx, did, val.as_str()));
+                if tcx.is_foreign_item(did) {
+                    codegen_fn_attrs.import_linkage = linkage;
+                } else {
+                    codegen_fn_attrs.linkage = linkage;
+                }
             }
         } else if attr.has_name(sym::link_section) {
             if let Some(val) = attr.value_str() {
