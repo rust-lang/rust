@@ -730,9 +730,6 @@ a {
 h2.small-section-header > .anchor {
 	padding-right: 6px;
 }
-.anchor::before {
-	content: '§';
-}
 
 .main-heading a:hover,
 .example-wrap > pre.rust a:hover,
