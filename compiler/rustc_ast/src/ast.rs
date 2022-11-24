@@ -1737,7 +1737,7 @@ pub struct MetaItemLit {
     pub span: Span,
 }
 
-/// Same as `Lit`, but restricted to string literals.
+/// Similar to `MetaItemLit`, but restricted to string literals.
 #[derive(Clone, Copy, Encodable, Decodable, Debug)]
 pub struct StrLit {
     /// The original literal token as written in source code.
@@ -1746,7 +1746,6 @@ pub struct StrLit {
     pub suffix: Option<Symbol>,
     pub span: Span,
     /// The unescaped "semantic" representation of the literal lowered from the original token.
-    /// FIXME: Remove this and only create the semantic representation during lowering to HIR.
     pub symbol_unescaped: Symbol,
 }
 
