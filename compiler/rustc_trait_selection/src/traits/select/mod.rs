@@ -2271,15 +2271,19 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
 
         debug!(?closure_sig);
 
-        // (1) Feels icky to skip the binder here, but OTOH we know
-        // that the self-type is an unboxed closure type and hence is
+        // NOTE: The self-type is an unboxed closure type and hence is
         // in fact unparameterized (or at least does not reference any
-        // regions bound in the obligation). Still probably some
-        // refactoring could make this nicer.
+        // regions bound in the obligation).
+        let self_ty = obligation
+            .predicate
+            .self_ty()
+            .no_bound_vars()
+            .expect("unboxed closure type should not capture bound vars from the predicate");
+
         closure_trait_ref_and_return_type(
             self.tcx(),
             obligation.predicate.def_id(),
-            obligation.predicate.skip_binder().self_ty(), // (1)
+            self_ty,
             closure_sig,
             util::TupleArgumentsFlag::No,
         )

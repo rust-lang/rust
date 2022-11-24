@@ -693,16 +693,19 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
 
         let gen_sig = substs.as_generator().poly_sig();
 
-        // (1) Feels icky to skip the binder here, but OTOH we know
-        // that the self-type is an generator type and hence is
+        // NOTE: The self-type is a generator type and hence is
         // in fact unparameterized (or at least does not reference any
-        // regions bound in the obligation). Still probably some
-        // refactoring could make this nicer.
+        // regions bound in the obligation).
+        let self_ty = obligation
+            .predicate
+            .self_ty()
+            .no_bound_vars()
+            .expect("unboxed closure type should not capture bound vars from the predicate");
 
         let trait_ref = super::util::generator_trait_ref_and_outputs(
             self.tcx(),
             obligation.predicate.def_id(),
-            obligation.predicate.skip_binder().self_ty(), // (1)
+            self_ty,
             gen_sig,
         )
         .map_bound(|(trait_ref, ..)| trait_ref);
