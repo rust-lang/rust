@@ -938,7 +938,9 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
                         // that is understood elsewhere in the compiler as a method on
                         // `dyn Trait`.
                         // To get a `*mut RcBox<Self>`, we just keep unwrapping newtypes until
-                        // we get a value of a built-in pointer type
+                        // we get a value of a built-in pointer type.
+                        //
+                        // This is also relevant for `Pin<&mut Self>`, where we need to peel the `Pin`.
                         'descend_newtypes: while !op.layout.ty.is_unsafe_ptr()
                             && !op.layout.ty.is_region_ptr()
                         {
@@ -980,13 +982,29 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
                         continue;
                     }
                     Immediate(_) => {
-                        let ty::Ref(_, ty, _) = op.layout.ty.kind() else {
-                            span_bug!(span, "can't codegen a virtual call on {:#?}", op);
-                        };
-                        if !ty.is_dyn_star() {
+                        // See comment above explaining why we peel these newtypes
+                        'descend_newtypes: while !op.layout.ty.is_unsafe_ptr()
+                            && !op.layout.ty.is_region_ptr()
+                        {
+                            for i in 0..op.layout.fields.count() {
+                                let field = op.extract_field(bx, i);
+                                if !field.layout.is_zst() {
+                                    // we found the one non-zero-sized field that is allowed
+                                    // now find *its* non-zero-sized field, or stop if it's a
+                                    // pointer
+                                    op = field;
+                                    continue 'descend_newtypes;
+                                }
+                            }
+
+                            span_bug!(span, "receiver has no non-zero-sized fields {:?}", op);
+                        }
+
+                        // Make sure that we've actually unwrapped the rcvr down
+                        // to a pointer or ref to `dyn* Trait`.
+                        if !op.layout.ty.builtin_deref(true).unwrap().ty.is_dyn_star() {
                             span_bug!(span, "can't codegen a virtual call on {:#?}", op);
                         }
-                        // FIXME(dyn-star): Make sure this is done on a &dyn* receiver
                         let place = op.deref(bx.cx());
                         let data_ptr = place.project_field(bx, 0);
                         let meta_ptr = place.project_field(bx, 1);

@@ -1,7 +1,8 @@
-// check-pass
+// run-pass
+// check-run-results
 
 #![feature(dyn_star)]
-#![allow(incomplete_features)]
+//~^ WARN the feature `dyn_star` is incomplete and may not be safe to use and/or cause compiler crashes
 
 trait AddOne {
     fn add1(&mut self) -> usize;
