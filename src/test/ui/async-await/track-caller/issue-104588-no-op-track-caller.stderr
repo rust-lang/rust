@@ -1,10 +1,10 @@
-warning: `#[track_caller]` on async functions is a no-op, unless the `closure_track_caller` feature is enabled
-  --> $DIR/issue-104588-no-op-track-caller.rs:4:16
+warning: `#[track_caller]` on async functions is a no-op
+  --> $DIR/issue-104588-no-op-track-caller.rs:4:1
    |
-LL |   #[track_caller]
-   |  ________________^
-LL | | async fn foo() {}
-   | |_
+LL | #[track_caller]
+   | ^^^^^^^^^^^^^^^ help: enable this feature: `#[closure_track_caller]`
+LL | async fn foo() {}
+   | ----------------- this function will not propagate the caller location
    |
    = note: `#[warn(ungated_async_fn_track_caller)]` on by default
 
