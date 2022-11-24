@@ -158,8 +158,10 @@ impl GlobalState {
                     .collect::<Vec<_>>();
 
                 if !detached_files.is_empty() {
-                    workspaces
-                        .push(project_model::ProjectWorkspace::load_detached_files(detached_files));
+                    workspaces.push(project_model::ProjectWorkspace::load_detached_files(
+                        detached_files,
+                        &cargo_config,
+                    ));
                 }
 
                 tracing::info!("did fetch workspaces {:?}", workspaces);
