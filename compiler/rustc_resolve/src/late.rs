@@ -566,6 +566,9 @@ struct LateResolutionVisitor<'a, 'b, 'ast> {
     /// FIXME #4948: Reuse ribs to avoid allocation.
     ribs: PerNS<Vec<Rib<'a>>>,
 
+    /// Previous poped `rib`, only used for diagnostic.
+    last_block_rib: Option<Rib<'a>>,
+
     /// The current set of local scopes, for labels.
     label_ribs: Vec<Rib<'a, NodeId>>,
 
@@ -1168,6 +1171,7 @@ impl<'a: 'ast, 'b, 'ast> LateResolutionVisitor<'a, 'b, 'ast> {
                 type_ns: vec![Rib::new(start_rib_kind)],
                 macro_ns: vec![Rib::new(start_rib_kind)],
             },
+            last_block_rib: None,
             label_ribs: Vec::new(),
             lifetime_ribs: Vec::new(),
             lifetime_elision_candidates: None,
@@ -3756,7 +3760,7 @@ impl<'a: 'ast, 'b, 'ast> LateResolutionVisitor<'a, 'b, 'ast> {
             self.ribs[ValueNS].pop();
             self.label_ribs.pop();
         }
-        self.ribs[ValueNS].pop();
+        self.last_block_rib = self.ribs[ValueNS].pop();
         if anonymous_module.is_some() {
             self.ribs[TypeNS].pop();
         }

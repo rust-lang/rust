@@ -614,6 +614,22 @@ impl<'a: 'ast, 'ast> LateResolutionVisitor<'a, '_, 'ast> {
                 return (true, candidates);
             }
         }
+
+        // Try to find in last block rib
+        if let Some(rib) = &self.last_block_rib {
+            for (ident, &res) in &rib.bindings {
+                if let Res::Local(_) = res && path.len() == 1 &&
+                    ident.span.eq_ctxt(path[0].ident.span) &&
+                    ident.name == path[0].ident.name {
+                    err.span_help(
+                        ident.span,
+                        &format!("the binding `{}` is available in a different scope in the same function", path_str),
+                    );
+                    return (true, candidates);
+                }
+            }
+        }
+
         return (false, candidates);
     }
 
