@@ -22,12 +22,11 @@ use crate::traits::util::{self, closure_trait_ref_and_return_type, predicate_for
 use crate::traits::{
     BuiltinDerivedObligation, ImplDerivedObligation, ImplDerivedObligationCause, ImplSource,
     ImplSourceAutoImplData, ImplSourceBuiltinData, ImplSourceClosureData,
-    ImplSourceConstDestructData, ImplSourceDiscriminantKindData, ImplSourceFnPointerData,
-    ImplSourceFutureData, ImplSourceGeneratorData, ImplSourceObjectData, ImplSourcePointeeData,
-    ImplSourceTraitAliasData, ImplSourceTraitUpcastingData, ImplSourceUserDefinedData, Normalized,
-    ObjectCastObligation, Obligation, ObligationCause, OutputTypeParameterMismatch,
-    PredicateObligation, Selection, SelectionError, TraitNotObjectSafe, TraitObligation,
-    Unimplemented, VtblSegment,
+    ImplSourceConstDestructData, ImplSourceFnPointerData, ImplSourceFutureData,
+    ImplSourceGeneratorData, ImplSourceObjectData, ImplSourceTraitAliasData,
+    ImplSourceTraitUpcastingData, ImplSourceUserDefinedData, Normalized, ObjectCastObligation,
+    Obligation, ObligationCause, OutputTypeParameterMismatch, PredicateObligation, Selection,
+    SelectionError, TraitNotObjectSafe, TraitObligation, Unimplemented, VtblSegment,
 };
 
 use super::BuiltinImplConditions;
@@ -99,12 +98,6 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
                 let data = self.confirm_fn_pointer_candidate(obligation)?;
                 ImplSource::FnPointer(data)
             }
-
-            DiscriminantKindCandidate => {
-                ImplSource::DiscriminantKind(ImplSourceDiscriminantKindData)
-            }
-
-            PointeeCandidate => ImplSource::Pointee(ImplSourcePointeeData),
 
             TraitAliasCandidate => {
                 let data = self.confirm_trait_alias_candidate(obligation);

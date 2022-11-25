@@ -282,10 +282,10 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
                 self.assemble_builtin_bound_candidates(copy_conditions, &mut candidates);
             } else if lang_items.discriminant_kind_trait() == Some(def_id) {
                 // `DiscriminantKind` is automatically implemented for every type.
-                candidates.vec.push(DiscriminantKindCandidate);
+                candidates.vec.push(BuiltinCandidate { has_nested: false });
             } else if lang_items.pointee_trait() == Some(def_id) {
                 // `Pointee` is automatically implemented for every type.
-                candidates.vec.push(PointeeCandidate);
+                candidates.vec.push(BuiltinCandidate { has_nested: false });
             } else if lang_items.sized_trait() == Some(def_id) {
                 // Sized is never implementable by end-users, it is
                 // always automatically computed.
