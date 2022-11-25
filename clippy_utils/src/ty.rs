@@ -22,8 +22,7 @@ use rustc_span::symbol::Ident;
 use rustc_span::{sym, Span, Symbol, DUMMY_SP};
 use rustc_target::abi::{Size, VariantIdx};
 use rustc_trait_selection::infer::InferCtxtExt;
-use rustc_trait_selection::traits::NormalizeExt;
-use rustc_trait_selection::traits::query::normalize::AtExt;
+use rustc_trait_selection::traits::query::normalize::QueryNormalizeExt;
 use std::iter;
 
 use crate::{match_def_path, path_res, paths};
@@ -284,7 +283,7 @@ fn is_normalizable_helper<'tcx>(
     cache.insert(ty, false);
     let infcx = cx.tcx.infer_ctxt().build();
     let cause = rustc_middle::traits::ObligationCause::dummy();
-    let result = if infcx.at(&cause, param_env).normalize(ty).is_ok() {
+    let result = if infcx.at(&cause, param_env).query_normalize(ty).is_ok() {
         match ty.kind() {
             ty::Adt(def, substs) => def.variants().iter().all(|variant| {
                 variant
