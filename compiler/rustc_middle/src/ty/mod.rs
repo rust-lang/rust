@@ -9,6 +9,8 @@
 //!
 //! ["The `ty` module: representing types"]: https://rustc-dev-guide.rust-lang.org/ty.html
 
+#![allow(rustc::usage_of_ty_tykind)]
+
 pub use self::fold::{FallibleTypeFolder, TypeFoldable, TypeFolder, TypeSuperFoldable};
 pub use self::visit::{TypeSuperVisitable, TypeVisitable, TypeVisitor};
 pub use self::AssocItemContainer::*;
@@ -446,87 +448,22 @@ pub struct CReaderCacheKey {
     pub pos: usize,
 }
 
-/// Represents a type.
-///
-/// IMPORTANT:
-/// - This is a very "dumb" struct (with no derives and no `impls`).
-/// - Values of this type are always interned and thus unique, and are stored
-///   as an `Interned<TyS>`.
-/// - `Ty` (which contains a reference to a `Interned<TyS>`) or `Interned<TyS>`
-///   should be used everywhere instead of `TyS`. In particular, `Ty` has most
-///   of the relevant methods.
-#[derive(PartialEq, Eq, PartialOrd, Ord)]
-#[allow(rustc::usage_of_ty_tykind)]
-pub(crate) struct TyS<'tcx> {
-    /// This field shouldn't be used directly and may be removed in the future.
-    /// Use `Ty::kind()` instead.
-    kind: TyKind<'tcx>,
-
-    /// This field provides fast access to information that is also contained
-    /// in `kind`.
-    ///
-    /// This field shouldn't be used directly and may be removed in the future.
-    /// Use `Ty::flags()` instead.
-    flags: TypeFlags,
-
-    /// This field provides fast access to information that is also contained
-    /// in `kind`.
-    ///
-    /// This is a kind of confusing thing: it stores the smallest
-    /// binder such that
-    ///
-    /// (a) the binder itself captures nothing but
-    /// (b) all the late-bound things within the type are captured
-    ///     by some sub-binder.
-    ///
-    /// So, for a type without any late-bound things, like `u32`, this
-    /// will be *innermost*, because that is the innermost binder that
-    /// captures nothing. But for a type `&'D u32`, where `'D` is a
-    /// late-bound region with De Bruijn index `D`, this would be `D + 1`
-    /// -- the binder itself does not capture `D`, but `D` is captured
-    /// by an inner binder.
-    ///
-    /// We call this concept an "exclusive" binder `D` because all
-    /// De Bruijn indices within the type are contained within `0..D`
-    /// (exclusive).
-    outer_exclusive_binder: ty::DebruijnIndex,
-}
-
 /// Use this rather than `TyS`, whenever possible.
 #[derive(Copy, Clone, PartialEq, Eq, PartialOrd, Ord, Hash, HashStable)]
 #[rustc_diagnostic_item = "Ty"]
 #[rustc_pass_by_value]
-pub struct Ty<'tcx>(Interned<'tcx, WithCachedTypeInfo<TyS<'tcx>>>);
+pub struct Ty<'tcx>(Interned<'tcx, WithCachedTypeInfo<TyKind<'tcx>>>);
 
 impl<'tcx> TyCtxt<'tcx> {
     /// A "bool" type used in rustc_mir_transform unit tests when we
     /// have not spun up a TyCtxt.
     pub const BOOL_TY_FOR_UNIT_TESTING: Ty<'tcx> =
         Ty(Interned::new_unchecked(&WithCachedTypeInfo {
-            internee: TyS {
-                kind: ty::Bool,
-                flags: TypeFlags::empty(),
-                outer_exclusive_binder: DebruijnIndex::from_usize(0),
-            },
+            internee: ty::Bool,
             stable_hash: Fingerprint::ZERO,
+            flags: TypeFlags::empty(),
+            outer_exclusive_binder: DebruijnIndex::from_usize(0),
         }));
-}
-
-impl<'a, 'tcx> HashStable<StableHashingContext<'a>> for TyS<'tcx> {
-    #[inline]
-    fn hash_stable(&self, hcx: &mut StableHashingContext<'a>, hasher: &mut StableHasher) {
-        let TyS {
-            kind,
-
-            // The other fields just provide fast access to information that is
-            // also contained in `kind`, so no need to hash them.
-            flags: _,
-
-            outer_exclusive_binder: _,
-        } = self;
-
-        kind.hash_stable(hcx, hasher)
-    }
 }
 
 impl ty::EarlyBoundRegion {
@@ -1030,7 +967,7 @@ impl<'tcx> Term<'tcx> {
         unsafe {
             match ptr & TAG_MASK {
                 TYPE_TAG => TermKind::Ty(Ty(Interned::new_unchecked(
-                    &*((ptr & !TAG_MASK) as *const WithCachedTypeInfo<ty::TyS<'tcx>>),
+                    &*((ptr & !TAG_MASK) as *const WithCachedTypeInfo<ty::TyKind<'tcx>>),
                 ))),
                 CONST_TAG => TermKind::Const(ty::Const(Interned::new_unchecked(
                     &*((ptr & !TAG_MASK) as *const ty::ConstS<'tcx>),
@@ -1074,7 +1011,7 @@ impl<'tcx> TermKind<'tcx> {
             TermKind::Ty(ty) => {
                 // Ensure we can use the tag bits.
                 assert_eq!(mem::align_of_val(&*ty.0.0) & TAG_MASK, 0);
-                (TYPE_TAG, ty.0.0 as *const WithCachedTypeInfo<ty::TyS<'tcx>> as usize)
+                (TYPE_TAG, ty.0.0 as *const WithCachedTypeInfo<ty::TyKind<'tcx>> as usize)
             }
             TermKind::Const(ct) => {
                 // Ensure we can use the tag bits.
@@ -2695,7 +2632,6 @@ mod size_asserts {
     use rustc_data_structures::static_assert_size;
     // tidy-alphabetical-start
     static_assert_size!(PredicateS<'_>, 48);
-    static_assert_size!(TyS<'_>, 40);
-    static_assert_size!(WithCachedTypeInfo<TyS<'_>>, 56);
+    static_assert_size!(WithCachedTypeInfo<TyKind<'_>>, 56);
     // tidy-alphabetical-end
 }

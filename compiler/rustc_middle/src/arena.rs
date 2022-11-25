@@ -1,3 +1,5 @@
+#![allow(rustc::usage_of_ty_tykind)]
+
 /// This higher-order macro declares a list of types which can be allocated by `Arena`.
 ///
 /// Specifying the `decode` modifier will add decode impls for `&T` and `&[T]` where `T` is the type
@@ -88,7 +90,7 @@ macro_rules! arena_types {
             [] hir_id_set: rustc_hir::HirIdSet,
 
             // Interned types
-            [] tys: rustc_type_ir::WithCachedTypeInfo<rustc_middle::ty::TyS<'tcx>>,
+            [] tys: rustc_type_ir::WithCachedTypeInfo<rustc_middle::ty::TyKind<'tcx>>,
             [] predicates: rustc_type_ir::WithCachedTypeInfo<rustc_middle::ty::PredicateS<'tcx>>,
             [] consts: rustc_middle::ty::ConstS<'tcx>,
 

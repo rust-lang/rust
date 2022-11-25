@@ -1,5 +1,7 @@
 //! Type context book-keeping.
 
+#![allow(rustc::usage_of_ty_tykind)]
+
 use crate::arena::Arena;
 use crate::dep_graph::{DepGraph, DepKindStruct};
 use crate::hir::place::Place as HirPlace;
@@ -20,7 +22,7 @@ use crate::ty::{
     ClosureSizeProfileData, Const, ConstS, DefIdTree, FloatTy, FloatVar, FloatVid,
     GenericParamDefKind, InferTy, IntTy, IntVar, IntVid, List, ParamConst, ParamTy,
     PolyExistentialPredicate, PolyFnSig, Predicate, PredicateKind, PredicateS, ProjectionTy,
-    Region, RegionKind, ReprOptions, TraitObjectVisitor, Ty, TyKind, TyS, TyVar, TyVid, TypeAndMut,
+    Region, RegionKind, ReprOptions, TraitObjectVisitor, Ty, TyKind, TyVar, TyVid, TypeAndMut,
     UintTy, Visibility,
 };
 use crate::ty::{GenericArg, GenericArgKind, InternalSubsts, SubstsRef, UserSubsts};
@@ -137,7 +139,7 @@ pub struct CtxtInterners<'tcx> {
 
     // Specifically use a speedy hash algorithm for these hash sets, since
     // they're accessed quite often.
-    type_: InternedSet<'tcx, WithCachedTypeInfo<TyS<'tcx>>>,
+    type_: InternedSet<'tcx, WithCachedTypeInfo<TyKind<'tcx>>>,
     const_lists: InternedSet<'tcx, List<ty::Const<'tcx>>>,
     substs: InternedSet<'tcx, InternalSubsts<'tcx>>,
     canonical_var_infos: InternedSet<'tcx, List<CanonicalVarInfo<'tcx>>>,
@@ -194,15 +196,12 @@ impl<'tcx> CtxtInterners<'tcx> {
                     let stable_hash =
                         self.stable_hash(&flags, sess, definitions, cstore, source_span, &kind);
 
-                    let ty_struct = TyS {
-                        kind,
+                    InternedInSet(self.arena.alloc(WithCachedTypeInfo {
+                        internee: kind,
+                        stable_hash,
                         flags: flags.flags,
                         outer_exclusive_binder: flags.outer_exclusive_binder,
-                    };
-
-                    InternedInSet(
-                        self.arena.alloc(WithCachedTypeInfo { internee: ty_struct, stable_hash }),
-                    )
+                    }))
                 })
                 .0,
         ))
@@ -2058,7 +2057,7 @@ macro_rules! sty_debug_print {
                 let shards = tcx.interners.type_.lock_shards();
                 let types = shards.iter().flat_map(|shard| shard.keys());
                 for &InternedInSet(t) in types {
-                    let variant = match t.kind {
+                    let variant = match t.internee {
                         ty::Bool | ty::Char | ty::Int(..) | ty::Uint(..) |
                             ty::Float(..) | ty::Str | ty::Never => continue,
                         ty::Error(_) => /* unimportant */ continue,
@@ -2168,26 +2167,26 @@ impl<'tcx, T: 'tcx + ?Sized> IntoPointer for InternedInSet<'tcx, T> {
 }
 
 #[allow(rustc::usage_of_ty_tykind)]
-impl<'tcx> Borrow<TyKind<'tcx>> for InternedInSet<'tcx, WithCachedTypeInfo<TyS<'tcx>>> {
+impl<'tcx> Borrow<TyKind<'tcx>> for InternedInSet<'tcx, WithCachedTypeInfo<TyKind<'tcx>>> {
     fn borrow<'a>(&'a self) -> &'a TyKind<'tcx> {
-        &self.0.kind
+        &self.0.internee
     }
 }
 
-impl<'tcx> PartialEq for InternedInSet<'tcx, WithCachedTypeInfo<TyS<'tcx>>> {
-    fn eq(&self, other: &InternedInSet<'tcx, WithCachedTypeInfo<TyS<'tcx>>>) -> bool {
+impl<'tcx> PartialEq for InternedInSet<'tcx, WithCachedTypeInfo<TyKind<'tcx>>> {
+    fn eq(&self, other: &InternedInSet<'tcx, WithCachedTypeInfo<TyKind<'tcx>>>) -> bool {
         // The `Borrow` trait requires that `x.borrow() == y.borrow()` equals
         // `x == y`.
-        self.0.kind == other.0.kind
+        self.0.internee == other.0.internee
     }
 }
 
-impl<'tcx> Eq for InternedInSet<'tcx, WithCachedTypeInfo<TyS<'tcx>>> {}
+impl<'tcx> Eq for InternedInSet<'tcx, WithCachedTypeInfo<TyKind<'tcx>>> {}
 
-impl<'tcx> Hash for InternedInSet<'tcx, WithCachedTypeInfo<TyS<'tcx>>> {
+impl<'tcx> Hash for InternedInSet<'tcx, WithCachedTypeInfo<TyKind<'tcx>>> {
     fn hash<H: Hasher>(&self, s: &mut H) {
         // The `Borrow` trait requires that `x.borrow().hash(s) == x.hash(s)`.
-        self.0.kind.hash(s)
+        self.0.internee.hash(s)
     }
 }
 

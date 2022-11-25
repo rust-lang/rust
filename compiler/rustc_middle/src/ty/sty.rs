@@ -1602,7 +1602,7 @@ impl<'tcx> Region<'tcx> {
 impl<'tcx> Ty<'tcx> {
     #[inline(always)]
     pub fn kind(self) -> &'tcx TyKind<'tcx> {
-        &self.0.0.kind
+        &self.0.0
     }
 
     #[inline(always)]
