@@ -32,7 +32,10 @@ pub struct Validator<'a> {
 
 enum PathKind {
     Trait,
-    StructEnumUnion,
+    /// Structs, Enums, Unions and Typedefs.
+    ///
+    /// This doesn't include trait's because traits are not types.
+    Type,
 }
 
 impl<'a> Validator<'a> {
@@ -224,7 +227,7 @@ impl<'a> Validator<'a> {
 
     fn check_type(&mut self, x: &'a Type) {
         match x {
-            Type::ResolvedPath(path) => self.check_path(path, PathKind::StructEnumUnion),
+            Type::ResolvedPath(path) => self.check_path(path, PathKind::Type),
             Type::DynTrait(dyn_trait) => self.check_dyn_trait(dyn_trait),
             Type::Generic(_) => {}
             Type::Primitive(_) => {}
@@ -264,7 +267,7 @@ impl<'a> Validator<'a> {
     fn check_path(&mut self, x: &'a Path, kind: PathKind) {
         match kind {
             PathKind::Trait => self.add_trait_id(&x.id),
-            PathKind::StructEnumUnion => self.add_struct_enum_union_id(&x.id),
+            PathKind::Type => self.add_type_id(&x.id),
         }
         if let Some(args) = &x.args {
             self.check_generic_args(&**args);
@@ -392,8 +395,8 @@ impl<'a> Validator<'a> {
         self.add_id_checked(id, Kind::is_trait, "Trait");
     }
 
-    fn add_struct_enum_union_id(&mut self, id: &'a Id) {
-        self.add_id_checked(id, Kind::is_struct_enum_union, "Struct or Enum or Union");
+    fn add_type_id(&mut self, id: &'a Id) {
+        self.add_id_checked(id, Kind::is_type, "Type (Struct, Enum, Union or Typedef)");
     }
 
     /// Add an Id that appeared in a trait
