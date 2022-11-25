@@ -18,6 +18,7 @@ env:
   FETCH_DEPTH: 0 # pull in the tags for the version string
   MACOSX_DEPLOYMENT_TARGET: 10.15
   CARGO_TARGET_AARCH64_UNKNOWN_LINUX_GNU_LINKER: aarch64-linux-gnu-gcc
+  CARGO_TARGET_ARM_UNKNOWN_LINUX_GNUEABIHF_LINKER: arm-linux-gnueabihf-gcc
 
 jobs:
   dist:
@@ -36,6 +37,9 @@ jobs:
           - os: ubuntu-18.04
             target: aarch64-unknown-linux-gnu
             code-target: linux-arm64
+          - os: ubuntu-18.04
+            target: arm-unknown-linux-gnueabihf
+            code-target: linux-armhf
           - os: macos-11
             target: x86_64-apple-darwin
             code-target: darwin-x64
@@ -67,12 +71,16 @@ jobs:
           node-version: 14.x
 
       - name: Update apt repositories
-        if: matrix.target == 'aarch64-unknown-linux-gnu'
+        if: matrix.target == 'aarch64-unknown-linux-gnu' || matrix.target == 'arm-unknown-linux-gnueabihf'
         run: sudo apt-get update
 
-      - name: Install target toolchain
+      - name: Install AArch64 target toolchain
         if: matrix.target == 'aarch64-unknown-linux-gnu'
         run: sudo apt-get install gcc-aarch64-linux-gnu
+
+      - name: Install ARM target toolchain
+        if: matrix.target == 'arm-unknown-linux-gnueabihf'
+        run: sudo apt-get install gcc-arm-linux-gnueabihf
 
       - name: Dist
         run: cargo xtask dist --client-patch-version ${{ github.run_number }}
@@ -203,6 +211,10 @@ jobs:
       - uses: actions/download-artifact@v1
         with:
           name: dist-aarch64-unknown-linux-gnu
+          path: dist
+      - uses: actions/download-artifact@v1
+        with:
+          name: dist-arm-unknown-linux-gnueabihf
           path: dist
       - uses: actions/download-artifact@v1
         with:
