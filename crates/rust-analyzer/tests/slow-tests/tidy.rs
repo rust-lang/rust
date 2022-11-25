@@ -13,9 +13,8 @@ use xshell::cmd;
 fn check_code_formatting() {
     let sh = &Shell::new().unwrap();
     sh.change_dir(sourcegen::project_root());
-    sh.set_var("RUSTUP_TOOLCHAIN", "stable");
 
-    let out = cmd!(sh, "rustfmt --version").read().unwrap();
+    let out = cmd!(sh, "rustup run stable rustfmt --version").read().unwrap();
     if !out.contains("stable") {
         panic!(
             "Failed to run rustfmt from toolchain 'stable'. \
@@ -23,9 +22,9 @@ fn check_code_formatting() {
         )
     }
 
-    let res = cmd!(sh, "cargo fmt -- --check").run();
+    let res = cmd!(sh, "rustup run stable cargo fmt -- --check").run();
     if res.is_err() {
-        let _ = cmd!(sh, "cargo fmt").run();
+        let _ = cmd!(sh, "rustup run stable cargo fmt").run();
     }
     res.unwrap()
 }

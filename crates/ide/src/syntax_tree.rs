@@ -12,7 +12,7 @@ use syntax::{
 // |===
 // | Editor  | Action Name
 //
-// | VS Code | **Rust Analyzer: Show Syntax Tree**
+// | VS Code | **rust-analyzer: Show Syntax Tree**
 // |===
 // image::https://user-images.githubusercontent.com/48062697/113065586-068bdb80-91b1-11eb-9507-fee67f9f45a0.gif[]
 pub(crate) fn syntax_tree(

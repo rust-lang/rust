@@ -7,7 +7,7 @@ use ide_db::{
     search::FileReference,
     FxIndexMap, RootDatabase,
 };
-use syntax::{ast, AstNode, SyntaxKind::NAME, TextRange};
+use syntax::{ast, AstNode, SyntaxKind::IDENT, TextRange};
 
 use crate::{goto_definition, FilePosition, NavigationTarget, RangeInfo, TryToNav};
 
@@ -79,7 +79,7 @@ pub(crate) fn outgoing_calls(db: &RootDatabase, position: FilePosition) -> Optio
     let file = sema.parse(file_id);
     let file = file.syntax();
     let token = pick_best_token(file.token_at_offset(position.offset), |kind| match kind {
-        NAME => 1,
+        IDENT => 1,
         _ => 0,
     })?;
     let mut calls = CallLocations::default();

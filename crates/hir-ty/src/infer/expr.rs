@@ -10,13 +10,13 @@ use chalk_ir::{
     cast::Cast, fold::Shift, DebruijnIndex, GenericArgData, Mutability, TyVariableKind,
 };
 use hir_def::{
-    expr::{ArithOp, Array, BinaryOp, CmpOp, Expr, ExprId, Literal, Ordering, Statement, UnaryOp},
+    expr::{ArithOp, Array, BinaryOp, CmpOp, Expr, ExprId, Literal, Statement, UnaryOp},
     generics::TypeOrConstParamData,
     path::{GenericArg, GenericArgs},
     resolver::resolver_for_expr,
-    ConstParamId, FieldId, FunctionId, ItemContainerId, Lookup,
+    ConstParamId, FieldId, ItemContainerId, Lookup,
 };
-use hir_expand::name::{name, Name};
+use hir_expand::name::Name;
 use stdx::always;
 use syntax::ast::RangeOp;
 
@@ -28,7 +28,7 @@ use crate::{
         const_or_path_to_chalk, generic_arg_to_chalk, lower_to_chalk_mutability, ParamLoweringMode,
     },
     mapping::{from_chalk, ToChalk},
-    method_resolution::{self, VisibleFromModule},
+    method_resolution::{self, lang_names_for_bin_op, VisibleFromModule},
     primitive::{self, UintTy},
     static_lifetime, to_chalk_trait_id,
     utils::{generics, Generics},
@@ -947,7 +947,9 @@ impl<'a> InferenceContext<'a> {
         let lhs_ty = self.infer_expr(lhs, &lhs_expectation);
         let rhs_ty = self.table.new_type_var();
 
-        let func = self.resolve_binop_method(op);
+        let func = lang_names_for_bin_op(op).and_then(|(name, lang_item)| {
+            self.db.trait_data(self.resolve_lang_item(lang_item)?.as_trait()?).method_by_name(&name)
+        });
         let func = match func {
             Some(func) => func,
             None => {
@@ -1472,56 +1474,5 @@ impl<'a> InferenceContext<'a> {
                 _ => return None,
             },
         })
-    }
-
-    fn resolve_binop_method(&self, op: BinaryOp) -> Option<FunctionId> {
-        let (name, lang_item) = match op {
-            BinaryOp::LogicOp(_) => return None,
-            BinaryOp::ArithOp(aop) => match aop {
-                ArithOp::Add => (name!(add), name!(add)),
-                ArithOp::Mul => (name!(mul), name!(mul)),
-                ArithOp::Sub => (name!(sub), name!(sub)),
-                ArithOp::Div => (name!(div), name!(div)),
-                ArithOp::Rem => (name!(rem), name!(rem)),
-                ArithOp::Shl => (name!(shl), name!(shl)),
-                ArithOp::Shr => (name!(shr), name!(shr)),
-                ArithOp::BitXor => (name!(bitxor), name!(bitxor)),
-                ArithOp::BitOr => (name!(bitor), name!(bitor)),
-                ArithOp::BitAnd => (name!(bitand), name!(bitand)),
-            },
-            BinaryOp::Assignment { op: Some(aop) } => match aop {
-                ArithOp::Add => (name!(add_assign), name!(add_assign)),
-                ArithOp::Mul => (name!(mul_assign), name!(mul_assign)),
-                ArithOp::Sub => (name!(sub_assign), name!(sub_assign)),
-                ArithOp::Div => (name!(div_assign), name!(div_assign)),
-                ArithOp::Rem => (name!(rem_assign), name!(rem_assign)),
-                ArithOp::Shl => (name!(shl_assign), name!(shl_assign)),
-                ArithOp::Shr => (name!(shr_assign), name!(shr_assign)),
-                ArithOp::BitXor => (name!(bitxor_assign), name!(bitxor_assign)),
-                ArithOp::BitOr => (name!(bitor_assign), name!(bitor_assign)),
-                ArithOp::BitAnd => (name!(bitand_assign), name!(bitand_assign)),
-            },
-            BinaryOp::CmpOp(cop) => match cop {
-                CmpOp::Eq { negated: false } => (name!(eq), name!(eq)),
-                CmpOp::Eq { negated: true } => (name!(ne), name!(eq)),
-                CmpOp::Ord { ordering: Ordering::Less, strict: false } => {
-                    (name!(le), name!(partial_ord))
-                }
-                CmpOp::Ord { ordering: Ordering::Less, strict: true } => {
-                    (name!(lt), name!(partial_ord))
-                }
-                CmpOp::Ord { ordering: Ordering::Greater, strict: false } => {
-                    (name!(ge), name!(partial_ord))
-                }
-                CmpOp::Ord { ordering: Ordering::Greater, strict: true } => {
-                    (name!(gt), name!(partial_ord))
-                }
-            },
-            BinaryOp::Assignment { op: None } => return None,
-        };
-
-        let trait_ = self.resolve_lang_item(lang_item)?.as_trait()?;
-
-        self.db.trait_data(trait_).method_by_name(&name)
     }
 }

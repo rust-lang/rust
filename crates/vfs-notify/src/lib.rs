@@ -40,12 +40,15 @@ impl loader::Handle for NotifyHandle {
             .expect("failed to spawn thread");
         NotifyHandle { sender, _thread: thread }
     }
+
     fn set_config(&mut self, config: loader::Config) {
         self.sender.send(Message::Config(config)).unwrap();
     }
+
     fn invalidate(&mut self, path: AbsPathBuf) {
         self.sender.send(Message::Invalidate(path)).unwrap();
     }
+
     fn load_sync(&mut self, path: &AbsPath) -> Option<Vec<u8>> {
         read(path)
     }
@@ -70,6 +73,7 @@ impl NotifyActor {
     fn new(sender: loader::Sender) -> NotifyActor {
         NotifyActor { sender, watched_entries: Vec::new(), watcher: None }
     }
+
     fn next_event(&self, receiver: &Receiver<Message>) -> Option<Event> {
         let watcher_receiver = self.watcher.as_ref().map(|(_, receiver)| receiver);
         select! {
@@ -77,9 +81,10 @@ impl NotifyActor {
             recv(watcher_receiver.unwrap_or(&never())) -> it => Some(Event::NotifyEvent(it.unwrap())),
         }
     }
+
     fn run(mut self, inbox: Receiver<Message>) {
         while let Some(event) = self.next_event(&inbox) {
-            tracing::debug!("vfs-notify event: {:?}", event);
+            tracing::debug!(?event, "vfs-notify event");
             match event {
                 Event::Message(msg) => match msg {
                     Message::Config(config) => {

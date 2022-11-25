@@ -100,7 +100,7 @@ pub enum InlayTooltip {
 // |===
 // | Editor  | Action Name
 //
-// | VS Code | **Rust Analyzer: Toggle inlay hints*
+// | VS Code | **rust-analyzer: Toggle inlay hints*
 // |===
 //
 // image::https://user-images.githubusercontent.com/48062697/113020660-b5f98b80-917a-11eb-8d70-3be3fd558cdd.png[]

@@ -1,4 +1,4 @@
-//! Syntax Tree library used throughout the rust analyzer.
+//! Syntax Tree library used throughout the rust-analyzer.
 //!
 //! Properties:
 //!   - easy and fast incremental re-parsing

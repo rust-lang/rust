@@ -116,7 +116,7 @@ impl Runnable {
 // |===
 // | Editor  | Action Name
 //
-// | VS Code | **Rust Analyzer: Run**
+// | VS Code | **rust-analyzer: Run**
 // |===
 // image::https://user-images.githubusercontent.com/48062697/113065583-055aae80-91b1-11eb-958f-d67efcaf6a2f.gif[]
 pub(crate) fn runnables(db: &RootDatabase, file_id: FileId) -> Vec<Runnable> {
@@ -202,7 +202,7 @@ pub(crate) fn runnables(db: &RootDatabase, file_id: FileId) -> Vec<Runnable> {
 // |===
 // | Editor  | Action Name
 //
-// | VS Code | **Rust Analyzer: Peek related tests**
+// | VS Code | **rust-analyzer: Peek related tests**
 // |===
 pub(crate) fn related_tests(
     db: &RootDatabase,

@@ -30,7 +30,7 @@ pub(crate) fn goto_implementation(
 
     let original_token =
         pick_best_token(syntax.token_at_offset(position.offset), |kind| match kind {
-            IDENT | T![self] => 1,
+            IDENT | T![self] | INT_NUMBER => 1,
             _ => 0,
         })?;
     let range = original_token.text_range();

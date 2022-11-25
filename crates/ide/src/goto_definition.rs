@@ -39,7 +39,11 @@ pub(crate) fn goto_definition(
             | T![super]
             | T![crate]
             | T![Self]
-            | COMMENT => 2,
+            | COMMENT => 4,
+            // index and prefix ops
+            T!['['] | T![']'] | T![?] | T![*] | T![-] | T![!] => 3,
+            kind if kind.is_keyword() => 2,
+            T!['('] | T![')'] => 2,
             kind if kind.is_trivia() => 0,
             _ => 1,
         })?;
@@ -1628,6 +1632,122 @@ macro_rules! foo {
 }
 
 foo!(bar$0);
+"#,
+        );
+    }
+
+    #[test]
+    fn goto_await_poll() {
+        check(
+            r#"
+//- minicore: future
+
+struct MyFut;
+
+impl core::future::Future for MyFut {
+    type Output = ();
+
+    fn poll(
+     //^^^^
+        self: std::pin::Pin<&mut Self>,
+        cx: &mut std::task::Context<'_>
+    ) -> std::task::Poll<Self::Output>
+    {
+        ()
+    }
+}
+
+fn f() {
+    MyFut.await$0;
+}
+"#,
+        );
+    }
+
+    #[test]
+    fn goto_try_op() {
+        check(
+            r#"
+//- minicore: try
+
+struct Struct;
+
+impl core::ops::Try for Struct {
+    fn branch(
+     //^^^^^^
+        self
+    ) {}
+}
+
+fn f() {
+    Struct?$0;
+}
+"#,
+        );
+    }
+
+    #[test]
+    fn goto_index_op() {
+        check(
+            r#"
+//- minicore: index
+
+struct Struct;
+
+impl core::ops::Index<usize> for Struct {
+    fn index(
+     //^^^^^
+        self
+    ) {}
+}
+
+fn f() {
+    Struct[0]$0;
+}
+"#,
+        );
+    }
+
+    #[test]
+    fn goto_prefix_op() {
+        check(
+            r#"
+//- minicore: deref
+
+struct Struct;
+
+impl core::ops::Deref for Struct {
+    fn deref(
+     //^^^^^
+        self
+    ) {}
+}
+
+fn f() {
+    $0*Struct;
+}
+"#,
+        );
+    }
+
+    #[test]
+    fn goto_bin_op() {
+        check(
+            r#"
+//- minicore: add
+
+struct Struct;
+
+impl core::ops::Add for Struct {
+    fn add(
+     //^^^
+        self
+    ) {}
+}
+
+fn f() {
+    Struct +$0 Struct;
+}
 "#,
         );
     }

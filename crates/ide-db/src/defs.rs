@@ -127,10 +127,12 @@ impl Definition {
     }
 }
 
+// FIXME: IdentClass as a name no longer fits
 #[derive(Debug)]
 pub enum IdentClass {
     NameClass(NameClass),
     NameRefClass(NameRefClass),
+    Operator(OperatorClass),
 }
 
 impl IdentClass {
@@ -147,6 +149,11 @@ impl IdentClass {
                         .map(IdentClass::NameClass)
                         .or_else(|| NameRefClass::classify_lifetime(sema, &lifetime).map(IdentClass::NameRefClass))
                 },
+                ast::AwaitExpr(await_expr) => OperatorClass::classify_await(sema, &await_expr).map(IdentClass::Operator),
+                ast::BinExpr(bin_expr) => OperatorClass::classify_bin(sema, &bin_expr).map(IdentClass::Operator),
+                ast::IndexExpr(index_expr) => OperatorClass::classify_index(sema, &index_expr).map(IdentClass::Operator),
+                ast::PrefixExpr(prefix_expr) => OperatorClass::classify_prefix(sema,&prefix_expr).map(IdentClass::Operator),
+                ast::TryExpr(try_expr) => OperatorClass::classify_try(sema,&try_expr).map(IdentClass::Operator),
                 _ => None,
             }
         }
@@ -184,6 +191,33 @@ impl IdentClass {
                 res.push(Definition::Local(local_ref));
                 res.push(Definition::Field(field_ref));
             }
+            IdentClass::Operator(
+                OperatorClass::Await(func)
+                | OperatorClass::Prefix(func)
+                | OperatorClass::Bin(func)
+                | OperatorClass::Index(func)
+                | OperatorClass::Try(func),
+            ) => res.push(Definition::Function(func)),
+        }
+        res
+    }
+
+    pub fn definitions_no_ops(self) -> ArrayVec<Definition, 2> {
+        let mut res = ArrayVec::new();
+        match self {
+            IdentClass::NameClass(NameClass::Definition(it) | NameClass::ConstReference(it)) => {
+                res.push(it)
+            }
+            IdentClass::NameClass(NameClass::PatFieldShorthand { local_def, field_ref }) => {
+                res.push(Definition::Local(local_def));
+                res.push(Definition::Field(field_ref));
+            }
+            IdentClass::NameRefClass(NameRefClass::Definition(it)) => res.push(it),
+            IdentClass::NameRefClass(NameRefClass::FieldShorthand { local_ref, field_ref }) => {
+                res.push(Definition::Local(local_ref));
+                res.push(Definition::Field(field_ref));
+            }
+            IdentClass::Operator(_) => (),
         }
         res
     }
@@ -329,6 +363,52 @@ impl NameClass {
             None
         }
         .map(NameClass::Definition)
+    }
+}
+
+#[derive(Debug)]
+pub enum OperatorClass {
+    Await(Function),
+    Prefix(Function),
+    Index(Function),
+    Try(Function),
+    Bin(Function),
+}
+
+impl OperatorClass {
+    pub fn classify_await(
+        sema: &Semantics<'_, RootDatabase>,
+        await_expr: &ast::AwaitExpr,
+    ) -> Option<OperatorClass> {
+        sema.resolve_await_to_poll(await_expr).map(OperatorClass::Await)
+    }
+
+    pub fn classify_prefix(
+        sema: &Semantics<'_, RootDatabase>,
+        prefix_expr: &ast::PrefixExpr,
+    ) -> Option<OperatorClass> {
+        sema.resolve_prefix_expr(prefix_expr).map(OperatorClass::Prefix)
+    }
+
+    pub fn classify_try(
+        sema: &Semantics<'_, RootDatabase>,
+        try_expr: &ast::TryExpr,
+    ) -> Option<OperatorClass> {
+        sema.resolve_try_expr(try_expr).map(OperatorClass::Try)
+    }
+
+    pub fn classify_index(
+        sema: &Semantics<'_, RootDatabase>,
+        index_expr: &ast::IndexExpr,
+    ) -> Option<OperatorClass> {
+        sema.resolve_index_expr(index_expr).map(OperatorClass::Index)
+    }
+
+    pub fn classify_bin(
+        sema: &Semantics<'_, RootDatabase>,
+        bin_expr: &ast::BinExpr,
+    ) -> Option<OperatorClass> {
+        sema.resolve_bin_expr(bin_expr).map(OperatorClass::Bin)
     }
 }
 

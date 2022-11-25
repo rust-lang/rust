@@ -19,7 +19,7 @@ use crate::{utf8_stdout, ManifestPath};
 /// [`CargoWorkspace`] represents the logical structure of, well, a Cargo
 /// workspace. It pretty closely mirrors `cargo metadata` output.
 ///
-/// Note that internally, rust analyzer uses a different structure:
+/// Note that internally, rust-analyzer uses a different structure:
 /// `CrateGraph`. `CrateGraph` is lower-level: it knows only about the crates,
 /// while this knows about `Packages` & `Targets`: purely cargo-related
 /// concepts.

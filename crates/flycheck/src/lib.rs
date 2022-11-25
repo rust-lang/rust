@@ -57,6 +57,7 @@ pub struct FlycheckHandle {
     // XXX: drop order is significant
     sender: Sender<Restart>,
     _thread: jod_thread::JoinHandle,
+    id: usize,
 }
 
 impl FlycheckHandle {
@@ -72,18 +73,22 @@ impl FlycheckHandle {
             .name("Flycheck".to_owned())
             .spawn(move || actor.run(receiver))
             .expect("failed to spawn thread");
-        FlycheckHandle { sender, _thread: thread }
+        FlycheckHandle { id, sender, _thread: thread }
     }
 
     /// Schedule a re-start of the cargo check worker.
     pub fn update(&self) {
         self.sender.send(Restart).unwrap();
     }
+
+    pub fn id(&self) -> usize {
+        self.id
+    }
 }
 
 pub enum Message {
     /// Request adding a diagnostic with fixes included to a file
-    AddDiagnostic { workspace_root: AbsPathBuf, diagnostic: Diagnostic },
+    AddDiagnostic { id: usize, workspace_root: AbsPathBuf, diagnostic: Diagnostic },
 
     /// Request check progress notification to client
     Progress {
@@ -96,8 +101,9 @@ pub enum Message {
 impl fmt::Debug for Message {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         match self {
-            Message::AddDiagnostic { workspace_root, diagnostic } => f
+            Message::AddDiagnostic { id, workspace_root, diagnostic } => f
                 .debug_struct("AddDiagnostic")
+                .field("id", id)
                 .field("workspace_root", workspace_root)
                 .field("diagnostic_code", &diagnostic.code.as_ref().map(|it| &it.code))
                 .finish(),
@@ -183,7 +189,7 @@ impl FlycheckActor {
                     }
                 }
                 Event::CheckEvent(None) => {
-                    tracing::debug!("flycheck finished");
+                    tracing::debug!(flycheck_id = self.id, "flycheck finished");
 
                     // Watcher finished
                     let cargo_handle = self.cargo_handle.take().unwrap();
@@ -203,6 +209,7 @@ impl FlycheckActor {
 
                     CargoMessage::Diagnostic(msg) => {
                         self.send(Message::AddDiagnostic {
+                            id: self.id,
                             workspace_root: self.workspace_root.clone(),
                             diagnostic: msg,
                         });

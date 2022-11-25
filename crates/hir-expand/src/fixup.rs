@@ -5,7 +5,7 @@ use std::mem;
 use mbe::{SyntheticToken, SyntheticTokenId, TokenMap};
 use rustc_hash::FxHashMap;
 use syntax::{
-    ast::{self, AstNode},
+    ast::{self, AstNode, HasLoopBody},
     match_ast, SyntaxElement, SyntaxKind, SyntaxNode, TextRange,
 };
 use tt::Subtree;
@@ -142,8 +142,59 @@ pub(crate) fn fixup_syntax(node: &SyntaxNode) -> SyntaxFixups {
                         ]);
                     }
                 },
+                ast::WhileExpr(it) => {
+                    if it.condition().is_none() {
+                        // insert placeholder token after the while token
+                        let while_token = match it.while_token() {
+                            Some(t) => t,
+                            None => continue,
+                        };
+                        append.insert(while_token.into(), vec![
+                            SyntheticToken {
+                                kind: SyntaxKind::IDENT,
+                                text: "__ra_fixup".into(),
+                                range: end_range,
+                                id: EMPTY_ID,
+                            },
+                        ]);
+                    }
+                    if it.loop_body().is_none() {
+                        append.insert(node.clone().into(), vec![
+                            SyntheticToken {
+                                kind: SyntaxKind::L_CURLY,
+                                text: "{".into(),
+                                range: end_range,
+                                id: EMPTY_ID,
+                            },
+                            SyntheticToken {
+                                kind: SyntaxKind::R_CURLY,
+                                text: "}".into(),
+                                range: end_range,
+                                id: EMPTY_ID,
+                            },
+                        ]);
+                    }
+                },
+                ast::LoopExpr(it) => {
+                    if it.loop_body().is_none() {
+                        append.insert(node.clone().into(), vec![
+                            SyntheticToken {
+                                kind: SyntaxKind::L_CURLY,
+                                text: "{".into(),
+                                range: end_range,
+                                id: EMPTY_ID,
+                            },
+                            SyntheticToken {
+                                kind: SyntaxKind::R_CURLY,
+                                text: "}".into(),
+                                range: end_range,
+                                id: EMPTY_ID,
+                            },
+                        ]);
+                    }
+                },
                 // FIXME: foo::
-                // FIXME: for, loop, match etc.
+                // FIXME: for, match etc.
                 _ => (),
             }
         }
@@ -376,6 +427,61 @@ fn foo() {
             // the {} gets parsed as the condition, I think?
             expect![[r#"
 fn foo () {if {} {}}
+"#]],
+        )
+    }
+
+    #[test]
+    fn fixup_while_1() {
+        check(
+            r#"
+fn foo() {
+    while
+}
+"#,
+            expect![[r#"
+fn foo () {while __ra_fixup {}}
+"#]],
+        )
+    }
+
+    #[test]
+    fn fixup_while_2() {
+        check(
+            r#"
+fn foo() {
+    while foo
+}
+"#,
+            expect![[r#"
+fn foo () {while foo {}}
+"#]],
+        )
+    }
+    #[test]
+    fn fixup_while_3() {
+        check(
+            r#"
+fn foo() {
+    while {}
+}
+"#,
+            expect![[r#"
+fn foo () {while __ra_fixup {}}
+"#]],
+        )
+    }
+
+    #[test]
+    fn fixup_loop() {
+        check(
+            r#"
+fn foo() {
+    loop
+}
+"#,
+            expect![[r#"
+fn foo () {loop {}}
 "#]],
         )
     }

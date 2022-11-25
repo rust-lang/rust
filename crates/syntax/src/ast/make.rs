@@ -745,7 +745,10 @@ pub fn tuple_field(visibility: Option<ast::Visibility>, ty: ast::Type) -> ast::T
 pub fn variant(name: ast::Name, field_list: Option<ast::FieldList>) -> ast::Variant {
     let field_list = match field_list {
         None => String::new(),
-        Some(it) => format!("{}", it),
+        Some(it) => match it {
+            ast::FieldList::RecordFieldList(record) => format!(" {}", record),
+            ast::FieldList::TupleFieldList(tuple) => format!("{}", tuple),
+        },
     };
     ast_from_text(&format!("enum f {{ {}{} }}", name, field_list))
 }

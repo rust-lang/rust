@@ -1126,7 +1126,7 @@ pub(crate) fn field_types_query(
     let ctx =
         TyLoweringContext::new(db, &resolver).with_type_param_mode(ParamLoweringMode::Variable);
     for (field_id, field_data) in var_data.fields().iter() {
-        res.insert(field_id, make_binders(db, &generics, ctx.lower_ty(&field_data.type_ref)))
+        res.insert(field_id, make_binders(db, &generics, ctx.lower_ty(&field_data.type_ref)));
     }
     Arc::new(res)
 }

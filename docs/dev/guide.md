@@ -63,7 +63,7 @@ Next, let's talk about what the inputs to the `Analysis` are, precisely.
 
 ## Inputs
 
-Rust Analyzer never does any I/O itself, all inputs get passed explicitly via
+rust-analyzer never does any I/O itself, all inputs get passed explicitly via
 the `AnalysisHost::apply_change` method, which accepts a single argument, a
 `Change`. [`Change`] is a builder for a single change
 "transaction", so it suffices to study its methods to understand all of the

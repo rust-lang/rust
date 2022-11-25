@@ -45,7 +45,7 @@ impl RootDatabase {
     // |===
     // | Editor  | Action Name
     //
-    // | VS Code | **Rust Analyzer: Memory Usage (Clears Database)**
+    // | VS Code | **rust-analyzer: Memory Usage (Clears Database)**
     // |===
     // image::https://user-images.githubusercontent.com/48062697/113065592-08559f00-91b1-11eb-8c96-64b88068ec02.gif[]
     pub fn per_query_memory_usage(&mut self) -> Vec<(String, Bytes)> {

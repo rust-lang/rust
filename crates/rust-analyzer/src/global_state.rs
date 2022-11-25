@@ -8,7 +8,7 @@ use std::{sync::Arc, time::Instant};
 use crossbeam_channel::{unbounded, Receiver, Sender};
 use flycheck::FlycheckHandle;
 use ide::{Analysis, AnalysisHost, Cancellable, Change, FileId};
-use ide_db::base_db::{CrateId, FileLoader, SourceDatabase};
+use ide_db::base_db::{CrateId, FileLoader, SourceDatabase, SourceDatabaseExt};
 use lsp_types::{SemanticTokens, Url};
 use parking_lot::{Mutex, RwLock};
 use proc_macro_api::ProcMacroServer;
@@ -176,7 +176,7 @@ impl GlobalState {
 
     pub(crate) fn process_changes(&mut self) -> bool {
         let _p = profile::span("GlobalState::process_changes");
-        let mut fs_changes = Vec::new();
+        let mut fs_refresh_changes = Vec::new();
         // A file was added or deleted
         let mut has_structure_changes = false;
 
@@ -192,15 +192,14 @@ impl GlobalState {
                 if let Some(path) = vfs.file_path(file.file_id).as_path() {
                     let path = path.to_path_buf();
                     if reload::should_refresh_for_change(&path, file.change_kind) {
-                        self.fetch_workspaces_queue
-                            .request_op(format!("vfs file change: {}", path.display()));
+                        fs_refresh_changes.push((path, file.file_id));
                     }
-                    fs_changes.push((path, file.change_kind));
                     if file.is_created_or_deleted() {
                         has_structure_changes = true;
                     }
                 }
 
+                // Clear native diagnostics when their file gets deleted
                 if !file.exists() {
                     self.diagnostics.clear_native_for(file.file_id);
                 }
@@ -226,14 +225,25 @@ impl GlobalState {
 
         self.analysis_host.apply_change(change);
 
-        let raw_database = &self.analysis_host.raw_database();
-        self.proc_macro_changed =
-            changed_files.iter().filter(|file| !file.is_created_or_deleted()).any(|file| {
-                let crates = raw_database.relevant_crates(file.file_id);
-                let crate_graph = raw_database.crate_graph();
+        {
+            let raw_database = self.analysis_host.raw_database();
+            let workspace_structure_change =
+                fs_refresh_changes.into_iter().find(|&(_, file_id)| {
+                    !raw_database.source_root(raw_database.file_source_root(file_id)).is_library
+                });
+            if let Some((path, _)) = workspace_structure_change {
+                self.fetch_workspaces_queue
+                    .request_op(format!("workspace vfs file change: {}", path.display()));
+            }
+            self.proc_macro_changed =
+                changed_files.iter().filter(|file| !file.is_created_or_deleted()).any(|file| {
+                    let crates = raw_database.relevant_crates(file.file_id);
+                    let crate_graph = raw_database.crate_graph();
 
-                crates.iter().any(|&krate| crate_graph[krate].is_proc_macro)
-            });
+                    crates.iter().any(|&krate| crate_graph[krate].is_proc_macro)
+                });
+        }
+
         true
     }
 

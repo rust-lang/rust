@@ -12,7 +12,7 @@ use ide_db::{
 // |===
 // | Editor  | Action Name
 //
-// | VS Code | **Rust Analyzer: Shuffle Crate Graph**
+// | VS Code | **rust-analyzer: Shuffle Crate Graph**
 // |===
 pub(crate) fn shuffle_crate_graph(db: &mut RootDatabase) {
     let crate_graph = db.crate_graph();

@@ -5051,3 +5051,37 @@ fn f() {
             ```"#]],
     );
 }
+
+#[test]
+fn hover_deref() {
+    check(
+        r#"
+//- minicore: deref
+
+struct Struct(usize);
+
+impl core::ops::Deref for Struct {
+    type Target = usize;
+
+    fn deref(&self) -> &Self::Target {
+        &self.0
+    }
+}
+
+fn f() {
+    $0*Struct(0);
+}
+"#,
+        expect![[r#"
+            ***
+
+            ```rust
+            test::Struct
+            ```
+
+            ```rust
+            fn deref(&self) -> &Self::Target
+            ```
+        "#]],
+    );
+}

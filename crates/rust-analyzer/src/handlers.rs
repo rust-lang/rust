@@ -1094,7 +1094,9 @@ pub(crate) fn handle_code_action(
     }
 
     // Fixes from `cargo check`.
-    for fix in snap.check_fixes.get(&frange.file_id).into_iter().flatten() {
+    for fix in
+        snap.check_fixes.values().filter_map(|it| it.get(&frange.file_id)).into_iter().flatten()
+    {
         // FIXME: this mapping is awkward and shouldn't exist. Refactor
         // `snap.check_fixes` to not convert to LSP prematurely.
         let intersect_fix_range = fix

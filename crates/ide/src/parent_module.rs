@@ -18,7 +18,7 @@ use crate::NavigationTarget;
 // |===
 // | Editor  | Action Name
 //
-// | VS Code | **Rust Analyzer: Locate parent module**
+// | VS Code | **rust-analyzer: Locate parent module**
 // |===
 //
 // image::https://user-images.githubusercontent.com/48062697/113065580-04c21800-91b1-11eb-9a32-00086161c0bd.gif[]

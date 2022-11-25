@@ -29,7 +29,7 @@ fn macro_syntax_tree_stats(db: &RootDatabase) -> SyntaxTreeStats {
 // |===
 // | Editor  | Action Name
 //
-// | VS Code | **Rust Analyzer: Status**
+// | VS Code | **rust-analyzer: Status**
 // |===
 // image::https://user-images.githubusercontent.com/48062697/113065584-05f34500-91b1-11eb-98cc-5c196f76be7f.gif[]
 pub(crate) fn status(db: &RootDatabase, file_id: Option<FileId>) -> String {
