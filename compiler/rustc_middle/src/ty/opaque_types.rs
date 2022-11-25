@@ -192,7 +192,7 @@ impl<'tcx> TypeFolder<'tcx> for ReverseMapper<'tcx> {
     fn fold_const(&mut self, ct: ty::Const<'tcx>) -> ty::Const<'tcx> {
         trace!("checking const {:?}", ct);
         // Find a const parameter
-        match ct.kind() {
+        match ct.kind {
             ty::ConstKind::Param(..) => {
                 // Look it up in the substitution list.
                 match self.map.get(&ct.into()).map(|k| k.unpack()) {

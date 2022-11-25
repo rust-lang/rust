@@ -142,7 +142,7 @@ impl<'tcx> TypeVisitor<'tcx> for MaxEscapingBoundVarVisitor {
     }
 
     fn visit_const(&mut self, ct: ty::Const<'tcx>) -> ControlFlow<Self::BreakTy> {
-        match ct.kind() {
+        match ct.kind {
             ty::ConstKind::Bound(debruijn, _) if debruijn >= self.outer_index => {
                 self.escaping =
                     self.escaping.max(debruijn.as_usize() - self.outer_index.as_usize());

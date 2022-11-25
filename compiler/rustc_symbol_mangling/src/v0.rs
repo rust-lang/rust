@@ -567,7 +567,7 @@ impl<'tcx> Printer<'tcx> for &mut SymbolMangler<'tcx> {
     fn print_const(mut self, ct: ty::Const<'tcx>) -> Result<Self::Const, Self::Error> {
         // We only mangle a typed value if the const can be evaluated.
         let ct = ct.eval(self.tcx, ty::ParamEnv::reveal_all());
-        match ct.kind() {
+        match ct.kind {
             ty::ConstKind::Value(_) => {}
 
             // Placeholders (should be demangled as `_`).
@@ -622,7 +622,7 @@ impl<'tcx> Printer<'tcx> for &mut SymbolMangler<'tcx> {
 
                 match inner_ty.kind() {
                     ty::Str if *mutbl == hir::Mutability::Not => {
-                        match ct.kind() {
+                        match ct.kind {
                             ty::ConstKind::Value(valtree) => {
                                 let slice =
                                     valtree.try_to_raw_bytes(self.tcx(), ty).unwrap_or_else(|| {
@@ -654,7 +654,7 @@ impl<'tcx> Printer<'tcx> for &mut SymbolMangler<'tcx> {
                             .builtin_deref(true)
                             .expect("tried to dereference on non-ptr type")
                             .ty;
-                        let dereferenced_const = self.tcx.mk_const(ct.kind(), pointee_ty);
+                        let dereferenced_const = self.tcx.mk_const(ct.kind, pointee_ty);
                         self = dereferenced_const.print(self)?;
                     }
                 }

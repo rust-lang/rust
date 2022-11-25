@@ -466,7 +466,7 @@ impl<'tcx> InferCtxt<'tcx> {
                     }
                 }
                 GenericArgKind::Const(result_value) => {
-                    if let ty::ConstKind::Bound(debrujin, b) = result_value.kind() {
+                    if let ty::ConstKind::Bound(debrujin, b) = result_value.kind {
                         // ...in which case we would set `canonical_vars[0]` to `Some(const X)`.
 
                         // We only allow a `ty::INNERMOST` index in substitutions.

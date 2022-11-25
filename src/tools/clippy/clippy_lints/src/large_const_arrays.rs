@@ -53,7 +53,7 @@ impl<'tcx> LateLintPass<'tcx> for LargeConstArrays {
             if let ItemKind::Const(hir_ty, _) = &item.kind;
             let ty = hir_ty_to_ty(cx.tcx, hir_ty);
             if let ty::Array(element_type, cst) = ty.kind();
-            if let ConstKind::Value(ty::ValTree::Leaf(element_count)) = cst.kind();
+            if let ConstKind::Value(ty::ValTree::Leaf(element_count)) = cst.kind;
             if let Ok(element_count) = element_count.try_to_machine_usize(cx.tcx);
             if let Ok(element_size) = cx.layout_of(*element_type).map(|l| l.size.bytes());
             if self.maximum_allowed_size < element_count * element_size;

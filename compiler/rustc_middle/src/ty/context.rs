@@ -899,7 +899,7 @@ impl<'tcx> CanonicalUserType<'tcx> {
                             _ => false,
                         },
 
-                        GenericArgKind::Const(ct) => match ct.kind() {
+                        GenericArgKind::Const(ct) => match ct.kind {
                             ty::ConstKind::Bound(debruijn, b) => {
                                 // We only allow a `ty::INNERMOST` index in substitutions.
                                 assert_eq!(debruijn, ty::INNERMOST);

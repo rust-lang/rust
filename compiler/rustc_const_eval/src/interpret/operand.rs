@@ -557,7 +557,7 @@ impl<'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
         val: ty::Const<'tcx>,
         span: Option<Span>,
     ) -> InterpResult<'tcx, ValTree<'tcx>> {
-        Ok(match val.kind() {
+        Ok(match val.kind {
             ty::ConstKind::Param(_) | ty::ConstKind::Placeholder(..) => {
                 throw_inval!(TooGeneric)
             }

@@ -353,7 +353,7 @@ impl<'a, 'b, 'tcx> Visitor<'tcx> for TypeVerifier<'a, 'b, 'tcx> {
         } else {
             let tcx = self.tcx();
             let maybe_uneval = match constant.literal {
-                ConstantKind::Ty(ct) => match ct.kind() {
+                ConstantKind::Ty(ct) => match ct.kind {
                     ty::ConstKind::Unevaluated(_) => {
                         bug!("should not encounter unevaluated ConstantKind::Ty here, got {:?}", ct)
                     }

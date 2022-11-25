@@ -2247,7 +2247,7 @@ impl<'tcx> ConstantKind<'tcx> {
     #[inline]
     pub fn try_to_value(self, tcx: TyCtxt<'tcx>) -> Option<interpret::ConstValue<'tcx>> {
         match self {
-            ConstantKind::Ty(c) => match c.kind() {
+            ConstantKind::Ty(c) => match c.kind {
                 ty::ConstKind::Value(valtree) => Some(tcx.valtree_to_const_val((c.ty, valtree))),
                 _ => None,
             },
@@ -2259,7 +2259,7 @@ impl<'tcx> ConstantKind<'tcx> {
     #[inline]
     pub fn try_to_scalar(self) -> Option<Scalar> {
         match self {
-            ConstantKind::Ty(c) => match c.kind() {
+            ConstantKind::Ty(c) => match c.kind {
                 ty::ConstKind::Value(valtree) => match valtree {
                     ty::ValTree::Leaf(scalar_int) => Some(Scalar::Int(scalar_int)),
                     ty::ValTree::Branch(_) => None,
@@ -2290,7 +2290,7 @@ impl<'tcx> ConstantKind<'tcx> {
     pub fn eval(self, tcx: TyCtxt<'tcx>, param_env: ty::ParamEnv<'tcx>) -> Self {
         match self {
             Self::Ty(c) => {
-                if let Some(val) = c.kind().try_eval_for_mir(tcx, param_env) {
+                if let Some(val) = c.kind.try_eval_for_mir(tcx, param_env) {
                     match val {
                         Ok(val) => Self::Val(val, c.ty),
                         Err(_) => Self::Ty(tcx.const_error(self.ty())),
@@ -2580,7 +2580,7 @@ impl<'tcx> ConstantKind<'tcx> {
     }
 
     pub fn from_const(c: ty::Const<'tcx>, tcx: TyCtxt<'tcx>) -> Self {
-        match c.kind() {
+        match c.kind {
             ty::ConstKind::Value(valtree) => {
                 let const_val = tcx.valtree_to_const_val((c.ty, valtree));
                 Self::Val(const_val, c.ty)
@@ -2902,7 +2902,7 @@ fn pretty_print_const_value<'tcx>(
                 }
             }
             (ConstValue::ByRef { alloc, offset }, ty::Array(t, n)) if *t == u8_type => {
-                let n = n.kind().try_to_bits(tcx.data_layout.pointer_size).unwrap();
+                let n = n.kind.try_to_bits(tcx.data_layout.pointer_size).unwrap();
                 // cast is ok because we already checked for pointer size (32 or 64 bit) above
                 let range = AllocRange { start: offset, size: Size::from_bytes(n) };
                 let byte_str = alloc.inner().get_bytes_strip_provenance(&tcx, range).unwrap();

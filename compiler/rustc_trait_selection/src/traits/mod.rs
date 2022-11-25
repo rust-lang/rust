@@ -522,7 +522,7 @@ fn is_impossible_method<'tcx>(
             r.super_visit_with(self)
         }
         fn visit_const(&mut self, ct: ty::Const<'tcx>) -> ControlFlow<Self::BreakTy> {
-            if let ty::ConstKind::Param(param) = ct.kind()
+            if let ty::ConstKind::Param(param) = ct.kind
                 && let param_def_id = self.generics.const_param(&param, self.tcx).def_id
                 && self.tcx.parent(param_def_id) == self.trait_item_def_id
             {

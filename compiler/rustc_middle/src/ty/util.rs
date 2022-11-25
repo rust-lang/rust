@@ -439,7 +439,7 @@ impl<'tcx> TyCtxt<'tcx> {
                         // Error: not a type param
                         _ => false,
                     },
-                    GenericArgKind::Const(ct) => match ct.kind() {
+                    GenericArgKind::Const(ct) => match ct.kind {
                         ty::ConstKind::Param(ref pc) => {
                             !impl_generics.const_param(pc, self).pure_wrt_drop
                         }
@@ -481,7 +481,7 @@ impl<'tcx> TyCtxt<'tcx> {
                     }
                     _ => return Err(NotUniqueParam::NotParam(t.into())),
                 },
-                GenericArgKind::Const(c) => match c.kind() {
+                GenericArgKind::Const(c) => match c.kind {
                     ty::ConstKind::Param(p) => {
                         if !seen.insert(p.index) {
                             return Err(NotUniqueParam::DuplicateParam(c.into()));
@@ -1141,7 +1141,7 @@ pub fn needs_drop_components<'tcx>(
         ty::Array(elem_ty, size) => {
             match needs_drop_components(*elem_ty, target_layout) {
                 Ok(v) if v.is_empty() => Ok(v),
-                res => match size.kind().try_to_bits(target_layout.pointer_size) {
+                res => match size.kind.try_to_bits(target_layout.pointer_size) {
                     // Arrays of size zero don't need drop, even if their element
                     // type does.
                     Some(0) => Ok(SmallVec::new()),

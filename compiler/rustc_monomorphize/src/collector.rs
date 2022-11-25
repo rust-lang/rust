@@ -759,7 +759,7 @@ impl<'a, 'tcx> MirVisitor<'tcx> for MirNeighborCollector<'a, 'tcx> {
         let literal = self.monomorphize(constant.literal);
         let val = match literal {
             mir::ConstantKind::Val(val, _) => val,
-            mir::ConstantKind::Ty(ct) => match ct.kind() {
+            mir::ConstantKind::Ty(ct) => match ct.kind {
                 ty::ConstKind::Value(val) => self.tcx.valtree_to_const_val((ct.ty, val)),
                 ty::ConstKind::Unevaluated(ct) => {
                     debug!(?ct);

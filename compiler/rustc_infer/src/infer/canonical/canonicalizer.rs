@@ -467,7 +467,7 @@ impl<'cx, 'tcx> TypeFolder<'tcx> for Canonicalizer<'cx, 'tcx> {
     }
 
     fn fold_const(&mut self, ct: ty::Const<'tcx>) -> ty::Const<'tcx> {
-        match ct.kind() {
+        match ct.kind {
             ty::ConstKind::Infer(InferConst::Var(vid)) => {
                 debug!("canonical: const var found with vid {:?}", vid);
                 match self.infcx.probe_const_var(vid) {

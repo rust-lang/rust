@@ -40,7 +40,7 @@ pub fn obligations<'tcx>(
             .into()
         }
         GenericArgKind::Const(ct) => {
-            match ct.kind() {
+            match ct.kind {
                 ty::ConstKind::Infer(_) => {
                     let resolved = infcx.shallow_resolve(ct);
                     if resolved == ct {
@@ -449,7 +449,7 @@ impl<'tcx> WfPredicates<'tcx> {
                 GenericArgKind::Lifetime(_) => continue,
 
                 GenericArgKind::Const(ct) => {
-                    match ct.kind() {
+                    match ct.kind {
                         ty::ConstKind::Unevaluated(uv) => {
                             let obligations = self.nominal_obligations(uv.def.did, uv.substs);
                             self.out.extend(obligations);

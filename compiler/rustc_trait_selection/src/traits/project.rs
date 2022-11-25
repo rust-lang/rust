@@ -807,7 +807,7 @@ impl<'tcx> TypeFolder<'tcx> for BoundVarReplacer<'_, 'tcx> {
     }
 
     fn fold_const(&mut self, ct: ty::Const<'tcx>) -> ty::Const<'tcx> {
-        match ct.kind() {
+        match ct.kind {
             ty::ConstKind::Bound(debruijn, _)
                 if debruijn.as_usize() + 1
                     > self.current_index.as_usize() + self.universe_indices.len() =>
@@ -941,7 +941,7 @@ impl<'tcx> TypeFolder<'tcx> for PlaceholderReplacer<'_, 'tcx> {
     }
 
     fn fold_const(&mut self, ct: ty::Const<'tcx>) -> ty::Const<'tcx> {
-        if let ty::ConstKind::Placeholder(p) = ct.kind() {
+        if let ty::ConstKind::Placeholder(p) = ct.kind {
             let replace_var = self.mapped_consts.get(&p);
             match replace_var {
                 Some(replace_var) => {

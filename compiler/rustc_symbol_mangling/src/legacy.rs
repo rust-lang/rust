@@ -227,9 +227,9 @@ impl<'tcx> Printer<'tcx> for &mut SymbolPrinter<'tcx> {
                 self.write_str("[")?;
                 self = self.print_type(ty)?;
                 self.write_str("; ")?;
-                if let Some(size) = size.kind().try_to_bits(self.tcx().data_layout.pointer_size) {
+                if let Some(size) = size.kind.try_to_bits(self.tcx().data_layout.pointer_size) {
                     write!(self, "{}", size)?
-                } else if let ty::ConstKind::Param(param) = size.kind() {
+                } else if let ty::ConstKind::Param(param) = size.kind {
                     self = param.print(self)?
                 } else {
                     self.write_str("_")?
@@ -259,7 +259,7 @@ impl<'tcx> Printer<'tcx> for &mut SymbolPrinter<'tcx> {
 
     fn print_const(self, ct: ty::Const<'tcx>) -> Result<Self::Const, Self::Error> {
         // only print integers
-        match (ct.kind(), ct.ty.kind()) {
+        match (ct.kind, ct.ty.kind()) {
             (ty::ConstKind::Value(ty::ValTree::Leaf(scalar)), ty::Int(_) | ty::Uint(_)) => {
                 // The `pretty_print_const` formatting depends on -Zverbose
                 // flag, so we cannot reuse it here.

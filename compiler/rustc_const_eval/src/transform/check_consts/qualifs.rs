@@ -348,7 +348,7 @@ where
     // way for type and mir constants.
     let uneval = match constant.literal {
         ConstantKind::Ty(ct)
-            if matches!(ct.kind(), ty::ConstKind::Param(_) | ty::ConstKind::Error(_)) =>
+            if matches!(ct.kind, ty::ConstKind::Param(_) | ty::ConstKind::Error(_)) =>
         {
             None
         }

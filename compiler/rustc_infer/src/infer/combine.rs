@@ -142,7 +142,7 @@ impl<'tcx> InferCtxt<'tcx> {
 
         let a_is_expected = relation.a_is_expected();
 
-        match (a.kind(), b.kind()) {
+        match (a.kind, b.kind) {
             (
                 ty::ConstKind::Infer(InferConst::Var(a_vid)),
                 ty::ConstKind::Infer(InferConst::Var(b_vid)),
@@ -735,7 +735,7 @@ impl<'tcx> TypeRelation<'tcx> for Generalizer<'_, 'tcx> {
     ) -> RelateResult<'tcx, ty::Const<'tcx>> {
         assert_eq!(c, c2); // we are abusing TypeRelation here; both LHS and RHS ought to be ==
 
-        match c.kind() {
+        match c.kind {
             ty::ConstKind::Infer(InferConst::Var(vid)) => {
                 let mut inner = self.infcx.inner.borrow_mut();
                 let variable_table = &mut inner.const_unification_table();
@@ -941,7 +941,7 @@ impl<'tcx> TypeRelation<'tcx> for ConstInferUnifier<'_, 'tcx> {
     ) -> RelateResult<'tcx, ty::Const<'tcx>> {
         debug_assert_eq!(c, _c);
 
-        match c.kind() {
+        match c.kind {
             ty::ConstKind::Infer(InferConst::Var(vid)) => {
                 // Check if the current unification would end up
                 // unifying `target_vid` with a const which contains

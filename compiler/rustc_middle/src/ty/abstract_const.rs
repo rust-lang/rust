@@ -41,7 +41,7 @@ impl<'tcx> AbstractConst<'tcx> {
         tcx: TyCtxt<'tcx>,
         ct: ty::Const<'tcx>,
     ) -> Result<Option<AbstractConst<'tcx>>, ErrorGuaranteed> {
-        match ct.kind() {
+        match ct.kind {
             ty::ConstKind::Unevaluated(uv) => AbstractConst::new(tcx, uv),
             ty::ConstKind::Error(reported) => Err(reported),
             _ => Ok(None),

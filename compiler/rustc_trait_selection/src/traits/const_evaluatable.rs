@@ -76,7 +76,7 @@ impl<'tcx> ConstUnifyCtxt<'tcx> {
                     return false;
                 }
 
-                match (a_ct.kind(), b_ct.kind()) {
+                match (a_ct.kind, b_ct.kind) {
                     // We can just unify errors with everything to reduce the amount of
                     // emitted errors here.
                     (ty::ConstKind::Error(_), _) | (_, ty::ConstKind::Error(_)) => true,
@@ -164,7 +164,7 @@ pub fn is_const_evaluatable<'tcx>(
     span: Span,
 ) -> Result<(), NotConstEvaluatable> {
     let tcx = infcx.tcx;
-    let uv = match ct.kind() {
+    let uv = match ct.kind {
         ty::ConstKind::Unevaluated(uv) => uv,
         ty::ConstKind::Param(_)
         | ty::ConstKind::Bound(_, _)

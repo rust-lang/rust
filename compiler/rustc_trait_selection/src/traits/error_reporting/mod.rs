@@ -1298,7 +1298,7 @@ impl<'tcx> TypeErrCtxtExt<'tcx> for TypeErrCtxt<'_, 'tcx> {
 
                 match obligation.predicate.kind().skip_binder() {
                     ty::PredicateKind::ConstEvaluatable(ct) => {
-                        let ty::ConstKind::Unevaluated(uv) = ct.kind() else {
+                        let ty::ConstKind::Unevaluated(uv) = ct.kind else {
                             bug!("const evaluatable failed for non-unevaluated const `{ct:?}`");
                         };
                         let mut err =

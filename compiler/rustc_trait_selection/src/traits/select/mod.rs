@@ -668,7 +668,7 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
                     //
                     // Let's just see where this breaks :shrug:
                     if let (ty::ConstKind::Unevaluated(a), ty::ConstKind::Unevaluated(b)) =
-                        (c1.kind(), c2.kind())
+                        (c1.kind, c2.kind)
                     {
                         if self.infcx.try_unify_abstract_consts(a, b, obligation.param_env) {
                             return Ok(EvaluatedToOk);
@@ -676,7 +676,7 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
                     }
 
                     let evaluate = |c: ty::Const<'tcx>| {
-                        if let ty::ConstKind::Unevaluated(unevaluated) = c.kind() {
+                        if let ty::ConstKind::Unevaluated(unevaluated) = c.kind {
                             match self.infcx.try_const_eval_resolve(
                                 obligation.param_env,
                                 unevaluated,

@@ -462,7 +462,7 @@ impl<'tcx> Visitor<'tcx> for ExtraComments<'tcx> {
             };
 
             let val = match literal {
-                ConstantKind::Ty(ct) => match ct.kind() {
+                ConstantKind::Ty(ct) => match ct.kind {
                     ty::ConstKind::Param(p) => format!("Param({})", p),
                     ty::ConstKind::Unevaluated(uv) => {
                         format!(

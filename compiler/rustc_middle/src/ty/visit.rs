@@ -518,7 +518,7 @@ impl<'tcx> TypeVisitor<'tcx> for HasEscapingVarsVisitor {
         // otherwise we do want to remember to visit the rest of the
         // const, as it has types/regions embedded in a lot of other
         // places.
-        match ct.kind() {
+        match ct.kind {
             ty::ConstKind::Bound(debruijn, _) if debruijn >= self.outer_index => {
                 ControlFlow::Break(FoundEscapingVars)
             }
@@ -661,7 +661,7 @@ impl<'tcx> TypeVisitor<'tcx> for LateBoundRegionsCollector {
         // ignore the inputs of an unevaluated const, as they may not appear
         // in the normalized form
         if self.just_constrained {
-            if let ty::ConstKind::Unevaluated(..) = c.kind() {
+            if let ty::ConstKind::Unevaluated(..) = c.kind {
                 return ControlFlow::CONTINUE;
             }
         }
@@ -706,7 +706,7 @@ impl<'tcx> TypeVisitor<'tcx> for MaxUniverse {
     }
 
     fn visit_const(&mut self, c: ty::consts::Const<'tcx>) -> ControlFlow<Self::BreakTy> {
-        if let ty::ConstKind::Placeholder(placeholder) = c.kind() {
+        if let ty::ConstKind::Placeholder(placeholder) = c.kind {
             self.max_universe = ty::UniverseIndex::from_u32(
                 self.max_universe.as_u32().max(placeholder.universe.as_u32()),
             );

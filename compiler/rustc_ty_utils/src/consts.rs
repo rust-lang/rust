@@ -19,7 +19,7 @@ pub(crate) fn destructure_const<'tcx>(
     tcx: TyCtxt<'tcx>,
     const_: ty::Const<'tcx>,
 ) -> ty::DestructuredConst<'tcx> {
-    let ty::ConstKind::Value(valtree) = const_.kind() else {
+    let ty::ConstKind::Value(valtree) = const_.kind else {
         bug!("cannot destructure constant {:?}", const_)
     };
 

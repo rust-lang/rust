@@ -283,7 +283,7 @@ impl FlagComputation {
 
     fn add_const(&mut self, c: ty::Const<'_>) {
         self.add_ty(c.ty);
-        match c.kind() {
+        match c.kind {
             ty::ConstKind::Unevaluated(uv) => {
                 self.add_substs(uv.substs);
                 self.add_flags(TypeFlags::HAS_CT_PROJECTION);

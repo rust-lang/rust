@@ -774,14 +774,14 @@ pub trait PrettyPrinter<'tcx>:
                 p!("[", print(ty), "; ");
                 if self.should_print_verbose() {
                     p!(write("{:?}", sz));
-                } else if let ty::ConstKind::Unevaluated(..) = sz.kind() {
+                } else if let ty::ConstKind::Unevaluated(..) = sz.kind {
                     // Do not try to evaluate unevaluated constants. If we are const evaluating an
                     // array length anon const, rustc will (with debug assertions) print the
                     // constant's path. Which will end up here again.
                     p!("_");
-                } else if let Some(n) = sz.kind().try_to_bits(self.tcx().data_layout.pointer_size) {
+                } else if let Some(n) = sz.kind.try_to_bits(self.tcx().data_layout.pointer_size) {
                     p!(write("{}", n));
-                } else if let ty::ConstKind::Param(param) = sz.kind() {
+                } else if let ty::ConstKind::Param(param) = sz.kind {
                     p!(print(param));
                 } else {
                     p!("_");
@@ -1195,7 +1195,7 @@ pub trait PrettyPrinter<'tcx>:
         define_scoped_cx!(self);
 
         if self.should_print_verbose() {
-            p!(write("Const({:?}: {:?})", ct.kind(), ct.ty));
+            p!(write("Const({:?}: {:?})", ct.kind, ct.ty));
             return Ok(self);
         }
 
@@ -1216,7 +1216,7 @@ pub trait PrettyPrinter<'tcx>:
             }};
         }
 
-        match ct.kind() {
+        match ct.kind {
             ty::ConstKind::Unevaluated(ty::UnevaluatedConst { def, substs }) => {
                 match self.tcx().def_kind(def.did) {
                     DefKind::Static(..) | DefKind::Const | DefKind::AssocConst => {
@@ -1284,7 +1284,7 @@ pub trait PrettyPrinter<'tcx>:
             ty::Ref(_, inner, _) => {
                 if let ty::Array(elem, len) = inner.kind() {
                     if let ty::Uint(ty::UintTy::U8) = elem.kind() {
-                        if let ty::ConstKind::Value(ty::ValTree::Leaf(int)) = len.kind() {
+                        if let ty::ConstKind::Value(ty::ValTree::Leaf(int)) = len.kind {
                             match self.tcx().try_get_global_alloc(alloc_id) {
                                 Some(GlobalAlloc::Memory(alloc)) => {
                                     let len = int.assert_bits(self.tcx().data_layout.pointer_size);

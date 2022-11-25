@@ -178,7 +178,7 @@ fn push_debuginfo_type_name<'tcx>(
             if cpp_like_debuginfo {
                 output.push_str("array$<");
                 push_debuginfo_type_name(tcx, inner_type, true, output, visited);
-                match len.kind() {
+                match len.kind {
                     ty::ConstKind::Param(param) => write!(output, ",{}>", param.name).unwrap(),
                     _ => write!(output, ",{}>", len.eval_usize(tcx, ty::ParamEnv::reveal_all()))
                         .unwrap(),
@@ -186,7 +186,7 @@ fn push_debuginfo_type_name<'tcx>(
             } else {
                 output.push('[');
                 push_debuginfo_type_name(tcx, inner_type, true, output, visited);
-                match len.kind() {
+                match len.kind {
                     ty::ConstKind::Param(param) => write!(output, "; {}]", param.name).unwrap(),
                     _ => write!(output, "; {}]", len.eval_usize(tcx, ty::ParamEnv::reveal_all()))
                         .unwrap(),
@@ -635,7 +635,7 @@ fn push_generic_params_internal<'tcx>(
 }
 
 fn push_const_param<'tcx>(tcx: TyCtxt<'tcx>, ct: ty::Const<'tcx>, output: &mut String) {
-    match ct.kind() {
+    match ct.kind {
         ty::ConstKind::Param(param) => {
             write!(output, "{}", param.name)
         }

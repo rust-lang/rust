@@ -32,7 +32,7 @@ impl<'tcx> fmt::Debug for Const<'tcx> {
         // This reflects what `Const` looked liked before `Interned` was
         // introduced. We print it like this to avoid having to update expected
         // output in a lot of tests.
-        write!(f, "Const {{ ty: {:?}, kind: {:?} }}", self.ty, self.kind())
+        write!(f, "Const {{ ty: {:?}, kind: {:?} }}", self.ty, self.kind)
     }
 }
 
@@ -47,11 +47,6 @@ pub struct ConstS<'tcx> {
 static_assert_size!(ConstS<'_>, 40);
 
 impl<'tcx> Const<'tcx> {
-    #[inline]
-    pub fn kind(self) -> ConstKind<'tcx> {
-        self.kind
-    }
-
     /// Literals and const generic parameters are eagerly converted to a constant, everything else
     /// becomes `Unevaluated`.
     pub fn from_anon_const(tcx: TyCtxt<'tcx>, def_id: LocalDefId) -> Self {
@@ -151,9 +146,9 @@ impl<'tcx> Const<'tcx> {
 
     /// Panics if self.kind != ty::ConstKind::Value
     pub fn to_valtree(self) -> ty::ValTree<'tcx> {
-        match self.kind() {
+        match self.kind {
             ty::ConstKind::Value(valtree) => valtree,
-            _ => bug!("expected ConstKind::Value, got {:?}", self.kind()),
+            _ => bug!("expected ConstKind::Value, got {:?}", self.kind),
         }
     }
 
@@ -204,24 +199,24 @@ impl<'tcx> Const<'tcx> {
         assert_eq!(self.ty, ty);
         let size = tcx.layout_of(param_env.with_reveal_all_normalized(tcx).and(ty)).ok()?.size;
         // if `ty` does not depend on generic parameters, use an empty param_env
-        self.kind().eval(tcx, param_env).try_to_bits(size)
+        self.kind.eval(tcx, param_env).try_to_bits(size)
     }
 
     #[inline]
     pub fn try_eval_bool(self, tcx: TyCtxt<'tcx>, param_env: ParamEnv<'tcx>) -> Option<bool> {
-        self.kind().eval(tcx, param_env).try_to_bool()
+        self.kind.eval(tcx, param_env).try_to_bool()
     }
 
     #[inline]
     pub fn try_eval_usize(self, tcx: TyCtxt<'tcx>, param_env: ParamEnv<'tcx>) -> Option<u64> {
-        self.kind().eval(tcx, param_env).try_to_machine_usize(tcx)
+        self.kind.eval(tcx, param_env).try_to_machine_usize(tcx)
     }
 
     #[inline]
     /// Tries to evaluate the constant if it is `Unevaluated`. If that doesn't succeed, return the
     /// unevaluated constant.
     pub fn eval(self, tcx: TyCtxt<'tcx>, param_env: ParamEnv<'tcx>) -> Const<'tcx> {
-        if let Some(val) = self.kind().try_eval_for_typeck(tcx, param_env) {
+        if let Some(val) = self.kind.try_eval_for_typeck(tcx, param_env) {
             match val {
                 Ok(val) => Const::from_value(tcx, val, self.ty),
                 Err(guar) => tcx.const_error_with_guaranteed(self.ty, guar),
@@ -247,7 +242,7 @@ impl<'tcx> Const<'tcx> {
     }
 
     pub fn is_ct_infer(self) -> bool {
-        matches!(self.kind(), ty::ConstKind::Infer(_))
+        matches!(self.kind, ty::ConstKind::Infer(_))
     }
 }
 

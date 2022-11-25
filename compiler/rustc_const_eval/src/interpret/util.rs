@@ -57,7 +57,7 @@ where
         }
 
         fn visit_const(&mut self, c: ty::Const<'tcx>) -> ControlFlow<Self::BreakTy> {
-            match c.kind() {
+            match c.kind {
                 ty::ConstKind::Param(..) => ControlFlow::Break(FoundParam),
                 _ => c.super_visit_with(self),
             }
