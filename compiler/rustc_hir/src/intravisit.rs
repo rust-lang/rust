@@ -422,7 +422,7 @@ pub trait Visitor<'v>: Sized {
     fn visit_qpath(&mut self, qpath: &'v QPath<'v>, id: HirId, _span: Span) {
         walk_qpath(self, qpath, id)
     }
-    fn visit_path(&mut self, path: &'v Path<'v>, _id: HirId) {
+    fn visit_path(&mut self, path: &Path<'v>, _id: HirId) {
         walk_path(self, path)
     }
     fn visit_path_segment(&mut self, path_segment: &'v PathSegment<'v>) {
@@ -1126,7 +1126,7 @@ pub fn walk_qpath<'v, V: Visitor<'v>>(visitor: &mut V, qpath: &'v QPath<'v>, id:
     }
 }
 
-pub fn walk_path<'v, V: Visitor<'v>>(visitor: &mut V, path: &'v Path<'v>) {
+pub fn walk_path<'v, V: Visitor<'v>>(visitor: &mut V, path: &Path<'v>) {
     for segment in path.segments {
         visitor.visit_path_segment(segment);
     }

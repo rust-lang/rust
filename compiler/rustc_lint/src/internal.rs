@@ -117,7 +117,7 @@ impl<'tcx> LateLintPass<'tcx> for TyTyKind {
     fn check_path(
         &mut self,
         cx: &LateContext<'tcx>,
-        path: &'tcx rustc_hir::Path<'tcx>,
+        path: &rustc_hir::Path<'tcx>,
         _: rustc_hir::HirId,
     ) {
         if let Some(segment) = path.segments.iter().nth_back(1)

@@ -140,7 +140,7 @@ impl<'tcx> Visitor<'tcx> for SpanMapVisitor<'tcx> {
         self.tcx.hir()
     }
 
-    fn visit_path(&mut self, path: &'tcx rustc_hir::Path<'tcx>, _id: HirId) {
+    fn visit_path(&mut self, path: &rustc_hir::Path<'tcx>, _id: HirId) {
         if self.handle_macro(path.span) {
             return;
         }
