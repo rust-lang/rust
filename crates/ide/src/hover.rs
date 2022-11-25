@@ -176,7 +176,7 @@ pub(crate) fn hover(
                     return None;
                 }
 
-                let rest_pat = token.syntax().parent().and_then(ast::RestPat::cast)?;
+                let rest_pat = token.parent().and_then(ast::RestPat::cast)?;
                 let record_pat_field_list = rest_pat.syntax().parent().and_then(ast::RecordPatFieldList::cast)?;
 
                 let record_pat =
