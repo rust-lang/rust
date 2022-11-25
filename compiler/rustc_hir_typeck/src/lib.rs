@@ -40,6 +40,7 @@ mod method;
 mod op;
 mod pat;
 mod place_op;
+mod relationships;
 mod rvalue_scopes;
 mod upvar;
 mod writeback;

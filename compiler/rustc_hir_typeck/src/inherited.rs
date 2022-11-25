@@ -1,6 +1,6 @@
 use super::callee::DeferredCallResolution;
 
-use rustc_data_structures::fx::FxHashSet;
+use rustc_data_structures::fx::{FxHashMap, FxHashSet};
 use rustc_hir as hir;
 use rustc_hir::def_id::LocalDefId;
 use rustc_hir::HirIdMap;
@@ -63,6 +63,8 @@ pub struct Inherited<'tcx> {
     /// we record that type variable here. This is later used to inform
     /// fallback. See the `fallback` module for details.
     pub(super) diverging_type_vars: RefCell<FxHashSet<Ty<'tcx>>>,
+
+    pub(super) relationships: RefCell<FxHashMap<ty::TyVid, ty::FoundRelationships>>,
 }
 
 impl<'tcx> Deref for Inherited<'tcx> {
@@ -128,6 +130,7 @@ impl<'tcx> Inherited<'tcx> {
             deferred_generator_interiors: RefCell::new(Vec::new()),
             diverging_type_vars: RefCell::new(Default::default()),
             body_id,
+            relationships: RefCell::new(Default::default()),
         }
     }
 
@@ -136,6 +139,13 @@ impl<'tcx> Inherited<'tcx> {
         if obligation.has_escaping_bound_vars() {
             span_bug!(obligation.cause.span, "escaping bound vars in predicate {:?}", obligation);
         }
+
+        super::relationships::update(
+            &self.infcx,
+            &mut self.relationships.borrow_mut(),
+            &obligation,
+        );
+
         self.fulfillment_cx.borrow_mut().register_predicate_obligation(self, obligation);
     }
 

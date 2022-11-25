@@ -1,16 +1,14 @@
-use crate::infer::InferCtxt;
-use crate::traits::query::evaluate_obligation::InferCtxtExt;
-use crate::traits::PredicateObligation;
-use rustc_infer::traits::TraitEngine;
+use rustc_data_structures::fx::FxHashMap;
 use rustc_middle::ty;
+use rustc_trait_selection::infer::InferCtxt;
+use rustc_trait_selection::traits::query::evaluate_obligation::InferCtxtExt;
+use rustc_trait_selection::traits::PredicateObligation;
 
-pub(crate) fn update<'tcx, T>(
-    engine: &mut T,
+pub fn update<'tcx>(
     infcx: &InferCtxt<'tcx>,
+    relationships: &mut FxHashMap<ty::TyVid, ty::FoundRelationships>,
     obligation: &PredicateObligation<'tcx>,
-) where
-    T: TraitEngine<'tcx>,
-{
+) {
     // (*) binder skipped
     if let ty::PredicateKind::Clause(ty::Clause::Trait(tpred)) = obligation.predicate.kind().skip_binder()
         && let Some(ty) = infcx.shallow_resolve(tpred.self_ty()).ty_vid().map(|t| infcx.root_var(t))
@@ -31,7 +29,7 @@ pub(crate) fn update<'tcx, T>(
         );
         // Don't report overflow errors. Otherwise equivalent to may_hold.
         if let Ok(result) = infcx.probe(|_| infcx.evaluate_obligation(&o)) && result.may_apply() {
-            engine.relationships().entry(ty).or_default().self_in_trait = true;
+            relationships.entry(ty).or_default().self_in_trait = true;
         }
     }
 
@@ -42,7 +40,7 @@ pub(crate) fn update<'tcx, T>(
         // we need to make it into one.
         if let Some(vid) = predicate.term.ty().and_then(|ty| ty.ty_vid()) {
             debug!("relationship: {:?}.output = true", vid);
-            engine.relationships().entry(vid).or_default().output = true;
+            relationships.entry(vid).or_default().output = true;
         }
     }
 }
