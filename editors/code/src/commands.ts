@@ -3,7 +3,7 @@ import * as lc from "vscode-languageclient";
 import * as ra from "./lsp_ext";
 import * as path from "path";
 
-import { Ctx, Cmd } from "./ctx";
+import { Ctx, Cmd, CtxInit } from "./ctx";
 import { applySnippetWorkspaceEdit, applySnippetTextEdits } from "./snippets";
 import { spawnSync } from "child_process";
 import { RunnableQuickPick, selectRunnable, createTask, createArgs } from "./run";
@@ -16,14 +16,14 @@ import { LINKED_COMMANDS } from "./client";
 export * from "./ast_inspector";
 export * from "./run";
 
-export function analyzerStatus(ctx: Ctx): Cmd {
+export function analyzerStatus(ctx: CtxInit): Cmd {
     const tdcp = new (class implements vscode.TextDocumentContentProvider {
         readonly uri = vscode.Uri.parse("rust-analyzer-status://status");
         readonly eventEmitter = new vscode.EventEmitter<vscode.Uri>();
 
         async provideTextDocumentContent(_uri: vscode.Uri): Promise<string> {
             if (!vscode.window.activeTextEditor) return "";
-            const client = await ctx.getClient();
+            const client = ctx.client;
 
             const params: ra.AnalyzerStatusParams = {};
             const doc = ctx.activeRustEditor?.document;
@@ -52,7 +52,7 @@ export function analyzerStatus(ctx: Ctx): Cmd {
     };
 }
 
-export function memoryUsage(ctx: Ctx): Cmd {
+export function memoryUsage(ctx: CtxInit): Cmd {
     const tdcp = new (class implements vscode.TextDocumentContentProvider {
         readonly uri = vscode.Uri.parse("rust-analyzer-memory://memory");
         readonly eventEmitter = new vscode.EventEmitter<vscode.Uri>();
@@ -60,14 +60,9 @@ export function memoryUsage(ctx: Ctx): Cmd {
         provideTextDocumentContent(_uri: vscode.Uri): vscode.ProviderResult<string> {
             if (!vscode.window.activeTextEditor) return "";
 
-            return ctx
-                .getClient()
-                .then((it) => it.sendRequest(ra.memoryUsage))
-                .then((mem: any) => {
-                    return (
-                        "Per-query memory usage:\n" + mem + "\n(note: database has been cleared)"
-                    );
-                });
+            return ctx.client.sendRequest(ra.memoryUsage).then((mem: any) => {
+                return "Per-query memory usage:\n" + mem + "\n(note: database has been cleared)";
+            });
         }
 
         get onDidChange(): vscode.Event<vscode.Uri> {
@@ -86,18 +81,18 @@ export function memoryUsage(ctx: Ctx): Cmd {
     };
 }
 
-export function shuffleCrateGraph(ctx: Ctx): Cmd {
+export function shuffleCrateGraph(ctx: CtxInit): Cmd {
     return async () => {
-        return ctx.getClient().then((it) => it.sendRequest(ra.shuffleCrateGraph));
+        return ctx.client.sendRequest(ra.shuffleCrateGraph);
     };
 }
 
-export function matchingBrace(ctx: Ctx): Cmd {
+export function matchingBrace(ctx: CtxInit): Cmd {
     return async () => {
         const editor = ctx.activeRustEditor;
         if (!editor) return;
 
-        const client = await ctx.getClient();
+        const client = ctx.client;
 
         const response = await client.sendRequest(ra.matchingBrace, {
             textDocument: client.code2ProtocolConverter.asTextDocumentIdentifier(editor.document),
@@ -114,12 +109,12 @@ export function matchingBrace(ctx: Ctx): Cmd {
     };
 }
 
-export function joinLines(ctx: Ctx): Cmd {
+export function joinLines(ctx: CtxInit): Cmd {
     return async () => {
         const editor = ctx.activeRustEditor;
         if (!editor) return;
 
-        const client = await ctx.getClient();
+        const client = ctx.client;
 
         const items: lc.TextEdit[] = await client.sendRequest(ra.joinLines, {
             ranges: editor.selections.map((it) => client.code2ProtocolConverter.asRange(it)),
@@ -134,19 +129,19 @@ export function joinLines(ctx: Ctx): Cmd {
     };
 }
 
-export function moveItemUp(ctx: Ctx): Cmd {
+export function moveItemUp(ctx: CtxInit): Cmd {
     return moveItem(ctx, ra.Direction.Up);
 }
 
-export function moveItemDown(ctx: Ctx): Cmd {
+export function moveItemDown(ctx: CtxInit): Cmd {
     return moveItem(ctx, ra.Direction.Down);
 }
 
-export function moveItem(ctx: Ctx, direction: ra.Direction): Cmd {
+export function moveItem(ctx: CtxInit, direction: ra.Direction): Cmd {
     return async () => {
         const editor = ctx.activeRustEditor;
         if (!editor) return;
-        const client = await ctx.getClient();
+        const client = ctx.client;
 
         const lcEdits = await client.sendRequest(ra.moveItem, {
             range: client.code2ProtocolConverter.asRange(editor.selection),
@@ -161,13 +156,13 @@ export function moveItem(ctx: Ctx, direction: ra.Direction): Cmd {
     };
 }
 
-export function onEnter(ctx: Ctx): Cmd {
+export function onEnter(ctx: CtxInit): Cmd {
     async function handleKeypress() {
         const editor = ctx.activeRustEditor;
 
         if (!editor) return false;
 
-        const client = await ctx.getClient();
+        const client = ctx.client;
         const lcEdits = await client
             .sendRequest(ra.onEnter, {
                 textDocument: client.code2ProtocolConverter.asTextDocumentIdentifier(
@@ -193,13 +188,13 @@ export function onEnter(ctx: Ctx): Cmd {
     };
 }
 
-export function parentModule(ctx: Ctx): Cmd {
+export function parentModule(ctx: CtxInit): Cmd {
     return async () => {
         const editor = vscode.window.activeTextEditor;
         if (!editor) return;
         if (!(isRustDocument(editor.document) || isCargoTomlDocument(editor.document))) return;
 
-        const client = await ctx.getClient();
+        const client = ctx.client;
 
         const locations = await client.sendRequest(ra.parentModule, {
             textDocument: client.code2ProtocolConverter.asTextDocumentIdentifier(editor.document),
@@ -230,12 +225,12 @@ export function parentModule(ctx: Ctx): Cmd {
     };
 }
 
-export function openCargoToml(ctx: Ctx): Cmd {
+export function openCargoToml(ctx: CtxInit): Cmd {
     return async () => {
         const editor = ctx.activeRustEditor;
         if (!editor) return;
 
-        const client = await ctx.getClient();
+        const client = ctx.client;
         const response = await client.sendRequest(ra.openCargoToml, {
             textDocument: client.code2ProtocolConverter.asTextDocumentIdentifier(editor.document),
         });
@@ -251,12 +246,12 @@ export function openCargoToml(ctx: Ctx): Cmd {
     };
 }
 
-export function ssr(ctx: Ctx): Cmd {
+export function ssr(ctx: CtxInit): Cmd {
     return async () => {
         const editor = vscode.window.activeTextEditor;
         if (!editor) return;
 
-        const client = await ctx.getClient();
+        const client = ctx.client;
 
         const position = editor.selection.active;
         const selections = editor.selections;
@@ -308,7 +303,7 @@ export function ssr(ctx: Ctx): Cmd {
     };
 }
 
-export function serverVersion(ctx: Ctx): Cmd {
+export function serverVersion(ctx: CtxInit): Cmd {
     return async () => {
         if (!ctx.serverPath) {
             void vscode.window.showWarningMessage(`rust-analyzer server is not running`);
@@ -324,7 +319,7 @@ export function serverVersion(ctx: Ctx): Cmd {
 // Opens the virtual file that will show the syntax tree
 //
 // The contents of the file come from the `TextDocumentContentProvider`
-export function syntaxTree(ctx: Ctx): Cmd {
+export function syntaxTree(ctx: CtxInit): Cmd {
     const tdcp = new (class implements vscode.TextDocumentContentProvider {
         readonly uri = vscode.Uri.parse("rust-analyzer-syntax-tree://syntaxtree/tree.rast");
         readonly eventEmitter = new vscode.EventEmitter<vscode.Uri>();
@@ -360,7 +355,7 @@ export function syntaxTree(ctx: Ctx): Cmd {
         ): Promise<string> {
             const rustEditor = ctx.activeRustEditor;
             if (!rustEditor) return "";
-            const client = await ctx.getClient();
+            const client = ctx.client;
 
             // When the range based query is enabled we take the range of the selection
             const range =
@@ -407,7 +402,7 @@ export function syntaxTree(ctx: Ctx): Cmd {
 // Opens the virtual file that will show the HIR of the function containing the cursor position
 //
 // The contents of the file come from the `TextDocumentContentProvider`
-export function viewHir(ctx: Ctx): Cmd {
+export function viewHir(ctx: CtxInit): Cmd {
     const tdcp = new (class implements vscode.TextDocumentContentProvider {
         readonly uri = vscode.Uri.parse("rust-analyzer-hir://viewHir/hir.rs");
         readonly eventEmitter = new vscode.EventEmitter<vscode.Uri>();
@@ -444,7 +439,7 @@ export function viewHir(ctx: Ctx): Cmd {
             const rustEditor = ctx.activeRustEditor;
             if (!rustEditor) return "";
 
-            const client = await ctx.getClient();
+            const client = ctx.client;
             const params = {
                 textDocument: client.code2ProtocolConverter.asTextDocumentIdentifier(
                     rustEditor.document
@@ -473,7 +468,7 @@ export function viewHir(ctx: Ctx): Cmd {
     };
 }
 
-export function viewFileText(ctx: Ctx): Cmd {
+export function viewFileText(ctx: CtxInit): Cmd {
     const tdcp = new (class implements vscode.TextDocumentContentProvider {
         readonly uri = vscode.Uri.parse("rust-analyzer-file-text://viewFileText/file.rs");
         readonly eventEmitter = new vscode.EventEmitter<vscode.Uri>();
@@ -509,7 +504,7 @@ export function viewFileText(ctx: Ctx): Cmd {
         ): Promise<string> {
             const rustEditor = ctx.activeRustEditor;
             if (!rustEditor) return "";
-            const client = await ctx.getClient();
+            const client = ctx.client;
 
             const params = client.code2ProtocolConverter.asTextDocumentIdentifier(
                 rustEditor.document
@@ -536,7 +531,7 @@ export function viewFileText(ctx: Ctx): Cmd {
     };
 }
 
-export function viewItemTree(ctx: Ctx): Cmd {
+export function viewItemTree(ctx: CtxInit): Cmd {
     const tdcp = new (class implements vscode.TextDocumentContentProvider {
         readonly uri = vscode.Uri.parse("rust-analyzer-item-tree://viewItemTree/itemtree.rs");
         readonly eventEmitter = new vscode.EventEmitter<vscode.Uri>();
@@ -572,7 +567,7 @@ export function viewItemTree(ctx: Ctx): Cmd {
         ): Promise<string> {
             const rustEditor = ctx.activeRustEditor;
             if (!rustEditor) return "";
-            const client = await ctx.getClient();
+            const client = ctx.client;
 
             const params = {
                 textDocument: client.code2ProtocolConverter.asTextDocumentIdentifier(
@@ -601,7 +596,7 @@ export function viewItemTree(ctx: Ctx): Cmd {
     };
 }
 
-function crateGraph(ctx: Ctx, full: boolean): Cmd {
+function crateGraph(ctx: CtxInit, full: boolean): Cmd {
     return async () => {
         const nodeModulesPath = vscode.Uri.file(path.join(ctx.extensionPath, "node_modules"));
 
@@ -618,7 +613,7 @@ function crateGraph(ctx: Ctx, full: boolean): Cmd {
         const params = {
             full: full,
         };
-        const client = await ctx.getClient();
+        const client = ctx.client;
         const dot = await client.sendRequest(ra.viewCrateGraph, params);
         const uri = panel.webview.asWebviewUri(nodeModulesPath);
 
@@ -664,18 +659,18 @@ function crateGraph(ctx: Ctx, full: boolean): Cmd {
     };
 }
 
-export function viewCrateGraph(ctx: Ctx): Cmd {
+export function viewCrateGraph(ctx: CtxInit): Cmd {
     return crateGraph(ctx, false);
 }
 
-export function viewFullCrateGraph(ctx: Ctx): Cmd {
+export function viewFullCrateGraph(ctx: CtxInit): Cmd {
     return crateGraph(ctx, true);
 }
 
 // Opens the virtual file that will show the syntax tree
 //
 // The contents of the file come from the `TextDocumentContentProvider`
-export function expandMacro(ctx: Ctx): Cmd {
+export function expandMacro(ctx: CtxInit): Cmd {
     function codeFormat(expanded: ra.ExpandedMacro): string {
         let result = `// Recursive expansion of ${expanded.name}! macro\n`;
         result += "// " + "=".repeat(result.length - 3);
@@ -691,7 +686,7 @@ export function expandMacro(ctx: Ctx): Cmd {
         async provideTextDocumentContent(_uri: vscode.Uri): Promise<string> {
             const editor = vscode.window.activeTextEditor;
             if (!editor) return "";
-            const client = await ctx.getClient();
+            const client = ctx.client;
 
             const position = editor.selection.active;
 
@@ -723,8 +718,8 @@ export function expandMacro(ctx: Ctx): Cmd {
     };
 }
 
-export function reloadWorkspace(ctx: Ctx): Cmd {
-    return async () => (await ctx.getClient()).sendRequest(ra.reloadWorkspace);
+export function reloadWorkspace(ctx: CtxInit): Cmd {
+    return async () => ctx.client.sendRequest(ra.reloadWorkspace);
 }
 
 async function showReferencesImpl(
@@ -743,13 +738,13 @@ async function showReferencesImpl(
     }
 }
 
-export function showReferences(ctx: Ctx): Cmd {
+export function showReferences(ctx: CtxInit): Cmd {
     return async (uri: string, position: lc.Position, locations: lc.Location[]) => {
-        await showReferencesImpl(await ctx.getClient(), uri, position, locations);
+        await showReferencesImpl(ctx.client, uri, position, locations);
     };
 }
 
-export function applyActionGroup(_ctx: Ctx): Cmd {
+export function applyActionGroup(_ctx: CtxInit): Cmd {
     return async (actions: { label: string; arguments: lc.CodeAction }[]) => {
         const selectedAction = await vscode.window.showQuickPick(actions);
         if (!selectedAction) return;
@@ -760,9 +755,9 @@ export function applyActionGroup(_ctx: Ctx): Cmd {
     };
 }
 
-export function gotoLocation(ctx: Ctx): Cmd {
+export function gotoLocation(ctx: CtxInit): Cmd {
     return async (locationLink: lc.LocationLink) => {
-        const client = await ctx.getClient();
+        const client = ctx.client;
         const uri = client.protocol2CodeConverter.asUri(locationLink.targetUri);
         let range = client.protocol2CodeConverter.asRange(locationLink.targetSelectionRange);
         // collapse the range to a cursor position
@@ -772,13 +767,13 @@ export function gotoLocation(ctx: Ctx): Cmd {
     };
 }
 
-export function openDocs(ctx: Ctx): Cmd {
+export function openDocs(ctx: CtxInit): Cmd {
     return async () => {
         const editor = vscode.window.activeTextEditor;
         if (!editor) {
             return;
         }
-        const client = await ctx.getClient();
+        const client = ctx.client;
 
         const position = editor.selection.active;
         const textDocument = { uri: editor.document.uri.toString() };
@@ -791,16 +786,16 @@ export function openDocs(ctx: Ctx): Cmd {
     };
 }
 
-export function cancelFlycheck(ctx: Ctx): Cmd {
+export function cancelFlycheck(ctx: CtxInit): Cmd {
     return async () => {
-        const client = await ctx.getClient();
+        const client = ctx.client;
         await client.sendRequest(ra.cancelFlycheck);
     };
 }
 
-export function resolveCodeAction(ctx: Ctx): Cmd {
+export function resolveCodeAction(ctx: CtxInit): Cmd {
     return async (params: lc.CodeAction) => {
-        const client = await ctx.getClient();
+        const client = ctx.client;
         params.command = undefined;
         const item = await client?.sendRequest(lc.CodeActionResolveRequest.type, params);
         if (!item?.edit) {
@@ -825,13 +820,13 @@ export function resolveCodeAction(ctx: Ctx): Cmd {
     };
 }
 
-export function applySnippetWorkspaceEditCommand(_ctx: Ctx): Cmd {
+export function applySnippetWorkspaceEditCommand(_ctx: CtxInit): Cmd {
     return async (edit: vscode.WorkspaceEdit) => {
         await applySnippetWorkspaceEdit(edit);
     };
 }
 
-export function run(ctx: Ctx): Cmd {
+export function run(ctx: CtxInit): Cmd {
     let prevRunnable: RunnableQuickPick | undefined;
 
     return async () => {
@@ -845,11 +840,11 @@ export function run(ctx: Ctx): Cmd {
     };
 }
 
-export function peekTests(ctx: Ctx): Cmd {
+export function peekTests(ctx: CtxInit): Cmd {
     return async () => {
         const editor = ctx.activeRustEditor;
         if (!editor) return;
-        const client = await ctx.getClient();
+        const client = ctx.client;
 
         await vscode.window.withProgress(
             {
@@ -878,7 +873,7 @@ export function peekTests(ctx: Ctx): Cmd {
     };
 }
 
-export function runSingle(ctx: Ctx): Cmd {
+export function runSingle(ctx: CtxInit): Cmd {
     return async (runnable: ra.Runnable) => {
         const editor = ctx.activeRustEditor;
         if (!editor) return;
@@ -895,7 +890,7 @@ export function runSingle(ctx: Ctx): Cmd {
     };
 }
 
-export function copyRunCommandLine(ctx: Ctx) {
+export function copyRunCommandLine(ctx: CtxInit) {
     let prevRunnable: RunnableQuickPick | undefined;
     return async () => {
         const item = await selectRunnable(ctx, prevRunnable);
@@ -907,7 +902,7 @@ export function copyRunCommandLine(ctx: Ctx) {
     };
 }
 
-export function debug(ctx: Ctx): Cmd {
+export function debug(ctx: CtxInit): Cmd {
     let prevDebuggee: RunnableQuickPick | undefined;
 
     return async () => {
@@ -920,13 +915,13 @@ export function debug(ctx: Ctx): Cmd {
     };
 }
 
-export function debugSingle(ctx: Ctx): Cmd {
+export function debugSingle(ctx: CtxInit): Cmd {
     return async (config: ra.Runnable) => {
         await startDebugSession(ctx, config);
     };
 }
 
-export function newDebugConfig(ctx: Ctx): Cmd {
+export function newDebugConfig(ctx: CtxInit): Cmd {
     return async () => {
         const item = await selectRunnable(ctx, undefined, true, false);
         if (!item) return;

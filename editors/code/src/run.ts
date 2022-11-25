@@ -3,7 +3,7 @@ import * as lc from "vscode-languageclient";
 import * as ra from "./lsp_ext";
 import * as tasks from "./tasks";
 
-import { Ctx } from "./ctx";
+import { CtxInit } from "./ctx";
 import { makeDebugConfig } from "./debug";
 import { Config, RunnableEnvCfg } from "./config";
 
@@ -12,7 +12,7 @@ const quickPickButtons = [
 ];
 
 export async function selectRunnable(
-    ctx: Ctx,
+    ctx: CtxInit,
     prevRunnable?: RunnableQuickPick,
     debuggeeOnly = false,
     showButtons: boolean = true
@@ -20,7 +20,7 @@ export async function selectRunnable(
     const editor = ctx.activeRustEditor;
     if (!editor) return;
 
-    const client = await ctx.getClient();
+    const client = ctx.client;
     const textDocument: lc.TextDocumentIdentifier = {
         uri: editor.document.uri.toString(),
     };

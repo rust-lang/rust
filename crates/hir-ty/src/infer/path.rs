@@ -157,7 +157,7 @@ impl<'a> InferenceContext<'a> {
                     remaining_segments_for_ty,
                     true,
                 );
-                if let TyKind::Error = ty.kind(Interner) {
+                if ty.is_unknown() {
                     return None;
                 }
 

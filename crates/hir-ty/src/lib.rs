@@ -81,7 +81,20 @@ pub type PlaceholderIndex = chalk_ir::PlaceholderIndex;
 pub type VariableKind = chalk_ir::VariableKind<Interner>;
 pub type VariableKinds = chalk_ir::VariableKinds<Interner>;
 pub type CanonicalVarKinds = chalk_ir::CanonicalVarKinds<Interner>;
+/// Represents generic parameters and an item bound by them. When the item has parent, the binders
+/// also contain the generic parameters for its parent. See chalk's documentation for details.
+///
+/// One thing to keep in mind when working with `Binders` (and `Substitution`s, which represent
+/// generic arguments) in rust-analyzer is that the ordering within *is* significant - the generic
+/// parameters/arguments for an item MUST come before those for its parent. This is to facilitate
+/// the integration with chalk-solve, which mildly puts constraints as such. See #13335 for its
+/// motivation in detail.
 pub type Binders<T> = chalk_ir::Binders<T>;
+/// Interned list of generic arguments for an item. When an item has parent, the `Substitution` for
+/// it contains generic arguments for both its parent and itself. See chalk's documentation for
+/// details.
+///
+/// See `Binders` for the constraint on the ordering.
 pub type Substitution = chalk_ir::Substitution<Interner>;
 pub type GenericArg = chalk_ir::GenericArg<Interner>;
 pub type GenericArgData = chalk_ir::GenericArgData<Interner>;
@@ -123,14 +136,6 @@ pub type Solution = chalk_solve::Solution<Interner>;
 pub type ConstrainedSubst = chalk_ir::ConstrainedSubst<Interner>;
 pub type Guidance = chalk_solve::Guidance<Interner>;
 pub type WhereClause = chalk_ir::WhereClause<Interner>;
-
-// FIXME: get rid of this
-pub fn subst_prefix(s: &Substitution, n: usize) -> Substitution {
-    Substitution::from_iter(
-        Interner,
-        s.as_slice(Interner)[..std::cmp::min(s.len(Interner), n)].iter().cloned(),
-    )
-}
 
 /// Return an index of a parameter in the generic type parameter list by it's id.
 pub fn param_idx(db: &dyn HirDatabase, id: TypeOrConstParamId) -> Option<usize> {
@@ -382,7 +387,6 @@ pub(crate) fn fold_tys_and_consts<T: HasInterner<Interner = Interner> + TypeFold
 pub fn replace_errors_with_variables<T>(t: &T) -> Canonical<T>
 where
     T: HasInterner<Interner = Interner> + TypeFoldable<Interner> + Clone,
-    T: HasInterner<Interner = Interner>,
 {
     use chalk_ir::{
         fold::{FallibleTypeFolder, TypeSuperFoldable},

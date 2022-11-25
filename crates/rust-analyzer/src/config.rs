@@ -32,7 +32,7 @@ use vfs::AbsPathBuf;
 use crate::{
     caps::completion_item_edit_resolve,
     diagnostics::DiagnosticsMapConfig,
-    line_index::OffsetEncoding,
+    line_index::PositionEncoding,
     lsp_ext::{self, supports_utf8, WorkspaceSymbolSearchKind, WorkspaceSymbolSearchScope},
 };
 
@@ -948,11 +948,11 @@ impl Config {
         .is_some()
     }
 
-    pub fn offset_encoding(&self) -> OffsetEncoding {
+    pub fn position_encoding(&self) -> PositionEncoding {
         if supports_utf8(&self.caps) {
-            OffsetEncoding::Utf8
+            PositionEncoding::Utf8
         } else {
-            OffsetEncoding::Utf16
+            PositionEncoding::Utf16
         }
     }
 
