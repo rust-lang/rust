@@ -473,7 +473,7 @@ impl Miri {
         miri: &Path,
         target: TargetSelection,
     ) -> String {
-        let miri_sysroot = builder.out.join(compiler.host.triple).join("miri-sysrot");
+        let miri_sysroot = builder.out.join(compiler.host.triple).join("miri-sysroot");
         let mut cargo = tool::prepare_tool_cargo(
             builder,
             compiler,
