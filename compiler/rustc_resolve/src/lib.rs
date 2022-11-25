@@ -1984,7 +1984,7 @@ impl<'a> Resolver<'a> {
                     .find(|a| a.has_name(sym::rustc_legacy_const_generics))?;
                 let mut ret = Vec::new();
                 for meta in attr.meta_item_list()? {
-                    match meta.literal()?.kind {
+                    match meta.lit()?.kind {
                         LitKind::Int(a, _) => ret.push(a as usize),
                         _ => panic!("invalid arg index"),
                     }

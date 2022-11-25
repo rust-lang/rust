@@ -489,7 +489,7 @@ pub enum NestedMetaItem {
     /// A literal.
     ///
     /// E.g., `"foo"`, `64`, `true`.
-    Literal(Lit),
+    Lit(MetaItemLit),
 }
 
 /// A spanned compile-time attribute item.
@@ -518,7 +518,7 @@ pub enum MetaItemKind {
     /// Name value meta item.
     ///
     /// E.g., `feature = "foo"` as in `#[feature = "foo"]`.
-    NameValue(Lit),
+    NameValue(MetaItemLit),
 }
 
 /// A block (`{ .. }`).
@@ -1571,12 +1571,12 @@ pub enum AttrArgs {
 }
 
 // The RHS of an `AttrArgs::Eq` starts out as an expression. Once macro
-// expansion is completed, all cases end up either as a literal, which is the
-// form used after lowering to HIR, or as an error.
+// expansion is completed, all cases end up either as a meta item literal,
+// which is the form used after lowering to HIR, or as an error.
 #[derive(Clone, Encodable, Decodable, Debug)]
 pub enum AttrArgsEq {
     Ast(P<Expr>),
-    Hir(Lit),
+    Hir(MetaItemLit),
 }
 
 impl AttrArgs {
@@ -1698,19 +1698,18 @@ pub enum StrStyle {
     Raw(u8),
 }
 
-/// An AST literal.
+/// A literal in a meta item.
 #[derive(Clone, Encodable, Decodable, Debug, HashStable_Generic)]
-pub struct Lit {
+pub struct MetaItemLit {
     /// The original literal token as written in source code.
     pub token_lit: token::Lit,
     /// The "semantic" representation of the literal lowered from the original tokens.
     /// Strings are unescaped, hexadecimal forms are eliminated, etc.
-    /// FIXME: Remove this and only create the semantic representation during lowering to HIR.
     pub kind: LitKind,
     pub span: Span,
 }
 
-/// Same as `Lit`, but restricted to string literals.
+/// Similar to `MetaItemLit`, but restricted to string literals.
 #[derive(Clone, Copy, Encodable, Decodable, Debug)]
 pub struct StrLit {
     /// The original literal token as written in source code.
@@ -1719,7 +1718,6 @@ pub struct StrLit {
     pub suffix: Option<Symbol>,
     pub span: Span,
     /// The unescaped "semantic" representation of the literal lowered from the original token.
-    /// FIXME: Remove this and only create the semantic representation during lowering to HIR.
     pub symbol_unescaped: Symbol,
 }
 
@@ -1755,6 +1753,8 @@ pub enum LitFloatType {
     Unsuffixed,
 }
 
+/// This type is used within both `ast::MetaItemLit` and `hir::Lit`.
+///
 /// Note that the entire literal (including the suffix) is considered when
 /// deciding the `LitKind`. This means that float literals like `1f32` are
 /// classified by this type as `Float`. This is different to `token::LitKind`
@@ -3068,9 +3068,9 @@ mod size_asserts {
     static_assert_size!(Impl, 184);
     static_assert_size!(Item, 184);
     static_assert_size!(ItemKind, 112);
-    static_assert_size!(Lit, 48);
     static_assert_size!(LitKind, 24);
     static_assert_size!(Local, 72);
+    static_assert_size!(MetaItemLit, 48);
     static_assert_size!(Param, 40);
     static_assert_size!(Pat, 88);
     static_assert_size!(Path, 24);

@@ -328,8 +328,8 @@ impl<'a> State<'a> {
                 self.print_token_literal(token_lit, expr.span);
             }
             ast::ExprKind::IncludedBytes(ref bytes) => {
-                let lit = ast::Lit::from_included_bytes(bytes, expr.span);
-                self.print_literal(&lit)
+                let lit = ast::LitKind::ByteStr(bytes.clone()).to_token_lit();
+                self.print_token_literal(lit, expr.span)
             }
             ast::ExprKind::Cast(ref expr, ref ty) => {
                 let prec = AssocOp::As.precedence() as i8;
