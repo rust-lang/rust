@@ -101,7 +101,7 @@ pub fn compile_codegen_unit<'tcx>(tcx: TyCtxt<'tcx>, cgu_name: Symbol, supports_
         context.add_command_line_option("-m64");
         context.add_command_line_option("-mbmi");
         context.add_command_line_option("-mgfni");
-        context.add_command_line_option("-mavxvnni");
+        //context.add_command_line_option("-mavxvnni"); // The CI doesn't support this option.
         context.add_command_line_option("-mf16c");
         context.add_command_line_option("-maes");
         context.add_command_line_option("-mxsavec");
