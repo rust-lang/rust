@@ -84,6 +84,8 @@ Original by Dempfi (https://github.com/dempfi/ayu)
 	--crate-search-div-hover-filter: invert(98%) sepia(12%) saturate(81%) hue-rotate(343deg)
 		brightness(113%) contrast(76%);
 	--crate-search-hover-border: #e0e0e0;
+	--source-sidebar-background-selected: #14191f;
+	--source-sidebar-background-hover: #14191f;
 }
 
 h1, h2, h3, h4 {
@@ -208,12 +210,8 @@ pre.rust .kw-2, pre.rust .prelude-ty {}
 	color: #fff;
 }
 #source-sidebar div.files > a:hover, details.dir-entry summary:hover,
-#source-sidebar div.files > a:focus, details.dir-entry summary:focus {
-	background-color: #14191f;
-	color: #ffb44c;
-}
+#source-sidebar div.files > a:focus, details.dir-entry summary:focus,
 #source-sidebar div.files > a.selected {
-	background-color: #14191f;
 	color: #ffb44c;
 }
 
