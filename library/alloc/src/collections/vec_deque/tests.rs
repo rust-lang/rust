@@ -257,13 +257,14 @@ fn test_swap_panic() {
 #[test]
 fn test_reserve_exact() {
     let mut tester: VecDeque<i32> = VecDeque::with_capacity(1);
-    assert!(tester.capacity() == 1);
+    assert_eq!(tester.capacity(), 1);
     tester.reserve_exact(50);
-    assert!(tester.capacity() >= 50);
+    assert_eq!(tester.capacity(), 50);
     tester.reserve_exact(40);
-    assert!(tester.capacity() >= 40);
+    // reserving won't shrink the buffer
+    assert_eq!(tester.capacity(), 50);
     tester.reserve_exact(200);
-    assert!(tester.capacity() >= 200);
+    assert_eq!(tester.capacity(), 200);
 }
 
 #[test]
@@ -479,7 +480,7 @@ fn make_contiguous_big_tail() {
     assert_eq!(tester.capacity(), 15);
     assert_eq!((&[9, 8, 7, 6, 5, 4, 3] as &[_], &[0, 1, 2] as &[_]), tester.as_slices());
 
-    let expected_start = tester.wrap_idx(tester.len);
+    let expected_start = tester.to_physical_idx(tester.len);
     tester.make_contiguous();
     assert_eq!(tester.head, expected_start);
     assert_eq!((&[9, 8, 7, 6, 5, 4, 3, 0, 1, 2] as &[_], &[] as &[_]), tester.as_slices());
@@ -679,7 +680,7 @@ fn test_drain() {
 
     let cap = tester.capacity();
     for len in 0..=cap {
-        for head in 0..=cap {
+        for head in 0..cap {
             for drain_start in 0..=len {
                 for drain_end in drain_start..=len {
                     tester.head = head;

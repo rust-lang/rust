@@ -39,15 +39,6 @@ impl<T> Clone for Iter<'_, T> {
 impl<'a, T> Iterator for Iter<'a, T> {
     type Item = &'a T;
 
-    fn advance_by(&mut self, n: usize) -> Result<(), usize> {
-        let m = match self.i1.advance_by(n) {
-            Ok(_) => return Ok(()),
-            Err(m) => m,
-        };
-        mem::swap(&mut self.i1, &mut self.i2);
-        self.i1.advance_by(n - m).map_err(|o| o + m)
-    }
-
     #[inline]
     fn next(&mut self) -> Option<&'a T> {
         match self.i1.next() {
@@ -64,6 +55,15 @@ impl<'a, T> Iterator for Iter<'a, T> {
         }
     }
 
+    fn advance_by(&mut self, n: usize) -> Result<(), usize> {
+        let m = match self.i1.advance_by(n) {
+            Ok(_) => return Ok(()),
+            Err(m) => m,
+        };
+        mem::swap(&mut self.i1, &mut self.i2);
+        self.i1.advance_by(n - m).map_err(|o| o + m)
+    }
+
     #[inline]
     fn size_hint(&self) -> (usize, Option<usize>) {
         let len = self.len();
@@ -75,17 +75,16 @@ impl<'a, T> Iterator for Iter<'a, T> {
         F: FnMut(Acc, Self::Item) -> Acc,
     {
         let accum = self.i1.fold(accum, &mut f);
-        self.i2.fold(accum, f)
+        self.i2.fold(accum, &mut f)
     }
 
     fn try_fold<B, F, R>(&mut self, init: B, mut f: F) -> R
     where
-        Self: Sized,
         F: FnMut(B, Self::Item) -> R,
         R: Try<Output = B>,
     {
         let acc = self.i1.try_fold(init, &mut f)?;
-        self.i2.try_fold(acc, f)
+        self.i2.try_fold(acc, &mut f)
     }
 
     #[inline]
@@ -117,7 +116,7 @@ impl<'a, T> DoubleEndedIterator for Iter<'a, T> {
             None => {
                 // most of the time, the iterator will either always
                 // call next(), or always call next_back(). By swapping
-                // the iterators once the first one is empty, we ensure
+                // the iterators once the second one is empty, we ensure
                 // that the first branch is taken as often as possible,
                 // without sacrificing correctness, as i2 is empty anyways
                 mem::swap(&mut self.i1, &mut self.i2);
@@ -141,17 +140,16 @@ impl<'a, T> DoubleEndedIterator for Iter<'a, T> {
         F: FnMut(Acc, Self::Item) -> Acc,
     {
         let accum = self.i2.rfold(accum, &mut f);
-        self.i1.rfold(accum, f)
+        self.i1.rfold(accum, &mut f)
     }
 
     fn try_rfold<B, F, R>(&mut self, init: B, mut f: F) -> R
     where
-        Self: Sized,
         F: FnMut(B, Self::Item) -> R,
         R: Try<Output = B>,
     {
         let acc = self.i2.try_rfold(init, &mut f)?;
-        self.i1.try_rfold(acc, f)
+        self.i1.try_rfold(acc, &mut f)
     }
 }
 

@@ -38,7 +38,7 @@ where
                 // and `room == self.capacity() - self.len`
                 //   => `self.len + room <= self.capacity()`
                 self.write_iter_wrapping(
-                    self.wrap_idx(self.len),
+                    self.to_physical_idx(self.len),
                     ByRefSized(&mut iter).take(room),
                     room,
                 );
@@ -63,8 +63,9 @@ where
             );
             self.reserve(additional);
 
-            let written =
-                unsafe { self.write_iter_wrapping(self.wrap_idx(self.len), iter, additional) };
+            let written = unsafe {
+                self.write_iter_wrapping(self.to_physical_idx(self.len), iter, additional)
+            };
 
             debug_assert_eq!(
                 additional, written,
@@ -87,7 +88,7 @@ impl<T, A: Allocator> SpecExtend<T, vec::IntoIter<T>> for VecDeque<T, A> {
         self.reserve(slice.len());
 
         unsafe {
-            self.copy_slice(self.wrap_idx(self.len), slice);
+            self.copy_slice(self.to_physical_idx(self.len), slice);
             self.len += slice.len();
         }
         iterator.forget_remaining_elements();
@@ -113,7 +114,7 @@ where
         self.reserve(slice.len());
 
         unsafe {
-            self.copy_slice(self.wrap_idx(self.len), slice);
+            self.copy_slice(self.to_physical_idx(self.len), slice);
             self.len += slice.len();
         }
     }

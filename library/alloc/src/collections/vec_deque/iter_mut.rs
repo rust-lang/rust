@@ -67,17 +67,16 @@ impl<'a, T> Iterator for IterMut<'a, T> {
         F: FnMut(Acc, Self::Item) -> Acc,
     {
         let accum = self.i1.fold(accum, &mut f);
-        self.i2.fold(accum, f)
+        self.i2.fold(accum, &mut f)
     }
 
     fn try_fold<B, F, R>(&mut self, init: B, mut f: F) -> R
     where
-        Self: Sized,
         F: FnMut(B, Self::Item) -> R,
         R: Try<Output = B>,
     {
         let acc = self.i1.try_fold(init, &mut f)?;
-        self.i2.try_fold(acc, f)
+        self.i2.try_fold(acc, &mut f)
     }
 
     #[inline]
@@ -133,17 +132,16 @@ impl<'a, T> DoubleEndedIterator for IterMut<'a, T> {
         F: FnMut(Acc, Self::Item) -> Acc,
     {
         let accum = self.i2.rfold(accum, &mut f);
-        self.i1.rfold(accum, f)
+        self.i1.rfold(accum, &mut f)
     }
 
     fn try_rfold<B, F, R>(&mut self, init: B, mut f: F) -> R
     where
-        Self: Sized,
         F: FnMut(B, Self::Item) -> R,
         R: Try<Output = B>,
     {
         let acc = self.i2.try_rfold(init, &mut f)?;
-        self.i1.try_rfold(acc, f)
+        self.i1.try_rfold(acc, &mut f)
     }
 }
 

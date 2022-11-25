@@ -53,27 +53,36 @@ impl<'a, T, A: Allocator> Drain<'a, T, A> {
     }
 
     // Only returns pointers to the slices, as that's
-    // all we need to drop them
-    fn as_slices(&self) -> (*mut [T], *mut [T]) {
+    // all we need to drop them. May only be called if `self.remaining != 0`.
+    unsafe fn as_slices(&self) -> (*mut [T], *mut [T]) {
         unsafe {
             let deque = self.deque.as_ref();
-            let wrapped_start = deque.wrap_idx(self.idx);
+            // FIXME: This is doing almost exactly the same thing as the else branch in `VecDeque::slice_ranges`.
+            // Unfortunately, we can't just call `slice_ranges` here, as the deque's `len` is currently
+            // just `drain_start`, so the range check would (almost) always panic. Between temporarily
+            // adjusting the deques `len` to call `slice_ranges`, and just copy pasting the `slice_ranges`
+            // implementation, this seemed like the less hacky solution, though it might be good to
+            // find a better one in the future.
 
-            if self.remaining <= deque.capacity() - wrapped_start {
-                // there's only one contigous slice
-                (
-                    ptr::slice_from_raw_parts_mut(deque.ptr().add(wrapped_start), self.remaining),
-                    &mut [] as *mut [T],
-                )
+            // because `self.remaining != 0`, we know that `self.idx < deque.original_len`, so it's a valid
+            // logical index.
+            let wrapped_start = deque.to_physical_idx(self.idx);
+
+            let head_len = deque.capacity() - wrapped_start;
+
+            let (a_range, b_range) = if head_len >= self.remaining {
+                (wrapped_start..wrapped_start + self.remaining, 0..0)
             } else {
-                let head_len = deque.capacity() - wrapped_start;
-                // this will never overflow due to the if condition
                 let tail_len = self.remaining - head_len;
-                (
-                    ptr::slice_from_raw_parts_mut(deque.ptr().add(wrapped_start), head_len),
-                    ptr::slice_from_raw_parts_mut(deque.ptr(), tail_len),
-                )
-            }
+                (wrapped_start..deque.capacity(), 0..tail_len)
+            };
+
+            // SAFETY: the range `self.idx..self.idx+self.remaining` lies strictly inside
+            // the range `0..deque.original_len`. because of this, and because of the fact
+            // that we acquire `a_range` and `b_range` exactly like `slice_ranges` would,
+            // it's guaranteed that `a_range` and `b_range` represent valid ranges into
+            // the deques buffer.
+            (deque.buffer_range(a_range), deque.buffer_range(b_range))
         }
     }
 }
@@ -103,8 +112,9 @@ impl<T, A: Allocator> Drop for Drain<'_, T, A> {
         impl<'r, 'a, T, A: Allocator> Drop for DropGuard<'r, 'a, T, A> {
             fn drop(&mut self) {
                 if self.0.remaining != 0 {
-                    let (front, back) = self.0.as_slices();
                     unsafe {
+                        // SAFETY: We just checked that `self.remaining != 0`.
+                        let (front, back) = self.0.as_slices();
                         ptr::drop_in_place(front);
                         ptr::drop_in_place(back);
                     }
@@ -133,7 +143,7 @@ impl<T, A: Allocator> Drop for Drain<'_, T, A> {
                         source_deque.len = 0;
                     }
                     (0, _) => {
-                        source_deque.head = source_deque.wrap_idx(drain_len);
+                        source_deque.head = source_deque.to_physical_idx(drain_len);
                         source_deque.len = orig_len - drain_len;
                     }
                     (_, 0) => {
@@ -143,15 +153,15 @@ impl<T, A: Allocator> Drop for Drain<'_, T, A> {
                         if head_len <= tail_len {
                             source_deque.wrap_copy(
                                 source_deque.head,
-                                source_deque.wrap_idx(drain_len),
+                                source_deque.to_physical_idx(drain_len),
                                 head_len,
                             );
-                            source_deque.head = source_deque.wrap_idx(drain_len);
+                            source_deque.head = source_deque.to_physical_idx(drain_len);
                             source_deque.len = orig_len - drain_len;
                         } else {
                             source_deque.wrap_copy(
-                                source_deque.wrap_idx(head_len + drain_len),
-                                source_deque.wrap_idx(head_len),
+                                source_deque.to_physical_idx(head_len + drain_len),
+                                source_deque.to_physical_idx(head_len),
                                 tail_len,
                             );
                             source_deque.len = orig_len - drain_len;
@@ -162,14 +172,17 @@ impl<T, A: Allocator> Drop for Drain<'_, T, A> {
         }
 
         let guard = DropGuard(self);
-        let (front, back) = guard.0.as_slices();
-        unsafe {
-            // since idx is a logical index, we don't need to worry about wrapping.
-            guard.0.idx += front.len();
-            guard.0.remaining -= front.len();
-            ptr::drop_in_place(front);
-            guard.0.remaining = 0;
-            ptr::drop_in_place(back);
+        if guard.0.remaining != 0 {
+            unsafe {
+                // SAFETY: We just checked that `self.remaining != 0`.
+                let (front, back) = guard.0.as_slices();
+                // since idx is a logical index, we don't need to worry about wrapping.
+                guard.0.idx += front.len();
+                guard.0.remaining -= front.len();
+                ptr::drop_in_place(front);
+                guard.0.remaining = 0;
+                ptr::drop_in_place(back);
+            }
         }
 
         // Dropping `guard` handles moving the remaining elements into place.
@@ -185,7 +198,7 @@ impl<T, A: Allocator> Iterator for Drain<'_, T, A> {
         if self.remaining == 0 {
             return None;
         }
-        let wrapped_idx = unsafe { self.deque.as_ref().wrap_idx(self.idx) };
+        let wrapped_idx = unsafe { self.deque.as_ref().to_physical_idx(self.idx) };
         self.idx += 1;
         self.remaining -= 1;
         Some(unsafe { self.deque.as_mut().buffer_read(wrapped_idx) })
@@ -206,7 +219,7 @@ impl<T, A: Allocator> DoubleEndedIterator for Drain<'_, T, A> {
             return None;
         }
         self.remaining -= 1;
-        let wrapped_idx = unsafe { self.deque.as_ref().wrap_idx(self.idx + self.remaining) };
+        let wrapped_idx = unsafe { self.deque.as_ref().to_physical_idx(self.idx + self.remaining) };
         Some(unsafe { self.deque.as_mut().buffer_read(wrapped_idx) })
     }
 }

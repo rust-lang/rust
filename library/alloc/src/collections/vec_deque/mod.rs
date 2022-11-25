@@ -91,7 +91,12 @@ pub struct VecDeque<
     T,
     #[unstable(feature = "allocator_api", issue = "32838")] A: Allocator = Global,
 > {
+    // `self[0]`, if it exists, is `buf[head]`.
+    // `head < buf.capacity()`, unless `buf.capacity() == 0` when `head == 0`.
     head: usize,
+    // the number of initialized elements, starting from the one at `head` and potentially wrapping around.
+    // if `len == 0`, the exact value of `head` is unimportant.
+    // if `T` is zero-Sized, then `self.len <= usize::MAX`, otherwise `self.len <= isize::MAX as usize`.
     len: usize,
     buf: RawVec<T, A>,
 }
@@ -106,15 +111,7 @@ impl<T: Clone, A: Allocator + Clone> Clone for VecDeque<T, A> {
 
     fn clone_from(&mut self, other: &Self) {
         self.clear();
-        self.head = 0;
-        self.reserve(other.len);
-
-        let (a, b) = other.as_slices();
-        unsafe {
-            self.write_iter(0, a.iter().cloned(), &mut 0);
-            self.write_iter(a.len(), b.iter().cloned(), &mut 0);
-        }
-        self.len = other.len;
+        self.extend(other.iter().cloned());
     }
 }
 
@@ -133,13 +130,11 @@ unsafe impl<#[may_dangle] T, A: Allocator> Drop for VecDeque<T, A> {
             }
         }
 
-        if mem::needs_drop::<T>() {
-            let (front, back) = self.as_mut_slices();
-            unsafe {
-                let _back_dropper = Dropper(back);
-                // use drop for [T]
-                ptr::drop_in_place(front);
-            }
+        let (front, back) = self.as_mut_slices();
+        unsafe {
+            let _back_dropper = Dropper(back);
+            // use drop for [T]
+            ptr::drop_in_place(front);
         }
         // RawVec handles deallocation
     }
@@ -175,6 +170,15 @@ impl<T, A: Allocator> VecDeque<T, A> {
         }
     }
 
+    /// Returns a slice pointer into the buffer.
+    /// `range` must lie inside `0..self.capacity()`.
+    #[inline]
+    unsafe fn buffer_range(&self, range: Range<usize>) -> *mut [T] {
+        unsafe {
+            ptr::slice_from_raw_parts_mut(self.ptr().add(range.start), range.end - range.start)
+        }
+    }
+
     /// Returns `true` if the buffer is at full capacity.
     #[inline]
     fn is_full(&self) -> bool {
@@ -189,7 +193,7 @@ impl<T, A: Allocator> VecDeque<T, A> {
     }
 
     #[inline]
-    fn wrap_idx(&self, idx: usize) -> usize {
+    fn to_physical_idx(&self, idx: usize) -> usize {
         self.wrap_add(self.head, idx)
     }
 
@@ -473,6 +477,10 @@ impl<T, A: Allocator> VecDeque<T, A> {
         debug_assert!(new_capacity >= old_capacity);
 
         // Move the shortest contiguous section of the ring buffer
+        //
+        // H := head
+        // L := last element (`self.to_physical_idx(self.len - 1)`)
+        //
         //    H           L
         //   [o o o o o o o . ]
         //    H           L
@@ -597,7 +605,7 @@ impl<T, A: Allocator> VecDeque<T, A> {
     #[stable(feature = "rust1", since = "1.0.0")]
     pub fn get(&self, index: usize) -> Option<&T> {
         if index < self.len {
-            let idx = self.wrap_idx(index);
+            let idx = self.to_physical_idx(index);
             unsafe { Some(&*self.ptr().add(idx)) }
         } else {
             None
@@ -626,7 +634,7 @@ impl<T, A: Allocator> VecDeque<T, A> {
     #[stable(feature = "rust1", since = "1.0.0")]
     pub fn get_mut(&mut self, index: usize) -> Option<&mut T> {
         if index < self.len {
-            let idx = self.wrap_idx(index);
+            let idx = self.to_physical_idx(index);
             unsafe { Some(&mut *self.ptr().add(idx)) }
         } else {
             None
@@ -660,8 +668,8 @@ impl<T, A: Allocator> VecDeque<T, A> {
     pub fn swap(&mut self, i: usize, j: usize) {
         assert!(i < self.len());
         assert!(j < self.len());
-        let ri = self.wrap_idx(i);
-        let rj = self.wrap_idx(j);
+        let ri = self.to_physical_idx(i);
+        let rj = self.to_physical_idx(j);
         unsafe { ptr::swap(self.ptr().add(ri), self.ptr().add(rj)) }
     }
 
@@ -913,6 +921,8 @@ impl<T, A: Allocator> VecDeque<T, A> {
             if self.len == 0 {
                 self.head = 0;
             } else if self.head >= target_cap && tail_outside {
+                //  H := head
+                //  L := last element
                 //                    H           L
                 //   [. . . . . . . . o o o o o o o . ]
                 //    H           L
@@ -923,6 +933,8 @@ impl<T, A: Allocator> VecDeque<T, A> {
                 }
                 self.head = 0;
             } else if self.head < target_cap && tail_outside {
+                //  H := head
+                //  L := last element
                 //          H           L
                 //   [. . . o o o o o o o . . . . . . ]
                 //      L   H
@@ -932,6 +944,8 @@ impl<T, A: Allocator> VecDeque<T, A> {
                     self.copy_nonoverlapping(target_cap, 0, len);
                 }
             } else if self.head >= target_cap {
+                //  H := head
+                //  L := last element
                 //            L                   H
                 //   [o o o o o . . . . . . . . . o o ]
                 //            L   H
@@ -995,11 +1009,6 @@ impl<T, A: Allocator> VecDeque<T, A> {
         //   so no value is dropped twice if `drop_in_place` panics
         unsafe {
             if len >= self.len {
-                return;
-            }
-
-            if !mem::needs_drop::<T>() {
-                self.len = len;
                 return;
             }
 
@@ -1102,18 +1111,10 @@ impl<T, A: Allocator> VecDeque<T, A> {
     #[inline]
     #[stable(feature = "deque_extras_15", since = "1.5.0")]
     pub fn as_slices(&self) -> (&[T], &[T]) {
-        if self.is_contiguous() {
-            (unsafe { slice::from_raw_parts(self.ptr().add(self.head), self.len) }, &[])
-        } else {
-            let head_len = self.capacity() - self.head;
-            let tail_len = self.len - head_len;
-            unsafe {
-                (
-                    slice::from_raw_parts(self.ptr().add(self.head), head_len),
-                    slice::from_raw_parts(self.ptr(), tail_len),
-                )
-            }
-        }
+        let (a_range, b_range) = self.slice_ranges(..);
+        // SAFETY: `slice_ranges` always returns valid ranges into
+        // the physical buffer.
+        unsafe { (&*self.buffer_range(a_range), &*self.buffer_range(b_range)) }
     }
 
     /// Returns a pair of slices which contain, in order, the contents of the
@@ -1144,18 +1145,10 @@ impl<T, A: Allocator> VecDeque<T, A> {
     #[inline]
     #[stable(feature = "deque_extras_15", since = "1.5.0")]
     pub fn as_mut_slices(&mut self) -> (&mut [T], &mut [T]) {
-        if self.is_contiguous() {
-            (unsafe { slice::from_raw_parts_mut(self.ptr().add(self.head), self.len) }, &mut [])
-        } else {
-            let head_len = self.capacity() - self.head;
-            let tail_len = self.len - head_len;
-            unsafe {
-                (
-                    slice::from_raw_parts_mut(self.ptr().add(self.head), head_len),
-                    slice::from_raw_parts_mut(self.ptr(), tail_len),
-                )
-            }
-        }
+        let (a_range, b_range) = self.slice_ranges(..);
+        // SAFETY: `slice_ranges` always returns valid ranges into
+        // the physical buffer.
+        unsafe { (&mut *self.buffer_range(a_range), &mut *self.buffer_range(b_range)) }
     }
 
     /// Returns the number of elements in the deque.
@@ -1192,18 +1185,37 @@ impl<T, A: Allocator> VecDeque<T, A> {
         self.len == 0
     }
 
+    /// Given a range into the logical buffer of the deque, this function
+    /// return two ranges into the physical buffer that correspond to
+    /// the given range.
     fn slice_ranges<R>(&self, range: R) -> (Range<usize>, Range<usize>)
     where
         R: RangeBounds<usize>,
     {
         let Range { start, end } = slice::range(range, ..self.len);
-        let a_len = self.len.min(self.capacity() - self.head);
-        if end <= a_len {
-            (start..end, 0..0)
-        } else if start >= a_len {
-            (0..0, start - a_len..end - a_len)
+        let len = end - start;
+
+        if len == 0 {
+            (0..0, 0..0)
         } else {
-            (start..a_len, 0..end - a_len)
+            // `slice::range` guarantees that `start <= end <= self.len`.
+            // because `len != 0`, we know that `start < end`, so `start < self.len`
+            // and the indexing is valid.
+            let wrapped_start = self.to_physical_idx(start);
+
+            // this subtraction can never overflow because `wrapped_start` is
+            // at most `self.capacity()` (and if `self.capacity != 0`, then `wrapped_start` is strictly less
+            // than `self.capacity`).
+            let head_len = self.capacity() - wrapped_start;
+
+            if head_len >= len {
+                // we know that `len + wrapped_start <= self.capacity <= usize::MAX`, so this addition can't overflow
+                (wrapped_start..wrapped_start + len, 0..0)
+            } else {
+                // can't overflow because of the if condition
+                let tail_len = len - head_len;
+                (wrapped_start..self.capacity(), 0..tail_len)
+            }
         }
     }
 
@@ -1233,9 +1245,14 @@ impl<T, A: Allocator> VecDeque<T, A> {
     where
         R: RangeBounds<usize>,
     {
-        let (a, b) = self.as_slices();
         let (a_range, b_range) = self.slice_ranges(range);
-        Iter::new(a[a_range].iter(), b[b_range].iter())
+        // SAFETY: The ranges returned by `slice_ranges`
+        // are valid ranges into the physical buffer, so
+        // it's ok to pass them to `buffer_range` and
+        // dereference the result.
+        let a = unsafe { &*self.buffer_range(a_range) };
+        let b = unsafe { &*self.buffer_range(b_range) };
+        Iter::new(a.iter(), b.iter())
     }
 
     /// Creates an iterator that covers the specified mutable range in the deque.
@@ -1269,8 +1286,13 @@ impl<T, A: Allocator> VecDeque<T, A> {
         R: RangeBounds<usize>,
     {
         let (a_range, b_range) = self.slice_ranges(range);
-        let (a, b) = self.as_mut_slices();
-        IterMut::new(a[a_range].iter_mut(), b[b_range].iter_mut())
+        // SAFETY: The ranges returned by `slice_ranges`
+        // are valid ranges into the physical buffer, so
+        // it's ok to pass them to `buffer_range` and
+        // dereference the result.
+        let a = unsafe { &mut *self.buffer_range(a_range) };
+        let b = unsafe { &mut *self.buffer_range(b_range) };
+        IterMut::new(a.iter_mut(), b.iter_mut())
     }
 
     /// Removes the specified range from the deque in bulk, returning all
@@ -1509,7 +1531,7 @@ impl<T, A: Allocator> VecDeque<T, A> {
             None
         } else {
             let old_head = self.head;
-            self.head = self.wrap_idx(1);
+            self.head = self.to_physical_idx(1);
             self.len -= 1;
             Some(unsafe { self.buffer_read(old_head) })
         }
@@ -1535,7 +1557,7 @@ impl<T, A: Allocator> VecDeque<T, A> {
             None
         } else {
             self.len -= 1;
-            Some(unsafe { self.buffer_read(self.wrap_idx(self.len)) })
+            Some(unsafe { self.buffer_read(self.to_physical_idx(self.len)) })
         }
     }
 
@@ -1583,7 +1605,7 @@ impl<T, A: Allocator> VecDeque<T, A> {
             self.grow();
         }
 
-        unsafe { self.buffer_write(self.wrap_idx(self.len), value) }
+        unsafe { self.buffer_write(self.to_physical_idx(self.len), value) }
         self.len += 1;
     }
 
@@ -1700,8 +1722,8 @@ impl<T, A: Allocator> VecDeque<T, A> {
             // and panicked.
             unsafe {
                 // see `remove()` for explanation why this wrap_copy() call is safe.
-                self.wrap_copy(self.wrap_idx(index), self.wrap_idx(index + 1), k);
-                self.buffer_write(self.wrap_idx(index), value);
+                self.wrap_copy(self.to_physical_idx(index), self.to_physical_idx(index + 1), k);
+                self.buffer_write(self.to_physical_idx(index), value);
                 self.len += 1;
             }
         } else {
@@ -1709,7 +1731,7 @@ impl<T, A: Allocator> VecDeque<T, A> {
             self.head = self.wrap_sub(self.head, 1);
             unsafe {
                 self.wrap_copy(old_head, self.head, index);
-                self.buffer_write(self.wrap_idx(index), value);
+                self.buffer_write(self.to_physical_idx(index), value);
                 self.len += 1;
             }
         }
@@ -1742,7 +1764,7 @@ impl<T, A: Allocator> VecDeque<T, A> {
             return None;
         }
 
-        let wrapped_idx = self.wrap_idx(index);
+        let wrapped_idx = self.to_physical_idx(index);
 
         let elem = unsafe { Some(self.buffer_read(wrapped_idx)) };
 
@@ -1755,7 +1777,7 @@ impl<T, A: Allocator> VecDeque<T, A> {
             self.len -= 1;
         } else {
             let old_head = self.head;
-            self.head = self.wrap_idx(1);
+            self.head = self.to_physical_idx(1);
             unsafe { self.wrap_copy(old_head, self.head, index) };
             self.len -= 1;
         }
@@ -1866,14 +1888,14 @@ impl<T, A: Allocator> VecDeque<T, A> {
         self.reserve(other.len);
         unsafe {
             let (left, right) = other.as_slices();
-            self.copy_slice(self.wrap_idx(self.len), left);
+            self.copy_slice(self.to_physical_idx(self.len), left);
             // no overflow, because self.capacity() >= old_cap + left.len() >= self.len + left.len()
-            self.copy_slice(self.wrap_idx(self.len + left.len()), right);
+            self.copy_slice(self.to_physical_idx(self.len + left.len()), right);
         }
         // SAFETY: Update pointers after copying to avoid leaving doppelganger
         // in case of panics.
         self.len += other.len;
-        // Silently drop values in `other`.
+        // Now that we own its values, forget everything in `other`.
         other.len = 0;
         other.head = 0;
     }
@@ -1982,8 +2004,7 @@ impl<T, A: Allocator> VecDeque<T, A> {
         // buffer without it being full emerge
         debug_assert!(self.is_full());
         let old_cap = self.capacity();
-        // if the cap was 0, we need to reserve at least 1.
-        self.buf.reserve(old_cap, old_cap.max(1));
+        self.buf.reserve_for_push(old_cap);
         unsafe {
             self.handle_capacity_increase(old_cap);
         }
@@ -2265,16 +2286,16 @@ impl<T, A: Allocator> VecDeque<T, A> {
     unsafe fn rotate_left_inner(&mut self, mid: usize) {
         debug_assert!(mid * 2 <= self.len());
         unsafe {
-            self.wrap_copy(self.head, self.wrap_idx(self.len), mid);
+            self.wrap_copy(self.head, self.to_physical_idx(self.len), mid);
         }
-        self.head = self.wrap_idx(mid);
+        self.head = self.to_physical_idx(mid);
     }
 
     unsafe fn rotate_right_inner(&mut self, k: usize) {
         debug_assert!(k * 2 <= self.len());
         self.head = self.wrap_sub(self.head, k);
         unsafe {
-            self.wrap_copy(self.wrap_idx(self.len), self.head, k);
+            self.wrap_copy(self.to_physical_idx(self.len), self.head, k);
         }
     }
 
@@ -2532,8 +2553,13 @@ impl<T: Clone, A: Allocator> VecDeque<T, A> {
 
 /// Returns the index in the underlying buffer for a given logical element index.
 #[inline]
-fn wrap_index(index: usize, size: usize) -> usize {
-    if index >= size { index - size } else { index }
+fn wrap_index(logical_index: usize, capacity: usize) -> usize {
+    debug_assert!(
+        (logical_index == 0 && capacity == 0)
+            || logical_index < capacity
+            || (logical_index - capacity) < capacity
+    );
+    if logical_index >= capacity { logical_index - capacity } else { logical_index }
 }
 
 #[stable(feature = "rust1", since = "1.0.0")]
