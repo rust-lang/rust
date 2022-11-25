@@ -183,13 +183,16 @@ impl Lifetime {
 /// `std::cmp::PartialEq`. It's represented as a sequence of identifiers,
 /// along with a bunch of supporting information.
 #[derive(Debug, HashStable_Generic)]
-pub struct Path<'hir> {
+pub struct Path<'hir, R = Res> {
     pub span: Span,
     /// The resolution for the path.
-    pub res: Res,
+    pub res: R,
     /// The segments in the path: the things separated by `::`.
     pub segments: &'hir [PathSegment<'hir>],
 }
+
+/// Up to three resolutions for type, value and macro namespaces.
+pub type UsePath<'hir> = Path<'hir, SmallVec<[Res; 3]>>;
 
 impl Path<'_> {
     pub fn is_global(&self) -> bool {
@@ -3068,7 +3071,7 @@ pub enum ItemKind<'hir> {
     /// or just
     ///
     /// `use foo::bar::baz;` (with `as baz` implicitly on the right).
-    Use(&'hir Path<'hir>, UseKind),
+    Use(&'hir UsePath<'hir>, UseKind),
 
     /// A `static` item.
     Static(&'hir Ty<'hir>, Mutability, BodyId),

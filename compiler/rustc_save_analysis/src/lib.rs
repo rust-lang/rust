@@ -594,7 +594,9 @@ impl<'tcx> SaveContext<'tcx> {
         match self.tcx.hir().get(hir_id) {
             Node::TraitRef(tr) => tr.path.res,
 
-            Node::Item(&hir::Item { kind: hir::ItemKind::Use(path, _), .. }) => path.res,
+            Node::Item(&hir::Item { kind: hir::ItemKind::Use(path, _), .. }) => {
+                path.res.get(0).copied().unwrap_or(Res::Err)
+            }
             Node::PathSegment(seg) => {
                 if seg.res != Res::Err {
                     seg.res

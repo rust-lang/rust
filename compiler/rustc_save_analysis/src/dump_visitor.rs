@@ -185,13 +185,13 @@ impl<'tcx> DumpVisitor<'tcx> {
         }
     }
 
-    fn write_sub_paths(&mut self, path: &'tcx hir::Path<'tcx>) {
+    fn write_sub_paths<R>(&mut self, path: &'tcx hir::Path<'tcx, R>) {
         self.write_segments(path.segments)
     }
 
     // As write_sub_paths, but does not process the last ident in the path (assuming it
     // will be processed elsewhere). See note on write_sub_paths about global.
-    fn write_sub_paths_truncated(&mut self, path: &'tcx hir::Path<'tcx>) {
+    fn write_sub_paths_truncated<R>(&mut self, path: &'tcx hir::Path<'tcx, R>) {
         if let [segments @ .., _] = path.segments {
             self.write_segments(segments)
         }

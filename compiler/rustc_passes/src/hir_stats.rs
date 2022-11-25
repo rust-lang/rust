@@ -369,7 +369,7 @@ impl<'v> hir_visit::Visitor<'v> for StatCollector<'v> {
         hir_visit::walk_fn(self, fk, fd, b, id)
     }
 
-    fn visit_use(&mut self, p: &'v hir::Path<'v>, hir_id: hir::HirId) {
+    fn visit_use(&mut self, p: &'v hir::UsePath<'v>, hir_id: hir::HirId) {
         // This is `visit_use`, but the type is `Path` so record it that way.
         self.record("Path", Id::None, p);
         hir_visit::walk_use(self, p, hir_id)

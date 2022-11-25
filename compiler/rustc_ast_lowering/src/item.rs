@@ -508,7 +508,7 @@ impl<'hir> LoweringContext<'_, 'hir> {
                 let mut resolutions = self.expect_full_res_from_use(id).fuse();
                 // We want to return *something* from this function, so hold onto the first item
                 // for later.
-                let ret_res = self.lower_res(resolutions.next().unwrap_or(Res::Err));
+                let ret_res = smallvec![self.lower_res(resolutions.next().unwrap_or(Res::Err))];
 
                 // Here, we are looping over namespaces, if they exist for the definition
                 // being imported. We only handle type and value namespaces because we
@@ -538,8 +538,8 @@ impl<'hir> LoweringContext<'_, 'hir> {
                     let span = path.span;
 
                     self.with_hir_id_owner(new_node_id, |this| {
-                        let res = this.lower_res(res);
-                        let path = this.lower_path_extra(res, &path, ParamMode::Explicit);
+                        let res = smallvec![this.lower_res(res)];
+                        let path = this.lower_use_path(res, &path, ParamMode::Explicit);
                         let kind = hir::ItemKind::Use(path, hir::UseKind::Single);
                         if let Some(attrs) = attrs {
                             this.attrs.insert(hir::ItemLocalId::new(0), attrs);
@@ -556,15 +556,14 @@ impl<'hir> LoweringContext<'_, 'hir> {
                     });
                 }
 
-                let path = self.lower_path_extra(ret_res, &path, ParamMode::Explicit);
+                let path = self.lower_use_path(ret_res, &path, ParamMode::Explicit);
                 hir::ItemKind::Use(path, hir::UseKind::Single)
             }
             UseTreeKind::Glob => {
-                let path = self.lower_path(
-                    id,
-                    &Path { segments, span: path.span, tokens: None },
-                    ParamMode::Explicit,
-                );
+                let res = self.expect_full_res(id);
+                let res = smallvec![self.lower_res(res)];
+                let path = Path { segments, span: path.span, tokens: None };
+                let path = self.lower_use_path(res, &path, ParamMode::Explicit);
                 hir::ItemKind::Use(path, hir::UseKind::Glob)
             }
             UseTreeKind::Nested(ref trees) => {
@@ -635,8 +634,8 @@ impl<'hir> LoweringContext<'_, 'hir> {
                 }
 
                 let res = self.expect_full_res_from_use(id).next().unwrap_or(Res::Err);
-                let res = self.lower_res(res);
-                let path = self.lower_path_extra(res, &prefix, ParamMode::Explicit);
+                let res = smallvec![self.lower_res(res)];
+                let path = self.lower_use_path(res, &prefix, ParamMode::Explicit);
                 hir::ItemKind::Use(path, hir::UseKind::ListStem)
             }
         }

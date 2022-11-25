@@ -190,12 +190,4 @@ impl<'tcx> Visitor<'tcx> for SpanMapVisitor<'tcx> {
         }
         intravisit::walk_expr(self, expr);
     }
-
-    fn visit_use(&mut self, path: &'tcx rustc_hir::Path<'tcx>, id: HirId) {
-        if self.handle_macro(path.span) {
-            return;
-        }
-        self.handle_path(path);
-        intravisit::walk_use(self, path, id);
-    }
 }
