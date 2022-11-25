@@ -399,14 +399,15 @@ impl DefMap {
                 Some(_) | None => from_scope.or(from_builtin),
             },
         };
-        let from_extern_prelude = self
-            .extern_prelude
-            .get(name)
-            .map_or(PerNs::none(), |&it| PerNs::types(it.into(), Visibility::Public));
 
-        let from_prelude = self.resolve_in_prelude(db, name);
+        let extern_prelude = || {
+            self.extern_prelude
+                .get(name)
+                .map_or(PerNs::none(), |&it| PerNs::types(it.into(), Visibility::Public))
+        };
+        let prelude = || self.resolve_in_prelude(db, name);
 
-        from_legacy_macro.or(from_scope_or_builtin).or(from_extern_prelude).or(from_prelude)
+        from_legacy_macro.or(from_scope_or_builtin).or_else(extern_prelude).or_else(prelude)
     }
 
     fn resolve_name_in_crate_root_or_extern_prelude(
@@ -414,20 +415,19 @@ impl DefMap {
         db: &dyn DefDatabase,
         name: &Name,
     ) -> PerNs {
-        let arc;
-        let crate_def_map = match self.block {
+        let from_crate_root = match self.block {
             Some(_) => {
-                arc = self.crate_root(db).def_map(db);
-                &arc
+                let def_map = self.crate_root(db).def_map(db);
+                def_map[def_map.root].scope.get(name)
             }
-            None => self,
+            None => self[self.root].scope.get(name),
         };
-        let from_crate_root = crate_def_map[crate_def_map.root].scope.get(name);
-        let from_extern_prelude = self
-            .resolve_name_in_extern_prelude(db, name)
-            .map_or(PerNs::none(), |it| PerNs::types(it.into(), Visibility::Public));
+        let from_extern_prelude = || {
+            self.resolve_name_in_extern_prelude(db, name)
+                .map_or(PerNs::none(), |it| PerNs::types(it.into(), Visibility::Public))
+        };
 
-        from_crate_root.or(from_extern_prelude)
+        from_crate_root.or_else(from_extern_prelude)
     }
 
     fn resolve_in_prelude(&self, db: &dyn DefDatabase, name: &Name) -> PerNs {

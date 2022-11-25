@@ -55,6 +55,7 @@ const USELESS_METHODS: &[&str] = &[
     "iter",
     "into_iter",
     "iter_mut",
+    "into_future",
 ];
 
 pub(crate) fn for_generic_parameter(ty: &ast::ImplTraitType) -> SmolStr {
@@ -75,7 +76,7 @@ pub(crate) fn for_generic_parameter(ty: &ast::ImplTraitType) -> SmolStr {
 /// In current implementation, the function tries to get the name from
 /// the following sources:
 ///
-/// * if expr is an argument to function/method, use paramter name
+/// * if expr is an argument to function/method, use parameter name
 /// * if expr is a function/method call, use function name
 /// * expression type name if it exists (E.g. `()`, `fn() -> ()` or `!` do not have names)
 /// * fallback: `var_name`
@@ -85,7 +86,7 @@ pub(crate) fn for_generic_parameter(ty: &ast::ImplTraitType) -> SmolStr {
 /// Currently it sticks to the first name found.
 // FIXME: Microoptimize and return a `SmolStr` here.
 pub(crate) fn for_variable(expr: &ast::Expr, sema: &Semantics<'_, RootDatabase>) -> String {
-    // `from_param` does not benifit from stripping
+    // `from_param` does not benefit from stripping
     // it need the largest context possible
     // so we check firstmost
     if let Some(name) = from_param(expr, sema) {

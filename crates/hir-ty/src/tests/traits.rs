@@ -138,6 +138,31 @@ fn not_send() -> Box<dyn Future<Output = ()> + 'static> {
 }
 
 #[test]
+fn into_future_trait() {
+    check_types(
+        r#"
+//- minicore: future
+struct Futurable;
+impl core::future::IntoFuture for Futurable {
+    type Output = u64;
+    type IntoFuture = IntFuture;
+}
+
+struct IntFuture;
+impl core::future::Future for IntFuture {
+    type Output = u64;
+}
+
+fn test() {
+    let r = Futurable;
+    let v = r.await;
+    v;
+} //^ u64
+"#,
+    );
+}
+
+#[test]
 fn infer_try() {
     check_types(
         r#"
@@ -1476,6 +1501,34 @@ fn test(x: Trait, y: &Trait) -> u64 {
             165..172 'z.foo()': u64
         "#]],
     );
+
+    check_infer_with_mismatches(
+        r#"
+//- minicore: fn, coerce_unsized
+struct S;
+impl S {
+    fn foo(&self) {}
+}
+fn f(_: &Fn(S)) {}
+fn main() {
+    f(&|number| number.foo());
+}
+        "#,
+        expect![[r#"
+            31..35 'self': &S
+            37..39 '{}': ()
+            47..48 '_': &dyn Fn(S)
+            58..60 '{}': ()
+            71..105 '{     ...()); }': ()
+            77..78 'f': fn f(&dyn Fn(S))
+            77..102 'f(&|nu...foo())': ()
+            79..101 '&|numb....foo()': &|S| -> ()
+            80..101 '|numbe....foo()': |S| -> ()
+            81..87 'number': S
+            89..95 'number': S
+            89..101 'number.foo()': ()
+        "#]],
+    )
 }
 
 #[test]

@@ -238,18 +238,7 @@ impl<'a> TyLoweringContext<'a> {
                 })
                 .intern(Interner)
             }
-            TypeRef::DynTrait(bounds) => {
-                let self_ty =
-                    TyKind::BoundVar(BoundVar::new(DebruijnIndex::INNERMOST, 0)).intern(Interner);
-                let bounds = self.with_shifted_in(DebruijnIndex::ONE, |ctx| {
-                    QuantifiedWhereClauses::from_iter(
-                        Interner,
-                        bounds.iter().flat_map(|b| ctx.lower_type_bound(b, self_ty.clone(), false)),
-                    )
-                });
-                let bounds = crate::make_single_type_binders(bounds);
-                TyKind::Dyn(DynTy { bounds, lifetime: static_lifetime() }).intern(Interner)
-            }
+            TypeRef::DynTrait(bounds) => self.lower_dyn_trait(bounds),
             TypeRef::ImplTrait(bounds) => {
                 match self.impl_trait_mode {
                     ImplTraitLoweringMode::Opaque => {
@@ -468,29 +457,10 @@ impl<'a> TyLoweringContext<'a> {
                         }
                     }
                     0 => {
-                        let self_ty = Some(
-                            TyKind::BoundVar(BoundVar::new(DebruijnIndex::INNERMOST, 0))
-                                .intern(Interner),
-                        );
-                        let trait_ref = self.with_shifted_in(DebruijnIndex::ONE, |ctx| {
-                            ctx.lower_trait_ref_from_resolved_path(
-                                trait_,
-                                resolved_segment,
-                                self_ty,
-                            )
-                        });
-                        let dyn_ty = DynTy {
-                            bounds: crate::make_single_type_binders(
-                                QuantifiedWhereClauses::from_iter(
-                                    Interner,
-                                    Some(crate::wrap_empty_binders(WhereClause::Implemented(
-                                        trait_ref,
-                                    ))),
-                                ),
-                            ),
-                            lifetime: static_lifetime(),
-                        };
-                        TyKind::Dyn(dyn_ty).intern(Interner)
+                        // Trait object type without dyn; this should be handled in upstream. See
+                        // `lower_path()`.
+                        stdx::never!("unexpected fully resolved trait path");
+                        TyKind::Error.intern(Interner)
                     }
                     _ => {
                         // FIXME report error (ambiguous associated type)
@@ -555,11 +525,20 @@ impl<'a> TyLoweringContext<'a> {
             let (ty, res) = self.lower_ty_ext(type_ref);
             return self.lower_ty_relative_path(ty, res, path.segments());
         }
+
         let (resolution, remaining_index) =
             match self.resolver.resolve_path_in_type_ns(self.db.upcast(), path.mod_path()) {
                 Some(it) => it,
                 None => return (TyKind::Error.intern(Interner), None),
             };
+
+        if matches!(resolution, TypeNs::TraitId(_)) && remaining_index.is_none() {
+            // trait object type without dyn
+            let bound = TypeBound::Path(path.clone(), TraitBoundModifier::None);
+            let ty = self.lower_dyn_trait(&[Interned::new(bound)]);
+            return (ty, None);
+        }
+
         let (resolved_segment, remaining_segments) = match remaining_index {
             None => (
                 path.segments().last().expect("resolved path has at least one element"),
@@ -985,6 +964,18 @@ impl<'a> TyLoweringContext<'a> {
                 }
                 preds
             })
+    }
+
+    fn lower_dyn_trait(&self, bounds: &[Interned<TypeBound>]) -> Ty {
+        let self_ty = TyKind::BoundVar(BoundVar::new(DebruijnIndex::INNERMOST, 0)).intern(Interner);
+        let bounds = self.with_shifted_in(DebruijnIndex::ONE, |ctx| {
+            QuantifiedWhereClauses::from_iter(
+                Interner,
+                bounds.iter().flat_map(|b| ctx.lower_type_bound(b, self_ty.clone(), false)),
+            )
+        });
+        let bounds = crate::make_single_type_binders(bounds);
+        TyKind::Dyn(DynTy { bounds, lifetime: static_lifetime() }).intern(Interner)
     }
 
     fn lower_impl_trait(

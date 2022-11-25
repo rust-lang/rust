@@ -283,10 +283,10 @@ struct S {
         "#,
         expect![[r#"
             pub(self) struct S {
-                pub(self) a: Mixed<'a, T, Item = (), OtherItem = u8>,
-                pub(self) b: Qualified<Self=Fully>::Syntax,
-                pub(self) c: <TypeAnchored>::Path<'a>,
-                pub(self) d: dyn for<'a> Trait<'a>,
+                pub(self) a: Mixed::<'a, T, Item = (), OtherItem = u8>,
+                pub(self) b: Qualified::<Self=Fully>::Syntax,
+                pub(self) c: <TypeAnchored>::Path::<'a>,
+                pub(self) d: dyn for<'a> Trait::<'a>,
             }
         "#]],
     )
@@ -329,7 +329,7 @@ trait Tr<'a, T: 'a>: Super where Self: for<'a> Tr<'a, T> {}
                 T: Copy,
                 U: ?Sized;
 
-            impl<'a, 'b, T, const K: u8> S<'a, 'b, T, K>
+            impl<'a, 'b, T, const K: u8> S::<'a, 'b, T, K>
             where
                 T: Copy,
                 T: 'a,
@@ -352,7 +352,7 @@ trait Tr<'a, T: 'a>: Super where Self: for<'a> Tr<'a, T> {}
             where
                 Self: Super,
                 T: 'a,
-                Self: for<'a> Tr<'a, T>
+                Self: for<'a> Tr::<'a, T>
             {
             }
         "#]],

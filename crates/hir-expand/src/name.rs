@@ -90,10 +90,16 @@ impl Name {
 
     /// Resolve a name from the text of token.
     fn resolve(raw_text: &str) -> Name {
-        // When `raw_text` starts with "r#" but the name does not coincide with any
-        // keyword, we never need the prefix so we strip it.
         match raw_text.strip_prefix("r#") {
+            // When `raw_text` starts with "r#" but the name does not coincide with any
+            // keyword, we never need the prefix so we strip it.
             Some(text) if !is_raw_identifier(text) => Name::new_text(SmolStr::new(text)),
+            // Keywords (in the current edition) *can* be used as a name in earlier editions of
+            // Rust, e.g. "try" in Rust 2015. Even in such cases, we keep track of them in their
+            // escaped form.
+            None if is_raw_identifier(raw_text) => {
+                Name::new_text(SmolStr::from_iter(["r#", raw_text]))
+            }
             _ => Name::new_text(raw_text.into()),
         }
     }
@@ -260,6 +266,7 @@ pub mod known {
         Try,
         Ok,
         Future,
+        IntoFuture,
         Result,
         Option,
         Output,
@@ -393,6 +400,7 @@ pub mod known {
         future_trait,
         index,
         index_mut,
+        into_future,
         mul_assign,
         mul,
         neg,

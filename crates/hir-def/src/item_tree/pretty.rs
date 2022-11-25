@@ -2,13 +2,10 @@
 
 use std::fmt::{self, Write};
 
-use itertools::Itertools;
-
 use crate::{
     attr::RawAttrs,
     generics::{TypeOrConstParamData, WherePredicate, WherePredicateTypeTarget},
-    path::GenericArg,
-    type_ref::TraitBoundModifier,
+    pretty::{print_path, print_type_bounds, print_type_ref},
     visibility::RawVisibility,
 };
 
@@ -464,183 +461,15 @@ impl<'a> Printer<'a> {
     }
 
     fn print_type_ref(&mut self, type_ref: &TypeRef) {
-        // FIXME: deduplicate with `HirDisplay` impl
-        match type_ref {
-            TypeRef::Never => w!(self, "!"),
-            TypeRef::Placeholder => w!(self, "_"),
-            TypeRef::Tuple(fields) => {
-                w!(self, "(");
-                for (i, field) in fields.iter().enumerate() {
-                    if i != 0 {
-                        w!(self, ", ");
-                    }
-                    self.print_type_ref(field);
-                }
-                w!(self, ")");
-            }
-            TypeRef::Path(path) => self.print_path(path),
-            TypeRef::RawPtr(pointee, mtbl) => {
-                let mtbl = match mtbl {
-                    Mutability::Shared => "*const",
-                    Mutability::Mut => "*mut",
-                };
-                w!(self, "{} ", mtbl);
-                self.print_type_ref(pointee);
-            }
-            TypeRef::Reference(pointee, lt, mtbl) => {
-                let mtbl = match mtbl {
-                    Mutability::Shared => "",
-                    Mutability::Mut => "mut ",
-                };
-                w!(self, "&");
-                if let Some(lt) = lt {
-                    w!(self, "{} ", lt.name);
-                }
-                w!(self, "{}", mtbl);
-                self.print_type_ref(pointee);
-            }
-            TypeRef::Array(elem, len) => {
-                w!(self, "[");
-                self.print_type_ref(elem);
-                w!(self, "; {}]", len);
-            }
-            TypeRef::Slice(elem) => {
-                w!(self, "[");
-                self.print_type_ref(elem);
-                w!(self, "]");
-            }
-            TypeRef::Fn(args_and_ret, varargs) => {
-                let ((_, return_type), args) =
-                    args_and_ret.split_last().expect("TypeRef::Fn is missing return type");
-                w!(self, "fn(");
-                for (i, (_, typeref)) in args.iter().enumerate() {
-                    if i != 0 {
-                        w!(self, ", ");
-                    }
-                    self.print_type_ref(typeref);
-                }
-                if *varargs {
-                    if !args.is_empty() {
-                        w!(self, ", ");
-                    }
-                    w!(self, "...");
-                }
-                w!(self, ") -> ");
-                self.print_type_ref(return_type);
-            }
-            TypeRef::Macro(_ast_id) => {
-                w!(self, "<macro>");
-            }
-            TypeRef::Error => w!(self, "{{unknown}}"),
-            TypeRef::ImplTrait(bounds) => {
-                w!(self, "impl ");
-                self.print_type_bounds(bounds);
-            }
-            TypeRef::DynTrait(bounds) => {
-                w!(self, "dyn ");
-                self.print_type_bounds(bounds);
-            }
-        }
+        print_type_ref(type_ref, self).unwrap();
     }
 
     fn print_type_bounds(&mut self, bounds: &[Interned<TypeBound>]) {
-        for (i, bound) in bounds.iter().enumerate() {
-            if i != 0 {
-                w!(self, " + ");
-            }
-
-            match bound.as_ref() {
-                TypeBound::Path(path, modifier) => {
-                    match modifier {
-                        TraitBoundModifier::None => (),
-                        TraitBoundModifier::Maybe => w!(self, "?"),
-                    }
-                    self.print_path(path)
-                }
-                TypeBound::ForLifetime(lifetimes, path) => {
-                    w!(self, "for<{}> ", lifetimes.iter().format(", "));
-                    self.print_path(path);
-                }
-                TypeBound::Lifetime(lt) => w!(self, "{}", lt.name),
-                TypeBound::Error => w!(self, "{{unknown}}"),
-            }
-        }
+        print_type_bounds(bounds, self).unwrap();
     }
 
     fn print_path(&mut self, path: &Path) {
-        match path.type_anchor() {
-            Some(anchor) => {
-                w!(self, "<");
-                self.print_type_ref(anchor);
-                w!(self, ">::");
-            }
-            None => match path.kind() {
-                PathKind::Plain => {}
-                PathKind::Super(0) => w!(self, "self::"),
-                PathKind::Super(n) => {
-                    for _ in 0..*n {
-                        w!(self, "super::");
-                    }
-                }
-                PathKind::Crate => w!(self, "crate::"),
-                PathKind::Abs => w!(self, "::"),
-                PathKind::DollarCrate(_) => w!(self, "$crate::"),
-            },
-        }
-
-        for (i, segment) in path.segments().iter().enumerate() {
-            if i != 0 {
-                w!(self, "::");
-            }
-
-            w!(self, "{}", segment.name);
-            if let Some(generics) = segment.args_and_bindings {
-                // NB: these are all in type position, so `::<` turbofish syntax is not necessary
-                w!(self, "<");
-                let mut first = true;
-                let args = if generics.has_self_type {
-                    let (self_ty, args) = generics.args.split_first().unwrap();
-                    w!(self, "Self=");
-                    self.print_generic_arg(self_ty);
-                    first = false;
-                    args
-                } else {
-                    &generics.args
-                };
-                for arg in args {
-                    if !first {
-                        w!(self, ", ");
-                    }
-                    first = false;
-                    self.print_generic_arg(arg);
-                }
-                for binding in &generics.bindings {
-                    if !first {
-                        w!(self, ", ");
-                    }
-                    first = false;
-                    w!(self, "{}", binding.name);
-                    if !binding.bounds.is_empty() {
-                        w!(self, ": ");
-                        self.print_type_bounds(&binding.bounds);
-                    }
-                    if let Some(ty) = &binding.type_ref {
-                        w!(self, " = ");
-                        self.print_type_ref(ty);
-                    }
-                }
-
-                w!(self, ">");
-            }
-        }
-    }
-
-    fn print_generic_arg(&mut self, arg: &GenericArg) {
-        match arg {
-            GenericArg::Type(ty) => self.print_type_ref(ty),
-            GenericArg::Const(c) => w!(self, "{}", c),
-            GenericArg::Lifetime(lt) => w!(self, "{}", lt.name),
-        }
+        print_path(path, self).unwrap();
     }
 
     fn print_generic_params(&mut self, params: &GenericParams) {

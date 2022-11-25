@@ -130,7 +130,6 @@ pub struct MacroDefId {
 pub enum MacroDefKind {
     Declarative(AstId<ast::Macro>),
     BuiltIn(BuiltinFnLikeExpander, AstId<ast::Macro>),
-    // FIXME: maybe just Builtin and rename BuiltinFnLikeExpander to BuiltinExpander
     BuiltInAttr(BuiltinAttrExpander, AstId<ast::Macro>),
     BuiltInDerive(BuiltinDeriveExpander, AstId<ast::Macro>),
     BuiltInEager(EagerExpander, AstId<ast::Macro>),
@@ -617,7 +616,7 @@ impl ExpansionInfo {
 
         let token_id = match token_id_in_attr_input {
             Some(token_id) => token_id,
-            // the token is not inside an attribute's input so do the lookup in the macro_arg as ususal
+            // the token is not inside an attribute's input so do the lookup in the macro_arg as usual
             None => {
                 let relative_range =
                     token.value.text_range().checked_sub(self.arg.value.text_range().start())?;

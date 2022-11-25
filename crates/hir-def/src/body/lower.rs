@@ -551,8 +551,16 @@ impl ExprCollector<'_> {
                 }
             }
             ast::Expr::MacroStmts(e) => {
-                let statements = e.statements().filter_map(|s| self.collect_stmt(s)).collect();
+                let statements: Box<[_]> =
+                    e.statements().filter_map(|s| self.collect_stmt(s)).collect();
                 let tail = e.expr().map(|e| self.collect_expr(e));
+
+                if e.syntax().children().next().is_none() {
+                    // HACK: make sure that macros that expand to nothing aren't treated as a `()`
+                    // expression when used in block tail position.
+                    cov_mark::hit!(empty_macro_in_trailing_position_is_removed);
+                    return None;
+                }
 
                 self.alloc_expr(Expr::MacroStmts { tail, statements }, syntax_ptr)
             }

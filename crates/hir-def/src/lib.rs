@@ -53,6 +53,7 @@ pub mod import_map;
 mod test_db;
 #[cfg(test)]
 mod macro_expansion_tests;
+mod pretty;
 
 use std::{
     hash::{Hash, Hasher},

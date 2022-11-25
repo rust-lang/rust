@@ -27,6 +27,7 @@ use hir_def::{
 use hir_expand::{
     builtin_fn_macro::BuiltinFnLikeExpander,
     hygiene::Hygiene,
+    mod_path::path,
     name,
     name::{AsName, Name},
     HirFileId, InFile,
@@ -269,14 +270,35 @@ impl SourceAnalyzer {
         db: &dyn HirDatabase,
         await_expr: &ast::AwaitExpr,
     ) -> Option<FunctionId> {
-        let ty = self.ty_of_expr(db, &await_expr.expr()?.into())?;
+        let mut ty = self.ty_of_expr(db, &await_expr.expr()?.into())?.clone();
 
-        let op_fn = db
+        let into_future_trait = self
+            .resolver
+            .resolve_known_trait(db.upcast(), &path![core::future::IntoFuture])
+            .map(Trait::from);
+
+        if let Some(into_future_trait) = into_future_trait {
+            let type_ = Type::new_with_resolver(db, &self.resolver, ty.clone());
+            if type_.impls_trait(db, into_future_trait, &[]) {
+                let items = into_future_trait.items(db);
+                let into_future_type = items.into_iter().find_map(|item| match item {
+                    AssocItem::TypeAlias(alias)
+                        if alias.name(db) == hir_expand::name![IntoFuture] =>
+                    {
+                        Some(alias)
+                    }
+                    _ => None,
+                })?;
+                let future_trait = type_.normalize_trait_assoc_type(db, &[], into_future_type)?;
+                ty = future_trait.ty;
+            }
+        }
+
+        let poll_fn = db
             .lang_item(self.resolver.krate(), hir_expand::name![poll].to_smol_str())?
             .as_function()?;
-        let substs = hir_ty::TyBuilder::subst_for_def(db, op_fn).push(ty.clone()).build();
-
-        Some(self.resolve_impl_method_or_trait_def(db, op_fn, &substs))
+        let substs = hir_ty::TyBuilder::subst_for_def(db, poll_fn).push(ty.clone()).build();
+        Some(self.resolve_impl_method_or_trait_def(db, poll_fn, &substs))
     }
 
     pub(crate) fn resolve_prefix_expr(

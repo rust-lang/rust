@@ -52,7 +52,7 @@ impl Logger {
         // merge chalk filter to our main filter (from RA_LOG env).
         //
         // The acceptable syntax of CHALK_DEBUG is `target[span{field=value}]=level`.
-        // As the value should only affect chalk crates, we'd better mannually
+        // As the value should only affect chalk crates, we'd better manually
         // specify the target. And for simplicity, CHALK_DEBUG only accept the value
         // that specify level.
         let chalk_level_dir = std::env::var("CHALK_DEBUG")

@@ -19,7 +19,7 @@ pub(crate) fn complete_dot(
     };
 
     // Suggest .await syntax for types that implement Future trait
-    if receiver_ty.impls_future(ctx.db) {
+    if receiver_ty.impls_into_future(ctx.db) {
         let mut item =
             CompletionItem::new(CompletionItemKind::Keyword, ctx.source_range(), "await");
         item.detail("expr.await");

@@ -1357,6 +1357,31 @@ fn main() {
 }
 
 #[test]
+fn doctest_inline_type_alias_uses() {
+    check_doc_test(
+        "inline_type_alias_uses",
+        r#####"
+type $0A = i32;
+fn id(x: A) -> A {
+    x
+};
+fn foo() {
+    let _: A = 3;
+}
+"#####,
+        r#####"
+type A = i32;
+fn id(x: i32) -> i32 {
+    x
+};
+fn foo() {
+    let _: i32 = 3;
+}
+"#####,
+    )
+}
+
+#[test]
 fn doctest_introduce_named_generic() {
     check_doc_test(
         "introduce_named_generic",

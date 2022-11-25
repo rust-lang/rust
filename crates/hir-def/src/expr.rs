@@ -12,6 +12,8 @@
 //!
 //! See also a neighboring `body` module.
 
+use std::fmt;
+
 use hir_expand::name::Name;
 use la_arena::{Idx, RawIdx};
 
@@ -52,8 +54,8 @@ impl FloatTypeWrapper {
     }
 }
 
-impl std::fmt::Display for FloatTypeWrapper {
-    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+impl fmt::Display for FloatTypeWrapper {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         write!(f, "{:?}", f64::from_bits(self.0))
     }
 }

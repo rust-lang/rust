@@ -770,7 +770,7 @@ fn handle_rustc_crates(
         queue.push_back(root_pkg);
         while let Some(pkg) = queue.pop_front() {
             // Don't duplicate packages if they are dependended on a diamond pattern
-            // N.B. if this line is ommitted, we try to analyse over 4_800_000 crates
+            // N.B. if this line is omitted, we try to analyse over 4_800_000 crates
             // which is not ideal
             if rustc_pkg_crates.contains_key(&pkg) {
                 continue;

@@ -489,6 +489,42 @@ fn infer_adt_pattern() {
 }
 
 #[test]
+fn tuple_struct_destructured_with_self() {
+    check_infer(
+        r#"
+struct Foo(usize,);
+impl Foo {
+    fn f() {
+        let Self(s,) = &Foo(0,);
+        let Self(s,) = &mut Foo(0,);
+        let Self(s,) = Foo(0,);
+    }
+}
+        "#,
+        expect![[r#"
+            42..151 '{     ...     }': ()
+            56..64 'Self(s,)': Foo
+            61..62 's': &usize
+            67..75 '&Foo(0,)': &Foo
+            68..71 'Foo': Foo(usize) -> Foo
+            68..75 'Foo(0,)': Foo
+            72..73 '0': usize
+            89..97 'Self(s,)': Foo
+            94..95 's': &mut usize
+            100..112 '&mut Foo(0,)': &mut Foo
+            105..108 'Foo': Foo(usize) -> Foo
+            105..112 'Foo(0,)': Foo
+            109..110 '0': usize
+            126..134 'Self(s,)': Foo
+            131..132 's': usize
+            137..140 'Foo': Foo(usize) -> Foo
+            137..144 'Foo(0,)': Foo
+            141..142 '0': usize
+        "#]],
+    );
+}
+
+#[test]
 fn enum_variant_through_self_in_pattern() {
     check_infer(
         r#"
