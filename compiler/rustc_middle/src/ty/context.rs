@@ -2717,7 +2717,7 @@ impl<'tcx> TyCtxt<'tcx> {
         }
     }
 
-    pub fn mk_const_list<I: InternAs<[ty::Const<'tcx>], &'tcx List<ty::Const<'tcx>>>>(
+    pub fn mk_const_list<I: InternAs<ty::Const<'tcx>, &'tcx List<ty::Const<'tcx>>>>(
         self,
         iter: I,
     ) -> I::Output {
