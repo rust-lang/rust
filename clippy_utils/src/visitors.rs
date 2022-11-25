@@ -170,22 +170,22 @@ where
         cb: F,
     }
 
-    struct WithStmtGuarg<'a, F> {
+    struct WithStmtGuard<'a, F> {
         val: &'a mut RetFinder<F>,
         prev_in_stmt: bool,
     }
 
     impl<F> RetFinder<F> {
-        fn inside_stmt(&mut self, in_stmt: bool) -> WithStmtGuarg<'_, F> {
+        fn inside_stmt(&mut self, in_stmt: bool) -> WithStmtGuard<'_, F> {
             let prev_in_stmt = std::mem::replace(&mut self.in_stmt, in_stmt);
-            WithStmtGuarg {
+            WithStmtGuard {
                 val: self,
                 prev_in_stmt,
             }
         }
     }
 
-    impl<F> std::ops::Deref for WithStmtGuarg<'_, F> {
+    impl<F> std::ops::Deref for WithStmtGuard<'_, F> {
         type Target = RetFinder<F>;
 
         fn deref(&self) -> &Self::Target {
@@ -193,13 +193,13 @@ where
         }
     }
 
-    impl<F> std::ops::DerefMut for WithStmtGuarg<'_, F> {
+    impl<F> std::ops::DerefMut for WithStmtGuard<'_, F> {
         fn deref_mut(&mut self) -> &mut Self::Target {
             self.val
         }
     }
 
-    impl<F> Drop for WithStmtGuarg<'_, F> {
+    impl<F> Drop for WithStmtGuard<'_, F> {
         fn drop(&mut self) {
             self.val.in_stmt = self.prev_in_stmt;
         }

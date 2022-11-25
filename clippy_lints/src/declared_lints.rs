@@ -584,6 +584,7 @@ pub(crate) static LINTS: &[&crate::LintInfo] = &[
     crate::types::TYPE_COMPLEXITY_INFO,
     crate::types::VEC_BOX_INFO,
     crate::undocumented_unsafe_blocks::UNDOCUMENTED_UNSAFE_BLOCKS_INFO,
+    crate::undocumented_unsafe_blocks::UNNECESSARY_SAFETY_COMMENT_INFO,
     crate::unicode::INVISIBLE_CHARACTERS_INFO,
     crate::unicode::NON_ASCII_LITERAL_INFO,
     crate::unicode::UNICODE_NOT_NFC_INFO,
