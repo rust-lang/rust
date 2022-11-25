@@ -1588,7 +1588,7 @@ fn normalize<'tcx>(cx: &mut DocContext<'tcx>, ty: Ty<'tcx>) -> Option<Ty<'tcx>> 
     let infcx = cx.tcx.infer_ctxt().build();
     let normalized = infcx
         .at(&ObligationCause::dummy(), cx.param_env)
-        .normalize(ty)
+        .query_normalize(ty)
         .map(|resolved| infcx.resolve_vars_if_possible(resolved.value));
     match normalized {
         Ok(normalized_value) => {

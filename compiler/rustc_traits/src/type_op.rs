@@ -137,7 +137,7 @@ where
 {
     let (param_env, Normalize { value }) = key.into_parts();
     let Normalized { value, obligations } =
-        ocx.infcx.at(&ObligationCause::dummy(), param_env).normalize(value)?;
+        ocx.infcx.at(&ObligationCause::dummy(), param_env).query_normalize(value)?;
     ocx.register_obligations(obligations);
     Ok(value)
 }

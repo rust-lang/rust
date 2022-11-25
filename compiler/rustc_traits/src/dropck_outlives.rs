@@ -100,7 +100,7 @@ fn dropck_outlives<'tcx>(
             // to push them onto the stack to be expanded.
             for ty in constraints.dtorck_types.drain(..) {
                 let Normalized { value: ty, obligations } =
-                    ocx.infcx.at(&cause, param_env).normalize(ty)?;
+                    ocx.infcx.at(&cause, param_env).query_normalize(ty)?;
                 ocx.register_obligations(obligations);
 
                 debug!("dropck_outlives: ty from dtorck_types = {:?}", ty);

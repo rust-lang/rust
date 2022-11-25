@@ -1933,7 +1933,7 @@ impl<'tcx> InferCtxtPrivExt<'tcx> for TypeErrCtxt<'_, 'tcx> {
             let infcx = self.tcx.infer_ctxt().build();
             infcx
                 .at(&ObligationCause::dummy(), ty::ParamEnv::empty())
-                .normalize(candidate)
+                .query_normalize(candidate)
                 .map_or(candidate, |normalized| normalized.value)
         };
 
