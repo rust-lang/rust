@@ -876,6 +876,8 @@ impl<'a: 'ast, 'ast> Visitor<'ast> for LateResolutionVisitor<'a, '_, 'ast> {
                             // Ignore errors in function bodies if this is rustdoc
                             // Be sure not to set this until the function signature has been resolved.
                             let previous_state = replace(&mut this.in_func_body, true);
+                            // We only care block in the same function
+                            this.last_block_rib = None;
                             // Resolve the function body, potentially inside the body of an async closure
                             this.with_lifetime_rib(
                                 LifetimeRibKind::Elided(LifetimeRes::Infer),

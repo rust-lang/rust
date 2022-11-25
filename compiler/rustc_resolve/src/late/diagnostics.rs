@@ -616,7 +616,7 @@ impl<'a: 'ast, 'ast> LateResolutionVisitor<'a, '_, 'ast> {
         }
 
         // Try to find in last block rib
-        if let Some(rib) = &self.last_block_rib {
+        if let Some(rib) = &self.last_block_rib && let RibKind::NormalRibKind = rib.kind {
             for (ident, &res) in &rib.bindings {
                 if let Res::Local(_) = res && path.len() == 1 &&
                     ident.span.eq_ctxt(path[0].ident.span) &&
