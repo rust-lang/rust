@@ -343,7 +343,6 @@ Expr =
 | Literal
 | LoopExpr
 | MacroExpr
-| MacroStmts
 | MatchExpr
 | MethodCallExpr
 | ParenExpr

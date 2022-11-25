@@ -322,7 +322,7 @@ impl ast::IntNumber {
 
     pub fn float_value(&self) -> Option<f64> {
         let (_, text, _) = self.split_into_parts();
-        text.parse::<f64>().ok()
+        text.replace('_', "").parse::<f64>().ok()
     }
 }
 
@@ -361,7 +361,7 @@ impl ast::FloatNumber {
 
     pub fn value(&self) -> Option<f64> {
         let (text, _) = self.split_into_parts();
-        text.parse::<f64>().ok()
+        text.replace('_', "").parse::<f64>().ok()
     }
 }
 
@@ -395,6 +395,15 @@ mod tests {
 
     fn check_int_suffix<'a>(lit: &str, expected: impl Into<Option<&'a str>>) {
         assert_eq!(IntNumber { syntax: make::tokens::literal(lit) }.suffix(), expected.into());
+    }
+
+    fn check_float_value(lit: &str, expected: impl Into<Option<f64>> + Copy) {
+        assert_eq!(FloatNumber { syntax: make::tokens::literal(lit) }.value(), expected.into());
+        assert_eq!(IntNumber { syntax: make::tokens::literal(lit) }.float_value(), expected.into());
+    }
+
+    fn check_int_value(lit: &str, expected: impl Into<Option<u128>>) {
+        assert_eq!(IntNumber { syntax: make::tokens::literal(lit) }.value(), expected.into());
     }
 
     #[test]
@@ -436,6 +445,14 @@ mod tests {
         check_string_value(r"\foobar", None);
         check_string_value(r"\nfoobar", "\nfoobar");
         check_string_value(r"C:\\Windows\\System32\\", "C:\\Windows\\System32\\");
+    }
+
+    #[test]
+    fn test_value_underscores() {
+        check_float_value("3.141592653589793_f64", 3.141592653589793_f64);
+        check_float_value("1__0.__0__f32", 10.0);
+        check_int_value("0b__1_0_", 2);
+        check_int_value("1_1_1_1_1_1", 111111);
     }
 }
 

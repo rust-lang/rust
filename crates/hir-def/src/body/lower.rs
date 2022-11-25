@@ -24,7 +24,7 @@ use syntax::{
 
 use crate::{
     adt::StructKind,
-    body::{Body, BodySourceMap, Expander, LabelSource, PatPtr, SyntheticSyntax},
+    body::{Body, BodySourceMap, Expander, ExprPtr, LabelPtr, LabelSource, PatPtr},
     body::{BodyDiagnostic, ExprSource, PatSource},
     builtin_type::{BuiltinFloat, BuiltinInt, BuiltinUint},
     db::DefDatabase,
@@ -150,21 +150,21 @@ impl ExprCollector<'_> {
         LowerCtx::new(self.db, self.expander.current_file_id)
     }
 
-    fn alloc_expr(&mut self, expr: Expr, ptr: AstPtr<ast::Expr>) -> ExprId {
+    fn alloc_expr(&mut self, expr: Expr, ptr: ExprPtr) -> ExprId {
         let src = self.expander.to_source(ptr);
-        let id = self.make_expr(expr, Ok(src.clone()));
+        let id = self.make_expr(expr, src.clone());
         self.source_map.expr_map.insert(src, id);
         id
     }
     // desugared exprs don't have ptr, that's wrong and should be fixed
     // somehow.
     fn alloc_expr_desugared(&mut self, expr: Expr) -> ExprId {
-        self.make_expr(expr, Err(SyntheticSyntax))
+        self.body.exprs.alloc(expr)
     }
     fn missing_expr(&mut self) -> ExprId {
         self.alloc_expr_desugared(Expr::Missing)
     }
-    fn make_expr(&mut self, expr: Expr, src: Result<ExprSource, SyntheticSyntax>) -> ExprId {
+    fn make_expr(&mut self, expr: Expr, src: ExprSource) -> ExprId {
         let id = self.body.exprs.alloc(expr);
         self.source_map.expr_map_back.insert(id, src);
         id
@@ -172,20 +172,20 @@ impl ExprCollector<'_> {
 
     fn alloc_pat(&mut self, pat: Pat, ptr: PatPtr) -> PatId {
         let src = self.expander.to_source(ptr);
-        let id = self.make_pat(pat, Ok(src.clone()));
+        let id = self.make_pat(pat, src.clone());
         self.source_map.pat_map.insert(src, id);
         id
     }
     fn missing_pat(&mut self) -> PatId {
-        self.make_pat(Pat::Missing, Err(SyntheticSyntax))
+        self.body.pats.alloc(Pat::Missing)
     }
-    fn make_pat(&mut self, pat: Pat, src: Result<PatSource, SyntheticSyntax>) -> PatId {
+    fn make_pat(&mut self, pat: Pat, src: PatSource) -> PatId {
         let id = self.body.pats.alloc(pat);
         self.source_map.pat_map_back.insert(id, src);
         id
     }
 
-    fn alloc_label(&mut self, label: Label, ptr: AstPtr<ast::Label>) -> LabelId {
+    fn alloc_label(&mut self, label: Label, ptr: LabelPtr) -> LabelId {
         let src = self.expander.to_source(ptr);
         let id = self.make_label(label, src.clone());
         self.source_map.label_map.insert(src, id);
@@ -550,20 +550,6 @@ impl ExprCollector<'_> {
                     None => self.alloc_expr(Expr::Missing, syntax_ptr),
                 }
             }
-            ast::Expr::MacroStmts(e) => {
-                let statements: Box<[_]> =
-                    e.statements().filter_map(|s| self.collect_stmt(s)).collect();
-                let tail = e.expr().map(|e| self.collect_expr(e));
-
-                if e.syntax().children().next().is_none() {
-                    // HACK: make sure that macros that expand to nothing aren't treated as a `()`
-                    // expression when used in block tail position.
-                    cov_mark::hit!(empty_macro_in_trailing_position_is_removed);
-                    return None;
-                }
-
-                self.alloc_expr(Expr::MacroStmts { tail, statements }, syntax_ptr)
-            }
             ast::Expr::UnderscoreExpr(_) => self.alloc_expr(Expr::Underscore, syntax_ptr),
         })
     }
@@ -640,11 +626,46 @@ impl ExprCollector<'_> {
         }
     }
 
-    fn collect_stmt(&mut self, s: ast::Stmt) -> Option<Statement> {
+    fn collect_macro_as_stmt(
+        &mut self,
+        statements: &mut Vec<Statement>,
+        mac: ast::MacroExpr,
+    ) -> Option<ExprId> {
+        let mac_call = mac.macro_call()?;
+        let syntax_ptr = AstPtr::new(&ast::Expr::from(mac));
+        let macro_ptr = AstPtr::new(&mac_call);
+        let expansion = self.collect_macro_call(
+            mac_call,
+            macro_ptr,
+            false,
+            |this, expansion: Option<ast::MacroStmts>| match expansion {
+                Some(expansion) => {
+                    expansion.statements().for_each(|stmt| this.collect_stmt(statements, stmt));
+                    expansion.expr().and_then(|expr| match expr {
+                        ast::Expr::MacroExpr(mac) => this.collect_macro_as_stmt(statements, mac),
+                        expr => Some(this.collect_expr(expr)),
+                    })
+                }
+                None => None,
+            },
+        );
+        match expansion {
+            Some(tail) => {
+                // Make the macro-call point to its expanded expression so we can query
+                // semantics on syntax pointers to the macro
+                let src = self.expander.to_source(syntax_ptr);
+                self.source_map.expr_map.insert(src, tail);
+                Some(tail)
+            }
+            None => None,
+        }
+    }
+
+    fn collect_stmt(&mut self, statements: &mut Vec<Statement>, s: ast::Stmt) {
         match s {
             ast::Stmt::LetStmt(stmt) => {
                 if self.check_cfg(&stmt).is_none() {
-                    return None;
+                    return;
                 }
                 let pat = self.collect_pat_opt(stmt.pat());
                 let type_ref =
@@ -654,61 +675,26 @@ impl ExprCollector<'_> {
                     .let_else()
                     .and_then(|let_else| let_else.block_expr())
                     .map(|block| self.collect_block(block));
-                Some(Statement::Let { pat, type_ref, initializer, else_branch })
+                statements.push(Statement::Let { pat, type_ref, initializer, else_branch });
             }
             ast::Stmt::ExprStmt(stmt) => {
                 let expr = stmt.expr();
-                if let Some(expr) = &expr {
-                    if self.check_cfg(expr).is_none() {
-                        return None;
-                    }
+                match &expr {
+                    Some(expr) if self.check_cfg(expr).is_none() => return,
+                    _ => (),
                 }
                 let has_semi = stmt.semicolon_token().is_some();
                 // Note that macro could be expanded to multiple statements
-                if let Some(expr @ ast::Expr::MacroExpr(mac)) = &expr {
-                    let mac_call = mac.macro_call()?;
-                    let syntax_ptr = AstPtr::new(expr);
-                    let macro_ptr = AstPtr::new(&mac_call);
-                    let stmt = self.collect_macro_call(
-                        mac_call,
-                        macro_ptr,
-                        false,
-                        |this, expansion: Option<ast::MacroStmts>| match expansion {
-                            Some(expansion) => {
-                                let statements = expansion
-                                    .statements()
-                                    .filter_map(|stmt| this.collect_stmt(stmt))
-                                    .collect();
-                                let tail = expansion.expr().map(|expr| this.collect_expr(expr));
-
-                                let mac_stmts = this.alloc_expr(
-                                    Expr::MacroStmts { tail, statements },
-                                    AstPtr::new(&ast::Expr::MacroStmts(expansion)),
-                                );
-
-                                Some(mac_stmts)
-                            }
-                            None => None,
-                        },
-                    );
-
-                    let expr = match stmt {
-                        Some(expr) => {
-                            // Make the macro-call point to its expanded expression so we can query
-                            // semantics on syntax pointers to the macro
-                            let src = self.expander.to_source(syntax_ptr);
-                            self.source_map.expr_map.insert(src, expr);
-                            expr
-                        }
-                        None => self.alloc_expr(Expr::Missing, syntax_ptr),
-                    };
-                    Some(Statement::Expr { expr, has_semi })
+                if let Some(ast::Expr::MacroExpr(mac)) = expr {
+                    if let Some(expr) = self.collect_macro_as_stmt(statements, mac) {
+                        statements.push(Statement::Expr { expr, has_semi })
+                    }
                 } else {
                     let expr = self.collect_expr_opt(expr);
-                    Some(Statement::Expr { expr, has_semi })
+                    statements.push(Statement::Expr { expr, has_semi });
                 }
             }
-            ast::Stmt::Item(_item) => None,
+            ast::Stmt::Item(_item) => (),
         }
     }
 
@@ -729,9 +715,12 @@ impl ExprCollector<'_> {
         let prev_def_map = mem::replace(&mut self.expander.def_map, def_map);
         let prev_local_module = mem::replace(&mut self.expander.module, module);
 
-        let mut statements: Vec<_> =
-            block.statements().filter_map(|s| self.collect_stmt(s)).collect();
-        let tail = block.tail_expr().and_then(|e| self.maybe_collect_expr(e));
+        let mut statements = Vec::new();
+        block.statements().for_each(|s| self.collect_stmt(&mut statements, s));
+        let tail = block.tail_expr().and_then(|e| match e {
+            ast::Expr::MacroExpr(mac) => self.collect_macro_as_stmt(&mut statements, mac),
+            expr => self.maybe_collect_expr(expr),
+        });
         let tail = tail.or_else(|| {
             let stmt = statements.pop()?;
             if let Statement::Expr { expr, has_semi: false } = stmt {

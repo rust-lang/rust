@@ -315,7 +315,6 @@ pub fn for_each_tail_expr(expr: &ast::Expr, cb: &mut dyn FnMut(&ast::Expr)) {
         | ast::Expr::IndexExpr(_)
         | ast::Expr::Literal(_)
         | ast::Expr::MacroExpr(_)
-        | ast::Expr::MacroStmts(_)
         | ast::Expr::MethodCallExpr(_)
         | ast::Expr::ParenExpr(_)
         | ast::Expr::PathExpr(_)

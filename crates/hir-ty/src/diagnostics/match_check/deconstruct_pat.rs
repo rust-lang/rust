@@ -52,7 +52,10 @@ use hir_def::{EnumVariantId, HasModule, LocalFieldId, VariantId};
 use smallvec::{smallvec, SmallVec};
 use stdx::never;
 
-use crate::{infer::normalize, AdtId, Interner, Scalar, Ty, TyExt, TyKind};
+use crate::{
+    infer::normalize, inhabitedness::is_enum_variant_uninhabited_from, AdtId, Interner, Scalar, Ty,
+    TyExt, TyKind,
+};
 
 use super::{
     is_box,
@@ -557,8 +560,8 @@ impl SplitWildcard {
             TyKind::Scalar(Scalar::Bool) => smallvec![make_range(0, 1, Scalar::Bool)],
             // TyKind::Array(..) if ... => unhandled(),
             TyKind::Array(..) | TyKind::Slice(..) => unhandled(),
-            &TyKind::Adt(AdtId(hir_def::AdtId::EnumId(enum_id)), ..) => {
-                let enum_data = cx.db.enum_data(enum_id);
+            TyKind::Adt(AdtId(hir_def::AdtId::EnumId(enum_id)), subst) => {
+                let enum_data = cx.db.enum_data(*enum_id);
 
                 // If the enum is declared as `#[non_exhaustive]`, we treat it as if it had an
                 // additional "unknown" constructor.
@@ -591,14 +594,15 @@ impl SplitWildcard {
                 let mut ctors: SmallVec<[_; 1]> = enum_data
                     .variants
                     .iter()
-                    .filter(|&(_, _v)| {
+                    .map(|(local_id, _)| EnumVariantId { parent: *enum_id, local_id })
+                    .filter(|&variant| {
                         // If `exhaustive_patterns` is enabled, we exclude variants known to be
                         // uninhabited.
                         let is_uninhabited = is_exhaustive_pat_feature
-                            && unimplemented!("after MatchCheckCtx.feature_exhaustive_patterns()");
+                            && is_enum_variant_uninhabited_from(variant, subst, cx.module, cx.db);
                         !is_uninhabited
                     })
-                    .map(|(local_id, _)| Variant(EnumVariantId { parent: enum_id, local_id }))
+                    .map(Variant)
                     .collect();
 
                 if is_secretly_empty || is_declared_nonexhaustive {

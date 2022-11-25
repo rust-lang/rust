@@ -347,8 +347,8 @@ impl GlobalState {
                             error
                         })
                     })
-                    .collect();
-            }
+                    .collect()
+            };
         }
 
         let watch = match files_config.watcher {

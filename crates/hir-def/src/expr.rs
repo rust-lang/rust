@@ -206,10 +206,6 @@ pub enum Expr {
     Unsafe {
         body: ExprId,
     },
-    MacroStmts {
-        statements: Box<[Statement]>,
-        tail: Option<ExprId>,
-    },
     Array(Array),
     Literal(Literal),
     Underscore,
@@ -263,7 +259,7 @@ impl Expr {
             Expr::Let { expr, .. } => {
                 f(*expr);
             }
-            Expr::MacroStmts { tail, statements } | Expr::Block { statements, tail, .. } => {
+            Expr::Block { statements, tail, .. } => {
                 for stmt in statements.iter() {
                     match stmt {
                         Statement::Let { initializer, .. } => {

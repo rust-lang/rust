@@ -969,7 +969,7 @@ impl ExpandTo {
         if parent.kind() == MACRO_EXPR
             && parent
                 .parent()
-                .map_or(true, |p| matches!(p.kind(), EXPR_STMT | STMT_LIST | MACRO_STMTS))
+                .map_or(false, |p| matches!(p.kind(), EXPR_STMT | STMT_LIST | MACRO_STMTS))
         {
             return ExpandTo::Statements;
         }

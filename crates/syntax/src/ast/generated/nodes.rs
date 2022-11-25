@@ -1526,7 +1526,6 @@ pub enum Expr {
     Literal(Literal),
     LoopExpr(LoopExpr),
     MacroExpr(MacroExpr),
-    MacroStmts(MacroStmts),
     MatchExpr(MatchExpr),
     MethodCallExpr(MethodCallExpr),
     ParenExpr(ParenExpr),
@@ -3169,10 +3168,7 @@ impl From<ConstArg> for GenericArg {
 }
 impl AstNode for GenericArg {
     fn can_cast(kind: SyntaxKind) -> bool {
-        match kind {
-            TYPE_ARG | ASSOC_TYPE_ARG | LIFETIME_ARG | CONST_ARG => true,
-            _ => false,
-        }
+        matches!(kind, TYPE_ARG | ASSOC_TYPE_ARG | LIFETIME_ARG | CONST_ARG)
     }
     fn cast(syntax: SyntaxNode) -> Option<Self> {
         let res = match syntax.kind() {
@@ -3237,12 +3233,23 @@ impl From<TupleType> for Type {
 }
 impl AstNode for Type {
     fn can_cast(kind: SyntaxKind) -> bool {
-        match kind {
-            ARRAY_TYPE | DYN_TRAIT_TYPE | FN_PTR_TYPE | FOR_TYPE | IMPL_TRAIT_TYPE | INFER_TYPE
-            | MACRO_TYPE | NEVER_TYPE | PAREN_TYPE | PATH_TYPE | PTR_TYPE | REF_TYPE
-            | SLICE_TYPE | TUPLE_TYPE => true,
-            _ => false,
-        }
+        matches!(
+            kind,
+            ARRAY_TYPE
+                | DYN_TRAIT_TYPE
+                | FN_PTR_TYPE
+                | FOR_TYPE
+                | IMPL_TRAIT_TYPE
+                | INFER_TYPE
+                | MACRO_TYPE
+                | NEVER_TYPE
+                | PAREN_TYPE
+                | PATH_TYPE
+                | PTR_TYPE
+                | REF_TYPE
+                | SLICE_TYPE
+                | TUPLE_TYPE
+        )
     }
     fn cast(syntax: SyntaxNode) -> Option<Self> {
         let res = match syntax.kind() {
@@ -3334,9 +3341,6 @@ impl From<LoopExpr> for Expr {
 impl From<MacroExpr> for Expr {
     fn from(node: MacroExpr) -> Expr { Expr::MacroExpr(node) }
 }
-impl From<MacroStmts> for Expr {
-    fn from(node: MacroStmts) -> Expr { Expr::MacroStmts(node) }
-}
 impl From<MatchExpr> for Expr {
     fn from(node: MatchExpr) -> Expr { Expr::MatchExpr(node) }
 }
@@ -3384,15 +3388,41 @@ impl From<UnderscoreExpr> for Expr {
 }
 impl AstNode for Expr {
     fn can_cast(kind: SyntaxKind) -> bool {
-        match kind {
-            ARRAY_EXPR | AWAIT_EXPR | BIN_EXPR | BLOCK_EXPR | BOX_EXPR | BREAK_EXPR | CALL_EXPR
-            | CAST_EXPR | CLOSURE_EXPR | CONTINUE_EXPR | FIELD_EXPR | FOR_EXPR | IF_EXPR
-            | INDEX_EXPR | LITERAL | LOOP_EXPR | MACRO_EXPR | MACRO_STMTS | MATCH_EXPR
-            | METHOD_CALL_EXPR | PAREN_EXPR | PATH_EXPR | PREFIX_EXPR | RANGE_EXPR
-            | RECORD_EXPR | REF_EXPR | RETURN_EXPR | TRY_EXPR | TUPLE_EXPR | WHILE_EXPR
-            | YIELD_EXPR | LET_EXPR | UNDERSCORE_EXPR => true,
-            _ => false,
-        }
+        matches!(
+            kind,
+            ARRAY_EXPR
+                | AWAIT_EXPR
+                | BIN_EXPR
+                | BLOCK_EXPR
+                | BOX_EXPR
+                | BREAK_EXPR
+                | CALL_EXPR
+                | CAST_EXPR
+                | CLOSURE_EXPR
+                | CONTINUE_EXPR
+                | FIELD_EXPR
+                | FOR_EXPR
+                | IF_EXPR
+                | INDEX_EXPR
+                | LITERAL
+                | LOOP_EXPR
+                | MACRO_EXPR
+                | MATCH_EXPR
+                | METHOD_CALL_EXPR
+                | PAREN_EXPR
+                | PATH_EXPR
+                | PREFIX_EXPR
+                | RANGE_EXPR
+                | RECORD_EXPR
+                | REF_EXPR
+                | RETURN_EXPR
+                | TRY_EXPR
+                | TUPLE_EXPR
+                | WHILE_EXPR
+                | YIELD_EXPR
+                | LET_EXPR
+                | UNDERSCORE_EXPR
+        )
     }
     fn cast(syntax: SyntaxNode) -> Option<Self> {
         let res = match syntax.kind() {
@@ -3413,7 +3443,6 @@ impl AstNode for Expr {
             LITERAL => Expr::Literal(Literal { syntax }),
             LOOP_EXPR => Expr::LoopExpr(LoopExpr { syntax }),
             MACRO_EXPR => Expr::MacroExpr(MacroExpr { syntax }),
-            MACRO_STMTS => Expr::MacroStmts(MacroStmts { syntax }),
             MATCH_EXPR => Expr::MatchExpr(MatchExpr { syntax }),
             METHOD_CALL_EXPR => Expr::MethodCallExpr(MethodCallExpr { syntax }),
             PAREN_EXPR => Expr::ParenExpr(ParenExpr { syntax }),
@@ -3452,7 +3481,6 @@ impl AstNode for Expr {
             Expr::Literal(it) => &it.syntax,
             Expr::LoopExpr(it) => &it.syntax,
             Expr::MacroExpr(it) => &it.syntax,
-            Expr::MacroStmts(it) => &it.syntax,
             Expr::MatchExpr(it) => &it.syntax,
             Expr::MethodCallExpr(it) => &it.syntax,
             Expr::ParenExpr(it) => &it.syntax,
@@ -3521,11 +3549,25 @@ impl From<Use> for Item {
 }
 impl AstNode for Item {
     fn can_cast(kind: SyntaxKind) -> bool {
-        match kind {
-            CONST | ENUM | EXTERN_BLOCK | EXTERN_CRATE | FN | IMPL | MACRO_CALL | MACRO_RULES
-            | MACRO_DEF | MODULE | STATIC | STRUCT | TRAIT | TYPE_ALIAS | UNION | USE => true,
-            _ => false,
-        }
+        matches!(
+            kind,
+            CONST
+                | ENUM
+                | EXTERN_BLOCK
+                | EXTERN_CRATE
+                | FN
+                | IMPL
+                | MACRO_CALL
+                | MACRO_RULES
+                | MACRO_DEF
+                | MODULE
+                | STATIC
+                | STRUCT
+                | TRAIT
+                | TYPE_ALIAS
+                | UNION
+                | USE
+        )
     }
     fn cast(syntax: SyntaxNode) -> Option<Self> {
         let res = match syntax.kind() {
@@ -3629,12 +3671,25 @@ impl From<ConstBlockPat> for Pat {
 }
 impl AstNode for Pat {
     fn can_cast(kind: SyntaxKind) -> bool {
-        match kind {
-            IDENT_PAT | BOX_PAT | REST_PAT | LITERAL_PAT | MACRO_PAT | OR_PAT | PAREN_PAT
-            | PATH_PAT | WILDCARD_PAT | RANGE_PAT | RECORD_PAT | REF_PAT | SLICE_PAT
-            | TUPLE_PAT | TUPLE_STRUCT_PAT | CONST_BLOCK_PAT => true,
-            _ => false,
-        }
+        matches!(
+            kind,
+            IDENT_PAT
+                | BOX_PAT
+                | REST_PAT
+                | LITERAL_PAT
+                | MACRO_PAT
+                | OR_PAT
+                | PAREN_PAT
+                | PATH_PAT
+                | WILDCARD_PAT
+                | RANGE_PAT
+                | RECORD_PAT
+                | REF_PAT
+                | SLICE_PAT
+                | TUPLE_PAT
+                | TUPLE_STRUCT_PAT
+                | CONST_BLOCK_PAT
+        )
     }
     fn cast(syntax: SyntaxNode) -> Option<Self> {
         let res = match syntax.kind() {
@@ -3686,12 +3741,7 @@ impl From<TupleFieldList> for FieldList {
     fn from(node: TupleFieldList) -> FieldList { FieldList::TupleFieldList(node) }
 }
 impl AstNode for FieldList {
-    fn can_cast(kind: SyntaxKind) -> bool {
-        match kind {
-            RECORD_FIELD_LIST | TUPLE_FIELD_LIST => true,
-            _ => false,
-        }
-    }
+    fn can_cast(kind: SyntaxKind) -> bool { matches!(kind, RECORD_FIELD_LIST | TUPLE_FIELD_LIST) }
     fn cast(syntax: SyntaxNode) -> Option<Self> {
         let res = match syntax.kind() {
             RECORD_FIELD_LIST => FieldList::RecordFieldList(RecordFieldList { syntax }),
@@ -3717,12 +3767,7 @@ impl From<Union> for Adt {
     fn from(node: Union) -> Adt { Adt::Union(node) }
 }
 impl AstNode for Adt {
-    fn can_cast(kind: SyntaxKind) -> bool {
-        match kind {
-            ENUM | STRUCT | UNION => true,
-            _ => false,
-        }
-    }
+    fn can_cast(kind: SyntaxKind) -> bool { matches!(kind, ENUM | STRUCT | UNION) }
     fn cast(syntax: SyntaxNode) -> Option<Self> {
         let res = match syntax.kind() {
             ENUM => Adt::Enum(Enum { syntax }),
@@ -3753,12 +3798,7 @@ impl From<TypeAlias> for AssocItem {
     fn from(node: TypeAlias) -> AssocItem { AssocItem::TypeAlias(node) }
 }
 impl AstNode for AssocItem {
-    fn can_cast(kind: SyntaxKind) -> bool {
-        match kind {
-            CONST | FN | MACRO_CALL | TYPE_ALIAS => true,
-            _ => false,
-        }
-    }
+    fn can_cast(kind: SyntaxKind) -> bool { matches!(kind, CONST | FN | MACRO_CALL | TYPE_ALIAS) }
     fn cast(syntax: SyntaxNode) -> Option<Self> {
         let res = match syntax.kind() {
             CONST => AssocItem::Const(Const { syntax }),
@@ -3791,12 +3831,7 @@ impl From<TypeAlias> for ExternItem {
     fn from(node: TypeAlias) -> ExternItem { ExternItem::TypeAlias(node) }
 }
 impl AstNode for ExternItem {
-    fn can_cast(kind: SyntaxKind) -> bool {
-        match kind {
-            FN | MACRO_CALL | STATIC | TYPE_ALIAS => true,
-            _ => false,
-        }
-    }
+    fn can_cast(kind: SyntaxKind) -> bool { matches!(kind, FN | MACRO_CALL | STATIC | TYPE_ALIAS) }
     fn cast(syntax: SyntaxNode) -> Option<Self> {
         let res = match syntax.kind() {
             FN => ExternItem::Fn(Fn { syntax }),
@@ -3827,10 +3862,7 @@ impl From<TypeParam> for GenericParam {
 }
 impl AstNode for GenericParam {
     fn can_cast(kind: SyntaxKind) -> bool {
-        match kind {
-            CONST_PARAM | LIFETIME_PARAM | TYPE_PARAM => true,
-            _ => false,
-        }
+        matches!(kind, CONST_PARAM | LIFETIME_PARAM | TYPE_PARAM)
     }
     fn cast(syntax: SyntaxNode) -> Option<Self> {
         let res = match syntax.kind() {
@@ -3856,12 +3888,7 @@ impl AnyHasArgList {
     }
 }
 impl AstNode for AnyHasArgList {
-    fn can_cast(kind: SyntaxKind) -> bool {
-        match kind {
-            CALL_EXPR | METHOD_CALL_EXPR => true,
-            _ => false,
-        }
-    }
+    fn can_cast(kind: SyntaxKind) -> bool { matches!(kind, CALL_EXPR | METHOD_CALL_EXPR) }
     fn cast(syntax: SyntaxNode) -> Option<Self> {
         Self::can_cast(syntax.kind()).then(|| AnyHasArgList { syntax })
     }
@@ -3875,76 +3902,76 @@ impl AnyHasAttrs {
 }
 impl AstNode for AnyHasAttrs {
     fn can_cast(kind: SyntaxKind) -> bool {
-        match kind {
+        matches!(
+            kind,
             MACRO_CALL
-            | SOURCE_FILE
-            | CONST
-            | ENUM
-            | EXTERN_BLOCK
-            | EXTERN_CRATE
-            | FN
-            | IMPL
-            | MACRO_RULES
-            | MACRO_DEF
-            | MODULE
-            | STATIC
-            | STRUCT
-            | TRAIT
-            | TYPE_ALIAS
-            | UNION
-            | USE
-            | ITEM_LIST
-            | BLOCK_EXPR
-            | SELF_PARAM
-            | PARAM
-            | RECORD_FIELD
-            | TUPLE_FIELD
-            | VARIANT
-            | ASSOC_ITEM_LIST
-            | EXTERN_ITEM_LIST
-            | CONST_PARAM
-            | LIFETIME_PARAM
-            | TYPE_PARAM
-            | LET_STMT
-            | ARRAY_EXPR
-            | AWAIT_EXPR
-            | BIN_EXPR
-            | BOX_EXPR
-            | BREAK_EXPR
-            | CALL_EXPR
-            | CAST_EXPR
-            | CLOSURE_EXPR
-            | CONTINUE_EXPR
-            | FIELD_EXPR
-            | FOR_EXPR
-            | IF_EXPR
-            | INDEX_EXPR
-            | LITERAL
-            | LOOP_EXPR
-            | MATCH_EXPR
-            | METHOD_CALL_EXPR
-            | PAREN_EXPR
-            | PATH_EXPR
-            | PREFIX_EXPR
-            | RANGE_EXPR
-            | REF_EXPR
-            | RETURN_EXPR
-            | TRY_EXPR
-            | TUPLE_EXPR
-            | WHILE_EXPR
-            | YIELD_EXPR
-            | LET_EXPR
-            | UNDERSCORE_EXPR
-            | STMT_LIST
-            | RECORD_EXPR_FIELD_LIST
-            | RECORD_EXPR_FIELD
-            | MATCH_ARM_LIST
-            | MATCH_ARM
-            | IDENT_PAT
-            | REST_PAT
-            | RECORD_PAT_FIELD => true,
-            _ => false,
-        }
+                | SOURCE_FILE
+                | CONST
+                | ENUM
+                | EXTERN_BLOCK
+                | EXTERN_CRATE
+                | FN
+                | IMPL
+                | MACRO_RULES
+                | MACRO_DEF
+                | MODULE
+                | STATIC
+                | STRUCT
+                | TRAIT
+                | TYPE_ALIAS
+                | UNION
+                | USE
+                | ITEM_LIST
+                | BLOCK_EXPR
+                | SELF_PARAM
+                | PARAM
+                | RECORD_FIELD
+                | TUPLE_FIELD
+                | VARIANT
+                | ASSOC_ITEM_LIST
+                | EXTERN_ITEM_LIST
+                | CONST_PARAM
+                | LIFETIME_PARAM
+                | TYPE_PARAM
+                | LET_STMT
+                | ARRAY_EXPR
+                | AWAIT_EXPR
+                | BIN_EXPR
+                | BOX_EXPR
+                | BREAK_EXPR
+                | CALL_EXPR
+                | CAST_EXPR
+                | CLOSURE_EXPR
+                | CONTINUE_EXPR
+                | FIELD_EXPR
+                | FOR_EXPR
+                | IF_EXPR
+                | INDEX_EXPR
+                | LITERAL
+                | LOOP_EXPR
+                | MATCH_EXPR
+                | METHOD_CALL_EXPR
+                | PAREN_EXPR
+                | PATH_EXPR
+                | PREFIX_EXPR
+                | RANGE_EXPR
+                | REF_EXPR
+                | RETURN_EXPR
+                | TRY_EXPR
+                | TUPLE_EXPR
+                | WHILE_EXPR
+                | YIELD_EXPR
+                | LET_EXPR
+                | UNDERSCORE_EXPR
+                | STMT_LIST
+                | RECORD_EXPR_FIELD_LIST
+                | RECORD_EXPR_FIELD
+                | MATCH_ARM_LIST
+                | MATCH_ARM
+                | IDENT_PAT
+                | REST_PAT
+                | RECORD_PAT_FIELD
+        )
     }
     fn cast(syntax: SyntaxNode) -> Option<Self> {
         Self::can_cast(syntax.kind()).then(|| AnyHasAttrs { syntax })
@@ -3959,12 +3986,29 @@ impl AnyHasDocComments {
 }
 impl AstNode for AnyHasDocComments {
     fn can_cast(kind: SyntaxKind) -> bool {
-        match kind {
-            MACRO_CALL | SOURCE_FILE | CONST | ENUM | EXTERN_BLOCK | EXTERN_CRATE | FN | IMPL
-            | MACRO_RULES | MACRO_DEF | MODULE | STATIC | STRUCT | TRAIT | TYPE_ALIAS | UNION
-            | USE | RECORD_FIELD | TUPLE_FIELD | VARIANT => true,
-            _ => false,
-        }
+        matches!(
+            kind,
+            MACRO_CALL
+                | SOURCE_FILE
+                | CONST
+                | ENUM
+                | EXTERN_BLOCK
+                | EXTERN_CRATE
+                | FN
+                | IMPL
+                | MACRO_RULES
+                | MACRO_DEF
+                | MODULE
+                | STATIC
+                | STRUCT
+                | TRAIT
+                | TYPE_ALIAS
+                | UNION
+                | USE
+                | RECORD_FIELD
+                | TUPLE_FIELD
+                | VARIANT
+        )
     }
     fn cast(syntax: SyntaxNode) -> Option<Self> {
         Self::can_cast(syntax.kind()).then(|| AnyHasDocComments { syntax })
@@ -3979,10 +4023,7 @@ impl AnyHasGenericParams {
 }
 impl AstNode for AnyHasGenericParams {
     fn can_cast(kind: SyntaxKind) -> bool {
-        match kind {
-            ENUM | FN | IMPL | STRUCT | TRAIT | TYPE_ALIAS | UNION => true,
-            _ => false,
-        }
+        matches!(kind, ENUM | FN | IMPL | STRUCT | TRAIT | TYPE_ALIAS | UNION)
     }
     fn cast(syntax: SyntaxNode) -> Option<Self> {
         Self::can_cast(syntax.kind()).then(|| AnyHasGenericParams { syntax })
@@ -3996,12 +4037,7 @@ impl AnyHasLoopBody {
     }
 }
 impl AstNode for AnyHasLoopBody {
-    fn can_cast(kind: SyntaxKind) -> bool {
-        match kind {
-            FOR_EXPR | LOOP_EXPR | WHILE_EXPR => true,
-            _ => false,
-        }
-    }
+    fn can_cast(kind: SyntaxKind) -> bool { matches!(kind, FOR_EXPR | LOOP_EXPR | WHILE_EXPR) }
     fn cast(syntax: SyntaxNode) -> Option<Self> {
         Self::can_cast(syntax.kind()).then(|| AnyHasLoopBody { syntax })
     }
@@ -4014,12 +4050,7 @@ impl AnyHasModuleItem {
     }
 }
 impl AstNode for AnyHasModuleItem {
-    fn can_cast(kind: SyntaxKind) -> bool {
-        match kind {
-            MACRO_ITEMS | SOURCE_FILE | ITEM_LIST => true,
-            _ => false,
-        }
-    }
+    fn can_cast(kind: SyntaxKind) -> bool { matches!(kind, MACRO_ITEMS | SOURCE_FILE | ITEM_LIST) }
     fn cast(syntax: SyntaxNode) -> Option<Self> {
         Self::can_cast(syntax.kind()).then(|| AnyHasModuleItem { syntax })
     }
@@ -4033,12 +4064,27 @@ impl AnyHasName {
 }
 impl AstNode for AnyHasName {
     fn can_cast(kind: SyntaxKind) -> bool {
-        match kind {
-            CONST | ENUM | FN | MACRO_RULES | MACRO_DEF | MODULE | STATIC | STRUCT | TRAIT
-            | TYPE_ALIAS | UNION | RENAME | SELF_PARAM | RECORD_FIELD | VARIANT | CONST_PARAM
-            | TYPE_PARAM | IDENT_PAT => true,
-            _ => false,
-        }
+        matches!(
+            kind,
+            CONST
+                | ENUM
+                | FN
+                | MACRO_RULES
+                | MACRO_DEF
+                | MODULE
+                | STATIC
+                | STRUCT
+                | TRAIT
+                | TYPE_ALIAS
+                | UNION
+                | RENAME
+                | SELF_PARAM
+                | RECORD_FIELD
+                | VARIANT
+                | CONST_PARAM
+                | TYPE_PARAM
+                | IDENT_PAT
+        )
     }
     fn cast(syntax: SyntaxNode) -> Option<Self> {
         Self::can_cast(syntax.kind()).then(|| AnyHasName { syntax })
@@ -4053,10 +4099,10 @@ impl AnyHasTypeBounds {
 }
 impl AstNode for AnyHasTypeBounds {
     fn can_cast(kind: SyntaxKind) -> bool {
-        match kind {
-            ASSOC_TYPE_ARG | TRAIT | TYPE_ALIAS | LIFETIME_PARAM | TYPE_PARAM | WHERE_PRED => true,
-            _ => false,
-        }
+        matches!(
+            kind,
+            ASSOC_TYPE_ARG | TRAIT | TYPE_ALIAS | LIFETIME_PARAM | TYPE_PARAM | WHERE_PRED
+        )
     }
     fn cast(syntax: SyntaxNode) -> Option<Self> {
         Self::can_cast(syntax.kind()).then(|| AnyHasTypeBounds { syntax })
@@ -4071,13 +4117,26 @@ impl AnyHasVisibility {
 }
 impl AstNode for AnyHasVisibility {
     fn can_cast(kind: SyntaxKind) -> bool {
-        match kind {
-            CONST | ENUM | EXTERN_CRATE | FN | IMPL | MACRO_RULES | MACRO_DEF | MODULE | STATIC
-            | STRUCT | TRAIT | TYPE_ALIAS | UNION | USE | RECORD_FIELD | TUPLE_FIELD | VARIANT => {
-                true
-            }
-            _ => false,
-        }
+        matches!(
+            kind,
+            CONST
+                | ENUM
+                | EXTERN_CRATE
+                | FN
+                | IMPL
+                | MACRO_RULES
+                | MACRO_DEF
+                | MODULE
+                | STATIC
+                | STRUCT
+                | TRAIT
+                | TYPE_ALIAS
+                | UNION
+                | USE
+                | RECORD_FIELD
+                | TUPLE_FIELD
+                | VARIANT
+        )
     }
     fn cast(syntax: SyntaxNode) -> Option<Self> {
         Self::can_cast(syntax.kind()).then(|| AnyHasVisibility { syntax })

@@ -573,7 +573,6 @@ fn issue_6811() {
         }
         "#,
         expect![[r#"
-            !0..16 'let_a=...t_b=1;': ()
             !3..5 '_a': i32
             !6..7 '1': i32
             !11..13 '_b': i32
@@ -1679,7 +1678,6 @@ fn main() {
 
 #[test]
 fn trailing_empty_macro() {
-    cov_mark::check!(empty_macro_in_trailing_position_is_removed);
     check_no_mismatches(
         r#"
 macro_rules! m2 {

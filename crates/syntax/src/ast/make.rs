@@ -25,7 +25,7 @@ pub mod ext {
         return from_text(&name.text());
 
         fn from_text(text: &str) -> ast::IdentPat {
-            ast_from_text(&format!("fn f({}: ())", text))
+            ast_from_text(&format!("fn f({text}: ())"))
         }
     }
     pub fn ident_path(ident: &str) -> ast::Path {
@@ -60,10 +60,10 @@ pub mod ext {
         expr_from_text("todo!()")
     }
     pub fn expr_ty_default(ty: &ast::Type) -> ast::Expr {
-        expr_from_text(&format!("{}::default()", ty))
+        expr_from_text(&format!("{ty}::default()"))
     }
     pub fn expr_ty_new(ty: &ast::Type) -> ast::Expr {
-        expr_from_text(&format!("{}::new()", ty))
+        expr_from_text(&format!("{ty}::new()"))
     }
 
     pub fn zero_number() -> ast::Expr {
@@ -92,18 +92,20 @@ pub mod ext {
         ty_path(ident_path("bool"))
     }
     pub fn ty_option(t: ast::Type) -> ast::Type {
-        ty_from_text(&format!("Option<{}>", t))
+        ty_from_text(&format!("Option<{t}>"))
     }
     pub fn ty_result(t: ast::Type, e: ast::Type) -> ast::Type {
-        ty_from_text(&format!("Result<{}, {}>", t, e))
+        ty_from_text(&format!("Result<{t}, {e}>"))
     }
 }
 
-pub fn name(text: &str) -> ast::Name {
-    ast_from_text(&format!("mod {}{};", raw_ident_esc(text), text))
+pub fn name(name: &str) -> ast::Name {
+    let raw_escape = raw_ident_esc(name);
+    ast_from_text(&format!("mod {raw_escape}{name};"))
 }
-pub fn name_ref(text: &str) -> ast::NameRef {
-    ast_from_text(&format!("fn f() {{ {}{}; }}", raw_ident_esc(text), text))
+pub fn name_ref(name_ref: &str) -> ast::NameRef {
+    let raw_escape = raw_ident_esc(name_ref);
+    ast_from_text(&format!("fn f() {{ {raw_escape}{name_ref}; }}"))
 }
 fn raw_ident_esc(ident: &str) -> &'static str {
     let is_keyword = parser::SyntaxKind::from_keyword(ident).is_some();
@@ -118,10 +120,10 @@ pub fn lifetime(text: &str) -> ast::Lifetime {
     let mut text = text;
     let tmp;
     if never!(!text.starts_with('\'')) {
-        tmp = format!("'{}", text);
+        tmp = format!("'{text}");
         text = &tmp;
     }
-    ast_from_text(&format!("fn f<{}>() {{ }}", text))
+    ast_from_text(&format!("fn f<{text}>() {{ }}"))
 }
 
 // FIXME: replace stringly-typed constructor with a family of typed ctors, a-la
@@ -142,16 +144,16 @@ pub fn ty_tuple(types: impl IntoIterator<Item = ast::Type>) -> ast::Type {
         contents.push(',');
     }
 
-    ty_from_text(&format!("({})", contents))
+    ty_from_text(&format!("({contents})"))
 }
 pub fn ty_ref(target: ast::Type, exclusive: bool) -> ast::Type {
-    ty_from_text(&if exclusive { format!("&mut {}", target) } else { format!("&{}", target) })
+    ty_from_text(&if exclusive { format!("&mut {target}") } else { format!("&{target}") })
 }
 pub fn ty_path(path: ast::Path) -> ast::Type {
     ty_from_text(&path.to_string())
 }
 fn ty_from_text(text: &str) -> ast::Type {
-    ast_from_text(&format!("type _T = {};", text))
+    ast_from_text(&format!("type _T = {text};"))
 }
 
 pub fn assoc_item_list() -> ast::AssocItemList {
@@ -171,7 +173,7 @@ pub fn impl_(
         Some(params) => params.to_string(),
         None => String::new(),
     };
-    ast_from_text(&format!("impl{} {}{} {{}}", params, ty, ty_params))
+    ast_from_text(&format!("impl{params} {ty}{ty_params} {{}}"))
 }
 
 pub fn impl_trait(
@@ -180,7 +182,7 @@ pub fn impl_trait(
     ty_params: Option<ast::GenericParamList>,
 ) -> ast::Impl {
     let ty_params = ty_params.map_or_else(String::new, |params| params.to_string());
-    ast_from_text(&format!("impl{2} {} for {}{2} {{}}", trait_, ty, ty_params))
+    ast_from_text(&format!("impl{ty_params} {trait_} for {ty}{ty_params} {{}}"))
 }
 
 pub(crate) fn generic_arg_list() -> ast::GenericArgList {
@@ -188,13 +190,13 @@ pub(crate) fn generic_arg_list() -> ast::GenericArgList {
 }
 
 pub fn path_segment(name_ref: ast::NameRef) -> ast::PathSegment {
-    ast_from_text(&format!("type __ = {};", name_ref))
+    ast_from_text(&format!("type __ = {name_ref};"))
 }
 
 pub fn path_segment_ty(type_ref: ast::Type, trait_ref: Option<ast::PathType>) -> ast::PathSegment {
     let text = match trait_ref {
-        Some(trait_ref) => format!("fn f(x: <{} as {}>) {{}}", type_ref, trait_ref),
-        None => format!("fn f(x: <{}>) {{}}", type_ref),
+        Some(trait_ref) => format!("fn f(x: <{type_ref} as {trait_ref}>) {{}}"),
+        None => format!("fn f(x: <{type_ref}>) {{}}"),
     };
     ast_from_text(&text)
 }
@@ -212,15 +214,15 @@ pub fn path_segment_crate() -> ast::PathSegment {
 }
 
 pub fn path_unqualified(segment: ast::PathSegment) -> ast::Path {
-    ast_from_text(&format!("type __ = {};", segment))
+    ast_from_text(&format!("type __ = {segment};"))
 }
 
 pub fn path_qualified(qual: ast::Path, segment: ast::PathSegment) -> ast::Path {
-    ast_from_text(&format!("{}::{}", qual, segment))
+    ast_from_text(&format!("{qual}::{segment}"))
 }
 // FIXME: path concatenation operation doesn't make sense as AST op.
 pub fn path_concat(first: ast::Path, second: ast::Path) -> ast::Path {
-    ast_from_text(&format!("type __ = {}::{};", first, second))
+    ast_from_text(&format!("type __ = {first}::{second};"))
 }
 
 pub fn path_from_segments(
@@ -229,20 +231,20 @@ pub fn path_from_segments(
 ) -> ast::Path {
     let segments = segments.into_iter().map(|it| it.syntax().clone()).join("::");
     ast_from_text(&if is_abs {
-        format!("fn f(x: ::{}) {{}}", segments)
+        format!("fn f(x: ::{segments}) {{}}")
     } else {
-        format!("fn f(x: {}) {{}}", segments)
+        format!("fn f(x: {segments}) {{}}")
     })
 }
 
 pub fn join_paths(paths: impl IntoIterator<Item = ast::Path>) -> ast::Path {
     let paths = paths.into_iter().map(|it| it.syntax().clone()).join("::");
-    ast_from_text(&format!("type __ = {};", paths))
+    ast_from_text(&format!("type __ = {paths};"))
 }
 
 // FIXME: should not be pub
 pub fn path_from_text(text: &str) -> ast::Path {
-    ast_from_text(&format!("fn main() {{ let test = {}; }}", text))
+    ast_from_text(&format!("fn main() {{ let test = {text}; }}"))
 }
 
 pub fn use_tree_glob() -> ast::UseTree {
@@ -257,50 +259,50 @@ pub fn use_tree(
     let mut buf = "use ".to_string();
     buf += &path.syntax().to_string();
     if let Some(use_tree_list) = use_tree_list {
-        format_to!(buf, "::{}", use_tree_list);
+        format_to!(buf, "::{use_tree_list}");
     }
     if add_star {
         buf += "::*";
     }
 
     if let Some(alias) = alias {
-        format_to!(buf, " {}", alias);
+        format_to!(buf, " {alias}");
     }
     ast_from_text(&buf)
 }
 
 pub fn use_tree_list(use_trees: impl IntoIterator<Item = ast::UseTree>) -> ast::UseTreeList {
     let use_trees = use_trees.into_iter().map(|it| it.syntax().clone()).join(", ");
-    ast_from_text(&format!("use {{{}}};", use_trees))
+    ast_from_text(&format!("use {{{use_trees}}};"))
 }
 
 pub fn use_(visibility: Option<ast::Visibility>, use_tree: ast::UseTree) -> ast::Use {
     let visibility = match visibility {
         None => String::new(),
-        Some(it) => format!("{} ", it),
+        Some(it) => format!("{it} "),
     };
-    ast_from_text(&format!("{}use {};", visibility, use_tree))
+    ast_from_text(&format!("{visibility}use {use_tree};"))
 }
 
 pub fn record_expr(path: ast::Path, fields: ast::RecordExprFieldList) -> ast::RecordExpr {
-    ast_from_text(&format!("fn f() {{ {} {} }}", path, fields))
+    ast_from_text(&format!("fn f() {{ {path} {fields} }}"))
 }
 
 pub fn record_expr_field_list(
     fields: impl IntoIterator<Item = ast::RecordExprField>,
 ) -> ast::RecordExprFieldList {
     let fields = fields.into_iter().join(", ");
-    ast_from_text(&format!("fn f() {{ S {{ {} }} }}", fields))
+    ast_from_text(&format!("fn f() {{ S {{ {fields} }} }}"))
 }
 
 pub fn record_expr_field(name: ast::NameRef, expr: Option<ast::Expr>) -> ast::RecordExprField {
     return match expr {
-        Some(expr) => from_text(&format!("{}: {}", name, expr)),
+        Some(expr) => from_text(&format!("{name}: {expr}")),
         None => from_text(&name.to_string()),
     };
 
     fn from_text(text: &str) -> ast::RecordExprField {
-        ast_from_text(&format!("fn f() {{ S {{ {}, }} }}", text))
+        ast_from_text(&format!("fn f() {{ S {{ {text}, }} }}"))
     }
 }
 
@@ -311,9 +313,9 @@ pub fn record_field(
 ) -> ast::RecordField {
     let visibility = match visibility {
         None => String::new(),
-        Some(it) => format!("{} ", it),
+        Some(it) => format!("{it} "),
     };
-    ast_from_text(&format!("struct S {{ {}{}: {}, }}", visibility, name, ty))
+    ast_from_text(&format!("struct S {{ {visibility}{name}: {ty}, }}"))
 }
 
 // TODO
@@ -323,13 +325,13 @@ pub fn block_expr(
 ) -> ast::BlockExpr {
     let mut buf = "{\n".to_string();
     for stmt in stmts.into_iter() {
-        format_to!(buf, "    {}\n", stmt);
+        format_to!(buf, "    {stmt}\n");
     }
     if let Some(tail_expr) = tail_expr {
-        format_to!(buf, "    {}\n", tail_expr);
+        format_to!(buf, "    {tail_expr}\n");
     }
     buf += "}";
-    ast_from_text(&format!("fn f() {}", buf))
+    ast_from_text(&format!("fn f() {buf}"))
 }
 
 /// Ideally this function wouldn't exist since it involves manual indenting.
@@ -343,18 +345,18 @@ pub fn hacky_block_expr_with_comments(
     let mut buf = "{\n".to_string();
     for node_or_token in elements.into_iter() {
         match node_or_token {
-            rowan::NodeOrToken::Node(n) => format_to!(buf, "    {}\n", n),
+            rowan::NodeOrToken::Node(n) => format_to!(buf, "    {n}\n"),
             rowan::NodeOrToken::Token(t) if t.kind() == SyntaxKind::COMMENT => {
-                format_to!(buf, "    {}\n", t)
+                format_to!(buf, "    {t}\n")
             }
             _ => (),
         }
     }
     if let Some(tail_expr) = tail_expr {
-        format_to!(buf, "    {}\n", tail_expr);
+        format_to!(buf, "    {tail_expr}\n");
     }
     buf += "}";
-    ast_from_text(&format!("fn f() {}", buf))
+    ast_from_text(&format!("fn f() {buf}"))
 }
 
 pub fn expr_unit() -> ast::Expr {
@@ -362,7 +364,7 @@ pub fn expr_unit() -> ast::Expr {
 }
 pub fn expr_literal(text: &str) -> ast::Literal {
     assert_eq!(text.trim(), text);
-    ast_from_text(&format!("fn f() {{ let _ = {}; }}", text))
+    ast_from_text(&format!("fn f() {{ let _ = {text}; }}"))
 }
 
 pub fn expr_empty_block() -> ast::Expr {
@@ -373,41 +375,41 @@ pub fn expr_path(path: ast::Path) -> ast::Expr {
 }
 pub fn expr_continue(label: Option<ast::Lifetime>) -> ast::Expr {
     match label {
-        Some(label) => expr_from_text(&format!("continue {}", label)),
+        Some(label) => expr_from_text(&format!("continue {label}")),
         None => expr_from_text("continue"),
     }
 }
 // Consider `op: SyntaxKind` instead for nicer syntax at the call-site?
 pub fn expr_bin_op(lhs: ast::Expr, op: ast::BinaryOp, rhs: ast::Expr) -> ast::Expr {
-    expr_from_text(&format!("{} {} {}", lhs, op, rhs))
+    expr_from_text(&format!("{lhs} {op} {rhs}"))
 }
 pub fn expr_break(label: Option<ast::Lifetime>, expr: Option<ast::Expr>) -> ast::Expr {
     let mut s = String::from("break");
 
     if let Some(label) = label {
-        format_to!(s, " {}", label);
+        format_to!(s, " {label}");
     }
 
     if let Some(expr) = expr {
-        format_to!(s, " {}", expr);
+        format_to!(s, " {expr}");
     }
 
     expr_from_text(&s)
 }
 pub fn expr_return(expr: Option<ast::Expr>) -> ast::Expr {
     match expr {
-        Some(expr) => expr_from_text(&format!("return {}", expr)),
+        Some(expr) => expr_from_text(&format!("return {expr}")),
         None => expr_from_text("return"),
     }
 }
 pub fn expr_try(expr: ast::Expr) -> ast::Expr {
-    expr_from_text(&format!("{}?", expr))
+    expr_from_text(&format!("{expr}?"))
 }
 pub fn expr_await(expr: ast::Expr) -> ast::Expr {
-    expr_from_text(&format!("{}.await", expr))
+    expr_from_text(&format!("{expr}.await"))
 }
 pub fn expr_match(expr: ast::Expr, match_arm_list: ast::MatchArmList) -> ast::Expr {
-    expr_from_text(&format!("match {} {}", expr, match_arm_list))
+    expr_from_text(&format!("match {expr} {match_arm_list}"))
 }
 pub fn expr_if(
     condition: ast::Expr,
@@ -415,66 +417,67 @@ pub fn expr_if(
     else_branch: Option<ast::ElseBranch>,
 ) -> ast::Expr {
     let else_branch = match else_branch {
-        Some(ast::ElseBranch::Block(block)) => format!("else {}", block),
-        Some(ast::ElseBranch::IfExpr(if_expr)) => format!("else {}", if_expr),
+        Some(ast::ElseBranch::Block(block)) => format!("else {block}"),
+        Some(ast::ElseBranch::IfExpr(if_expr)) => format!("else {if_expr}"),
         None => String::new(),
     };
-    expr_from_text(&format!("if {} {} {}", condition, then_branch, else_branch))
+    expr_from_text(&format!("if {condition} {then_branch} {else_branch}"))
 }
 pub fn expr_for_loop(pat: ast::Pat, expr: ast::Expr, block: ast::BlockExpr) -> ast::Expr {
-    expr_from_text(&format!("for {} in {} {}", pat, expr, block))
+    expr_from_text(&format!("for {pat} in {expr} {block}"))
 }
 
 pub fn expr_loop(block: ast::BlockExpr) -> ast::Expr {
-    expr_from_text(&format!("loop {}", block))
+    expr_from_text(&format!("loop {block}"))
 }
 
 pub fn expr_prefix(op: SyntaxKind, expr: ast::Expr) -> ast::Expr {
     let token = token(op);
-    expr_from_text(&format!("{}{}", token, expr))
+    expr_from_text(&format!("{token}{expr}"))
 }
 pub fn expr_call(f: ast::Expr, arg_list: ast::ArgList) -> ast::Expr {
-    expr_from_text(&format!("{}{}", f, arg_list))
+    expr_from_text(&format!("{f}{arg_list}"))
 }
 pub fn expr_method_call(
     receiver: ast::Expr,
     method: ast::NameRef,
     arg_list: ast::ArgList,
 ) -> ast::Expr {
-    expr_from_text(&format!("{}.{}{}", receiver, method, arg_list))
+    expr_from_text(&format!("{receiver}.{method}{arg_list}"))
 }
 pub fn expr_macro_call(f: ast::Expr, arg_list: ast::ArgList) -> ast::Expr {
-    expr_from_text(&format!("{}!{}", f, arg_list))
+    expr_from_text(&format!("{f}!{arg_list}"))
 }
 pub fn expr_ref(expr: ast::Expr, exclusive: bool) -> ast::Expr {
-    expr_from_text(&if exclusive { format!("&mut {}", expr) } else { format!("&{}", expr) })
+    expr_from_text(&if exclusive { format!("&mut {expr}") } else { format!("&{expr}") })
 }
 pub fn expr_closure(pats: impl IntoIterator<Item = ast::Param>, expr: ast::Expr) -> ast::Expr {
     let params = pats.into_iter().join(", ");
-    expr_from_text(&format!("|{}| {}", params, expr))
+    expr_from_text(&format!("|{params}| {expr}"))
 }
 pub fn expr_field(receiver: ast::Expr, field: &str) -> ast::Expr {
-    expr_from_text(&format!("{}.{}", receiver, field))
+    expr_from_text(&format!("{receiver}.{field}"))
 }
 pub fn expr_paren(expr: ast::Expr) -> ast::Expr {
-    expr_from_text(&format!("({})", expr))
+    expr_from_text(&format!("({expr})"))
 }
 pub fn expr_tuple(elements: impl IntoIterator<Item = ast::Expr>) -> ast::Expr {
     let expr = elements.into_iter().format(", ");
-    expr_from_text(&format!("({})", expr))
+    expr_from_text(&format!("({expr})"))
 }
 pub fn expr_assignment(lhs: ast::Expr, rhs: ast::Expr) -> ast::Expr {
-    expr_from_text(&format!("{} = {}", lhs, rhs))
+    expr_from_text(&format!("{lhs} = {rhs}"))
 }
 fn expr_from_text(text: &str) -> ast::Expr {
-    ast_from_text(&format!("const C: () = {};", text))
+    ast_from_text(&format!("const C: () = {text};"))
 }
 pub fn expr_let(pattern: ast::Pat, expr: ast::Expr) -> ast::LetExpr {
-    ast_from_text(&format!("const _: () = while let {} = {} {{}};", pattern, expr))
+    ast_from_text(&format!("const _: () = while let {pattern} = {expr} {{}};"))
 }
 
 pub fn arg_list(args: impl IntoIterator<Item = ast::Expr>) -> ast::ArgList {
-    ast_from_text(&format!("fn main() {{ ()({}) }}", args.into_iter().format(", ")))
+    let args = args.into_iter().format(", ");
+    ast_from_text(&format!("fn main() {{ ()({args}) }}"))
 }
 
 pub fn ident_pat(ref_: bool, mut_: bool, name: ast::Name) -> ast::IdentPat {
@@ -485,7 +488,7 @@ pub fn ident_pat(ref_: bool, mut_: bool, name: ast::Name) -> ast::IdentPat {
     if mut_ {
         s.push_str("mut ");
     }
-    format_to!(s, "{}", name);
+    format_to!(s, "{name}");
     s.push_str(": ())");
     ast_from_text(&s)
 }
@@ -494,7 +497,7 @@ pub fn wildcard_pat() -> ast::WildcardPat {
     return from_text("_");
 
     fn from_text(text: &str) -> ast::WildcardPat {
-        ast_from_text(&format!("fn f({}: ())", text))
+        ast_from_text(&format!("fn f({text}: ())"))
     }
 }
 
@@ -502,7 +505,7 @@ pub fn literal_pat(lit: &str) -> ast::LiteralPat {
     return from_text(lit);
 
     fn from_text(text: &str) -> ast::LiteralPat {
-        ast_from_text(&format!("fn f() {{ match x {{ {} => {{}} }} }}", text))
+        ast_from_text(&format!("fn f() {{ match x {{ {text} => {{}} }} }}"))
     }
 }
 
@@ -515,10 +518,10 @@ pub fn tuple_pat(pats: impl IntoIterator<Item = ast::Pat>) -> ast::TuplePat {
     if count == 1 {
         pats_str.push(',');
     }
-    return from_text(&format!("({})", pats_str));
+    return from_text(&format!("({pats_str})"));
 
     fn from_text(text: &str) -> ast::TuplePat {
-        ast_from_text(&format!("fn f({}: ())", text))
+        ast_from_text(&format!("fn f({text}: ())"))
     }
 }
 
@@ -527,46 +530,46 @@ pub fn tuple_struct_pat(
     pats: impl IntoIterator<Item = ast::Pat>,
 ) -> ast::TupleStructPat {
     let pats_str = pats.into_iter().join(", ");
-    return from_text(&format!("{}({})", path, pats_str));
+    return from_text(&format!("{path}({pats_str})"));
 
     fn from_text(text: &str) -> ast::TupleStructPat {
-        ast_from_text(&format!("fn f({}: ())", text))
+        ast_from_text(&format!("fn f({text}: ())"))
     }
 }
 
 pub fn record_pat(path: ast::Path, pats: impl IntoIterator<Item = ast::Pat>) -> ast::RecordPat {
     let pats_str = pats.into_iter().join(", ");
-    return from_text(&format!("{} {{ {} }}", path, pats_str));
+    return from_text(&format!("{path} {{ {pats_str} }}"));
 
     fn from_text(text: &str) -> ast::RecordPat {
-        ast_from_text(&format!("fn f({}: ())", text))
+        ast_from_text(&format!("fn f({text}: ())"))
     }
 }
 
 pub fn record_pat_with_fields(path: ast::Path, fields: ast::RecordPatFieldList) -> ast::RecordPat {
-    ast_from_text(&format!("fn f({} {}: ()))", path, fields))
+    ast_from_text(&format!("fn f({path} {fields}: ()))"))
 }
 
 pub fn record_pat_field_list(
     fields: impl IntoIterator<Item = ast::RecordPatField>,
 ) -> ast::RecordPatFieldList {
     let fields = fields.into_iter().join(", ");
-    ast_from_text(&format!("fn f(S {{ {} }}: ()))", fields))
+    ast_from_text(&format!("fn f(S {{ {fields} }}: ()))"))
 }
 
 pub fn record_pat_field(name_ref: ast::NameRef, pat: ast::Pat) -> ast::RecordPatField {
-    ast_from_text(&format!("fn f(S {{ {}: {} }}: ()))", name_ref, pat))
+    ast_from_text(&format!("fn f(S {{ {name_ref}: {pat} }}: ()))"))
 }
 
 pub fn record_pat_field_shorthand(name_ref: ast::NameRef) -> ast::RecordPatField {
-    ast_from_text(&format!("fn f(S {{ {} }}: ()))", name_ref))
+    ast_from_text(&format!("fn f(S {{ {name_ref} }}: ()))"))
 }
 
 /// Returns a `BindPat` if the path has just one segment, a `PathPat` otherwise.
 pub fn path_pat(path: ast::Path) -> ast::Pat {
     return from_text(&path.to_string());
     fn from_text(text: &str) -> ast::Pat {
-        ast_from_text(&format!("fn f({}: ())", text))
+        ast_from_text(&format!("fn f({text}: ())"))
     }
 }
 
@@ -577,12 +580,12 @@ pub fn match_arm(
 ) -> ast::MatchArm {
     let pats_str = pats.into_iter().join(" | ");
     return match guard {
-        Some(guard) => from_text(&format!("{} if {} => {}", pats_str, guard, expr)),
-        None => from_text(&format!("{} => {}", pats_str, expr)),
+        Some(guard) => from_text(&format!("{pats_str} if {guard} => {expr}")),
+        None => from_text(&format!("{pats_str} => {expr}")),
     };
 
     fn from_text(text: &str) -> ast::MatchArm {
-        ast_from_text(&format!("fn f() {{ match () {{{}}} }}", text))
+        ast_from_text(&format!("fn f() {{ match () {{{text}}} }}"))
     }
 }
 
@@ -592,10 +595,10 @@ pub fn match_arm_with_guard(
     expr: ast::Expr,
 ) -> ast::MatchArm {
     let pats_str = pats.into_iter().join(" | ");
-    return from_text(&format!("{} if {} => {}", pats_str, guard, expr));
+    return from_text(&format!("{pats_str} if {guard} => {expr}"));
 
     fn from_text(text: &str) -> ast::MatchArm {
-        ast_from_text(&format!("fn f() {{ match () {{{}}} }}", text))
+        ast_from_text(&format!("fn f() {{ match () {{{text}}} }}"))
     }
 }
 
@@ -605,13 +608,14 @@ pub fn match_arm_list(arms: impl IntoIterator<Item = ast::MatchArm>) -> ast::Mat
         .map(|arm| {
             let needs_comma = arm.expr().map_or(true, |it| !it.is_block_like());
             let comma = if needs_comma { "," } else { "" };
-            format!("    {}{}\n", arm.syntax(), comma)
+            let arm = arm.syntax();
+            format!("    {arm}{comma}\n")
         })
         .collect::<String>();
     return from_text(&arms_str);
 
     fn from_text(text: &str) -> ast::MatchArmList {
-        ast_from_text(&format!("fn f() {{ match () {{\n{}}} }}", text))
+        ast_from_text(&format!("fn f() {{ match () {{\n{text}}} }}"))
     }
 }
 
@@ -620,10 +624,10 @@ pub fn where_pred(
     bounds: impl IntoIterator<Item = ast::TypeBound>,
 ) -> ast::WherePred {
     let bounds = bounds.into_iter().join(" + ");
-    return from_text(&format!("{}: {}", path, bounds));
+    return from_text(&format!("{path}: {bounds}"));
 
     fn from_text(text: &str) -> ast::WherePred {
-        ast_from_text(&format!("fn f() where {} {{ }}", text))
+        ast_from_text(&format!("fn f() where {text} {{ }}"))
     }
 }
 
@@ -632,7 +636,7 @@ pub fn where_clause(preds: impl IntoIterator<Item = ast::WherePred>) -> ast::Whe
     return from_text(preds.as_str());
 
     fn from_text(text: &str) -> ast::WhereClause {
-        ast_from_text(&format!("fn f() where {} {{ }}", text))
+        ast_from_text(&format!("fn f() where {text} {{ }}"))
     }
 }
 
@@ -642,19 +646,19 @@ pub fn let_stmt(
     initializer: Option<ast::Expr>,
 ) -> ast::LetStmt {
     let mut text = String::new();
-    format_to!(text, "let {}", pattern);
+    format_to!(text, "let {pattern}");
     if let Some(ty) = ty {
-        format_to!(text, ": {}", ty);
+        format_to!(text, ": {ty}");
     }
     match initializer {
-        Some(it) => format_to!(text, " = {};", it),
+        Some(it) => format_to!(text, " = {it};"),
         None => format_to!(text, ";"),
     };
-    ast_from_text(&format!("fn f() {{ {} }}", text))
+    ast_from_text(&format!("fn f() {{ {text} }}"))
 }
 pub fn expr_stmt(expr: ast::Expr) -> ast::ExprStmt {
     let semi = if expr.is_block_like() { "" } else { ";" };
-    ast_from_text(&format!("fn f() {{ {}{} (); }}", expr, semi))
+    ast_from_text(&format!("fn f() {{ {expr}{semi} (); }}"))
 }
 
 pub fn item_const(
@@ -665,13 +669,13 @@ pub fn item_const(
 ) -> ast::Const {
     let visibility = match visibility {
         None => String::new(),
-        Some(it) => format!("{} ", it),
+        Some(it) => format!("{it} "),
     };
-    ast_from_text(&format!("{} const {}: {} = {};", visibility, name, ty, expr))
+    ast_from_text(&format!("{visibility} const {name}: {ty} = {expr};"))
 }
 
 pub fn param(pat: ast::Pat, ty: ast::Type) -> ast::Param {
-    ast_from_text(&format!("fn f({}: {}) {{ }}", pat, ty))
+    ast_from_text(&format!("fn f({pat}: {ty}) {{ }}"))
 }
 
 pub fn self_param() -> ast::SelfParam {
@@ -679,7 +683,7 @@ pub fn self_param() -> ast::SelfParam {
 }
 
 pub fn ret_type(ty: ast::Type) -> ast::RetType {
-    ast_from_text(&format!("fn f() -> {} {{ }}", ty))
+    ast_from_text(&format!("fn f() -> {ty} {{ }}"))
 }
 
 pub fn param_list(
@@ -688,30 +692,30 @@ pub fn param_list(
 ) -> ast::ParamList {
     let args = pats.into_iter().join(", ");
     let list = match self_param {
-        Some(self_param) if args.is_empty() => format!("fn f({}) {{ }}", self_param),
-        Some(self_param) => format!("fn f({}, {}) {{ }}", self_param, args),
-        None => format!("fn f({}) {{ }}", args),
+        Some(self_param) if args.is_empty() => format!("fn f({self_param}) {{ }}"),
+        Some(self_param) => format!("fn f({self_param}, {args}) {{ }}"),
+        None => format!("fn f({args}) {{ }}"),
     };
     ast_from_text(&list)
 }
 
 pub fn type_param(name: ast::Name, ty: Option<ast::TypeBoundList>) -> ast::TypeParam {
     let bound = match ty {
-        Some(it) => format!(": {}", it),
+        Some(it) => format!(": {it}"),
         None => String::new(),
     };
-    ast_from_text(&format!("fn f<{}{}>() {{ }}", name, bound))
+    ast_from_text(&format!("fn f<{name}{bound}>() {{ }}"))
 }
 
 pub fn lifetime_param(lifetime: ast::Lifetime) -> ast::LifetimeParam {
-    ast_from_text(&format!("fn f<{}>() {{ }}", lifetime))
+    ast_from_text(&format!("fn f<{lifetime}>() {{ }}"))
 }
 
 pub fn generic_param_list(
     pats: impl IntoIterator<Item = ast::GenericParam>,
 ) -> ast::GenericParamList {
     let args = pats.into_iter().join(", ");
-    ast_from_text(&format!("fn f<{}>() {{ }}", args))
+    ast_from_text(&format!("fn f<{args}>() {{ }}"))
 }
 
 pub fn visibility_pub_crate() -> ast::Visibility {
@@ -724,33 +728,33 @@ pub fn visibility_pub() -> ast::Visibility {
 
 pub fn tuple_field_list(fields: impl IntoIterator<Item = ast::TupleField>) -> ast::TupleFieldList {
     let fields = fields.into_iter().join(", ");
-    ast_from_text(&format!("struct f({});", fields))
+    ast_from_text(&format!("struct f({fields});"))
 }
 
 pub fn record_field_list(
     fields: impl IntoIterator<Item = ast::RecordField>,
 ) -> ast::RecordFieldList {
     let fields = fields.into_iter().join(", ");
-    ast_from_text(&format!("struct f {{ {} }}", fields))
+    ast_from_text(&format!("struct f {{ {fields} }}"))
 }
 
 pub fn tuple_field(visibility: Option<ast::Visibility>, ty: ast::Type) -> ast::TupleField {
     let visibility = match visibility {
         None => String::new(),
-        Some(it) => format!("{} ", it),
+        Some(it) => format!("{it} "),
     };
-    ast_from_text(&format!("struct f({}{});", visibility, ty))
+    ast_from_text(&format!("struct f({visibility}{ty});"))
 }
 
 pub fn variant(name: ast::Name, field_list: Option<ast::FieldList>) -> ast::Variant {
     let field_list = match field_list {
         None => String::new(),
         Some(it) => match it {
-            ast::FieldList::RecordFieldList(record) => format!(" {}", record),
-            ast::FieldList::TupleFieldList(tuple) => format!("{}", tuple),
+            ast::FieldList::RecordFieldList(record) => format!(" {record}"),
+            ast::FieldList::TupleFieldList(tuple) => format!("{tuple}"),
         },
     };
-    ast_from_text(&format!("enum f {{ {}{} }}", name, field_list))
+    ast_from_text(&format!("enum f {{ {name}{field_list} }}"))
 }
 
 pub fn fn_(
@@ -763,23 +767,22 @@ pub fn fn_(
     is_async: bool,
 ) -> ast::Fn {
     let type_params = match type_params {
-        Some(type_params) => format!("{}", type_params),
+        Some(type_params) => format!("{type_params}"),
         None => "".into(),
     };
     let ret_type = match ret_type {
-        Some(ret_type) => format!("{} ", ret_type),
+        Some(ret_type) => format!("{ret_type} "),
         None => "".into(),
     };
     let visibility = match visibility {
         None => String::new(),
-        Some(it) => format!("{} ", it),
+        Some(it) => format!("{it} "),
     };
 
     let async_literal = if is_async { "async " } else { "" };
 
     ast_from_text(&format!(
-        "{}{}fn {}{}{} {}{}",
-        visibility, async_literal, fn_name, type_params, params, ret_type, body
+        "{visibility}{async_literal}fn {fn_name}{type_params}{params} {ret_type}{body}",
     ))
 }
 
@@ -793,13 +796,10 @@ pub fn struct_(
     let type_params = generic_param_list.map_or_else(String::new, |it| it.to_string());
     let visibility = match visibility {
         None => String::new(),
-        Some(it) => format!("{} ", it),
+        Some(it) => format!("{it} "),
     };
 
-    ast_from_text(&format!(
-        "{}struct {}{}{}{}",
-        visibility, strukt_name, type_params, field_list, semicolon
-    ))
+    ast_from_text(&format!("{visibility}struct {strukt_name}{type_params}{field_list}{semicolon}",))
 }
 
 #[track_caller]
@@ -808,7 +808,8 @@ fn ast_from_text<N: AstNode>(text: &str) -> N {
     let node = match parse.tree().syntax().descendants().find_map(N::cast) {
         Some(it) => it,
         None => {
-            panic!("Failed to make ast node `{}` from text {}", std::any::type_name::<N>(), text)
+            let node = std::any::type_name::<N>();
+            panic!("Failed to make ast node `{node}` from text {text}")
         }
     };
     let node = node.clone_subtree();
@@ -824,7 +825,7 @@ pub fn token(kind: SyntaxKind) -> SyntaxToken {
         .descendants_with_tokens()
         .filter_map(|it| it.into_token())
         .find(|it| it.kind() == kind)
-        .unwrap_or_else(|| panic!("unhandled token: {:?}", kind))
+        .unwrap_or_else(|| panic!("unhandled token: {kind:?}"))
 }
 
 pub mod tokens {
@@ -863,7 +864,7 @@ pub mod tokens {
 
     pub fn literal(text: &str) -> SyntaxToken {
         assert_eq!(text.trim(), text);
-        let lit: ast::Literal = super::ast_from_text(&format!("fn f() {{ let _ = {}; }}", text));
+        let lit: ast::Literal = super::ast_from_text(&format!("fn f() {{ let _ = {text}; }}"));
         lit.syntax().first_child_or_token().unwrap().into_token().unwrap()
     }
 

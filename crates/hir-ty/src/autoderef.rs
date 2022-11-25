@@ -104,8 +104,7 @@ pub(crate) fn deref(table: &mut InferenceTable<'_>, ty: Ty) -> Option<Ty> {
 
 fn builtin_deref(ty: &Ty) -> Option<&Ty> {
     match ty.kind(Interner) {
-        TyKind::Ref(.., ty) => Some(ty),
-        TyKind::Raw(.., ty) => Some(ty),
+        TyKind::Ref(.., ty) | TyKind::Raw(.., ty) => Some(ty),
         _ => None,
     }
 }

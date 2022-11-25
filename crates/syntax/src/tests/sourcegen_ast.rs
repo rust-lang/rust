@@ -169,10 +169,7 @@ fn generate_nodes(kinds: KindsSrc<'_>, grammar: &AstSrc) -> String {
                 quote! {
                     impl AstNode for #name {
                         fn can_cast(kind: SyntaxKind) -> bool {
-                            match kind {
-                                #(#kinds)|* => true,
-                                _ => false,
-                            }
+                            matches!(kind, #(#kinds)|*)
                         }
                         fn cast(syntax: SyntaxNode) -> Option<Self> {
                             let res = match syntax.kind() {
@@ -253,10 +250,7 @@ fn generate_nodes(kinds: KindsSrc<'_>, grammar: &AstSrc) -> String {
                     }
                     impl AstNode for #name {
                         fn can_cast(kind: SyntaxKind) -> bool {
-                            match kind {
-                                #(#kinds)|* => true,
-                                _ => false,
-                            }
+                            matches!(kind, #(#kinds)|*)
                         }
                         fn cast(syntax: SyntaxNode) -> Option<Self> {
                             Self::can_cast(syntax.kind()).then(|| #name { syntax })
@@ -410,24 +404,17 @@ fn generate_syntax_kinds(grammar: KindsSrc<'_>) -> String {
 
         impl SyntaxKind {
             pub fn is_keyword(self) -> bool {
-                match self {
-                    #(#all_keywords)|* => true,
-                    _ => false,
-                }
+                matches!(self, #(#all_keywords)|*)
             }
 
             pub fn is_punct(self) -> bool {
-                match self {
-                    #(#punctuation)|* => true,
-                    _ => false,
-                }
+
+                matches!(self, #(#punctuation)|*)
+
             }
 
             pub fn is_literal(self) -> bool {
-                match self {
-                    #(#literals)|* => true,
-                    _ => false,
-                }
+                matches!(self, #(#literals)|*)
             }
 
             pub fn from_keyword(ident: &str) -> Option<SyntaxKind> {

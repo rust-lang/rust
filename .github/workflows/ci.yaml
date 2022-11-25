@@ -6,15 +6,15 @@ on:
   pull_request:
   push:
     branches:
-    - auto
-    - try
+      - auto
+      - try
 
 env:
   CARGO_INCREMENTAL: 0
   CARGO_NET_RETRY: 10
   CI: 1
   RUST_BACKTRACE: short
-  RUSTFLAGS: "-D warnings -W unreachable-pub -W rust-2021-compatibility"
+  RUSTFLAGS: "-D warnings -W unreachable-pub -W bare-trait-objects"
   RUSTUP_MAX_RETRIES: 10
 
 jobs:
@@ -31,25 +31,25 @@ jobs:
         os: [ubuntu-latest, windows-latest, macos-latest]
 
     steps:
-    - name: Checkout repository
-      uses: actions/checkout@v3
-      with:
-        ref: ${{ github.event.pull_request.head.sha }}
-        fetch-depth: 20
+      - name: Checkout repository
+        uses: actions/checkout@v3
+        with:
+          ref: ${{ github.event.pull_request.head.sha }}
+          fetch-depth: 20
 
-    - name: Install Rust toolchain
-      run: |
-        rustup update --no-self-update stable
-        rustup component add rustfmt rust-src
+      - name: Install Rust toolchain
+        run: |
+          rustup update --no-self-update stable
+          rustup component add rustfmt rust-src
 
-    - name: Cache Dependencies
-      uses: Swatinem/rust-cache@ce325b60658c1b38465c06cc965b79baf32c1e72
+      - name: Cache Dependencies
+        uses: Swatinem/rust-cache@ce325b60658c1b38465c06cc965b79baf32c1e72
 
-    - name: Compile
-      run: cargo test --no-run --locked
+      - name: Compile
+        run: cargo test --no-run --locked
 
-    - name: Test
-      run: cargo test -- --nocapture --quiet
+      - name: Test
+        run: cargo test -- --nocapture --quiet
 
   # Weird targets to catch non-portable code
   rust-cross:
@@ -64,25 +64,25 @@ jobs:
       targets_ide: "wasm32-unknown-unknown"
 
     steps:
-    - name: Checkout repository
-      uses: actions/checkout@v3
+      - name: Checkout repository
+        uses: actions/checkout@v3
 
-    - name: Install Rust toolchain
-      run: |
-        rustup update --no-self-update stable
-        rustup target add ${{ env.targets }} ${{ env.targets_ide }}
+      - name: Install Rust toolchain
+        run: |
+          rustup update --no-self-update stable
+          rustup target add ${{ env.targets }} ${{ env.targets_ide }}
 
-    - name: Cache Dependencies
-      uses: Swatinem/rust-cache@ce325b60658c1b38465c06cc965b79baf32c1e72
+      - name: Cache Dependencies
+        uses: Swatinem/rust-cache@ce325b60658c1b38465c06cc965b79baf32c1e72
 
-    - name: Check
-      run: |
-        for target in ${{ env.targets }}; do
-          cargo check --target=$target --all-targets
-        done
-        for target in ${{ env.targets_ide }}; do
-          cargo check -p ide --target=$target --all-targets
-        done
+      - name: Check
+        run: |
+          for target in ${{ env.targets }}; do
+            cargo check --target=$target --all-targets
+          done
+          for target in ${{ env.targets_ide }}; do
+            cargo check -p ide --target=$target --all-targets
+          done
 
   typescript:
     if: github.repository == 'rust-lang/rust-analyzer'
@@ -95,47 +95,47 @@ jobs:
     runs-on: ${{ matrix.os }}
 
     steps:
-    - name: Checkout repository
-      uses: actions/checkout@v3
+      - name: Checkout repository
+        uses: actions/checkout@v3
 
-    - name: Install Nodejs
-      uses: actions/setup-node@v1
-      with:
-        node-version: 16.x
+      - name: Install Nodejs
+        uses: actions/setup-node@v1
+        with:
+          node-version: 16.x
 
-    - name: Install xvfb
-      if: matrix.os == 'ubuntu-latest'
-      run: sudo apt-get install -y xvfb
+      - name: Install xvfb
+        if: matrix.os == 'ubuntu-latest'
+        run: sudo apt-get install -y xvfb
 
-    - run: npm ci
-      working-directory: ./editors/code
+      - run: npm ci
+        working-directory: ./editors/code
 
-#    - run: npm audit || { sleep 10 && npm audit; } || { sleep 30 && npm audit; }
-#      if: runner.os == 'Linux'
-#      working-directory: ./editors/code
+      #    - run: npm audit || { sleep 10 && npm audit; } || { sleep 30 && npm audit; }
+      #      if: runner.os == 'Linux'
+      #      working-directory: ./editors/code
 
-    - run: npm run lint
-      working-directory: ./editors/code
+      - run: npm run lint
+        working-directory: ./editors/code
 
-    - name: Run VS Code tests (Linux)
-      if: matrix.os == 'ubuntu-latest'
-      env:
-        VSCODE_CLI: 1
-      run: xvfb-run npm test
-      working-directory: ./editors/code
+      - name: Run VS Code tests (Linux)
+        if: matrix.os == 'ubuntu-latest'
+        env:
+          VSCODE_CLI: 1
+        run: xvfb-run npm test
+        working-directory: ./editors/code
 
-    - name: Run VS Code tests (Windows)
-      if: matrix.os == 'windows-latest'
-      env:
-        VSCODE_CLI: 1
-      run: npm test
-      working-directory: ./editors/code
+      - name: Run VS Code tests (Windows)
+        if: matrix.os == 'windows-latest'
+        env:
+          VSCODE_CLI: 1
+        run: npm test
+        working-directory: ./editors/code
 
-    - run: npm run pretest
-      working-directory: ./editors/code
+      - run: npm run pretest
+        working-directory: ./editors/code
 
-    - run: npm run package --scripts-prepend-node-path
-      working-directory: ./editors/code
+      - run: npm run package --scripts-prepend-node-path
+        working-directory: ./editors/code
 
   end-success:
     name: bors build finished

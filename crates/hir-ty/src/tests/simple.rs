@@ -2549,7 +2549,6 @@ impl B for Astruct {}
         expect![[r#"
             569..573 'self': Box<[T], A>
             602..634 '{     ...     }': Vec<T, A>
-            612..628 'unimpl...ted!()': Vec<T, A>
             648..761 '{     ...t]); }': ()
             658..661 'vec': Vec<i32, Global>
             664..679 '<[_]>::into_vec': fn into_vec<i32, Global>(Box<[i32], Global>) -> Vec<i32, Global>
@@ -3068,5 +3067,19 @@ fn main() {
      //^expected i64, got usize
 }
         "#,
+    );
+}
+
+#[test]
+fn nested_break() {
+    check_no_mismatches(
+        r#"
+fn func() {
+    let int = loop {
+        break 0;
+        break (break 0);
+    };
+}
+    "#,
     );
 }
