@@ -187,6 +187,16 @@ impl<'a, 'tcx> RustdocVisitor<'a, 'tcx> {
         ret
     }
 
+    #[inline]
+    fn add_to_current_mod(
+        &mut self,
+        item: &'tcx hir::Item<'_>,
+        renamed: Option<Symbol>,
+        parent_id: Option<hir::HirId>,
+    ) {
+        self.modules.last_mut().unwrap().items.push((item, renamed, parent_id))
+    }
+
     fn visit_item_inner(
         &mut self,
         item: &'tcx hir::Item<'_>,
@@ -247,7 +257,7 @@ impl<'a, 'tcx> RustdocVisitor<'a, 'tcx> {
                         }
                     }
 
-                    self.modules.last_mut().unwrap().items.push((item, renamed, parent_id));
+                    self.add_to_current_mod(item, renamed, parent_id);
                 }
             }
             hir::ItemKind::Macro(ref macro_def, _) => {
@@ -267,7 +277,7 @@ impl<'a, 'tcx> RustdocVisitor<'a, 'tcx> {
                 let nonexported = !self.cx.tcx.has_attr(def_id, sym::macro_export);
 
                 if is_macro_2_0 || nonexported || self.inlining {
-                    self.modules.last_mut().unwrap().items.push((item, renamed, None));
+                    self.add_to_current_mod(item, renamed, None);
                 }
             }
             hir::ItemKind::Mod(ref m) => {
@@ -283,20 +293,20 @@ impl<'a, 'tcx> RustdocVisitor<'a, 'tcx> {
             | hir::ItemKind::Static(..)
             | hir::ItemKind::Trait(..)
             | hir::ItemKind::TraitAlias(..) => {
-                self.modules.last_mut().unwrap().items.push((item, renamed, parent_id))
+                self.add_to_current_mod(item, renamed, parent_id);
             }
             hir::ItemKind::Const(..) => {
                 // Underscore constants do not correspond to a nameable item and
                 // so are never useful in documentation.
                 if name != kw::Underscore {
-                    self.modules.last_mut().unwrap().items.push((item, renamed, parent_id));
+                    self.add_to_current_mod(item, renamed, parent_id);
                 }
             }
             hir::ItemKind::Impl(impl_) => {
                 // Don't duplicate impls when inlining or if it's implementing a trait, we'll pick
                 // them up regardless of where they're located.
                 if !self.inlining && impl_.of_trait.is_none() {
-                    self.modules.last_mut().unwrap().items.push((item, None, None));
+                    self.add_to_current_mod(item, None, None);
                 }
             }
         }
@@ -333,15 +343,13 @@ impl<'a, 'tcx> RustdocVisitor<'a, 'tcx> {
         // macro in the same module.
         let mut inserted = FxHashSet::default();
         for export in self.cx.tcx.module_reexports(CRATE_DEF_ID).unwrap_or(&[]) {
-            if let Res::Def(DefKind::Macro(_), def_id) = export.res {
-                if let Some(local_def_id) = def_id.as_local() {
-                    if self.cx.tcx.has_attr(def_id, sym::macro_export) {
-                        if inserted.insert(def_id) {
-                            let item = self.cx.tcx.hir().expect_item(local_def_id);
-                            top_level_module.items.push((item, None, None));
-                        }
-                    }
-                }
+            if let Res::Def(DefKind::Macro(_), def_id) = export.res &&
+                let Some(local_def_id) = def_id.as_local() &&
+                self.cx.tcx.has_attr(def_id, sym::macro_export) &&
+                inserted.insert(def_id)
+            {
+                    let item = self.cx.tcx.hir().expect_item(local_def_id);
+                    top_level_module.items.push((item, None, None));
             }
         }
 
