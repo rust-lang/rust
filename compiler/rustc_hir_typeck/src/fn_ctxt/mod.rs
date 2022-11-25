@@ -288,7 +288,7 @@ impl<'a, 'tcx> AstConv<'tcx> for FnCtxt<'a, 'tcx> {
         if ty.has_escaping_bound_vars() {
             ty // FIXME: normalization and escaping regions
         } else {
-            self.normalize_associated_types_in(span, ty)
+            self.normalize(span, ty)
         }
     }
 

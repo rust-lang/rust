@@ -214,7 +214,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             if expected_sig.is_none()
                 && let ty::PredicateKind::Clause(ty::Clause::Projection(proj_predicate)) = bound_predicate.skip_binder()
             {
-                expected_sig = self.normalize_associated_types_in(
+                expected_sig = self.normalize(
                     obligation.cause.span,
                     self.deduce_sig_from_projection(
                     Some(obligation.cause.span),
@@ -623,7 +623,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         );
         // Astconv can't normalize inputs or outputs with escaping bound vars,
         // so normalize them here, after we've wrapped them in a binder.
-        let result = self.normalize_associated_types_in(self.tcx.hir().span(hir_id), result);
+        let result = self.normalize(self.tcx.hir().span(hir_id), result);
 
         let c_result = self.inh.infcx.canonicalize_response(result);
         self.typeck_results.borrow_mut().user_provided_sigs.insert(expr_def_id, c_result);
@@ -797,10 +797,8 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
     ) -> ClosureSignatures<'tcx> {
         let liberated_sig =
             self.tcx().liberate_late_bound_regions(expr_def_id.to_def_id(), bound_sig);
-        let liberated_sig = self.inh.normalize_associated_types_in(
+        let liberated_sig = self.normalize(
             body.value.span,
-            self.tcx.hir().local_def_id_to_hir_id(expr_def_id),
-            self.param_env,
             liberated_sig,
         );
         ClosureSignatures { bound_sig, liberated_sig }

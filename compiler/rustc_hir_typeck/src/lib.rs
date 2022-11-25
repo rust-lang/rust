@@ -48,6 +48,8 @@ pub use diverges::Diverges;
 pub use expectation::Expectation;
 pub use fn_ctxt::*;
 pub use inherited::{Inherited, InheritedBuilder};
+use rustc_infer::traits::ObligationCause;
+use rustc_trait_selection::traits::NormalizeExt;
 
 use crate::check::check_fn;
 use crate::coercion::DynamicCoerceMany;
@@ -245,12 +247,13 @@ fn typeck_with_fallback<'tcx>(
 
             // Compute the function signature from point of view of inside the fn.
             let fn_sig = tcx.liberate_late_bound_regions(def_id.to_def_id(), fn_sig);
-            let fn_sig = inh.normalize_associated_types_in(
-                body.value.span,
-                body_id.hir_id,
-                param_env,
-                fn_sig,
-            );
+            // FIXME(compiler-errors): Remove
+            let fn_sig = inh
+                .register_infer_ok_obligations(
+                    inh.at(&ObligationCause::misc(body.value.span, body_id.hir_id),
+                    param_env,
+                )
+                .normalize(fn_sig));
             check_fn(&inh, param_env, fn_sig, decl, def_id, body, None).0
         } else {
             let fcx = FnCtxt::new(&inh, param_env, body.value.hir_id);
@@ -304,7 +307,7 @@ fn typeck_with_fallback<'tcx>(
                     _ => fallback(),
                 });
 
-            let expected_type = fcx.normalize_associated_types_in(body.value.span, expected_type);
+            let expected_type = fcx.normalize(body.value.span, expected_type);
             fcx.require_type_is_sized(expected_type, body.value.span, traits::ConstSized);
 
             // Gather locals in statics (because of block expressions).

@@ -759,7 +759,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                 debug!("suggest_missing_return_type: expected type {:?}", ty);
                 let bound_vars = self.tcx.late_bound_vars(fn_id);
                 let ty = Binder::bind_with_vars(ty, bound_vars);
-                let ty = self.normalize_associated_types_in(span, ty);
+                let ty = self.normalize(span, ty);
                 let ty = self.tcx.erase_late_bound_regions(ty);
                 if self.can_coerce(expected, ty) {
                     err.subdiagnostic(ExpectedReturnTypeLabel::Other { span, expected });
@@ -920,7 +920,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             let ty = <dyn AstConv<'_>>::ast_ty_to_ty(self, ty);
             let bound_vars = self.tcx.late_bound_vars(fn_id);
             let ty = self.tcx.erase_late_bound_regions(Binder::bind_with_vars(ty, bound_vars));
-            let ty = self.normalize_associated_types_in(expr.span, ty);
+            let ty = self.normalize(expr.span, ty);
             let ty = match self.tcx.asyncness(fn_id.owner) {
                 hir::IsAsync::Async => {
                     let infcx = self.tcx.infer_ctxt().build();

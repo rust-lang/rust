@@ -1664,7 +1664,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                         .fields
                         .iter()
                         .map(|f| {
-                            let fru_ty = self.normalize_associated_types_in(
+                            let fru_ty = self.normalize(
                                 expr_span,
                                 self.field_ty(base_expr.span, f, fresh_substs),
                             );
@@ -1749,7 +1749,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                         .fields
                         .iter()
                         .map(|f| {
-                            self.normalize_associated_types_in(expr_span, f.ty(self.tcx, substs))
+                            self.normalize(expr_span, f.ty(self.tcx, substs))
                         })
                         .collect(),
                     _ => {

@@ -106,7 +106,7 @@ impl<'a, 'tcx> ConfirmContext<'a, 'tcx> {
         // traits, no trait system method can be called before this point because they
         // could alter our Self-type, except for normalizing the receiver from the
         // signature (which is also done during probing).
-        let method_sig_rcvr = self.normalize_associated_types_in(self.span, method_sig.inputs()[0]);
+        let method_sig_rcvr = self.normalize(self.span, method_sig.inputs()[0]);
         debug!(
             "confirm: self_ty={:?} method_sig_rcvr={:?} method_sig={:?} method_predicates={:?}",
             self_ty, method_sig_rcvr, method_sig, method_predicates
@@ -114,7 +114,7 @@ impl<'a, 'tcx> ConfirmContext<'a, 'tcx> {
         self.unify_receivers(self_ty, method_sig_rcvr, &pick, all_substs);
 
         let (method_sig, method_predicates) =
-            self.normalize_associated_types_in(self.span, (method_sig, method_predicates));
+            self.normalize(self.span, (method_sig, method_predicates));
         let method_sig = ty::Binder::dummy(method_sig);
 
         // Make sure nobody calls `drop()` explicitly.
