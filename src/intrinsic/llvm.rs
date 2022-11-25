@@ -304,6 +304,15 @@ pub fn adjust_intrinsic_arguments<'a, 'b, 'gcc, 'tcx>(builder: &Builder<'a, 'gcc
                 new_args[0] = arg1.dereference(None).to_rvalue();
                 args = new_args.into();
             },
+            "__builtin_ia32_rcp14sd_mask" | "__builtin_ia32_rcp14ss_mask" | "__builtin_ia32_rsqrt14sd_mask"
+                | "__builtin_ia32_rsqrt14ss_mask" => {
+                let new_args = args.to_vec();
+                args = vec![new_args[1], new_args[0], new_args[2], new_args[3]].into();
+            },
+            "__builtin_ia32_sqrtsd_mask_round" | "__builtin_ia32_sqrtss_mask_round" => {
+                let new_args = args.to_vec();
+                args = vec![new_args[1], new_args[0], new_args[2], new_args[3], new_args[4]].into();
+            },
             _ => (),
         }
     }
