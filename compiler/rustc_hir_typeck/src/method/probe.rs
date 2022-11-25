@@ -342,10 +342,9 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             &mut orig_values,
         );
 
-        let steps = if mode == Mode::MethodCall {
-            self.tcx.method_autoderef_steps(param_env_and_self_ty)
-        } else {
-            self.probe(|_| {
+        let steps = match mode {
+            Mode::MethodCall => self.tcx.method_autoderef_steps(param_env_and_self_ty),
+            Mode::Path => self.probe(|_| {
                 // Mode::Path - the deref steps is "trivial". This turns
                 // our CanonicalQuery into a "trivial" QueryResponse. This
                 // is a bit inefficient, but I don't think that writing
@@ -374,7 +373,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                     opt_bad_ty: None,
                     reached_recursion_limit: false,
                 }
-            })
+            }),
         };
 
         // If our autoderef loop had reached the recursion limit,
