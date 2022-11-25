@@ -666,7 +666,6 @@ fn test_unstable_options_tracking_hash() {
     untracked!(mir_pretty_relative_line_numbers, true);
     untracked!(nll_facts, true);
     untracked!(no_analysis, true);
-    untracked!(no_interleave_lints, true);
     untracked!(no_leak_check, true);
     untracked!(no_parallel_llvm, true);
     untracked!(parse_only, true);

@@ -25,8 +25,6 @@ use rustc_session::Session;
 use rustc_span::symbol::Ident;
 use rustc_span::Span;
 
-use std::slice;
-
 macro_rules! run_early_pass { ($cx:expr, $f:ident, $($args:expr),*) => ({
     $cx.pass.$f(&$cx.context, $($args),*);
 }) }
@@ -403,43 +401,26 @@ pub fn check_ast_node<'a>(
     let mut passes: Vec<_> = passes.iter().map(|p| (p)()).collect();
     let mut buffered = lint_buffer.unwrap_or_default();
 
-    if sess.opts.unstable_opts.no_interleave_lints {
-        for (i, pass) in passes.iter_mut().enumerate() {
-            buffered =
-                sess.prof.verbose_generic_activity_with_arg("run_lint", pass.name()).run(|| {
-                    early_lint_node(
-                        sess,
-                        !pre_expansion && i == 0,
-                        lint_store,
-                        registered_tools,
-                        buffered,
-                        EarlyLintPassObjects { lints: slice::from_mut(pass) },
-                        check_node,
-                    )
-                });
-        }
-    } else {
+    buffered = early_lint_node(
+        sess,
+        !pre_expansion,
+        lint_store,
+        registered_tools,
+        buffered,
+        builtin_lints,
+        check_node,
+    );
+
+    if !passes.is_empty() {
         buffered = early_lint_node(
             sess,
-            !pre_expansion,
+            false,
             lint_store,
             registered_tools,
             buffered,
-            builtin_lints,
+            EarlyLintPassObjects { lints: &mut passes[..] },
             check_node,
         );
-
-        if !passes.is_empty() {
-            buffered = early_lint_node(
-                sess,
-                false,
-                lint_store,
-                registered_tools,
-                buffered,
-                EarlyLintPassObjects { lints: &mut passes[..] },
-                check_node,
-            );
-        }
     }
 
     // All of the buffered lints should have been emitted at this point.

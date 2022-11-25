@@ -249,10 +249,10 @@ late_lint_passes!(declare_combined_late_pass, [pub BuiltinCombinedLateLintPass])
 
 late_lint_mod_passes!(declare_combined_late_pass, [BuiltinCombinedModuleLateLintPass]);
 
-pub fn new_lint_store(no_interleave_lints: bool, internal_lints: bool) -> LintStore {
+pub fn new_lint_store(internal_lints: bool) -> LintStore {
     let mut lint_store = LintStore::new();
 
-    register_builtins(&mut lint_store, no_interleave_lints);
+    register_builtins(&mut lint_store);
     if internal_lints {
         register_internals(&mut lint_store);
     }
@@ -263,54 +263,17 @@ pub fn new_lint_store(no_interleave_lints: bool, internal_lints: bool) -> LintSt
 /// Tell the `LintStore` about all the built-in lints (the ones
 /// defined in this crate and the ones defined in
 /// `rustc_session::lint::builtin`).
-fn register_builtins(store: &mut LintStore, no_interleave_lints: bool) {
+fn register_builtins(store: &mut LintStore) {
     macro_rules! add_lint_group {
         ($name:expr, $($lint:ident),*) => (
             store.register_group(false, $name, None, vec![$(LintId::of($lint)),*]);
         )
     }
 
-    macro_rules! register_early_pass {
-        ($method:ident, $ty:ident, $constructor:expr) => {
-            store.register_lints(&$ty::get_lints());
-            store.$method(|| Box::new($constructor));
-        };
-    }
-
-    macro_rules! register_late_pass {
-        ($method:ident, $ty:ident, $constructor:expr) => {
-            store.register_lints(&$ty::get_lints());
-            store.$method(|_| Box::new($constructor));
-        };
-    }
-
-    macro_rules! register_early_passes {
-        ($method:ident, [$($passes:ident: $constructor:expr,)*]) => (
-            $(
-                register_early_pass!($method, $passes, $constructor);
-            )*
-        )
-    }
-
-    macro_rules! register_late_passes {
-        ($method:ident, [$($passes:ident: $constructor:expr,)*]) => (
-            $(
-                register_late_pass!($method, $passes, $constructor);
-            )*
-        )
-    }
-
-    if no_interleave_lints {
-        pre_expansion_lint_passes!(register_early_passes, register_pre_expansion_pass);
-        early_lint_passes!(register_early_passes, register_early_pass);
-        late_lint_passes!(register_late_passes, register_late_pass);
-        late_lint_mod_passes!(register_late_passes, register_late_mod_pass);
-    } else {
-        store.register_lints(&BuiltinCombinedPreExpansionLintPass::get_lints());
-        store.register_lints(&BuiltinCombinedEarlyLintPass::get_lints());
-        store.register_lints(&BuiltinCombinedModuleLateLintPass::get_lints());
-        store.register_lints(&BuiltinCombinedLateLintPass::get_lints());
-    }
+    store.register_lints(&BuiltinCombinedPreExpansionLintPass::get_lints());
+    store.register_lints(&BuiltinCombinedEarlyLintPass::get_lints());
+    store.register_lints(&BuiltinCombinedModuleLateLintPass::get_lints());
+    store.register_lints(&BuiltinCombinedLateLintPass::get_lints());
 
     add_lint_group!(
         "nonstandard_style",

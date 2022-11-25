@@ -28,7 +28,6 @@ use rustc_span::Span;
 
 use std::any::Any;
 use std::cell::Cell;
-use std::slice;
 
 /// Extract the `LintStore` from the query context.
 /// This function exists because we've erased `LintStore` as `dyn Any` in the context.
@@ -364,11 +363,6 @@ pub fn late_lint_mod<'tcx, T: LateLintPass<'tcx>>(
     module_def_id: LocalDefId,
     builtin_lints: T,
 ) {
-    if tcx.sess.opts.unstable_opts.no_interleave_lints {
-        // These passes runs in late_lint_crate with -Z no_interleave_lints
-        return;
-    }
-
     late_lint_mod_pass(tcx, module_def_id, builtin_lints);
 
     let mut passes: Vec<_> =
@@ -411,33 +405,11 @@ fn late_lint_crate<'tcx, T: LateLintPass<'tcx>>(tcx: TyCtxt<'tcx>, builtin_lints
     let mut passes =
         unerased_lint_store(tcx).late_passes.iter().map(|p| (p)(tcx)).collect::<Vec<_>>();
 
-    if !tcx.sess.opts.unstable_opts.no_interleave_lints {
-        if !passes.is_empty() {
-            late_lint_pass_crate(tcx, LateLintPassObjects { lints: &mut passes[..] });
-        }
-
-        late_lint_pass_crate(tcx, builtin_lints);
-    } else {
-        for pass in &mut passes {
-            tcx.sess.prof.verbose_generic_activity_with_arg("run_late_lint", pass.name()).run(
-                || {
-                    late_lint_pass_crate(tcx, LateLintPassObjects { lints: slice::from_mut(pass) });
-                },
-            );
-        }
-
-        let mut passes: Vec<_> =
-            unerased_lint_store(tcx).late_module_passes.iter().map(|pass| (pass)(tcx)).collect();
-
-        for pass in &mut passes {
-            tcx.sess
-                .prof
-                .verbose_generic_activity_with_arg("run_late_module_lint", pass.name())
-                .run(|| {
-                    late_lint_pass_crate(tcx, LateLintPassObjects { lints: slice::from_mut(pass) });
-                });
-        }
+    if !passes.is_empty() {
+        late_lint_pass_crate(tcx, LateLintPassObjects { lints: &mut passes[..] });
     }
+
+    late_lint_pass_crate(tcx, builtin_lints);
 }
 
 /// Performs lint checking on a crate.
