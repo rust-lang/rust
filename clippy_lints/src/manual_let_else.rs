@@ -2,7 +2,7 @@ use clippy_utils::diagnostics::span_lint_and_then;
 use clippy_utils::higher::IfLetOrMatch;
 use clippy_utils::msrvs::{self, Msrv};
 use clippy_utils::peel_blocks;
-use clippy_utils::source::snippet_opt;
+use clippy_utils::source::{snippet, snippet_with_macro_callsite};
 use clippy_utils::ty::is_type_diagnostic_item;
 use clippy_utils::visitors::{for_each_expr, Descend};
 use if_chain::if_chain;
@@ -143,18 +143,22 @@ fn emit_manual_let_else(cx: &LateContext<'_>, span: Span, expr: &Expr<'_>, pat: 
             // for this to be machine applicable.
             let app = Applicability::HasPlaceholders;
 
-            if let Some(sn_pat) = snippet_opt(cx, pat.span) &&
-                let Some(sn_expr) = snippet_opt(cx, expr.span) &&
-                let Some(sn_else) = snippet_opt(cx, else_body.span)
-            {
-                let else_bl = if matches!(else_body.kind, ExprKind::Block(..)) {
-                    sn_else
-                } else {
-                    format!("{{ {sn_else} }}")
-                };
-                let sugg = format!("let {sn_pat} = {sn_expr} else {else_bl};");
-                diag.span_suggestion(span, "consider writing", sugg, app);
-            }
+            let snippet_fn = if span.from_expansion() {
+                snippet
+            } else {
+                snippet_with_macro_callsite
+            };
+            let sn_pat = snippet_fn(cx, pat.span, "");
+            let sn_expr = snippet_fn(cx, expr.span, "");
+            let sn_else = snippet_fn(cx, else_body.span, "");
+
+            let else_bl = if matches!(else_body.kind, ExprKind::Block(..)) {
+                sn_else.into_owned()
+            } else {
+                format!("{{ {sn_else} }}")
+            };
+            let sugg = format!("let {sn_pat} = {sn_expr} else {else_bl};");
+            diag.span_suggestion(span, "consider writing", sugg, app);
         },
     );
 }
