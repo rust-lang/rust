@@ -114,8 +114,8 @@ impl Kind {
     pub fn is_trait(self) -> bool {
         matches!(self, Kind::Trait)
     }
-    pub fn is_struct_enum_union(self) -> bool {
-        matches!(self, Kind::Struct | Kind::Enum | Kind::Union)
+    pub fn is_type(self) -> bool {
+        matches!(self, Kind::Struct | Kind::Enum | Kind::Union | Kind::Typedef)
     }
 
     pub fn from_item(i: &Item) -> Self {
