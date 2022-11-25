@@ -1,0 +1,35 @@
+error[E0515]: cannot return reference to temporary value
+  --> $DIR/return-borrow-mut-const.rs:24:12
+   |
+LL |     return &mut X;
+   |            ^^^^^-
+   |            |    |
+   |            |    temporary value created here
+   |            returns a reference to data owned by the current function
+   |
+   = note: mutably borrowing a constant copies the value to a temporary
+
+error[E0515]: cannot return reference to temporary value
+  --> $DIR/return-borrow-mut-const.rs:28:12
+   |
+LL |     return &mut X;
+   |            ^^^^^-
+   |            |    |
+   |            |    temporary value created here
+   |            returns a reference to data owned by the current function
+   |
+   = note: mutably borrowing a constant copies the value to a temporary
+
+error[E0515]: cannot return value referencing temporary value
+  --> $DIR/return-borrow-mut-const.rs:33:5
+   |
+LL |     let x_ref = &mut X;
+   |                      - temporary value created here
+LL |     x_ref
+   |     ^^^^^ returns a value referencing data owned by the current function
+   |
+   = note: mutably borrowing a constant copies the value to a temporary
+
+error: aborting due to 3 previous errors
+
+For more information about this error, try `rustc --explain E0515`.
