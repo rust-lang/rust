@@ -1343,6 +1343,13 @@ a.test-arrow:hover {
 	border-bottom: 1px solid var(--border-color);
 	margin-bottom: 6px;
 }
+#source-sidebar div.files > a:hover, details.dir-entry summary:hover,
+#source-sidebar div.files > a:focus, details.dir-entry summary:focus {
+	background-color: var(--source-sidebar-background-hover);
+}
+#source-sidebar div.files > a.selected {
+	background-color: var(--source-sidebar-background-selected);
+}
 #sidebar-toggle > button {
 	font-size: inherit;
 	font-weight: bold;
