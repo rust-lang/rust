@@ -173,7 +173,7 @@ Whether to pass `--no-default-features` to Cargo. Defaults to
 --
 Override the command rust-analyzer uses instead of `cargo check` for
 diagnostics on save. The command is required to output json and
-should therefor include `--message-format=json` or a similar option.
+should therefore include `--message-format=json` or a similar option.
 
 If you're changing this because you're using some tool wrapping
 Cargo, you might also want to change
@@ -190,11 +190,15 @@ cargo check --workspace --message-format=json --all-targets
 ```
 .
 --
-[[rust-analyzer.checkOnSave.target]]rust-analyzer.checkOnSave.target (default: `null`)::
+[[rust-analyzer.checkOnSave.target]]rust-analyzer.checkOnSave.target (default: `[]`)::
 +
 --
-Check for a specific target. Defaults to
-`#rust-analyzer.cargo.target#`.
+Check for specific targets. Defaults to `#rust-analyzer.cargo.target#` if empty.
+
+Can be a single target, e.g. `"x86_64-unknown-linux-gnu"` or a list of targets, e.g.
+`["aarch64-apple-darwin", "x86_64-apple-darwin"]`.
+
+Aliased as `"checkOnSave.targets"`.
 --
 [[rust-analyzer.completion.autoimport.enable]]rust-analyzer.completion.autoimport.enable (default: `true`)::
 +
@@ -450,6 +454,11 @@ to always show them).
 --
 Whether to show inlay type hints for return types of closures.
 --
+[[rust-analyzer.inlayHints.expressionAdjustmentHints.enable]]rust-analyzer.inlayHints.expressionAdjustmentHints.enable (default: `"never"`)::
++
+--
+Whether to show inlay hints for type adjustments.
+--
 [[rust-analyzer.inlayHints.lifetimeElisionHints.enable]]rust-analyzer.inlayHints.lifetimeElisionHints.enable (default: `"never"`)::
 +
 --
@@ -474,7 +483,8 @@ site.
 [[rust-analyzer.inlayHints.reborrowHints.enable]]rust-analyzer.inlayHints.reborrowHints.enable (default: `"never"`)::
 +
 --
-Whether to show inlay type hints for compiler inserted reborrows.
+Whether to show inlay hints for compiler inserted reborrows.
+This setting is deprecated in favor of #rust-analyzer.inlayHints.expressionAdjustmentHints.enable#.
 --
 [[rust-analyzer.inlayHints.renderColons]]rust-analyzer.inlayHints.renderColons (default: `true`)::
 +

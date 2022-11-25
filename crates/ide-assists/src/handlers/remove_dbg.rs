@@ -1,7 +1,7 @@
 use itertools::Itertools;
 use syntax::{
     ast::{self, AstNode, AstToken},
-    match_ast, NodeOrToken, SyntaxElement, TextSize, T,
+    match_ast, NodeOrToken, SyntaxElement, TextRange, TextSize, T,
 };
 
 use crate::{AssistContext, AssistId, AssistKind, Assists};
@@ -22,7 +22,36 @@ use crate::{AssistContext, AssistId, AssistKind, Assists};
 // }
 // ```
 pub(crate) fn remove_dbg(acc: &mut Assists, ctx: &AssistContext<'_>) -> Option<()> {
-    let macro_call = ctx.find_node_at_offset::<ast::MacroCall>()?;
+    let macro_calls = if ctx.has_empty_selection() {
+        vec![ctx.find_node_at_offset::<ast::MacroCall>()?]
+    } else {
+        ctx.covering_element()
+            .as_node()?
+            .descendants()
+            .filter(|node| ctx.selection_trimmed().contains_range(node.text_range()))
+            .filter_map(ast::MacroCall::cast)
+            .collect()
+    };
+
+    let replacements =
+        macro_calls.into_iter().filter_map(compute_dbg_replacement).collect::<Vec<_>>();
+    if replacements.is_empty() {
+        return None;
+    }
+
+    acc.add(
+        AssistId("remove_dbg", AssistKind::Refactor),
+        "Remove dbg!()",
+        ctx.selection_trimmed(),
+        |builder| {
+            for (range, text) in replacements {
+                builder.replace(range, text);
+            }
+        },
+    )
+}
+
+fn compute_dbg_replacement(macro_call: ast::MacroCall) -> Option<(TextRange, String)> {
     let tt = macro_call.token_tree()?;
     let r_delim = NodeOrToken::Token(tt.right_delimiter_token()?);
     if macro_call.path()?.segment()?.name_ref()?.text() != "dbg"
@@ -41,7 +70,7 @@ pub(crate) fn remove_dbg(acc: &mut Assists, ctx: &AssistContext<'_>) -> Option<(
 
     let macro_expr = ast::MacroExpr::cast(macro_call.syntax().parent()?)?;
     let parent = macro_expr.syntax().parent()?;
-    let (range, text) = match &*input_expressions {
+    Some(match &*input_expressions {
         // dbg!()
         [] => {
             match_ast! {
@@ -107,10 +136,6 @@ pub(crate) fn remove_dbg(acc: &mut Assists, ctx: &AssistContext<'_>) -> Option<(
         }
         // dbg!(expr0, expr1, ...)
         exprs => (macro_call.syntax().text_range(), format!("({})", exprs.iter().format(", "))),
-    };
-
-    acc.add(AssistId("remove_dbg", AssistKind::Refactor), "Remove dbg!()", range, |builder| {
-        builder.replace(range, text);
     })
 }
 
@@ -237,5 +262,29 @@ fn foo() {
     fn test_remove_multi_dbg() {
         check(r#"$0dbg!(0, 1)"#, r#"(0, 1)"#);
         check(r#"$0dbg!(0, (1, 2))"#, r#"(0, (1, 2))"#);
+    }
+
+    #[test]
+    fn test_range() {
+        check(
+            r#"
+fn f() {
+    dbg!(0) + $0dbg!(1);
+    dbg!(())$0
+}
+"#,
+            r#"
+fn f() {
+    dbg!(0) + 1;
+    ()
+}
+"#,
+        );
+    }
+
+    #[test]
+    fn test_range_partial() {
+        check_assist_not_applicable(remove_dbg, r#"$0dbg$0!(0)"#);
+        check_assist_not_applicable(remove_dbg, r#"$0dbg!(0$0)"#);
     }
 }

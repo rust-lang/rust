@@ -119,6 +119,10 @@ pub fn filter_assoc_items(
                 (default_methods, def.body()),
                 (DefaultMethods::Only, Some(_)) | (DefaultMethods::No, None)
             ),
+            ast::AssocItem::Const(def) => matches!(
+                (default_methods, def.body()),
+                (DefaultMethods::Only, Some(_)) | (DefaultMethods::No, None)
+            ),
             _ => default_methods == DefaultMethods::No,
         })
         .collect::<Vec<_>>()
