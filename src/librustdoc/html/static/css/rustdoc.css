@@ -1139,7 +1139,6 @@ pre.rust .doccomment {
 .example-wrap .tooltip {
 	position: absolute;
 	display: block;
-	cursor: pointer;
 	left: -25px;
 	top: 5px;
 }
