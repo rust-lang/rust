@@ -458,7 +458,9 @@ impl Step for Std {
 
         t!(fs::create_dir_all(&out));
 
-        builder.ensure(SharedAssets { target: self.target });
+        if self.format == DocumentationFormat::HTML {
+            builder.ensure(SharedAssets { target: self.target });
+        }
 
         let index_page = builder.src.join("src/doc/index.md").into_os_string();
         let mut extra_args = match self.format {
