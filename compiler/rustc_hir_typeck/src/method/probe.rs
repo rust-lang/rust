@@ -9,7 +9,6 @@ use rustc_data_structures::fx::FxHashSet;
 use rustc_errors::Applicability;
 use rustc_hir as hir;
 use rustc_hir::def::DefKind;
-use rustc_hir::def::Namespace;
 use rustc_infer::infer::canonical::OriginalQueryValues;
 use rustc_infer::infer::canonical::{Canonical, QueryResponse};
 use rustc_infer::infer::type_variable::{TypeVariableOrigin, TypeVariableOriginKind};
@@ -1881,6 +1880,11 @@ impl<'a, 'tcx> ProbeContext<'a, 'tcx> {
     // The length of the returned iterator is nearly always 0 or 1 and this
     // method is fairly hot.
     fn impl_or_trait_item(&self, def_id: DefId) -> SmallVec<[ty::AssocItem; 1]> {
+        let relevant_kind_for_mode = |kind| match (self.mode, kind) {
+            (Mode::MethodCall, ty::AssocKind::Fn) => true,
+            (Mode::Path, ty::AssocKind::Const | ty::AssocKind::Fn) => true,
+            _ => false,
+        };
         if let Some(name) = self.method_name {
             if self.allow_similar_names {
                 let max_dist = max(name.as_str().len(), 3) / 3;
@@ -1888,7 +1892,7 @@ impl<'a, 'tcx> ProbeContext<'a, 'tcx> {
                     .associated_items(def_id)
                     .in_definition_order()
                     .filter(|x| {
-                        if x.kind.namespace() != Namespace::ValueNS {
+                        if !relevant_kind_for_mode(x.kind) {
                             return false;
                         }
                         match lev_distance_with_substrings(name.as_str(), x.name.as_str(), max_dist)
@@ -1902,10 +1906,16 @@ impl<'a, 'tcx> ProbeContext<'a, 'tcx> {
             } else {
                 self.fcx
                     .associated_value(def_id, name)
+                    .filter(|x| relevant_kind_for_mode(x.kind))
                     .map_or_else(SmallVec::new, |x| SmallVec::from_buf([x]))
             }
         } else {
-            self.tcx.associated_items(def_id).in_definition_order().copied().collect()
+            self.tcx
+                .associated_items(def_id)
+                .in_definition_order()
+                .filter(|x| relevant_kind_for_mode(x.kind))
+                .copied()
+                .collect()
         }
     }
 }
