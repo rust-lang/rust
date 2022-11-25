@@ -5307,3 +5307,38 @@ fn main() { $0V; }
         "#]],
     );
 }
+
+#[test]
+fn hover_rest_pat() {
+    check(
+        r#"
+struct Struct {a: u32, b: u32, c: u8, d: u16};
+
+fn main() {
+    let Struct {a, c, .$0.} = Struct {a: 1, b: 2, c: 3, d: 4};
+}
+"#,
+        expect![[r#"
+            *..*
+            ```rust
+            .., b: u32, d: u16
+            ```
+        "#]],
+    );
+
+    check(
+        r#"
+struct Struct {a: u32, b: u32, c: u8, d: u16};
+
+fn main() {
+    let Struct {a, b, c, d, .$0.} = Struct {a: 1, b: 2, c: 3, d: 4};
+}
+"#,
+        expect![[r#"
+            *..*
+            ```rust
+            ..
+            ```
+        "#]],
+    );
+}

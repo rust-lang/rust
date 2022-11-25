@@ -14,7 +14,9 @@ use ide_db::{
 use itertools::Itertools;
 use stdx::format_to;
 use syntax::{
-    algo, ast, match_ast, AstNode, Direction,
+    algo,
+    ast::{self, RecordPat},
+    match_ast, AstNode, Direction,
     SyntaxKind::{LET_EXPR, LET_STMT},
     SyntaxToken, T,
 };
@@ -248,6 +250,50 @@ pub(super) fn keyword(
         config,
     );
     Some(HoverResult { markup, actions })
+}
+
+/// Returns missing types in a record pattern.
+/// Only makes sense when there's a rest pattern in the record pattern.
+/// i.e. `let S {a, ..} = S {a: 1, b: 2}`
+pub(super) fn struct_rest_pat(
+    sema: &Semantics<'_, RootDatabase>,
+    config: &HoverConfig,
+    pattern: &RecordPat,
+) -> HoverResult {
+    let missing_fields = sema.record_pattern_missing_fields(pattern);
+
+    // if there are no missing fields, the end result is a hover that shows ".."
+    // should be left in to indicate that there are no more fields in the pattern
+    // example, S {a: 1, b: 2, ..} when struct S {a: u32, b: u32}
+
+    let mut res = HoverResult::default();
+    let mut targets: Vec<hir::ModuleDef> = Vec::new();
+    let mut push_new_def = |item: hir::ModuleDef| {
+        if !targets.contains(&item) {
+            targets.push(item);
+        }
+    };
+    for (_, t) in &missing_fields {
+        walk_and_push_ty(sema.db, &t, &mut push_new_def);
+    }
+
+    res.markup = {
+        let mut s = String::from(".., ");
+        for (f, _) in &missing_fields {
+            s += f.display(sema.db).to_string().as_ref();
+            s += ", ";
+        }
+        // get rid of trailing comma
+        s.truncate(s.len() - 2);
+
+        if config.markdown() {
+            Markup::fenced_block(&s)
+        } else {
+            s.into()
+        }
+    };
+    res.actions.push(HoverAction::goto_type_from_targets(sema.db, targets));
+    res
 }
 
 pub(super) fn try_for_lint(attr: &ast::Attr, token: &SyntaxToken) -> Option<HoverResult> {
