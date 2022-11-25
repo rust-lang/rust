@@ -81,7 +81,7 @@ pub fn contains_ty_adt_constructor_opaque<'tcx>(cx: &LateContext<'tcx>, ty: Ty<'
                     match predicate.kind().skip_binder() {
                         // For `impl Trait<U>`, it will register a predicate of `T: Trait<U>`, so we go through
                         // and check substituions to find `U`.
-                        ty::PredicateKind::Trait(trait_predicate) => {
+                        ty::PredicateKind::Clause(ty::Clause::Trait(trait_predicate)) => {
                             if trait_predicate
                                 .trait_ref
                                 .substs
@@ -94,7 +94,7 @@ pub fn contains_ty_adt_constructor_opaque<'tcx>(cx: &LateContext<'tcx>, ty: Ty<'
                         },
                         // For `impl Trait<Assoc=U>`, it will register a predicate of `<T as Trait>::Assoc = U`,
                         // so we check the term for `U`.
-                        ty::PredicateKind::Projection(projection_predicate) => {
+                        ty::PredicateKind::Clause(ty::Clause::Projection(projection_predicate)) => {
                             if let ty::TermKind::Ty(ty) = projection_predicate.term.unpack() {
                                 if contains_ty_adt_constructor_opaque(cx, ty, needle) {
                                     return true;
@@ -239,7 +239,7 @@ pub fn is_must_use_ty<'tcx>(cx: &LateContext<'tcx>, ty: Ty<'tcx>) -> bool {
         ty::Tuple(substs) => substs.iter().any(|ty| is_must_use_ty(cx, ty)),
         ty::Opaque(def_id, _) => {
             for (predicate, _) in cx.tcx.explicit_item_bounds(*def_id) {
-                if let ty::PredicateKind::Trait(trait_predicate) = predicate.kind().skip_binder() {
+                if let ty::PredicateKind::Clause(ty::Clause::Trait(trait_predicate)) = predicate.kind().skip_binder() {
                     if cx.tcx.has_attr(trait_predicate.trait_ref.def_id, sym::must_use) {
                         return true;
                     }
@@ -658,7 +658,7 @@ fn sig_from_bounds<'tcx>(
 
     for pred in predicates {
         match pred.kind().skip_binder() {
-            PredicateKind::Trait(p)
+            PredicateKind::Clause(ty::Clause::Trait(p))
                 if (lang_items.fn_trait() == Some(p.def_id())
                     || lang_items.fn_mut_trait() == Some(p.def_id())
                     || lang_items.fn_once_trait() == Some(p.def_id()))
@@ -671,7 +671,7 @@ fn sig_from_bounds<'tcx>(
                 }
                 inputs = Some(i);
             },
-            PredicateKind::Projection(p)
+            PredicateKind::Clause(ty::Clause::Projection(p))
                 if Some(p.projection_ty.item_def_id) == lang_items.fn_once_output()
                     && p.projection_ty.self_ty() == ty =>
             {
@@ -699,7 +699,7 @@ fn sig_for_projection<'tcx>(cx: &LateContext<'tcx>, ty: ProjectionTy<'tcx>) -> O
         .subst_iter_copied(cx.tcx, ty.substs)
     {
         match pred.kind().skip_binder() {
-            PredicateKind::Trait(p)
+            PredicateKind::Clause(ty::Clause::Trait(p))
                 if (lang_items.fn_trait() == Some(p.def_id())
                     || lang_items.fn_mut_trait() == Some(p.def_id())
                     || lang_items.fn_once_trait() == Some(p.def_id())) =>
@@ -712,7 +712,7 @@ fn sig_for_projection<'tcx>(cx: &LateContext<'tcx>, ty: ProjectionTy<'tcx>) -> O
                 }
                 inputs = Some(i);
             },
-            PredicateKind::Projection(p) if Some(p.projection_ty.item_def_id) == lang_items.fn_once_output() => {
+            PredicateKind::Clause(ty::Clause::Projection(p)) if Some(p.projection_ty.item_def_id) == lang_items.fn_once_output() => {
                 if output.is_some() {
                     // Multiple different fn trait impls. Is this even allowed?
                     return None;
@@ -887,7 +887,7 @@ pub fn ty_is_fn_once_param<'tcx>(tcx: TyCtxt<'_>, ty: Ty<'tcx>, predicates: &'tc
     predicates
         .iter()
         .try_fold(false, |found, p| {
-            if let PredicateKind::Trait(p) = p.kind().skip_binder()
+            if let PredicateKind::Clause(ty::Clause::Trait(p)) = p.kind().skip_binder()
             && let ty::Param(self_ty) = p.trait_ref.self_ty().kind()
             && ty.index == self_ty.index
         {
