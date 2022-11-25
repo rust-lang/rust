@@ -1,11 +1,7 @@
-use super::{
-    DefIdOrName, Obligation, ObligationCause, ObligationCauseCode, PredicateObligation,
-    SelectionContext,
-};
+use super::{DefIdOrName, Obligation, ObligationCause, ObligationCauseCode, PredicateObligation};
 
 use crate::autoderef::Autoderef;
 use crate::infer::InferCtxt;
-use crate::traits::normalize_to;
 
 use hir::def::CtorOf;
 use hir::HirId;
@@ -23,7 +19,7 @@ use rustc_hir::lang_items::LangItem;
 use rustc_hir::{AsyncGeneratorKind, GeneratorKind, Node};
 use rustc_infer::infer::error_reporting::TypeErrCtxt;
 use rustc_infer::infer::type_variable::{TypeVariableOrigin, TypeVariableOriginKind};
-use rustc_infer::infer::LateBoundRegionConversionTime;
+use rustc_infer::infer::{InferOk, LateBoundRegionConversionTime};
 use rustc_middle::hir::map;
 use rustc_middle::ty::{
     self, suggest_arbitrary_trait_bound, suggest_constraining_type_param, AdtKind, DefIdTree,
@@ -2979,13 +2975,12 @@ impl<'tcx> TypeErrCtxtExt<'tcx> for TypeErrCtxt<'_, 'tcx> {
                         self.tcx.mk_substs_trait(trait_pred.self_ty(), []),
                     )
                 });
-                let projection_ty = normalize_to(
-                    &mut SelectionContext::new(self),
-                    obligation.param_env,
-                    obligation.cause.clone(),
-                    projection_ty,
-                    &mut vec![],
-                );
+                let InferOk { value: projection_ty, .. } = self
+                    .partially_normalize_associated_types_in(
+                        obligation.cause.clone(),
+                        obligation.param_env,
+                        projection_ty,
+                    );
 
                 debug!(
                     normalized_projection_type = ?self.resolve_vars_if_possible(projection_ty)
