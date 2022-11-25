@@ -23,7 +23,11 @@ pub use mbe::{Origin, ValueResult};
 
 use std::{fmt, hash::Hash, iter, sync::Arc};
 
-use base_db::{impl_intern_key, salsa, CrateId, FileId, FileRange, ProcMacroKind};
+use base_db::{
+    impl_intern_key,
+    salsa::{self, InternId},
+    CrateId, FileId, FileRange, ProcMacroKind,
+};
 use either::Either;
 use syntax::{
     algo::{self, skip_trivia_token},
@@ -79,26 +83,12 @@ impl fmt::Display for ExpandError {
 /// finite (because everything bottoms out at the real `FileId`) and small
 /// (`MacroCallId` uses the location interning. You can check details here:
 /// <https://en.wikipedia.org/wiki/String_interning>).
+///
+/// The two variants are encoded in a single u32 which are differentiated by the MSB.
+/// If the MSB is 0, the value represents a `FileId`, otherwise the remaining 31 bits represent a
+/// `MacroCallId`.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
-pub struct HirFileId(HirFileIdRepr);
-
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
-enum HirFileIdRepr {
-    FileId(FileId),
-    MacroFile(MacroFile),
-}
-
-impl From<FileId> for HirFileId {
-    fn from(id: FileId) -> Self {
-        HirFileId(HirFileIdRepr::FileId(id))
-    }
-}
-
-impl From<MacroFile> for HirFileId {
-    fn from(id: MacroFile) -> Self {
-        HirFileId(HirFileIdRepr::MacroFile(id))
-    }
-}
+pub struct HirFileId(u32);
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
 pub struct MacroFile {
@@ -172,13 +162,37 @@ pub enum MacroCallKind {
     },
 }
 
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
+enum HirFileIdRepr {
+    FileId(FileId),
+    MacroFile(MacroFile),
+}
+
+impl From<FileId> for HirFileId {
+    fn from(FileId(id): FileId) -> Self {
+        assert!(id < Self::MAX_FILE_ID);
+        HirFileId(id)
+    }
+}
+
+impl From<MacroFile> for HirFileId {
+    fn from(MacroFile { macro_call_id: MacroCallId(id) }: MacroFile) -> Self {
+        let id = id.as_u32();
+        assert!(id < Self::MAX_FILE_ID);
+        HirFileId(id | Self::MACRO_FILE_TAG_MASK)
+    }
+}
+
 impl HirFileId {
+    const MAX_FILE_ID: u32 = u32::MAX ^ Self::MACRO_FILE_TAG_MASK;
+    const MACRO_FILE_TAG_MASK: u32 = 1 << 31;
+
     /// For macro-expansion files, returns the file original source file the
     /// expansion originated from.
     pub fn original_file(self, db: &dyn db::AstDatabase) -> FileId {
         let mut file_id = self;
         loop {
-            match file_id.0 {
+            match file_id.repr() {
                 HirFileIdRepr::FileId(id) => break id,
                 HirFileIdRepr::MacroFile(MacroFile { macro_call_id }) => {
                     let loc: MacroCallLoc = db.lookup_intern_macro_call(macro_call_id);
@@ -194,7 +208,7 @@ impl HirFileId {
     pub fn expansion_level(self, db: &dyn db::AstDatabase) -> u32 {
         let mut level = 0;
         let mut curr = self;
-        while let HirFileIdRepr::MacroFile(macro_file) = curr.0 {
+        while let Some(macro_file) = curr.macro_file() {
             let loc: MacroCallLoc = db.lookup_intern_macro_call(macro_file.macro_call_id);
 
             level += 1;
@@ -205,25 +219,17 @@ impl HirFileId {
 
     /// If this is a macro call, returns the syntax node of the call.
     pub fn call_node(self, db: &dyn db::AstDatabase) -> Option<InFile<SyntaxNode>> {
-        match self.0 {
-            HirFileIdRepr::FileId(_) => None,
-            HirFileIdRepr::MacroFile(macro_file) => {
-                let loc: MacroCallLoc = db.lookup_intern_macro_call(macro_file.macro_call_id);
-                Some(loc.kind.to_node(db))
-            }
-        }
+        let macro_file = self.macro_file()?;
+        let loc: MacroCallLoc = db.lookup_intern_macro_call(macro_file.macro_call_id);
+        Some(loc.kind.to_node(db))
     }
 
     /// If this is a macro call, returns the syntax node of the very first macro call this file resides in.
     pub fn original_call_node(self, db: &dyn db::AstDatabase) -> Option<(FileId, SyntaxNode)> {
-        let mut call = match self.0 {
-            HirFileIdRepr::FileId(_) => return None,
-            HirFileIdRepr::MacroFile(MacroFile { macro_call_id }) => {
-                db.lookup_intern_macro_call(macro_call_id).kind.to_node(db)
-            }
-        };
+        let mut call =
+            db.lookup_intern_macro_call(self.macro_file()?.macro_call_id).kind.to_node(db);
         loop {
-            match call.file_id.0 {
+            match call.file_id.repr() {
                 HirFileIdRepr::FileId(file_id) => break Some((file_id, call.value)),
                 HirFileIdRepr::MacroFile(MacroFile { macro_call_id }) => {
                     call = db.lookup_intern_macro_call(macro_call_id).kind.to_node(db);
@@ -234,84 +240,74 @@ impl HirFileId {
 
     /// Return expansion information if it is a macro-expansion file
     pub fn expansion_info(self, db: &dyn db::AstDatabase) -> Option<ExpansionInfo> {
-        match self.0 {
-            HirFileIdRepr::FileId(_) => None,
-            HirFileIdRepr::MacroFile(macro_file) => {
-                let loc: MacroCallLoc = db.lookup_intern_macro_call(macro_file.macro_call_id);
+        let macro_file = self.macro_file()?;
+        let loc: MacroCallLoc = db.lookup_intern_macro_call(macro_file.macro_call_id);
 
-                let arg_tt = loc.kind.arg(db)?;
+        let arg_tt = loc.kind.arg(db)?;
 
-                let macro_def = db.macro_def(loc.def).ok()?;
-                let (parse, exp_map) = db.parse_macro_expansion(macro_file).value?;
-                let macro_arg = db.macro_arg(macro_file.macro_call_id)?;
+        let macro_def = db.macro_def(loc.def).ok()?;
+        let (parse, exp_map) = db.parse_macro_expansion(macro_file).value?;
+        let macro_arg = db.macro_arg(macro_file.macro_call_id)?;
 
-                let def = loc.def.ast_id().left().and_then(|id| {
-                    let def_tt = match id.to_node(db) {
-                        ast::Macro::MacroRules(mac) => mac.token_tree()?,
-                        ast::Macro::MacroDef(_)
-                            if matches!(*macro_def, TokenExpander::BuiltinAttr(_)) =>
-                        {
-                            return None
-                        }
-                        ast::Macro::MacroDef(mac) => mac.body()?,
-                    };
-                    Some(InFile::new(id.file_id, def_tt))
-                });
-                let attr_input_or_mac_def = def.or_else(|| match loc.kind {
-                    MacroCallKind::Attr { ast_id, invoc_attr_index, .. } => {
-                        let tt = ast_id
-                            .to_node(db)
-                            .doc_comments_and_attrs()
-                            .nth(invoc_attr_index as usize)
-                            .and_then(Either::left)?
-                            .token_tree()?;
-                        Some(InFile::new(ast_id.file_id, tt))
-                    }
-                    _ => None,
-                });
-
-                Some(ExpansionInfo {
-                    expanded: InFile::new(self, parse.syntax_node()),
-                    arg: InFile::new(loc.kind.file_id(), arg_tt),
-                    attr_input_or_mac_def,
-                    macro_arg_shift: mbe::Shift::new(&macro_arg.0),
-                    macro_arg,
-                    macro_def,
-                    exp_map,
-                })
+        let def = loc.def.ast_id().left().and_then(|id| {
+            let def_tt = match id.to_node(db) {
+                ast::Macro::MacroRules(mac) => mac.token_tree()?,
+                ast::Macro::MacroDef(_) if matches!(*macro_def, TokenExpander::BuiltinAttr(_)) => {
+                    return None
+                }
+                ast::Macro::MacroDef(mac) => mac.body()?,
+            };
+            Some(InFile::new(id.file_id, def_tt))
+        });
+        let attr_input_or_mac_def = def.or_else(|| match loc.kind {
+            MacroCallKind::Attr { ast_id, invoc_attr_index, .. } => {
+                let tt = ast_id
+                    .to_node(db)
+                    .doc_comments_and_attrs()
+                    .nth(invoc_attr_index as usize)
+                    .and_then(Either::left)?
+                    .token_tree()?;
+                Some(InFile::new(ast_id.file_id, tt))
             }
-        }
+            _ => None,
+        });
+
+        Some(ExpansionInfo {
+            expanded: InFile::new(self, parse.syntax_node()),
+            arg: InFile::new(loc.kind.file_id(), arg_tt),
+            attr_input_or_mac_def,
+            macro_arg_shift: mbe::Shift::new(&macro_arg.0),
+            macro_arg,
+            macro_def,
+            exp_map,
+        })
     }
 
     /// Indicate it is macro file generated for builtin derive
     pub fn is_builtin_derive(&self, db: &dyn db::AstDatabase) -> Option<InFile<ast::Attr>> {
-        match self.0 {
-            HirFileIdRepr::FileId(_) => None,
-            HirFileIdRepr::MacroFile(macro_file) => {
-                let loc: MacroCallLoc = db.lookup_intern_macro_call(macro_file.macro_call_id);
-                let attr = match loc.def.kind {
-                    MacroDefKind::BuiltInDerive(..) => loc.kind.to_node(db),
-                    _ => return None,
-                };
-                Some(attr.with_value(ast::Attr::cast(attr.value.clone())?))
-            }
-        }
+        let macro_file = self.macro_file()?;
+        let loc: MacroCallLoc = db.lookup_intern_macro_call(macro_file.macro_call_id);
+        let attr = match loc.def.kind {
+            MacroDefKind::BuiltInDerive(..) => loc.kind.to_node(db),
+            _ => return None,
+        };
+        Some(attr.with_value(ast::Attr::cast(attr.value.clone())?))
     }
 
     pub fn is_custom_derive(&self, db: &dyn db::AstDatabase) -> bool {
-        match self.0 {
-            HirFileIdRepr::FileId(_) => false,
-            HirFileIdRepr::MacroFile(macro_file) => {
+        match self.macro_file() {
+            Some(macro_file) => {
                 let loc: MacroCallLoc = db.lookup_intern_macro_call(macro_file.macro_call_id);
                 matches!(loc.def.kind, MacroDefKind::ProcMacro(_, ProcMacroKind::CustomDerive, _))
             }
+            None => false,
         }
     }
 
     /// Return whether this file is an include macro
     pub fn is_include_macro(&self, db: &dyn db::AstDatabase) -> bool {
-        match self.0 {
-            HirFileIdRepr::MacroFile(macro_file) => {
+        match self.macro_file() {
+            Some(macro_file) => {
                 let loc: MacroCallLoc = db.lookup_intern_macro_call(macro_file.macro_call_id);
                 matches!(loc.eager, Some(EagerCallInfo { included_file: Some(_), .. }))
             }
@@ -321,8 +317,8 @@ impl HirFileId {
 
     /// Return whether this file is an attr macro
     pub fn is_attr_macro(&self, db: &dyn db::AstDatabase) -> bool {
-        match self.0 {
-            HirFileIdRepr::MacroFile(macro_file) => {
+        match self.macro_file() {
+            Some(macro_file) => {
                 let loc: MacroCallLoc = db.lookup_intern_macro_call(macro_file.macro_call_id);
                 matches!(loc.kind, MacroCallKind::Attr { .. })
             }
@@ -333,23 +329,36 @@ impl HirFileId {
     /// Return whether this file is the pseudo expansion of the derive attribute.
     /// See [`crate::builtin_attr_macro::derive_attr_expand`].
     pub fn is_derive_attr_pseudo_expansion(&self, db: &dyn db::AstDatabase) -> bool {
-        match self.0 {
-            HirFileIdRepr::MacroFile(macro_file) => {
+        match self.macro_file() {
+            Some(macro_file) => {
                 let loc: MacroCallLoc = db.lookup_intern_macro_call(macro_file.macro_call_id);
                 matches!(loc.kind, MacroCallKind::Attr { is_derive: true, .. })
             }
-            _ => false,
+            None => false,
         }
     }
 
+    #[inline]
     pub fn is_macro(self) -> bool {
-        matches!(self.0, HirFileIdRepr::MacroFile(_))
+        self.0 & Self::MACRO_FILE_TAG_MASK != 0
     }
 
+    #[inline]
     pub fn macro_file(self) -> Option<MacroFile> {
-        match self.0 {
-            HirFileIdRepr::FileId(_) => None,
-            HirFileIdRepr::MacroFile(m) => Some(m),
+        match self.0 & Self::MACRO_FILE_TAG_MASK {
+            0 => None,
+            _ => Some(MacroFile {
+                macro_call_id: MacroCallId(InternId::from(self.0 ^ Self::MACRO_FILE_TAG_MASK)),
+            }),
+        }
+    }
+
+    fn repr(self) -> HirFileIdRepr {
+        match self.0 & Self::MACRO_FILE_TAG_MASK {
+            0 => HirFileIdRepr::FileId(FileId(self.0)),
+            _ => HirFileIdRepr::MacroFile(MacroFile {
+                macro_call_id: MacroCallId(InternId::from(self.0 ^ Self::MACRO_FILE_TAG_MASK)),
+            }),
         }
     }
 }
@@ -442,7 +451,7 @@ impl MacroCallKind {
     pub fn original_call_range_with_body(self, db: &dyn db::AstDatabase) -> FileRange {
         let mut kind = self;
         let file_id = loop {
-            match kind.file_id().0 {
+            match kind.file_id().repr() {
                 HirFileIdRepr::MacroFile(file) => {
                     kind = db.lookup_intern_macro_call(file.macro_call_id).kind;
                 }
@@ -467,7 +476,7 @@ impl MacroCallKind {
     pub fn original_call_range(self, db: &dyn db::AstDatabase) -> FileRange {
         let mut kind = self;
         let file_id = loop {
-            match kind.file_id().0 {
+            match kind.file_id().repr() {
                 HirFileIdRepr::MacroFile(file) => {
                     kind = db.lookup_intern_macro_call(file.macro_call_id).kind;
                 }
@@ -779,7 +788,7 @@ impl<'a> InFile<&'a SyntaxNode> {
     /// For attributes and derives, this will point back to the attribute only.
     /// For the entire item `InFile::use original_file_range_full`.
     pub fn original_file_range(self, db: &dyn db::AstDatabase) -> FileRange {
-        match self.file_id.0 {
+        match self.file_id.repr() {
             HirFileIdRepr::FileId(file_id) => FileRange { file_id, range: self.value.text_range() },
             HirFileIdRepr::MacroFile(mac_file) => {
                 if let Some(res) = self.original_file_range_opt(db) {
@@ -846,7 +855,7 @@ impl InFile<SyntaxToken> {
 
     /// Falls back to the macro call range if the node cannot be mapped up fully.
     pub fn original_file_range(self, db: &dyn db::AstDatabase) -> FileRange {
-        match self.file_id.0 {
+        match self.file_id.repr() {
             HirFileIdRepr::FileId(file_id) => FileRange { file_id, range: self.value.text_range() },
             HirFileIdRepr::MacroFile(mac_file) => {
                 if let Some(res) = self.original_file_range_opt(db) {
@@ -861,7 +870,7 @@ impl InFile<SyntaxToken> {
 
     /// Attempts to map the syntax node back up its macro calls.
     pub fn original_file_range_opt(self, db: &dyn db::AstDatabase) -> Option<FileRange> {
-        match self.file_id.0 {
+        match self.file_id.repr() {
             HirFileIdRepr::FileId(file_id) => {
                 Some(FileRange { file_id, range: self.value.text_range() })
             }
