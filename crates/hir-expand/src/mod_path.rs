@@ -259,6 +259,7 @@ macro_rules! __known_path {
     (core::future::Future) => {};
     (core::future::IntoFuture) => {};
     (core::ops::Try) => {};
+    (core::ops::FromResidual) => {};
     ($path:path) => {
         compile_error!("Please register your known path in the path module")
     };

@@ -19,6 +19,7 @@ pub(crate) mod snippet;
 pub(crate) mod r#type;
 pub(crate) mod use_;
 pub(crate) mod vis;
+pub(crate) mod env_vars;
 
 use std::iter;
 

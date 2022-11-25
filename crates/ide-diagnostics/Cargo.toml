@@ -11,11 +11,9 @@ doctest = false
 
 [dependencies]
 cov-mark = "2.0.0-pre.1"
-itertools = "0.10.3"
-
-
 either = "1.7.0"
-serde_json = "1.0.82"
+itertools = "0.10.5"
+serde_json = "1.0.86"
 
 profile = { path = "../profile", version = "0.0.0" }
 stdx = { path = "../stdx", version = "0.0.0" }

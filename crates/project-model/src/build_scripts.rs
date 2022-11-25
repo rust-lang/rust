@@ -154,6 +154,8 @@ impl WorkspaceBuildScripts {
                             Some(&it) => it,
                             None => return,
                         };
+                        progress(format!("running build-script: {}", workspace[package].name));
+
                         let cfgs = {
                             let mut acc = Vec::new();
                             for cfg in message.cfgs {
@@ -189,7 +191,7 @@ impl WorkspaceBuildScripts {
                             None => return,
                         };
 
-                        progress(format!("metadata {}", message.target.name));
+                        progress(format!("building proc-macros: {}", message.target.name));
 
                         if message.target.kind.iter().any(|k| k == "proc-macro") {
                             // Skip rmeta file

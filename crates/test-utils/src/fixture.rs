@@ -61,6 +61,8 @@
 //! "
 //! ```
 
+use std::iter;
+
 use rustc_hash::FxHashMap;
 use stdx::trim_indent;
 
@@ -259,7 +261,7 @@ impl MiniCore {
             if res.has_flag(entry) {
                 panic!("duplicate minicore flag: {:?}", entry);
             }
-            res.activated_flags.push(entry.to_string());
+            res.activated_flags.push(entry.to_owned());
         }
 
         res
@@ -273,35 +275,34 @@ impl MiniCore {
         let raw_mini_core = include_str!("./minicore.rs");
         let mut lines = raw_mini_core.split_inclusive('\n');
 
-        let mut parsing_flags = false;
         let mut implications = Vec::new();
 
         // Parse `//!` preamble and extract flags and dependencies.
-        for line in lines.by_ref() {
-            let line = match line.strip_prefix("//!") {
-                Some(it) => it,
-                None => {
-                    assert!(line.trim().is_empty());
-                    break;
-                }
-            };
-
-            if parsing_flags {
-                let (flag, deps) = line.split_once(':').unwrap();
-                let flag = flag.trim();
-                self.valid_flags.push(flag.to_string());
-                for dep in deps.split(", ") {
-                    let dep = dep.trim();
-                    if !dep.is_empty() {
-                        self.assert_valid_flag(dep);
-                        implications.push((flag, dep));
-                    }
-                }
+        let trim_doc: fn(&str) -> Option<&str> = |line| match line.strip_prefix("//!") {
+            Some(it) => Some(it),
+            None => {
+                assert!(line.trim().is_empty(), "expected empty line after minicore header");
+                None
             }
+        };
+        for line in lines
+            .by_ref()
+            .map_while(trim_doc)
+            .skip_while(|line| !line.contains("Available flags:"))
+            .skip(1)
+        {
+            let (flag, deps) = line.split_once(':').unwrap();
+            let flag = flag.trim();
 
-            if line.contains("Available flags:") {
-                parsing_flags = true;
-            }
+            self.valid_flags.push(flag.to_string());
+            implications.extend(
+                iter::repeat(flag)
+                    .zip(deps.split(", ").map(str::trim).filter(|dep| !dep.is_empty())),
+            );
+        }
+
+        for (_, dep) in &implications {
+            self.assert_valid_flag(dep);
         }
 
         for flag in &self.activated_flags {
@@ -332,7 +333,7 @@ impl MiniCore {
             }
             if let Some(region) = trimmed.strip_prefix("// endregion:") {
                 let prev = active_regions.pop().unwrap();
-                assert_eq!(prev, region);
+                assert_eq!(prev, region, "unbalanced region pairs");
                 continue;
             }
 

@@ -9,7 +9,7 @@ use ide_db::{
     search::FileReference,
     FxHashSet, RootDatabase,
 };
-use itertools::{Itertools, Position};
+use itertools::Itertools;
 use syntax::{
     ast::{
         self, edit::IndentLevel, edit_in_place::Indent, make, AstNode, HasAttrs, HasGenericParams,
@@ -298,37 +298,7 @@ fn update_variant(variant: &ast::Variant, generics: Option<ast::GenericParamList
     let name = variant.name()?;
     let ty = generics
         .filter(|generics| generics.generic_params().count() > 0)
-        .map(|generics| {
-            let mut generic_str = String::with_capacity(8);
-
-            for (p, more) in generics.generic_params().with_position().map(|p| match p {
-                Position::First(p) | Position::Middle(p) => (p, true),
-                Position::Last(p) | Position::Only(p) => (p, false),
-            }) {
-                match p {
-                    ast::GenericParam::ConstParam(konst) => {
-                        if let Some(name) = konst.name() {
-                            generic_str.push_str(name.text().as_str());
-                        }
-                    }
-                    ast::GenericParam::LifetimeParam(lt) => {
-                        if let Some(lt) = lt.lifetime() {
-                            generic_str.push_str(lt.text().as_str());
-                        }
-                    }
-                    ast::GenericParam::TypeParam(ty) => {
-                        if let Some(name) = ty.name() {
-                            generic_str.push_str(name.text().as_str());
-                        }
-                    }
-                }
-                if more {
-                    generic_str.push_str(", ");
-                }
-            }
-
-            make::ty(&format!("{}<{}>", &name.text(), &generic_str))
-        })
+        .map(|generics| make::ty(&format!("{}{}", &name.text(), generics.to_generic_args())))
         .unwrap_or_else(|| make::ty(&name.text()));
 
     // change from a record to a tuple field list

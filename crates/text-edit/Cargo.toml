@@ -10,5 +10,5 @@ rust-version = "1.57"
 doctest = false
 
 [dependencies]
-itertools = "0.10.3"
+itertools = "0.10.5"
 text-size = "1.1.0"

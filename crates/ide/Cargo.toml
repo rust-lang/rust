@@ -13,12 +13,12 @@ doctest = false
 cov-mark = "2.0.0-pre.1"
 crossbeam-channel = "0.5.5"
 either = "1.7.0"
-itertools = "0.10.3"
+itertools = "0.10.5"
 tracing = "0.1.35"
 oorandom = "11.1.3"
-pulldown-cmark-to-cmark = "10.0.1"
+pulldown-cmark-to-cmark = "10.0.4"
 pulldown-cmark = { version = "0.9.1", default-features = false }
-url = "2.2.2"
+url = "2.3.1"
 dot = "0.1.4"
 
 stdx = { path = "../stdx", version = "0.0.0" }

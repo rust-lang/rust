@@ -823,10 +823,10 @@ pub(super) fn generic_predicate_to_inline_bound(
             Some(chalk_ir::Binders::new(binders, rust_ir::InlineBound::TraitBound(trait_bound)))
         }
         WhereClause::AliasEq(AliasEq { alias: AliasTy::Projection(projection_ty), ty }) => {
-            if projection_ty.self_type_parameter(Interner) != self_ty_shifted_in {
+            let trait_ = projection_ty.trait_(db);
+            if projection_ty.self_type_parameter(db) != self_ty_shifted_in {
                 return None;
             }
-            let trait_ = projection_ty.trait_(db);
             let args_no_self = projection_ty.substitution.as_slice(Interner)[1..]
                 .iter()
                 .map(|ty| ty.clone().cast(Interner))

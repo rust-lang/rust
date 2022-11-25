@@ -1111,6 +1111,24 @@ pub fn resolve_indexing_op(
     }
     None
 }
+/// Returns the receiver type for the try branch trait call.
+pub fn resolve_branch_op(
+    db: &dyn HirDatabase,
+    env: Arc<TraitEnvironment>,
+    ty: Canonical<Ty>,
+    try_trait: TraitId,
+) -> Option<ReceiverAdjustments> {
+    let mut table = InferenceTable::new(db, env.clone());
+    let ty = table.instantiate_canonical(ty);
+    let (deref_chain, adj) = autoderef_method_receiver(&mut table, ty);
+    for (ty, adj) in deref_chain.into_iter().zip(adj) {
+        let goal = generic_implements_goal(db, env.clone(), try_trait, &ty);
+        if db.trait_solve(env.krate, goal.cast(Interner)).is_some() {
+            return Some(adj);
+        }
+    }
+    None
+}
 
 macro_rules! check_that {
     ($cond:expr) => {

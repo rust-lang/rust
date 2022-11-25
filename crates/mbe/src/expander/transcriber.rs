@@ -6,7 +6,7 @@ use tt::{Delimiter, Subtree};
 
 use crate::{
     expander::{Binding, Bindings, Fragment},
-    parser::{Op, RepeatKind, Separator},
+    parser::{MetaVarKind, Op, RepeatKind, Separator},
     ExpandError, ExpandResult, MetaTemplate,
 };
 
@@ -15,7 +15,7 @@ impl Bindings {
         self.inner.contains_key(name)
     }
 
-    fn get(&self, name: &str, nesting: &mut [NestingState]) -> Result<&Fragment, ExpandError> {
+    fn get(&self, name: &str, nesting: &mut [NestingState]) -> Result<Fragment, ExpandError> {
         macro_rules! binding_err {
             ($($arg:tt)*) => { ExpandError::binding_error(format!($($arg)*)) };
         }
@@ -26,6 +26,7 @@ impl Bindings {
             nesting_state.hit = true;
             b = match b {
                 Binding::Fragment(_) => break,
+                Binding::Missing(_) => break,
                 Binding::Nested(bs) => bs.get(nesting_state.idx).ok_or_else(|| {
                     nesting_state.at_end = true;
                     binding_err!("could not find nested binding `{name}`")
@@ -37,7 +38,55 @@ impl Bindings {
             };
         }
         match b {
-            Binding::Fragment(it) => Ok(it),
+            Binding::Fragment(it) => Ok(it.clone()),
+            // emit some reasonable default expansion for missing bindings,
+            // this gives better recovery than emitting the `$fragment-name` verbatim
+            Binding::Missing(it) => Ok(match it {
+                MetaVarKind::Stmt => {
+                    Fragment::Tokens(tt::TokenTree::Leaf(tt::Leaf::Punct(tt::Punct {
+                        id: tt::TokenId::unspecified(),
+                        char: ';',
+                        spacing: tt::Spacing::Alone,
+                    })))
+                }
+                MetaVarKind::Block => Fragment::Tokens(tt::TokenTree::Subtree(tt::Subtree {
+                    delimiter: Some(tt::Delimiter {
+                        id: tt::TokenId::unspecified(),
+                        kind: tt::DelimiterKind::Brace,
+                    }),
+                    token_trees: vec![],
+                })),
+                // FIXME: Meta and Item should get proper defaults
+                MetaVarKind::Meta | MetaVarKind::Item | MetaVarKind::Tt | MetaVarKind::Vis => {
+                    Fragment::Tokens(tt::TokenTree::Subtree(tt::Subtree {
+                        delimiter: None,
+                        token_trees: vec![],
+                    }))
+                }
+                MetaVarKind::Path
+                | MetaVarKind::Ty
+                | MetaVarKind::Pat
+                | MetaVarKind::PatParam
+                | MetaVarKind::Expr
+                | MetaVarKind::Ident => {
+                    Fragment::Tokens(tt::TokenTree::Leaf(tt::Leaf::Ident(tt::Ident {
+                        text: SmolStr::new_inline("missing"),
+                        id: tt::TokenId::unspecified(),
+                    })))
+                }
+                MetaVarKind::Lifetime => {
+                    Fragment::Tokens(tt::TokenTree::Leaf(tt::Leaf::Ident(tt::Ident {
+                        text: SmolStr::new_inline("'missing"),
+                        id: tt::TokenId::unspecified(),
+                    })))
+                }
+                MetaVarKind::Literal => {
+                    Fragment::Tokens(tt::TokenTree::Leaf(tt::Leaf::Ident(tt::Ident {
+                        text: SmolStr::new_inline("\"missing\""),
+                        id: tt::TokenId::unspecified(),
+                    })))
+                }
+            }),
             Binding::Nested(_) => {
                 Err(binding_err!("expected simple binding, found nested binding `{name}`"))
             }
@@ -157,7 +206,7 @@ fn expand_var(ctx: &mut ExpandCtx<'_>, v: &SmolStr, id: tt::TokenId) -> ExpandRe
     } else {
         ctx.bindings.get(v, &mut ctx.nesting).map_or_else(
             |e| ExpandResult { value: Fragment::Tokens(tt::TokenTree::empty()), err: Some(e) },
-            |b| ExpandResult::ok(b.clone()),
+            |it| ExpandResult::ok(it),
         )
     }
 }

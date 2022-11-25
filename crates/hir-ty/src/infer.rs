@@ -190,7 +190,9 @@ pub(crate) type InferResult<T> = Result<InferOk<T>, TypeError>;
 pub enum InferenceDiagnostic {
     NoSuchField { expr: ExprId },
     BreakOutsideOfLoop { expr: ExprId, is_break: bool },
+    IncorrectTryTarget { expr: ExprId },
     MismatchedArgCount { call_expr: ExprId, expected: usize, found: usize },
+    DoesNotImplement { expr: ExprId, trait_: TraitId, ty: Ty },
 }
 
 /// A mismatch between an expected and an inferred type.
@@ -903,17 +905,6 @@ impl<'a> InferenceContext<'a> {
         let path = path![core::iter::Iterator];
         let trait_ = self.resolver.resolve_known_trait(self.db.upcast(), &path)?;
         self.db.trait_data(trait_).associated_type_by_name(&name![Item])
-    }
-
-    fn resolve_ops_try_ok(&self) -> Option<TypeAliasId> {
-        // FIXME resolve via lang_item once try v2 is stable
-        let path = path![core::ops::Try];
-        let trait_ = self.resolver.resolve_known_trait(self.db.upcast(), &path)?;
-        let trait_data = self.db.trait_data(trait_);
-        trait_data
-            // FIXME remove once try v2 is stable
-            .associated_type_by_name(&name![Ok])
-            .or_else(|| trait_data.associated_type_by_name(&name![Output]))
     }
 
     fn resolve_ops_neg_output(&self) -> Option<TypeAliasId> {

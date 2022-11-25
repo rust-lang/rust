@@ -52,6 +52,7 @@ mod tests {
 
     use super::*;
 
+    // FIXME: break up into separate test fns
     #[test]
     fn test_add_impl() {
         check_assist(
@@ -130,6 +131,18 @@ mod tests {
             struct Defaulted<'a, 'b: 'a, T: Debug + Clone + 'a + 'b = String, const S: usize> {}
 
             impl<'a, 'b: 'a, T: Debug + Clone + 'a + 'b, const S: usize> Defaulted<'a, 'b, T, S> {
+                $0
+            }"#,
+        );
+
+        check_assist(
+            generate_impl,
+            r#"
+            struct Defaulted<const N: i32 = 0> {}$0"#,
+            r#"
+            struct Defaulted<const N: i32 = 0> {}
+
+            impl<const N: i32> Defaulted<N> {
                 $0
             }"#,
         );

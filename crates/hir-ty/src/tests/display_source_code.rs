@@ -56,6 +56,28 @@ fn main() {
 }
 
 #[test]
+fn render_dyn_ty_independent_of_order() {
+    check_types_source_code(
+        r#"
+auto trait Send {}
+trait A {
+    type Assoc;
+}
+trait B: A {}
+
+fn test(
+    _: &(dyn A<Assoc = ()> + Send),
+  //^ &(dyn A<Assoc = ()> + Send)
+    _: &(dyn Send + A<Assoc = ()>),
+  //^ &(dyn A<Assoc = ()> + Send)
+    _: &dyn B<Assoc = ()>,
+  //^ &(dyn B<Assoc = ()>)
+) {}
+        "#,
+    );
+}
+
+#[test]
 fn render_dyn_for_ty() {
     // FIXME
     check_types_source_code(

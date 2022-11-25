@@ -291,7 +291,7 @@ impl HirDisplay for ProjectionTy {
 
         let trait_ = f.db.trait_data(self.trait_(f.db));
         write!(f, "<")?;
-        self.self_type_parameter(Interner).hir_fmt(f)?;
+        self.self_type_parameter(f.db).hir_fmt(f)?;
         write!(f, " as {}", trait_.name)?;
         if self.substitution.len(Interner) > 1 {
             write!(f, "<")?;
@@ -731,7 +731,7 @@ impl HirDisplay for Ty {
                                         WhereClause::AliasEq(AliasEq {
                                             alias: AliasTy::Projection(proj),
                                             ty: _,
-                                        }) => &proj.self_type_parameter(Interner) == self,
+                                        }) => &proj.self_type_parameter(f.db) == self,
                                         _ => false,
                                     })
                                     .collect::<Vec<_>>();
@@ -751,9 +751,19 @@ impl HirDisplay for Ty {
             }
             TyKind::BoundVar(idx) => idx.hir_fmt(f)?,
             TyKind::Dyn(dyn_ty) => {
+                // Reorder bounds to satisfy `write_bounds_like_dyn_trait()`'s expectation.
+                // FIXME: `Iterator::partition_in_place()` or `Vec::drain_filter()` may make it
+                // more efficient when either of them hits stable.
+                let mut bounds: SmallVec<[_; 4]> =
+                    dyn_ty.bounds.skip_binders().iter(Interner).cloned().collect();
+                let (auto_traits, others): (SmallVec<[_; 4]>, _) =
+                    bounds.drain(1..).partition(|b| b.skip_binders().trait_id().is_some());
+                bounds.extend(others);
+                bounds.extend(auto_traits);
+
                 write_bounds_like_dyn_trait_with_prefix(
                     "dyn",
-                    dyn_ty.bounds.skip_binders().interned(),
+                    &bounds,
                     SizedByDefault::NotSized,
                     f,
                 )?;

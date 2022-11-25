@@ -10,4 +10,4 @@ rust-version = "1.57"
 doctest = false
 
 [dependencies]
-home = "0.5.3"
+home = "0.5.4"

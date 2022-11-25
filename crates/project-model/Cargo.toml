@@ -13,10 +13,10 @@ doctest = false
 tracing = "0.1.35"
 rustc-hash = "1.1.0"
 cargo_metadata = "0.15.0"
-semver = "1.0.10"
+semver = "1.0.14"
 serde = { version = "1.0.137", features = ["derive"] }
-serde_json = "1.0.81"
-anyhow = "1.0.57"
+serde_json = "1.0.86"
+anyhow = "1.0.62"
 expect-test = "1.4.0"
 la-arena = { version = "0.3.0", path = "../../lib/la-arena" }
 

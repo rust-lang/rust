@@ -133,7 +133,21 @@ export class Config {
     }
 
     get runnableEnv() {
-        return this.get<RunnableEnvCfg>("runnableEnv");
+        const item = this.get<any>("runnableEnv");
+        if (!item) return item;
+        const fixRecord = (r: Record<string, any>) => {
+            for (const key in r) {
+                if (typeof r[key] !== "string") {
+                    r[key] = String(r[key]);
+                }
+            }
+        };
+        if (item instanceof Array) {
+            item.forEach((x) => fixRecord(x.env));
+        } else {
+            fixRecord(item);
+        }
+        return item;
     }
 
     get restartServerOnConfigChange() {

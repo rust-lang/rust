@@ -235,6 +235,24 @@ impl ast::GenericParamList {
             }
         }
     }
+
+    /// Constructs a matching [`ast::GenericArgList`]
+    pub fn to_generic_args(&self) -> ast::GenericArgList {
+        let args = self.generic_params().filter_map(|param| match param {
+            ast::GenericParam::LifetimeParam(it) => {
+                Some(ast::GenericArg::LifetimeArg(make::lifetime_arg(it.lifetime()?)))
+            }
+            ast::GenericParam::TypeParam(it) => {
+                Some(ast::GenericArg::TypeArg(make::type_arg(make::ext::ty_name(it.name()?))))
+            }
+            ast::GenericParam::ConstParam(it) => {
+                // Name-only const params get parsed as `TypeArg`s
+                Some(ast::GenericArg::TypeArg(make::type_arg(make::ext::ty_name(it.name()?))))
+            }
+        });
+
+        make::generic_arg_list(args)
+    }
 }
 
 impl ast::WhereClause {
@@ -245,6 +263,42 @@ impl ast::WhereClause {
             }
         }
         ted::append_child(self.syntax(), predicate.syntax());
+    }
+}
+
+impl ast::TypeParam {
+    pub fn remove_default(&self) {
+        if let Some((eq, last)) = self
+            .syntax()
+            .children_with_tokens()
+            .find(|it| it.kind() == T![=])
+            .zip(self.syntax().last_child_or_token())
+        {
+            ted::remove_all(eq..=last);
+
+            // remove any trailing ws
+            if let Some(last) = self.syntax().last_token().filter(|it| it.kind() == WHITESPACE) {
+                last.detach();
+            }
+        }
+    }
+}
+
+impl ast::ConstParam {
+    pub fn remove_default(&self) {
+        if let Some((eq, last)) = self
+            .syntax()
+            .children_with_tokens()
+            .find(|it| it.kind() == T![=])
+            .zip(self.syntax().last_child_or_token())
+        {
+            ted::remove_all(eq..=last);
+
+            // remove any trailing ws
+            if let Some(last) = self.syntax().last_token().filter(|it| it.kind() == WHITESPACE) {
+                last.detach();
+            }
+        }
     }
 }
 
@@ -264,7 +318,7 @@ impl Removable for ast::TypeBoundList {
 impl ast::PathSegment {
     pub fn get_or_create_generic_arg_list(&self) -> ast::GenericArgList {
         if self.generic_arg_list().is_none() {
-            let arg_list = make::generic_arg_list().clone_for_update();
+            let arg_list = make::generic_arg_list(empty()).clone_for_update();
             ted::append_child(self.syntax(), arg_list.syntax());
         }
         self.generic_arg_list().unwrap()

@@ -4,7 +4,7 @@ use std::{fmt, mem, sync::Arc};
 
 use chalk_ir::{
     cast::Cast, fold::TypeFoldable, interner::HasInterner, zip::Zip, CanonicalVarKind, FloatTy,
-    IntTy, NoSolution, TyVariableKind, UniverseIndex,
+    IntTy, TyVariableKind, UniverseIndex,
 };
 use chalk_solve::infer::ParameterEnaVariableExt;
 use ena::unify::UnifyKey;
@@ -331,7 +331,6 @@ impl<'a> InferenceTable<'a> {
             &mut resolve::Resolver { table: self, var_stack, fallback },
             DebruijnIndex::INNERMOST,
         )
-        .expect("fold failed unexpectedly")
     }
 
     pub(crate) fn resolve_completely<T>(&mut self, t: T) -> T
@@ -452,13 +451,14 @@ impl<'a> InferenceTable<'a> {
         f: impl FnOnce(&mut Self) -> T,
     ) -> T {
         use chalk_ir::fold::TypeFolder;
+
+        #[derive(chalk_derive::FallibleTypeFolder)]
+        #[has_interner(Interner)]
         struct VarFudger<'a, 'b> {
             table: &'a mut InferenceTable<'b>,
             highest_known_var: InferenceVar,
         }
         impl<'a, 'b> TypeFolder<Interner> for VarFudger<'a, 'b> {
-            type Error = NoSolution;
-
             fn as_dyn(&mut self) -> &mut dyn TypeFolder<Interner, Error = Self::Error> {
                 self
             }
@@ -472,24 +472,24 @@ impl<'a> InferenceTable<'a> {
                 var: chalk_ir::InferenceVar,
                 kind: TyVariableKind,
                 _outer_binder: chalk_ir::DebruijnIndex,
-            ) -> chalk_ir::Fallible<chalk_ir::Ty<Interner>> {
-                Ok(if var < self.highest_known_var {
+            ) -> chalk_ir::Ty<Interner> {
+                if var < self.highest_known_var {
                     var.to_ty(Interner, kind)
                 } else {
                     self.table.new_type_var()
-                })
+                }
             }
 
             fn fold_inference_lifetime(
                 &mut self,
                 var: chalk_ir::InferenceVar,
                 _outer_binder: chalk_ir::DebruijnIndex,
-            ) -> chalk_ir::Fallible<chalk_ir::Lifetime<Interner>> {
-                Ok(if var < self.highest_known_var {
+            ) -> chalk_ir::Lifetime<Interner> {
+                if var < self.highest_known_var {
                     var.to_lifetime(Interner)
                 } else {
                     self.table.new_lifetime_var()
-                })
+                }
             }
 
             fn fold_inference_const(
@@ -497,12 +497,12 @@ impl<'a> InferenceTable<'a> {
                 ty: chalk_ir::Ty<Interner>,
                 var: chalk_ir::InferenceVar,
                 _outer_binder: chalk_ir::DebruijnIndex,
-            ) -> chalk_ir::Fallible<chalk_ir::Const<Interner>> {
-                Ok(if var < self.highest_known_var {
+            ) -> chalk_ir::Const<Interner> {
+                if var < self.highest_known_var {
                     var.to_const(Interner, ty)
                 } else {
                     self.table.new_const_var(ty)
-                })
+                }
             }
         }
 
@@ -512,7 +512,6 @@ impl<'a> InferenceTable<'a> {
         self.rollback_to(snapshot);
         result
             .fold_with(&mut VarFudger { table: self, highest_known_var }, DebruijnIndex::INNERMOST)
-            .expect("fold_with with VarFudger")
     }
 
     /// This checks whether any of the free variables in the `canonicalized`
@@ -639,21 +638,24 @@ mod resolve {
     use chalk_ir::{
         cast::Cast,
         fold::{TypeFoldable, TypeFolder},
-        Fallible, NoSolution,
     };
     use hir_def::type_ref::ConstScalar;
 
-    pub(super) struct Resolver<'a, 'b, F> {
+    #[derive(chalk_derive::FallibleTypeFolder)]
+    #[has_interner(Interner)]
+    pub(super) struct Resolver<
+        'a,
+        'b,
+        F: Fn(InferenceVar, VariableKind, GenericArg, DebruijnIndex) -> GenericArg,
+    > {
         pub(super) table: &'a mut InferenceTable<'b>,
         pub(super) var_stack: &'a mut Vec<InferenceVar>,
         pub(super) fallback: F,
     }
-    impl<'a, 'b, 'i, F> TypeFolder<Interner> for Resolver<'a, 'b, F>
+    impl<'a, 'b, F> TypeFolder<Interner> for Resolver<'a, 'b, F>
     where
-        F: Fn(InferenceVar, VariableKind, GenericArg, DebruijnIndex) -> GenericArg + 'i,
+        F: Fn(InferenceVar, VariableKind, GenericArg, DebruijnIndex) -> GenericArg,
     {
-        type Error = NoSolution;
-
         fn as_dyn(&mut self) -> &mut dyn TypeFolder<Interner, Error = Self::Error> {
             self
         }
@@ -667,20 +669,19 @@ mod resolve {
             var: InferenceVar,
             kind: TyVariableKind,
             outer_binder: DebruijnIndex,
-        ) -> Fallible<Ty> {
+        ) -> Ty {
             let var = self.table.var_unification_table.inference_var_root(var);
             if self.var_stack.contains(&var) {
                 // recursive type
                 let default = self.table.fallback_value(var, kind).cast(Interner);
-                return Ok((self.fallback)(var, VariableKind::Ty(kind), default, outer_binder)
+                return (self.fallback)(var, VariableKind::Ty(kind), default, outer_binder)
                     .assert_ty_ref(Interner)
-                    .clone());
+                    .clone();
             }
             let result = if let Some(known_ty) = self.table.var_unification_table.probe_var(var) {
                 // known_ty may contain other variables that are known by now
                 self.var_stack.push(var);
-                let result =
-                    known_ty.fold_with(self, outer_binder).expect("fold failed unexpectedly");
+                let result = known_ty.fold_with(self, outer_binder);
                 self.var_stack.pop();
                 result.assert_ty_ref(Interner).clone()
             } else {
@@ -689,7 +690,7 @@ mod resolve {
                     .assert_ty_ref(Interner)
                     .clone()
             };
-            Ok(result)
+            result
         }
 
         fn fold_inference_const(
@@ -697,7 +698,7 @@ mod resolve {
             ty: Ty,
             var: InferenceVar,
             outer_binder: DebruijnIndex,
-        ) -> Fallible<Const> {
+        ) -> Const {
             let var = self.table.var_unification_table.inference_var_root(var);
             let default = ConstData {
                 ty: ty.clone(),
@@ -707,35 +708,33 @@ mod resolve {
             .cast(Interner);
             if self.var_stack.contains(&var) {
                 // recursive
-                return Ok((self.fallback)(var, VariableKind::Const(ty), default, outer_binder)
+                return (self.fallback)(var, VariableKind::Const(ty), default, outer_binder)
                     .assert_const_ref(Interner)
-                    .clone());
+                    .clone();
             }
-            let result = if let Some(known_ty) = self.table.var_unification_table.probe_var(var) {
+            if let Some(known_ty) = self.table.var_unification_table.probe_var(var) {
                 // known_ty may contain other variables that are known by now
                 self.var_stack.push(var);
-                let result =
-                    known_ty.fold_with(self, outer_binder).expect("fold failed unexpectedly");
+                let result = known_ty.fold_with(self, outer_binder);
                 self.var_stack.pop();
                 result.assert_const_ref(Interner).clone()
             } else {
                 (self.fallback)(var, VariableKind::Const(ty), default, outer_binder)
                     .assert_const_ref(Interner)
                     .clone()
-            };
-            Ok(result)
+            }
         }
 
         fn fold_inference_lifetime(
             &mut self,
             _var: InferenceVar,
             _outer_binder: DebruijnIndex,
-        ) -> Fallible<Lifetime> {
+        ) -> Lifetime {
             // fall back all lifetimes to 'static -- currently we don't deal
             // with any lifetimes, but we can sometimes get some lifetime
             // variables through Chalk's unification, and this at least makes
             // sure we don't leak them outside of inference
-            Ok(crate::static_lifetime())
+            crate::static_lifetime()
         }
     }
 }

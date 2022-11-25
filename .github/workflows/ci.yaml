@@ -43,13 +43,30 @@ jobs:
           rustup component add rustfmt rust-src
 
       - name: Cache Dependencies
-        uses: Swatinem/rust-cache@ce325b60658c1b38465c06cc965b79baf32c1e72
+        uses: Swatinem/rust-cache@76686c56f2b581d1bb5bda44b51f7e24bd9b8b8e
 
-      - name: Compile
+      - name: Bump opt-level
+        if: matrix.os == 'ubuntu-latest'
+        run: sed -i '/\[profile.dev]/a opt-level=1' Cargo.toml
+
+      - name: Compile (tests)
         run: cargo test --no-run --locked
+
+      # It's faster to `test` before `build` ¯\_(ツ)_/¯
+      - name: Compile (rust-analyzer)
+        if: matrix.os == 'ubuntu-latest'
+        run: cargo build --quiet
 
       - name: Test
         run: cargo test -- --nocapture --quiet
+
+      - name: Run analysis-stats on rust-analyzer
+        if: matrix.os == 'ubuntu-latest'
+        run: target/${{ matrix.target }}/debug/rust-analyzer analysis-stats .
+
+      - name: Run analysis-stats on rust std library
+        if: matrix.os == 'ubuntu-latest'
+        run: target/${{ matrix.target }}/debug/rust-analyzer analysis-stats --with-deps $(rustc --print sysroot)/lib/rustlib/src/rust/library/std
 
   # Weird targets to catch non-portable code
   rust-cross:
@@ -73,7 +90,7 @@ jobs:
           rustup target add ${{ env.targets }} ${{ env.targets_ide }}
 
       - name: Cache Dependencies
-        uses: Swatinem/rust-cache@ce325b60658c1b38465c06cc965b79baf32c1e72
+        uses: Swatinem/rust-cache@76686c56f2b581d1bb5bda44b51f7e24bd9b8b8e
 
       - name: Check
         run: |
@@ -99,9 +116,9 @@ jobs:
         uses: actions/checkout@v3
 
       - name: Install Nodejs
-        uses: actions/setup-node@v1
+        uses: actions/setup-node@v3
         with:
-          node-version: 16.x
+          node-version: 16
 
       - name: Install xvfb
         if: matrix.os == 'ubuntu-latest'

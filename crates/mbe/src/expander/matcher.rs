@@ -66,7 +66,7 @@ use syntax::SmolStr;
 
 use crate::{
     expander::{Binding, Bindings, ExpandResult, Fragment},
-    parser::{Op, RepeatKind, Separator},
+    parser::{MetaVarKind, Op, RepeatKind, Separator},
     tt_iter::TtIter,
     ExpandError, MetaTemplate,
 };
@@ -119,6 +119,7 @@ pub(super) fn match_(pattern: &MetaTemplate, input: &tt::Subtree) -> Match {
             .map(|it| match it {
                 Binding::Fragment(_) => 1,
                 Binding::Empty => 1,
+                Binding::Missing(_) => 1,
                 Binding::Nested(it) => count(it.iter()),
             })
             .sum()
@@ -130,6 +131,7 @@ enum BindingKind {
     Empty(SmolStr),
     Optional(SmolStr),
     Fragment(SmolStr, Fragment),
+    Missing(SmolStr, MetaVarKind),
     Nested(usize, usize),
 }
 
@@ -190,6 +192,10 @@ impl BindingsBuilder {
             .push(LinkNode::Node(Rc::new(BindingKind::Fragment(var.clone(), fragment))));
     }
 
+    fn push_missing(&mut self, idx: &mut BindingsIdx, var: &SmolStr, kind: MetaVarKind) {
+        self.nodes[idx.0].push(LinkNode::Node(Rc::new(BindingKind::Missing(var.clone(), kind))));
+    }
+
     fn push_nested(&mut self, parent: &mut BindingsIdx, child: &BindingsIdx) {
         let BindingsIdx(idx, nidx) = self.copy(child);
         self.nodes[parent.0].push(LinkNode::Node(Rc::new(BindingKind::Nested(idx, nidx))));
@@ -221,6 +227,9 @@ impl BindingsBuilder {
                 }
                 BindingKind::Fragment(name, fragment) => {
                     bindings.inner.insert(name.clone(), Binding::Fragment(fragment.clone()));
+                }
+                BindingKind::Missing(name, kind) => {
+                    bindings.inner.insert(name.clone(), Binding::Missing(*kind));
                 }
                 BindingKind::Nested(idx, nested_idx) => {
                     let mut nested_nodes = Vec::new();
@@ -458,9 +467,9 @@ fn match_loop_inner<'t>(
                 }
             }
             OpDelimited::Op(Op::Var { kind, name, .. }) => {
-                if let Some(kind) = kind {
+                if let &Some(kind) = kind {
                     let mut fork = src.clone();
-                    let match_res = match_meta_var(kind.as_str(), &mut fork);
+                    let match_res = match_meta_var(kind, &mut fork);
                     match match_res.err {
                         None => {
                             // Some meta variables are optional (e.g. vis)
@@ -475,8 +484,15 @@ fn match_loop_inner<'t>(
                         }
                         Some(err) => {
                             res.add_err(err);
-                            if let Some(fragment) = match_res.value {
-                                bindings_builder.push_fragment(&mut item.bindings, name, fragment);
+                            match match_res.value {
+                                Some(fragment) => bindings_builder.push_fragment(
+                                    &mut item.bindings,
+                                    name,
+                                    fragment,
+                                ),
+                                None => {
+                                    bindings_builder.push_missing(&mut item.bindings, name, kind)
+                                }
                             }
                             item.is_error = true;
                             error_items.push(item);
@@ -668,20 +684,20 @@ fn match_leaf(lhs: &tt::Leaf, src: &mut TtIter<'_>) -> Result<(), ExpandError> {
     }
 }
 
-fn match_meta_var(kind: &str, input: &mut TtIter<'_>) -> ExpandResult<Option<Fragment>> {
+fn match_meta_var(kind: MetaVarKind, input: &mut TtIter<'_>) -> ExpandResult<Option<Fragment>> {
     let fragment = match kind {
-        "path" => parser::PrefixEntryPoint::Path,
-        "ty" => parser::PrefixEntryPoint::Ty,
+        MetaVarKind::Path => parser::PrefixEntryPoint::Path,
+        MetaVarKind::Ty => parser::PrefixEntryPoint::Ty,
         // FIXME: These two should actually behave differently depending on the edition.
         //
         // https://doc.rust-lang.org/edition-guide/rust-2021/or-patterns-macro-rules.html
-        "pat" | "pat_param" => parser::PrefixEntryPoint::Pat,
-        "stmt" => parser::PrefixEntryPoint::Stmt,
-        "block" => parser::PrefixEntryPoint::Block,
-        "meta" => parser::PrefixEntryPoint::MetaItem,
-        "item" => parser::PrefixEntryPoint::Item,
-        "vis" => parser::PrefixEntryPoint::Vis,
-        "expr" => {
+        MetaVarKind::Pat | MetaVarKind::PatParam => parser::PrefixEntryPoint::Pat,
+        MetaVarKind::Stmt => parser::PrefixEntryPoint::Stmt,
+        MetaVarKind::Block => parser::PrefixEntryPoint::Block,
+        MetaVarKind::Meta => parser::PrefixEntryPoint::MetaItem,
+        MetaVarKind::Item => parser::PrefixEntryPoint::Item,
+        MetaVarKind::Vis => parser::PrefixEntryPoint::Vis,
+        MetaVarKind::Expr => {
             // `expr` should not match underscores.
             // HACK: Macro expansion should not be done using "rollback and try another alternative".
             // rustc [explicitly checks the next token][0].
@@ -698,17 +714,17 @@ fn match_meta_var(kind: &str, input: &mut TtIter<'_>) -> ExpandResult<Option<Fra
         }
         _ => {
             let tt_result = match kind {
-                "ident" => input
+                MetaVarKind::Ident => input
                     .expect_ident()
                     .map(|ident| tt::Leaf::from(ident.clone()).into())
                     .map_err(|()| ExpandError::binding_error("expected ident")),
-                "tt" => input
+                MetaVarKind::Tt => input
                     .expect_tt()
                     .map_err(|()| ExpandError::binding_error("expected token tree")),
-                "lifetime" => input
+                MetaVarKind::Lifetime => input
                     .expect_lifetime()
                     .map_err(|()| ExpandError::binding_error("expected lifetime")),
-                "literal" => {
+                MetaVarKind::Literal => {
                     let neg = input.eat_char('-');
                     input
                         .expect_literal()

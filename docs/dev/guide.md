@@ -88,9 +88,8 @@ is lower than Cargo's model of packages: each Cargo package consists of several
 targets, each of which is a separate crate (or several crates, if you try
 different feature combinations).
 
-Procedural macros should become inputs as well, but currently they are not
-supported. Procedural macro will be a black box `Box<dyn Fn(TokenStream) -> TokenStream>`
-function, and will be inserted into the crate graph just like dependencies.
+Procedural macros are inputs as well, roughly modeled as a crate with a bunch of
+additional black box `dyn Fn(TokenStream) -> TokenStream` functions.
 
 Soon we'll talk how we build an LSP server on top of `Analysis`, but first,
 let's deal with that paths issue.
