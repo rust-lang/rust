@@ -112,6 +112,27 @@ impl<'a, 'tcx> ObligationCtxt<'a, 'tcx> {
         self.register_infer_ok_obligations(infer_ok)
     }
 
+    /// Makes `expected <: actual`.
+    ///
+    /// See [`At::trace_exp`] and [`Trace::eq`] for a version of
+    /// this method that only requires `T: Relate<'tcx>`
+    pub fn eq_exp<T>(
+        &self,
+        cause: &ObligationCause<'tcx>,
+        param_env: ty::ParamEnv<'tcx>,
+        a_is_expected: bool,
+        a: T,
+        b: T,
+    ) -> Result<(), TypeError<'tcx>>
+    where
+        T: ToTrace<'tcx>,
+    {
+        self.infcx
+            .at(cause, param_env)
+            .eq_exp(a_is_expected, a, b)
+            .map(|infer_ok| self.register_infer_ok_obligations(infer_ok))
+    }
+
     pub fn eq<T: ToTrace<'tcx>>(
         &self,
         cause: &ObligationCause<'tcx>,
