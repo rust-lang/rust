@@ -2677,7 +2677,7 @@ impl<'tcx> TypeErrCtxtExt<'tcx> for TypeErrCtxt<'_, 'tcx> {
                                 let sp = self.tcx.def_span(def_id);
 
                                 // Special-case this to say "async block" instead of `[static generator]`.
-                                let kind = tcx.generator_kind(def_id).unwrap();
+                                let kind = tcx.generator_kind(def_id).unwrap().descr();
                                 err.span_note(
                                     sp,
                                     &format!("required because it's used within this {}", kind),
