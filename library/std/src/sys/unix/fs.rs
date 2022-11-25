@@ -332,11 +332,16 @@ pub struct FileTimes {
     modified: Option<SystemTime>,
 }
 
-#[derive(Copy, Clone, PartialEq, Eq, Hash, Debug)]
+#[derive(Copy, Clone, Eq, Hash, Debug)]
 pub struct FileType {
     mode: mode_t,
 }
 
+impl PartialEq for FileType {
+    fn eq(&self, other: &Self) -> bool {
+        self.masked() == other.masked()
+    }
+}
 #[derive(Debug)]
 pub struct DirBuilder {
     mode: mode_t,
@@ -549,6 +554,10 @@ impl FileType {
 
     pub fn is(&self, mode: mode_t) -> bool {
         self.mode & libc::S_IFMT == mode
+    }
+
+    fn masked(&self) -> mode_t {
+        self.mode & libc::S_IFMT
     }
 }
 
