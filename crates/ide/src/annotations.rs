@@ -41,6 +41,12 @@ pub struct AnnotationConfig {
     pub annotate_references: bool,
     pub annotate_method_references: bool,
     pub annotate_enum_variant_references: bool,
+    pub location: AnnotationLocation,
+}
+
+pub enum AnnotationLocation {
+    AboveName,
+    AboveWholeItem,
 }
 
 pub(crate) fn annotations(
@@ -65,10 +71,10 @@ pub(crate) fn annotations(
     visit_file_defs(&Semantics::new(db), file_id, &mut |def| {
         let range = match def {
             Definition::Const(konst) if config.annotate_references => {
-                konst.source(db).and_then(|node| name_range(db, node, file_id))
+                konst.source(db).and_then(|node| name_range(db, config, node, file_id))
             }
             Definition::Trait(trait_) if config.annotate_references || config.annotate_impls => {
-                trait_.source(db).and_then(|node| name_range(db, node, file_id))
+                trait_.source(db).and_then(|node| name_range(db, config, node, file_id))
             }
             Definition::Adt(adt) => match adt {
                 hir::Adt::Enum(enum_) => {
@@ -77,7 +83,9 @@ pub(crate) fn annotations(
                             .variants(db)
                             .into_iter()
                             .map(|variant| {
-                                variant.source(db).and_then(|node| name_range(db, node, file_id))
+                                variant
+                                    .source(db)
+                                    .and_then(|node| name_range(db, config, node, file_id))
                             })
                             .flatten()
                             .for_each(|range| {
@@ -88,14 +96,14 @@ pub(crate) fn annotations(
                             })
                     }
                     if config.annotate_references || config.annotate_impls {
-                        enum_.source(db).and_then(|node| name_range(db, node, file_id))
+                        enum_.source(db).and_then(|node| name_range(db, config, node, file_id))
                     } else {
                         None
                     }
                 }
                 _ => {
                     if config.annotate_references || config.annotate_impls {
-                        adt.source(db).and_then(|node| name_range(db, node, file_id))
+                        adt.source(db).and_then(|node| name_range(db, config, node, file_id))
                     } else {
                         None
                     }
@@ -113,6 +121,7 @@ pub(crate) fn annotations(
             annotations
                 .push(Annotation { range, kind: AnnotationKind::HasImpls { file_id, data: None } });
         }
+
         if config.annotate_references {
             annotations.push(Annotation {
                 range,
@@ -122,12 +131,18 @@ pub(crate) fn annotations(
 
         fn name_range<T: HasName>(
             db: &RootDatabase,
+            config: &AnnotationConfig,
             node: InFile<T>,
             source_file_id: FileId,
         ) -> Option<TextRange> {
             if let Some(InFile { file_id, value }) = node.original_ast_node(db) {
                 if file_id == source_file_id.into() {
-                    return value.name().map(|it| it.syntax().text_range());
+                    return match config.location {
+                        AnnotationLocation::AboveName => {
+                            value.name().map(|name| name.syntax().text_range())
+                        }
+                        AnnotationLocation::AboveWholeItem => Some(value.syntax().text_range()),
+                    };
                 }
             }
             None
@@ -188,27 +203,33 @@ mod tests {
 
     use crate::{fixture, Annotation, AnnotationConfig};
 
-    fn check(ra_fixture: &str, expect: Expect) {
+    use super::AnnotationLocation;
+
+    const DEFAULT_CONFIG: AnnotationConfig = AnnotationConfig {
+        binary_target: true,
+        annotate_runnables: true,
+        annotate_impls: true,
+        annotate_references: true,
+        annotate_method_references: true,
+        annotate_enum_variant_references: true,
+        location: AnnotationLocation::AboveName,
+    };
+
+    fn check_with_config(ra_fixture: &str, expect: Expect, config: &AnnotationConfig) {
         let (analysis, file_id) = fixture::file(ra_fixture);
 
         let annotations: Vec<Annotation> = analysis
-            .annotations(
-                &AnnotationConfig {
-                    binary_target: true,
-                    annotate_runnables: true,
-                    annotate_impls: true,
-                    annotate_references: true,
-                    annotate_method_references: true,
-                    annotate_enum_variant_references: true,
-                },
-                file_id,
-            )
+            .annotations(config, file_id)
             .unwrap()
             .into_iter()
             .map(|annotation| analysis.resolve_annotation(annotation).unwrap())
             .collect();
 
         expect.assert_debug_eq(&annotations);
+    }
+
+    fn check(ra_fixture: &str, expect: Expect) {
+        check_with_config(ra_fixture, expect, &DEFAULT_CONFIG);
     }
 
     #[test]
@@ -784,6 +805,42 @@ m!();
             expect![[r#"
                 []
             "#]],
+        );
+    }
+
+    #[test]
+    fn test_annotations_appear_above_whole_item_when_configured_to_do_so() {
+        check_with_config(
+            r#"
+/// This is a struct named Foo, obviously.
+#[derive(Clone)]
+struct Foo;
+"#,
+            expect![[r#"
+                [
+                    Annotation {
+                        range: 0..71,
+                        kind: HasImpls {
+                            file_id: FileId(
+                                0,
+                            ),
+                            data: Some(
+                                [],
+                            ),
+                        },
+                    },
+                    Annotation {
+                        range: 0..71,
+                        kind: HasReferences {
+                            file_id: FileId(
+                                0,
+                            ),
+                            data: None,
+                        },
+                    },
+                ]
+            "#]],
+            &AnnotationConfig { location: AnnotationLocation::AboveWholeItem, ..DEFAULT_CONFIG },
         );
     }
 }

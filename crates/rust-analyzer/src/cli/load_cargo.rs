@@ -38,7 +38,7 @@ pub fn load_workspace_at(
         workspace.set_build_scripts(build_scripts)
     }
 
-    load_workspace(workspace, load_config)
+    load_workspace(workspace, cargo_config, load_config)
 }
 
 // Note: Since this function is used by external tools that use rust-analyzer as a library
@@ -48,6 +48,7 @@ pub fn load_workspace_at(
 // these tools need access to `ProjectWorkspace`, too, which `load_workspace_at` hides.
 pub fn load_workspace(
     ws: ProjectWorkspace,
+    cargo_config: &CargoConfig,
     load_config: &LoadCargoConfig,
 ) -> Result<(AnalysisHost, vfs::Vfs, Option<ProcMacroServer>)> {
     let (sender, receiver) = unbounded();
@@ -75,6 +76,7 @@ pub fn load_workspace(
             vfs.set_file_contents(path.clone(), contents);
             vfs.file_id(&path)
         },
+        cargo_config,
     );
 
     let project_folders = ProjectFolders::new(&[ws], &[]);

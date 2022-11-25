@@ -66,6 +66,7 @@ pub(crate) const TEST_CONFIG: CompletionConfig = CompletionConfig {
     enable_private_editable: false,
     callable: Some(CallableSnippets::FillArguments),
     snippet_cap: SnippetCap::new(true),
+    prefer_no_std: false,
     insert_use: InsertUseConfig {
         granularity: ImportGranularity::Crate,
         prefix_kind: PrefixKind::Plain,

@@ -12,6 +12,7 @@ use std::{
 
 use crossbeam_channel::{never, select, unbounded, Receiver, Sender};
 use paths::AbsPathBuf;
+use rustc_hash::FxHashMap;
 use serde::Deserialize;
 use stdx::{process::streaming_output, JodChild};
 
@@ -30,10 +31,12 @@ pub enum FlycheckConfig {
         all_features: bool,
         features: Vec<String>,
         extra_args: Vec<String>,
+        extra_env: FxHashMap<String, String>,
     },
     CustomCommand {
         command: String,
         args: Vec<String>,
+        extra_env: FxHashMap<String, String>,
     },
 }
 
@@ -41,7 +44,7 @@ impl fmt::Display for FlycheckConfig {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         match self {
             FlycheckConfig::CargoCommand { command, .. } => write!(f, "cargo {}", command),
-            FlycheckConfig::CustomCommand { command, args } => {
+            FlycheckConfig::CustomCommand { command, args, .. } => {
                 write!(f, "{} {}", command, args.join(" "))
             }
         }
@@ -256,6 +259,7 @@ impl FlycheckActor {
                 all_features,
                 extra_args,
                 features,
+                extra_env,
             } => {
                 let mut cmd = Command::new(toolchain::cargo());
                 cmd.arg(command);
@@ -281,11 +285,13 @@ impl FlycheckActor {
                     }
                 }
                 cmd.args(extra_args);
+                cmd.envs(extra_env);
                 cmd
             }
-            FlycheckConfig::CustomCommand { command, args } => {
+            FlycheckConfig::CustomCommand { command, args, extra_env } => {
                 let mut cmd = Command::new(command);
                 cmd.args(args);
+                cmd.envs(extra_env);
                 cmd
             }
         };

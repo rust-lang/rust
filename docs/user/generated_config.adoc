@@ -46,6 +46,12 @@ cargo check --quiet --workspace --message-format=json --all-targets
 Use `RUSTC_WRAPPER=rust-analyzer` when running build scripts to
 avoid checking unnecessary things.
 --
+[[rust-analyzer.cargo.extraEnv]]rust-analyzer.cargo.extraEnv (default: `{}`)::
++
+--
+Extra environment variables that will be set when running cargo, rustc
+or other commands within the workspace. Useful for setting RUSTFLAGS.
+--
 [[rust-analyzer.cargo.features]]rust-analyzer.cargo.features (default: `[]`)::
 +
 --
@@ -92,6 +98,11 @@ Run specified `cargo check` command for diagnostics on save.
 +
 --
 Extra arguments for `cargo check`.
+--
+[[rust-analyzer.checkOnSave.extraEnv]]rust-analyzer.checkOnSave.extraEnv (default: `{}`)::
++
+--
+Extra environment variables that will be set when running `cargo check`.
 --
 [[rust-analyzer.checkOnSave.features]]rust-analyzer.checkOnSave.features (default: `null`)::
 +
@@ -353,6 +364,11 @@ Group inserted imports by the https://rust-analyzer.github.io/manual.html#auto-i
 --
 Whether to allow import insertion to merge new imports into single path glob imports like `use std::fmt::*;`.
 --
+[[rust-analyzer.imports.prefer.no.std]]rust-analyzer.imports.prefer.no.std (default: `false`)::
++
+--
+Prefer to unconditionally use imports of the core and alloc crate, over the std crate.
+--
 [[rust-analyzer.imports.prefix]]rust-analyzer.imports.prefix (default: `"plain"`)::
 +
 --
@@ -474,6 +490,11 @@ client doesn't set the corresponding capability.
 Whether to show `Implementations` lens. Only applies when
 `#rust-analyzer.lens.enable#` is set.
 --
+[[rust-analyzer.lens.location]]rust-analyzer.lens.location (default: `"above_name"`)::
++
+--
+Where to render annotations.
+--
 [[rust-analyzer.lens.references.adt.enable]]rust-analyzer.lens.references.adt.enable (default: `false`)::
 +
 --
@@ -545,6 +566,11 @@ This config takes a map of crate names with the exported proc-macro names to ign
 --
 Internal config, path to proc-macro server executable (typically,
 this is rust-analyzer itself, but we override this in tests).
+--
+[[rust-analyzer.references.excludeImports]]rust-analyzer.references.excludeImports (default: `false`)::
++
+--
+Exclude imports from find-all-references.
 --
 [[rust-analyzer.runnables.command]]rust-analyzer.runnables.command (default: `null`)::
 +

@@ -40,7 +40,7 @@ impl flags::Scip {
 
         let workspace = ProjectWorkspace::load(manifest, &cargo_config, no_progress)?;
 
-        let (host, vfs, _) = load_workspace(workspace, &load_cargo_config)?;
+        let (host, vfs, _) = load_workspace(workspace, &cargo_config, &load_cargo_config)?;
         let db = host.raw_database();
         let analysis = host.analysis();
 

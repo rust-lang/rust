@@ -20,6 +20,7 @@ either = "1.7.0"
 itertools = "0.10.3"
 arrayvec = "0.7.2"
 indexmap = "1.9.1"
+memchr = "2.5.0"
 
 stdx = { path = "../stdx", version = "0.0.0" }
 parser = { path = "../parser", version = "0.0.0" }

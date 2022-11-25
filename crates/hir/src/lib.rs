@@ -63,10 +63,9 @@ use hir_ty::{
     primitive::UintTy,
     subst_prefix,
     traits::FnTrait,
-    AliasEq, AliasTy, BoundVar, CallableDefId, CallableSig, Canonical, CanonicalVarKinds, Cast,
-    ClosureId, DebruijnIndex, GenericArgData, InEnvironment, Interner, ParamKind,
-    QuantifiedWhereClause, Scalar, Solution, Substitution, TraitEnvironment, TraitRefExt, Ty,
-    TyBuilder, TyDefId, TyExt, TyKind, TyVariableKind, WhereClause,
+    AliasTy, CallableDefId, CallableSig, Canonical, CanonicalVarKinds, Cast, ClosureId,
+    GenericArgData, Interner, ParamKind, QuantifiedWhereClause, Scalar, Substitution,
+    TraitEnvironment, TraitRefExt, Ty, TyBuilder, TyDefId, TyExt, TyKind, WhereClause,
 };
 use itertools::Itertools;
 use nameres::diagnostics::DefDiagnosticKind;
@@ -582,8 +581,13 @@ impl Module {
 
     /// Finds a path that can be used to refer to the given item from within
     /// this module, if possible.
-    pub fn find_use_path(self, db: &dyn DefDatabase, item: impl Into<ItemInNs>) -> Option<ModPath> {
-        hir_def::find_path::find_path(db, item.into().into(), self.into())
+    pub fn find_use_path(
+        self,
+        db: &dyn DefDatabase,
+        item: impl Into<ItemInNs>,
+        prefer_no_std: bool,
+    ) -> Option<ModPath> {
+        hir_def::find_path::find_path(db, item.into().into(), self.into(), prefer_no_std)
     }
 
     /// Finds a path that can be used to refer to the given item from within
@@ -593,8 +597,15 @@ impl Module {
         db: &dyn DefDatabase,
         item: impl Into<ItemInNs>,
         prefix_kind: PrefixKind,
+        prefer_no_std: bool,
     ) -> Option<ModPath> {
-        hir_def::find_path::find_path_prefixed(db, item.into().into(), self.into(), prefix_kind)
+        hir_def::find_path::find_path_prefixed(
+            db,
+            item.into().into(),
+            self.into(),
+            prefix_kind,
+            prefer_no_std,
+        )
     }
 }
 
@@ -2880,27 +2891,12 @@ impl Type {
                 }
             })
             .build();
-        let goal = hir_ty::make_canonical(
-            InEnvironment::new(
-                &self.env.env,
-                AliasEq {
-                    alias: AliasTy::Projection(projection),
-                    ty: TyKind::BoundVar(BoundVar::new(DebruijnIndex::INNERMOST, 0))
-                        .intern(Interner),
-                }
-                .cast(Interner),
-            ),
-            [TyVariableKind::General].into_iter(),
-        );
 
-        match db.trait_solve(self.env.krate, goal)? {
-            Solution::Unique(s) => s
-                .value
-                .subst
-                .as_slice(Interner)
-                .first()
-                .map(|ty| self.derived(ty.assert_ty_ref(Interner).clone())),
-            Solution::Ambig(_) => None,
+        let ty = db.normalize_projection(projection, self.env.clone());
+        if ty.is_unknown() {
+            None
+        } else {
+            Some(self.derived(ty))
         }
     }
 

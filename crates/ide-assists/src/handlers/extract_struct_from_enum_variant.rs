@@ -409,6 +409,7 @@ fn process_references(
                     ctx.sema.db,
                     *enum_module_def,
                     ctx.config.insert_use.prefix_kind,
+                    ctx.config.prefer_no_std,
                 );
                 if let Some(mut mod_path) = mod_path {
                     mod_path.pop_segment();

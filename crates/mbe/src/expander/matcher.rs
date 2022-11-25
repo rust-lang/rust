@@ -203,17 +203,16 @@ impl BindingsBuilder {
     }
 
     fn build(self, idx: &BindingsIdx) -> Bindings {
-        let mut bindings = Bindings::default();
-        self.build_inner(&mut bindings, &self.nodes[idx.0]);
-        bindings
+        self.build_inner(&self.nodes[idx.0])
     }
 
-    fn build_inner(&self, bindings: &mut Bindings, link_nodes: &[LinkNode<Rc<BindingKind>>]) {
+    fn build_inner(&self, link_nodes: &[LinkNode<Rc<BindingKind>>]) -> Bindings {
+        let mut bindings = Bindings::default();
         let mut nodes = Vec::new();
         self.collect_nodes(link_nodes, &mut nodes);
 
         for cmd in nodes {
-            match &**cmd {
+            match cmd {
                 BindingKind::Empty(name) => {
                     bindings.push_empty(name);
                 }
@@ -246,13 +245,15 @@ impl BindingsBuilder {
                 }
             }
         }
+
+        bindings
     }
 
     fn collect_nested_ref<'a>(
         &'a self,
         id: usize,
         len: usize,
-        nested_refs: &mut Vec<&'a Vec<LinkNode<Rc<BindingKind>>>>,
+        nested_refs: &mut Vec<&'a [LinkNode<Rc<BindingKind>>]>,
     ) {
         self.nested[id].iter().take(len).for_each(|it| match it {
             LinkNode::Node(id) => nested_refs.push(&self.nodes[*id]),
@@ -262,26 +263,16 @@ impl BindingsBuilder {
 
     fn collect_nested(&self, idx: usize, nested_idx: usize, nested: &mut Vec<Bindings>) {
         let last = &self.nodes[idx];
-        let mut nested_refs = Vec::new();
+        let mut nested_refs: Vec<&[_]> = Vec::new();
         self.nested[nested_idx].iter().for_each(|it| match *it {
             LinkNode::Node(idx) => nested_refs.push(&self.nodes[idx]),
             LinkNode::Parent { idx, len } => self.collect_nested_ref(idx, len, &mut nested_refs),
         });
         nested_refs.push(last);
-
-        nested_refs.into_iter().for_each(|iter| {
-            let mut child_bindings = Bindings::default();
-            self.build_inner(&mut child_bindings, iter);
-            nested.push(child_bindings)
-        })
+        nested.extend(nested_refs.into_iter().map(|iter| self.build_inner(iter)));
     }
 
-    fn collect_nodes_ref<'a>(
-        &'a self,
-        id: usize,
-        len: usize,
-        nodes: &mut Vec<&'a Rc<BindingKind>>,
-    ) {
+    fn collect_nodes_ref<'a>(&'a self, id: usize, len: usize, nodes: &mut Vec<&'a BindingKind>) {
         self.nodes[id].iter().take(len).for_each(|it| match it {
             LinkNode::Node(it) => nodes.push(it),
             LinkNode::Parent { idx, len } => self.collect_nodes_ref(*idx, *len, nodes),
@@ -291,7 +282,7 @@ impl BindingsBuilder {
     fn collect_nodes<'a>(
         &'a self,
         link_nodes: &'a [LinkNode<Rc<BindingKind>>],
-        nodes: &mut Vec<&'a Rc<BindingKind>>,
+        nodes: &mut Vec<&'a BindingKind>,
     ) {
         link_nodes.iter().for_each(|it| match it {
             LinkNode::Node(it) => nodes.push(it),
@@ -386,10 +377,10 @@ fn match_loop_inner<'t>(
         let op = match item.dot.peek() {
             None => {
                 // We are at or past the end of the matcher of `item`.
-                if item.up.is_some() {
+                if let Some(up) = &item.up {
                     if item.sep_parsed.is_none() {
                         // Get the `up` matcher
-                        let mut new_pos = *item.up.clone().unwrap();
+                        let mut new_pos = (**up).clone();
                         new_pos.bindings = bindings_builder.copy(&new_pos.bindings);
                         // Add matches from this repetition to the `matches` of `up`
                         bindings_builder.push_nested(&mut new_pos.bindings, &item.bindings);
@@ -402,7 +393,7 @@ fn match_loop_inner<'t>(
 
                     // Check if we need a separator.
                     // We check the separator one by one
-                    let sep_idx = *item.sep_parsed.as_ref().unwrap_or(&0);
+                    let sep_idx = item.sep_parsed.unwrap_or(0);
                     let sep_len = item.sep.as_ref().map_or(0, Separator::tt_count);
                     if item.sep.is_some() && sep_idx != sep_len {
                         let sep = item.sep.as_ref().unwrap();

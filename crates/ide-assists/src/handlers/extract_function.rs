@@ -152,6 +152,7 @@ pub(crate) fn extract_function(acc: &mut Assists, ctx: &AssistContext<'_>) -> Op
                         ctx.sema.db,
                         ModuleDef::from(control_flow_enum),
                         ctx.config.insert_use.prefix_kind,
+                        ctx.config.prefer_no_std,
                     );
 
                     if let Some(mod_path) = mod_path {

@@ -59,9 +59,6 @@ fn add_reference(
     d: &hir::TypeMismatch,
     acc: &mut Vec<Assist>,
 ) -> Option<()> {
-    let root = ctx.sema.db.parse_or_expand(d.expr.file_id)?;
-    let expr_node = d.expr.value.to_node(&root);
-
     let range = ctx.sema.diagnostics_display_range(d.expr.clone().map(|it| it.into())).range;
 
     let (_, mutability) = d.expected.as_reference()?;
@@ -72,7 +69,7 @@ fn add_reference(
 
     let ampersands = format!("&{}", mutability.as_keyword_for_ref());
 
-    let edit = TextEdit::insert(expr_node.syntax().text_range().start(), ampersands);
+    let edit = TextEdit::insert(range.start(), ampersands);
     let source_change =
         SourceChange::from_text_edit(d.expr.file_id.original_file(ctx.sema.db), edit);
     acc.push(fix("add_reference_here", "Add reference here", source_change, range));
@@ -309,6 +306,34 @@ fn main() {
             r#"
 fn main() {
     let test: &i32 = &123;
+}
+            "#,
+        );
+    }
+
+    #[test]
+    fn test_add_reference_to_macro_call() {
+        check_fix(
+            r#"
+macro_rules! thousand {
+    () => {
+        1000_u64
+    };
+}
+fn test(foo: &u64) {}
+fn main() {
+    test($0thousand!());
+}
+            "#,
+            r#"
+macro_rules! thousand {
+    () => {
+        1000_u64
+    };
+}
+fn test(foo: &u64) {}
+fn main() {
+    test(&thousand!());
 }
             "#,
         );

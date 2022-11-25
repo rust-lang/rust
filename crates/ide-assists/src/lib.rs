@@ -136,6 +136,7 @@ mod handlers {
     mod flip_binexpr;
     mod flip_comma;
     mod flip_trait_bound;
+    mod move_format_string_arg;
     mod generate_constant;
     mod generate_default_from_enum_variant;
     mod generate_default_from_new;
@@ -254,6 +255,7 @@ mod handlers {
             merge_imports::merge_imports,
             merge_match_arms::merge_match_arms,
             move_bounds::move_bounds_to_where_clause,
+            move_format_string_arg::move_format_string_arg,
             move_guard::move_arm_cond_to_match_guard,
             move_guard::move_guard_to_arm_body,
             move_module_to_file::move_module_to_file,

@@ -38,6 +38,7 @@ pub mod syntax_helpers {
     pub mod node_ext;
     pub mod insert_whitespace_into_node;
     pub mod format_string;
+    pub mod format_string_exprs;
 
     pub use parser::LexedStr;
 }

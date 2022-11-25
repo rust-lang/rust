@@ -10,7 +10,7 @@ use anyhow::{format_err, Result};
 use la_arena::{Arena, Idx};
 use paths::{AbsPath, AbsPathBuf};
 
-use crate::{utf8_stdout, ManifestPath};
+use crate::{utf8_stdout, CargoConfig, ManifestPath};
 
 #[derive(Debug, Clone, Eq, PartialEq)]
 pub struct Sysroot {
@@ -67,18 +67,20 @@ impl Sysroot {
         self.crates.iter().map(|(id, _data)| id)
     }
 
-    pub fn discover(dir: &AbsPath) -> Result<Sysroot> {
+    pub fn discover(dir: &AbsPath, config: &CargoConfig) -> Result<Sysroot> {
         tracing::debug!("Discovering sysroot for {}", dir.display());
-        let sysroot_dir = discover_sysroot_dir(dir)?;
-        let sysroot_src_dir = discover_sysroot_src_dir(&sysroot_dir, dir)?;
+        let sysroot_dir = discover_sysroot_dir(dir, config)?;
+        let sysroot_src_dir = discover_sysroot_src_dir(&sysroot_dir, dir, config)?;
         let res = Sysroot::load(sysroot_dir, sysroot_src_dir)?;
         Ok(res)
     }
 
-    pub fn discover_rustc(cargo_toml: &ManifestPath) -> Option<ManifestPath> {
+    pub fn discover_rustc(cargo_toml: &ManifestPath, config: &CargoConfig) -> Option<ManifestPath> {
         tracing::debug!("Discovering rustc source for {}", cargo_toml.display());
         let current_dir = cargo_toml.parent();
-        discover_sysroot_dir(current_dir).ok().and_then(|sysroot_dir| get_rustc_src(&sysroot_dir))
+        discover_sysroot_dir(current_dir, config)
+            .ok()
+            .and_then(|sysroot_dir| get_rustc_src(&sysroot_dir))
     }
 
     pub fn load(sysroot_dir: AbsPathBuf, sysroot_src_dir: AbsPathBuf) -> Result<Sysroot> {
@@ -144,8 +146,9 @@ impl Sysroot {
     }
 }
 
-fn discover_sysroot_dir(current_dir: &AbsPath) -> Result<AbsPathBuf> {
+fn discover_sysroot_dir(current_dir: &AbsPath, config: &CargoConfig) -> Result<AbsPathBuf> {
     let mut rustc = Command::new(toolchain::rustc());
+    rustc.envs(&config.extra_env);
     rustc.current_dir(current_dir).args(&["--print", "sysroot"]);
     tracing::debug!("Discovering sysroot by {:?}", rustc);
     let stdout = utf8_stdout(rustc)?;
@@ -155,6 +158,7 @@ fn discover_sysroot_dir(current_dir: &AbsPath) -> Result<AbsPathBuf> {
 fn discover_sysroot_src_dir(
     sysroot_path: &AbsPathBuf,
     current_dir: &AbsPath,
+    config: &CargoConfig,
 ) -> Result<AbsPathBuf> {
     if let Ok(path) = env::var("RUST_SRC_PATH") {
         let path = AbsPathBuf::try_from(path.as_str())
@@ -170,6 +174,7 @@ fn discover_sysroot_src_dir(
     get_rust_src(sysroot_path)
         .or_else(|| {
             let mut rustup = Command::new(toolchain::rustup());
+            rustup.envs(&config.extra_env);
             rustup.current_dir(current_dir).args(&["component", "add", "rust-src"]);
             utf8_stdout(rustup).ok()?;
             get_rust_src(sysroot_path)

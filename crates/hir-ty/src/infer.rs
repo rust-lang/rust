@@ -673,10 +673,6 @@ impl<'a> InferenceContext<'a> {
         )
     }
 
-    fn resolve_obligations_as_possible(&mut self) {
-        self.table.resolve_obligations_as_possible();
-    }
-
     fn push_obligation(&mut self, o: DomainGoal) {
         self.table.register_obligation(o.cast(Interner));
     }
@@ -696,7 +692,6 @@ impl<'a> InferenceContext<'a> {
     }
 
     fn resolve_ty_shallow(&mut self, ty: &Ty) -> Ty {
-        self.resolve_obligations_as_possible();
         self.table.resolve_ty_shallow(ty)
     }
 

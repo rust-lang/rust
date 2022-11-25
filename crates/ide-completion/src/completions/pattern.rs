@@ -145,6 +145,7 @@ pub(crate) fn complete_pattern_path(
                             u.ty(ctx.db)
                         }
                         hir::PathResolution::Def(hir::ModuleDef::BuiltinType(ty)) => ty.ty(ctx.db),
+                        hir::PathResolution::Def(hir::ModuleDef::TypeAlias(ty)) => ty.ty(ctx.db),
                         _ => return,
                     };
 

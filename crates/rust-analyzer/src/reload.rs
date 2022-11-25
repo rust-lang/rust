@@ -143,6 +143,7 @@ impl GlobalState {
                             project_model::ProjectWorkspace::load_inline(
                                 it.clone(),
                                 cargo_config.target.as_deref(),
+                                &cargo_config,
                             )
                         }
                     })
@@ -398,7 +399,11 @@ impl GlobalState {
                         dummy_replacements.get(crate_name).map(|v| &**v).unwrap_or_default(),
                     )
                 };
-                crate_graph.extend(ws.to_crate_graph(&mut load_proc_macro, &mut load));
+                crate_graph.extend(ws.to_crate_graph(
+                    &mut load_proc_macro,
+                    &mut load,
+                    &self.config.cargo(),
+                ));
             }
             crate_graph
         };

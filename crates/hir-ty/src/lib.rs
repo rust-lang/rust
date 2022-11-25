@@ -196,20 +196,6 @@ pub(crate) fn make_binders<T: HasInterner<Interner = Interner>>(
     make_binders_with_count(db, usize::MAX, generics, value)
 }
 
-// FIXME: get rid of this
-pub fn make_canonical<T: HasInterner<Interner = Interner>>(
-    value: T,
-    kinds: impl IntoIterator<Item = TyVariableKind>,
-) -> Canonical<T> {
-    let kinds = kinds.into_iter().map(|tk| {
-        chalk_ir::CanonicalVarKind::new(
-            chalk_ir::VariableKind::Ty(tk),
-            chalk_ir::UniverseIndex::ROOT,
-        )
-    });
-    Canonical { value, binders: chalk_ir::CanonicalVarKinds::from_iter(Interner, kinds) }
-}
-
 // FIXME: get rid of this, just replace it by FnPointer
 /// A function signature as seen by type inference: Several parameter types and
 /// one return type.

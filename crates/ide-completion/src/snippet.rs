@@ -174,8 +174,12 @@ fn import_edits(ctx: &CompletionContext<'_>, requires: &[GreenNode]) -> Option<V
             hir::PathResolution::Def(def) => def.into(),
             _ => return None,
         };
-        let path =
-            ctx.module.find_use_path_prefixed(ctx.db, item, ctx.config.insert_use.prefix_kind)?;
+        let path = ctx.module.find_use_path_prefixed(
+            ctx.db,
+            item,
+            ctx.config.insert_use.prefix_kind,
+            ctx.config.prefer_no_std,
+        )?;
         Some((path.len() > 1).then(|| LocatedImport::new(path.clone(), item, item, None)))
     };
     let mut res = Vec::with_capacity(requires.len());

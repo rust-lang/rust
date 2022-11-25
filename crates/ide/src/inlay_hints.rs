@@ -1688,6 +1688,74 @@ fn main() {
     }
 
     #[test]
+    fn iterator_hint_regression_issue_12674() {
+        // Ensure we don't crash while solving the projection type of iterators.
+        check_expect(
+            InlayHintsConfig { chaining_hints: true, ..DISABLED_CONFIG },
+            r#"
+//- minicore: iterators
+struct S<T>(T);
+impl<T> S<T> {
+    fn iter(&self) -> Iter<'_, T> { loop {} }
+}
+struct Iter<'a, T: 'a>(&'a T);
+impl<'a, T> Iterator for Iter<'a, T> {
+    type Item = &'a T;
+    fn next(&mut self) -> Option<Self::Item> { loop {} }
+}
+struct Container<'a> {
+    elements: S<&'a str>,
+}
+struct SliceIter<'a, T>(&'a T);
+impl<'a, T> Iterator for SliceIter<'a, T> {
+    type Item = &'a T;
+    fn next(&mut self) -> Option<Self::Item> { loop {} }
+}
+
+fn main(a: SliceIter<'_, Container>) {
+    a
+    .filter_map(|c| Some(c.elements.iter().filter_map(|v| Some(v))))
+    .map(|e| e);
+}
+            "#,
+            expect![[r#"
+                [
+                    InlayHint {
+                        range: 484..554,
+                        kind: ChainingHint,
+                        label: [
+                            "impl Iterator<Item = impl Iterator<Item = &&str>>",
+                        ],
+                        tooltip: Some(
+                            HoverRanged(
+                                FileId(
+                                    0,
+                                ),
+                                484..554,
+                            ),
+                        ),
+                    },
+                    InlayHint {
+                        range: 484..485,
+                        kind: ChainingHint,
+                        label: [
+                            "SliceIter<Container>",
+                        ],
+                        tooltip: Some(
+                            HoverRanged(
+                                FileId(
+                                    0,
+                                ),
+                                484..485,
+                            ),
+                        ),
+                    },
+                ]
+            "#]],
+        );
+    }
+
+    #[test]
     fn infer_call_method_return_associated_types_with_generic() {
         check_types(
             r#"
