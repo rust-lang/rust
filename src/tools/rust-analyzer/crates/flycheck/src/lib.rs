@@ -362,7 +362,7 @@ impl FlycheckActor {
 /// A handle to a cargo process used for fly-checking.
 struct CargoHandle {
     /// The handle to the actual cargo process. As we cannot cancel directly from with
-    /// a read syscall dropping and therefor terminating the process is our best option.
+    /// a read syscall dropping and therefore terminating the process is our best option.
     child: JodChild,
     thread: jod_thread::JoinHandle<io::Result<(bool, String)>>,
     receiver: Receiver<CargoMessage>,
