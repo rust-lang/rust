@@ -60,6 +60,16 @@ LL +     println!("val='{local_i32}'"); // tab+space
    |
 
 error: variables can be used directly in the `format!` string
+  --> $DIR/uninlined_format_args.rs:46:5
+   |
+LL | /     println!(
+LL | |         "val='{
+LL | |     }'",
+LL | |         local_i32
+LL | |     );
+   | |_____^
+
+error: variables can be used directly in the `format!` string
   --> $DIR/uninlined_format_args.rs:51:5
    |
 LL |     println!("{}", local_i32);
@@ -768,6 +778,15 @@ LL +     println!("{local_f64:width$.prec$} {local_f64} {width} {prec}");
    |
 
 error: variables can be used directly in the `format!` string
+  --> $DIR/uninlined_format_args.rs:112:5
+   |
+LL | /     println!(
+LL | |         "{0:1$.2$} {0:2$.1$} {1:0$.2$} {1:2$.0$} {2:0$.1$} {2:1$.0$}",
+LL | |         local_i32, width, prec,
+LL | |     );
+   | |_____^
+
+error: variables can be used directly in the `format!` string
   --> $DIR/uninlined_format_args.rs:123:5
    |
 LL |     println!("Width = {}, value with width = {:0$}", local_i32, local_f64);
@@ -814,6 +833,16 @@ help: change this to
 LL -     println!("{}", format!("{}", local_i32));
 LL +     println!("{}", format!("{local_i32}"));
    |
+
+error: variables can be used directly in the `format!` string
+  --> $DIR/uninlined_format_args.rs:144:5
+   |
+LL | /     println!(
+LL | |         "{}",
+LL | |         // comment with a comma , in it
+LL | |         val,
+LL | |     );
+   | |_____^
 
 error: variables can be used directly in the `format!` string
   --> $DIR/uninlined_format_args.rs:149:5
@@ -875,5 +904,5 @@ LL -     println!("expand='{}'", local_i32);
 LL +     println!("expand='{local_i32}'");
    |
 
-error: aborting due to 73 previous errors
+error: aborting due to 76 previous errors
 
