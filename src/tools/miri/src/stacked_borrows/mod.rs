@@ -935,11 +935,11 @@ trait EvalContextPrivExt<'mir: 'ecx, 'tcx: 'mir, 'ecx>: crate::MiriInterpCxExt<'
         // Note that this asserts that the allocation is mutable -- but since we are creating a
         // mutable pointer, that seems reasonable.
         let (alloc_extra, machine) = this.get_alloc_extra_mut(alloc_id)?;
-        let mut stacked_borrows = alloc_extra
+        let stacked_borrows = alloc_extra
             .stacked_borrows
             .as_mut()
             .expect("we should have Stacked Borrows data")
-            .borrow_mut();
+            .get_mut();
         let item = Item::new(new_tag, perm, protect.is_some());
         let range = alloc_range(base_offset, size);
         let global = machine.stacked_borrows.as_ref().unwrap().borrow();
