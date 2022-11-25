@@ -1248,9 +1248,9 @@ where
 #[derive(Copy, Clone, Debug, HashStable, TyEncodable, TyDecodable)]
 pub struct AlwaysRequiresDrop;
 
-/// Normalizes all opaque types in the given value, replacing them
+/// Reveals all opaque types in the given value, replacing them
 /// with their underlying types.
-pub fn normalize_opaque_types<'tcx>(
+pub fn reveal_opaque_types_in_bounds<'tcx>(
     tcx: TyCtxt<'tcx>,
     val: &'tcx ty::List<ty::Predicate<'tcx>>,
 ) -> &'tcx ty::List<ty::Predicate<'tcx>> {
@@ -1287,7 +1287,7 @@ pub fn is_intrinsic(tcx: TyCtxt<'_>, def_id: DefId) -> bool {
 
 pub fn provide(providers: &mut ty::query::Providers) {
     *providers = ty::query::Providers {
-        normalize_opaque_types,
+        reveal_opaque_types_in_bounds,
         is_doc_hidden,
         is_doc_notable_trait,
         is_intrinsic,

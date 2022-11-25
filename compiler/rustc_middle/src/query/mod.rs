@@ -2077,8 +2077,8 @@ rustc_queries! {
         remap_env_constness
     }
 
-    query normalize_opaque_types(key: &'tcx ty::List<ty::Predicate<'tcx>>) -> &'tcx ty::List<ty::Predicate<'tcx>> {
-        desc { "normalizing opaque types in `{:?}`", key }
+    query reveal_opaque_types_in_bounds(key: &'tcx ty::List<ty::Predicate<'tcx>>) -> &'tcx ty::List<ty::Predicate<'tcx>> {
+        desc { "revealing opaque types in `{:?}`", key }
     }
 
     query limits(key: ()) -> Limits {
