@@ -503,27 +503,9 @@ impl<'f, 'tcx> Coerce<'f, 'tcx> {
         target = self.shallow_resolve(target);
         debug!(?source, ?target);
 
-        // These 'if' statements require some explanation.
-        // The `CoerceUnsized` trait is special - it is only
-        // possible to write `impl CoerceUnsized<B> for A` where
-        // A and B have 'matching' fields. This rules out the following
-        // two types of blanket impls:
-        //
-        // `impl<T> CoerceUnsized<T> for SomeType`
-        // `impl<T> CoerceUnsized<SomeType> for T`
-        //
-        // Both of these trigger a special `CoerceUnsized`-related error (E0376)
-        //
-        // We can take advantage of this fact to avoid performing unnecessary work.
-        // If either `source` or `target` is a type variable, then any applicable impl
-        // would need to be generic over the self-type (`impl<T> CoerceUnsized<SomeType> for T`)
-        // or generic over the `CoerceUnsized` type parameter (`impl<T> CoerceUnsized<T> for
-        // SomeType`).
-        //
-        // However, these are exactly the kinds of impls which are forbidden by
-        // the compiler! Therefore, we can be sure that coercion will always fail
-        // when either the source or target type is a type variable. This allows us
-        // to skip performing any trait selection, and immediately bail out.
+        // We don't apply any coercions incase either the source or target
+        // aren't sufficiently well known but tend to instead just equate
+        // them both.
         if source.is_ty_var() {
             debug!("coerce_unsized: source is a TyVar, bailing out");
             return Err(TypeError::Mismatch);
