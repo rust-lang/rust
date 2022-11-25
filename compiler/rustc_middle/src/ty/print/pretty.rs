@@ -1253,6 +1253,9 @@ pub trait PrettyPrinter<'tcx>:
                 self.pretty_print_bound_var(debruijn, bound_var)?
             }
             ty::ConstKind::Placeholder(placeholder) => p!(write("Placeholder({:?})", placeholder)),
+            // FIXME(generic_const_exprs):
+            // write out some legible representation of an abstract const?
+            ty::ConstKind::Expr(_) => p!("[Const Expr]"),
             ty::ConstKind::Error(_) => p!("[const error]"),
         };
         Ok(self)

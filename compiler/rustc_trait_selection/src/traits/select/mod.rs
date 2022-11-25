@@ -657,21 +657,62 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
                 }
 
                 ty::PredicateKind::ConstEquate(c1, c2) => {
+                    let tcx = self.tcx();
                     assert!(
-                        self.tcx().features().generic_const_exprs,
+                        tcx.features().generic_const_exprs,
                         "`ConstEquate` without a feature gate: {c1:?} {c2:?}",
                     );
-                    debug!(?c1, ?c2, "evaluate_predicate_recursively: equating consts");
 
-                    // FIXME: we probably should only try to unify abstract constants
-                    // if the constants depend on generic parameters.
-                    //
-                    // Let's just see where this breaks :shrug:
-                    if let (ty::ConstKind::Unevaluated(a), ty::ConstKind::Unevaluated(b)) =
-                        (c1.kind(), c2.kind())
                     {
-                        if self.infcx.try_unify_abstract_consts(a, b, obligation.param_env) {
-                            return Ok(EvaluatedToOk);
+                        let c1 = tcx.expand_abstract_consts(c1);
+                        let c2 = tcx.expand_abstract_consts(c2);
+                        debug!(
+                            "evalaute_predicate_recursively: equating consts:\nc1= {:?}\nc2= {:?}",
+                            c1, c2
+                        );
+
+                        use rustc_hir::def::DefKind;
+                        use ty::ConstKind::Unevaluated;
+                        match (c1.kind(), c2.kind()) {
+                            (Unevaluated(a), Unevaluated(b))
+                                if a.def.did == b.def.did
+                                    && tcx.def_kind(a.def.did) == DefKind::AssocConst =>
+                            {
+                                if let Ok(new_obligations) = self
+                                    .infcx
+                                    .at(&obligation.cause, obligation.param_env)
+                                    .trace(c1, c2)
+                                    .eq(a.substs, b.substs)
+                                {
+                                    let mut obligations = new_obligations.obligations;
+                                    self.add_depth(
+                                        obligations.iter_mut(),
+                                        obligation.recursion_depth,
+                                    );
+                                    return self.evaluate_predicates_recursively(
+                                        previous_stack,
+                                        obligations.into_iter(),
+                                    );
+                                }
+                            }
+                            (_, Unevaluated(_)) | (Unevaluated(_), _) => (),
+                            (_, _) => {
+                                if let Ok(new_obligations) = self
+                                    .infcx
+                                    .at(&obligation.cause, obligation.param_env)
+                                    .eq(c1, c2)
+                                {
+                                    let mut obligations = new_obligations.obligations;
+                                    self.add_depth(
+                                        obligations.iter_mut(),
+                                        obligation.recursion_depth,
+                                    );
+                                    return self.evaluate_predicates_recursively(
+                                        previous_stack,
+                                        obligations.into_iter(),
+                                    );
+                                }
+                            }
                         }
                     }
 
@@ -698,7 +739,10 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
                                 .at(&obligation.cause, obligation.param_env)
                                 .eq(c1, c2)
                             {
-                                Ok(_) => Ok(EvaluatedToOk),
+                                Ok(inf_ok) => self.evaluate_predicates_recursively(
+                                    previous_stack,
+                                    inf_ok.into_obligations(),
+                                ),
                                 Err(_) => Ok(EvaluatedToErr),
                             }
                         }

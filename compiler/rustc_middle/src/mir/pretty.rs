@@ -476,6 +476,7 @@ impl<'tcx> Visitor<'tcx> for ExtraComments<'tcx> {
                     // These variants shouldn't exist in the MIR.
                     ty::ConstKind::Placeholder(_)
                     | ty::ConstKind::Infer(_)
+                    | ty::ConstKind::Expr(_)
                     | ty::ConstKind::Bound(..) => bug!("unexpected MIR constant: {:?}", literal),
                 },
                 ConstantKind::Unevaluated(uv, _) => {

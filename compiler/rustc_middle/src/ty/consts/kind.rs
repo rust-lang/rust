@@ -1,10 +1,12 @@
 use std::convert::TryInto;
 
+use super::Const;
 use crate::mir;
 use crate::mir::interpret::{AllocId, ConstValue, Scalar};
+use crate::ty::abstract_const::CastKind;
 use crate::ty::subst::{InternalSubsts, SubstsRef};
 use crate::ty::ParamEnv;
-use crate::ty::{self, TyCtxt, TypeVisitable};
+use crate::ty::{self, List, Ty, TyCtxt, TypeVisitable};
 use rustc_data_structures::stable_hasher::{HashStable, StableHasher};
 use rustc_errors::ErrorGuaranteed;
 use rustc_hir::def_id::DefId;
@@ -70,7 +72,22 @@ pub enum ConstKind<'tcx> {
     /// A placeholder for a const which could not be computed; this is
     /// propagated to avoid useless error messages.
     Error(ErrorGuaranteed),
+
+    /// Expr which contains an expression which has partially evaluated items.
+    Expr(Expr<'tcx>),
 }
+
+#[derive(Copy, Clone, Debug, Eq, PartialEq, PartialOrd, Ord, Hash)]
+#[derive(HashStable, TyEncodable, TyDecodable, TypeVisitable, TypeFoldable)]
+pub enum Expr<'tcx> {
+    Binop(mir::BinOp, Const<'tcx>, Const<'tcx>),
+    UnOp(mir::UnOp, Const<'tcx>),
+    FunctionCall(Const<'tcx>, &'tcx List<Const<'tcx>>),
+    Cast(CastKind, Const<'tcx>, Ty<'tcx>),
+}
+
+#[cfg(all(target_arch = "x86_64", target_pointer_width = "64"))]
+static_assert_size!(Expr<'_>, 24);
 
 #[cfg(all(target_arch = "x86_64", target_pointer_width = "64"))]
 static_assert_size!(ConstKind<'_>, 32);

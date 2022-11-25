@@ -455,20 +455,47 @@ impl<'a, 'tcx> ObligationProcessor for FulfillProcessor<'a, 'tcx> {
                 }
 
                 ty::PredicateKind::ConstEquate(c1, c2) => {
+                    let tcx = self.selcx.tcx();
                     assert!(
-                        self.selcx.tcx().features().generic_const_exprs,
+                        tcx.features().generic_const_exprs,
                         "`ConstEquate` without a feature gate: {c1:?} {c2:?}",
                     );
-                    debug!(?c1, ?c2, "equating consts");
                     // FIXME: we probably should only try to unify abstract constants
                     // if the constants depend on generic parameters.
                     //
                     // Let's just see where this breaks :shrug:
-                    if let (ty::ConstKind::Unevaluated(a), ty::ConstKind::Unevaluated(b)) =
-                        (c1.kind(), c2.kind())
                     {
-                        if infcx.try_unify_abstract_consts(a, b, obligation.param_env) {
-                            return ProcessResult::Changed(vec![]);
+                        let c1 = tcx.expand_abstract_consts(c1);
+                        let c2 = tcx.expand_abstract_consts(c2);
+                        debug!("equating consts:\nc1= {:?}\nc2= {:?}", c1, c2);
+
+                        use rustc_hir::def::DefKind;
+                        use ty::ConstKind::Unevaluated;
+                        match (c1.kind(), c2.kind()) {
+                            (Unevaluated(a), Unevaluated(b))
+                                if a.def.did == b.def.did
+                                    && tcx.def_kind(a.def.did) == DefKind::AssocConst =>
+                            {
+                                if let Ok(new_obligations) = infcx
+                                    .at(&obligation.cause, obligation.param_env)
+                                    .trace(c1, c2)
+                                    .eq(a.substs, b.substs)
+                                {
+                                    return ProcessResult::Changed(mk_pending(
+                                        new_obligations.into_obligations(),
+                                    ));
+                                }
+                            }
+                            (_, Unevaluated(_)) | (Unevaluated(_), _) => (),
+                            (_, _) => {
+                                if let Ok(new_obligations) =
+                                    infcx.at(&obligation.cause, obligation.param_env).eq(c1, c2)
+                                {
+                                    return ProcessResult::Changed(mk_pending(
+                                        new_obligations.into_obligations(),
+                                    ));
+                                }
+                            }
                         }
                     }
 
@@ -508,7 +535,9 @@ impl<'a, 'tcx> ObligationProcessor for FulfillProcessor<'a, 'tcx> {
                                 .at(&obligation.cause, obligation.param_env)
                                 .eq(c1, c2)
                             {
-                                Ok(_) => ProcessResult::Changed(vec![]),
+                                Ok(inf_ok) => {
+                                    ProcessResult::Changed(mk_pending(inf_ok.into_obligations()))
+                                }
                                 Err(err) => ProcessResult::Error(
                                     FulfillmentErrorCode::CodeConstEquateError(
                                         ExpectedFound::new(true, c1, c2),

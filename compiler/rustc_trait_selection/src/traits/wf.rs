@@ -476,6 +476,11 @@ impl<'tcx> WfPredicates<'tcx> {
                                 ty::Binder::dummy(ty::PredicateKind::WellFormed(ct.into())),
                             ));
                         }
+                        // FIXME(generic_const_exprs): This seems wrong but I could not find a way to get this to trigger
+                        ty::ConstKind::Expr(_) => {
+                            bug!("checking wfness of `ConstKind::Expr` is unsupported")
+                        }
+
                         ty::ConstKind::Error(_)
                         | ty::ConstKind::Param(_)
                         | ty::ConstKind::Bound(..)

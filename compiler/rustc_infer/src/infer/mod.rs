@@ -23,7 +23,6 @@ use rustc_middle::infer::unify_key::{ConstVariableOrigin, ConstVariableOriginKin
 use rustc_middle::mir::interpret::{ErrorHandled, EvalToValTreeResult};
 use rustc_middle::mir::ConstraintCategory;
 use rustc_middle::traits::select;
-use rustc_middle::ty::abstract_const::{AbstractConst, FailureKind};
 use rustc_middle::ty::error::{ExpectedFound, TypeError};
 use rustc_middle::ty::fold::BoundVarReplacerDelegate;
 use rustc_middle::ty::fold::{TypeFoldable, TypeFolder, TypeSuperFoldable};
@@ -711,32 +710,6 @@ impl<'tcx> InferCtxt<'tcx> {
     /// During typeck, use `FnCtxt::err_ctxt` instead.
     pub fn err_ctxt(&self) -> TypeErrCtxt<'_, 'tcx> {
         TypeErrCtxt { infcx: self, typeck_results: None, fallback_has_occurred: false }
-    }
-
-    /// calls `tcx.try_unify_abstract_consts` after
-    /// canonicalizing the consts.
-    #[instrument(skip(self), level = "debug")]
-    pub fn try_unify_abstract_consts(
-        &self,
-        a: ty::UnevaluatedConst<'tcx>,
-        b: ty::UnevaluatedConst<'tcx>,
-        param_env: ty::ParamEnv<'tcx>,
-    ) -> bool {
-        // Reject any attempt to unify two unevaluated constants that contain inference
-        // variables, since inference variables in queries lead to ICEs.
-        if a.substs.has_non_region_infer()
-            || b.substs.has_non_region_infer()
-            || param_env.has_non_region_infer()
-        {
-            debug!("a or b or param_env contain infer vars in its substs -> cannot unify");
-            return false;
-        }
-
-        let param_env_and = param_env.and((a, b));
-        let erased = self.tcx.erase_regions(param_env_and);
-        debug!("after erase_regions: {:?}", erased);
-
-        self.tcx.try_unify_abstract_consts(erased)
     }
 
     pub fn is_in_snapshot(&self) -> bool {
@@ -1646,26 +1619,25 @@ impl<'tcx> InferCtxt<'tcx> {
 
         // Postpone the evaluation of constants whose substs depend on inference
         // variables
+        let tcx = self.tcx;
         if substs.has_non_region_infer() {
-            let ac = AbstractConst::new(self.tcx, unevaluated);
-            match ac {
-                Ok(None) => {
-                    substs = InternalSubsts::identity_for_item(self.tcx, unevaluated.def.did);
-                    param_env = self.tcx.param_env(unevaluated.def.did);
+            if let Some(ct) = tcx.bound_abstract_const(unevaluated.def)? {
+                let ct = tcx.expand_abstract_consts(ct.subst(tcx, substs));
+                if let Err(e) = ct.error_reported() {
+                    return Err(ErrorHandled::Reported(e));
+                } else if ct.has_non_region_infer() || ct.has_non_region_param() {
+                    return Err(ErrorHandled::TooGeneric);
+                } else {
+                    substs = replace_param_and_infer_substs_with_placeholder(tcx, substs);
                 }
-                Ok(Some(ct)) => {
-                    if ct.unify_failure_kind(self.tcx) == FailureKind::Concrete {
-                        substs = replace_param_and_infer_substs_with_placeholder(self.tcx, substs);
-                    } else {
-                        return Err(ErrorHandled::TooGeneric);
-                    }
-                }
-                Err(guar) => return Err(ErrorHandled::Reported(guar)),
+            } else {
+                substs = InternalSubsts::identity_for_item(tcx, unevaluated.def.did);
+                param_env = tcx.param_env(unevaluated.def.did);
             }
         }
 
-        let param_env_erased = self.tcx.erase_regions(param_env);
-        let substs_erased = self.tcx.erase_regions(substs);
+        let param_env_erased = tcx.erase_regions(param_env);
+        let substs_erased = tcx.erase_regions(substs);
         debug!(?param_env_erased);
         debug!(?substs_erased);
 
@@ -1673,7 +1645,7 @@ impl<'tcx> InferCtxt<'tcx> {
 
         // The return value is the evaluated value which doesn't contain any reference to inference
         // variables, thus we don't need to substitute back the original values.
-        self.tcx.const_eval_resolve_for_typeck(param_env_erased, unevaluated, span)
+        tcx.const_eval_resolve_for_typeck(param_env_erased, unevaluated, span)
     }
 
     /// `ty_or_const_infer_var_changed` is equivalent to one of these two:

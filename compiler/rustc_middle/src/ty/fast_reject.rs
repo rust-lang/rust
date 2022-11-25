@@ -356,7 +356,10 @@ impl DeepRejectCtxt {
 
     pub fn consts_may_unify(self, obligation_ct: ty::Const<'_>, impl_ct: ty::Const<'_>) -> bool {
         match impl_ct.kind() {
-            ty::ConstKind::Param(_) | ty::ConstKind::Unevaluated(_) | ty::ConstKind::Error(_) => {
+            ty::ConstKind::Expr(_)
+            | ty::ConstKind::Param(_)
+            | ty::ConstKind::Unevaluated(_)
+            | ty::ConstKind::Error(_) => {
                 return true;
             }
             ty::ConstKind::Value(_) => {}
@@ -374,7 +377,9 @@ impl DeepRejectCtxt {
 
             // As we don't necessarily eagerly evaluate constants,
             // they might unify with any value.
-            ty::ConstKind::Unevaluated(_) | ty::ConstKind::Error(_) => true,
+            ty::ConstKind::Expr(_) | ty::ConstKind::Unevaluated(_) | ty::ConstKind::Error(_) => {
+                true
+            }
             ty::ConstKind::Value(obl) => match k {
                 ty::ConstKind::Value(imp) => obl == imp,
                 _ => true,

@@ -3,6 +3,7 @@
 #![feature(control_flow_enum)]
 #![feature(rustc_private)]
 #![feature(try_blocks)]
+#![feature(let_chains)]
 #![recursion_limit = "256"]
 #![deny(rustc::untranslatable_diagnostic)]
 #![deny(rustc::diagnostic_outside_of_impl)]
@@ -25,7 +26,6 @@ use rustc_middle::bug;
 use rustc_middle::hir::nested_filter;
 use rustc_middle::middle::privacy::{EffectiveVisibilities, Level};
 use rustc_middle::span_bug;
-use rustc_middle::ty::abstract_const::{walk_abstract_const, AbstractConst, Node as ACNode};
 use rustc_middle::ty::query::Providers;
 use rustc_middle::ty::subst::InternalSubsts;
 use rustc_middle::ty::{self, Const, DefIdTree, GenericParamDefKind};
@@ -288,19 +288,8 @@ where
     }
 
     fn visit_const(&mut self, c: Const<'tcx>) -> ControlFlow<Self::BreakTy> {
-        self.visit_ty(c.ty())?;
         let tcx = self.def_id_visitor.tcx();
-        if let Ok(Some(ct)) = AbstractConst::from_const(tcx, c) {
-            walk_abstract_const(tcx, ct, |node| match node.root(tcx) {
-                ACNode::Leaf(leaf) => self.visit_const(leaf),
-                ACNode::Cast(_, _, ty) => self.visit_ty(ty),
-                ACNode::Binop(..) | ACNode::UnaryOp(..) | ACNode::FunctionCall(_, _) => {
-                    ControlFlow::CONTINUE
-                }
-            })
-        } else {
-            ControlFlow::CONTINUE
-        }
+        tcx.expand_abstract_consts(c).super_visit_with(self)
     }
 }
 

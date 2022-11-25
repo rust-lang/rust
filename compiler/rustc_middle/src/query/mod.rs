@@ -400,7 +400,7 @@ rustc_queries! {
     /// Try to build an abstract representation of the given constant.
     query thir_abstract_const(
         key: DefId
-    ) -> Result<Option<&'tcx [ty::abstract_const::Node<'tcx>]>, ErrorGuaranteed> {
+    ) -> Result<Option<ty::Const<'tcx>>, ErrorGuaranteed> {
         desc {
             |tcx| "building an abstract representation for `{}`", tcx.def_path_str(key),
         }
@@ -409,20 +409,11 @@ rustc_queries! {
     /// Try to build an abstract representation of the given constant.
     query thir_abstract_const_of_const_arg(
         key: (LocalDefId, DefId)
-    ) -> Result<Option<&'tcx [ty::abstract_const::Node<'tcx>]>, ErrorGuaranteed> {
+    ) -> Result<Option<ty::Const<'tcx>>, ErrorGuaranteed> {
         desc {
             |tcx|
             "building an abstract representation for the const argument `{}`",
             tcx.def_path_str(key.0.to_def_id()),
-        }
-    }
-
-    query try_unify_abstract_consts(key:
-        ty::ParamEnvAnd<'tcx, (ty::UnevaluatedConst<'tcx>, ty::UnevaluatedConst<'tcx>
-    )>) -> bool {
-        desc {
-            |tcx| "trying to unify the generic constants `{}` and `{}`",
-            tcx.def_path_str(key.value.0.def.did), tcx.def_path_str(key.value.1.def.did)
         }
     }
 
