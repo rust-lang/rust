@@ -457,6 +457,9 @@ lint_builtin_special_module_name_used_lib = found module declaration for lib.rs
 lint_builtin_special_module_name_used_main = found module declaration for main.rs
     .note = a binary crate cannot be used as library
 
+lint_supertrait_as_deref_target = `{$t}` implements `Deref` with supertrait `{$target_principal}` as target
+    .label = target type is set here
+
 lint_overruled_attribute = {$lint_level}({$lint_source}) incompatible with previous forbid
     .label = overruled by previous forbid
 

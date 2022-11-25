@@ -551,6 +551,24 @@ pub struct BuiltinUnexpectedCliConfigValue {
     pub value: Symbol,
 }
 
+// deref_into_dyn_supertrait.rs
+#[derive(LintDiagnostic)]
+#[diag(lint_supertrait_as_deref_target)]
+pub struct SupertraitAsDerefTarget<'a> {
+    pub t: Ty<'a>,
+    pub target_principal: String,
+    // pub target_principal: Binder<'a, ExistentialTraitRef<'b>>,
+    #[subdiagnostic]
+    pub label: Option<SupertraitAsDerefTargetLabel>,
+}
+
+#[derive(Subdiagnostic)]
+#[label(label)]
+pub struct SupertraitAsDerefTargetLabel {
+    #[primary_span]
+    pub label: Span,
+}
+
 // enum_intrinsics_non_enums.rs
 #[derive(LintDiagnostic)]
 #[diag(lint_enum_intrinsics_mem_discriminant)]
