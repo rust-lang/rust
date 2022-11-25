@@ -196,8 +196,6 @@ impl<'tcx> FnCtxt<'_, 'tcx> {
     ) -> FxHashMap<Ty<'tcx>, Ty<'tcx>> {
         debug!("calculate_diverging_fallback({:?})", unsolved_variables);
 
-        let relationships = self.fulfillment_cx.borrow_mut().relationships().clone();
-
         // Construct a coercion graph where an edge `A -> B` indicates
         // a type variable is that is coerced
         let coercion_graph = self.create_coercion_graph();
@@ -282,7 +280,6 @@ impl<'tcx> FnCtxt<'_, 'tcx> {
         );
 
         debug!("obligations: {:#?}", self.fulfillment_cx.borrow_mut().pending_obligations());
-        debug!("relationships: {:#?}", relationships);
 
         // For each diverging variable, figure out whether it can
         // reach a member of N. If so, it falls back to `()`. Else
@@ -298,8 +295,8 @@ impl<'tcx> FnCtxt<'_, 'tcx> {
 
             let mut relationship = ty::FoundRelationships { self_in_trait: false, output: false };
 
-            for (vid, rel) in relationships.iter() {
-                if self.root_var(*vid) == root_vid {
+            for (vid, rel) in self.inh.relationships.borrow().iter() {
+                if self.infcx.root_var(*vid) == root_vid {
                     relationship.self_in_trait |= rel.self_in_trait;
                     relationship.output |= rel.output;
                 }
