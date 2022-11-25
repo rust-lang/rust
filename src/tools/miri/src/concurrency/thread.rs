@@ -179,12 +179,14 @@ impl<'mir, 'tcx> Thread<'mir, 'tcx> {
         self.top_user_relevant_frame = Some(frame_idx);
     }
 
-    pub fn top_user_relevant_frame(&self) -> usize {
+    /// Returns the topmost frame that is considered user-relevant, or the
+    /// top of the stack if there is no such frame, or `None` if the stack is empty.
+    pub fn top_user_relevant_frame(&self) -> Option<usize> {
         debug_assert_eq!(self.top_user_relevant_frame, self.compute_top_user_relevant_frame());
         // This can be called upon creation of an allocation. We create allocations while setting up
         // parts of the Rust runtime when we do not have any stack frames yet, so we need to handle
         // empty stacks.
-        self.top_user_relevant_frame.unwrap_or_else(|| self.stack.len().saturating_sub(1))
+        self.top_user_relevant_frame.or_else(|| self.stack.len().checked_sub(1))
     }
 }
 

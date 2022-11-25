@@ -940,9 +940,8 @@ impl<'mir, 'tcx> MiriMachine<'mir, 'tcx> {
     /// `#[track_caller]`.
     /// This function is backed by a cache, and can be assumed to be very fast.
     pub fn current_span(&self) -> Span {
-        self.stack()
-            .get(self.top_user_relevant_frame())
-            .map(Frame::current_span)
+        self.top_user_relevant_frame()
+            .map(|frame_idx| self.stack()[frame_idx].current_span())
             .unwrap_or(rustc_span::DUMMY_SP)
     }
 
@@ -954,17 +953,17 @@ impl<'mir, 'tcx> MiriMachine<'mir, 'tcx> {
     pub fn caller_span(&self) -> Span {
         // We need to go down at least to the caller (len - 2), or however
         // far we have to go to find a frame in a local crate which is also not #[track_caller].
-        let frame_idx = self.top_user_relevant_frame();
-        let stack = self.stack();
-        let frame_idx = cmp::min(frame_idx, stack.len().saturating_sub(2));
-        stack.get(frame_idx).map(Frame::current_span).unwrap_or(rustc_span::DUMMY_SP)
+        self.top_user_relevant_frame()
+            .map(|frame_idx| cmp::min(frame_idx, self.stack().len() - 2))
+            .map(|frame_idx| self.stack()[frame_idx].current_span())
+            .unwrap_or(rustc_span::DUMMY_SP)
     }
 
     fn stack(&self) -> &[Frame<'mir, 'tcx, Provenance, machine::FrameData<'tcx>>] {
         self.threads.active_thread_stack()
     }
 
-    fn top_user_relevant_frame(&self) -> usize {
+    fn top_user_relevant_frame(&self) -> Option<usize> {
         self.threads.active_thread_ref().top_user_relevant_frame()
     }
 
