@@ -1316,7 +1316,11 @@ impl<'a> Parser<'a> {
                         self.prefix_inc_dec_suggest(base_src, kind, spans).emit(&mut err)
                     }
                     UnaryFixity::Post => {
-                        self.postfix_inc_dec_suggest(base_src, kind, spans).emit(&mut err)
+                        // won't suggest since we can not handle the precedences
+                        // for example: `a + b++` has been parsed (a + b)++ and we can not suggest here
+                        if !matches!(base.kind, ExprKind::Binary(_, _, _)) {
+                            self.postfix_inc_dec_suggest(base_src, kind, spans).emit(&mut err)
+                        }
                     }
                 }
             }

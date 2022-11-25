@@ -36,14 +36,9 @@ error: Rust has no postfix increment operator
    |
 LL |     let _ = i + i++;
    |                  ^^ not a valid postfix operator
-   |
-help: use `+= 1` instead
-   |
-LL |     let _ = { let tmp = i + i; i + i += 1; tmp };
-   |             +++++++++++      ~~~~~~~~~~~~~~~~~~~
 
 error: Rust has no postfix increment operator
-  --> $DIR/issue-104867-inc-dec-2.rs:23:14
+  --> $DIR/issue-104867-inc-dec-2.rs:24:14
    |
 LL |     let _ = i++ + i;
    |              ^^ not a valid postfix operator
@@ -54,7 +49,7 @@ LL |     let _ = { let tmp = i; i += 1; tmp } + i;
    |             +++++++++++  ~~~~~~~~~~~~~~~
 
 error: Rust has no postfix increment operator
-  --> $DIR/issue-104867-inc-dec-2.rs:28:14
+  --> $DIR/issue-104867-inc-dec-2.rs:29:14
    |
 LL |     let _ = i++ + i++;
    |              ^^ not a valid postfix operator
@@ -65,7 +60,7 @@ LL |     let _ = { let tmp = i; i += 1; tmp } + i++;
    |             +++++++++++  ~~~~~~~~~~~~~~~
 
 error: Rust has no prefix increment operator
-  --> $DIR/issue-104867-inc-dec-2.rs:33:13
+  --> $DIR/issue-104867-inc-dec-2.rs:34:13
    |
 LL |     let _ = ++i + i++;
    |             ^^ not a valid prefix operator
@@ -76,7 +71,7 @@ LL |     let _ = { i += 1; i } + i++;
    |             ~   +++++++++
 
 error: Rust has no postfix increment operator
-  --> $DIR/issue-104867-inc-dec-2.rs:38:14
+  --> $DIR/issue-104867-inc-dec-2.rs:39:14
    |
 LL |     let _ = i++ + ++i;
    |              ^^ not a valid postfix operator
@@ -86,5 +81,27 @@ help: use `+= 1` instead
 LL |     let _ = { let tmp = i; i += 1; tmp } + ++i;
    |             +++++++++++  ~~~~~~~~~~~~~~~
 
-error: aborting due to 8 previous errors
+error: Rust has no postfix increment operator
+  --> $DIR/issue-104867-inc-dec-2.rs:44:24
+   |
+LL |     let _ = (1 + 2 + i)++;
+   |                        ^^ not a valid postfix operator
+   |
+help: use `+= 1` instead
+   |
+LL |     let _ = { let tmp = (1 + 2 + i); (1 + 2 + i) += 1; tmp };
+   |             +++++++++++            ~~~~~~~~~~~~~~~~~~~~~~~~~
+
+error: Rust has no postfix increment operator
+  --> $DIR/issue-104867-inc-dec-2.rs:49:15
+   |
+LL |     let _ = (i++ + 1) + 2;
+   |               ^^ not a valid postfix operator
+   |
+help: use `+= 1` instead
+   |
+LL |     let _ = ({ let tmp = i; i += 1; tmp } + 1) + 2;
+   |              +++++++++++  ~~~~~~~~~~~~~~~
+
+error: aborting due to 10 previous errors
 
