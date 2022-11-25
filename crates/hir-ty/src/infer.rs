@@ -2,7 +2,7 @@
 //! the type of each expression and pattern.
 //!
 //! For type inference, compare the implementations in rustc (the various
-//! check_* methods in librustc_typeck/check/mod.rs are a good entry point) and
+//! check_* methods in rustc_hir_analysis/check/mod.rs are a good entry point) and
 //! IntelliJ-Rust (org.rust.lang.core.types.infer). Our entry point for
 //! inference here is the `infer` function, which infers the types of all
 //! expressions in a given function.

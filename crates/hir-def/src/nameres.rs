@@ -57,7 +57,7 @@ mod path_resolution;
 #[cfg(test)]
 mod tests;
 
-use std::{ops::Deref, sync::Arc};
+use std::{cmp::Ord, ops::Deref, sync::Arc};
 
 use base_db::{CrateId, Edition, FileId};
 use hir_expand::{name::Name, InFile, MacroCallId, MacroDefId};
