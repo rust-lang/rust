@@ -31,13 +31,13 @@ use rustc_span::lev_distance::{
 use rustc_span::symbol::sym;
 use rustc_span::{symbol::Ident, Span, Symbol, DUMMY_SP};
 use rustc_trait_selection::autoderef::{self, Autoderef};
-use rustc_trait_selection::infer::InferCtxtExt as _;
 use rustc_trait_selection::traits::query::evaluate_obligation::InferCtxtExt;
 use rustc_trait_selection::traits::query::method_autoderef::MethodAutoderefBadTy;
 use rustc_trait_selection::traits::query::method_autoderef::{
     CandidateStep, MethodAutoderefStepsResult,
 };
 use rustc_trait_selection::traits::query::CanonicalTyGoal;
+use rustc_trait_selection::traits::NormalizeExt;
 use rustc_trait_selection::traits::{self, ObligationCause};
 use std::cmp::max;
 use std::iter;
@@ -716,9 +716,8 @@ impl<'a, 'tcx> ProbeContext<'a, 'tcx> {
             // maybe shouldn't include `Param`s, but rather fresh variables or be canonicalized,
             // see issue #89650
             let cause = traits::ObligationCause::misc(self.span, self.body_id);
-            let InferOk { value: xform_self_ty, obligations } = self
-                .fcx
-                .partially_normalize_associated_types_in(cause, self.param_env, xform_self_ty);
+            let InferOk { value: xform_self_ty, obligations } =
+                self.fcx.at(&cause, self.param_env).normalize(xform_self_ty);
 
             debug!(
                 "assemble_inherent_impl_probe after normalization: xform_self_ty = {:?}/{:?}",
@@ -1507,11 +1506,7 @@ impl<'a, 'tcx> ProbeContext<'a, 'tcx> {
                     let InferOk {
                         value: normalized_xform_ret_ty,
                         obligations: normalization_obligations,
-                    } = self.fcx.partially_normalize_associated_types_in(
-                        cause.clone(),
-                        self.param_env,
-                        probe.xform_ret_ty,
-                    );
+                    } = self.fcx.at(&cause, self.param_env).normalize(probe.xform_ret_ty);
                     xform_ret_ty = normalized_xform_ret_ty;
                     debug!("xform_ret_ty after normalization: {:?}", xform_ret_ty);
 
@@ -1521,11 +1516,7 @@ impl<'a, 'tcx> ProbeContext<'a, 'tcx> {
                     let impl_bounds = impl_bounds.instantiate(self.tcx, substs);
 
                     let InferOk { value: impl_bounds, obligations: norm_obligations } =
-                        self.fcx.partially_normalize_associated_types_in(
-                            cause.clone(),
-                            self.param_env,
-                            impl_bounds,
-                        );
+                        self.fcx.at(&cause, self.param_env).normalize(impl_bounds);
 
                     // Convert the bounds into obligations.
                     let impl_obligations = traits::predicates_for_generics(

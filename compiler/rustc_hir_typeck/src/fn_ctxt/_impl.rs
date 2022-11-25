@@ -30,9 +30,10 @@ use rustc_span::def_id::LocalDefId;
 use rustc_span::hygiene::DesugaringKind;
 use rustc_span::symbol::{kw, sym, Ident};
 use rustc_span::{Span, DUMMY_SP};
-use rustc_trait_selection::infer::InferCtxtExt as _;
 use rustc_trait_selection::traits::error_reporting::TypeErrCtxtExt as _;
-use rustc_trait_selection::traits::{self, ObligationCause, ObligationCauseCode, ObligationCtxt};
+use rustc_trait_selection::traits::{
+    self, NormalizeExt, ObligationCause, ObligationCauseCode, ObligationCtxt,
+};
 
 use std::collections::hash_map::Entry;
 use std::slice;
@@ -382,11 +383,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
     where
         T: TypeFoldable<'tcx>,
     {
-        self.inh.partially_normalize_associated_types_in(
-            ObligationCause::misc(span, self.body_id),
-            self.param_env,
-            value,
-        )
+        self.at(&ObligationCause::misc(span, self.body_id), self.param_env).normalize(value)
     }
 
     pub(in super::super) fn normalize_op_associated_types_in_as_infer_ok<T>(
@@ -398,8 +395,8 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
     where
         T: TypeFoldable<'tcx>,
     {
-        self.inh.partially_normalize_associated_types_in(
-            ObligationCause::new(
+        self.at(
+            &ObligationCause::new(
                 span,
                 self.body_id,
                 traits::BinOp {
@@ -410,8 +407,8 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                 },
             ),
             self.param_env,
-            value,
         )
+        .normalize(value)
     }
 
     pub fn require_type_meets(

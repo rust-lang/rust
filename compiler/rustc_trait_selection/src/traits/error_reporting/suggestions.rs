@@ -2,6 +2,7 @@ use super::{DefIdOrName, Obligation, ObligationCause, ObligationCauseCode, Predi
 
 use crate::autoderef::Autoderef;
 use crate::infer::InferCtxt;
+use crate::traits::NormalizeExt;
 
 use hir::def::CtorOf;
 use hir::HirId;
@@ -2972,12 +2973,8 @@ impl<'tcx> TypeErrCtxtExt<'tcx> for TypeErrCtxt<'_, 'tcx> {
                         self.tcx.mk_substs_trait(trait_pred.self_ty(), []),
                     )
                 });
-                let InferOk { value: projection_ty, .. } = self
-                    .partially_normalize_associated_types_in(
-                        obligation.cause.clone(),
-                        obligation.param_env,
-                        projection_ty,
-                    );
+                let InferOk { value: projection_ty, .. } =
+                    self.at(&obligation.cause, obligation.param_env).normalize(projection_ty);
 
                 debug!(
                     normalized_projection_type = ?self.resolve_vars_if_possible(projection_ty)

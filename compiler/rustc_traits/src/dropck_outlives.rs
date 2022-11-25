@@ -11,7 +11,7 @@ use rustc_trait_selection::traits::query::dropck_outlives::trivial_dropck_outliv
 use rustc_trait_selection::traits::query::dropck_outlives::{
     DropckConstraint, DropckOutlivesResult,
 };
-use rustc_trait_selection::traits::query::normalize::AtExt;
+use rustc_trait_selection::traits::query::normalize::QueryNormalizeExt;
 use rustc_trait_selection::traits::query::{CanonicalTyGoal, NoSolution};
 use rustc_trait_selection::traits::{Normalized, ObligationCause};
 

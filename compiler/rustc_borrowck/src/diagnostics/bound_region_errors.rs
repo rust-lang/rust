@@ -291,9 +291,9 @@ where
         // FIXME(lqd): Unify and de-duplicate the following with the actual
         // `rustc_traits::type_op::type_op_normalize` query to allow the span we need in the
         // `ObligationCause`. The normalization results are currently different between
-        // `AtExt::normalize` used in the query and `normalize` called below: the former fails
-        // to normalize the `nll/relate_tys/impl-fn-ignore-binder-via-bottom.rs` test. Check
-        // after #85499 lands to see if its fixes have erased this difference.
+        // `QueryNormalizeExt::query_normalize` used in the query and `normalize` called below:
+        // the former fails to normalize the `nll/relate_tys/impl-fn-ignore-binder-via-bottom.rs` test.
+        // Check after #85499 lands to see if its fixes have erased this difference.
         let (param_env, value) = key.into_parts();
         let _ = ocx.normalize(cause, param_env, value.value);
 

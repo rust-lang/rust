@@ -1581,7 +1581,7 @@ fn normalize<'tcx>(cx: &mut DocContext<'tcx>, ty: Ty<'tcx>) -> Option<Ty<'tcx>> 
     }
 
     use crate::rustc_trait_selection::infer::TyCtxtInferExt;
-    use crate::rustc_trait_selection::traits::query::normalize::AtExt;
+    use crate::rustc_trait_selection::traits::query::normalize::QueryNormalizeExt;
     use rustc_middle::traits::ObligationCause;
 
     // Try to normalize `<X as Y>::T` to a type

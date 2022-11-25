@@ -8,7 +8,7 @@ use rustc_middle::ty::{ParamEnvAnd, Predicate, ToPredicate};
 use rustc_middle::ty::{UserSelfTy, UserSubsts};
 use rustc_span::{Span, DUMMY_SP};
 use rustc_trait_selection::infer::InferCtxtBuilderExt;
-use rustc_trait_selection::traits::query::normalize::AtExt;
+use rustc_trait_selection::traits::query::normalize::QueryNormalizeExt;
 use rustc_trait_selection::traits::query::type_op::ascribe_user_type::AscribeUserType;
 use rustc_trait_selection::traits::query::type_op::eq::Eq;
 use rustc_trait_selection::traits::query::type_op::normalize::Normalize;

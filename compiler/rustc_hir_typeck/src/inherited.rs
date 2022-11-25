@@ -12,9 +12,8 @@ use rustc_middle::ty::visit::TypeVisitable;
 use rustc_middle::ty::{self, Ty, TyCtxt};
 use rustc_span::def_id::LocalDefIdMap;
 use rustc_span::{self, Span};
-use rustc_trait_selection::infer::InferCtxtExt as _;
 use rustc_trait_selection::traits::{
-    self, ObligationCause, ObligationCtxt, TraitEngine, TraitEngineExt as _,
+    self, NormalizeExt, ObligationCause, ObligationCtxt, TraitEngine, TraitEngineExt as _,
 };
 
 use std::cell::RefCell;
@@ -206,7 +205,7 @@ impl<'tcx> Inherited<'tcx> {
     where
         T: TypeFoldable<'tcx>,
     {
-        let ok = self.partially_normalize_associated_types_in(cause, param_env, value);
+        let ok = self.at(&cause, param_env).normalize(value);
         debug!(?ok);
         self.register_infer_ok_obligations(ok)
     }

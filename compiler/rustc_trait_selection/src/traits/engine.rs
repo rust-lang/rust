@@ -3,7 +3,7 @@ use std::fmt::Debug;
 
 use super::TraitEngine;
 use super::{ChalkFulfillmentContext, FulfillmentContext};
-use crate::infer::InferCtxtExt;
+use crate::traits::NormalizeExt;
 use rustc_data_structures::fx::FxIndexSet;
 use rustc_hir::def_id::{DefId, LocalDefId};
 use rustc_infer::infer::at::ToTrace;
@@ -104,11 +104,12 @@ impl<'a, 'tcx> ObligationCtxt<'a, 'tcx> {
 
     pub fn normalize<T: TypeFoldable<'tcx>>(
         &self,
+        // FIXME(compiler-errors): Make this borrow
         cause: ObligationCause<'tcx>,
         param_env: ty::ParamEnv<'tcx>,
         value: T,
     ) -> T {
-        let infer_ok = self.infcx.partially_normalize_associated_types_in(cause, param_env, value);
+        let infer_ok = self.infcx.at(&cause, param_env).normalize(value);
         self.register_infer_ok_obligations(infer_ok)
     }
 

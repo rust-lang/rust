@@ -9,11 +9,11 @@ use super::{
 };
 use crate::infer::error_reporting::{TyCategory, TypeAnnotationNeeded as ErrorCode};
 use crate::infer::type_variable::{TypeVariableOrigin, TypeVariableOriginKind};
-use crate::infer::InferCtxtExt as _;
 use crate::infer::{self, InferCtxt, TyCtxtInferExt};
 use crate::traits::query::evaluate_obligation::InferCtxtExt as _;
-use crate::traits::query::normalize::AtExt as _;
+use crate::traits::query::normalize::QueryNormalizeExt as _;
 use crate::traits::specialize::to_pretty_impl_header;
+use crate::traits::NormalizeExt;
 use on_unimplemented::OnUnimplementedNote;
 use on_unimplemented::TypeErrCtxtExt as _;
 use rustc_data_structures::fx::{FxHashMap, FxIndexMap};
@@ -2535,11 +2535,7 @@ impl<'tcx> InferCtxtPrivExt<'tcx> for TypeErrCtxt<'_, 'tcx> {
                 pred.fold_with(&mut ParamToVarFolder { infcx: self, var_map: Default::default() });
 
             let InferOk { value: cleaned_pred, .. } =
-                self.infcx.partially_normalize_associated_types_in(
-                    ObligationCause::dummy(),
-                    param_env,
-                    cleaned_pred,
-                );
+                self.infcx.at(&ObligationCause::dummy(), param_env).normalize(cleaned_pred);
 
             let obligation =
                 Obligation::new(self.tcx, ObligationCause::dummy(), param_env, cleaned_pred);

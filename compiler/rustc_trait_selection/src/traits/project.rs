@@ -27,6 +27,7 @@ use rustc_errors::ErrorGuaranteed;
 use rustc_hir::def::DefKind;
 use rustc_hir::def_id::DefId;
 use rustc_hir::lang_items::LangItem;
+use rustc_infer::infer::at::At;
 use rustc_infer::infer::resolve::OpportunisticRegionResolver;
 use rustc_infer::traits::ImplSourceBuiltinData;
 use rustc_middle::traits::select::OverflowError;
@@ -47,6 +48,19 @@ pub type ProjectionObligation<'tcx> = Obligation<'tcx, ty::ProjectionPredicate<'
 pub type ProjectionTyObligation<'tcx> = Obligation<'tcx, ty::ProjectionTy<'tcx>>;
 
 pub(super) struct InProgress;
+
+pub trait NormalizeExt<'tcx> {
+    fn normalize<T: TypeFoldable<'tcx>>(&self, t: T) -> InferOk<'tcx, T>;
+}
+
+impl<'tcx> NormalizeExt<'tcx> for At<'_, 'tcx> {
+    fn normalize<T: TypeFoldable<'tcx>>(&self, value: T) -> InferOk<'tcx, T> {
+        let mut selcx = SelectionContext::new(self.infcx);
+        let Normalized { value, obligations } =
+            normalize(&mut selcx, self.param_env, self.cause.clone(), value);
+        InferOk { value, obligations }
+    }
+}
 
 /// When attempting to resolve `<T as TraitRef>::Name` ...
 #[derive(Debug)]

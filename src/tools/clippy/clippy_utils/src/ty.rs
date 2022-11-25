@@ -22,6 +22,7 @@ use rustc_span::symbol::Ident;
 use rustc_span::{sym, Span, Symbol, DUMMY_SP};
 use rustc_target::abi::{Size, VariantIdx};
 use rustc_trait_selection::infer::InferCtxtExt;
+use rustc_trait_selection::traits::NormalizeExt;
 use rustc_trait_selection::traits::query::normalize::AtExt;
 use std::iter;
 
