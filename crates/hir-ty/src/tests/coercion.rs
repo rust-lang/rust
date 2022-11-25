@@ -295,6 +295,24 @@ fn foo() {
 }
 
 #[test]
+fn generator_yield_return_coerce() {
+    check_no_mismatches(
+        r#"
+fn test() {
+    let g = || {
+        yield &1u32;
+        yield &&1u32;
+        if true {
+            return &1u32;
+        }
+        &&1u32
+    };
+}
+        "#,
+    );
+}
+
+#[test]
 fn assign_coerce() {
     check_no_mismatches(
         r"

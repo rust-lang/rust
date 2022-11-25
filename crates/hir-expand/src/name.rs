@@ -263,6 +263,7 @@ pub mod known {
         Iterator,
         IntoIterator,
         Item,
+        IntoIter,
         Try,
         Ok,
         Future,

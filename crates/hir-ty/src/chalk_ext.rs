@@ -152,7 +152,7 @@ impl TyExt for Ty {
             TyKind::FnDef(def, parameters) => {
                 let callable_def = db.lookup_intern_callable_def((*def).into());
                 let sig = db.callable_item_signature(callable_def);
-                Some(sig.substitute(Interner, &parameters))
+                Some(sig.substitute(Interner, parameters))
             }
             TyKind::Closure(.., substs) => {
                 let sig_param = substs.at(Interner, 0).assert_ty_ref(Interner);
@@ -166,6 +166,8 @@ impl TyExt for Ty {
         let trait_ref = match self.kind(Interner) {
             // The principal trait bound should be the first element of the bounds. This is an
             // invariant ensured by `TyLoweringContext::lower_dyn_trait()`.
+            // FIXME: dyn types may not have principal trait and we don't want to return auto trait
+            // here.
             TyKind::Dyn(dyn_ty) => dyn_ty.bounds.skip_binders().interned().get(0).and_then(|b| {
                 match b.skip_binders() {
                     WhereClause::Implemented(trait_ref) => Some(trait_ref),

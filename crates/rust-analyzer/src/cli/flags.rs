@@ -31,8 +31,6 @@ xflags::xflags! {
         default cmd lsp-server {
             /// Print version.
             optional --version
-            /// Print help.
-            optional -h, --help
 
             /// Dump a LSP config JSON schema.
             optional --print-config-schema
@@ -54,10 +52,10 @@ xflags::xflags! {
         }
 
         /// Batch typecheck project and print summary statistics
-        cmd analysis-stats
+        cmd analysis-stats {
             /// Directory with Cargo.toml.
             required path: PathBuf
-        {
+
             optional --output format: OutputFormat
 
             /// Randomize order in which crates, modules, and items are processed.
@@ -84,38 +82,37 @@ xflags::xflags! {
             optional --skip-inference
         }
 
-        cmd diagnostics
+        cmd diagnostics {
             /// Directory with Cargo.toml.
             required path: PathBuf
-        {
+
             /// Don't run build scripts or load `OUT_DIR` values by running `cargo check` before analysis.
             optional --disable-build-scripts
             /// Don't use expand proc macros.
             optional --disable-proc-macros
         }
 
-        cmd ssr
+        cmd ssr {
             /// A structured search replace rule (`$a.foo($b) ==> bar($a, $b)`)
             repeated rule: SsrRule
-        {}
+        }
 
-        cmd search
+        cmd search {
             /// A structured search replace pattern (`$a.foo($b)`)
             repeated pattern: SsrPattern
-        {
             /// Prints debug information for any nodes with source exactly equal to snippet.
             optional --debug snippet: String
         }
 
         cmd proc-macro {}
 
-        cmd lsif
+        cmd lsif {
             required path: PathBuf
-        {}
+        }
 
-        cmd scip
+        cmd scip {
             required path: PathBuf
-        {}
+        }
     }
 }
 
@@ -150,7 +147,6 @@ pub enum RustAnalyzerCmd {
 #[derive(Debug)]
 pub struct LspServer {
     pub version: bool,
-    pub help: bool,
     pub print_config_schema: bool,
 }
 
@@ -218,7 +214,10 @@ pub struct Scip {
 }
 
 impl RustAnalyzer {
-    pub const HELP: &'static str = Self::HELP_;
+    #[allow(dead_code)]
+    pub fn from_env_or_exit() -> Self {
+        Self::from_env_or_exit_()
+    }
 
     #[allow(dead_code)]
     pub fn from_env() -> xflags::Result<Self> {

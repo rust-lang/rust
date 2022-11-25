@@ -11,6 +11,8 @@ use proc_macro_api::ProcMacroKind;
 
 use super::PanicMessage;
 
+pub use ra_server::TokenStream;
+
 pub(crate) struct Abi {
     exported_macros: Vec<proc_macro::bridge::client::ProcMacro>,
 }

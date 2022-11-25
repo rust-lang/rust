@@ -39,7 +39,7 @@ use arrayvec::ArrayVec;
 use base_db::{CrateDisplayName, CrateId, CrateOrigin, Edition, FileId, ProcMacroKind};
 use either::Either;
 use hir_def::{
-    adt::{ReprKind, VariantData},
+    adt::{ReprData, VariantData},
     body::{BodyDiagnostic, SyntheticSyntax},
     expr::{BindingAnnotation, LabelId, Pat, PatId},
     generics::{TypeOrConstParamData, TypeParamProvenance},
@@ -50,7 +50,7 @@ use hir_def::{
     resolver::{HasResolver, Resolver},
     src::HasSource as _,
     AdtId, AssocItemId, AssocItemLoc, AttrDefId, ConstId, ConstParamId, DefWithBodyId, EnumId,
-    FunctionId, GenericDefId, HasModule, ImplId, ItemContainerId, LifetimeParamId,
+    EnumVariantId, FunctionId, GenericDefId, HasModule, ImplId, ItemContainerId, LifetimeParamId,
     LocalEnumVariantId, LocalFieldId, Lookup, MacroExpander, MacroId, ModuleId, StaticId, StructId,
     TraitId, TypeAliasId, TypeOrConstParamId, TypeParamId, UnionId,
 };
@@ -61,7 +61,6 @@ use hir_ty::{
     diagnostics::BodyValidationDiagnostic,
     method_resolution::{self, TyFingerprint},
     primitive::UintTy,
-    subst_prefix,
     traits::FnTrait,
     AliasTy, CallableDefId, CallableSig, Canonical, CanonicalVarKinds, Cast, ClosureId,
     GenericArgData, Interner, ParamKind, QuantifiedWhereClause, Scalar, Substitution,
@@ -73,7 +72,7 @@ use once_cell::unsync::Lazy;
 use rustc_hash::FxHashSet;
 use stdx::{impl_from, never};
 use syntax::{
-    ast::{self, HasAttrs as _, HasDocComments, HasName},
+    ast::{self, Expr, HasAttrs as _, HasDocComments, HasName},
     AstNode, AstPtr, SmolStr, SyntaxNodePtr, TextRange, T,
 };
 
@@ -348,7 +347,10 @@ impl ModuleDef {
             ModuleDef::Module(it) => it.id.into(),
             ModuleDef::Const(it) => it.id.into(),
             ModuleDef::Static(it) => it.id.into(),
-            _ => return Vec::new(),
+            ModuleDef::Variant(it) => {
+                EnumVariantId { parent: it.parent.into(), local_id: it.id }.into()
+            }
+            ModuleDef::BuiltinType(_) | ModuleDef::Macro(_) => return Vec::new(),
         };
 
         let module = match self.module(db) {
@@ -377,10 +379,10 @@ impl ModuleDef {
             ModuleDef::Function(it) => Some(it.into()),
             ModuleDef::Const(it) => Some(it.into()),
             ModuleDef::Static(it) => Some(it.into()),
+            ModuleDef::Variant(it) => Some(it.into()),
 
             ModuleDef::Module(_)
             | ModuleDef::Adt(_)
-            | ModuleDef::Variant(_)
             | ModuleDef::Trait(_)
             | ModuleDef::TypeAlias(_)
             | ModuleDef::Macro(_)
@@ -534,6 +536,30 @@ impl Module {
                 ModuleDef::Trait(t) => {
                     for diag in db.trait_data_with_diagnostics(t.id).1.iter() {
                         emit_def_diagnostic(db, acc, diag);
+                    }
+                    acc.extend(decl.diagnostics(db))
+                }
+                ModuleDef::Adt(adt) => {
+                    match adt {
+                        Adt::Struct(s) => {
+                            for diag in db.struct_data_with_diagnostics(s.id).1.iter() {
+                                emit_def_diagnostic(db, acc, diag);
+                            }
+                        }
+                        Adt::Union(u) => {
+                            for diag in db.union_data_with_diagnostics(u.id).1.iter() {
+                                emit_def_diagnostic(db, acc, diag);
+                            }
+                        }
+                        Adt::Enum(e) => {
+                            for v in e.variants(db) {
+                                acc.extend(ModuleDef::Variant(v).diagnostics(db));
+                            }
+
+                            for diag in db.enum_data_with_diagnostics(e.id).1.iter() {
+                                emit_def_diagnostic(db, acc, diag);
+                            }
+                        }
                     }
                     acc.extend(decl.diagnostics(db))
                 }
@@ -874,7 +900,7 @@ impl Struct {
         Type::from_def(db, self.id)
     }
 
-    pub fn repr(self, db: &dyn HirDatabase) -> Option<ReprKind> {
+    pub fn repr(self, db: &dyn HirDatabase) -> Option<ReprData> {
         db.struct_data(self.id).repr.clone()
     }
 
@@ -952,11 +978,32 @@ impl Enum {
     pub fn ty(self, db: &dyn HirDatabase) -> Type {
         Type::from_def(db, self.id)
     }
+
+    /// The type of the enum variant bodies.
+    pub fn variant_body_ty(self, db: &dyn HirDatabase) -> Type {
+        Type::new_for_crate(
+            self.id.lookup(db.upcast()).container.krate(),
+            TyBuilder::builtin(match db.enum_data(self.id).variant_body_type() {
+                Either::Left(builtin) => hir_def::builtin_type::BuiltinType::Int(builtin),
+                Either::Right(builtin) => hir_def::builtin_type::BuiltinType::Uint(builtin),
+            }),
+        )
+    }
+
+    pub fn is_data_carrying(self, db: &dyn HirDatabase) -> bool {
+        self.variants(db).iter().any(|v| !matches!(v.kind(db), StructKind::Unit))
+    }
 }
 
 impl HasVisibility for Enum {
     fn visibility(&self, db: &dyn HirDatabase) -> Visibility {
         db.enum_data(self.id).visibility.resolve(db.upcast(), &self.id.resolver(db.upcast()))
+    }
+}
+
+impl From<&Variant> for DefWithBodyId {
+    fn from(&v: &Variant) -> Self {
+        DefWithBodyId::VariantId(v.into())
     }
 }
 
@@ -993,6 +1040,14 @@ impl Variant {
 
     pub(crate) fn variant_data(self, db: &dyn HirDatabase) -> Arc<VariantData> {
         db.enum_data(self.parent.id).variants[self.id].variant_data.clone()
+    }
+
+    pub fn value(self, db: &dyn HirDatabase) -> Option<Expr> {
+        self.source(db)?.value.expr()
+    }
+
+    pub fn eval(self, db: &dyn HirDatabase) -> Result<ComputedExpr, ConstEvalError> {
+        db.const_eval_variant(self.into())
     }
 }
 
@@ -1034,7 +1089,7 @@ impl Adt {
     pub fn ty_with_args(self, db: &dyn HirDatabase, args: &[Type]) -> Type {
         let id = AdtId::from(self);
         let mut it = args.iter().map(|t| t.ty.clone());
-        let ty = TyBuilder::def_ty(db, id.into())
+        let ty = TyBuilder::def_ty(db, id.into(), None)
             .fill(|x| {
                 let r = it.next().unwrap_or_else(|| TyKind::Error.intern(Interner));
                 match x {
@@ -1129,8 +1184,9 @@ pub enum DefWithBody {
     Function(Function),
     Static(Static),
     Const(Const),
+    Variant(Variant),
 }
-impl_from!(Function, Const, Static for DefWithBody);
+impl_from!(Function, Const, Static, Variant for DefWithBody);
 
 impl DefWithBody {
     pub fn module(self, db: &dyn HirDatabase) -> Module {
@@ -1138,6 +1194,7 @@ impl DefWithBody {
             DefWithBody::Const(c) => c.module(db),
             DefWithBody::Function(f) => f.module(db),
             DefWithBody::Static(s) => s.module(db),
+            DefWithBody::Variant(v) => v.module(db),
         }
     }
 
@@ -1146,6 +1203,7 @@ impl DefWithBody {
             DefWithBody::Function(f) => Some(f.name(db)),
             DefWithBody::Static(s) => Some(s.name(db)),
             DefWithBody::Const(c) => c.name(db),
+            DefWithBody::Variant(v) => Some(v.name(db)),
         }
     }
 
@@ -1155,6 +1213,7 @@ impl DefWithBody {
             DefWithBody::Function(it) => it.ret_type(db),
             DefWithBody::Static(it) => it.ty(db),
             DefWithBody::Const(it) => it.ty(db),
+            DefWithBody::Variant(it) => it.parent.variant_body_ty(db),
         }
     }
 
@@ -1163,6 +1222,7 @@ impl DefWithBody {
             DefWithBody::Function(it) => it.id.into(),
             DefWithBody::Static(it) => it.id.into(),
             DefWithBody::Const(it) => it.id.into(),
+            DefWithBody::Variant(it) => it.into(),
         }
     }
 
@@ -1379,6 +1439,7 @@ impl DefWithBody {
             DefWithBody::Function(it) => it.into(),
             DefWithBody::Static(it) => it.into(),
             DefWithBody::Const(it) => it.into(),
+            DefWithBody::Variant(it) => it.into(),
         };
         for diag in hir_ty::diagnostics::incorrect_case(db, krate, def.into()) {
             acc.push(diag.into())
@@ -2485,7 +2546,7 @@ impl TypeParam {
         let resolver = self.id.parent().resolver(db.upcast());
         let ty = params.get(local_idx)?.clone();
         let subst = TyBuilder::placeholder_subst(db, self.id.parent());
-        let ty = ty.substitute(Interner, &subst_prefix(&subst, local_idx));
+        let ty = ty.substitute(Interner, &subst);
         match ty.data(Interner) {
             GenericArgData::Ty(x) => Some(Type::new_with_resolver_inner(db, &resolver, x.clone())),
             _ => None,
@@ -2739,7 +2800,22 @@ impl Type {
     }
 
     fn from_def(db: &dyn HirDatabase, def: impl HasResolver + Into<TyDefId>) -> Type {
-        let ty = TyBuilder::def_ty(db, def.into()).fill_with_unknown().build();
+        let ty_def = def.into();
+        let parent_subst = match ty_def {
+            TyDefId::TypeAliasId(id) => match id.lookup(db.upcast()).container {
+                ItemContainerId::TraitId(id) => {
+                    let subst = TyBuilder::subst_for_def(db, id, None).fill_with_unknown().build();
+                    Some(subst)
+                }
+                ItemContainerId::ImplId(id) => {
+                    let subst = TyBuilder::subst_for_def(db, id, None).fill_with_unknown().build();
+                    Some(subst)
+                }
+                _ => None,
+            },
+            _ => None,
+        };
+        let ty = TyBuilder::def_ty(db, ty_def, parent_subst).fill_with_unknown().build();
         Type::new(db, def, ty)
     }
 
@@ -2879,7 +2955,11 @@ impl Type {
         alias: TypeAlias,
     ) -> Option<Type> {
         let mut args = args.iter();
-        let projection = TyBuilder::assoc_type_projection(db, alias.id)
+        let trait_id = match alias.id.lookup(db.upcast()).container {
+            ItemContainerId::TraitId(id) => id,
+            _ => unreachable!("non assoc type alias reached in normalize_trait_assoc_type()"),
+        };
+        let parent_subst = TyBuilder::subst_for_def(db, trait_id, None)
             .push(self.ty.clone())
             .fill(|x| {
                 // FIXME: this code is not covered in tests.
@@ -2891,6 +2971,8 @@ impl Type {
                 }
             })
             .build();
+        // FIXME: We don't handle GATs yet.
+        let projection = TyBuilder::assoc_type_projection(db, alias.id, Some(parent_subst)).build();
 
         let ty = db.normalize_projection(projection, self.env.clone());
         if ty.is_unknown() {
@@ -2940,7 +3022,7 @@ impl Type {
 
         let adt = adt_id.into();
         match adt {
-            Adt::Struct(s) => matches!(s.repr(db), Some(ReprKind::Packed)),
+            Adt::Struct(s) => matches!(s.repr(db), Some(ReprData { packed: true, .. })),
             _ => false,
         }
     }

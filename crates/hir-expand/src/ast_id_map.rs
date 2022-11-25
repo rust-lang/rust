@@ -93,7 +93,12 @@ impl AstIdMap {
         // trait does not change ids of top-level items, which helps caching.
         bdfs(node, |it| {
             let kind = it.kind();
-            if ast::Item::can_cast(kind) || ast::BlockExpr::can_cast(kind) {
+            if ast::Item::can_cast(kind)
+                || ast::BlockExpr::can_cast(kind)
+                || ast::Variant::can_cast(kind)
+                || ast::RecordField::can_cast(kind)
+                || ast::TupleField::can_cast(kind)
+            {
                 res.alloc(&it);
                 true
             } else {

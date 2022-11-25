@@ -31,7 +31,6 @@ mod highlight_related;
 mod expand_macro;
 mod extend_selection;
 mod file_structure;
-mod fn_references;
 mod folding_ranges;
 mod goto_declaration;
 mod goto_definition;
@@ -236,7 +235,7 @@ impl Analysis {
             Env::default(),
             Ok(Vec::new()),
             false,
-            CrateOrigin::CratesIo { repo: None },
+            CrateOrigin::CratesIo { repo: None, name: None },
         );
         change.change_file(file_id, Some(Arc::new(text)));
         change.set_crate_graph(crate_graph);
@@ -427,11 +426,6 @@ impl Analysis {
         search_scope: Option<SearchScope>,
     ) -> Cancellable<Option<Vec<ReferenceSearchResult>>> {
         self.with_db(|db| references::find_all_refs(&Semantics::new(db), position, search_scope))
-    }
-
-    /// Finds all methods and free functions for the file. Does not return tests!
-    pub fn find_all_methods(&self, file_id: FileId) -> Cancellable<Vec<FileRange>> {
-        self.with_db(|db| fn_references::find_all_methods(db, file_id))
     }
 
     /// Returns a short text describing element at position.

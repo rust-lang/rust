@@ -598,11 +598,14 @@ impl<'a> InferenceTable<'a> {
             .build();
 
         let projection = {
-            let b = TyBuilder::assoc_type_projection(self.db, output_assoc_type);
+            let b = TyBuilder::subst_for_def(self.db, fn_once_trait, None);
             if b.remaining() != 2 {
                 return None;
             }
-            b.push(ty.clone()).push(arg_ty).build()
+            let fn_once_subst = b.push(ty.clone()).push(arg_ty).build();
+
+            TyBuilder::assoc_type_projection(self.db, output_assoc_type, Some(fn_once_subst))
+                .build()
         };
 
         let trait_env = self.trait_env.env.clone();

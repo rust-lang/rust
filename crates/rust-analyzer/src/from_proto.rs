@@ -95,22 +95,22 @@ pub(crate) fn annotation(
 
     match resolve {
         lsp_ext::CodeLensResolveData::Impls(params) => {
-            let file_id =
-                snap.url_to_file_id(&params.text_document_position_params.text_document.uri)?;
+            let pos @ FilePosition { file_id, .. } =
+                file_position(snap, params.text_document_position_params)?;
             let line_index = snap.file_line_index(file_id)?;
 
             Ok(Annotation {
                 range: text_range(&line_index, code_lens.range)?,
-                kind: AnnotationKind::HasImpls { file_id, data: None },
+                kind: AnnotationKind::HasImpls { pos, data: None },
             })
         }
         lsp_ext::CodeLensResolveData::References(params) => {
-            let file_id = snap.url_to_file_id(&params.text_document.uri)?;
+            let pos @ FilePosition { file_id, .. } = file_position(snap, params)?;
             let line_index = snap.file_line_index(file_id)?;
 
             Ok(Annotation {
                 range: text_range(&line_index, code_lens.range)?,
-                kind: AnnotationKind::HasReferences { file_id, data: None },
+                kind: AnnotationKind::HasReferences { pos, data: None },
             })
         }
     }

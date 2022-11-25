@@ -1177,13 +1177,13 @@ pub(crate) fn code_lens(
                 })
             }
         }
-        AnnotationKind::HasImpls { file_id, data } => {
+        AnnotationKind::HasImpls { pos: file_range, data } => {
             if !client_commands_config.show_reference {
                 return Ok(());
             }
-            let line_index = snap.file_line_index(file_id)?;
+            let line_index = snap.file_line_index(file_range.file_id)?;
             let annotation_range = range(&line_index, annotation.range);
-            let url = url(snap, file_id);
+            let url = url(snap, file_range.file_id);
 
             let id = lsp_types::TextDocumentIdentifier { uri: url.clone() };
 
@@ -1221,13 +1221,13 @@ pub(crate) fn code_lens(
                 data: Some(to_value(lsp_ext::CodeLensResolveData::Impls(goto_params)).unwrap()),
             })
         }
-        AnnotationKind::HasReferences { file_id, data } => {
+        AnnotationKind::HasReferences { pos: file_range, data } => {
             if !client_commands_config.show_reference {
                 return Ok(());
             }
-            let line_index = snap.file_line_index(file_id)?;
+            let line_index = snap.file_line_index(file_range.file_id)?;
             let annotation_range = range(&line_index, annotation.range);
-            let url = url(snap, file_id);
+            let url = url(snap, file_range.file_id);
 
             let id = lsp_types::TextDocumentIdentifier { uri: url.clone() };
 

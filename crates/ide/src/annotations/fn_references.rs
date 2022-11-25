@@ -4,30 +4,38 @@
 use hir::Semantics;
 use ide_assists::utils::test_related_attribute;
 use ide_db::RootDatabase;
-use syntax::{ast, ast::HasName, AstNode, SyntaxNode};
+use syntax::{ast, ast::HasName, AstNode, SyntaxNode, TextRange};
 
-use crate::{FileId, FileRange};
+use crate::FileId;
 
-pub(crate) fn find_all_methods(db: &RootDatabase, file_id: FileId) -> Vec<FileRange> {
+pub(super) fn find_all_methods(
+    db: &RootDatabase,
+    file_id: FileId,
+) -> Vec<(TextRange, Option<TextRange>)> {
     let sema = Semantics::new(db);
     let source_file = sema.parse(file_id);
-    source_file.syntax().descendants().filter_map(|it| method_range(it, file_id)).collect()
+    source_file.syntax().descendants().filter_map(|it| method_range(it)).collect()
 }
 
-fn method_range(item: SyntaxNode, file_id: FileId) -> Option<FileRange> {
+fn method_range(item: SyntaxNode) -> Option<(TextRange, Option<TextRange>)> {
     ast::Fn::cast(item).and_then(|fn_def| {
         if test_related_attribute(&fn_def).is_some() {
             None
         } else {
-            fn_def.name().map(|name| FileRange { file_id, range: name.syntax().text_range() })
+            Some((
+                fn_def.syntax().text_range(),
+                fn_def.name().map(|name| name.syntax().text_range()),
+            ))
         }
     })
 }
 
 #[cfg(test)]
 mod tests {
+    use syntax::TextRange;
+
     use crate::fixture;
-    use crate::{FileRange, TextSize};
+    use crate::TextSize;
     use std::ops::RangeInclusive;
 
     #[test]
@@ -42,7 +50,7 @@ mod tests {
         "#,
         );
 
-        let refs = analysis.find_all_methods(pos.file_id).unwrap();
+        let refs = super::find_all_methods(&analysis.db, pos.file_id);
         check_result(&refs, &[3..=13, 27..=33, 47..=57]);
     }
 
@@ -57,7 +65,7 @@ mod tests {
         "#,
         );
 
-        let refs = analysis.find_all_methods(pos.file_id).unwrap();
+        let refs = super::find_all_methods(&analysis.db, pos.file_id);
         check_result(&refs, &[19..=22, 35..=38]);
     }
 
@@ -78,17 +86,18 @@ mod tests {
         "#,
         );
 
-        let refs = analysis.find_all_methods(pos.file_id).unwrap();
+        let refs = super::find_all_methods(&analysis.db, pos.file_id);
         check_result(&refs, &[28..=34]);
     }
 
-    fn check_result(refs: &[FileRange], expected: &[RangeInclusive<u32>]) {
+    fn check_result(refs: &[(TextRange, Option<TextRange>)], expected: &[RangeInclusive<u32>]) {
         assert_eq!(refs.len(), expected.len());
 
-        for (i, item) in refs.iter().enumerate() {
+        for (i, &(full, focus)) in refs.iter().enumerate() {
             let range = &expected[i];
-            assert_eq!(TextSize::from(*range.start()), item.range.start());
-            assert_eq!(TextSize::from(*range.end()), item.range.end());
+            let item = focus.unwrap_or(full);
+            assert_eq!(TextSize::from(*range.start()), item.start());
+            assert_eq!(TextSize::from(*range.end()), item.end());
         }
     }
 }

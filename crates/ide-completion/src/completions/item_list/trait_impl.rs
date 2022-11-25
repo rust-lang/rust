@@ -38,7 +38,7 @@ use ide_db::{
 };
 use syntax::{
     ast::{self, edit_in_place::AttrsOwnerEdit},
-    AstNode, SyntaxElement, SyntaxKind, SyntaxNode, TextRange, T,
+    AstNode, SyntaxElement, SyntaxKind, TextRange, T,
 };
 use text_edit::TextEdit;
 
@@ -85,20 +85,36 @@ fn complete_trait_impl_name(
     name: &Option<ast::Name>,
     kind: ImplCompletionKind,
 ) -> Option<()> {
-    let token = ctx.token.clone();
     let item = match name {
         Some(name) => name.syntax().parent(),
-        None => if token.kind() == SyntaxKind::WHITESPACE { token.prev_token()? } else { token }
-            .parent(),
+        None => {
+            let token = &ctx.token;
+            match token.kind() {
+                SyntaxKind::WHITESPACE => token.prev_token()?,
+                _ => token.clone(),
+            }
+            .parent()
+        }
     }?;
-    complete_trait_impl(
-        acc,
-        ctx,
-        kind,
-        replacement_range(ctx, &item),
-        // item -> ASSOC_ITEM_LIST -> IMPL
-        &ast::Impl::cast(item.parent()?.parent()?)?,
-    );
+    let item = ctx.sema.original_syntax_node(&item)?;
+    // item -> ASSOC_ITEM_LIST -> IMPL
+    let impl_def = ast::Impl::cast(item.parent()?.parent()?)?;
+    let replacement_range = {
+        // ctx.sema.original_ast_node(item)?;
+        let first_child = item
+            .children_with_tokens()
+            .find(|child| {
+                !matches!(
+                    child.kind(),
+                    SyntaxKind::COMMENT | SyntaxKind::WHITESPACE | SyntaxKind::ATTR
+                )
+            })
+            .unwrap_or_else(|| SyntaxElement::Node(item.clone()));
+
+        TextRange::new(first_child.text_range().start(), ctx.source_range().end())
+    };
+
+    complete_trait_impl(acc, ctx, kind, replacement_range, &impl_def);
     Some(())
 }
 
@@ -339,17 +355,6 @@ fn function_declaration(node: &ast::Fn, needs_whitespace: bool) -> String {
     let syntax = node.text().slice(range).to_string();
 
     syntax.trim_end().to_owned()
-}
-
-fn replacement_range(ctx: &CompletionContext<'_>, item: &SyntaxNode) -> TextRange {
-    let first_child = item
-        .children_with_tokens()
-        .find(|child| {
-            !matches!(child.kind(), SyntaxKind::COMMENT | SyntaxKind::WHITESPACE | SyntaxKind::ATTR)
-        })
-        .unwrap_or_else(|| SyntaxElement::Node(item.clone()));
-
-    TextRange::new(first_child.text_range().start(), ctx.source_range().end())
 }
 
 #[cfg(test)]

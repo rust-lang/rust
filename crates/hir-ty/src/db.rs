@@ -6,8 +6,8 @@ use std::sync::Arc;
 use arrayvec::ArrayVec;
 use base_db::{impl_intern_key, salsa, CrateId, Upcast};
 use hir_def::{
-    db::DefDatabase, expr::ExprId, BlockId, ConstId, ConstParamId, DefWithBodyId, FunctionId,
-    GenericDefId, ImplId, LifetimeParamId, LocalFieldId, TypeOrConstParamId, VariantId,
+    db::DefDatabase, expr::ExprId, BlockId, ConstId, ConstParamId, DefWithBodyId, EnumVariantId,
+    FunctionId, GenericDefId, ImplId, LifetimeParamId, LocalFieldId, TypeOrConstParamId, VariantId,
 };
 use la_arena::ArenaMap;
 
@@ -43,9 +43,13 @@ pub trait HirDatabase: DefDatabase + Upcast<dyn DefDatabase> {
     #[salsa::invoke(crate::lower::const_param_ty_query)]
     fn const_param_ty(&self, def: ConstParamId) -> Ty;
 
-    #[salsa::invoke(crate::consteval::const_eval_query)]
+    #[salsa::invoke(crate::consteval::const_eval_variant_query)]
     #[salsa::cycle(crate::consteval::const_eval_recover)]
     fn const_eval(&self, def: ConstId) -> Result<ComputedExpr, ConstEvalError>;
+
+    #[salsa::invoke(crate::consteval::const_eval_query_variant)]
+    #[salsa::cycle(crate::consteval::const_eval_variant_recover)]
+    fn const_eval_variant(&self, def: EnumVariantId) -> Result<ComputedExpr, ConstEvalError>;
 
     #[salsa::invoke(crate::lower::impl_trait_query)]
     fn impl_trait(&self, def: ImplId) -> Option<Binders<TraitRef>>;
@@ -116,6 +120,8 @@ pub trait HirDatabase: DefDatabase + Upcast<dyn DefDatabase> {
     fn intern_impl_trait_id(&self, id: ImplTraitId) -> InternedOpaqueTyId;
     #[salsa::interned]
     fn intern_closure(&self, id: (DefWithBodyId, ExprId)) -> InternedClosureId;
+    #[salsa::interned]
+    fn intern_generator(&self, id: (DefWithBodyId, ExprId)) -> InternedGeneratorId;
 
     #[salsa::invoke(chalk_db::associated_ty_data_query)]
     fn associated_ty_data(&self, id: chalk_db::AssocTypeId) -> Arc<chalk_db::AssociatedTyDatum>;
@@ -188,6 +194,9 @@ fn infer_wait(db: &dyn HirDatabase, def: DefWithBodyId) -> Arc<InferenceResult> 
         DefWithBodyId::ConstId(it) => {
             db.const_data(it).name.clone().unwrap_or_else(Name::missing).to_string()
         }
+        DefWithBodyId::VariantId(it) => {
+            db.enum_data(it.parent).variants[it.local_id].name.to_string()
+        }
     });
     db.infer_query(def)
 }
@@ -225,6 +234,10 @@ impl_intern_key!(InternedOpaqueTyId);
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
 pub struct InternedClosureId(salsa::InternId);
 impl_intern_key!(InternedClosureId);
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
+pub struct InternedGeneratorId(salsa::InternId);
+impl_intern_key!(InternedGeneratorId);
 
 /// This exists just for Chalk, because Chalk just has a single `FnDefId` where
 /// we have different IDs for struct and enum variant constructors.

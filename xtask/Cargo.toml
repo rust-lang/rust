@@ -11,5 +11,5 @@ anyhow = "1.0.57"
 flate2 = "1.0.24"
 write-json = "0.1.2"
 xshell = "0.2.2"
-xflags = "0.2.4"
+xflags = "0.3.0"
 # Avoid adding more dependencies to this crate

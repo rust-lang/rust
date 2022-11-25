@@ -2,9 +2,9 @@
 
 #[macro_use]
 mod utils;
-use expect_test::expect;
-use paths::AbsPathBuf;
 use utils::*;
+
+use expect_test::expect;
 
 #[test]
 fn test_derive_empty() {
@@ -156,11 +156,4 @@ fn list_test_macros() {
         DerivePanic [CustomDerive]
         DeriveError [CustomDerive]"#]]
     .assert_eq(&res);
-}
-
-#[test]
-fn test_version_check() {
-    let path = AbsPathBuf::assert(fixtures::proc_macro_test_dylib_path());
-    let info = proc_macro_api::read_dylib_info(&path).unwrap();
-    assert!(info.version.1 >= 50);
 }

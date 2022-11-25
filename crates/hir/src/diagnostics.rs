@@ -1,7 +1,7 @@
 //! Re-export diagnostics such that clients of `hir` don't have to depend on
 //! low-level crates.
 //!
-//! This probably isn't the best way to do this -- ideally, diagnistics should
+//! This probably isn't the best way to do this -- ideally, diagnostics should
 //! be expressed in terms of hir types themselves.
 use base_db::CrateId;
 use cfg::{CfgExpr, CfgOptions};

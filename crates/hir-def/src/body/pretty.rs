@@ -2,8 +2,10 @@
 
 use std::fmt::{self, Write};
 
+use syntax::ast::HasName;
+
 use crate::{
-    expr::{Array, BindingAnnotation, Literal, Statement},
+    expr::{Array, BindingAnnotation, ClosureKind, Literal, Movability, Statement},
     pretty::{print_generic_args, print_path, print_type_ref},
     type_ref::TypeRef,
 };
@@ -31,6 +33,16 @@ pub(super) fn print_body_hir(db: &dyn DefDatabase, body: &Body, owner: DefWithBo
                 None => "_".to_string(),
             };
             format!("const {} = ", name)
+        }
+        DefWithBodyId::VariantId(it) => {
+            needs_semi = false;
+            let src = it.parent.child_source(db);
+            let variant = &src.value[it.local_id];
+            let name = match &variant.name() {
+                Some(name) => name.to_string(),
+                None => "_".to_string(),
+            };
+            format!("{}", name)
         }
     };
 
@@ -350,7 +362,10 @@ impl<'a> Printer<'a> {
                 self.print_expr(*index);
                 w!(self, "]");
             }
-            Expr::Closure { args, arg_types, ret_type, body } => {
+            Expr::Closure { args, arg_types, ret_type, body, closure_kind } => {
+                if let ClosureKind::Generator(Movability::Static) = closure_kind {
+                    w!(self, "static ");
+                }
                 w!(self, "|");
                 for (i, (pat, ty)) in args.iter().zip(arg_types.iter()).enumerate() {
                     if i != 0 {

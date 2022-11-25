@@ -7,6 +7,7 @@ use ide_db::{
     },
 };
 use itertools::Itertools;
+use stdx::format_to;
 use syntax::{ast, AstNode, AstToken, NodeOrToken, SyntaxKind::COMMA, TextRange};
 
 // Assist: move_format_string_arg
@@ -78,20 +79,26 @@ pub(crate) fn move_format_string_arg(acc: &mut Assists, ctx: &AssistContext<'_>)
 
             // Extract existing arguments in macro
             let tokens =
-                tt.token_trees_and_tokens().filter_map(NodeOrToken::into_token).collect_vec();
+                tt.token_trees_and_tokens().collect_vec();
 
             let mut existing_args: Vec<String> = vec![];
 
             let mut current_arg = String::new();
-            if let [_opening_bracket, format_string, _args_start_comma, tokens @ .., end_bracket] =
+            if let [_opening_bracket, NodeOrToken::Token(format_string), _args_start_comma, tokens @ .., NodeOrToken::Token(end_bracket)] =
                 tokens.as_slice()
             {
                 for t in tokens {
-                    if t.kind() == COMMA {
-                        existing_args.push(current_arg.trim().into());
-                        current_arg.clear();
-                    } else {
-                        current_arg.push_str(t.text());
+                    match t {
+                        NodeOrToken::Node(n) => {
+                            format_to!(current_arg, "{n}");
+                        },
+                        NodeOrToken::Token(t) if t.kind() == COMMA=> {
+                            existing_args.push(current_arg.trim().into());
+                            current_arg.clear();
+                        },
+                        NodeOrToken::Token(t) => {
+                            current_arg.push_str(t.text());
+                        },
                     }
                 }
                 existing_args.push(current_arg.trim().into());
@@ -260,6 +267,27 @@ fn main() {
                 r#"
 fn main() {
     print!("{} {:b} {}"$0, 1, x + 1, Struct(1, 2));
+}
+"#,
+            ),
+        );
+    }
+
+    #[test]
+    fn nested_tt() {
+        check_assist(
+            move_format_string_arg,
+            &add_macro_decl(
+                r#"
+fn main() {
+    print!("My name is {} {x$0 + x}", stringify!(Paperino))
+}
+"#,
+            ),
+            &add_macro_decl(
+                r#"
+fn main() {
+    print!("My name is {} {}"$0, stringify!(Paperino), x + x)
 }
 "#,
             ),
