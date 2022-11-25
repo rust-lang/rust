@@ -54,5 +54,28 @@ help: use `+= 1` instead
 LL |     if { i += 1; i } == 1 { }
    |        ~   +++++++++
 
-error: aborting due to 5 previous errors
+error: Rust has no postfix increment operator
+  --> $DIR/issue-104867-inc-dec.rs:33:6
+   |
+LL |     i++;
+   |      ^^ not a valid postfix operator
+   |
+help: use `+= 1` instead
+   |
+LL |     i += 1;
+   |       ~~~~
+
+error: Rust has no prefix increment operator
+  --> $DIR/issue-104867-inc-dec.rs:41:5
+   |
+LL |     ++i;
+   |     ^^ not a valid prefix operator
+   |
+help: use `+= 1` instead
+   |
+LL -     ++i;
+LL +     i += 1;
+   |
+
+error: aborting due to 7 previous errors
 

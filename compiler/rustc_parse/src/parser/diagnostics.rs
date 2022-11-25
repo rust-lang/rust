@@ -1259,10 +1259,9 @@ impl<'a> Parser<'a> {
         &mut self,
         operand_expr: P<Expr>,
         op_span: Span,
-        prev_is_semi: bool,
+        start_stmt: bool,
     ) -> PResult<'a, P<Expr>> {
-        let standalone =
-            if prev_is_semi { IsStandalone::Standalone } else { IsStandalone::Subexpr };
+        let standalone = if start_stmt { IsStandalone::Standalone } else { IsStandalone::Subexpr };
         let kind = IncDecRecovery { standalone, op: IncOrDec::Inc, fixity: UnaryFixity::Pre };
         self.recover_from_inc_dec(operand_expr, kind, op_span)
     }
@@ -1271,10 +1270,10 @@ impl<'a> Parser<'a> {
         &mut self,
         operand_expr: P<Expr>,
         op_span: Span,
-        prev_is_semi: bool,
+        start_stmt: bool,
     ) -> PResult<'a, P<Expr>> {
         let kind = IncDecRecovery {
-            standalone: if prev_is_semi { IsStandalone::Standalone } else { IsStandalone::Subexpr },
+            standalone: if start_stmt { IsStandalone::Standalone } else { IsStandalone::Subexpr },
             op: IncOrDec::Inc,
             fixity: UnaryFixity::Post,
         };
@@ -1305,20 +1304,22 @@ impl<'a> Parser<'a> {
             UnaryFixity::Post => (base.span.shrink_to_lo(), op_span),
         };
 
-        let Ok(base_src) = self.span_to_snippet(base.span)
-        else { return help_base_case(err, base) };
         match kind.standalone {
             IsStandalone::Standalone => {
                 self.inc_dec_standalone_suggest(kind, spans).emit_verbose(&mut err)
             }
-            IsStandalone::Subexpr => match kind.fixity {
-                UnaryFixity::Pre => {
-                    self.prefix_inc_dec_suggest(base_src, kind, spans).emit(&mut err)
+            IsStandalone::Subexpr => {
+                let Ok(base_src) = self.span_to_snippet(base.span)
+                else { return help_base_case(err, base) };
+                match kind.fixity {
+                    UnaryFixity::Pre => {
+                        self.prefix_inc_dec_suggest(base_src, kind, spans).emit(&mut err)
+                    }
+                    UnaryFixity::Post => {
+                        self.postfix_inc_dec_suggest(base_src, kind, spans).emit(&mut err)
+                    }
                 }
-                UnaryFixity::Post => {
-                    self.postfix_inc_dec_suggest(base_src, kind, spans).emit(&mut err)
-                }
-            },
+            }
         }
         Err(err)
     }

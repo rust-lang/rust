@@ -27,4 +27,19 @@ fn test5() {
     if ++i == 1 { } //~ ERROR Rust has no prefix increment operator
 }
 
+fn test6() {
+    let mut i = 0;
+    loop { break; }
+    i++; //~ ERROR Rust has no postfix increment operator
+    loop { break; }
+    ++i;
+}
+
+fn test7() {
+    let mut i = 0;
+    loop { break; }
+    ++i; //~ ERROR Rust has no prefix increment operator
+}
+
+
 fn main() {}
