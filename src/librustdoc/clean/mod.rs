@@ -225,7 +225,7 @@ pub(crate) fn clean_middle_const<'tcx>(
 ) -> Constant {
     // FIXME: instead of storing the stringified expression, store `self` directly instead.
     Constant {
-        type_: clean_middle_ty(constant.ty(), cx, None),
+        type_: clean_middle_ty(constant.ty, cx, None),
         kind: ConstantKind::TyConst { expr: constant.to_string().into() },
     }
 }

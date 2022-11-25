@@ -2239,7 +2239,7 @@ impl<'tcx> ConstantKind<'tcx> {
     #[inline(always)]
     pub fn ty(&self) -> Ty<'tcx> {
         match self {
-            ConstantKind::Ty(c) => c.ty(),
+            ConstantKind::Ty(c) => c.ty,
             ConstantKind::Val(_, ty) | ConstantKind::Unevaluated(_, ty) => *ty,
         }
     }
@@ -2248,7 +2248,7 @@ impl<'tcx> ConstantKind<'tcx> {
     pub fn try_to_value(self, tcx: TyCtxt<'tcx>) -> Option<interpret::ConstValue<'tcx>> {
         match self {
             ConstantKind::Ty(c) => match c.kind() {
-                ty::ConstKind::Value(valtree) => Some(tcx.valtree_to_const_val((c.ty(), valtree))),
+                ty::ConstKind::Value(valtree) => Some(tcx.valtree_to_const_val((c.ty, valtree))),
                 _ => None,
             },
             ConstantKind::Val(val, _) => Some(val),
@@ -2292,7 +2292,7 @@ impl<'tcx> ConstantKind<'tcx> {
             Self::Ty(c) => {
                 if let Some(val) = c.kind().try_eval_for_mir(tcx, param_env) {
                     match val {
-                        Ok(val) => Self::Val(val, c.ty()),
+                        Ok(val) => Self::Val(val, c.ty),
                         Err(_) => Self::Ty(tcx.const_error(self.ty())),
                     }
                 } else {
@@ -2582,10 +2582,10 @@ impl<'tcx> ConstantKind<'tcx> {
     pub fn from_const(c: ty::Const<'tcx>, tcx: TyCtxt<'tcx>) -> Self {
         match c.kind() {
             ty::ConstKind::Value(valtree) => {
-                let const_val = tcx.valtree_to_const_val((c.ty(), valtree));
-                Self::Val(const_val, c.ty())
+                let const_val = tcx.valtree_to_const_val((c.ty, valtree));
+                Self::Val(const_val, c.ty)
             }
-            ty::ConstKind::Unevaluated(uv) => Self::Unevaluated(uv.expand(), c.ty()),
+            ty::ConstKind::Unevaluated(uv) => Self::Unevaluated(uv.expand(), c.ty),
             _ => Self::Ty(c),
         }
     }

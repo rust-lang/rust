@@ -123,7 +123,7 @@ fn encode_const<'tcx>(
     let mut s = String::from('L');
 
     // Element type
-    s.push_str(&encode_ty(tcx, c.ty(), dict, options));
+    s.push_str(&encode_ty(tcx, c.ty, dict, options));
 
     // The only allowed types of const parameters are bool, u8, u16, u32, u64, u128, usize i8, i16,
     // i32, i64, i128, isize, and char. The bool value false is encoded as 0 and true as 1.
@@ -139,7 +139,7 @@ fn encode_const<'tcx>(
     }
 
     if let Some(scalar_int) = c.kind().try_to_scalar_int() {
-        let signed = c.ty().is_signed();
+        let signed = c.ty.is_signed();
         match scalar_int.size().bits() {
             8 if signed => push_signed_value(&mut s, scalar_int.try_to_i8().unwrap(), 0),
             16 if signed => push_signed_value(&mut s, scalar_int.try_to_i16().unwrap(), 0),
@@ -156,7 +156,7 @@ fn encode_const<'tcx>(
             }
         };
     } else {
-        bug!("encode_const: unexpected type `{:?}`", c.ty());
+        bug!("encode_const: unexpected type `{:?}`", c.ty);
     }
 
     // Close the "L..E" pair

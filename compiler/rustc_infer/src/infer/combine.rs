@@ -753,7 +753,7 @@ impl<'tcx> TypeRelation<'tcx> for Generalizer<'_, 'tcx> {
                                 origin: var_value.origin,
                                 val: ConstVariableValue::Unknown { universe: self.for_universe },
                             });
-                            Ok(self.tcx().mk_const_var(new_var_id, c.ty()))
+                            Ok(self.tcx().mk_const_var(new_var_id, c.ty))
                         }
                     }
                 }
@@ -767,7 +767,7 @@ impl<'tcx> TypeRelation<'tcx> for Generalizer<'_, 'tcx> {
                 )?;
                 Ok(self.tcx().mk_const(
                     ty::ConstKind::Unevaluated(ty::UnevaluatedConst { def, substs }),
-                    c.ty(),
+                    c.ty,
                 ))
             }
             _ => relate::super_relate_consts(self, c, c),
@@ -975,7 +975,7 @@ impl<'tcx> TypeRelation<'tcx> for ConstInferUnifier<'_, 'tcx> {
                                         },
                                     },
                                 );
-                            Ok(self.tcx().mk_const_var(new_var_id, c.ty()))
+                            Ok(self.tcx().mk_const_var(new_var_id, c.ty))
                         }
                     }
                 }
@@ -990,7 +990,7 @@ impl<'tcx> TypeRelation<'tcx> for ConstInferUnifier<'_, 'tcx> {
 
                 Ok(self.tcx().mk_const(
                     ty::ConstKind::Unevaluated(ty::UnevaluatedConst { def, substs }),
-                    c.ty(),
+                    c.ty,
                 ))
             }
             _ => relate::super_relate_consts(self, c, c),

@@ -28,7 +28,7 @@ pub(crate) fn destructure_const<'tcx>(
         _ => bug!("cannot destructure constant {:?}", const_),
     };
 
-    let (fields, variant) = match const_.ty().kind() {
+    let (fields, variant) = match const_.ty.kind() {
         ty::Array(inner_ty, _) | ty::Slice(inner_ty) => {
             // construct the consts for the elements of the array/slice
             let field_consts = branches

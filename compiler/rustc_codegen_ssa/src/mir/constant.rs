@@ -29,7 +29,7 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
             mir::ConstantKind::Ty(ct) => match ct.kind() {
                 ty::ConstKind::Unevaluated(uv) => uv.expand(),
                 ty::ConstKind::Value(val) => {
-                    return Ok(self.cx.tcx().valtree_to_const_val((ct.ty(), val)));
+                    return Ok(self.cx.tcx().valtree_to_const_val((ct.ty, val)));
                 }
                 err => span_bug!(
                     constant.span,

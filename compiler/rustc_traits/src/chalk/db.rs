@@ -757,7 +757,7 @@ fn binders_for<'tcx>(
                 chalk_ir::VariableKind::Ty(chalk_ir::TyVariableKind::General)
             }
             ty::subst::GenericArgKind::Const(c) => {
-                chalk_ir::VariableKind::Const(c.ty().lower_into(interner))
+                chalk_ir::VariableKind::Const(c.ty.lower_into(interner))
             }
         }),
     )

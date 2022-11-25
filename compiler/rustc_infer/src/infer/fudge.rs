@@ -235,7 +235,7 @@ impl<'a, 'tcx> TypeFolder<'tcx> for InferenceFudger<'a, 'tcx> {
                 // Recreate it with a fresh variable here.
                 let idx = (vid.index - self.const_vars.0.start.index) as usize;
                 let origin = self.const_vars.1[idx];
-                self.infcx.next_const_var(ct.ty(), origin)
+                self.infcx.next_const_var(ct.ty, origin)
             } else {
                 ct
             }

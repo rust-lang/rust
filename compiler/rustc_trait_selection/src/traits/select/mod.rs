@@ -680,7 +680,7 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
                             match self.infcx.try_const_eval_resolve(
                                 obligation.param_env,
                                 unevaluated,
-                                c.ty(),
+                                c.ty,
                                 Some(obligation.cause.span),
                             ) {
                                 Ok(val) => Ok(val),

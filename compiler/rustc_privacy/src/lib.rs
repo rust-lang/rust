@@ -284,7 +284,7 @@ where
     }
 
     fn visit_const(&mut self, c: Const<'tcx>) -> ControlFlow<Self::BreakTy> {
-        self.visit_ty(c.ty())?;
+        self.visit_ty(c.ty)?;
         let tcx = self.def_id_visitor.tcx();
         if let Ok(Some(ct)) = AbstractConst::from_const(tcx, c) {
             walk_abstract_const(tcx, ct, |node| match node.root(tcx) {

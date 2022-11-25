@@ -591,7 +591,7 @@ impl<'tcx> Printer<'tcx> for &mut SymbolMangler<'tcx> {
         }
 
         let start = self.out.len();
-        let ty = ct.ty();
+        let ty = ct.ty;
 
         match ty.kind() {
             ty::Uint(_) | ty::Int(_) | ty::Bool | ty::Char => {
@@ -650,7 +650,7 @@ impl<'tcx> Printer<'tcx> for &mut SymbolMangler<'tcx> {
                     }
                     _ => {
                         let pointee_ty = ct
-                            .ty()
+                            .ty
                             .builtin_deref(true)
                             .expect("tried to dereference on non-ptr type")
                             .ty;
@@ -672,7 +672,7 @@ impl<'tcx> Printer<'tcx> for &mut SymbolMangler<'tcx> {
                     Ok(this)
                 };
 
-                match *ct.ty().kind() {
+                match *ct.ty.kind() {
                     ty::Array(..) | ty::Slice(_) => {
                         self.push("A");
                         self = print_field_list(self)?;
@@ -721,7 +721,7 @@ impl<'tcx> Printer<'tcx> for &mut SymbolMangler<'tcx> {
                 }
             }
             _ => {
-                bug!("symbol_names: unsupported constant of type `{}` ({:?})", ct.ty(), ct);
+                bug!("symbol_names: unsupported constant of type `{}` ({:?})", ct.ty, ct);
             }
         }
 

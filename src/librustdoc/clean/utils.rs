@@ -244,7 +244,7 @@ pub(crate) fn print_const(cx: &DocContext<'_>, n: ty::Const<'_>) -> String {
         }
         // array lengths are obviously usize
         ty::ConstKind::Value(ty::ValTree::Leaf(scalar))
-            if *n.ty().kind() == ty::Uint(ty::UintTy::Usize) =>
+            if *n.ty.kind() == ty::Uint(ty::UintTy::Usize) =>
         {
             scalar.to_string()
         }

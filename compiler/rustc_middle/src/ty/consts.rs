@@ -32,7 +32,7 @@ impl<'tcx> fmt::Debug for Const<'tcx> {
         // This reflects what `Const` looked liked before `Interned` was
         // introduced. We print it like this to avoid having to update expected
         // output in a lot of tests.
-        write!(f, "Const {{ ty: {:?}, kind: {:?} }}", self.ty(), self.kind())
+        write!(f, "Const {{ ty: {:?}, kind: {:?} }}", self.ty, self.kind())
     }
 }
 
@@ -47,11 +47,6 @@ pub struct ConstS<'tcx> {
 static_assert_size!(ConstS<'_>, 40);
 
 impl<'tcx> Const<'tcx> {
-    #[inline]
-    pub fn ty(self) -> Ty<'tcx> {
-        self.ty
-    }
-
     #[inline]
     pub fn kind(self) -> ConstKind<'tcx> {
         self.kind
@@ -206,7 +201,7 @@ impl<'tcx> Const<'tcx> {
         param_env: ParamEnv<'tcx>,
         ty: Ty<'tcx>,
     ) -> Option<u128> {
-        assert_eq!(self.ty(), ty);
+        assert_eq!(self.ty, ty);
         let size = tcx.layout_of(param_env.with_reveal_all_normalized(tcx).and(ty)).ok()?.size;
         // if `ty` does not depend on generic parameters, use an empty param_env
         self.kind().eval(tcx, param_env).try_to_bits(size)
@@ -228,8 +223,8 @@ impl<'tcx> Const<'tcx> {
     pub fn eval(self, tcx: TyCtxt<'tcx>, param_env: ParamEnv<'tcx>) -> Const<'tcx> {
         if let Some(val) = self.kind().try_eval_for_typeck(tcx, param_env) {
             match val {
-                Ok(val) => Const::from_value(tcx, val, self.ty()),
-                Err(guar) => tcx.const_error_with_guaranteed(self.ty(), guar),
+                Ok(val) => Const::from_value(tcx, val, self.ty),
+                Err(guar) => tcx.const_error_with_guaranteed(self.ty, guar),
             }
         } else {
             // Either the constant isn't evaluatable or ValTree creation failed.

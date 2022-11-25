@@ -604,11 +604,11 @@ pub fn super_relate_consts<'tcx, R: TypeRelation<'tcx>>(
     let a_ty;
     let b_ty;
     if relation.tcx().features().adt_const_params {
-        a_ty = tcx.normalize_erasing_regions(relation.param_env(), a.ty());
-        b_ty = tcx.normalize_erasing_regions(relation.param_env(), b.ty());
+        a_ty = tcx.normalize_erasing_regions(relation.param_env(), a.ty);
+        b_ty = tcx.normalize_erasing_regions(relation.param_env(), b.ty);
     } else {
-        a_ty = tcx.erase_regions(a.ty());
-        b_ty = tcx.erase_regions(b.ty());
+        a_ty = tcx.erase_regions(a.ty);
+        b_ty = tcx.erase_regions(b.ty);
     }
     if a_ty != b_ty {
         relation.tcx().sess.delay_span_bug(
@@ -662,7 +662,7 @@ pub fn super_relate_consts<'tcx, R: TypeRelation<'tcx>>(
             )?;
             return Ok(tcx.mk_const(
                 ty::ConstKind::Unevaluated(ty::UnevaluatedConst { def: au.def, substs }),
-                a.ty(),
+                a.ty,
             ));
         }
         _ => false,

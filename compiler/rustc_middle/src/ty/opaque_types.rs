@@ -208,7 +208,7 @@ impl<'tcx> TypeFolder<'tcx> for ReverseMapper<'tcx> {
                             });
                         }
 
-                        self.tcx().const_error(ct.ty())
+                        self.tcx().const_error(ct.ty)
                     }
                 }
             }

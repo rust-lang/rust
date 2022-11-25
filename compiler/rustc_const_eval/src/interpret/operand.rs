@@ -592,7 +592,7 @@ impl<'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
         let val = self.tcx.normalize_erasing_regions(self.param_env, *val);
         match val {
             mir::ConstantKind::Ty(ct) => {
-                let ty = ct.ty();
+                let ty = ct.ty;
                 let valtree = self.eval_ty_constant(ct, span)?;
                 let const_val = self.tcx.valtree_to_const_val((ty, valtree));
                 self.const_val_to_op(const_val, ty, layout)

@@ -476,7 +476,7 @@ impl<'a, 'tcx> ObligationProcessor for FulfillProcessor<'a, 'tcx> {
                             match self.selcx.infcx().try_const_eval_resolve(
                                 obligation.param_env,
                                 unevaluated,
-                                c.ty(),
+                                c.ty,
                                 Some(obligation.cause.span),
                             ) {
                                 Ok(val) => Ok(val),

@@ -1195,7 +1195,7 @@ pub trait PrettyPrinter<'tcx>:
         define_scoped_cx!(self);
 
         if self.should_print_verbose() {
-            p!(write("Const({:?}: {:?})", ct.kind(), ct.ty()));
+            p!(write("Const({:?}: {:?})", ct.kind(), ct.ty));
             return Ok(self);
         }
 
@@ -1207,7 +1207,7 @@ pub trait PrettyPrinter<'tcx>:
                             write!(this, "_")?;
                             Ok(this)
                         },
-                        |this| this.print_type(ct.ty()),
+                        |this| this.print_type(ct.ty),
                         ": ",
                     )?;
                 } else {
@@ -1246,7 +1246,7 @@ pub trait PrettyPrinter<'tcx>:
             }
             ty::ConstKind::Param(ParamConst { name, .. }) => p!(write("{}", name)),
             ty::ConstKind::Value(value) => {
-                return self.pretty_print_const_valtree(value, ct.ty(), print_ty);
+                return self.pretty_print_const_valtree(value, ct.ty, print_ty);
             }
 
             ty::ConstKind::Bound(debruijn, bound_var) => {

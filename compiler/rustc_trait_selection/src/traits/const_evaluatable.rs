@@ -72,7 +72,7 @@ impl<'tcx> ConstUnifyCtxt<'tcx> {
                 let b_ct = b_ct.eval(self.tcx, self.param_env);
                 debug!("b_ct evaluated: {:?}", b_ct);
 
-                if a_ct.ty() != b_ct.ty() {
+                if a_ct.ty != b_ct.ty {
                     return false;
                 }
 

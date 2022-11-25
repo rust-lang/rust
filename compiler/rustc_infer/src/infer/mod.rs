@@ -2072,7 +2072,7 @@ fn replace_param_and_infer_substs_with_placeholder<'tcx>(
                 .into()
             }
             GenericArgKind::Const(ct) if ct.has_non_region_infer() || ct.has_non_region_param() => {
-                let ty = ct.ty();
+                let ty = ct.ty;
                 // If the type references param or infer, replace that too...
                 if ty.has_non_region_param() || ty.has_non_region_infer() {
                     bug!("const `{ct}`'s type should not reference params or types");

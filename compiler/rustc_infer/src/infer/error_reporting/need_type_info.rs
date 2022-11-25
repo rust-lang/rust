@@ -472,7 +472,7 @@ impl<'tcx> TypeErrCtxt<'_, 'tcx> {
                                 .into(),
                             GenericArgKind::Const(arg) => self
                                 .next_const_var(
-                                    arg.ty(),
+                                    arg.ty,
                                     ConstVariableOrigin {
                                         span: rustc_span::DUMMY_SP,
                                         kind: ConstVariableOriginKind::MiscVariable,

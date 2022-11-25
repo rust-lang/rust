@@ -1087,7 +1087,7 @@ where
                             origin: var_value.origin,
                             val: ConstVariableValue::Unknown { universe: self.universe },
                         });
-                        Ok(self.tcx().mk_const_var(new_var_id, a.ty()))
+                        Ok(self.tcx().mk_const_var(new_var_id, a.ty))
                     }
                 }
             }

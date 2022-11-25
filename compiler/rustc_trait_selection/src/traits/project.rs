@@ -818,7 +818,7 @@ impl<'tcx> TypeFolder<'tcx> for BoundVarReplacer<'_, 'tcx> {
                 let universe = self.universe_for(debruijn);
                 let p = ty::PlaceholderConst { universe, name: bound_const };
                 self.mapped_consts.insert(p, bound_const);
-                self.infcx.tcx.mk_const(ty::ConstKind::Placeholder(p), ct.ty())
+                self.infcx.tcx.mk_const(ty::ConstKind::Placeholder(p), ct.ty)
             }
             _ => ct.super_fold_with(self),
         }
@@ -953,7 +953,7 @@ impl<'tcx> TypeFolder<'tcx> for PlaceholderReplacer<'_, 'tcx> {
                     let db = ty::DebruijnIndex::from_usize(
                         self.universe_indices.len() - index + self.current_index.as_usize() - 1,
                     );
-                    self.tcx().mk_const(ty::ConstKind::Bound(db, *replace_var), ct.ty())
+                    self.tcx().mk_const(ty::ConstKind::Bound(db, *replace_var), ct.ty)
                 }
                 None => ct,
             }

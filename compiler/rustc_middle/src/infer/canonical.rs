@@ -345,7 +345,7 @@ impl<'tcx> CanonicalVarValues<'tcx> {
                     GenericArgKind::Const(ct) => tcx
                         .mk_const(
                             ty::ConstKind::Bound(ty::INNERMOST, ty::BoundVar::from_u32(i)),
-                            ct.ty(),
+                            ct.ty,
                         )
                         .into(),
                 })

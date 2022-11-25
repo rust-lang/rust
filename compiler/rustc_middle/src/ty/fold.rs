@@ -436,7 +436,7 @@ where
     fn fold_const(&mut self, ct: ty::Const<'tcx>) -> ty::Const<'tcx> {
         match ct.kind() {
             ty::ConstKind::Bound(debruijn, bound_const) if debruijn == self.current_index => {
-                let ct = self.delegate.replace_const(bound_const, ct.ty());
+                let ct = self.delegate.replace_const(bound_const, ct.ty);
                 ty::fold::shift_vars(self.tcx, ct, self.current_index.as_u32())
             }
             _ => ct.super_fold_with(self),
@@ -731,7 +731,7 @@ impl<'tcx> TypeFolder<'tcx> for Shifter<'tcx> {
                 ct
             } else {
                 let debruijn = debruijn.shifted_in(self.amount);
-                self.tcx.mk_const(ty::ConstKind::Bound(debruijn, bound_ct), ct.ty())
+                self.tcx.mk_const(ty::ConstKind::Bound(debruijn, bound_ct), ct.ty)
             }
         } else {
             ct.super_fold_with(self)

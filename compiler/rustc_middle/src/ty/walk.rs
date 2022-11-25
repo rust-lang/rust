@@ -205,7 +205,7 @@ fn push_inner<'tcx>(stack: &mut TypeWalkerStack<'tcx>, parent: GenericArg<'tcx>)
         },
         GenericArgKind::Lifetime(_) => {}
         GenericArgKind::Const(parent_ct) => {
-            stack.push(parent_ct.ty().into());
+            stack.push(parent_ct.ty.into());
             match parent_ct.kind() {
                 ty::ConstKind::Infer(_)
                 | ty::ConstKind::Param(_)

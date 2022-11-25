@@ -484,7 +484,7 @@ impl<'cx, 'tcx> TypeFolder<'tcx> for Canonicalizer<'cx, 'tcx> {
                             ui = ty::UniverseIndex::ROOT;
                         }
                         return self.canonicalize_const_var(
-                            CanonicalVarInfo { kind: CanonicalVarKind::Const(ui, ct.ty()) },
+                            CanonicalVarInfo { kind: CanonicalVarKind::Const(ui, ct.ty) },
                             ct,
                         );
                     }
@@ -503,7 +503,7 @@ impl<'cx, 'tcx> TypeFolder<'tcx> for Canonicalizer<'cx, 'tcx> {
             ty::ConstKind::Placeholder(placeholder) => {
                 return self.canonicalize_const_var(
                     CanonicalVarInfo {
-                        kind: CanonicalVarKind::PlaceholderConst(placeholder, ct.ty()),
+                        kind: CanonicalVarKind::PlaceholderConst(placeholder, ct.ty),
                     },
                     ct,
                 );
@@ -773,10 +773,8 @@ impl<'cx, 'tcx> Canonicalizer<'cx, 'tcx> {
             self.fold_const(bound_to)
         } else {
             let var = self.canonical_var(info, const_var.into());
-            self.tcx().mk_const(
-                ty::ConstKind::Bound(self.binder_index, var),
-                self.fold_ty(const_var.ty()),
-            )
+            self.tcx()
+                .mk_const(ty::ConstKind::Bound(self.binder_index, var), self.fold_ty(const_var.ty))
         }
     }
 }

@@ -131,7 +131,7 @@ mod rustc {
                 });
             }
 
-            let adt_def = c.ty().ty_adt_def()?;
+            let adt_def = c.ty.ty_adt_def()?;
 
             assert_eq!(
                 tcx.require_lang_item(LangItem::TransmuteOpts, None),

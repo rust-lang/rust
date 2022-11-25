@@ -803,9 +803,9 @@ impl<'tcx> TypeSuperFoldable<'tcx> for ty::Const<'tcx> {
         self,
         folder: &mut F,
     ) -> Result<Self, F::Error> {
-        let ty = self.ty().try_fold_with(folder)?;
+        let ty = self.ty.try_fold_with(folder)?;
         let kind = self.kind().try_fold_with(folder)?;
-        if ty != self.ty() || kind != self.kind() {
+        if ty != self.ty || kind != self.kind() {
             Ok(folder.tcx().mk_const(kind, ty))
         } else {
             Ok(self)
@@ -815,7 +815,7 @@ impl<'tcx> TypeSuperFoldable<'tcx> for ty::Const<'tcx> {
 
 impl<'tcx> TypeSuperVisitable<'tcx> for ty::Const<'tcx> {
     fn super_visit_with<V: TypeVisitor<'tcx>>(&self, visitor: &mut V) -> ControlFlow<V::BreakTy> {
-        self.ty().visit_with(visitor)?;
+        self.ty.visit_with(visitor)?;
         self.kind().visit_with(visitor)
     }
 }

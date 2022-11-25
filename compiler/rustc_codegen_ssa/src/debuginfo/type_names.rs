@@ -639,14 +639,14 @@ fn push_const_param<'tcx>(tcx: TyCtxt<'tcx>, ct: ty::Const<'tcx>, output: &mut S
         ty::ConstKind::Param(param) => {
             write!(output, "{}", param.name)
         }
-        _ => match ct.ty().kind() {
+        _ => match ct.ty.kind() {
             ty::Int(ity) => {
-                let bits = ct.eval_bits(tcx, ty::ParamEnv::reveal_all(), ct.ty());
+                let bits = ct.eval_bits(tcx, ty::ParamEnv::reveal_all(), ct.ty);
                 let val = Integer::from_int_ty(&tcx, *ity).size().sign_extend(bits) as i128;
                 write!(output, "{}", val)
             }
             ty::Uint(_) => {
-                let val = ct.eval_bits(tcx, ty::ParamEnv::reveal_all(), ct.ty());
+                let val = ct.eval_bits(tcx, ty::ParamEnv::reveal_all(), ct.ty);
                 write!(output, "{}", val)
             }
             ty::Bool => {
