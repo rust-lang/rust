@@ -19,6 +19,14 @@ pub use valtree::*;
 #[rustc_pass_by_value]
 pub struct Const<'tcx>(pub Interned<'tcx, ConstS<'tcx>>);
 
+impl<'tcx> std::ops::Deref for Const<'tcx> {
+    type Target = ConstS<'tcx>;
+
+    fn deref(&self) -> &Self::Target {
+        &self.0.0
+    }
+}
+
 impl<'tcx> fmt::Debug for Const<'tcx> {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         // This reflects what `Const` looked liked before `Interned` was
@@ -41,12 +49,12 @@ static_assert_size!(ConstS<'_>, 40);
 impl<'tcx> Const<'tcx> {
     #[inline]
     pub fn ty(self) -> Ty<'tcx> {
-        self.0.ty
+        self.ty
     }
 
     #[inline]
     pub fn kind(self) -> ConstKind<'tcx> {
-        self.0.kind
+        self.kind
     }
 
     /// Literals and const generic parameters are eagerly converted to a constant, everything else
