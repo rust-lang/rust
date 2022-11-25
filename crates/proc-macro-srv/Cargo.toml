@@ -24,7 +24,6 @@ tt = { path = "../tt", version = "0.0.0" }
 mbe = { path = "../mbe", version = "0.0.0" }
 paths = { path = "../paths", version = "0.0.0" }
 proc-macro-api = { path = "../proc-macro-api", version = "0.0.0" }
-crossbeam = "0.8.1"
 
 [dev-dependencies]
 expect-test = "1.4.0"

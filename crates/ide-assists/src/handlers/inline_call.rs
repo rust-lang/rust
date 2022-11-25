@@ -311,12 +311,16 @@ fn inline(
     } else {
         fn_body.clone_for_update()
     };
-    if let Some(t) = body.syntax().ancestors().find_map(ast::Impl::cast).and_then(|i| i.self_ty()) {
-        body.syntax()
-            .descendants_with_tokens()
-            .filter_map(NodeOrToken::into_token)
-            .filter(|tok| tok.kind() == SyntaxKind::SELF_TYPE_KW)
-            .for_each(|tok| ted::replace(tok, t.syntax()));
+    if let Some(imp) = body.syntax().ancestors().find_map(ast::Impl::cast) {
+        if !node.syntax().ancestors().any(|anc| &anc == imp.syntax()) {
+            if let Some(t) = imp.self_ty() {
+                body.syntax()
+                    .descendants_with_tokens()
+                    .filter_map(NodeOrToken::into_token)
+                    .filter(|tok| tok.kind() == SyntaxKind::SELF_TYPE_KW)
+                    .for_each(|tok| ted::replace(tok, t.syntax()));
+            }
+        }
     }
     let usages_for_locals = |local| {
         Definition::Local(local)
@@ -1220,6 +1224,31 @@ impl A {
 }
 fn main() {
     A(114514);
+}
+"#,
+        )
+    }
+
+    #[test]
+    fn inline_call_with_self_type_but_within_same_impl() {
+        check_assist(
+            inline_call,
+            r#"
+struct A(u32);
+impl A {
+    fn f() -> Self { Self(1919810) }
+    fn main() {
+        Self::f$0();
+    }
+}
+"#,
+            r#"
+struct A(u32);
+impl A {
+    fn f() -> Self { Self(1919810) }
+    fn main() {
+        Self(1919810);
+    }
 }
 "#,
         )

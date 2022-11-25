@@ -79,18 +79,18 @@ fn render(
         ..ctx.completion_relevance()
     });
 
-    if let Some(ref_match) = compute_ref_match(completion, &ret_type) {
-        match func_kind {
-            FuncKind::Function(path_ctx) => {
-                item.ref_match(ref_match, path_ctx.path.syntax().text_range().start());
-            }
-            FuncKind::Method(DotAccess { receiver: Some(receiver), .. }, _) => {
-                if let Some(original_expr) = completion.sema.original_ast_node(receiver.clone()) {
+    match func_kind {
+        FuncKind::Function(path_ctx) => {
+            super::path_ref_match(completion, path_ctx, &ret_type, &mut item);
+        }
+        FuncKind::Method(DotAccess { receiver: Some(receiver), .. }, _) => {
+            if let Some(original_expr) = completion.sema.original_ast_node(receiver.clone()) {
+                if let Some(ref_match) = compute_ref_match(completion, &ret_type) {
                     item.ref_match(ref_match, original_expr.syntax().text_range().start());
                 }
             }
-            _ => (),
         }
+        _ => (),
     }
 
     item.set_documentation(ctx.docs(func))

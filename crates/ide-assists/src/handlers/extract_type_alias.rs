@@ -171,6 +171,25 @@ fn collect_used_generics<'gp>(
         ast::Type::RefType(ref_) => generics.extend(
             ref_.lifetime().and_then(|lt| known_generics.iter().find(find_lifetime(&lt.text()))),
         ),
+        ast::Type::ArrayType(ar) => {
+            if let Some(expr) = ar.expr() {
+                if let ast::Expr::PathExpr(p) = expr {
+                    if let Some(path) = p.path() {
+                        if let Some(name_ref) = path.as_single_name_ref() {
+                            if let Some(param) = known_generics.iter().find(|gp| {
+                                if let ast::GenericParam::ConstParam(cp) = gp {
+                                    cp.name().map_or(false, |n| n.text() == name_ref.text())
+                                } else {
+                                    false
+                                }
+                            }) {
+                                generics.push(param);
+                            }
+                        }
+                    }
+                }
+            }
+        }
         _ => (),
     });
     // stable resort to lifetime, type, const
@@ -355,6 +374,31 @@ impl<'outer, Outer, const OUTER: usize> () {
     fn func<'inner, Inner, const INNER: usize>(_: Type<'inner, 'outer, Outer, Inner, INNER, OUTER>) {}
 }
 "#,
+        );
+    }
+
+    #[test]
+    fn issue_11197() {
+        check_assist(
+            extract_type_alias,
+            r#"
+struct Foo<T, const N: usize>
+where
+    [T; N]: Sized,
+{
+    arr: $0[T; N]$0,
+}
+            "#,
+            r#"
+type $0Type<T, const N: usize> = [T; N];
+
+struct Foo<T, const N: usize>
+where
+    [T; N]: Sized,
+{
+    arr: Type<T, N>,
+}
+            "#,
         );
     }
 }

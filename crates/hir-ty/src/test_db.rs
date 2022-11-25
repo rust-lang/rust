@@ -10,7 +10,7 @@ use base_db::{
 };
 use hir_def::{db::DefDatabase, ModuleId};
 use hir_expand::db::AstDatabase;
-use rustc_hash::{FxHashMap, FxHashSet};
+use stdx::hash::{NoHashHashMap, NoHashHashSet};
 use syntax::TextRange;
 use test_utils::extract_annotations;
 
@@ -80,7 +80,7 @@ impl FileLoader for TestDB {
     fn resolve_path(&self, path: AnchoredPath<'_>) -> Option<FileId> {
         FileLoaderDelegate(self).resolve_path(path)
     }
-    fn relevant_crates(&self, file_id: FileId) -> Arc<FxHashSet<CrateId>> {
+    fn relevant_crates(&self, file_id: FileId) -> Arc<NoHashHashSet<CrateId>> {
         FileLoaderDelegate(self).relevant_crates(file_id)
     }
 }
@@ -102,7 +102,7 @@ impl TestDB {
         self.module_for_file_opt(file_id).unwrap()
     }
 
-    pub(crate) fn extract_annotations(&self) -> FxHashMap<FileId, Vec<(TextRange, String)>> {
+    pub(crate) fn extract_annotations(&self) -> NoHashHashMap<FileId, Vec<(TextRange, String)>> {
         let mut files = Vec::new();
         let crate_graph = self.crate_graph();
         for krate in crate_graph.iter() {

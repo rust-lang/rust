@@ -587,6 +587,52 @@ Enables the use of rustfmt's unstable range formatting command for the
 `textDocument/rangeFormatting` request. The rustfmt option is unstable and only
 available on a nightly build.
 --
+[[rust-analyzer.semanticHighlighting.doc.comment.inject.enable]]rust-analyzer.semanticHighlighting.doc.comment.inject.enable (default: `true`)::
++
+--
+Inject additional highlighting into doc comments.
+
+When enabled, rust-analyzer will highlight rust source in doc comments as well as intra
+doc links.
+--
+[[rust-analyzer.semanticHighlighting.operator.enable]]rust-analyzer.semanticHighlighting.operator.enable (default: `true`)::
++
+--
+Use semantic tokens for operators.
+
+When disabled, rust-analyzer will emit semantic tokens only for operator tokens when
+they are tagged with modifiers.
+--
+[[rust-analyzer.semanticHighlighting.operator.specialization.enable]]rust-analyzer.semanticHighlighting.operator.specialization.enable (default: `false`)::
++
+--
+Use specialized semantic tokens for operators.
+
+When enabled, rust-analyzer will emit special token types for operator tokens instead
+of the generic `operator` token type.
+--
+[[rust-analyzer.semanticHighlighting.punctuation.enable]]rust-analyzer.semanticHighlighting.punctuation.enable (default: `false`)::
++
+--
+Use semantic tokens for punctuations.
+
+When disabled, rust-analyzer will emit semantic tokens only for punctuation tokens when
+they are tagged with modifiers or have a special role.
+--
+[[rust-analyzer.semanticHighlighting.punctuation.separate.macro.bang]]rust-analyzer.semanticHighlighting.punctuation.separate.macro.bang (default: `false`)::
++
+--
+When enabled, rust-analyzer will emit a punctuation semantic token for the `!` of macro
+calls.
+--
+[[rust-analyzer.semanticHighlighting.punctuation.specialization.enable]]rust-analyzer.semanticHighlighting.punctuation.specialization.enable (default: `false`)::
++
+--
+Use specialized semantic tokens for punctuations.
+
+When enabled, rust-analyzer will emit special token types for punctuation tokens instead
+of the generic `punctuation` token type.
+--
 [[rust-analyzer.semanticHighlighting.strings.enable]]rust-analyzer.semanticHighlighting.strings.enable (default: `true`)::
 +
 --

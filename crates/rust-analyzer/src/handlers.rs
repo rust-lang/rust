@@ -1504,10 +1504,8 @@ pub(crate) fn handle_semantic_tokens_full(
     let text = snap.analysis.file_text(file_id)?;
     let line_index = snap.file_line_index(file_id)?;
 
-    let highlights = snap.analysis.highlight(file_id)?;
-    let highlight_strings = snap.config.highlighting_strings();
-    let semantic_tokens =
-        to_proto::semantic_tokens(&text, &line_index, highlights, highlight_strings);
+    let highlights = snap.analysis.highlight(snap.config.highlighting_config(), file_id)?;
+    let semantic_tokens = to_proto::semantic_tokens(&text, &line_index, highlights);
 
     // Unconditionally cache the tokens
     snap.semantic_tokens_cache.lock().insert(params.text_document.uri, semantic_tokens.clone());
@@ -1525,10 +1523,8 @@ pub(crate) fn handle_semantic_tokens_full_delta(
     let text = snap.analysis.file_text(file_id)?;
     let line_index = snap.file_line_index(file_id)?;
 
-    let highlights = snap.analysis.highlight(file_id)?;
-    let highlight_strings = snap.config.highlighting_strings();
-    let semantic_tokens =
-        to_proto::semantic_tokens(&text, &line_index, highlights, highlight_strings);
+    let highlights = snap.analysis.highlight(snap.config.highlighting_config(), file_id)?;
+    let semantic_tokens = to_proto::semantic_tokens(&text, &line_index, highlights);
 
     let mut cache = snap.semantic_tokens_cache.lock();
     let cached_tokens = cache.entry(params.text_document.uri).or_default();
@@ -1556,10 +1552,8 @@ pub(crate) fn handle_semantic_tokens_range(
     let text = snap.analysis.file_text(frange.file_id)?;
     let line_index = snap.file_line_index(frange.file_id)?;
 
-    let highlights = snap.analysis.highlight_range(frange)?;
-    let highlight_strings = snap.config.highlighting_strings();
-    let semantic_tokens =
-        to_proto::semantic_tokens(&text, &line_index, highlights, highlight_strings);
+    let highlights = snap.analysis.highlight_range(snap.config.highlighting_config(), frange)?;
+    let semantic_tokens = to_proto::semantic_tokens(&text, &line_index, highlights);
     Ok(Some(semantic_tokens.into()))
 }
 

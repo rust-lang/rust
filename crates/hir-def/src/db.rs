@@ -20,7 +20,7 @@ use crate::{
     intern::Interned,
     item_tree::{AttrOwner, ItemTree},
     lang_item::{LangItemTarget, LangItems},
-    nameres::DefMap,
+    nameres::{diagnostics::DefDiagnostic, DefMap},
     visibility::{self, Visibility},
     AttrDefId, BlockId, BlockLoc, ConstId, ConstLoc, DefWithBodyId, EnumId, EnumLoc, ExternBlockId,
     ExternBlockLoc, FunctionId, FunctionLoc, GenericDefId, ImplId, ImplLoc, LocalEnumVariantId,
@@ -106,8 +106,15 @@ pub trait DefDatabase: InternDatabase + AstDatabase + Upcast<dyn AstDatabase> {
     #[salsa::invoke(ImplData::impl_data_query)]
     fn impl_data(&self, e: ImplId) -> Arc<ImplData>;
 
+    #[salsa::invoke(ImplData::impl_data_with_diagnostics_query)]
+    fn impl_data_with_diagnostics(&self, e: ImplId) -> (Arc<ImplData>, Arc<Vec<DefDiagnostic>>);
+
     #[salsa::invoke(TraitData::trait_data_query)]
     fn trait_data(&self, e: TraitId) -> Arc<TraitData>;
+
+    #[salsa::invoke(TraitData::trait_data_with_diagnostics_query)]
+    fn trait_data_with_diagnostics(&self, tr: TraitId)
+        -> (Arc<TraitData>, Arc<Vec<DefDiagnostic>>);
 
     #[salsa::invoke(TypeAliasData::type_alias_data_query)]
     fn type_alias_data(&self, e: TypeAliasId) -> Arc<TypeAliasData>;

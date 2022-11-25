@@ -12,8 +12,8 @@ use std::{ffi::OsString, fmt, iter, path::PathBuf};
 use flycheck::FlycheckConfig;
 use ide::{
     AssistConfig, CallableSnippets, CompletionConfig, DiagnosticsConfig, ExprFillDefaultMode,
-    HighlightRelatedConfig, HoverConfig, HoverDocFormat, InlayHintsConfig, JoinLinesConfig,
-    Snippet, SnippetScope,
+    HighlightConfig, HighlightRelatedConfig, HoverConfig, HoverDocFormat, InlayHintsConfig,
+    JoinLinesConfig, Snippet, SnippetScope,
 };
 use ide_db::{
     imports::insert_use::{ImportGranularity, InsertUseConfig, PrefixKind},
@@ -385,6 +385,34 @@ config_data! {
         /// available on a nightly build.
         rustfmt_rangeFormatting_enable: bool = "false",
 
+        /// Inject additional highlighting into doc comments.
+        ///
+        /// When enabled, rust-analyzer will highlight rust source in doc comments as well as intra
+        /// doc links.
+        semanticHighlighting_doc_comment_inject_enable: bool = "true",
+        /// Use semantic tokens for operators.
+        ///
+        /// When disabled, rust-analyzer will emit semantic tokens only for operator tokens when
+        /// they are tagged with modifiers.
+        semanticHighlighting_operator_enable: bool = "true",
+        /// Use specialized semantic tokens for operators.
+        ///
+        /// When enabled, rust-analyzer will emit special token types for operator tokens instead
+        /// of the generic `operator` token type.
+        semanticHighlighting_operator_specialization_enable: bool = "false",
+        /// Use semantic tokens for punctuations.
+        ///
+        /// When disabled, rust-analyzer will emit semantic tokens only for punctuation tokens when
+        /// they are tagged with modifiers or have a special role.
+        semanticHighlighting_punctuation_enable: bool = "false",
+        /// When enabled, rust-analyzer will emit a punctuation semantic token for the `!` of macro
+        /// calls.
+        semanticHighlighting_punctuation_separate_macro_bang: bool = "false",
+        /// Use specialized semantic tokens for punctuations.
+        ///
+        /// When enabled, rust-analyzer will emit special token types for punctuation tokens instead
+        /// of the generic `punctuation` token type.
+        semanticHighlighting_punctuation_specialization_enable: bool = "false",
         /// Use semantic tokens for strings.
         ///
         /// In some editors (e.g. vscode) semantic tokens override other highlighting grammars.
@@ -1171,8 +1199,19 @@ impl Config {
         }
     }
 
-    pub fn highlighting_strings(&self) -> bool {
-        self.data.semanticHighlighting_strings_enable
+    pub fn highlighting_config(&self) -> HighlightConfig {
+        HighlightConfig {
+            strings: self.data.semanticHighlighting_strings_enable,
+            punctuation: self.data.semanticHighlighting_punctuation_enable,
+            specialize_punctuation: self
+                .data
+                .semanticHighlighting_punctuation_specialization_enable,
+            macro_bang: self.data.semanticHighlighting_punctuation_separate_macro_bang,
+            operator: self.data.semanticHighlighting_operator_enable,
+            specialize_operator: self.data.semanticHighlighting_operator_specialization_enable,
+            inject_doc_comment: self.data.semanticHighlighting_doc_comment_inject_enable,
+            syntactic_name_ref_highlighting: false,
+        }
     }
 
     pub fn hover(&self) -> HoverConfig {

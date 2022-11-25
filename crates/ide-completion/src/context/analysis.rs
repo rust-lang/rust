@@ -588,12 +588,15 @@ impl<'a> CompletionContext<'a> {
         };
 
         let path = segment.parent_path();
+        let original_path = find_node_in_file_compensated(sema, original_file, &path);
+
         let mut path_ctx = PathCompletionCtx {
             has_call_parens: false,
             has_macro_bang: false,
             qualified: Qualified::No,
             parent: None,
             path: path.clone(),
+            original_path,
             kind: PathKind::Item { kind: ItemListKind::SourceFile },
             has_type_args: false,
             use_tree_parent: false,

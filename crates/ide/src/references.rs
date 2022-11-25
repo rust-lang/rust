@@ -14,8 +14,9 @@ use ide_db::{
     base_db::FileId,
     defs::{Definition, NameClass, NameRefClass},
     search::{ReferenceCategory, SearchScope, UsageSearchResult},
-    FxHashMap, RootDatabase,
+    RootDatabase,
 };
+use stdx::hash::NoHashHashMap;
 use syntax::{
     algo::find_node_at_offset,
     ast::{self, HasName},
@@ -29,7 +30,7 @@ use crate::{FilePosition, NavigationTarget, TryToNav};
 #[derive(Debug, Clone)]
 pub struct ReferenceSearchResult {
     pub declaration: Option<Declaration>,
-    pub references: FxHashMap<FileId, Vec<(TextRange, Option<ReferenceCategory>)>>,
+    pub references: NoHashHashMap<FileId, Vec<(TextRange, Option<ReferenceCategory>)>>,
 }
 
 #[derive(Debug, Clone)]

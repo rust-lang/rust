@@ -9,10 +9,11 @@
 use std::{fmt, ops, panic::RefUnwindSafe, str::FromStr, sync::Arc};
 
 use cfg::CfgOptions;
-use rustc_hash::{FxHashMap, FxHashSet};
+use rustc_hash::FxHashMap;
+use stdx::hash::{NoHashHashMap, NoHashHashSet};
 use syntax::SmolStr;
 use tt::Subtree;
-use vfs::{file_set::FileSet, FileId, VfsPath};
+use vfs::{file_set::FileSet, AnchoredPath, FileId, VfsPath};
 
 /// Files are grouped into source roots. A source root is a directory on the
 /// file systems which is watched for changes. Typically it corresponds to a
@@ -31,22 +32,30 @@ pub struct SourceRoot {
     /// Libraries are considered mostly immutable, this assumption is used to
     /// optimize salsa's query structure
     pub is_library: bool,
-    pub(crate) file_set: FileSet,
+    file_set: FileSet,
 }
 
 impl SourceRoot {
     pub fn new_local(file_set: FileSet) -> SourceRoot {
         SourceRoot { is_library: false, file_set }
     }
+
     pub fn new_library(file_set: FileSet) -> SourceRoot {
         SourceRoot { is_library: true, file_set }
     }
+
     pub fn path_for_file(&self, file: &FileId) -> Option<&VfsPath> {
         self.file_set.path_for_file(file)
     }
+
     pub fn file_for_path(&self, path: &VfsPath) -> Option<&FileId> {
         self.file_set.file_for_path(path)
     }
+
+    pub fn resolve_path(&self, path: AnchoredPath<'_>) -> Option<FileId> {
+        self.file_set.resolve_path(path)
+    }
+
     pub fn iter(&self) -> impl Iterator<Item = FileId> + '_ {
         self.file_set.iter()
     }
@@ -72,11 +81,18 @@ impl SourceRoot {
 /// <https://github.com/rust-lang/rust-analyzer/blob/master/docs/dev/architecture.md#serialization>
 #[derive(Debug, Clone, Default /* Serialize, Deserialize */)]
 pub struct CrateGraph {
-    arena: FxHashMap<CrateId, CrateData>,
+    arena: NoHashHashMap<CrateId, CrateData>,
 }
 
-#[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord)]
 pub struct CrateId(pub u32);
+
+impl stdx::hash::NoHashHashable for CrateId {}
+impl std::hash::Hash for CrateId {
+    fn hash<H: std::hash::Hasher>(&self, state: &mut H) {
+        self.0.hash(state);
+    }
+}
 
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub struct CrateName(SmolStr);
@@ -342,7 +358,7 @@ impl CrateGraph {
         // Check if adding a dep from `from` to `to` creates a cycle. To figure
         // that out, look for a  path in the *opposite* direction, from `to` to
         // `from`.
-        if let Some(path) = self.find_path(&mut FxHashSet::default(), dep.crate_id, from) {
+        if let Some(path) = self.find_path(&mut NoHashHashSet::default(), dep.crate_id, from) {
             let path = path.into_iter().map(|it| (it, self[it].display_name.clone())).collect();
             let err = CyclicDependenciesError { path };
             assert!(err.from().0 == from && err.to().0 == dep.crate_id);
@@ -365,7 +381,7 @@ impl CrateGraph {
     /// including the crate itself.
     pub fn transitive_deps(&self, of: CrateId) -> impl Iterator<Item = CrateId> {
         let mut worklist = vec![of];
-        let mut deps = FxHashSet::default();
+        let mut deps = NoHashHashSet::default();
 
         while let Some(krate) = worklist.pop() {
             if !deps.insert(krate) {
@@ -382,10 +398,10 @@ impl CrateGraph {
     /// including the crate itself.
     pub fn transitive_rev_deps(&self, of: CrateId) -> impl Iterator<Item = CrateId> {
         let mut worklist = vec![of];
-        let mut rev_deps = FxHashSet::default();
+        let mut rev_deps = NoHashHashSet::default();
         rev_deps.insert(of);
 
-        let mut inverted_graph = FxHashMap::<_, Vec<_>>::default();
+        let mut inverted_graph = NoHashHashMap::<_, Vec<_>>::default();
         self.arena.iter().for_each(|(&krate, data)| {
             data.dependencies
                 .iter()
@@ -409,7 +425,7 @@ impl CrateGraph {
     /// come before the crate itself).
     pub fn crates_in_topological_order(&self) -> Vec<CrateId> {
         let mut res = Vec::new();
-        let mut visited = FxHashSet::default();
+        let mut visited = NoHashHashSet::default();
 
         for krate in self.arena.keys().copied() {
             go(self, &mut visited, &mut res, krate);
@@ -419,7 +435,7 @@ impl CrateGraph {
 
         fn go(
             graph: &CrateGraph,
-            visited: &mut FxHashSet<CrateId>,
+            visited: &mut NoHashHashSet<CrateId>,
             res: &mut Vec<CrateId>,
             source: CrateId,
         ) {
@@ -459,7 +475,7 @@ impl CrateGraph {
 
     fn find_path(
         &self,
-        visited: &mut FxHashSet<CrateId>,
+        visited: &mut NoHashHashSet<CrateId>,
         from: CrateId,
         to: CrateId,
     ) -> Option<Vec<CrateId>> {

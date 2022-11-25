@@ -112,6 +112,10 @@ xflags::xflags! {
         cmd lsif
             required path: PathBuf
         {}
+
+        cmd scip
+            required path: PathBuf
+        {}
     }
 }
 
@@ -140,6 +144,7 @@ pub enum RustAnalyzerCmd {
     Search(Search),
     ProcMacro(ProcMacro),
     Lsif(Lsif),
+    Scip(Scip),
 }
 
 #[derive(Debug)]
@@ -204,6 +209,11 @@ pub struct ProcMacro;
 
 #[derive(Debug)]
 pub struct Lsif {
+    pub path: PathBuf,
+}
+
+#[derive(Debug)]
+pub struct Scip {
     pub path: PathBuf,
 }
 

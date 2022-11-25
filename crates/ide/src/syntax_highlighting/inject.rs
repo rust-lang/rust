@@ -15,13 +15,14 @@ use syntax::{
 
 use crate::{
     doc_links::{doc_attributes, extract_definitions_from_docs, resolve_doc_path_for_def},
-    syntax_highlighting::{highlights::Highlights, injector::Injector},
+    syntax_highlighting::{highlights::Highlights, injector::Injector, HighlightConfig},
     Analysis, HlMod, HlRange, HlTag, RootDatabase,
 };
 
 pub(super) fn ra_fixture(
     hl: &mut Highlights,
     sema: &Semantics<'_, RootDatabase>,
+    config: HighlightConfig,
     literal: &ast::String,
     expanded: &ast::String,
 ) -> Option<()> {
@@ -63,7 +64,13 @@ pub(super) fn ra_fixture(
 
     let (analysis, tmp_file_id) = Analysis::from_single_file(inj.take_text());
 
-    for mut hl_range in analysis.highlight(tmp_file_id).unwrap() {
+    for mut hl_range in analysis
+        .highlight(
+            HighlightConfig { syntactic_name_ref_highlighting: false, ..config },
+            tmp_file_id,
+        )
+        .unwrap()
+    {
         for range in inj.map_range_up(hl_range.range) {
             if let Some(range) = literal.map_range_up(range) {
                 hl_range.range = range;
@@ -86,6 +93,7 @@ const RUSTDOC_FENCES: [&str; 2] = ["```", "~~~"];
 pub(super) fn doc_comment(
     hl: &mut Highlights,
     sema: &Semantics<'_, RootDatabase>,
+    config: HighlightConfig,
     src_file_id: FileId,
     node: &SyntaxNode,
 ) {
@@ -206,7 +214,14 @@ pub(super) fn doc_comment(
 
     let (analysis, tmp_file_id) = Analysis::from_single_file(inj.take_text());
 
-    if let Ok(ranges) = analysis.with_db(|db| super::highlight(db, tmp_file_id, None, true)) {
+    if let Ok(ranges) = analysis.with_db(|db| {
+        super::highlight(
+            db,
+            HighlightConfig { syntactic_name_ref_highlighting: true, ..config },
+            tmp_file_id,
+            None,
+        )
+    }) {
         for HlRange { range, highlight, binding_hash } in ranges {
             for range in inj.map_range_up(range) {
                 hl.add(HlRange { range, highlight: highlight | HlMod::Injected, binding_hash });
