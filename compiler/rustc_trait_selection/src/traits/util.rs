@@ -203,13 +203,13 @@ pub fn impl_subject_and_oblig<'a, 'tcx>(
     let subject = selcx.tcx().bound_impl_subject(impl_def_id);
     let subject = subject.subst(selcx.tcx(), impl_substs);
     let InferOk { value: subject, obligations: normalization_obligations1 } = selcx
-        .infcx()
+        .infcx
         .partially_normalize_associated_types_in(ObligationCause::dummy(), param_env, subject);
 
     let predicates = selcx.tcx().predicates_of(impl_def_id);
     let predicates = predicates.instantiate(selcx.tcx(), impl_substs);
     let InferOk { value: predicates, obligations: normalization_obligations2 } = selcx
-        .infcx()
+        .infcx
         .partially_normalize_associated_types_in(ObligationCause::dummy(), param_env, predicates);
     let impl_obligations =
         super::predicates_for_generics(|_, _| ObligationCause::dummy(), param_env, predicates);

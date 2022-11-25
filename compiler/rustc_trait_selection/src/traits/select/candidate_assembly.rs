@@ -238,7 +238,7 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
             param_env: obligation.param_env,
             cause: obligation.cause.clone(),
             recursion_depth: obligation.recursion_depth,
-            predicate: self.infcx().resolve_vars_if_possible(obligation.predicate),
+            predicate: self.infcx.resolve_vars_if_possible(obligation.predicate),
         };
 
         if obligation.predicate.skip_binder().self_ty().is_ty_var() {
@@ -689,9 +689,9 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
 
             debug!(?poly_trait_ref, "assemble_candidates_from_object_ty");
 
-            let poly_trait_predicate = self.infcx().resolve_vars_if_possible(obligation.predicate);
+            let poly_trait_predicate = self.infcx.resolve_vars_if_possible(obligation.predicate);
             let placeholder_trait_predicate =
-                self.infcx().replace_bound_vars_with_placeholders(poly_trait_predicate);
+                self.infcx.replace_bound_vars_with_placeholders(poly_trait_predicate);
 
             // Count only those upcast versions that match the trait-ref
             // we are looking for. Specifically, do not only check for the
@@ -940,7 +940,7 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
             return;
         }
 
-        let self_ty = self.infcx().shallow_resolve(obligation.self_ty());
+        let self_ty = self.infcx.shallow_resolve(obligation.self_ty());
         match self_ty.skip_binder().kind() {
             ty::Opaque(..)
             | ty::Dynamic(..)
@@ -1007,7 +1007,7 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
         obligation: &TraitObligation<'tcx>,
         candidates: &mut SelectionCandidateSet<'tcx>,
     ) {
-        let self_ty = self.infcx().shallow_resolve(obligation.self_ty().skip_binder());
+        let self_ty = self.infcx.shallow_resolve(obligation.self_ty().skip_binder());
         match self_ty.kind() {
             ty::Tuple(_) => {
                 candidates.vec.push(BuiltinCandidate { has_nested: false });

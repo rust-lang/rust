@@ -101,7 +101,7 @@ impl IntercrateAmbiguityCause {
 }
 
 pub struct SelectionContext<'cx, 'tcx> {
-    infcx: &'cx InferCtxt<'tcx>,
+    pub infcx: &'cx InferCtxt<'tcx>,
 
     /// Freshener used specifically for entries on the obligation
     /// stack. This ensures that all entries on the stack at one time
@@ -235,10 +235,6 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
     pub fn take_intercrate_ambiguity_causes(&mut self) -> FxIndexSet<IntercrateAmbiguityCause> {
         assert!(self.is_intercrate());
         self.intercrate_ambiguity_causes.take().unwrap_or_default()
-    }
-
-    pub fn infcx(&self) -> &'cx InferCtxt<'tcx> {
-        self.infcx
     }
 
     pub fn tcx(&self) -> TyCtxt<'tcx> {
@@ -693,10 +689,7 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
 
                     match (evaluate(c1), evaluate(c2)) {
                         (Ok(c1), Ok(c2)) => {
-                            match self
-                                .infcx()
-                                .at(&obligation.cause, obligation.param_env)
-                                .eq(c1, c2)
+                            match self.infcx.at(&obligation.cause, obligation.param_env).eq(c1, c2)
                             {
                                 Ok(_) => Ok(EvaluatedToOk),
                                 Err(_) => Ok(EvaluatedToErr),
@@ -1212,7 +1205,7 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
         }
 
         let obligation = &stack.obligation;
-        let predicate = self.infcx().resolve_vars_if_possible(obligation.predicate);
+        let predicate = self.infcx.resolve_vars_if_possible(obligation.predicate);
 
         // Okay to skip binder because of the nature of the
         // trait-ref-is-knowable check, which does not care about
@@ -1349,9 +1342,9 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
         &mut self,
         obligation: &TraitObligation<'tcx>,
     ) -> smallvec::SmallVec<[(usize, ty::BoundConstness); 2]> {
-        let poly_trait_predicate = self.infcx().resolve_vars_if_possible(obligation.predicate);
+        let poly_trait_predicate = self.infcx.resolve_vars_if_possible(obligation.predicate);
         let placeholder_trait_predicate =
-            self.infcx().replace_bound_vars_with_placeholders(poly_trait_predicate);
+            self.infcx.replace_bound_vars_with_placeholders(poly_trait_predicate);
         debug!(?placeholder_trait_predicate);
 
         let tcx = self.infcx.tcx;
@@ -2131,7 +2124,7 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
         obligation: &TraitObligation<'tcx>,
     ) -> Result<Normalized<'tcx, SubstsRef<'tcx>>, ()> {
         let placeholder_obligation =
-            self.infcx().replace_bound_vars_with_placeholders(obligation.predicate);
+            self.infcx.replace_bound_vars_with_placeholders(obligation.predicate);
         let placeholder_obligation_trait_ref = placeholder_obligation.trait_ref;
 
         let impl_substs = self.infcx.fresh_substs_for_item(obligation.cause.span, impl_def_id);
