@@ -44,9 +44,7 @@ fn tester(fn_arg: i32) {
     println!("val='{local_i32}'"); // space+tab
     println!("val='{local_i32}'"); // tab+space
     println!(
-        "val='{
-    }'",
-        local_i32
+        "val='{local_i32}'"
     );
     println!("{local_i32}");
     println!("{fn_arg}");
@@ -110,8 +108,7 @@ fn tester(fn_arg: i32) {
     println!("{local_f64:width$.prec$}");
     println!("{local_f64:width$.prec$} {local_f64} {width} {prec}");
     println!(
-        "{0:1$.2$} {0:2$.1$} {1:0$.2$} {1:2$.0$} {2:0$.1$} {2:1$.0$}",
-        local_i32, width, prec,
+        "{local_i32:width$.prec$} {local_i32:prec$.width$} {width:local_i32$.prec$} {width:prec$.local_i32$} {prec:local_i32$.width$} {prec:width$.local_i32$}",
     );
     println!(
         "{0:1$.2$} {0:2$.1$} {1:0$.2$} {1:2$.0$} {2:0$.1$} {2:1$.0$} {3}",
@@ -142,9 +139,7 @@ fn tester(fn_arg: i32) {
     println!(no_param_str!(), local_i32);
 
     println!(
-        "{}",
-        // comment with a comma , in it
-        val,
+        "{val}",
     );
     println!("{val}");
 
