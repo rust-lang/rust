@@ -19,24 +19,24 @@ use hir_def::{
     resolver::resolver_for_expr,
     ConstParamId, FieldId, ItemContainerId, Lookup,
 };
-use hir_expand::{name, name::Name};
+use hir_expand::name::Name;
 use stdx::always;
 use syntax::ast::RangeOp;
 
 use crate::{
     autoderef::{self, Autoderef},
     consteval,
-    infer::{coerce::CoerceMany, find_continuable, path, BreakableKind},
+    infer::{coerce::CoerceMany, find_continuable, BreakableKind},
     lower::{
         const_or_path_to_chalk, generic_arg_to_chalk, lower_to_chalk_mutability, ParamLoweringMode,
     },
     mapping::{from_chalk, ToChalk},
     method_resolution::{self, lang_names_for_bin_op, VisibleFromModule},
     primitive::{self, UintTy},
-    static_lifetime, to_assoc_type_id, to_chalk_trait_id,
+    static_lifetime, to_chalk_trait_id,
     utils::{generics, Generics},
-    AdtId, AliasEq, AliasTy, Binders, CallableDefId, FnPointer, FnSig, FnSubst, Interner,
-    ProjectionTy, Rawness, Scalar, Substitution, TraitRef, Ty, TyBuilder, TyExt, TyKind,
+    AdtId, Binders, CallableDefId, FnPointer, FnSig, FnSubst, Interner, Rawness, Scalar,
+    Substitution, TraitRef, Ty, TyBuilder, TyExt, TyKind,
 };
 
 use super::{
@@ -564,29 +564,9 @@ impl<'a> InferenceContext<'a> {
                 let inner_ty = self.infer_expr_inner(*expr, &Expectation::none());
                 self.resolve_associated_type(inner_ty, self.resolve_future_future_output())
             }
-            &Expr::Try { expr } => {
-                let inner_ty = self.infer_expr_inner(expr, &Expectation::none());
-                match self.resolve_try_impl_for(inner_ty.clone()) {
-                    Some((_, Some((output, residual)))) => {
-                        if let Some((_trait, false)) =
-                            self.implements_from_residual(self.return_ty.clone(), residual)
-                        {
-                            self.push_diagnostic(InferenceDiagnostic::IncorrectTryTarget {
-                                expr: tgt_expr,
-                            });
-                        }
-                        output
-                    }
-                    Some((trait_, None)) => {
-                        self.push_diagnostic(InferenceDiagnostic::DoesNotImplement {
-                            expr,
-                            trait_,
-                            ty: inner_ty,
-                        });
-                        self.err_ty()
-                    }
-                    None => self.err_ty(),
-                }
+            Expr::Try { expr } => {
+                let inner_ty = self.infer_expr_inner(*expr, &Expectation::none());
+                self.resolve_associated_type(inner_ty, self.resolve_ops_try_ok())
             }
             Expr::Cast { expr, type_ref } => {
                 // FIXME: propagate the "castable to" expectation (and find a test case that shows this is necessary)
@@ -1549,68 +1529,5 @@ impl<'a> InferenceContext<'a> {
         let res = cb(self);
         let ctx = self.breakables.pop().expect("breakable stack broken");
         (ctx.may_break.then(|| ctx.coerce.complete()), res)
-    }
-
-    /// Check whether `ty` implements `FromResidual<r>`
-    fn implements_from_residual(&mut self, ty: Ty, r: Ty) -> Option<(hir_def::TraitId, bool)> {
-        let from_residual_trait = self
-            .resolver
-            .resolve_known_trait(self.db.upcast(), &(super::path![core::ops::FromResidual]))?;
-        let r = GenericArgData::Ty(r).intern(Interner);
-        let b = TyBuilder::trait_ref(self.db, from_residual_trait);
-        if b.remaining() != 2 {
-            return Some((from_residual_trait, false));
-        }
-        let trait_ref = b.push(ty).push(r).build();
-        Some((from_residual_trait, self.table.try_obligation(trait_ref.cast(Interner)).is_some()))
-    }
-
-    fn resolve_try_impl_for(&mut self, ty: Ty) -> Option<(hir_def::TraitId, Option<(Ty, Ty)>)> {
-        let path = path![core::ops::Try];
-        let trait_ = self.resolver.resolve_known_trait(self.db.upcast(), &path)?;
-
-        let trait_ref = TyBuilder::trait_ref(self.db, trait_).push(ty).build();
-        let substitution = trait_ref.substitution.clone();
-        self.push_obligation(trait_ref.clone().cast(Interner));
-
-        let trait_data = self.db.trait_data(trait_);
-        let output = trait_data.associated_type_by_name(&name![Output]);
-        let residual = trait_data.associated_type_by_name(&name![Residual]);
-
-        let output_ty = match output {
-            Some(output) => {
-                let output_ty = self.table.new_type_var();
-                let alias_eq = AliasEq {
-                    alias: AliasTy::Projection(ProjectionTy {
-                        associated_ty_id: to_assoc_type_id(output),
-                        substitution: substitution.clone(),
-                    }),
-                    ty: output_ty.clone(),
-                };
-                self.push_obligation(alias_eq.cast(Interner));
-                output_ty
-            }
-            None => self.err_ty(),
-        };
-        let residual_ty = match residual {
-            Some(residual) => {
-                let residual_ty = self.table.new_type_var();
-                let alias_eq = AliasEq {
-                    alias: AliasTy::Projection(ProjectionTy {
-                        associated_ty_id: to_assoc_type_id(residual),
-                        substitution,
-                    }),
-                    ty: residual_ty.clone(),
-                };
-                self.push_obligation(alias_eq.cast(Interner));
-                residual_ty
-            }
-            None => self.err_ty(),
-        };
-        // FIXME: We are doing the work twice here I think?
-        Some((
-            trait_,
-            self.table.try_obligation(trait_ref.cast(Interner)).map(|_| (output_ty, residual_ty)),
-        ))
     }
 }

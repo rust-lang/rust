@@ -331,10 +331,14 @@ fn calc_depth(pat: &ast::Pat, depth: usize) -> usize {
 // FIXME: change the new fn checking to a more semantic approach when that's more
 // viable (e.g. we process proc macros, etc)
 // FIXME: this partially overlaps with `find_impl_block_*`
+
+/// `find_struct_impl` looks for impl of a struct, but this also has additional feature
+/// where it takes a list of function names and check if they exist inside impl_, if
+/// even one match is found, it returns None
 pub(crate) fn find_struct_impl(
     ctx: &AssistContext<'_>,
     adt: &ast::Adt,
-    name: &str,
+    names: &[String],
 ) -> Option<Option<ast::Impl>> {
     let db = ctx.db();
     let module = adt.syntax().parent()?;
@@ -362,7 +366,7 @@ pub(crate) fn find_struct_impl(
     });
 
     if let Some(ref impl_blk) = block {
-        if has_fn(impl_blk, name) {
+        if has_any_fn(impl_blk, names) {
             return None;
         }
     }
@@ -370,12 +374,12 @@ pub(crate) fn find_struct_impl(
     Some(block)
 }
 
-fn has_fn(imp: &ast::Impl, rhs_name: &str) -> bool {
+fn has_any_fn(imp: &ast::Impl, names: &[String]) -> bool {
     if let Some(il) = imp.assoc_item_list() {
         for item in il.assoc_items() {
             if let ast::AssocItem::Fn(f) = item {
                 if let Some(name) = f.name() {
-                    if name.text().eq_ignore_ascii_case(rhs_name) {
+                    if names.iter().any(|n| n.eq_ignore_ascii_case(&name.text())) {
                         return true;
                     }
                 }

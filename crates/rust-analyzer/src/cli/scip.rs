@@ -8,8 +8,8 @@ use std::{
 use crate::line_index::{LineEndings, LineIndex, OffsetEncoding};
 use hir::Name;
 use ide::{
-    LineCol, MonikerDescriptorKind, MonikerResult, StaticIndex, StaticIndexedFile, TextRange,
-    TokenId,
+    LineCol, MonikerDescriptorKind, StaticIndex, StaticIndexedFile, TextRange, TokenId,
+    TokenStaticData,
 };
 use ide_db::LineIndexDatabase;
 use project_model::{CargoConfig, ProjectManifest, ProjectWorkspace};
@@ -75,7 +75,7 @@ impl flags::Scip {
         let mut symbols_emitted: HashSet<TokenId> = HashSet::default();
         let mut tokens_to_symbol: HashMap<TokenId, String> = HashMap::new();
 
-        for file in si.files {
+        for StaticIndexedFile { file_id, tokens, .. } in si.files {
             let mut local_count = 0;
             let mut new_local_symbol = || {
                 let new_symbol = scip::types::Symbol::new_local(local_count);
@@ -84,7 +84,6 @@ impl flags::Scip {
                 new_symbol
             };
 
-            let StaticIndexedFile { file_id, tokens, .. } = file;
             let relative_path = match get_relative_filepath(&vfs, &rootpath, file_id) {
                 Some(relative_path) => relative_path,
                 None => continue,
@@ -107,28 +106,20 @@ impl flags::Scip {
 
                 let mut occurrence = scip_types::Occurrence::default();
                 occurrence.range = text_range_to_scip_range(&line_index, range);
-                occurrence.symbol = match tokens_to_symbol.get(&id) {
-                    Some(symbol) => symbol.clone(),
-                    None => {
-                        let symbol = match &token.moniker {
-                            Some(moniker) => moniker_to_symbol(&moniker),
-                            None => new_local_symbol(),
-                        };
-
-                        let symbol = scip::symbol::format_symbol(symbol);
-                        tokens_to_symbol.insert(id, symbol.clone());
-                        symbol
-                    }
-                };
+                occurrence.symbol = tokens_to_symbol
+                    .entry(id)
+                    .or_insert_with(|| {
+                        let symbol = token_to_symbol(&token).unwrap_or_else(&mut new_local_symbol);
+                        scip::symbol::format_symbol(symbol)
+                    })
+                    .clone();
 
                 if let Some(def) = token.definition {
                     if def.range == range {
                         occurrence.symbol_roles |= scip_types::SymbolRole::Definition as i32;
                     }
 
-                    if !symbols_emitted.contains(&id) {
-                        symbols_emitted.insert(id);
-
+                    if symbols_emitted.insert(id) {
                         let mut symbol_info = scip_types::SymbolInformation::default();
                         symbol_info.symbol = occurrence.symbol.clone();
                         if let Some(hover) = &token.hover {
@@ -207,8 +198,10 @@ fn new_descriptor(name: Name, suffix: scip_types::descriptor::Suffix) -> scip_ty
 ///
 /// Only returns a Symbol when it's a non-local symbol.
 ///     So if the visibility isn't outside of a document, then it will return None
-fn moniker_to_symbol(moniker: &MonikerResult) -> scip_types::Symbol {
+fn token_to_symbol(token: &TokenStaticData) -> Option<scip_types::Symbol> {
     use scip_types::descriptor::Suffix::*;
+
+    let moniker = token.moniker.as_ref()?;
 
     let package_name = moniker.package_information.name.clone();
     let version = moniker.package_information.version.clone();
@@ -233,7 +226,7 @@ fn moniker_to_symbol(moniker: &MonikerResult) -> scip_types::Symbol {
         })
         .collect();
 
-    scip_types::Symbol {
+    Some(scip_types::Symbol {
         scheme: "rust-analyzer".into(),
         package: Some(scip_types::Package {
             manager: "cargo".to_string(),
@@ -244,19 +237,15 @@ fn moniker_to_symbol(moniker: &MonikerResult) -> scip_types::Symbol {
         .into(),
         descriptors,
         ..Default::default()
-    }
+    })
 }
 
 #[cfg(test)]
 mod test {
     use super::*;
-    use hir::Semantics;
-    use ide::{AnalysisHost, FilePosition};
-    use ide_db::defs::IdentClass;
-    use ide_db::{base_db::fixture::ChangeFixture, helpers::pick_best_token};
+    use ide::{AnalysisHost, FilePosition, StaticIndex, TextSize};
+    use ide_db::base_db::fixture::ChangeFixture;
     use scip::symbol::format_symbol;
-    use syntax::SyntaxKind::*;
-    use syntax::{AstNode, T};
 
     fn position(ra_fixture: &str) -> (AnalysisHost, FilePosition) {
         let mut host = AnalysisHost::default();
@@ -273,53 +262,33 @@ mod test {
     fn check_symbol(ra_fixture: &str, expected: &str) {
         let (host, position) = position(ra_fixture);
 
+        let analysis = host.analysis();
+        let si = StaticIndex::compute(&analysis);
+
         let FilePosition { file_id, offset } = position;
 
-        let db = host.raw_database();
-        let sema = &Semantics::new(db);
-        let file = sema.parse(file_id).syntax().clone();
-        let original_token = pick_best_token(file.token_at_offset(offset), |kind| match kind {
-            IDENT
-            | INT_NUMBER
-            | LIFETIME_IDENT
-            | T![self]
-            | T![super]
-            | T![crate]
-            | T![Self]
-            | COMMENT => 2,
-            kind if kind.is_trivia() => 0,
-            _ => 1,
-        })
-        .expect("OK OK");
-
-        let navs = sema
-            .descend_into_macros(original_token.clone())
-            .into_iter()
-            .filter_map(|token| {
-                IdentClass::classify_token(sema, &token).map(IdentClass::definitions).map(|it| {
-                    it.into_iter().flat_map(|def| {
-                        let module = def.module(db).unwrap();
-                        let current_crate = module.krate();
-
-                        match MonikerResult::from_def(sema.db, def, current_crate) {
-                            Some(moniker_result) => Some(moniker_to_symbol(&moniker_result)),
-                            None => None,
-                        }
-                    })
-                })
-            })
-            .flatten()
-            .collect::<Vec<_>>();
+        let mut found_symbol = None;
+        for file in &si.files {
+            if file.file_id != file_id {
+                continue;
+            }
+            for &(range, id) in &file.tokens {
+                if range.contains(offset - TextSize::from(1)) {
+                    let token = si.tokens.get(id).unwrap();
+                    found_symbol = token_to_symbol(token);
+                    break;
+                }
+            }
+        }
 
         if expected == "" {
-            assert_eq!(0, navs.len(), "must have no symbols {:?}", navs);
+            assert!(found_symbol.is_none(), "must have no symbols {:?}", found_symbol);
             return;
         }
 
-        assert_eq!(1, navs.len(), "must have one symbol {:?}", navs);
-
-        let res = navs.get(0).unwrap();
-        let formatted = format_symbol(res.clone());
+        assert!(found_symbol.is_some(), "must have one symbol {:?}", found_symbol);
+        let res = found_symbol.unwrap();
+        let formatted = format_symbol(res);
         assert_eq!(formatted, expected);
     }
 

@@ -17,7 +17,6 @@ semver = "1.0.14"
 serde = { version = "1.0.137", features = ["derive"] }
 serde_json = "1.0.86"
 anyhow = "1.0.62"
-expect-test = "1.4.0"
 la-arena = { version = "0.3.0", path = "../../lib/la-arena" }
 
 cfg = { path = "../cfg", version = "0.0.0" }
@@ -26,3 +25,6 @@ toolchain = { path = "../toolchain", version = "0.0.0" }
 paths = { path = "../paths", version = "0.0.0" }
 stdx = { path = "../stdx", version = "0.0.0" }
 profile = { path = "../profile", version = "0.0.0" }
+
+[dev-dependencies]
+expect-test = "1.4.0"

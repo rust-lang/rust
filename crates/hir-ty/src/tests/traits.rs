@@ -163,15 +163,97 @@ fn test() {
 }
 
 #[test]
+fn infer_try() {
+    check_types(
+        r#"
+//- /main.rs crate:main deps:core
+fn test() {
+    let r: Result<i32, u64> = Result::Ok(1);
+    let v = r?;
+    v;
+} //^ i32
+
+//- /core.rs crate:core
+pub mod ops {
+    pub trait Try {
+        type Ok;
+        type Error;
+    }
+}
+
+pub mod result {
+    pub enum Result<O, E> {
+        Ok(O),
+        Err(E)
+    }
+
+    impl<O, E> crate::ops::Try for Result<O, E> {
+        type Ok = O;
+        type Error = E;
+    }
+}
+
+pub mod prelude {
+    pub mod rust_2018 {
+        pub use crate::{result::*, ops::*};
+    }
+}
+"#,
+    );
+}
+
+#[test]
 fn infer_try_trait_v2() {
     check_types(
         r#"
-//- minicore: try
-fn test() -> core::ops::ControlFlow<u32, f32> {
-    let r: core::ops::ControlFlow<u32, f32> = core::ops::ControlFlow::Continue(1.0);
+//- /main.rs crate:main deps:core
+fn test() {
+    let r: Result<i32, u64> = Result::Ok(1);
     let v = r?;
-      //^ f32
-    r
+    v;
+} //^ i32
+
+//- /core.rs crate:core
+mod ops {
+    mod try_trait {
+        pub trait Try: FromResidual {
+            type Output;
+            type Residual;
+        }
+        pub trait FromResidual<R = <Self as Try>::Residual> {}
+    }
+
+    pub use self::try_trait::FromResidual;
+    pub use self::try_trait::Try;
+}
+
+mod convert {
+    pub trait From<T> {}
+    impl<T> From<T> for T {}
+}
+
+pub mod result {
+    use crate::convert::From;
+    use crate::ops::{Try, FromResidual};
+
+    pub enum Infallible {}
+    pub enum Result<O, E> {
+        Ok(O),
+        Err(E)
+    }
+
+    impl<O, E> Try for Result<O, E> {
+        type Output = O;
+        type Error = Result<Infallible, E>;
+    }
+
+    impl<T, E, F: From<E>> FromResidual<Result<Infallible, E>> for Result<T, F> {}
+}
+
+pub mod prelude {
+    pub mod rust_2018 {
+        pub use crate::result::*;
+    }
 }
 "#,
     );

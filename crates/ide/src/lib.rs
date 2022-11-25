@@ -482,8 +482,18 @@ impl Analysis {
     }
 
     /// Returns crates this file belongs too.
-    pub fn crate_for(&self, file_id: FileId) -> Cancellable<Vec<CrateId>> {
-        self.with_db(|db| parent_module::crate_for(db, file_id))
+    pub fn crates_for(&self, file_id: FileId) -> Cancellable<Vec<CrateId>> {
+        self.with_db(|db| parent_module::crates_for(db, file_id))
+    }
+
+    /// Returns crates this file belongs too.
+    pub fn transitive_rev_deps(&self, crate_id: CrateId) -> Cancellable<Vec<CrateId>> {
+        self.with_db(|db| db.crate_graph().transitive_rev_deps(crate_id).collect())
+    }
+
+    /// Returns crates this file *might* belong too.
+    pub fn relevant_crates_for(&self, file_id: FileId) -> Cancellable<Vec<CrateId>> {
+        self.with_db(|db| db.relevant_crates(file_id).iter().copied().collect())
     }
 
     /// Returns the edition of the given crate.
