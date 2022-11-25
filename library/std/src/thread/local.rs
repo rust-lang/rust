@@ -181,8 +181,7 @@ macro_rules! thread_local {
 macro_rules! __thread_local_inner {
     // used to generate the `LocalKey` value for const-initialized thread locals
     (@key $t:ty, const $init:expr) => {{
-        #[cfg_attr(not(all(windows, target_thread_local)), inline)] // see comments below
-        #[cfg_attr(all(windows, target_thread_local), inline(never))]
+        #[cfg_attr(not(windows), inline)] // see comments below
         #[deny(unsafe_op_in_unsafe_fn)]
         unsafe fn __getit(
             _init: $crate::option::Option<&mut $crate::option::Option<$t>>,
@@ -295,17 +294,12 @@ macro_rules! __thread_local_inner {
             fn __init() -> $t { $init }
 
             // When reading this function you might ask "why is this inlined
-            // everywhere other than Windows?", and "why must it not be inlined
-            // on Windows?" and these are very reasonable questions to ask.
-            //
-            // The short story is that Windows doesn't support referencing
-            // `#[thread_local]` across DLL boundaries. The slightly longer
-            // story is that each module (dll or exe) has its own separate set
-            // of static thread locals, so if you try and reference a
-            // `#[thread_local]` that comes from `crate1.dll` from within one of
-            // `crate2.dll`'s functions, then it might give you a completely
-            // different thread local than what you asked for (or it might just
-            // crash).
+            // everywhere other than Windows?", and that's a very reasonable
+            // question to ask. The short story is that it segfaults rustc if
+            // this function is inlined. The longer story is that Windows looks
+            // to not support `extern` references to thread locals across DLL
+            // boundaries. This appears to at least not be supported in the ABI
+            // that LLVM implements.
             //
             // Because of this we never inline on Windows, but we do inline on
             // other platforms (where external references to thread locals
@@ -320,9 +314,8 @@ macro_rules! __thread_local_inner {
             // Cargo question kinda). This means that, unfortunately, Windows
             // gets the pessimistic path for now where it's never inlined.
             //
-            // The issue of "should improve things on Windows" is #84933
-            #[cfg_attr(not(all(windows, target_thread_local)), inline)]
-            #[cfg_attr(all(windows, target_thread_local), inline(never))]
+            // The issue of "should enable on Windows sometimes" is #84933
+            #[cfg_attr(not(windows), inline)]
             unsafe fn __getit(
                 init: $crate::option::Option<&mut $crate::option::Option<$t>>,
             ) -> $crate::option::Option<&'static $t> {
