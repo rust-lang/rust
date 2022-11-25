@@ -8,7 +8,7 @@ use rustc_span::Span;
 declare_clippy_lint! {
     /// ### What it does
     ///
-    /// Checks for semicolon terminated blocks containing only a single expression.
+    /// Suggests moving the semicolon from a block inside of the block to its kast expression.
     ///
     /// ### Why is this bad?
     ///
@@ -36,7 +36,7 @@ declare_clippy_lint! {
 declare_clippy_lint! {
     /// ### What it does
     ///
-    /// Checks for blocks containing only a single semicolon terminated statement.
+    /// Suggests moving the semicolon from a block's final expression outside of the block.
     ///
     /// ### Why is this bad?
     ///
@@ -80,7 +80,7 @@ impl LateLintPass<'_> for SemicolonBlock {
                     span,
                     ..
                 } = stmt else { return };
-                semicolon_outside_block(cx, block, expr, span)
+                semicolon_outside_block(cx, block, expr, span);
             },
             StmtKind::Semi(Expr {
                 kind: ExprKind::Block(block @ Block { expr: Some(tail), .. }, _),
