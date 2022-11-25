@@ -295,7 +295,7 @@ where
         // the former fails to normalize the `nll/relate_tys/impl-fn-ignore-binder-via-bottom.rs` test.
         // Check after #85499 lands to see if its fixes have erased this difference.
         let (param_env, value) = key.into_parts();
-        let _ = ocx.normalize(cause, param_env, value.value);
+        let _ = ocx.normalize(&cause, param_env, value.value);
 
         try_extract_error_from_fulfill_cx(&ocx, placeholder_region, error_region)
     }

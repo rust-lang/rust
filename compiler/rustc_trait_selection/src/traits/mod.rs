@@ -56,8 +56,8 @@ pub use self::object_safety::astconv_object_safety_violations;
 pub use self::object_safety::is_vtable_safe_method;
 pub use self::object_safety::MethodViolationCode;
 pub use self::object_safety::ObjectSafetyViolation;
-pub use self::project::{NormalizeExt, normalize_projection_type};
 pub(crate) use self::project::{normalize, normalize_to};
+pub use self::project::{normalize_projection_type, NormalizeExt};
 pub use self::select::{EvaluationCache, SelectionCache, SelectionContext};
 pub use self::select::{EvaluationResult, IntercrateAmbiguityCause, OverflowError};
 pub use self::specialize::specialization_graph::FutureCompatOverlapError;
@@ -387,7 +387,7 @@ where
 {
     let ocx = ObligationCtxt::new(infcx);
     debug!(?value);
-    let normalized_value = ocx.normalize(cause, param_env, value);
+    let normalized_value = ocx.normalize(&cause, param_env, value);
     debug!(?normalized_value);
     debug!("select_all_or_error start");
     let errors = ocx.select_all_or_error();
@@ -454,7 +454,7 @@ pub fn impossible_predicates<'tcx>(
     let infcx = tcx.infer_ctxt().build();
     let param_env = ty::ParamEnv::reveal_all();
     let ocx = ObligationCtxt::new(&infcx);
-    let predicates = ocx.normalize(ObligationCause::dummy(), param_env, predicates);
+    let predicates = ocx.normalize(&ObligationCause::dummy(), param_env, predicates);
     for predicate in predicates {
         let obligation = Obligation::new(tcx, ObligationCause::dummy(), param_env, predicate);
         ocx.register_obligation(obligation);

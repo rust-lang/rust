@@ -221,7 +221,7 @@ fn compare_predicate_entailment<'tcx>(
     let impl_m_own_bounds = impl_m_predicates.instantiate_own(tcx, impl_to_placeholder_substs);
     for (predicate, span) in iter::zip(impl_m_own_bounds.predicates, impl_m_own_bounds.spans) {
         let normalize_cause = traits::ObligationCause::misc(span, impl_m_hir_id);
-        let predicate = ocx.normalize(normalize_cause, param_env, predicate);
+        let predicate = ocx.normalize(&normalize_cause, param_env, predicate);
 
         let cause = ObligationCause::new(
             span,
@@ -260,7 +260,7 @@ fn compare_predicate_entailment<'tcx>(
     );
 
     let norm_cause = ObligationCause::misc(impl_m_span, impl_m_hir_id);
-    let impl_sig = ocx.normalize(norm_cause.clone(), param_env, impl_sig);
+    let impl_sig = ocx.normalize(&norm_cause, param_env, impl_sig);
     let impl_fty = tcx.mk_fn_ptr(ty::Binder::dummy(impl_sig));
     debug!("compare_impl_method: impl_fty={:?}", impl_fty);
 
@@ -271,7 +271,7 @@ fn compare_predicate_entailment<'tcx>(
     // we have to do this before normalization, since the normalized ty may
     // not contain the input parameters. See issue #87748.
     wf_tys.extend(trait_sig.inputs_and_output.iter());
-    let trait_sig = ocx.normalize(norm_cause, param_env, trait_sig);
+    let trait_sig = ocx.normalize(&norm_cause, param_env, trait_sig);
     // We also have to add the normalized trait signature
     // as we don't normalize during implied bounds computation.
     wf_tys.extend(trait_sig.inputs_and_output.iter());
@@ -366,7 +366,7 @@ pub fn collect_trait_impl_trait_tys<'tcx>(
     // Normalize the impl signature with fresh variables for lifetime inference.
     let norm_cause = ObligationCause::misc(return_span, impl_m_hir_id);
     let impl_sig = ocx.normalize(
-        norm_cause.clone(),
+        &norm_cause,
         param_env,
         infcx.replace_bound_vars_with_fresh_vars(
             return_span,
@@ -387,7 +387,7 @@ pub fn collect_trait_impl_trait_tys<'tcx>(
             tcx.bound_fn_sig(trait_m.def_id).subst(tcx, trait_to_placeholder_substs),
         )
         .fold_with(&mut collector);
-    let trait_sig = ocx.normalize(norm_cause.clone(), param_env, unnormalized_trait_sig);
+    let trait_sig = ocx.normalize(&norm_cause, param_env, unnormalized_trait_sig);
     let trait_return_ty = trait_sig.output();
 
     let wf_tys = FxIndexSet::from_iter(
@@ -592,7 +592,7 @@ impl<'tcx> TypeFolder<'tcx> for ImplTraitInTraitCollector<'_, 'tcx> {
             for (pred, pred_span) in self.tcx().bound_explicit_item_bounds(proj.item_def_id).subst_iter_copied(self.tcx(), proj.substs) {
                 let pred = pred.fold_with(self);
                 let pred = self.ocx.normalize(
-                    ObligationCause::misc(self.span, self.body_id),
+                    &ObligationCause::misc(self.span, self.body_id),
                     self.param_env,
                     pred,
                 );
@@ -1403,11 +1403,11 @@ pub(crate) fn raw_compare_const_impl<'tcx>(
     );
 
     // There is no "body" here, so just pass dummy id.
-    let impl_ty = ocx.normalize(cause.clone(), param_env, impl_ty);
+    let impl_ty = ocx.normalize(&cause, param_env, impl_ty);
 
     debug!("compare_const_impl: impl_ty={:?}", impl_ty);
 
-    let trait_ty = ocx.normalize(cause.clone(), param_env, trait_ty);
+    let trait_ty = ocx.normalize(&cause, param_env, trait_ty);
 
     debug!("compare_const_impl: trait_ty={:?}", trait_ty);
 
@@ -1556,7 +1556,7 @@ fn compare_type_predicate_entailment<'tcx>(
     for (span, predicate) in std::iter::zip(impl_ty_own_bounds.spans, impl_ty_own_bounds.predicates)
     {
         let cause = ObligationCause::misc(span, impl_ty_hir_id);
-        let predicate = ocx.normalize(cause, param_env, predicate);
+        let predicate = ocx.normalize(&cause, param_env, predicate);
 
         let cause = ObligationCause::new(
             span,
@@ -1778,7 +1778,7 @@ pub fn check_type_bounds<'tcx>(
 
     for mut obligation in util::elaborate_obligations(tcx, obligations) {
         let normalized_predicate =
-            ocx.normalize(normalize_cause.clone(), normalize_param_env, obligation.predicate);
+            ocx.normalize(&normalize_cause, normalize_param_env, obligation.predicate);
         debug!("compare_projection_bounds: normalized predicate = {:?}", normalized_predicate);
         obligation.predicate = normalized_predicate;
 

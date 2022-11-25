@@ -46,8 +46,8 @@ pub fn is_subtype<'tcx>(
     let infcx = builder.build();
     let ocx = ObligationCtxt::new(&infcx);
     let cause = ObligationCause::dummy();
-    let src = ocx.normalize(cause.clone(), param_env, src);
-    let dest = ocx.normalize(cause.clone(), param_env, dest);
+    let src = ocx.normalize(&cause, param_env, src);
+    let dest = ocx.normalize(&cause, param_env, dest);
     match ocx.sub(&cause, param_env, src, dest) {
         Ok(()) => {}
         Err(_) => return false,

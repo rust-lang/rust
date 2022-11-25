@@ -62,7 +62,7 @@ pub fn type_op_ascribe_user_type_with_span<'tcx>(
     let cause = ObligationCause::dummy_with_span(span);
 
     let ty = tcx.bound_type_of(def_id).subst(tcx, substs);
-    let ty = ocx.normalize(cause.clone(), param_env, ty);
+    let ty = ocx.normalize(&cause, param_env, ty);
     debug!("relate_type_and_user_type: ty of def-id is {:?}", ty);
 
     ocx.eq(&cause, param_env, mir_ty, ty)?;
@@ -85,14 +85,14 @@ pub fn type_op_ascribe_user_type_with_span<'tcx>(
             ObligationCauseCode::AscribeUserTypeProvePredicate(predicate_span),
         );
         let instantiated_predicate =
-            ocx.normalize(cause.clone(), param_env, instantiated_predicate);
+            ocx.normalize(&cause.clone(), param_env, instantiated_predicate);
 
         ocx.register_obligation(Obligation::new(tcx, cause, param_env, instantiated_predicate));
     }
 
     if let Some(UserSelfTy { impl_def_id, self_ty }) = user_self_ty {
         let impl_self_ty = tcx.bound_type_of(impl_def_id).subst(tcx, substs);
-        let impl_self_ty = ocx.normalize(cause.clone(), param_env, impl_self_ty);
+        let impl_self_ty = ocx.normalize(&cause, param_env, impl_self_ty);
 
         ocx.eq(&cause, param_env, self_ty, impl_self_ty)?;
 

@@ -60,7 +60,7 @@ impl<'tcx> WfCheckingCtxt<'_, 'tcx> {
         T: TypeFoldable<'tcx>,
     {
         self.ocx.normalize(
-            ObligationCause::new(span, self.body_id, ObligationCauseCode::WellFormed(loc)),
+            &ObligationCause::new(span, self.body_id, ObligationCauseCode::WellFormed(loc)),
             self.param_env,
             value,
         )

@@ -104,8 +104,7 @@ impl<'a, 'tcx> ObligationCtxt<'a, 'tcx> {
 
     pub fn normalize<T: TypeFoldable<'tcx>>(
         &self,
-        // FIXME(compiler-errors): Make this borrow
-        cause: ObligationCause<'tcx>,
+        cause: &ObligationCause<'tcx>,
         param_env: ty::ParamEnv<'tcx>,
         value: T,
     ) -> T {
@@ -186,7 +185,7 @@ impl<'a, 'tcx> ObligationCtxt<'a, 'tcx> {
             // sound and then uncomment this line again.
 
             // implied_bounds.insert(ty);
-            let normalized = self.normalize(cause.clone(), param_env, ty);
+            let normalized = self.normalize(&cause, param_env, ty);
             implied_bounds.insert(normalized);
         }
         implied_bounds

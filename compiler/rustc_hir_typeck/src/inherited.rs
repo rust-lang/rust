@@ -100,7 +100,7 @@ impl<'tcx> Inherited<'tcx> {
                     infcx.probe(|_| {
                         let ocx = ObligationCtxt::new_in_snapshot(infcx);
                         let normalized_fn_sig = ocx.normalize(
-                            ObligationCause::dummy(),
+                            &ObligationCause::dummy(),
                             // FIXME(compiler-errors): This is probably not the right param-env...
                             infcx.tcx.param_env(def_id),
                             fn_sig,
