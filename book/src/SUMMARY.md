@@ -21,3 +21,4 @@
         - [The Clippy Book](development/infrastructure/book.md)
     - [Proposals](development/proposals/README.md)
         - [Roadmap 2021](development/proposals/roadmap-2021.md)
+        - [Syntax Tree Patterns](development/proposals/syntax-tree-patterns.md)
