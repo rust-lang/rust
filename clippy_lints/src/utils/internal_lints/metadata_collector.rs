@@ -1019,7 +1019,7 @@ impl<'a, 'hir> intravisit::Visitor<'hir> for ApplicabilityResolver<'a, 'hir> {
         self.cx.tcx.hir()
     }
 
-    fn visit_path(&mut self, path: &'hir hir::Path<'hir>, _id: hir::HirId) {
+    fn visit_path(&mut self, path: &hir::Path<'hir>, _id: hir::HirId) {
         for (index, enum_value) in paths::APPLICABILITY_VALUES.iter().enumerate() {
             if match_path(path, enum_value) {
                 self.add_new_index(index);
