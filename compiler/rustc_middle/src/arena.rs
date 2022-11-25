@@ -88,8 +88,8 @@ macro_rules! arena_types {
             [] hir_id_set: rustc_hir::HirIdSet,
 
             // Interned types
-            [] tys: rustc_data_structures::intern::WithCachedTypeInfo<rustc_middle::ty::TyS<'tcx>>,
-            [] predicates: rustc_data_structures::intern::WithCachedTypeInfo<rustc_middle::ty::PredicateS<'tcx>>,
+            [] tys: rustc_type_ir::WithCachedTypeInfo<rustc_middle::ty::TyS<'tcx>>,
+            [] predicates: rustc_type_ir::WithCachedTypeInfo<rustc_middle::ty::PredicateS<'tcx>>,
             [] consts: rustc_middle::ty::ConstS<'tcx>,
 
             // Note that this deliberately duplicates items in the `rustc_hir::arena`,

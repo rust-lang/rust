@@ -27,7 +27,7 @@ use crate::ty::{GenericArg, GenericArgKind, InternalSubsts, SubstsRef, UserSubst
 use rustc_ast as ast;
 use rustc_data_structures::fingerprint::Fingerprint;
 use rustc_data_structures::fx::{FxHashMap, FxHashSet};
-use rustc_data_structures::intern::{Interned, WithCachedTypeInfo};
+use rustc_data_structures::intern::Interned;
 use rustc_data_structures::memmap::Mmap;
 use rustc_data_structures::profiling::SelfProfilerRef;
 use rustc_data_structures::sharded::{IntoPointer, ShardedHashMap};
@@ -67,6 +67,7 @@ use rustc_span::{Span, DUMMY_SP};
 use rustc_target::abi::{Layout, LayoutS, TargetDataLayout, VariantIdx};
 use rustc_target::spec::abi;
 use rustc_type_ir::sty::TyKind::*;
+use rustc_type_ir::WithCachedTypeInfo;
 use rustc_type_ir::{DynKind, InternAs, InternIteratorElement, Interner, TypeFlags};
 
 use std::any::Any;

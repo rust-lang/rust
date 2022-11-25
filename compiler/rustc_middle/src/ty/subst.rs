@@ -6,10 +6,11 @@ use crate::ty::sty::{ClosureSubsts, GeneratorSubsts, InlineConstSubsts};
 use crate::ty::visit::{TypeVisitable, TypeVisitor};
 use crate::ty::{self, Lift, List, ParamConst, Ty, TyCtxt};
 
-use rustc_data_structures::intern::{Interned, WithCachedTypeInfo};
+use rustc_data_structures::intern::Interned;
 use rustc_hir::def_id::DefId;
 use rustc_macros::HashStable;
 use rustc_serialize::{self, Decodable, Encodable};
+use rustc_type_ir::WithCachedTypeInfo;
 use smallvec::SmallVec;
 
 use core::intrinsics;

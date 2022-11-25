@@ -32,7 +32,7 @@ use rustc_ast::node_id::NodeMap;
 use rustc_attr as attr;
 use rustc_data_structures::fingerprint::Fingerprint;
 use rustc_data_structures::fx::{FxHashMap, FxHashSet, FxIndexMap, FxIndexSet};
-use rustc_data_structures::intern::{Interned, WithCachedTypeInfo};
+use rustc_data_structures::intern::Interned;
 use rustc_data_structures::stable_hasher::{HashStable, StableHasher};
 use rustc_data_structures::tagged_ptr::CopyTaggedPtr;
 use rustc_hir as hir;
@@ -50,6 +50,7 @@ use rustc_span::symbol::{kw, sym, Ident, Symbol};
 use rustc_span::{ExpnId, Span};
 use rustc_target::abi::{Align, Integer, IntegerType, VariantIdx};
 pub use rustc_target::abi::{ReprFlags, ReprOptions};
+use rustc_type_ir::WithCachedTypeInfo;
 pub use subst::*;
 pub use vtable::*;
 
