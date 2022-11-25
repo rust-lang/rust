@@ -250,7 +250,6 @@ impl<'a, 'tcx> RustdocVisitor<'a, 'tcx> {
                             res,
                             ident,
                             is_glob,
-                            om,
                             please_inline,
                         ) {
                             continue;
@@ -446,6 +445,26 @@ impl<'a, 'tcx> Visitor<'tcx> for RustdocVisitor<'a, 'tcx> {
     }
 
     fn visit_mod(&mut self, _: &hir::Mod<'tcx>, _: Span, _: hir::HirId) {
-        // handled in `visit_item_inner`
+        // Handled in `visit_item_inner`
+    }
+
+    fn visit_use(&mut self, _: &hir::UsePath<'tcx>, _: hir::HirId) {
+        // Handled in `visit_item_inner`
+    }
+
+    fn visit_path(&mut self, _: &hir::Path<'tcx>, _: hir::HirId) {
+        // Handled in `visit_item_inner`
+    }
+
+    fn visit_label(&mut self, _: &rustc_ast::Label) {
+        // Unneeded.
+    }
+
+    fn visit_infer(&mut self, _: &hir::InferArg) {
+        // Unneeded.
+    }
+
+    fn visit_lifetime(&mut self, _: &hir::Lifetime) {
+        // Unneeded.
     }
 }
