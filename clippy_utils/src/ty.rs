@@ -1005,14 +1005,12 @@ pub fn make_projection<'tcx>(
 
             debug_assert!(
                 generic_count == substs.len(),
-                "wrong number of substs for `{:?}`: found `{}` expected `{}`.\n\
+                "wrong number of substs for `{:?}`: found `{}` expected `{generic_count}`.\n\
                     note: the expected parameters are: {:#?}\n\
-                    the given arguments are: `{:#?}`",
+                    the given arguments are: `{substs:#?}`",
                 assoc_item.def_id,
                 substs.len(),
-                generic_count,
                 params.map(GenericParamDefKind::descr).collect::<Vec<_>>(),
-                substs,
             );
 
             if let Some((idx, (param, arg))) = params
@@ -1030,14 +1028,11 @@ pub fn make_projection<'tcx>(
             {
                 debug_assert!(
                     false,
-                    "mismatched subst type at index {}: expected a {}, found `{:?}`\n\
+                    "mismatched subst type at index {idx}: expected a {}, found `{arg:?}`\n\
                         note: the expected parameters are {:#?}\n\
-                        the given arguments are {:#?}",
-                    idx,
+                        the given arguments are {substs:#?}",
                     param.descr(),
-                    arg,
-                    params.map(GenericParamDefKind::descr).collect::<Vec<_>>(),
-                    substs,
+                    params.map(GenericParamDefKind::descr).collect::<Vec<_>>()
                 );
             }
         }
