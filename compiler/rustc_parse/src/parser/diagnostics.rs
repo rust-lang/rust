@@ -159,8 +159,6 @@ enum IsStandalone {
     Standalone,
     /// It's a subexpression, i.e., *not* standalone.
     Subexpr,
-    /// It's maybe standalone; we're not sure.
-    Maybe,
 }
 
 #[derive(Debug, Copy, Clone, PartialEq, Eq)]
@@ -213,14 +211,8 @@ impl MultiSugg {
         err.multipart_suggestion(&self.msg, self.patches, self.applicability);
     }
 
-    /// Overrides individual messages and applicabilities.
-    fn emit_many(
-        err: &mut Diagnostic,
-        msg: &str,
-        applicability: Applicability,
-        suggestions: impl Iterator<Item = Self>,
-    ) {
-        err.multipart_suggestions(msg, suggestions.map(|s| s.patches), applicability);
+    fn emit_verbose(self, err: &mut Diagnostic) {
+        err.multipart_suggestion_verbose(&self.msg, self.patches, self.applicability);
     }
 }
 
@@ -1272,7 +1264,6 @@ impl<'a> Parser<'a> {
         let standalone =
             if prev_is_semi { IsStandalone::Standalone } else { IsStandalone::Subexpr };
         let kind = IncDecRecovery { standalone, op: IncOrDec::Inc, fixity: UnaryFixity::Pre };
-
         self.recover_from_inc_dec(operand_expr, kind, op_span)
     }
 
@@ -1280,13 +1271,13 @@ impl<'a> Parser<'a> {
         &mut self,
         operand_expr: P<Expr>,
         op_span: Span,
+        prev_is_semi: bool,
     ) -> PResult<'a, P<Expr>> {
         let kind = IncDecRecovery {
-            standalone: IsStandalone::Maybe,
+            standalone: if prev_is_semi { IsStandalone::Standalone } else { IsStandalone::Subexpr },
             op: IncOrDec::Inc,
             fixity: UnaryFixity::Post,
         };
-
         self.recover_from_inc_dec(operand_expr, kind, op_span)
     }
 
@@ -1314,35 +1305,20 @@ impl<'a> Parser<'a> {
             UnaryFixity::Post => (base.span.shrink_to_lo(), op_span),
         };
 
+        let Ok(base_src) = self.span_to_snippet(base.span)
+        else { return help_base_case(err, base) };
         match kind.standalone {
-            IsStandalone::Standalone => self.inc_dec_standalone_suggest(kind, spans).emit(&mut err),
-            IsStandalone::Subexpr => {
-                let Ok(base_src) = self.span_to_snippet(base.span)
-                    else { return help_base_case(err, base) };
-                match kind.fixity {
-                    UnaryFixity::Pre => {
-                        self.prefix_inc_dec_suggest(base_src, kind, spans).emit(&mut err)
-                    }
-                    UnaryFixity::Post => {
-                        self.postfix_inc_dec_suggest(base_src, kind, spans).emit(&mut err)
-                    }
+            IsStandalone::Standalone => {
+                self.inc_dec_standalone_suggest(kind, spans).emit_verbose(&mut err)
+            }
+            IsStandalone::Subexpr => match kind.fixity {
+                UnaryFixity::Pre => {
+                    self.prefix_inc_dec_suggest(base_src, kind, spans).emit(&mut err)
                 }
-            }
-            IsStandalone::Maybe => {
-                let Ok(base_src) = self.span_to_snippet(base.span)
-                    else { return help_base_case(err, base) };
-                let sugg1 = match kind.fixity {
-                    UnaryFixity::Pre => self.prefix_inc_dec_suggest(base_src, kind, spans),
-                    UnaryFixity::Post => self.postfix_inc_dec_suggest(base_src, kind, spans),
-                };
-                let sugg2 = self.inc_dec_standalone_suggest(kind, spans);
-                MultiSugg::emit_many(
-                    &mut err,
-                    "use `+= 1` instead",
-                    Applicability::Unspecified,
-                    [sugg1, sugg2].into_iter(),
-                )
-            }
+                UnaryFixity::Post => {
+                    self.postfix_inc_dec_suggest(base_src, kind, spans).emit(&mut err)
+                }
+            },
         }
         Err(err)
     }
@@ -1392,7 +1368,6 @@ impl<'a> Parser<'a> {
         }
 
         patches.push((post_span, format!(" {}= 1", kind.op.chr())));
-
         MultiSugg {
             msg: format!("use `{}= 1` instead", kind.op.chr()),
             patches,

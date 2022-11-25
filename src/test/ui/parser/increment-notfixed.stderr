@@ -1,18 +1,16 @@
 error: Rust has no postfix increment operator
-  --> $DIR/increment-notfixed.rs:11:6
+  --> $DIR/increment-notfixed.rs:13:6
    |
 LL |     i++;
    |      ^^ not a valid postfix operator
    |
 help: use `+= 1` instead
    |
-LL |     { let tmp = i; i += 1; tmp };
-   |     +++++++++++  ~~~~~~~~~~~~~~~
 LL |     i += 1;
    |       ~~~~
 
 error: Rust has no postfix increment operator
-  --> $DIR/increment-notfixed.rs:17:12
+  --> $DIR/increment-notfixed.rs:19:12
    |
 LL |     while i++ < 5 {
    |     -----  ^^ not a valid postfix operator
@@ -23,24 +21,20 @@ help: use `+= 1` instead
    |
 LL |     while { let tmp = i; i += 1; tmp } < 5 {
    |           +++++++++++  ~~~~~~~~~~~~~~~
-LL |     while i += 1 < 5 {
-   |             ~~~~
 
 error: Rust has no postfix increment operator
-  --> $DIR/increment-notfixed.rs:25:8
+  --> $DIR/increment-notfixed.rs:27:8
    |
 LL |     tmp++;
    |        ^^ not a valid postfix operator
    |
 help: use `+= 1` instead
    |
-LL |     { let tmp_ = tmp; tmp += 1; tmp_ };
-   |     ++++++++++++    ~~~~~~~~~~~~~~~~~~
 LL |     tmp += 1;
    |         ~~~~
 
 error: Rust has no postfix increment operator
-  --> $DIR/increment-notfixed.rs:31:14
+  --> $DIR/increment-notfixed.rs:33:14
    |
 LL |     while tmp++ < 5 {
    |     -----    ^^ not a valid postfix operator
@@ -51,37 +45,31 @@ help: use `+= 1` instead
    |
 LL |     while { let tmp_ = tmp; tmp += 1; tmp_ } < 5 {
    |           ++++++++++++    ~~~~~~~~~~~~~~~~~~
-LL |     while tmp += 1 < 5 {
-   |               ~~~~
 
 error: Rust has no postfix increment operator
-  --> $DIR/increment-notfixed.rs:39:16
+  --> $DIR/increment-notfixed.rs:41:16
    |
 LL |     foo.bar.qux++;
    |                ^^ not a valid postfix operator
    |
 help: use `+= 1` instead
    |
-LL |     { let tmp = foo.bar.qux; foo.bar.qux += 1; tmp };
-   |     +++++++++++            ~~~~~~~~~~~~~~~~~~~~~~~~~
 LL |     foo.bar.qux += 1;
    |                 ~~~~
 
 error: Rust has no postfix increment operator
-  --> $DIR/increment-notfixed.rs:49:10
+  --> $DIR/increment-notfixed.rs:51:10
    |
 LL |     s.tmp++;
    |          ^^ not a valid postfix operator
    |
 help: use `+= 1` instead
    |
-LL |     { let tmp = s.tmp; s.tmp += 1; tmp };
-   |     +++++++++++      ~~~~~~~~~~~~~~~~~~~
 LL |     s.tmp += 1;
    |           ~~~~
 
 error: Rust has no prefix increment operator
-  --> $DIR/increment-notfixed.rs:56:5
+  --> $DIR/increment-notfixed.rs:58:5
    |
 LL |     ++foo.bar.qux;
    |     ^^ not a valid prefix operator

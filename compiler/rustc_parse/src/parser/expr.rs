@@ -292,7 +292,15 @@ impl<'a> Parser<'a> {
                 let op_span = self.prev_token.span.to(self.token.span);
                 // Eat the second `+`
                 self.bump();
-                lhs = self.recover_from_postfix_increment(lhs, op_span)?;
+                let prev_is_semi = {
+                    if let Ok(prev_code) = self.sess.source_map().span_to_prev_source(lhs.span) &&
+                          prev_code.trim_end().ends_with(";") {
+                            true
+                    } else {
+                        false
+                    }
+                };
+                lhs = self.recover_from_postfix_increment(lhs, op_span, prev_is_semi)?;
                 continue;
             }
 
