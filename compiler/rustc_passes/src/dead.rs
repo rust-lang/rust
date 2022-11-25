@@ -623,6 +623,11 @@ fn create_and_seed_worklist<'tcx>(
         check_foreign_item(tcx, &mut worklist, id);
     }
 
+    if let Some(static_) = tcx.proc_macro_decls_static(()) {
+        // We assume this is always used if present.
+        worklist.push(static_);
+    }
+
     (worklist, struct_constructors)
 }
 

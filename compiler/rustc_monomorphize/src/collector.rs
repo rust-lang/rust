@@ -1186,6 +1186,13 @@ struct RootCollector<'a, 'tcx> {
 
 impl<'v> RootCollector<'_, 'v> {
     fn process_item(&mut self, id: hir::ItemId) {
+        let def_id = id.owner_id.def_id;
+        let (live_symbols, _) = self.tcx.live_symbols_and_ignored_derived_traits(());
+        if !live_symbols.contains(&def_id) && !self.tcx.sess.link_dead_code() {
+            // This is dead code; ignore it.
+            return;
+        }
+
         match self.tcx.def_kind(id.owner_id) {
             DefKind::Enum | DefKind::Struct | DefKind::Union => {
                 let item = self.tcx.hir().item(id);
