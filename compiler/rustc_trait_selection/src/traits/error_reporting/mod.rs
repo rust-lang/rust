@@ -1595,6 +1595,7 @@ impl<'tcx> InferCtxtPrivExt<'tcx> for TypeErrCtxt<'_, 'tcx> {
                     bound_predicate.rebind(data),
                 );
                 let mut obligations = vec![];
+                // FIXME(normalization): Change this to use `At::normalize`
                 let normalized_ty = super::normalize_projection_type(
                     &mut selcx,
                     obligation.param_env,
