@@ -5113,3 +5113,61 @@ fn f() {
         "#]],
     );
 }
+
+#[test]
+fn static_const_macro_expanded_body() {
+    check(
+        r#"
+macro_rules! m {
+    () => {
+        pub const V: i8 = {
+            let e = 123;
+            f(e) // Prevent const eval from evaluating this constant, we want to print the body's code.
+        };
+    };
+}
+m!();
+fn main() { $0V; }
+"#,
+        expect![[r#"
+            *V*
+
+            ```rust
+            test
+            ```
+
+            ```rust
+            pub const V: i8 = {
+              let e = 123;
+              f(e)
+            }
+            ```
+        "#]],
+    );
+    check(
+        r#"
+macro_rules! m {
+    () => {
+        pub static V: i8 = {
+            let e = 123;
+        };
+    };
+}
+m!();
+fn main() { $0V; }
+"#,
+        expect![[r#"
+            *V*
+
+            ```rust
+            test
+            ```
+
+            ```rust
+            pub static V: i8 = {
+              let e = 123;
+            }
+            ```
+        "#]],
+    );
+}

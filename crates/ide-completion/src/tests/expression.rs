@@ -672,6 +672,45 @@ fn main() {
 }
 
 #[test]
+fn varaiant_with_struct() {
+    check_empty(
+        r#"
+pub struct YoloVariant {
+    pub f: usize
+}
+
+pub enum HH {
+    Yolo(YoloVariant),
+}
+
+fn brr() {
+    let t = HH::Yolo(Y$0);
+}
+"#,
+        expect![[r#"
+            en HH
+            fn brr()           fn()
+            st YoloVariant
+            st YoloVariant {…} YoloVariant { f: usize }
+            bt u32
+            kw crate::
+            kw false
+            kw for
+            kw if
+            kw if let
+            kw loop
+            kw match
+            kw return
+            kw self::
+            kw true
+            kw unsafe
+            kw while
+            kw while let
+        "#]],
+    );
+}
+
+#[test]
 fn return_unit_block() {
     cov_mark::check!(return_unit_block);
     check_edit("return", r#"fn f() { if true { $0 } }"#, r#"fn f() { if true { return; } }"#);

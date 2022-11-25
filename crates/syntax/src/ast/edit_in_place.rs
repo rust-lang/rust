@@ -248,8 +248,12 @@ impl ast::WhereClause {
     }
 }
 
-impl ast::TypeBoundList {
-    pub fn remove(&self) {
+pub trait Removable: AstNode {
+    fn remove(&self);
+}
+
+impl Removable for ast::TypeBoundList {
+    fn remove(&self) {
         match self.syntax().siblings_with_tokens(Direction::Prev).find(|it| it.kind() == T![:]) {
             Some(colon) => ted::remove_all(colon..=self.syntax().clone().into()),
             None => ted::remove(self.syntax()),
@@ -267,8 +271,8 @@ impl ast::PathSegment {
     }
 }
 
-impl ast::UseTree {
-    pub fn remove(&self) {
+impl Removable for ast::UseTree {
+    fn remove(&self) {
         for dir in [Direction::Next, Direction::Prev] {
             if let Some(next_use_tree) = neighbor(self, dir) {
                 let separators = self
@@ -282,7 +286,9 @@ impl ast::UseTree {
         }
         ted::remove(self.syntax());
     }
+}
 
+impl ast::UseTree {
     pub fn get_or_create_use_tree_list(&self) -> ast::UseTreeList {
         match self.use_tree_list() {
             Some(it) => it,
@@ -373,8 +379,8 @@ impl ast::UseTreeList {
     }
 }
 
-impl ast::Use {
-    pub fn remove(&self) {
+impl Removable for ast::Use {
+    fn remove(&self) {
         let next_ws = self
             .syntax()
             .next_sibling_or_token()
@@ -444,8 +450,8 @@ impl ast::Fn {
     }
 }
 
-impl ast::MatchArm {
-    pub fn remove(&self) {
+impl Removable for ast::MatchArm {
+    fn remove(&self) {
         if let Some(sibling) = self.syntax().prev_sibling_or_token() {
             if sibling.kind() == SyntaxKind::WHITESPACE {
                 ted::remove(sibling);

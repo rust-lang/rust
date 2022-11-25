@@ -164,6 +164,8 @@ impl TyExt for Ty {
 
     fn dyn_trait(&self) -> Option<TraitId> {
         let trait_ref = match self.kind(Interner) {
+            // The principal trait bound should be the first element of the bounds. This is an
+            // invariant ensured by `TyLoweringContext::lower_dyn_trait()`.
             TyKind::Dyn(dyn_ty) => dyn_ty.bounds.skip_binders().interned().get(0).and_then(|b| {
                 match b.skip_binders() {
                     WhereClause::Implemented(trait_ref) => Some(trait_ref),

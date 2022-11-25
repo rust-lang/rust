@@ -12,7 +12,7 @@ use crate::RootDatabase;
 #[derive(Debug)]
 pub struct ActiveParameter {
     pub ty: Type,
-    pub pat: Either<ast::SelfParam, ast::Pat>,
+    pub pat: Option<Either<ast::SelfParam, ast::Pat>>,
 }
 
 impl ActiveParameter {
@@ -27,12 +27,12 @@ impl ActiveParameter {
             return None;
         }
         let (pat, ty) = params.swap_remove(idx);
-        pat.map(|pat| ActiveParameter { ty, pat })
+        Some(ActiveParameter { ty, pat })
     }
 
     pub fn ident(&self) -> Option<ast::Name> {
-        self.pat.as_ref().right().and_then(|param| match param {
-            ast::Pat::IdentPat(ident) => ident.name(),
+        self.pat.as_ref().and_then(|param| match param {
+            Either::Right(ast::Pat::IdentPat(ident)) => ident.name(),
             _ => None,
         })
     }

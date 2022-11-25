@@ -7,7 +7,10 @@ use std::cmp::Ordering;
 use hir::Semantics;
 use syntax::{
     algo,
-    ast::{self, make, AstNode, HasAttrs, HasModuleItem, HasVisibility, PathSegmentKind},
+    ast::{
+        self, edit_in_place::Removable, make, AstNode, HasAttrs, HasModuleItem, HasVisibility,
+        PathSegmentKind,
+    },
     ted, Direction, NodeOrToken, SyntaxKind, SyntaxNode,
 };
 
@@ -192,20 +195,24 @@ pub fn insert_use(scope: &ImportScope, path: ast::Path, cfg: &InsertUseConfig) {
     insert_use_(scope, &path, cfg.group, use_item);
 }
 
-pub fn remove_path_if_in_use_stmt(path: &ast::Path) {
+pub fn ast_to_remove_for_path_in_use_stmt(path: &ast::Path) -> Option<Box<dyn Removable>> {
     // FIXME: improve this
     if path.parent_path().is_some() {
-        return;
+        return None;
     }
-    if let Some(use_tree) = path.syntax().parent().and_then(ast::UseTree::cast) {
-        if use_tree.use_tree_list().is_some() || use_tree.star_token().is_some() {
-            return;
-        }
-        if let Some(use_) = use_tree.syntax().parent().and_then(ast::Use::cast) {
-            use_.remove();
-            return;
-        }
-        use_tree.remove();
+    let use_tree = path.syntax().parent().and_then(ast::UseTree::cast)?;
+    if use_tree.use_tree_list().is_some() || use_tree.star_token().is_some() {
+        return None;
+    }
+    if let Some(use_) = use_tree.syntax().parent().and_then(ast::Use::cast) {
+        return Some(Box::new(use_));
+    }
+    Some(Box::new(use_tree))
+}
+
+pub fn remove_path_if_in_use_stmt(path: &ast::Path) {
+    if let Some(node) = ast_to_remove_for_path_in_use_stmt(path) {
+        node.remove();
     }
 }
 
