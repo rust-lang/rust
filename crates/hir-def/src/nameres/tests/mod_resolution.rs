@@ -132,9 +132,9 @@ pub struct Bar;
         expect![[r#"
             crate
             Bar: t v
-            async: t
+            r#async: t
 
-            crate::async
+            crate::r#async
             Bar: t v
         "#]],
     );

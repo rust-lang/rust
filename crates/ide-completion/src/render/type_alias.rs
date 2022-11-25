@@ -32,11 +32,11 @@ fn render(
     let name = type_alias.name(db);
     let (name, escaped_name) = if with_eq {
         (
+            SmolStr::from_iter([&name.unescaped().to_smol_str(), " = "]),
             SmolStr::from_iter([&name.to_smol_str(), " = "]),
-            SmolStr::from_iter([&name.escaped().to_smol_str(), " = "]),
         )
     } else {
-        (name.to_smol_str(), name.escaped().to_smol_str())
+        (name.unescaped().to_smol_str(), name.to_smol_str())
     };
     let detail = type_alias.display(db).to_string();
 

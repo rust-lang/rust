@@ -20,7 +20,7 @@ use syntax::{
     SyntaxNode, T,
 };
 
-use crate::{assist_context::AssistBuilder, AssistContext, AssistId, AssistKind, Assists};
+use crate::{assist_context::SourceChangeBuilder, AssistContext, AssistId, AssistKind, Assists};
 
 // Assist: extract_struct_from_enum_variant
 //
@@ -374,7 +374,7 @@ fn apply_references(
 
 fn process_references(
     ctx: &AssistContext<'_>,
-    builder: &mut AssistBuilder,
+    builder: &mut SourceChangeBuilder,
     visited_modules: &mut FxHashSet<Module>,
     enum_module_def: &ModuleDef,
     variant_hir_name: &Name,

@@ -46,7 +46,7 @@ fn render(
         ctx.source_range()
     };
 
-    let (name, escaped_name) = (name.to_smol_str(), name.escaped().to_smol_str());
+    let (name, escaped_name) = (name.unescaped().to_smol_str(), name.to_smol_str());
     let docs = ctx.docs(macro_);
     let docs_str = docs.as_ref().map(Documentation::as_str).unwrap_or_default();
     let is_fn_like = macro_.is_fn_like(completion.db);

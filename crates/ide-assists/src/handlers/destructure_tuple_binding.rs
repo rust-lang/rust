@@ -8,7 +8,7 @@ use syntax::{
     TextRange,
 };
 
-use crate::assist_context::{AssistBuilder, AssistContext, Assists};
+use crate::assist_context::{AssistContext, Assists, SourceChangeBuilder};
 
 // Assist: destructure_tuple_binding
 //
@@ -151,7 +151,7 @@ struct TupleData {
 }
 fn edit_tuple_assignment(
     ctx: &AssistContext<'_>,
-    builder: &mut AssistBuilder,
+    builder: &mut SourceChangeBuilder,
     data: &TupleData,
     in_sub_pattern: bool,
 ) {
@@ -195,7 +195,7 @@ fn edit_tuple_assignment(
 
 fn edit_tuple_usages(
     data: &TupleData,
-    builder: &mut AssistBuilder,
+    builder: &mut SourceChangeBuilder,
     ctx: &AssistContext<'_>,
     in_sub_pattern: bool,
 ) {
@@ -211,7 +211,7 @@ fn edit_tuple_usages(
 }
 fn edit_tuple_usage(
     ctx: &AssistContext<'_>,
-    builder: &mut AssistBuilder,
+    builder: &mut SourceChangeBuilder,
     usage: &FileReference,
     data: &TupleData,
     in_sub_pattern: bool,
@@ -239,7 +239,7 @@ fn edit_tuple_usage(
 
 fn edit_tuple_field_usage(
     ctx: &AssistContext<'_>,
-    builder: &mut AssistBuilder,
+    builder: &mut SourceChangeBuilder,
     data: &TupleData,
     index: TupleIndex,
 ) {

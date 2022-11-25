@@ -52,10 +52,10 @@ fn render(
 
     let (call, escaped_call) = match &func_kind {
         FuncKind::Method(_, Some(receiver)) => (
-            format!("{}.{}", receiver, &name).into(),
-            format!("{}.{}", receiver.escaped(), name.escaped()).into(),
+            format!("{}.{}", receiver.unescaped(), name.unescaped()).into(),
+            format!("{}.{}", receiver, name).into(),
         ),
-        _ => (name.to_smol_str(), name.escaped().to_smol_str()),
+        _ => (name.unescaped().to_smol_str(), name.to_smol_str()),
     };
     let mut item = CompletionItem::new(
         if func.self_param(db).is_some() {
@@ -96,7 +96,7 @@ fn render(
     item.set_documentation(ctx.docs(func))
         .set_deprecated(ctx.is_deprecated(func) || ctx.is_deprecated_assoc_item(func))
         .detail(detail(db, func))
-        .lookup_by(name.to_smol_str());
+        .lookup_by(name.unescaped().to_smol_str());
 
     match ctx.completion.config.snippet_cap {
         Some(cap) => {

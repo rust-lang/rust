@@ -9,6 +9,7 @@ use std::{
 
 use always_assert::always;
 use crossbeam_channel::{select, Receiver};
+use flycheck::FlycheckHandle;
 use ide_db::base_db::{SourceDatabase, SourceDatabaseExt, VfsPath};
 use itertools::Itertools;
 use lsp_server::{Connection, Notification, Request};
@@ -205,81 +206,14 @@ impl GlobalState {
                 }
                 lsp_server::Message::Response(resp) => self.complete_request(resp),
             },
-            Event::Task(mut task) => {
+            Event::Task(task) => {
                 let _p = profile::span("GlobalState::handle_event/task");
                 let mut prime_caches_progress = Vec::new();
-                loop {
-                    match task {
-                        Task::Response(response) => self.respond(response),
-                        Task::Retry(req) => self.on_request(req),
-                        Task::Diagnostics(diagnostics_per_file) => {
-                            for (file_id, diagnostics) in diagnostics_per_file {
-                                self.diagnostics.set_native_diagnostics(file_id, diagnostics)
-                            }
-                        }
-                        Task::PrimeCaches(progress) => match progress {
-                            PrimeCachesProgress::Begin => prime_caches_progress.push(progress),
-                            PrimeCachesProgress::Report(_) => {
-                                match prime_caches_progress.last_mut() {
-                                    Some(last @ PrimeCachesProgress::Report(_)) => {
-                                        // Coalesce subsequent update events.
-                                        *last = progress;
-                                    }
-                                    _ => prime_caches_progress.push(progress),
-                                }
-                            }
-                            PrimeCachesProgress::End { .. } => prime_caches_progress.push(progress),
-                        },
-                        Task::FetchWorkspace(progress) => {
-                            let (state, msg) = match progress {
-                                ProjectWorkspaceProgress::Begin => (Progress::Begin, None),
-                                ProjectWorkspaceProgress::Report(msg) => {
-                                    (Progress::Report, Some(msg))
-                                }
-                                ProjectWorkspaceProgress::End(workspaces) => {
-                                    self.fetch_workspaces_queue.op_completed(workspaces);
 
-                                    let old = Arc::clone(&self.workspaces);
-                                    self.switch_workspaces("fetched workspace".to_string());
-                                    let workspaces_updated = !Arc::ptr_eq(&old, &self.workspaces);
-
-                                    if self.config.run_build_scripts() && workspaces_updated {
-                                        self.fetch_build_data_queue
-                                            .request_op(format!("workspace updated"));
-                                    }
-
-                                    (Progress::End, None)
-                                }
-                            };
-
-                            self.report_progress("Fetching", state, msg, None);
-                        }
-                        Task::FetchBuildData(progress) => {
-                            let (state, msg) = match progress {
-                                BuildDataProgress::Begin => (Some(Progress::Begin), None),
-                                BuildDataProgress::Report(msg) => {
-                                    (Some(Progress::Report), Some(msg))
-                                }
-                                BuildDataProgress::End(build_data_result) => {
-                                    self.fetch_build_data_queue.op_completed(build_data_result);
-
-                                    self.switch_workspaces("fetched build data".to_string());
-
-                                    (Some(Progress::End), None)
-                                }
-                            };
-
-                            if let Some(state) = state {
-                                self.report_progress("Loading", state, msg, None);
-                            }
-                        }
-                    }
-
-                    // Coalesce multiple task events into one loop turn
-                    task = match self.task_pool.receiver.try_recv() {
-                        Ok(task) => task,
-                        Err(_) => break,
-                    };
+                self.handle_task(&mut prime_caches_progress, task);
+                // Coalesce multiple task events into one loop turn
+                while let Ok(task) = self.task_pool.receiver.try_recv() {
+                    self.handle_task(&mut prime_caches_progress, task);
                 }
 
                 for progress in prime_caches_progress {
@@ -326,119 +260,20 @@ impl GlobalState {
                     self.report_progress("Indexing", state, message, Some(fraction));
                 }
             }
-            Event::Vfs(mut task) => {
+            Event::Vfs(message) => {
                 let _p = profile::span("GlobalState::handle_event/vfs");
-                loop {
-                    match task {
-                        vfs::loader::Message::Loaded { files } => {
-                            let vfs = &mut self.vfs.write().0;
-                            for (path, contents) in files {
-                                let path = VfsPath::from(path);
-                                if !self.mem_docs.contains(&path) {
-                                    vfs.set_file_contents(path, contents);
-                                }
-                            }
-                        }
-                        vfs::loader::Message::Progress { n_total, n_done, config_version } => {
-                            always!(config_version <= self.vfs_config_version);
-
-                            self.vfs_progress_config_version = config_version;
-                            self.vfs_progress_n_total = n_total;
-                            self.vfs_progress_n_done = n_done;
-
-                            let state = if n_done == 0 {
-                                Progress::Begin
-                            } else if n_done < n_total {
-                                Progress::Report
-                            } else {
-                                assert_eq!(n_done, n_total);
-                                Progress::End
-                            };
-                            self.report_progress(
-                                "Roots Scanned",
-                                state,
-                                Some(format!("{}/{}", n_done, n_total)),
-                                Some(Progress::fraction(n_done, n_total)),
-                            )
-                        }
-                    }
-                    // Coalesce many VFS event into a single loop turn
-                    task = match self.loader.receiver.try_recv() {
-                        Ok(task) => task,
-                        Err(_) => break,
-                    }
+                self.handle_vfs_msg(message);
+                // Coalesce many VFS event into a single loop turn
+                while let Ok(message) = self.loader.receiver.try_recv() {
+                    self.handle_vfs_msg(message);
                 }
             }
-            Event::Flycheck(mut task) => {
+            Event::Flycheck(message) => {
                 let _p = profile::span("GlobalState::handle_event/flycheck");
-                loop {
-                    match task {
-                        flycheck::Message::AddDiagnostic { id, workspace_root, diagnostic } => {
-                            let snap = self.snapshot();
-                            let diagnostics =
-                                crate::diagnostics::to_proto::map_rust_diagnostic_to_lsp(
-                                    &self.config.diagnostics_map(),
-                                    &diagnostic,
-                                    &workspace_root,
-                                    &snap,
-                                );
-                            for diag in diagnostics {
-                                match url_to_file_id(&self.vfs.read().0, &diag.url) {
-                                    Ok(file_id) => self.diagnostics.add_check_diagnostic(
-                                        id,
-                                        file_id,
-                                        diag.diagnostic,
-                                        diag.fix,
-                                    ),
-                                    Err(err) => {
-                                        tracing::error!(
-                                            "File with cargo diagnostic not found in VFS: {}",
-                                            err
-                                        );
-                                    }
-                                };
-                            }
-                        }
-
-                        flycheck::Message::Progress { id, progress } => {
-                            let (state, message) = match progress {
-                                flycheck::Progress::DidStart => {
-                                    self.diagnostics.clear_check(id);
-                                    (Progress::Begin, None)
-                                }
-                                flycheck::Progress::DidCheckCrate(target) => {
-                                    (Progress::Report, Some(target))
-                                }
-                                flycheck::Progress::DidCancel => (Progress::End, None),
-                                flycheck::Progress::DidFinish(result) => {
-                                    if let Err(err) = result {
-                                        self.show_and_log_error(
-                                            "cargo check failed".to_string(),
-                                            Some(err.to_string()),
-                                        );
-                                    }
-                                    (Progress::End, None)
-                                }
-                            };
-
-                            // When we're running multiple flychecks, we have to include a disambiguator in
-                            // the title, or the editor complains. Note that this is a user-facing string.
-                            let title = if self.flycheck.len() == 1 {
-                                match self.config.flycheck() {
-                                    Some(config) => format!("{}", config),
-                                    None => "cargo check".to_string(),
-                                }
-                            } else {
-                                format!("cargo check (#{})", id + 1)
-                            };
-                            self.report_progress(&title, state, message, None);
-                        }
-                    }
-                    // Coalesce many flycheck updates into a single loop turn
-                    task = match self.flycheck_receiver.try_recv() {
-                        Ok(task) => task,
-                        Err(_) => break,
-                    }
+                self.handle_flycheck_msg(message);
+                // Coalesce many flycheck updates into a single loop turn
+                while let Ok(message) = self.flycheck_receiver.try_recv() {
+                    self.handle_flycheck_msg(message);
                 }
             }
         }
@@ -447,13 +282,13 @@ impl GlobalState {
         let memdocs_added_or_removed = self.mem_docs.take_changes();
 
         if self.is_quiescent() {
-            if !was_quiescent
-                && !self.fetch_workspaces_queue.op_requested()
-                && !self.fetch_build_data_queue.op_requested()
-            {
-                for flycheck in &self.flycheck {
-                    flycheck.update();
-                }
+            let became_quiescent = !(was_quiescent
+                || self.fetch_workspaces_queue.op_requested()
+                || self.fetch_build_data_queue.op_requested());
+
+            if became_quiescent {
+                // Project has loaded properly, kick off initial flycheck
+                self.flycheck.iter().for_each(FlycheckHandle::update);
                 if self.config.prefill_caches() {
                     self.prime_caches_queue.request_op("became quiescent".to_string());
                 }
@@ -492,28 +327,15 @@ impl GlobalState {
                     continue;
                 }
 
-                let url = file_id_to_url(&self.vfs.read().0, file_id);
-                let mut diagnostics =
+                let uri = file_id_to_url(&self.vfs.read().0, file_id);
+                let diagnostics =
                     self.diagnostics.diagnostics_for(file_id).cloned().collect::<Vec<_>>();
-                // https://github.com/rust-lang/rust-analyzer/issues/11404
-                for d in &mut diagnostics {
-                    if d.message.is_empty() {
-                        d.message = " ".to_string();
-                    }
-                    if let Some(rds) = d.related_information.as_mut() {
-                        for rd in rds {
-                            if rd.message.is_empty() {
-                                rd.message = " ".to_string();
-                            }
-                        }
-                    }
-                }
-                let version = from_proto::vfs_path(&url)
+                let version = from_proto::vfs_path(&uri)
                     .map(|path| self.mem_docs.get(&path).map(|it| it.version))
                     .unwrap_or_default();
 
                 self.send_notification::<lsp_types::notification::PublishDiagnostics>(
-                    lsp_types::PublishDiagnosticsParams { uri: url, diagnostics, version },
+                    lsp_types::PublishDiagnosticsParams { uri, diagnostics, version },
                 );
             }
         }
@@ -575,11 +397,171 @@ impl GlobalState {
         Ok(())
     }
 
+    fn handle_task(&mut self, prime_caches_progress: &mut Vec<PrimeCachesProgress>, task: Task) {
+        match task {
+            Task::Response(response) => self.respond(response),
+            Task::Retry(req) => self.on_request(req),
+            Task::Diagnostics(diagnostics_per_file) => {
+                for (file_id, diagnostics) in diagnostics_per_file {
+                    self.diagnostics.set_native_diagnostics(file_id, diagnostics)
+                }
+            }
+            Task::PrimeCaches(progress) => match progress {
+                PrimeCachesProgress::Begin => prime_caches_progress.push(progress),
+                PrimeCachesProgress::Report(_) => {
+                    match prime_caches_progress.last_mut() {
+                        Some(last @ PrimeCachesProgress::Report(_)) => {
+                            // Coalesce subsequent update events.
+                            *last = progress;
+                        }
+                        _ => prime_caches_progress.push(progress),
+                    }
+                }
+                PrimeCachesProgress::End { .. } => prime_caches_progress.push(progress),
+            },
+            Task::FetchWorkspace(progress) => {
+                let (state, msg) = match progress {
+                    ProjectWorkspaceProgress::Begin => (Progress::Begin, None),
+                    ProjectWorkspaceProgress::Report(msg) => (Progress::Report, Some(msg)),
+                    ProjectWorkspaceProgress::End(workspaces) => {
+                        self.fetch_workspaces_queue.op_completed(workspaces);
+
+                        let old = Arc::clone(&self.workspaces);
+                        self.switch_workspaces("fetched workspace".to_string());
+                        let workspaces_updated = !Arc::ptr_eq(&old, &self.workspaces);
+
+                        if self.config.run_build_scripts() && workspaces_updated {
+                            self.fetch_build_data_queue.request_op(format!("workspace updated"));
+                        }
+
+                        (Progress::End, None)
+                    }
+                };
+
+                self.report_progress("Fetching", state, msg, None);
+            }
+            Task::FetchBuildData(progress) => {
+                let (state, msg) = match progress {
+                    BuildDataProgress::Begin => (Some(Progress::Begin), None),
+                    BuildDataProgress::Report(msg) => (Some(Progress::Report), Some(msg)),
+                    BuildDataProgress::End(build_data_result) => {
+                        self.fetch_build_data_queue.op_completed(build_data_result);
+
+                        self.switch_workspaces("fetched build data".to_string());
+
+                        (Some(Progress::End), None)
+                    }
+                };
+
+                if let Some(state) = state {
+                    self.report_progress("Loading", state, msg, None);
+                }
+            }
+        }
+    }
+
+    fn handle_vfs_msg(&mut self, message: vfs::loader::Message) {
+        match message {
+            vfs::loader::Message::Loaded { files } => {
+                let vfs = &mut self.vfs.write().0;
+                for (path, contents) in files {
+                    let path = VfsPath::from(path);
+                    if !self.mem_docs.contains(&path) {
+                        vfs.set_file_contents(path, contents);
+                    }
+                }
+            }
+            vfs::loader::Message::Progress { n_total, n_done, config_version } => {
+                always!(config_version <= self.vfs_config_version);
+
+                self.vfs_progress_config_version = config_version;
+                self.vfs_progress_n_total = n_total;
+                self.vfs_progress_n_done = n_done;
+
+                let state = if n_done == 0 {
+                    Progress::Begin
+                } else if n_done < n_total {
+                    Progress::Report
+                } else {
+                    assert_eq!(n_done, n_total);
+                    Progress::End
+                };
+                self.report_progress(
+                    "Roots Scanned",
+                    state,
+                    Some(format!("{}/{}", n_done, n_total)),
+                    Some(Progress::fraction(n_done, n_total)),
+                )
+            }
+        }
+    }
+
+    fn handle_flycheck_msg(&mut self, message: flycheck::Message) {
+        match message {
+            flycheck::Message::AddDiagnostic { id, workspace_root, diagnostic } => {
+                let snap = self.snapshot();
+                let diagnostics = crate::diagnostics::to_proto::map_rust_diagnostic_to_lsp(
+                    &self.config.diagnostics_map(),
+                    &diagnostic,
+                    &workspace_root,
+                    &snap,
+                );
+                for diag in diagnostics {
+                    match url_to_file_id(&self.vfs.read().0, &diag.url) {
+                        Ok(file_id) => self.diagnostics.add_check_diagnostic(
+                            id,
+                            file_id,
+                            diag.diagnostic,
+                            diag.fix,
+                        ),
+                        Err(err) => {
+                            tracing::error!("File with cargo diagnostic not found in VFS: {}", err);
+                        }
+                    };
+                }
+            }
+
+            flycheck::Message::Progress { id, progress } => {
+                let (state, message) = match progress {
+                    flycheck::Progress::DidStart => {
+                        self.diagnostics.clear_check(id);
+                        (Progress::Begin, None)
+                    }
+                    flycheck::Progress::DidCheckCrate(target) => (Progress::Report, Some(target)),
+                    flycheck::Progress::DidCancel => (Progress::End, None),
+                    flycheck::Progress::DidFinish(result) => {
+                        if let Err(err) = result {
+                            self.show_and_log_error(
+                                "cargo check failed".to_string(),
+                                Some(err.to_string()),
+                            );
+                        }
+                        (Progress::End, None)
+                    }
+                };
+
+                // When we're running multiple flychecks, we have to include a disambiguator in
+                // the title, or the editor complains. Note that this is a user-facing string.
+                let title = if self.flycheck.len() == 1 {
+                    match self.config.flycheck() {
+                        Some(config) => format!("{}", config),
+                        None => "cargo check".to_string(),
+                    }
+                } else {
+                    format!("cargo check (#{})", id + 1)
+                };
+                self.report_progress(&title, state, message, None);
+            }
+        }
+    }
+
+    /// Registers and handles a request. This should only be called once per incoming request.
     fn on_new_request(&mut self, request_received: Instant, req: Request) {
         self.register_request(&req, request_received);
         self.on_request(req);
     }
 
+    /// Handles a request.
     fn on_request(&mut self, req: Request) {
         if self.shutdown_requested {
             self.respond(lsp_server::Response::new_err(
@@ -670,6 +652,7 @@ impl GlobalState {
             .finish();
     }
 
+    /// Handles an incoming notification.
     fn on_notification(&mut self, not: Notification) -> Result<()> {
         NotificationDispatcher { not: Some(not), global_state: self }
             .on::<lsp_types::notification::Cancel>(|this, params| {
@@ -743,6 +726,8 @@ impl GlobalState {
                 let mut updated = false;
                 if let Ok(vfs_path) = from_proto::vfs_path(&params.text_document.uri) {
                     let (vfs, _) = &*this.vfs.read();
+
+                    // Trigger flychecks for all workspaces that depend on the saved file
                     if let Some(file_id) = vfs.file_id(&vfs_path) {
                         let analysis = this.analysis_host.analysis();
                         // Crates containing or depending on the saved file
@@ -800,6 +785,8 @@ impl GlobalState {
                             }
                         }
                     }
+
+                    // Re-fetch workspaces if a workspace related file has changed
                     if let Some(abs_path) = vfs_path.as_path() {
                         if reload::should_refresh_for_change(&abs_path, ChangeKind::Modify) {
                             this.fetch_workspaces_queue
@@ -807,6 +794,8 @@ impl GlobalState {
                         }
                     }
                 }
+
+                // No specific flycheck was triggered, so let's trigger all of them.
                 if !updated {
                     for flycheck in &this.flycheck {
                         flycheck.update();

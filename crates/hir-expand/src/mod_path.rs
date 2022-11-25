@@ -22,7 +22,7 @@ pub struct ModPath {
 }
 
 #[derive(Debug, Clone, PartialEq, Eq, PartialOrd, Ord, Hash)]
-pub struct EscapedModPath<'a>(&'a ModPath);
+pub struct UnescapedModPath<'a>(&'a ModPath);
 
 #[derive(Debug, Copy, Clone, PartialEq, Eq, PartialOrd, Ord, Hash)]
 pub enum PathKind {
@@ -102,8 +102,8 @@ impl ModPath {
         }
     }
 
-    pub fn escaped(&self) -> EscapedModPath<'_> {
-        EscapedModPath(self)
+    pub fn unescaped(&self) -> UnescapedModPath<'_> {
+        UnescapedModPath(self)
     }
 
     fn _fmt(&self, f: &mut fmt::Formatter<'_>, escaped: bool) -> fmt::Result {
@@ -134,9 +134,9 @@ impl ModPath {
             }
             first_segment = false;
             if escaped {
-                segment.escaped().fmt(f)?
-            } else {
                 segment.fmt(f)?
+            } else {
+                segment.unescaped().fmt(f)?
             };
         }
         Ok(())
@@ -145,13 +145,13 @@ impl ModPath {
 
 impl Display for ModPath {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        self._fmt(f, false)
+        self._fmt(f, true)
     }
 }
 
-impl<'a> Display for EscapedModPath<'a> {
+impl<'a> Display for UnescapedModPath<'a> {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        self.0._fmt(f, true)
+        self.0._fmt(f, false)
     }
 }
 

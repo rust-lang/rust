@@ -368,6 +368,7 @@ impl SourceAnalyzer {
         let local = if field.name_ref().is_some() {
             None
         } else {
+            // Shorthand syntax, resolve to the local
             let path = ModPath::from_segments(PathKind::Plain, once(local_name.clone()));
             match self.resolver.resolve_path_in_value_ns_fully(db.upcast(), &path) {
                 Some(ValueNs::LocalBinding(pat_id)) => {

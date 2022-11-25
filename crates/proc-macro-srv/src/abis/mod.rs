@@ -25,7 +25,6 @@
 
 mod abi_1_58;
 mod abi_1_63;
-mod abi_1_64;
 #[cfg(feature = "sysroot-abi")]
 mod abi_sysroot;
 
@@ -34,12 +33,11 @@ include!(concat!(env!("OUT_DIR"), "/rustc_version.rs"));
 
 // Used by `test/utils.rs`
 #[cfg(test)]
-pub(crate) use abi_1_64::TokenStream as TestTokenStream;
+pub(crate) use abi_1_63::TokenStream as TestTokenStream;
 
 use super::dylib::LoadProcMacroDylibError;
 pub(crate) use abi_1_58::Abi as Abi_1_58;
 pub(crate) use abi_1_63::Abi as Abi_1_63;
-pub(crate) use abi_1_64::Abi as Abi_1_64;
 #[cfg(feature = "sysroot-abi")]
 pub(crate) use abi_sysroot::Abi as Abi_Sysroot;
 use libloading::Library;
@@ -58,7 +56,6 @@ impl PanicMessage {
 pub(crate) enum Abi {
     Abi1_58(Abi_1_58),
     Abi1_63(Abi_1_63),
-    Abi1_64(Abi_1_64),
     #[cfg(feature = "sysroot-abi")]
     AbiSysroot(Abi_Sysroot),
 }
@@ -120,10 +117,6 @@ impl Abi {
                 let inner = unsafe { Abi_1_63::from_lib(lib, symbol_name) }?;
                 Ok(Abi::Abi1_63(inner))
             }
-            (1, 64..) => {
-                let inner = unsafe { Abi_1_64::from_lib(lib, symbol_name) }?;
-                Ok(Abi::Abi1_64(inner))
-            }
             _ => Err(LoadProcMacroDylibError::UnsupportedABI),
         }
     }
@@ -137,7 +130,6 @@ impl Abi {
         match self {
             Self::Abi1_58(abi) => abi.expand(macro_name, macro_body, attributes),
             Self::Abi1_63(abi) => abi.expand(macro_name, macro_body, attributes),
-            Self::Abi1_64(abi) => abi.expand(macro_name, macro_body, attributes),
             #[cfg(feature = "sysroot-abi")]
             Self::AbiSysroot(abi) => abi.expand(macro_name, macro_body, attributes),
         }
@@ -147,7 +139,6 @@ impl Abi {
         match self {
             Self::Abi1_58(abi) => abi.list_macros(),
             Self::Abi1_63(abi) => abi.list_macros(),
-            Self::Abi1_64(abi) => abi.list_macros(),
             #[cfg(feature = "sysroot-abi")]
             Self::AbiSysroot(abi) => abi.list_macros(),
         }

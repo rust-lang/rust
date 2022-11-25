@@ -75,6 +75,16 @@ fn pattern_single_r(p: &mut Parser<'_>, recovery_set: TokenSet) {
         //         Some(1..) => ()
         //     }
         //
+        //     match () {
+        //         S { a: 0 } => (),
+        //         S { a: 1.. } => (),
+        //     }
+        //
+        //     match () {
+        //         [0] => (),
+        //         [1..] => (),
+        //     }
+        //
         //     match (10 as u8, 5 as u8) {
         //         (0, _) => (),
         //         (1.., _) => ()
@@ -88,11 +98,27 @@ fn pattern_single_r(p: &mut Parser<'_>, recovery_set: TokenSet) {
                 let m = lhs.precede(p);
                 p.bump(range_op);
 
-                // `0 .. =>` or `let 0 .. =` or `Some(0 .. )`
-                //       ^                ^                ^
-                if p.at(T![=]) | p.at(T![')']) | p.at(T![,]) {
+                // testing if we're at one of the following positions:
+                // `0 .. =>`
+                //       ^
+                // `let 0 .. =`
+                //           ^
+                // `let 0..: _ =`
+                //         ^
+                // (1.., _)
+                //     ^
+                // `Some(0 .. )`
+                //            ^
+                // `S { t: 0.. }`
+                //             ^
+                // `[0..]`
+                //      ^
+                if matches!(p.current(), T![=] | T![,] | T![:] | T![')'] | T!['}'] | T![']']) {
                     // test half_open_range_pat
-                    // fn f() { let 0 .. = 1u32; }
+                    // fn f() {
+                    //     let 0 .. = 1u32;
+                    //     let 0..: _ = 1u32;
+                    // }
                 } else {
                     atom_pat(p, recovery_set);
                 }

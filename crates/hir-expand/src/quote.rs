@@ -196,8 +196,8 @@ impl_to_to_tokentrees! {
     tt::Literal => self { self };
     tt::Ident => self { self };
     tt::Punct => self { self };
-    &str => self { tt::Literal{text: format!("\"{}\"", self.escape_debug()).into(), id: tt::TokenId::unspecified()}};
-    String => self { tt::Literal{text: format!("\"{}\"", self.escape_debug()).into(), id: tt::TokenId::unspecified()}}
+    &str => self { tt::Literal{text: format!("\"{}\"", self.escape_default()).into(), id: tt::TokenId::unspecified()}};
+    String => self { tt::Literal{text: format!("\"{}\"", self.escape_default()).into(), id: tt::TokenId::unspecified()}}
 }
 
 #[cfg(test)]

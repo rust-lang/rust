@@ -12,6 +12,7 @@ use cargo_metadata::{camino::Utf8Path, Message};
 use la_arena::ArenaMap;
 use paths::AbsPathBuf;
 use rustc_hash::FxHashMap;
+use semver::Version;
 use serde::Deserialize;
 
 use crate::{cfg_flag::CfgFlag, CargoConfig, CargoWorkspace, Package};
@@ -77,9 +78,32 @@ impl WorkspaceBuildScripts {
         config: &CargoConfig,
         workspace: &CargoWorkspace,
         progress: &dyn Fn(String),
+        toolchain: &Option<Version>,
     ) -> io::Result<WorkspaceBuildScripts> {
-        let mut cmd = Self::build_command(config);
+        const RUST_1_62: Version = Version::new(1, 62, 0);
 
+        match Self::run_(Self::build_command(config), config, workspace, progress) {
+            Ok(WorkspaceBuildScripts { error: Some(error), .. })
+                if toolchain.as_ref().map_or(false, |it| *it >= RUST_1_62) =>
+            {
+                // building build scripts failed, attempt to build with --keep-going so
+                // that we potentially get more build data
+                let mut cmd = Self::build_command(config);
+                cmd.args(&["-Z", "unstable-options", "--keep-going"]).env("RUSTC_BOOTSTRAP", "1");
+                let mut res = Self::run_(cmd, config, workspace, progress)?;
+                res.error = Some(error);
+                Ok(res)
+            }
+            res => res,
+        }
+    }
+
+    fn run_(
+        mut cmd: Command,
+        config: &CargoConfig,
+        workspace: &CargoWorkspace,
+        progress: &dyn Fn(String),
+    ) -> io::Result<WorkspaceBuildScripts> {
         if config.wrap_rustc_in_build_scripts {
             // Setup RUSTC_WRAPPER to point to `rust-analyzer` binary itself. We use
             // that to compile only proc macros and build scripts during the initial

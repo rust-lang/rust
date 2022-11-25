@@ -1386,7 +1386,7 @@ fn main() {
     #[test]
     #[cfg(target_os = "windows")]
     fn test_lowercase_drive_letter() {
-        use std::{convert::TryInto, path::Path};
+        use std::path::Path;
 
         let url = url_from_abs_path(Path::new("C:\\Test").try_into().unwrap());
         assert_eq!(url.to_string(), "file:///c:/Test");

@@ -14,6 +14,7 @@ use crate::{MacroKind, Type};
 
 macro_rules! diagnostics {
     ($($diag:ident,)*) => {
+        #[derive(Debug)]
         pub enum AnyDiagnostic {$(
             $diag(Box<$diag>),
         )*}

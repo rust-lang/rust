@@ -228,16 +228,7 @@ fn convert_tokens<C: TokenConvertor>(conv: &mut C) -> tt::Subtree {
             }
 
             let spacing = match conv.peek().map(|next| next.kind(conv)) {
-                Some(kind)
-                    if !kind.is_trivia()
-                        && kind.is_punct()
-                        && kind != T!['[']
-                        && kind != T!['{']
-                        && kind != T!['(']
-                        && kind != UNDERSCORE =>
-                {
-                    tt::Spacing::Joint
-                }
+                Some(kind) if !kind.is_trivia() => tt::Spacing::Joint,
                 _ => tt::Spacing::Alone,
             };
             let char = match token.to_char(conv) {

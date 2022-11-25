@@ -1320,8 +1320,7 @@ pub(crate) fn publish_diagnostics(
                 .unwrap(),
             }),
             source: Some("rust-analyzer".to_string()),
-            // https://github.com/rust-lang/rust-analyzer/issues/11404
-            message: if !d.message.is_empty() { d.message } else { " ".to_string() },
+            message: d.message,
             related_information: None,
             tags: if d.unused { Some(vec![DiagnosticTag::UNNECESSARY]) } else { None },
             data: None,

@@ -5,7 +5,7 @@ use syntax::{
     match_ast, SyntaxNode,
 };
 
-use crate::{assist_context::AssistBuilder, AssistContext, AssistId, AssistKind, Assists};
+use crate::{assist_context::SourceChangeBuilder, AssistContext, AssistId, AssistKind, Assists};
 
 // Assist: convert_tuple_struct_to_named_struct
 //
@@ -80,7 +80,7 @@ pub(crate) fn convert_tuple_struct_to_named_struct(
 
 fn edit_struct_def(
     ctx: &AssistContext<'_>,
-    edit: &mut AssistBuilder,
+    edit: &mut SourceChangeBuilder,
     strukt: &Either<ast::Struct, ast::Variant>,
     tuple_fields: ast::TupleFieldList,
     names: Vec<ast::Name>,
@@ -122,7 +122,7 @@ fn edit_struct_def(
 
 fn edit_struct_references(
     ctx: &AssistContext<'_>,
-    edit: &mut AssistBuilder,
+    edit: &mut SourceChangeBuilder,
     strukt: Either<hir::Struct, hir::Variant>,
     names: &[ast::Name],
 ) {
@@ -132,7 +132,7 @@ fn edit_struct_references(
     };
     let usages = strukt_def.usages(&ctx.sema).include_self_refs().all();
 
-    let edit_node = |edit: &mut AssistBuilder, node: SyntaxNode| -> Option<()> {
+    let edit_node = |edit: &mut SourceChangeBuilder, node: SyntaxNode| -> Option<()> {
         match_ast! {
             match node {
                 ast::TupleStructPat(tuple_struct_pat) => {
@@ -203,7 +203,7 @@ fn edit_struct_references(
 
 fn edit_field_references(
     ctx: &AssistContext<'_>,
-    edit: &mut AssistBuilder,
+    edit: &mut SourceChangeBuilder,
     fields: impl Iterator<Item = ast::TupleField>,
     names: &[ast::Name],
 ) {

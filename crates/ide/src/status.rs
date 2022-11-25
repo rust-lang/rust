@@ -1,4 +1,4 @@
-use std::{fmt, iter::FromIterator, sync::Arc};
+use std::{fmt, sync::Arc};
 
 use hir::{ExpandResult, MacroFile};
 use ide_db::base_db::{

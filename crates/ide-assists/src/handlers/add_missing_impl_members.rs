@@ -944,7 +944,7 @@ foo!();
 struct Foo(usize);
 
 impl FooB for Foo {
-    $0fn foo< 'lt>(& 'lt self){}
+    $0fn foo<'lt>(&'lt self){}
 }
 "#,
         )

@@ -219,6 +219,7 @@ impl GlobalState {
                     cfg_overrides,
 
                     build_scripts: _,
+                    toolchain: _,
                 } => Some((cargo, sysroot, rustc, rustc_cfg, cfg_overrides)),
                 _ => None,
             };

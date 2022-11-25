@@ -43,7 +43,7 @@ mod tests {
     use crate::{tests::check_diagnostics_with_config, DiagnosticsConfig};
 
     pub(crate) fn check(ra_fixture: &str) {
-        let config = DiagnosticsConfig::default();
+        let config = DiagnosticsConfig::test_sample();
         check_diagnostics_with_config(config, ra_fixture)
     }
 

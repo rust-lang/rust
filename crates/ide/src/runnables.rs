@@ -2225,4 +2225,190 @@ macro_rules! foo {
             "#]],
         );
     }
+
+    #[test]
+    fn test_paths_with_raw_ident() {
+        check(
+            r#"
+//- /lib.rs
+$0
+mod r#mod {
+    #[test]
+    fn r#fn() {}
+
+    /// ```
+    /// ```
+    fn r#for() {}
+
+    /// ```
+    /// ```
+    struct r#struct<r#type>(r#type);
+
+    /// ```
+    /// ```
+    impl<r#type> r#struct<r#type> {
+        /// ```
+        /// ```
+        fn r#fn() {}
+    }
+
+    enum r#enum {}
+    impl r#struct<r#enum> {
+        /// ```
+        /// ```
+        fn r#fn() {}
+    }
+
+    trait r#trait {}
+
+    /// ```
+    /// ```
+    impl<T> r#trait for r#struct<T> {}
+}
+"#,
+            &[TestMod, Test, DocTest, DocTest, DocTest, DocTest, DocTest, DocTest],
+            expect![[r#"
+                [
+                    Runnable {
+                        use_name_in_title: false,
+                        nav: NavigationTarget {
+                            file_id: FileId(
+                                0,
+                            ),
+                            full_range: 1..461,
+                            focus_range: 5..10,
+                            name: "r#mod",
+                            kind: Module,
+                            description: "mod r#mod",
+                        },
+                        kind: TestMod {
+                            path: "r#mod",
+                        },
+                        cfg: None,
+                    },
+                    Runnable {
+                        use_name_in_title: false,
+                        nav: NavigationTarget {
+                            file_id: FileId(
+                                0,
+                            ),
+                            full_range: 17..41,
+                            focus_range: 32..36,
+                            name: "r#fn",
+                            kind: Function,
+                        },
+                        kind: Test {
+                            test_id: Path(
+                                "r#mod::r#fn",
+                            ),
+                            attr: TestAttr {
+                                ignore: false,
+                            },
+                        },
+                        cfg: None,
+                    },
+                    Runnable {
+                        use_name_in_title: false,
+                        nav: NavigationTarget {
+                            file_id: FileId(
+                                0,
+                            ),
+                            full_range: 47..84,
+                            name: "r#for",
+                        },
+                        kind: DocTest {
+                            test_id: Path(
+                                "r#mod::r#for",
+                            ),
+                        },
+                        cfg: None,
+                    },
+                    Runnable {
+                        use_name_in_title: false,
+                        nav: NavigationTarget {
+                            file_id: FileId(
+                                0,
+                            ),
+                            full_range: 90..146,
+                            name: "r#struct",
+                        },
+                        kind: DocTest {
+                            test_id: Path(
+                                "r#mod::r#struct",
+                            ),
+                        },
+                        cfg: None,
+                    },
+                    Runnable {
+                        use_name_in_title: false,
+                        nav: NavigationTarget {
+                            file_id: FileId(
+                                0,
+                            ),
+                            full_range: 152..266,
+                            focus_range: 189..205,
+                            name: "impl",
+                            kind: Impl,
+                        },
+                        kind: DocTest {
+                            test_id: Path(
+                                "r#struct<r#type>",
+                            ),
+                        },
+                        cfg: None,
+                    },
+                    Runnable {
+                        use_name_in_title: false,
+                        nav: NavigationTarget {
+                            file_id: FileId(
+                                0,
+                            ),
+                            full_range: 216..260,
+                            name: "r#fn",
+                        },
+                        kind: DocTest {
+                            test_id: Path(
+                                "r#mod::r#struct<r#type>::r#fn",
+                            ),
+                        },
+                        cfg: None,
+                    },
+                    Runnable {
+                        use_name_in_title: false,
+                        nav: NavigationTarget {
+                            file_id: FileId(
+                                0,
+                            ),
+                            full_range: 323..367,
+                            name: "r#fn",
+                        },
+                        kind: DocTest {
+                            test_id: Path(
+                                "r#mod::r#struct<r#enum>::r#fn",
+                            ),
+                        },
+                        cfg: None,
+                    },
+                    Runnable {
+                        use_name_in_title: false,
+                        nav: NavigationTarget {
+                            file_id: FileId(
+                                0,
+                            ),
+                            full_range: 401..459,
+                            focus_range: 445..456,
+                            name: "impl",
+                            kind: Impl,
+                        },
+                        kind: DocTest {
+                            test_id: Path(
+                                "r#struct<T>",
+                            ),
+                        },
+                        cfg: None,
+                    },
+                ]
+            "#]],
+        )
+    }
 }

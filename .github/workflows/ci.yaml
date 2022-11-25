@@ -101,7 +101,7 @@ jobs:
     - name: Install Nodejs
       uses: actions/setup-node@v1
       with:
-        node-version: 14.x
+        node-version: 16.x
 
     - name: Install xvfb
       if: matrix.os == 'ubuntu-latest'

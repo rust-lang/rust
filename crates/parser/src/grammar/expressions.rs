@@ -564,8 +564,10 @@ fn path_expr(p: &mut Parser<'_>, r: Restrictions) -> (CompletedMarker, BlockLike
 // test record_lit
 // fn foo() {
 //     S {};
+//     S { x };
 //     S { x, y: 32, };
 //     S { x, y: 32, ..Default::default() };
+//     S { x: ::default() };
 //     TupleStruct { 0: 1 };
 // }
 pub(crate) fn record_expr_field_list(p: &mut Parser<'_>) {
@@ -582,16 +584,26 @@ pub(crate) fn record_expr_field_list(p: &mut Parser<'_>) {
 
         match p.current() {
             IDENT | INT_NUMBER => {
-                // test_err record_literal_before_ellipsis_recovery
+                // test_err record_literal_missing_ellipsis_recovery
                 // fn main() {
-                //     S { field ..S::default() }
+                //     S { S::default() }
                 // }
-                if p.nth_at(1, T![:]) || p.nth_at(1, T![..]) {
-                    name_ref_or_index(p);
-                    p.expect(T![:]);
+                if p.nth_at(1, T![::]) {
+                    m.abandon(p);
+                    p.expect(T![..]);
+                    expr(p);
+                } else {
+                    // test_err record_literal_before_ellipsis_recovery
+                    // fn main() {
+                    //     S { field ..S::default() }
+                    // }
+                    if p.nth_at(1, T![:]) || p.nth_at(1, T![..]) {
+                        name_ref_or_index(p);
+                        p.expect(T![:]);
+                    }
+                    expr(p);
+                    m.complete(p, RECORD_EXPR_FIELD);
                 }
-                expr(p);
-                m.complete(p, RECORD_EXPR_FIELD);
             }
             T![.] if p.at(T![..]) => {
                 m.abandon(p);

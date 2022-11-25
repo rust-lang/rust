@@ -251,9 +251,13 @@ fn format_args_expand(
     }
     for arg in &mut args {
         // Remove `key =`.
-        if matches!(arg.token_trees.get(1), Some(tt::TokenTree::Leaf(tt::Leaf::Punct(p))) if p.char == '=' && p.spacing != tt::Spacing::Joint)
+        if matches!(arg.token_trees.get(1), Some(tt::TokenTree::Leaf(tt::Leaf::Punct(p))) if p.char == '=')
         {
-            arg.token_trees.drain(..2);
+            // but not with `==`
+            if !matches!(arg.token_trees.get(2), Some(tt::TokenTree::Leaf(tt::Leaf::Punct(p))) if p.char == '=' )
+            {
+                arg.token_trees.drain(..2);
+            }
         }
     }
     let _format_string = args.remove(0);
@@ -357,6 +361,12 @@ fn unquote_str(lit: &tt::Literal) -> Option<String> {
     token.value().map(|it| it.into_owned())
 }
 
+fn unquote_char(lit: &tt::Literal) -> Option<char> {
+    let lit = ast::make::tokens::literal(&lit.to_string());
+    let token = ast::Char::cast(lit)?;
+    token.value()
+}
+
 fn unquote_byte_string(lit: &tt::Literal) -> Option<Vec<u8>> {
     let lit = ast::make::tokens::literal(&lit.to_string());
     let token = ast::ByteString::cast(lit)?;
@@ -408,8 +418,12 @@ fn concat_expand(
                 // concat works with string and char literals, so remove any quotes.
                 // It also works with integer, float and boolean literals, so just use the rest
                 // as-is.
-                let component = unquote_str(it).unwrap_or_else(|| it.text.to_string());
-                text.push_str(&component);
+                if let Some(c) = unquote_char(it) {
+                    text.push(c);
+                } else {
+                    let component = unquote_str(it).unwrap_or_else(|| it.text.to_string());
+                    text.push_str(&component);
+                }
             }
             // handle boolean literals
             tt::TokenTree::Leaf(tt::Leaf::Ident(id))

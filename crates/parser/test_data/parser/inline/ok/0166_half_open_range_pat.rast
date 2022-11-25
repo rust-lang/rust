@@ -11,7 +11,7 @@ SOURCE_FILE
     BLOCK_EXPR
       STMT_LIST
         L_CURLY "{"
-        WHITESPACE " "
+        WHITESPACE "\n    "
         LET_STMT
           LET_KW "let"
           WHITESPACE " "
@@ -27,6 +27,25 @@ SOURCE_FILE
           LITERAL
             INT_NUMBER "1u32"
           SEMICOLON ";"
-        WHITESPACE " "
+        WHITESPACE "\n    "
+        LET_STMT
+          LET_KW "let"
+          WHITESPACE " "
+          RANGE_PAT
+            LITERAL_PAT
+              LITERAL
+                INT_NUMBER "0"
+            DOT2 ".."
+          COLON ":"
+          WHITESPACE " "
+          INFER_TYPE
+            UNDERSCORE "_"
+          WHITESPACE " "
+          EQ "="
+          WHITESPACE " "
+          LITERAL
+            INT_NUMBER "1u32"
+          SEMICOLON ";"
+        WHITESPACE "\n"
         R_CURLY "}"
   WHITESPACE "\n"

@@ -73,7 +73,7 @@ fn render(
         None => (name.clone().into(), name.into(), false),
     };
     let (qualified_name, escaped_qualified_name) =
-        (qualified_name.to_string(), qualified_name.escaped().to_string());
+        (qualified_name.unescaped().to_string(), qualified_name.to_string());
     let snippet_cap = ctx.snippet_cap();
 
     let mut rendered = match kind {
