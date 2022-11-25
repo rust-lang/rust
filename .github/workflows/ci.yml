@@ -13,7 +13,7 @@ env:
 
 jobs:
   build:
-    runs-on: ubuntu-20.04
+    runs-on: ubuntu-22.04
 
     strategy:
       fail-fast: false
@@ -45,10 +45,15 @@ jobs:
         path: llvm
 
     - name: Install packages
-      # `llvm-10-tools` is needed to install the `FileCheck` binary which is used for asm tests.
-      run: sudo apt-get install ninja-build ripgrep llvm-10-tools
+      # `llvm-14-tools` is needed to install the `FileCheck` binary which is used for asm tests.
+      run: sudo apt-get install ninja-build ripgrep llvm-14-tools
+
+    - name: Install libgccjit12
+      if: matrix.libgccjit_version.gcc == 'libgccjit12.so'
+      run: sudo apt-get install libgccjit-12-dev
 
     - name: Download artifact
+      if: matrix.libgccjit_version.gcc != 'libgccjit12.so'
       uses: dawidd6/action-download-artifact@v2
       with:
           workflow: main.yml
@@ -60,6 +65,11 @@ jobs:
           search_artifacts: true # Because, instead, the action only check the last job ran and that won't work since we want multiple artifacts.
 
     - name: Setup path to libgccjit
+      if: matrix.libgccjit_version.gcc == 'libgccjit12.so'
+      run: echo /usr/lib/gcc/x86_64-linux-gnu/12 > gcc_path
+
+    - name: Setup path to libgccjit
+      if: matrix.libgccjit_version.gcc != 'libgccjit12.so'
       run: |
           echo $(readlink -f gcc-build) > gcc_path
           # NOTE: the filename is still libgccjit.so even when the artifact name is different.
