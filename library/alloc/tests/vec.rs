@@ -1089,7 +1089,8 @@ fn test_into_iter_drop_allocator() {
         }
 
         unsafe fn deallocate(&self, ptr: NonNull<u8>, layout: Layout) {
-            System.deallocate(ptr, layout)
+            // Safety: Invariants passed to caller.
+            unsafe { System.deallocate(ptr, layout) }
         }
     }
 

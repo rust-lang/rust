@@ -76,6 +76,8 @@
 	--crate-search-div-hover-filter: invert(44%) sepia(18%) saturate(23%) hue-rotate(317deg)
 		brightness(96%) contrast(93%);
 	--crate-search-hover-border: #717171;
+	--source-sidebar-background-selected: #fff;
+	--source-sidebar-background-hover: #e0e0e0;
 }
 
 .content .item-info::before { color: #ccc; }
@@ -98,13 +100,6 @@ body.source .example-wrap pre.rust a {
 	color: #888;
 }
 
-#source-sidebar div.files > a:hover, details.dir-entry summary:hover,
-#source-sidebar div.files > a:focus, details.dir-entry summary:focus {
-	background-color: #E0E0E0;
-}
-#source-sidebar div.files > a.selected {
-	background-color: #fff;
-}
 .scraped-example-list .scrape-help {
 	border-color: #555;
 	color: #333;

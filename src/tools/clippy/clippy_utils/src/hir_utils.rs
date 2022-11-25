@@ -113,7 +113,7 @@ impl HirEqInterExpr<'_, '_, '_> {
                     }
                 }
 
-                // eq_pat adds the HirIds to the locals map. We therefor call it last to make sure that
+                // eq_pat adds the HirIds to the locals map. We therefore call it last to make sure that
                 // these only get added if the init and type is equal.
                 both(&l.init, &r.init, |l, r| self.eq_expr(l, r))
                     && both(&l.ty, &r.ty, |l, r| self.eq_ty(l, r))

@@ -79,6 +79,8 @@
 	--crate-search-div-hover-filter: invert(69%) sepia(60%) saturate(6613%) hue-rotate(184deg)
 		brightness(100%) contrast(91%);
 	--crate-search-hover-border: #2196f3;
+	--source-sidebar-background-selected: #333;
+	--source-sidebar-background-hover: #444;
 }
 
 .content .item-info::before { color: #ccc; }
@@ -103,14 +105,6 @@ details.rustdoc-toggle > summary::before {
 
 #titles > button > div.count {
 	color: #888;
-}
-
-#source-sidebar div.files > a:hover, details.dir-entry summary:hover,
-#source-sidebar div.files > a:focus, details.dir-entry summary:focus {
-	background-color: #444;
-}
-#source-sidebar div.files > a.selected {
-	background-color: #333;
 }
 
 .scraped-example-list .scrape-help {
