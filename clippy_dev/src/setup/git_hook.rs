@@ -6,7 +6,7 @@ use super::verify_inside_clippy_dir;
 /// Rusts setup uses `git rev-parse --git-common-dir` to get the root directory of the repo.
 /// I've decided against this for the sake of simplicity and to make sure that it doesn't install
 /// the hook if `clippy_dev` would be used in the rust tree. The hook also references this tool
-/// for formatting and should therefor only be used in a normal clone of clippy
+/// for formatting and should therefore only be used in a normal clone of clippy
 const REPO_GIT_DIR: &str = ".git";
 const HOOK_SOURCE_FILE: &str = "util/etc/pre-commit.sh";
 const HOOK_TARGET_FILE: &str = ".git/hooks/pre-commit";
