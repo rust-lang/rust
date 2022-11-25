@@ -59,12 +59,13 @@ pub fn type_op_ascribe_user_type_with_span<'tcx>(
 
     let UserSubsts { user_self_ty, substs } = user_substs;
     let tcx = ocx.infcx.tcx;
+    let cause = ObligationCause::dummy_with_span(span);
 
     let ty = tcx.bound_type_of(def_id).subst(tcx, substs);
-    let ty = ocx.normalize(ObligationCause::misc(span, hir::CRATE_HIR_ID), param_env, ty);
+    let ty = ocx.normalize(cause.clone(), param_env, ty);
     debug!("relate_type_and_user_type: ty of def-id is {:?}", ty);
 
-    ocx.eq(&ObligationCause::dummy_with_span(span), param_env, mir_ty, ty)?;
+    ocx.eq(&cause, param_env, mir_ty, ty)?;
 
     // Prove the predicates coming along with `def_id`.
     //
@@ -72,8 +73,6 @@ pub fn type_op_ascribe_user_type_with_span<'tcx>(
     // because otherwise we wind up with duplicate "type
     // outlives" error messages.
     let instantiated_predicates = tcx.predicates_of(def_id).instantiate(tcx, substs);
-
-    let cause = ObligationCause::dummy_with_span(span);
 
     debug!(?instantiated_predicates);
     for (instantiated_predicate, predicate_span) in
@@ -93,10 +92,9 @@ pub fn type_op_ascribe_user_type_with_span<'tcx>(
 
     if let Some(UserSelfTy { impl_def_id, self_ty }) = user_self_ty {
         let impl_self_ty = tcx.bound_type_of(impl_def_id).subst(tcx, substs);
-        let impl_self_ty =
-            ocx.normalize(ObligationCause::misc(span, hir::CRATE_HIR_ID), param_env, impl_self_ty);
+        let impl_self_ty = ocx.normalize(cause.clone(), param_env, impl_self_ty);
 
-        ocx.eq(&ObligationCause::dummy_with_span(span), param_env, self_ty, impl_self_ty)?;
+        ocx.eq(&cause, param_env, self_ty, impl_self_ty)?;
 
         let predicate: Predicate<'tcx> =
             ty::Binder::dummy(ty::PredicateKind::WellFormed(impl_self_ty.into())).to_predicate(tcx);
