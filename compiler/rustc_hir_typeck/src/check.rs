@@ -1,6 +1,6 @@
 use crate::coercion::CoerceMany;
 use crate::gather_locals::GatherLocalsVisitor;
-use crate::{FnCtxt, Inherited};
+use crate::FnCtxt;
 use crate::{GeneratorTypes, UnsafetyState};
 use rustc_hir as hir;
 use rustc_hir::def::DefKind;
@@ -20,21 +20,16 @@ use std::cell::RefCell;
 ///
 /// * ...
 /// * inherited: other fields inherited from the enclosing fn (if any)
-#[instrument(skip(inherited, body), level = "debug")]
+#[instrument(skip(fcx, body), level = "debug")]
 pub(super) fn check_fn<'a, 'tcx>(
-    inherited: &'a Inherited<'tcx>,
-    param_env: ty::ParamEnv<'tcx>,
+    fcx: &mut FnCtxt<'a, 'tcx>,
     fn_sig: ty::FnSig<'tcx>,
     decl: &'tcx hir::FnDecl<'tcx>,
     fn_def_id: LocalDefId,
     body: &'tcx hir::Body<'tcx>,
     can_be_generator: Option<hir::Movability>,
-) -> (FnCtxt<'a, 'tcx>, Option<GeneratorTypes<'tcx>>) {
-    let fn_id = inherited.tcx.hir().local_def_id_to_hir_id(fn_def_id);
-
-    // Create the function context. This is either derived from scratch or,
-    // in the case of closures, based on the outer context.
-    let mut fcx = FnCtxt::new(inherited, param_env, body.value.hir_id);
+) -> Option<GeneratorTypes<'tcx>> {
+    let fn_id = fcx.tcx.hir().local_def_id_to_hir_id(fn_def_id);
     fcx.ps.set(UnsafetyState::function(fn_sig.unsafety, fn_id));
 
     let tcx = fcx.tcx;
@@ -47,7 +42,7 @@ pub(super) fn check_fn<'a, 'tcx>(
             declared_ret_ty,
             body.value.hir_id,
             decl.output.span(),
-            param_env,
+            fcx.param_env,
         ));
 
     fcx.ret_coercion = Some(RefCell::new(CoerceMany::new(ret_ty)));
@@ -105,7 +100,7 @@ pub(super) fn check_fn<'a, 'tcx>(
         fcx.write_ty(param.hir_id, param_ty);
     }
 
-    inherited.typeck_results.borrow_mut().liberated_fn_sigs_mut().insert(fn_id, fn_sig);
+    fcx.typeck_results.borrow_mut().liberated_fn_sigs_mut().insert(fn_id, fn_sig);
 
     if let ty::Dynamic(_, _, ty::Dyn) = declared_ret_ty.kind() {
         // FIXME: We need to verify that the return type is `Sized` after the return expression has
@@ -174,7 +169,7 @@ pub(super) fn check_fn<'a, 'tcx>(
         check_panic_info_fn(tcx, panic_impl_did.expect_local(), fn_sig, decl, declared_ret_ty);
     }
 
-    (fcx, gen_ty)
+    gen_ty
 }
 
 fn check_panic_info_fn(

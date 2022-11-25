@@ -16,7 +16,7 @@ use rustc_hir_analysis::astconv::{
 };
 use rustc_infer::infer::canonical::{Canonical, OriginalQueryValues, QueryResponse};
 use rustc_infer::infer::error_reporting::TypeAnnotationNeeded::E0282;
-use rustc_infer::infer::{InferOk, InferResult};
+use rustc_infer::infer::InferResult;
 use rustc_middle::ty::adjustment::{Adjust, Adjustment, AutoBorrow, AutoBorrowMutability};
 use rustc_middle::ty::error::TypeError;
 use rustc_middle::ty::fold::TypeFoldable;
@@ -31,9 +31,7 @@ use rustc_span::hygiene::DesugaringKind;
 use rustc_span::symbol::{kw, sym, Ident};
 use rustc_span::{Span, DUMMY_SP};
 use rustc_trait_selection::traits::error_reporting::TypeErrCtxtExt as _;
-use rustc_trait_selection::traits::{
-    self, NormalizeExt, ObligationCause, ObligationCauseCode, ObligationCtxt,
-};
+use rustc_trait_selection::traits::{self, NormalizeExt, ObligationCauseCode, ObligationCtxt};
 
 use std::collections::hash_map::Entry;
 use std::slice;
@@ -375,42 +373,6 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         self.register_infer_ok_obligations(
             self.at(&self.misc(span), self.param_env).normalize(value),
         )
-    }
-
-    pub(in super::super) fn normalize_associated_types_in_as_infer_ok<T>(
-        &self,
-        span: Span,
-        value: T,
-    ) -> InferOk<'tcx, T>
-    where
-        T: TypeFoldable<'tcx>,
-    {
-        self.at(&ObligationCause::misc(span, self.body_id), self.param_env).normalize(value)
-    }
-
-    pub(in super::super) fn normalize_op_associated_types_in_as_infer_ok<T>(
-        &self,
-        span: Span,
-        value: T,
-        opt_input_expr: Option<&hir::Expr<'_>>,
-    ) -> InferOk<'tcx, T>
-    where
-        T: TypeFoldable<'tcx>,
-    {
-        self.at(
-            &ObligationCause::new(
-                span,
-                self.body_id,
-                traits::BinOp {
-                    rhs_span: opt_input_expr.map(|expr| expr.span),
-                    is_lit: opt_input_expr
-                        .map_or(false, |expr| matches!(expr.kind, ExprKind::Lit(_))),
-                    output_ty: None,
-                },
-            ),
-            self.param_env,
-        )
-        .normalize(value)
     }
 
     pub fn require_type_meets(

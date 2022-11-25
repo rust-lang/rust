@@ -1748,9 +1748,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                     ty::Adt(adt, substs) if adt.is_struct() => variant
                         .fields
                         .iter()
-                        .map(|f| {
-                            self.normalize(expr_span, f.ty(self.tcx, substs))
-                        })
+                        .map(|f| self.normalize(expr_span, f.ty(self.tcx, substs)))
                         .collect(),
                     _ => {
                         self.tcx

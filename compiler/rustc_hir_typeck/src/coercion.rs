@@ -62,7 +62,9 @@ use rustc_span::{self, BytePos, DesugaringKind, Span};
 use rustc_target::spec::abi::Abi;
 use rustc_trait_selection::infer::InferCtxtExt as _;
 use rustc_trait_selection::traits::error_reporting::TypeErrCtxtExt as _;
-use rustc_trait_selection::traits::{self, ObligationCause, ObligationCauseCode, ObligationCtxt};
+use rustc_trait_selection::traits::{
+    self, NormalizeExt, ObligationCause, ObligationCauseCode, ObligationCtxt,
+};
 
 use smallvec::{smallvec, SmallVec};
 use std::ops::Deref;
@@ -832,7 +834,7 @@ impl<'f, 'tcx> Coerce<'f, 'tcx> {
 
         let b = self.shallow_resolve(b);
         let InferOk { value: b, mut obligations } =
-            self.normalize_associated_types_in_as_infer_ok(self.cause.span, b);
+            self.at(&self.cause, self.param_env).normalize(b);
         debug!("coerce_from_fn_item(a={:?}, b={:?})", a, b);
 
         match b.kind() {
@@ -854,7 +856,7 @@ impl<'f, 'tcx> Coerce<'f, 'tcx> {
                 }
 
                 let InferOk { value: a_sig, obligations: o1 } =
-                    self.normalize_associated_types_in_as_infer_ok(self.cause.span, a_sig);
+                    self.at(&self.cause, self.param_env).normalize(a_sig);
                 obligations.extend(o1);
 
                 let a_fn_pointer = self.tcx.mk_fn_ptr(a_sig);

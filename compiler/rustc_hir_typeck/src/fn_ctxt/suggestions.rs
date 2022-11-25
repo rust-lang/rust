@@ -20,6 +20,7 @@ use rustc_span::Span;
 use rustc_trait_selection::infer::InferCtxtExt;
 use rustc_trait_selection::traits::error_reporting::DefIdOrName;
 use rustc_trait_selection::traits::query::evaluate_obligation::InferCtxtExt as _;
+use rustc_trait_selection::traits::NormalizeExt;
 
 impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
     pub(crate) fn body_fn_sig(&self) -> Option<ty::FnSig<'tcx>> {
@@ -245,7 +246,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         // implied by wf, but also because that would possibly result in
         // erroneous errors later on.
         let infer::InferOk { value: output, obligations: _ } =
-            self.normalize_associated_types_in_as_infer_ok(expr.span, output);
+            self.at(&self.misc(expr.span), self.param_env).normalize(output);
 
         if output.is_ty_var() { None } else { Some((def_id_or_name, output, inputs)) }
     }

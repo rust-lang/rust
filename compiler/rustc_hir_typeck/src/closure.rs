@@ -79,16 +79,15 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
 
         debug!(?bound_sig, ?liberated_sig);
 
+        let mut fcx = FnCtxt::new(self, self.param_env.without_const(), body.value.hir_id);
         let generator_types = check_fn(
-            self,
-            self.param_env.without_const(),
+            &mut fcx,
             liberated_sig,
             closure.fn_decl,
             expr_def_id,
             body,
             closure.movability,
-        )
-        .1;
+        );
 
         let parent_substs = InternalSubsts::identity_for_item(
             self.tcx,
@@ -797,10 +796,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
     ) -> ClosureSignatures<'tcx> {
         let liberated_sig =
             self.tcx().liberate_late_bound_regions(expr_def_id.to_def_id(), bound_sig);
-        let liberated_sig = self.normalize(
-            body.value.span,
-            liberated_sig,
-        );
+        let liberated_sig = self.normalize(body.value.span, liberated_sig);
         ClosureSignatures { bound_sig, liberated_sig }
     }
 }
