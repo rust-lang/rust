@@ -295,7 +295,7 @@ impl<'a, 'tcx> Visitor<'a, 'tcx> for UnsafetyVisitor<'a, 'tcx> {
             | ExprKind::Literal { .. }
             | ExprKind::NamedConst { .. }
             | ExprKind::NonHirLiteral { .. }
-            | ExprKind::ZstLiteral { .. }
+            | ExprKind::NamedFn { .. }
             | ExprKind::ConstParam { .. }
             | ExprKind::ConstBlock { .. }
             | ExprKind::Deref { .. }

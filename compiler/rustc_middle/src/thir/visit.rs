@@ -136,7 +136,7 @@ pub fn walk_expr<'a, 'tcx: 'a, V: Visitor<'a, 'tcx>>(visitor: &mut V, expr: &Exp
         }) => {}
         Literal { lit: _, neg: _ } => {}
         NonHirLiteral { lit: _, user_ty: _ } => {}
-        ZstLiteral { user_ty: _ } => {}
+        NamedFn { user_ty: _ } => {}
         NamedConst { def_id: _, substs: _, user_ty: _ } => {}
         ConstParam { param: _, def_id: _ } => {}
         StaticRef { alloc_id: _, ty: _, def_id: _ } => {}

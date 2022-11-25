@@ -127,7 +127,7 @@ fn recurse_build<'tcx>(
             let val = ty::ValTree::from_scalar_int(lit);
             tcx.mk_const(val, node.ty)
         }
-        &ExprKind::ZstLiteral { user_ty: _ } => {
+        &ExprKind::NamedFn { user_ty: _ } => {
             let val = ty::ValTree::zst();
             tcx.mk_const(val, node.ty)
         }

@@ -432,8 +432,8 @@ pub enum ExprKind<'tcx> {
         lit: ty::ScalarInt,
         user_ty: UserTy<'tcx>,
     },
-    /// A literal of a ZST type.
-    ZstLiteral {
+    /// Named functions, associated functions, and constructors (including `Self(...)`)
+    NamedFn {
         user_ty: UserTy<'tcx>,
     },
     /// Associated constants and named constants

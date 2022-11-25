@@ -70,6 +70,9 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
                 ExprKind::NamedConst { def_id, .. } | ExprKind::ConstParam { def_id, .. } => {
                     local_decl.local_info = Some(Box::new(LocalInfo::ConstRef { def_id }));
                 }
+                ExprKind::NamedFn { .. } => {
+                    local_decl.local_info = Some(Box::new(LocalInfo::FnDefRef));
+                }
                 _ => {}
             }
             this.local_decls.push(local_decl)

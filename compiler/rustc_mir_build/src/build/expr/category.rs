@@ -72,7 +72,7 @@ impl Category {
             ExprKind::ConstBlock { .. }
             | ExprKind::Literal { .. }
             | ExprKind::NonHirLiteral { .. }
-            | ExprKind::ZstLiteral { .. }
+            | ExprKind::NamedFn { .. }
             | ExprKind::ConstParam { .. }
             | ExprKind::StaticRef { .. }
             | ExprKind::NamedConst { .. } => Some(Category::Constant),

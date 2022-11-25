@@ -153,7 +153,7 @@ impl<'tcx, 'body> ParseCtxt<'tcx, 'body> {
             ExprKind::Literal { .. }
             | ExprKind::NamedConst { .. }
             | ExprKind::NonHirLiteral { .. }
-            | ExprKind::ZstLiteral { .. }
+            | ExprKind::NamedFn { .. }
             | ExprKind::ConstParam { .. }
             | ExprKind::ConstBlock { .. } => {
                 Ok(Operand::Constant(Box::new(

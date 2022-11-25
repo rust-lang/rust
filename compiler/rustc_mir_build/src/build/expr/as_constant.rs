@@ -68,7 +68,7 @@ pub fn as_constant_inner<'tcx>(
 
             Constant { span, user_ty, literal }
         }
-        ExprKind::ZstLiteral { ref user_ty } => {
+        ExprKind::NamedFn { ref user_ty } => {
             let user_ty = user_ty.as_ref().map(push_cuta).flatten();
 
             let literal = ConstantKind::Val(ConstValue::ZeroSized, ty);

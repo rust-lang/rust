@@ -1836,6 +1836,8 @@ impl<'cx, 'tcx> MirBorrowckCtxt<'cx, 'tcx> {
             "value referencing"
         };
 
+        let mut implicit_temporary = None;
+
         let (place_desc, note) = if let Some(place_desc) = opt_place_desc {
             let local_kind = if let Some(local) = borrow.borrowed_place.as_local() {
                 match self.body.local_kind(local) {
@@ -1861,7 +1863,22 @@ impl<'cx, 'tcx> MirBorrowckCtxt<'cx, 'tcx> {
             let root_place =
                 self.prefixes(borrow.borrowed_place.as_ref(), PrefixSet::All).last().unwrap();
             let local = root_place.local;
-            match self.body.local_kind(local) {
+            let local_kind = self.body.local_kind(local);
+            if let LocalKind::Temp = local_kind {
+                // Mutable references to constants and functions will implicitly create
+                // temporaries, even though immutable references don't. We use these below to add a
+                // note about this.
+                match &self.body.local_decls[local].local_info {
+                    Some(box LocalInfo::FnDefRef) => {
+                        implicit_temporary = Some(("function", "function pointer"));
+                    }
+                    Some(box LocalInfo::ConstRef { .. }) => {
+                        implicit_temporary = Some(("constant", "value"));
+                    }
+                    _ => {}
+                }
+            }
+            match local_kind {
                 LocalKind::ReturnPointer | LocalKind::Temp => {
                     ("temporary value".to_string(), "temporary value created here".to_string())
                 }
@@ -1904,6 +1921,13 @@ impl<'cx, 'tcx> MirBorrowckCtxt<'cx, 'tcx> {
                     Applicability::MaybeIncorrect,
                 );
             }
+        }
+
+        if let Some((item_name, value_desc)) = implicit_temporary {
+            err.note(format!(
+                "mutably borrowing a {} implicitly copies the {} to a temporary",
+                item_name, value_desc
+            ));
         }
 
         Some(err)
