@@ -1925,7 +1925,7 @@ impl<'cx, 'tcx> MirBorrowckCtxt<'cx, 'tcx> {
 
         if let Some((item_name, value_desc)) = implicit_temporary {
             err.note(format!(
-                "mutably borrowing a {} implicitly copies the {} to a temporary",
+                "mutably borrowing a {} copies the {} to a temporary",
                 item_name, value_desc
             ));
         }
