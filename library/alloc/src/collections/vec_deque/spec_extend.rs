@@ -1,6 +1,6 @@
 use crate::alloc::Allocator;
 use crate::vec;
-use core::iter::{ByRefSized, TrustedLen};
+use core::iter::TrustedLen;
 use core::slice;
 
 use super::VecDeque;
@@ -20,28 +20,30 @@ where
         // for item in iter {
         //     self.push_back(item);
         // }
-        loop {
-            let lower_bound = iter.size_hint().0;
-            if lower_bound != 0 {
-                self.reserve(lower_bound);
-            }
 
-            match iter.next() {
-                Some(val) => self.push_back(val),
-                None => break,
-            }
+        // May only be called if `deque.len() < deque.capacity()`
+        unsafe fn push_unchecked<T, A: Allocator>(deque: &mut VecDeque<T, A>, element: T) {
+            // SAFETY: Because of the precondition, it's guaranteed that there is space
+            // in the logical array after the last element.
+            unsafe { deque.buffer_write(deque.to_physical_idx(deque.len), element) };
+            // This can't overflow because `deque.len() < deque.capacity() <= usize::MAX`.
+            deque.len += 1;
+        }
 
-            let room = self.capacity() - self.len;
-            unsafe {
-                // Safety:
-                // The iter is at most `room` items long,
-                // and `room == self.capacity() - self.len`
-                //   => `self.len + room <= self.capacity()`
-                self.write_iter_wrapping(
-                    self.to_physical_idx(self.len),
-                    ByRefSized(&mut iter).take(room),
-                    room,
-                );
+        while let Some(element) = iter.next() {
+            let (lower, _) = iter.size_hint();
+            self.reserve(lower.saturating_add(1));
+
+            // SAFETY: We just reserved space for at least one element.
+            unsafe { push_unchecked(self, element) };
+
+            // Inner loop to avoid repeatedly calling `reserve`.
+            while self.len < self.capacity() {
+                let Some(element) = iter.next() else {
+                    return;
+                };
+                // SAFETY: The loop condition guarantees that `self.len() < self.capacity()`.
+                unsafe { push_unchecked(self, element) };
             }
         }
     }
