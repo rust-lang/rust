@@ -17,10 +17,10 @@ pub use valtree::*;
 /// Use this rather than `ConstS`, whenever possible.
 #[derive(Copy, Clone, PartialEq, Eq, PartialOrd, Ord, Hash, HashStable)]
 #[rustc_pass_by_value]
-pub struct Const<'tcx>(pub Interned<'tcx, ConstS<'tcx>>);
+pub struct Const<'tcx>(pub Interned<'tcx, ConstData<'tcx>>);
 
 impl<'tcx> std::ops::Deref for Const<'tcx> {
-    type Target = ConstS<'tcx>;
+    type Target = ConstData<'tcx>;
 
     fn deref(&self) -> &Self::Target {
         &self.0.0
@@ -38,13 +38,13 @@ impl<'tcx> fmt::Debug for Const<'tcx> {
 
 /// Typed constant value.
 #[derive(PartialEq, Eq, PartialOrd, Ord, Hash, HashStable, TyEncodable, TyDecodable)]
-pub struct ConstS<'tcx> {
+pub struct ConstData<'tcx> {
     pub ty: Ty<'tcx>,
     pub kind: ConstKind<'tcx>,
 }
 
 #[cfg(all(target_arch = "x86_64", target_pointer_width = "64"))]
-static_assert_size!(ConstS<'_>, 40);
+static_assert_size!(ConstData<'_>, 40);
 
 impl<'tcx> Const<'tcx> {
     /// Literals and const generic parameters are eagerly converted to a constant, everything else

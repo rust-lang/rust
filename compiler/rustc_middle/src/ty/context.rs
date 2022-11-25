@@ -17,7 +17,7 @@ use crate::traits;
 use crate::ty::query::{self, TyCtxtAt};
 use crate::ty::{
     self, AdtDef, AdtDefData, AdtKind, Binder, BindingMode, BoundVar, CanonicalPolyFnSig,
-    ClosureSizeProfileData, Const, ConstS, ConstVid, DefIdTree, FloatTy, FloatVar, FloatVid,
+    ClosureSizeProfileData, Const, ConstData, ConstVid, DefIdTree, FloatTy, FloatVar, FloatVid,
     GenericParamDefKind, InferConst, InferTy, IntTy, IntVar, IntVid, List, ParamConst, ParamTy,
     PolyExistentialPredicate, PolyFnSig, Predicate, PredicateKind, PredicateS, ProjectionTy,
     Region, RegionKind, ReprOptions, TraitObjectVisitor, Ty, TyKind, TyS, TyVar, TyVid, TypeAndMut,
@@ -145,7 +145,7 @@ pub struct CtxtInterners<'tcx> {
     predicates: InternedSet<'tcx, List<Predicate<'tcx>>>,
     projs: InternedSet<'tcx, List<ProjectionKind>>,
     place_elems: InternedSet<'tcx, List<PlaceElem<'tcx>>>,
-    const_: InternedSet<'tcx, ConstS<'tcx>>,
+    const_: InternedSet<'tcx, ConstData<'tcx>>,
     const_allocation: InternedSet<'tcx, Allocation>,
     bound_variable_kinds: InternedSet<'tcx, List<ty::BoundVariableKind>>,
     layout: InternedSet<'tcx, LayoutS<VariantIdx>>,
@@ -985,7 +985,7 @@ impl<'tcx> CommonConsts<'tcx> {
         };
 
         CommonConsts {
-            unit: mk_const(ty::ConstS {
+            unit: mk_const(ty::ConstData {
                 kind: ty::ConstKind::Value(ty::ValTree::zst()),
                 ty: types.unit,
             }),
@@ -2242,7 +2242,7 @@ macro_rules! direct_interners {
 
 direct_interners! {
     region: mk_region(RegionKind<'tcx>): Region -> Region<'tcx>,
-    const_: mk_const_internal(ConstS<'tcx>): Const -> Const<'tcx>,
+    const_: mk_const_internal(ConstData<'tcx>): Const -> Const<'tcx>,
     const_allocation: intern_const_alloc(Allocation): ConstAllocation -> ConstAllocation<'tcx>,
     layout: intern_layout(LayoutS<VariantIdx>): Layout -> Layout<'tcx>,
     adt_def: intern_adt_def(AdtDefData): AdtDef -> AdtDef<'tcx>,
@@ -2592,7 +2592,7 @@ impl<'tcx> TyCtxt<'tcx> {
 
     #[inline]
     pub fn mk_const(self, kind: ty::ConstKind<'tcx>, ty: Ty<'tcx>) -> Const<'tcx> {
-        self.mk_const_internal(ty::ConstS { kind, ty })
+        self.mk_const_internal(ty::ConstData { kind, ty })
     }
 
     #[inline]

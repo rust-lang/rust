@@ -77,7 +77,7 @@ pub use self::closure::{
     CAPTURE_STRUCT_LOCAL,
 };
 pub use self::consts::{
-    Const, ConstInt, ConstKind, ConstS, InferConst, ScalarInt, UnevaluatedConst, ValTree,
+    Const, ConstData, ConstInt, ConstKind, InferConst, ScalarInt, UnevaluatedConst, ValTree,
 };
 pub use self::context::{
     tls, CanonicalUserType, CanonicalUserTypeAnnotation, CanonicalUserTypeAnnotations,
@@ -1017,7 +1017,7 @@ impl<'tcx> Term<'tcx> {
                     &*((ptr & !TAG_MASK) as *const WithStableHash<ty::TyS<'tcx>>),
                 ))),
                 CONST_TAG => TermKind::Const(ty::Const(Interned::new_unchecked(
-                    &*((ptr & !TAG_MASK) as *const ty::ConstS<'tcx>),
+                    &*((ptr & !TAG_MASK) as *const ty::ConstData<'tcx>),
                 ))),
                 _ => core::intrinsics::unreachable(),
             }
@@ -1063,7 +1063,7 @@ impl<'tcx> TermKind<'tcx> {
             TermKind::Const(ct) => {
                 // Ensure we can use the tag bits.
                 assert_eq!(mem::align_of_val(&*ct.0.0) & TAG_MASK, 0);
-                (CONST_TAG, ct.0.0 as *const ty::ConstS<'tcx> as usize)
+                (CONST_TAG, ct.0.0 as *const ty::ConstData<'tcx> as usize)
             }
         };
 

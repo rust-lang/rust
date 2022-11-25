@@ -310,7 +310,7 @@ impl<'tcx, D: TyDecoder<I = TyCtxt<'tcx>>> RefDecodable<'tcx, D>
 
 impl<'tcx, D: TyDecoder<I = TyCtxt<'tcx>>> Decodable<D> for ty::Const<'tcx> {
     fn decode(decoder: &mut D) -> Self {
-        let consts: ty::ConstS<'tcx> = Decodable::decode(decoder);
+        let consts: ty::ConstData<'tcx> = Decodable::decode(decoder);
         decoder.interner().mk_const(consts.kind, consts.ty)
     }
 }

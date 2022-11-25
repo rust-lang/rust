@@ -90,7 +90,7 @@ macro_rules! arena_types {
             // Interned types
             [] tys: rustc_data_structures::intern::WithStableHash<rustc_middle::ty::TyS<'tcx>>,
             [] predicates: rustc_middle::ty::PredicateS<'tcx>,
-            [] consts: rustc_middle::ty::ConstS<'tcx>,
+            [] consts: rustc_middle::ty::ConstData<'tcx>,
 
             // Note that this deliberately duplicates items in the `rustc_hir::arena`,
             // since we need to allocate this type on both the `rustc_hir` arena
