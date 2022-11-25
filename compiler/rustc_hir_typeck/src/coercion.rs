@@ -199,10 +199,6 @@ impl<'f, 'tcx> Coerce<'f, 'tcx> {
                 debug!("coerce: unsize successful");
                 return unsize;
             }
-            Err(TypeError::ObjectUnsafeCoercion(did)) => {
-                debug!("coerce: unsize not object safe");
-                return Err(TypeError::ObjectUnsafeCoercion(did));
-            }
             Err(error) => {
                 debug!(?error, "coerce: unsize failed");
             }
