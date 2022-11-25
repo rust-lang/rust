@@ -34,10 +34,10 @@ you can write: <!-- date-check: nov 2022 --><!-- the date comment is for the edi
         "--json-output"
     ],
     "rust-analyzer.rustfmt.overrideCommand": [
-        "./build/$TARGET_TRIPLE/stage0/bin/rustfmt",
+        "./build/host/stage0/bin/rustfmt",
         "--edition=2021"
     ],
-    "rust-analyzer.procMacro.server": "./build/$TARGET_TRIPLE/stage0/libexec/rust-analyzer-proc-macro-srv",
+    "rust-analyzer.procMacro.server": "./build/host/stage0/libexec/rust-analyzer-proc-macro-srv",
     "rust-analyzer.procMacro.enable": true,
     "rust-analyzer.cargo.buildScripts.enable": true,
     "rust-analyzer.cargo.buildScripts.invocationLocation": "root",
@@ -48,18 +48,13 @@ you can write: <!-- date-check: nov 2022 --><!-- the date comment is for the edi
         "check",
         "--json-output"
     ],
-    "rust-analyzer.cargo.sysroot": "./build/$TARGET_TRIPLE/stage0-sysroot",
+    "rust-analyzer.cargo.sysroot": "./build/host/stage0-sysroot",
     "rust-analyzer.rustc.source": "./Cargo.toml",
 }
 ```
 
 in your `.vscode/settings.json` file. This will ask `rust-analyzer` to use
 `./x.py check` to check the sources, and the stage 0 rustfmt to format them.
-
-> NOTE: Make sure to replace `TARGET_TRIPLE` in the `rust-analyzer.rustfmt.overrideCommand`
-> setting with the appropriate target triple for your machine. An example of such
-> a triple is `x86_64-unknown-linux-gnu`. An easy way to check your target triple
-> is to run `rustc -vV` and checking the `host` value of its output.
 
 If you have enough free disk space and you would like to be able to run `x.py` commands while
 rust-analyzer runs in the background, you can also add `--build-dir build-rust-analyzer` to the

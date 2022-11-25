@@ -242,7 +242,7 @@ machine, e.g. for RISC-V
 ```
 
 The binary will be created at
-`./build/$HOST_ARCH/stage2-tools/$TARGET_ARCH/release/remote-test-server`. Copy
+`./build/host/stage2-tools/$TARGET_ARCH/release/remote-test-server`. Copy
 this over to the remote machine.
 
 On the remote machine, run the `remote-test-server` with the `--bind

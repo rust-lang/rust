@@ -46,15 +46,15 @@ does is call the `main()` that's in this crate's `lib.rs`, though.)
 * Use `./x.py build` to make a usable
   rustdoc you can run on other projects.
   * Add `library/test` to be able to use `rustdoc --test`.
-  * Run `rustup toolchain link stage2 build/$TARGET/stage2` to add a
+  * Run `rustup toolchain link stage2 build/host/stage2` to add a
     custom toolchain called `stage2` to your rustup environment. After
     running that, `cargo +stage2 doc` in any directory will build with
     your locally-compiled rustdoc.
 * Use `./x.py doc library` to use this rustdoc to generate the
   standard library docs.
-  * The completed docs will be available in `build/$TARGET/doc` (under `core`, `alloc`, and `std`).
+  * The completed docs will be available in `build/host/doc` (under `core`, `alloc`, and `std`).
   * If you want to copy those docs to a webserver, copy all of
-    `build/$TARGET/doc`, since that's where the CSS, JS, fonts, and landing
+    `build/host/doc`, since that's where the CSS, JS, fonts, and landing
     page are.
 * Use `./x.py test src/test/rustdoc*` to run the tests using a stage1
   rustdoc.

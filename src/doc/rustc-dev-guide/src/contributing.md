@@ -348,7 +348,7 @@ the entire stage 2 compiler and compile the various books published on
 [doc.rust-lang.org][docs]. When updating documentation for the standard library,
 first try `./x.py doc library`. If that fails, or if you need to
 see the output from the latest version of `rustdoc`, add `--stage 1`.
-Results should appear in `build/$TARGET/doc`.
+Results should appear in `build/host/doc`.
 
 [docs]: https://doc.rust-lang.org
 
