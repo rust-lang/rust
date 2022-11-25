@@ -1187,8 +1187,11 @@ impl HirDisplay for TypeRef {
                 inner.hir_fmt(f)?;
                 write!(f, "]")?;
             }
-            TypeRef::Fn(parameters, is_varargs) => {
+            &TypeRef::Fn(ref parameters, is_varargs, is_unsafe) => {
                 // FIXME: Function pointer qualifiers.
+                if is_unsafe {
+                    write!(f, "unsafe ")?;
+                }
                 write!(f, "fn(")?;
                 if let Some(((_, return_type), function_parameters)) = parameters.split_last() {
                     for index in 0..function_parameters.len() {
@@ -1203,7 +1206,7 @@ impl HirDisplay for TypeRef {
                             write!(f, ", ")?;
                         }
                     }
-                    if *is_varargs {
+                    if is_varargs {
                         write!(f, "{}...", if parameters.len() == 1 { "" } else { ", " })?;
                     }
                     write!(f, ")")?;

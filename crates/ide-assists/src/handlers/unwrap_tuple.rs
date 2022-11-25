@@ -69,13 +69,13 @@ pub(crate) fn unwrap_tuple(acc: &mut Assists, ctx: &AssistContext<'_>) -> Option
                 for (pat, ty, expr) in
                     itertools::izip!(tuple_pat.fields(), tys.fields(), tuple_init.fields())
                 {
-                    zipped_decls.push_str(&format!("{}let {pat}: {ty} = {expr};\n", indents))
+                    zipped_decls.push_str(&format!("{indents}let {pat}: {ty} = {expr};\n"))
                 }
                 edit.replace(parent.text_range(), zipped_decls.trim());
             } else {
                 let mut zipped_decls = String::new();
                 for (pat, expr) in itertools::izip!(tuple_pat.fields(), tuple_init.fields()) {
-                    zipped_decls.push_str(&format!("{}let {pat} = {expr};\n", indents));
+                    zipped_decls.push_str(&format!("{indents}let {pat} = {expr};\n"));
                 }
                 edit.replace(parent.text_range(), zipped_decls.trim());
             }

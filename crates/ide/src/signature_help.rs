@@ -149,7 +149,7 @@ fn signature_help_for_call(
                 variant.name(db)
             );
         }
-        hir::CallableKind::Closure | hir::CallableKind::FnPtr => (),
+        hir::CallableKind::Closure | hir::CallableKind::FnPtr | hir::CallableKind::Other => (),
     }
 
     res.signature.push('(');
@@ -189,9 +189,10 @@ fn signature_help_for_call(
         hir::CallableKind::Function(func) if callable.return_type().contains_unknown() => {
             render(func.ret_type(db))
         }
-        hir::CallableKind::Function(_) | hir::CallableKind::Closure | hir::CallableKind::FnPtr => {
-            render(callable.return_type())
-        }
+        hir::CallableKind::Function(_)
+        | hir::CallableKind::Closure
+        | hir::CallableKind::FnPtr
+        | hir::CallableKind::Other => render(callable.return_type()),
         hir::CallableKind::TupleStruct(_) | hir::CallableKind::TupleEnumVariant(_) => {}
     }
     Some(res)
@@ -387,10 +388,9 @@ mod tests {
     }
 
     fn check(ra_fixture: &str, expect: Expect) {
-        // Implicitly add `Sized` to avoid noisy `T: ?Sized` in the results.
         let fixture = format!(
             r#"
-#[lang = "sized"] trait Sized {{}}
+//- minicore: sized, fn
 {ra_fixture}
             "#
         );
@@ -1328,6 +1328,21 @@ fn f() {
             expect![[r#"
                 fn foo(self: &Self, other: Self)
                        ^^^^^^^^^^^  -----------
+            "#]],
+        );
+    }
+
+    #[test]
+    fn help_for_generic_call() {
+        check(
+            r#"
+fn f<F: FnOnce(u8, u16) -> i32>(f: F) {
+    f($0)
+}
+"#,
+            expect![[r#"
+                (u8, u16) -> i32
+                 ^^  ---
             "#]],
         );
     }

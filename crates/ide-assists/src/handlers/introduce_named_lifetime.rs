@@ -127,7 +127,7 @@ fn generate_unique_lifetime_param_name(
         Some(type_params) => {
             let used_lifetime_params: FxHashSet<_> =
                 type_params.lifetime_params().map(|p| p.syntax().text().to_string()).collect();
-            ('a'..='z').map(|it| format!("'{}", it)).find(|it| !used_lifetime_params.contains(it))
+            ('a'..='z').map(|it| format!("'{it}")).find(|it| !used_lifetime_params.contains(it))
         }
         None => Some("'a".to_string()),
     }
