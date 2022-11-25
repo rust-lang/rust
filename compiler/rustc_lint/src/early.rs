@@ -300,20 +300,14 @@ impl LintPass for EarlyLintPassObjects<'_> {
     }
 }
 
-macro_rules! expand_early_lint_pass_impl_methods {
-    ([$($(#[$attr:meta])* fn $name:ident($($param:ident: $arg:ty),*);)*]) => (
-        $(fn $name(&mut self, context: &EarlyContext<'_>, $($param: $arg),*) {
-            for obj in self.lints.iter_mut() {
-                obj.$name(context, $($param),*);
-            }
-        })*
-    )
-}
-
 macro_rules! early_lint_pass_impl {
-    ([], [$($methods:tt)*]) => (
+    ([], [$($(#[$attr:meta])* fn $name:ident($($param:ident: $arg:ty),*);)*]) => (
         impl EarlyLintPass for EarlyLintPassObjects<'_> {
-            expand_early_lint_pass_impl_methods!([$($methods)*]);
+            $(fn $name(&mut self, context: &EarlyContext<'_>, $($param: $arg),*) {
+                for obj in self.lints.iter_mut() {
+                    obj.$name(context, $($param),*);
+                }
+            })*
         }
     )
 }

@@ -313,20 +313,14 @@ impl LintPass for LateLintPassObjects<'_, '_> {
     }
 }
 
-macro_rules! expand_late_lint_pass_impl_methods {
-    ([$hir:tt], [$($(#[$attr:meta])* fn $name:ident($($param:ident: $arg:ty),*);)*]) => (
-        $(fn $name(&mut self, context: &LateContext<$hir>, $($param: $arg),*) {
-            for obj in self.lints.iter_mut() {
-                obj.$name(context, $($param),*);
-            }
-        })*
-    )
-}
-
 macro_rules! late_lint_pass_impl {
-    ([], [$hir:tt], $methods:tt) => {
+    ([], [$hir:tt], [$($(#[$attr:meta])* fn $name:ident($($param:ident: $arg:ty),*);)*]) => {
         impl<$hir> LateLintPass<$hir> for LateLintPassObjects<'_, $hir> {
-            expand_late_lint_pass_impl_methods!([$hir], $methods);
+            $(fn $name(&mut self, context: &LateContext<$hir>, $($param: $arg),*) {
+                for obj in self.lints.iter_mut() {
+                    obj.$name(context, $($param),*);
+                }
+            })*
         }
     };
 }

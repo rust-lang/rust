@@ -66,16 +66,10 @@ macro_rules! late_lint_methods {
 // FIXME: eliminate the duplication with `Visitor`. But this also
 // contains a few lint-specific methods with no equivalent in `Visitor`.
 
-macro_rules! expand_lint_pass_methods {
-    ($context:ty, [$($(#[$attr:meta])* fn $name:ident($($param:ident: $arg:ty),*);)*]) => (
-        $(#[inline(always)] fn $name(&mut self, _: $context, $(_: $arg),*) {})*
-    )
-}
-
 macro_rules! declare_late_lint_pass {
-    ([], [$hir:tt], [$($methods:tt)*]) => (
+    ([], [$hir:tt], [$($(#[$attr:meta])* fn $name:ident($($param:ident: $arg:ty),*);)*]) => (
         pub trait LateLintPass<$hir>: LintPass {
-            expand_lint_pass_methods!(&LateContext<$hir>, [$($methods)*]);
+            $(#[inline(always)] fn $name(&mut self, _: &LateContext<$hir>, $(_: $arg),*) {})*
         }
     )
 }
@@ -175,16 +169,10 @@ macro_rules! early_lint_methods {
     )
 }
 
-macro_rules! expand_early_lint_pass_methods {
-    ($context:ty, [$($(#[$attr:meta])* fn $name:ident($($param:ident: $arg:ty),*);)*]) => (
-        $(#[inline(always)] fn $name(&mut self, _: $context, $(_: $arg),*) {})*
-    )
-}
-
 macro_rules! declare_early_lint_pass {
-    ([], [$($methods:tt)*]) => (
+    ([], [$($(#[$attr:meta])* fn $name:ident($($param:ident: $arg:ty),*);)*]) => (
         pub trait EarlyLintPass: LintPass {
-            expand_early_lint_pass_methods!(&EarlyContext<'_>, [$($methods)*]);
+            $(#[inline(always)] fn $name(&mut self, _: &EarlyContext<'_>, $(_: $arg),*) {})*
         }
     )
 }
