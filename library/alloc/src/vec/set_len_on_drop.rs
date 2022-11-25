@@ -18,6 +18,11 @@ impl<'a> SetLenOnDrop<'a> {
     pub(super) fn increment_len(&mut self, increment: usize) {
         self.local_len += increment;
     }
+
+    #[inline]
+    pub(super) fn current_len(&self) -> usize {
+        self.local_len
+    }
 }
 
 impl Drop for SetLenOnDrop<'_> {

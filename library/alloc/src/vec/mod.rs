@@ -2874,13 +2874,12 @@ impl<T, A: Allocator> Vec<T, A> {
             );
             self.reserve(additional);
             unsafe {
-                let mut ptr = self.as_mut_ptr().add(self.len());
+                let ptr = self.as_mut_ptr();
                 let mut local_len = SetLenOnDrop::new(&mut self.len);
                 iterator.for_each(move |element| {
-                    ptr::write(ptr, element);
-                    ptr = ptr.add(1);
-                    // Since the loop executes user code which can panic we have to bump the pointer
-                    // after each step.
+                    ptr::write(ptr.add(local_len.current_len()), element);
+                    // Since the loop executes user code which can panic we have to update
+                    // the length every step to correctly drop what we've written.
                     // NB can't overflow since we would have had to alloc the address space
                     local_len.increment_len(1);
                 });
