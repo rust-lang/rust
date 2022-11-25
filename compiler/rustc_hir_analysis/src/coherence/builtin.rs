@@ -128,11 +128,11 @@ fn visit_implementation_of_copy(tcx: TyCtxt<'_>, impl_did: LocalDefId) {
                             .or_default()
                             .push(error.obligation.cause.span);
                     }
-                    if let ty::PredicateKind::Trait(ty::TraitPredicate {
+                    if let ty::PredicateKind::Clause(ty::Clause::Trait(ty::TraitPredicate {
                         trait_ref,
                         polarity: ty::ImplPolarity::Positive,
                         ..
-                    }) = error_predicate.kind().skip_binder()
+                    })) = error_predicate.kind().skip_binder()
                     {
                         let ty = trait_ref.self_ty();
                         if let ty::Param(_) = ty.kind() {

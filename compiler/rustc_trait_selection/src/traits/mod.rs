@@ -317,7 +317,10 @@ pub fn normalize_param_env_or_error<'tcx>(
     // TypeOutlives predicates - these are normally used by regionck.
     let outlives_predicates: Vec<_> = predicates
         .drain_filter(|predicate| {
-            matches!(predicate.kind().skip_binder(), ty::PredicateKind::TypeOutlives(..))
+            matches!(
+                predicate.kind().skip_binder(),
+                ty::PredicateKind::Clause(ty::Clause::TypeOutlives(..))
+            )
         })
         .collect();
 
@@ -477,7 +480,7 @@ fn subst_and_check_impossible_predicates<'tcx>(
     // associated items.
     if let Some(trait_def_id) = tcx.trait_of_item(key.0) {
         let trait_ref = ty::TraitRef::from_method(tcx, trait_def_id, key.1);
-        predicates.push(ty::Binder::dummy(trait_ref).to_poly_trait_predicate().to_predicate(tcx));
+        predicates.push(ty::Binder::dummy(trait_ref).to_predicate(tcx));
     }
 
     predicates.retain(|predicate| !predicate.needs_subst());

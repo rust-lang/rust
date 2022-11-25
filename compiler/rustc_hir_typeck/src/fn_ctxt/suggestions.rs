@@ -173,7 +173,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                 }
                 ty::Opaque(def_id, substs) => {
                     self.tcx.bound_item_bounds(def_id).subst(self.tcx, substs).iter().find_map(|pred| {
-                        if let ty::PredicateKind::Projection(proj) = pred.kind().skip_binder()
+                        if let ty::PredicateKind::Clause(ty::Clause::Projection(proj)) = pred.kind().skip_binder()
                         && Some(proj.projection_ty.item_def_id) == self.tcx.lang_items().fn_once_output()
                         // args tuple will always be substs[1]
                         && let ty::Tuple(args) = proj.projection_ty.substs.type_at(1).kind()
@@ -208,7 +208,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                 ty::Param(param) => {
                     let def_id = self.tcx.generics_of(self.body_id.owner).type_param(&param, self.tcx).def_id;
                     self.tcx.predicates_of(self.body_id.owner).predicates.iter().find_map(|(pred, _)| {
-                        if let ty::PredicateKind::Projection(proj) = pred.kind().skip_binder()
+                        if let ty::PredicateKind::Clause(ty::Clause::Projection(proj)) = pred.kind().skip_binder()
                         && Some(proj.projection_ty.item_def_id) == self.tcx.lang_items().fn_once_output()
                         && proj.projection_ty.self_ty() == found
                         // args tuple will always be substs[1]
@@ -1096,8 +1096,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                 ty::Binder::dummy(self.tcx.mk_trait_ref(
                     into_def_id,
                     [expr_ty, expected_ty]
-                ))
-                .to_poly_trait_predicate(),
+                )),
             ))
         {
             let sugg = if expr.precedence().order() >= PREC_POSTFIX {

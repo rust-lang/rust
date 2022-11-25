@@ -814,7 +814,7 @@ pub trait PrettyPrinter<'tcx>:
             let bound_predicate = predicate.kind();
 
             match bound_predicate.skip_binder() {
-                ty::PredicateKind::Trait(pred) => {
+                ty::PredicateKind::Clause(ty::Clause::Trait(pred)) => {
                     let trait_ref = bound_predicate.rebind(pred.trait_ref);
 
                     // Don't print + Sized, but rather + ?Sized if absent.
@@ -825,7 +825,7 @@ pub trait PrettyPrinter<'tcx>:
 
                     self.insert_trait_and_projection(trait_ref, None, &mut traits, &mut fn_traits);
                 }
-                ty::PredicateKind::Projection(pred) => {
+                ty::PredicateKind::Clause(ty::Clause::Projection(pred)) => {
                     let proj_ref = bound_predicate.rebind(pred);
                     let trait_ref = proj_ref.required_poly_trait_ref(tcx);
 
@@ -839,7 +839,7 @@ pub trait PrettyPrinter<'tcx>:
                         &mut fn_traits,
                     );
                 }
-                ty::PredicateKind::TypeOutlives(outlives) => {
+                ty::PredicateKind::Clause(ty::Clause::TypeOutlives(outlives)) => {
                     lifetimes.push(outlives.1);
                 }
                 _ => {}
@@ -2689,14 +2689,14 @@ define_print_and_forward_display! {
 
     ty::PredicateKind<'tcx> {
         match *self {
-            ty::PredicateKind::Trait(ref data) => {
+            ty::PredicateKind::Clause(ty::Clause::Trait(ref data)) => {
                 p!(print(data))
             }
             ty::PredicateKind::Subtype(predicate) => p!(print(predicate)),
             ty::PredicateKind::Coerce(predicate) => p!(print(predicate)),
-            ty::PredicateKind::RegionOutlives(predicate) => p!(print(predicate)),
-            ty::PredicateKind::TypeOutlives(predicate) => p!(print(predicate)),
-            ty::PredicateKind::Projection(predicate) => p!(print(predicate)),
+            ty::PredicateKind::Clause(ty::Clause::RegionOutlives(predicate)) => p!(print(predicate)),
+            ty::PredicateKind::Clause(ty::Clause::TypeOutlives(predicate)) => p!(print(predicate)),
+            ty::PredicateKind::Clause(ty::Clause::Projection(predicate)) => p!(print(predicate)),
             ty::PredicateKind::WellFormed(arg) => p!(print(arg), " well-formed"),
             ty::PredicateKind::ObjectSafe(trait_def_id) => {
                 p!("the trait `", print_def_path(trait_def_id, &[]), "` is object-safe")

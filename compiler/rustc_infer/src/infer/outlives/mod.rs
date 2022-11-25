@@ -19,20 +19,21 @@ pub fn explicit_outlives_bounds<'tcx>(
         .map(ty::Predicate::kind)
         .filter_map(ty::Binder::no_bound_vars)
         .filter_map(move |kind| match kind {
-            ty::PredicateKind::Projection(..)
-            | ty::PredicateKind::Trait(..)
+            ty::PredicateKind::Clause(ty::Clause::Projection(..))
+            | ty::PredicateKind::Clause(ty::Clause::Trait(..))
             | ty::PredicateKind::Coerce(..)
             | ty::PredicateKind::Subtype(..)
             | ty::PredicateKind::WellFormed(..)
             | ty::PredicateKind::ObjectSafe(..)
             | ty::PredicateKind::ClosureKind(..)
-            | ty::PredicateKind::TypeOutlives(..)
+            | ty::PredicateKind::Clause(ty::Clause::TypeOutlives(..))
             | ty::PredicateKind::ConstEvaluatable(..)
             | ty::PredicateKind::ConstEquate(..)
             | ty::PredicateKind::Ambiguous
             | ty::PredicateKind::TypeWellFormedFromEnv(..) => None,
-            ty::PredicateKind::RegionOutlives(ty::OutlivesPredicate(r_a, r_b)) => {
-                Some(OutlivesBound::RegionSubRegion(r_b, r_a))
-            }
+            ty::PredicateKind::Clause(ty::Clause::RegionOutlives(ty::OutlivesPredicate(
+                r_a,
+                r_b,
+            ))) => Some(OutlivesBound::RegionSubRegion(r_b, r_a)),
         })
 }

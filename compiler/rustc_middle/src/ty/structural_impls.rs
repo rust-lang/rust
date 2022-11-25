@@ -150,15 +150,23 @@ impl<'tcx> fmt::Debug for ty::Predicate<'tcx> {
     }
 }
 
+impl<'tcx> fmt::Debug for ty::Clause<'tcx> {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        match *self {
+            ty::Clause::Trait(ref a) => a.fmt(f),
+            ty::Clause::RegionOutlives(ref pair) => pair.fmt(f),
+            ty::Clause::TypeOutlives(ref pair) => pair.fmt(f),
+            ty::Clause::Projection(ref pair) => pair.fmt(f),
+        }
+    }
+}
+
 impl<'tcx> fmt::Debug for ty::PredicateKind<'tcx> {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         match *self {
-            ty::PredicateKind::Trait(ref a) => a.fmt(f),
+            ty::PredicateKind::Clause(ref a) => a.fmt(f),
             ty::PredicateKind::Subtype(ref pair) => pair.fmt(f),
             ty::PredicateKind::Coerce(ref pair) => pair.fmt(f),
-            ty::PredicateKind::RegionOutlives(ref pair) => pair.fmt(f),
-            ty::PredicateKind::TypeOutlives(ref pair) => pair.fmt(f),
-            ty::PredicateKind::Projection(ref pair) => pair.fmt(f),
             ty::PredicateKind::WellFormed(data) => write!(f, "WellFormed({:?})", data),
             ty::PredicateKind::ObjectSafe(trait_def_id) => {
                 write!(f, "ObjectSafe({:?})", trait_def_id)

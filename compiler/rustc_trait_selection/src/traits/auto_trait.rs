@@ -10,7 +10,7 @@ use crate::traits::project::ProjectAndUnifyResult;
 use rustc_middle::mir::interpret::ErrorHandled;
 use rustc_middle::ty::fold::{TypeFolder, TypeSuperFoldable};
 use rustc_middle::ty::visit::TypeVisitable;
-use rustc_middle::ty::{PolyTraitRef, Region, RegionVid};
+use rustc_middle::ty::{ImplPolarity, Region, RegionVid};
 
 use rustc_data_structures::fx::{FxHashMap, FxHashSet, FxIndexSet};
 
@@ -88,19 +88,22 @@ impl<'tcx> AutoTraitFinder<'tcx> {
 
         let trait_ref = tcx.mk_trait_ref(trait_did, [ty]);
 
-        let trait_pred = ty::Binder::dummy(trait_ref);
-
         let infcx = tcx.infer_ctxt().build();
         let mut selcx = SelectionContext::new(&infcx);
-        for f in [
-            PolyTraitRef::to_poly_trait_predicate,
-            PolyTraitRef::to_poly_trait_predicate_negative_polarity,
-        ] {
+        for polarity in [true, false] {
             let result = selcx.select(&Obligation::new(
                 tcx,
                 ObligationCause::dummy(),
                 orig_env,
-                f(&trait_pred),
+                ty::Binder::dummy(ty::TraitPredicate {
+                    trait_ref,
+                    constness: ty::BoundConstness::NotConst,
+                    polarity: if polarity {
+                        ImplPolarity::Positive
+                    } else {
+                        ImplPolarity::Negative
+                    },
+                }),
             ));
             if let Ok(Some(ImplSource::UserDefined(_))) = result {
                 debug!(
@@ -400,8 +403,10 @@ impl<'tcx> AutoTraitFinder<'tcx> {
     ) {
         let mut should_add_new = true;
         user_computed_preds.retain(|&old_pred| {
-            if let (ty::PredicateKind::Trait(new_trait), ty::PredicateKind::Trait(old_trait)) =
-                (new_pred.kind().skip_binder(), old_pred.kind().skip_binder())
+            if let (
+                ty::PredicateKind::Clause(ty::Clause::Trait(new_trait)),
+                ty::PredicateKind::Clause(ty::Clause::Trait(old_trait)),
+            ) = (new_pred.kind().skip_binder(), old_pred.kind().skip_binder())
             {
                 if new_trait.def_id() == old_trait.def_id() {
                     let new_substs = new_trait.trait_ref.substs;
@@ -621,14 +626,14 @@ impl<'tcx> AutoTraitFinder<'tcx> {
 
             let bound_predicate = predicate.kind();
             match bound_predicate.skip_binder() {
-                ty::PredicateKind::Trait(p) => {
+                ty::PredicateKind::Clause(ty::Clause::Trait(p)) => {
                     // Add this to `predicates` so that we end up calling `select`
                     // with it. If this predicate ends up being unimplemented,
                     // then `evaluate_predicates` will handle adding it the `ParamEnv`
                     // if possible.
                     predicates.push_back(bound_predicate.rebind(p));
                 }
-                ty::PredicateKind::Projection(p) => {
+                ty::PredicateKind::Clause(ty::Clause::Projection(p)) => {
                     let p = bound_predicate.rebind(p);
                     debug!(
                         "evaluate_nested_obligations: examining projection predicate {:?}",
@@ -761,11 +766,11 @@ impl<'tcx> AutoTraitFinder<'tcx> {
                         }
                     }
                 }
-                ty::PredicateKind::RegionOutlives(binder) => {
+                ty::PredicateKind::Clause(ty::Clause::RegionOutlives(binder)) => {
                     let binder = bound_predicate.rebind(binder);
                     select.infcx().region_outlives_predicate(&dummy_cause, binder)
                 }
-                ty::PredicateKind::TypeOutlives(binder) => {
+                ty::PredicateKind::Clause(ty::Clause::TypeOutlives(binder)) => {
                     let binder = bound_predicate.rebind(binder);
                     match (
                         binder.no_bound_vars(),

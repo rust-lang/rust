@@ -2013,8 +2013,8 @@ impl<'a, 'tcx> TypeChecker<'a, 'tcx> {
                         );
 
                         let outlives_predicate =
-                            tcx.mk_predicate(Binder::dummy(ty::PredicateKind::TypeOutlives(
-                                ty::OutlivesPredicate(self_ty, *region),
+                            tcx.mk_predicate(Binder::dummy(ty::PredicateKind::Clause(
+                                ty::Clause::TypeOutlives(ty::OutlivesPredicate(self_ty, *region)),
                             )));
                         self.prove_predicate(
                             outlives_predicate,

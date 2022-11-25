@@ -1638,19 +1638,20 @@ declare_lint_pass!(
 impl<'tcx> LateLintPass<'tcx> for TrivialConstraints {
     fn check_item(&mut self, cx: &LateContext<'tcx>, item: &'tcx hir::Item<'tcx>) {
         use rustc_middle::ty::visit::TypeVisitable;
+        use rustc_middle::ty::Clause;
         use rustc_middle::ty::PredicateKind::*;
 
         if cx.tcx.features().trivial_bounds {
             let predicates = cx.tcx.predicates_of(item.owner_id);
             for &(predicate, span) in predicates.predicates {
                 let predicate_kind_name = match predicate.kind().skip_binder() {
-                    Trait(..) => "trait",
-                    TypeOutlives(..) |
-                    RegionOutlives(..) => "lifetime",
+                    Clause(Clause::Trait(..)) => "trait",
+                    Clause(Clause::TypeOutlives(..)) |
+                    Clause(Clause::RegionOutlives(..)) => "lifetime",
 
                     // Ignore projections, as they can only be global
                     // if the trait bound is global
-                    Projection(..) |
+                    Clause(Clause::Projection(..)) |
                     // Ignore bounds that a user can't type
                     WellFormed(..) |
                     ObjectSafe(..) |
@@ -2051,7 +2052,10 @@ impl ExplicitOutlivesRequirements {
         inferred_outlives
             .iter()
             .filter_map(|(pred, _)| match pred.kind().skip_binder() {
-                ty::PredicateKind::RegionOutlives(ty::OutlivesPredicate(a, b)) => match *a {
+                ty::PredicateKind::Clause(ty::Clause::RegionOutlives(ty::OutlivesPredicate(
+                    a,
+                    b,
+                ))) => match *a {
                     ty::ReEarlyBound(ebr) if ebr.def_id == def_id => Some(b),
                     _ => None,
                 },
@@ -2067,9 +2071,10 @@ impl ExplicitOutlivesRequirements {
         inferred_outlives
             .iter()
             .filter_map(|(pred, _)| match pred.kind().skip_binder() {
-                ty::PredicateKind::TypeOutlives(ty::OutlivesPredicate(a, b)) => {
-                    a.is_param(index).then_some(b)
-                }
+                ty::PredicateKind::Clause(ty::Clause::TypeOutlives(ty::OutlivesPredicate(
+                    a,
+                    b,
+                ))) => a.is_param(index).then_some(b),
                 _ => None,
             })
             .collect()

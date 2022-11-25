@@ -569,10 +569,10 @@ impl<'tcx> InferCtxt<'tcx> {
 
         let atom = match k1.unpack() {
             GenericArgKind::Lifetime(r1) => {
-                ty::PredicateKind::RegionOutlives(ty::OutlivesPredicate(r1, r2))
+                ty::PredicateKind::Clause(ty::Clause::RegionOutlives(ty::OutlivesPredicate(r1, r2)))
             }
             GenericArgKind::Type(t1) => {
-                ty::PredicateKind::TypeOutlives(ty::OutlivesPredicate(t1, r2))
+                ty::PredicateKind::Clause(ty::Clause::TypeOutlives(ty::OutlivesPredicate(t1, r2)))
             }
             GenericArgKind::Const(..) => {
                 // Consts cannot outlive one another, so we don't expect to
@@ -720,8 +720,8 @@ impl<'tcx> TypeRelatingDelegate<'tcx> for QueryTypeRelatingDelegate<'_, 'tcx> {
         self.obligations.push(Obligation {
             cause: self.cause.clone(),
             param_env: self.param_env,
-            predicate: ty::Binder::dummy(ty::PredicateKind::RegionOutlives(ty::OutlivesPredicate(
-                sup, sub,
+            predicate: ty::Binder::dummy(ty::PredicateKind::Clause(ty::Clause::RegionOutlives(
+                ty::OutlivesPredicate(sup, sub),
             )))
             .to_predicate(self.infcx.tcx),
             recursion_depth: 0,
