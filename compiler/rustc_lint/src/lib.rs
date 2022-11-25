@@ -127,127 +127,111 @@ fn lint_mod(tcx: TyCtxt<'_>, module_def_id: LocalDefId) {
     late::late_lint_mod(tcx, module_def_id, BuiltinCombinedModuleLateLintPass::new());
 }
 
-macro_rules! pre_expansion_lint_passes {
-    ($macro:path, $args:tt) => {
-        $macro!($args, [KeywordIdents: KeywordIdents,]);
-    };
-}
+early_lint_methods!(
+    declare_combined_early_lint_pass,
+    [
+        pub BuiltinCombinedPreExpansionLintPass,
+        [
+            KeywordIdents: KeywordIdents,
+        ]
+    ]
+);
 
-macro_rules! early_lint_passes {
-    ($macro:path, $args:tt) => {
-        $macro!(
-            $args,
-            [
-                UnusedParens: UnusedParens,
-                UnusedBraces: UnusedBraces,
-                UnusedImportBraces: UnusedImportBraces,
-                UnsafeCode: UnsafeCode,
-                SpecialModuleName: SpecialModuleName,
-                AnonymousParameters: AnonymousParameters,
-                EllipsisInclusiveRangePatterns: EllipsisInclusiveRangePatterns::default(),
-                NonCamelCaseTypes: NonCamelCaseTypes,
-                DeprecatedAttr: DeprecatedAttr::new(),
-                WhileTrue: WhileTrue,
-                NonAsciiIdents: NonAsciiIdents,
-                HiddenUnicodeCodepoints: HiddenUnicodeCodepoints,
-                IncompleteFeatures: IncompleteFeatures,
-                RedundantSemicolons: RedundantSemicolons,
-                UnusedDocComment: UnusedDocComment,
-                UnexpectedCfgs: UnexpectedCfgs,
-            ]
-        );
-    };
-}
-
-macro_rules! declare_combined_early_pass {
-    ([$name:ident], $passes:tt) => (
-        early_lint_methods!(declare_combined_early_lint_pass, [pub $name, $passes]);
-    )
-}
-
-pre_expansion_lint_passes!(declare_combined_early_pass, [BuiltinCombinedPreExpansionLintPass]);
-early_lint_passes!(declare_combined_early_pass, [BuiltinCombinedEarlyLintPass]);
-
-macro_rules! late_lint_passes {
-    ($macro:path, $args:tt) => {
-        $macro!(
-            $args,
-            [
-                // Tracks state across modules
-                UnnameableTestItems: UnnameableTestItems::new(),
-                // Tracks attributes of parents
-                MissingDoc: MissingDoc::new(),
-                // Builds a global list of all impls of `Debug`.
-                // FIXME: Turn the computation of types which implement Debug into a query
-                // and change this to a module lint pass
-                MissingDebugImplementations: MissingDebugImplementations::default(),
-                // Keeps a global list of foreign declarations.
-                ClashingExternDeclarations: ClashingExternDeclarations::new(),
-            ]
-        );
-    };
-}
-
-macro_rules! late_lint_mod_passes {
-    ($macro:path, $args:tt) => {
-        $macro!(
-            $args,
-            [
-                ForLoopsOverFallibles: ForLoopsOverFallibles,
-                DerefIntoDynSupertrait: DerefIntoDynSupertrait,
-                HardwiredLints: HardwiredLints,
-                ImproperCTypesDeclarations: ImproperCTypesDeclarations,
-                ImproperCTypesDefinitions: ImproperCTypesDefinitions,
-                VariantSizeDifferences: VariantSizeDifferences,
-                BoxPointers: BoxPointers,
-                PathStatements: PathStatements,
-                LetUnderscore: LetUnderscore,
-                // Depends on referenced function signatures in expressions
-                UnusedResults: UnusedResults,
-                NonUpperCaseGlobals: NonUpperCaseGlobals,
-                NonShorthandFieldPatterns: NonShorthandFieldPatterns,
-                UnusedAllocation: UnusedAllocation,
-                // Depends on types used in type definitions
-                MissingCopyImplementations: MissingCopyImplementations,
-                // Depends on referenced function signatures in expressions
-                MutableTransmutes: MutableTransmutes,
-                TypeAliasBounds: TypeAliasBounds,
-                TrivialConstraints: TrivialConstraints,
-                TypeLimits: TypeLimits::new(),
-                NonSnakeCase: NonSnakeCase,
-                InvalidNoMangleItems: InvalidNoMangleItems,
-                // Depends on effective visibilities
-                UnreachablePub: UnreachablePub,
-                ExplicitOutlivesRequirements: ExplicitOutlivesRequirements,
-                InvalidValue: InvalidValue,
-                DerefNullPtr: DerefNullPtr,
-                // May Depend on constants elsewhere
-                UnusedBrokenConst: UnusedBrokenConst,
-                UnstableFeatures: UnstableFeatures,
-                ArrayIntoIter: ArrayIntoIter::default(),
-                DropTraitConstraints: DropTraitConstraints,
-                TemporaryCStringAsPtr: TemporaryCStringAsPtr,
-                NonPanicFmt: NonPanicFmt,
-                NoopMethodCall: NoopMethodCall,
-                EnumIntrinsicsNonEnums: EnumIntrinsicsNonEnums,
-                InvalidAtomicOrdering: InvalidAtomicOrdering,
-                NamedAsmLabels: NamedAsmLabels,
-                OpaqueHiddenInferredBound: OpaqueHiddenInferredBound,
-            ]
-        );
-    };
-}
-
-macro_rules! declare_combined_late_pass {
-    ([$v:vis $name:ident], $passes:tt) => (
-        late_lint_methods!(declare_combined_late_lint_pass, [$v $name, $passes], ['tcx]);
-    )
-}
+early_lint_methods!(
+    declare_combined_early_lint_pass,
+    [
+        pub BuiltinCombinedEarlyLintPass,
+        [
+            UnusedParens: UnusedParens,
+            UnusedBraces: UnusedBraces,
+            UnusedImportBraces: UnusedImportBraces,
+            UnsafeCode: UnsafeCode,
+            SpecialModuleName: SpecialModuleName,
+            AnonymousParameters: AnonymousParameters,
+            EllipsisInclusiveRangePatterns: EllipsisInclusiveRangePatterns::default(),
+            NonCamelCaseTypes: NonCamelCaseTypes,
+            DeprecatedAttr: DeprecatedAttr::new(),
+            WhileTrue: WhileTrue,
+            NonAsciiIdents: NonAsciiIdents,
+            HiddenUnicodeCodepoints: HiddenUnicodeCodepoints,
+            IncompleteFeatures: IncompleteFeatures,
+            RedundantSemicolons: RedundantSemicolons,
+            UnusedDocComment: UnusedDocComment,
+            UnexpectedCfgs: UnexpectedCfgs,
+        ]
+    ]
+);
 
 // FIXME: Make a separate lint type which do not require typeck tables
-late_lint_passes!(declare_combined_late_pass, [pub BuiltinCombinedLateLintPass]);
+late_lint_methods!(
+    declare_combined_late_lint_pass,
+    [
+        pub BuiltinCombinedLateLintPass,
+        [
+            // Tracks state across modules
+            UnnameableTestItems: UnnameableTestItems::new(),
+            // Tracks attributes of parents
+            MissingDoc: MissingDoc::new(),
+            // Builds a global list of all impls of `Debug`.
+            // FIXME: Turn the computation of types which implement Debug into a query
+            // and change this to a module lint pass
+            MissingDebugImplementations: MissingDebugImplementations::default(),
+            // Keeps a global list of foreign declarations.
+            ClashingExternDeclarations: ClashingExternDeclarations::new(),
+        ]
+    ],
+    ['tcx]
+);
 
-late_lint_mod_passes!(declare_combined_late_pass, [BuiltinCombinedModuleLateLintPass]);
+late_lint_methods!(
+    declare_combined_late_lint_pass,
+    [
+        BuiltinCombinedModuleLateLintPass,
+        [
+            ForLoopsOverFallibles: ForLoopsOverFallibles,
+            DerefIntoDynSupertrait: DerefIntoDynSupertrait,
+            HardwiredLints: HardwiredLints,
+            ImproperCTypesDeclarations: ImproperCTypesDeclarations,
+            ImproperCTypesDefinitions: ImproperCTypesDefinitions,
+            VariantSizeDifferences: VariantSizeDifferences,
+            BoxPointers: BoxPointers,
+            PathStatements: PathStatements,
+            LetUnderscore: LetUnderscore,
+            // Depends on referenced function signatures in expressions
+            UnusedResults: UnusedResults,
+            NonUpperCaseGlobals: NonUpperCaseGlobals,
+            NonShorthandFieldPatterns: NonShorthandFieldPatterns,
+            UnusedAllocation: UnusedAllocation,
+            // Depends on types used in type definitions
+            MissingCopyImplementations: MissingCopyImplementations,
+            // Depends on referenced function signatures in expressions
+            MutableTransmutes: MutableTransmutes,
+            TypeAliasBounds: TypeAliasBounds,
+            TrivialConstraints: TrivialConstraints,
+            TypeLimits: TypeLimits::new(),
+            NonSnakeCase: NonSnakeCase,
+            InvalidNoMangleItems: InvalidNoMangleItems,
+            // Depends on effective visibilities
+            UnreachablePub: UnreachablePub,
+            ExplicitOutlivesRequirements: ExplicitOutlivesRequirements,
+            InvalidValue: InvalidValue,
+            DerefNullPtr: DerefNullPtr,
+            // May Depend on constants elsewhere
+            UnusedBrokenConst: UnusedBrokenConst,
+            UnstableFeatures: UnstableFeatures,
+            ArrayIntoIter: ArrayIntoIter::default(),
+            DropTraitConstraints: DropTraitConstraints,
+            TemporaryCStringAsPtr: TemporaryCStringAsPtr,
+            NonPanicFmt: NonPanicFmt,
+            NoopMethodCall: NoopMethodCall,
+            EnumIntrinsicsNonEnums: EnumIntrinsicsNonEnums,
+            InvalidAtomicOrdering: InvalidAtomicOrdering,
+            NamedAsmLabels: NamedAsmLabels,
+            OpaqueHiddenInferredBound: OpaqueHiddenInferredBound,
+        ]
+    ],
+    ['tcx]
+);
 
 pub fn new_lint_store(internal_lints: bool) -> LintStore {
     let mut lint_store = LintStore::new();
