@@ -118,33 +118,33 @@ where
 /// This is useful if you have values that you intern but never (can?) use for stable
 /// hashing.
 #[derive(Copy, Clone)]
-pub struct WithStableHash<T> {
+pub struct WithCachedTypeInfo<T> {
     pub internee: T,
     pub stable_hash: Fingerprint,
 }
 
-impl<T: PartialEq> PartialEq for WithStableHash<T> {
+impl<T: PartialEq> PartialEq for WithCachedTypeInfo<T> {
     #[inline]
     fn eq(&self, other: &Self) -> bool {
         self.internee.eq(&other.internee)
     }
 }
 
-impl<T: Eq> Eq for WithStableHash<T> {}
+impl<T: Eq> Eq for WithCachedTypeInfo<T> {}
 
-impl<T: Ord> PartialOrd for WithStableHash<T> {
-    fn partial_cmp(&self, other: &WithStableHash<T>) -> Option<Ordering> {
+impl<T: Ord> PartialOrd for WithCachedTypeInfo<T> {
+    fn partial_cmp(&self, other: &WithCachedTypeInfo<T>) -> Option<Ordering> {
         Some(self.internee.cmp(&other.internee))
     }
 }
 
-impl<T: Ord> Ord for WithStableHash<T> {
-    fn cmp(&self, other: &WithStableHash<T>) -> Ordering {
+impl<T: Ord> Ord for WithCachedTypeInfo<T> {
+    fn cmp(&self, other: &WithCachedTypeInfo<T>) -> Ordering {
         self.internee.cmp(&other.internee)
     }
 }
 
-impl<T> Deref for WithStableHash<T> {
+impl<T> Deref for WithCachedTypeInfo<T> {
     type Target = T;
 
     #[inline]
@@ -153,7 +153,7 @@ impl<T> Deref for WithStableHash<T> {
     }
 }
 
-impl<T: Hash> Hash for WithStableHash<T> {
+impl<T: Hash> Hash for WithCachedTypeInfo<T> {
     #[inline]
     fn hash<H: Hasher>(&self, s: &mut H) {
         if self.stable_hash != Fingerprint::ZERO {
@@ -164,7 +164,7 @@ impl<T: Hash> Hash for WithStableHash<T> {
     }
 }
 
-impl<T: HashStable<CTX>, CTX> HashStable<CTX> for WithStableHash<T> {
+impl<T: HashStable<CTX>, CTX> HashStable<CTX> for WithCachedTypeInfo<T> {
     fn hash_stable(&self, hcx: &mut CTX, hasher: &mut StableHasher) {
         if self.stable_hash == Fingerprint::ZERO || cfg!(debug_assertions) {
             // No cached hash available. This can only mean that incremental is disabled.

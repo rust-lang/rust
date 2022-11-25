@@ -32,7 +32,7 @@ use rustc_ast::node_id::NodeMap;
 use rustc_attr as attr;
 use rustc_data_structures::fingerprint::Fingerprint;
 use rustc_data_structures::fx::{FxHashMap, FxHashSet, FxIndexMap, FxIndexSet};
-use rustc_data_structures::intern::{Interned, WithStableHash};
+use rustc_data_structures::intern::{Interned, WithCachedTypeInfo};
 use rustc_data_structures::stable_hasher::{HashStable, StableHasher};
 use rustc_data_structures::tagged_ptr::CopyTaggedPtr;
 use rustc_hir as hir;
@@ -495,19 +495,20 @@ pub(crate) struct TyS<'tcx> {
 #[derive(Copy, Clone, PartialEq, Eq, PartialOrd, Ord, Hash, HashStable)]
 #[rustc_diagnostic_item = "Ty"]
 #[rustc_pass_by_value]
-pub struct Ty<'tcx>(Interned<'tcx, WithStableHash<TyS<'tcx>>>);
+pub struct Ty<'tcx>(Interned<'tcx, WithCachedTypeInfo<TyS<'tcx>>>);
 
 impl<'tcx> TyCtxt<'tcx> {
     /// A "bool" type used in rustc_mir_transform unit tests when we
     /// have not spun up a TyCtxt.
-    pub const BOOL_TY_FOR_UNIT_TESTING: Ty<'tcx> = Ty(Interned::new_unchecked(&WithStableHash {
-        internee: TyS {
-            kind: ty::Bool,
-            flags: TypeFlags::empty(),
-            outer_exclusive_binder: DebruijnIndex::from_usize(0),
-        },
-        stable_hash: Fingerprint::ZERO,
-    }));
+    pub const BOOL_TY_FOR_UNIT_TESTING: Ty<'tcx> =
+        Ty(Interned::new_unchecked(&WithCachedTypeInfo {
+            internee: TyS {
+                kind: ty::Bool,
+                flags: TypeFlags::empty(),
+                outer_exclusive_binder: DebruijnIndex::from_usize(0),
+            },
+            stable_hash: Fingerprint::ZERO,
+        }));
 }
 
 impl<'a, 'tcx> HashStable<StableHashingContext<'a>> for TyS<'tcx> {
@@ -550,7 +551,7 @@ pub(crate) struct PredicateS<'tcx> {
 /// Use this rather than `PredicateS`, whenever possible.
 #[derive(Clone, Copy, PartialEq, Eq, Hash, HashStable)]
 #[rustc_pass_by_value]
-pub struct Predicate<'tcx>(Interned<'tcx, WithStableHash<PredicateS<'tcx>>>);
+pub struct Predicate<'tcx>(Interned<'tcx, WithCachedTypeInfo<PredicateS<'tcx>>>);
 
 impl<'tcx> Predicate<'tcx> {
     /// Gets the inner `Binder<'tcx, PredicateKind<'tcx>>`.
@@ -1028,7 +1029,7 @@ impl<'tcx> Term<'tcx> {
         unsafe {
             match ptr & TAG_MASK {
                 TYPE_TAG => TermKind::Ty(Ty(Interned::new_unchecked(
-                    &*((ptr & !TAG_MASK) as *const WithStableHash<ty::TyS<'tcx>>),
+                    &*((ptr & !TAG_MASK) as *const WithCachedTypeInfo<ty::TyS<'tcx>>),
                 ))),
                 CONST_TAG => TermKind::Const(ty::Const(Interned::new_unchecked(
                     &*((ptr & !TAG_MASK) as *const ty::ConstS<'tcx>),
@@ -1072,7 +1073,7 @@ impl<'tcx> TermKind<'tcx> {
             TermKind::Ty(ty) => {
                 // Ensure we can use the tag bits.
                 assert_eq!(mem::align_of_val(&*ty.0.0) & TAG_MASK, 0);
-                (TYPE_TAG, ty.0.0 as *const WithStableHash<ty::TyS<'tcx>> as usize)
+                (TYPE_TAG, ty.0.0 as *const WithCachedTypeInfo<ty::TyS<'tcx>> as usize)
             }
             TermKind::Const(ct) => {
                 // Ensure we can use the tag bits.
@@ -2694,6 +2695,6 @@ mod size_asserts {
     // tidy-alphabetical-start
     static_assert_size!(PredicateS<'_>, 48);
     static_assert_size!(TyS<'_>, 40);
-    static_assert_size!(WithStableHash<TyS<'_>>, 56);
+    static_assert_size!(WithCachedTypeInfo<TyS<'_>>, 56);
     // tidy-alphabetical-end
 }
