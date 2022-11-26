@@ -265,7 +265,7 @@ enum ParamKind {
     MutRef,
 }
 
-#[derive(Debug, Eq, PartialEq)]
+#[derive(Debug)]
 enum FunType {
     Unit,
     Single(hir::Type),
@@ -1368,7 +1368,7 @@ impl FlowHandler {
             None => FlowHandler::None,
             Some(flow_kind) => {
                 let action = flow_kind.clone();
-                if *ret_ty == FunType::Unit {
+                if let FunType::Unit = ret_ty {
                     match flow_kind {
                         FlowKind::Return(None)
                         | FlowKind::Break(_, None)
@@ -1946,7 +1946,7 @@ fn update_external_control_flow(handler: &FlowHandler, syntax: &SyntaxNode) {
                 if nested_scope.is_none() {
                     if let Some(expr) = ast::Expr::cast(e.clone()) {
                         match expr {
-                            ast::Expr::ReturnExpr(return_expr) if nested_scope.is_none() => {
+                            ast::Expr::ReturnExpr(return_expr) => {
                                 let expr = return_expr.expr();
                                 if let Some(replacement) = make_rewritten_flow(handler, expr) {
                                     ted::replace(return_expr.syntax(), replacement.syntax())
