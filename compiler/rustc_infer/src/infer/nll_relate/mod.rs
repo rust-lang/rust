@@ -275,7 +275,7 @@ where
     ///   `ProjectionEq(projection = ?U)`, `ProjectionEq(other_projection = ?U)`.
     fn relate_projection_ty(
         &mut self,
-        projection_ty: ty::ProjectionTy<'tcx>,
+        projection_ty: ty::AliasTy<'tcx>,
         value_ty: Ty<'tcx>,
     ) -> Ty<'tcx> {
         use rustc_span::DUMMY_SP;
@@ -609,8 +609,8 @@ where
             (&ty::Infer(ty::TyVar(vid)), _) => self.relate_ty_var((vid, b)),
 
             (
-                &ty::Opaque(ty::OpaqueTy { def_id: a_def_id, substs: _ }),
-                &ty::Opaque(ty::OpaqueTy { def_id: b_def_id, substs: _ }),
+                &ty::Opaque(ty::AliasTy { def_id: a_def_id, substs: _ }),
+                &ty::Opaque(ty::AliasTy { def_id: b_def_id, substs: _ }),
             ) if a_def_id == b_def_id => infcx.super_combine_tys(self, a, b).or_else(|err| {
                 self.tcx().sess.delay_span_bug(
                     self.delegate.span(),
@@ -618,8 +618,8 @@ where
                 );
                 if a_def_id.is_local() { self.relate_opaques(a, b) } else { Err(err) }
             }),
-            (&ty::Opaque(ty::OpaqueTy { def_id, substs: _ }), _)
-            | (_, &ty::Opaque(ty::OpaqueTy { def_id, substs: _ }))
+            (&ty::Opaque(ty::AliasTy { def_id, substs: _ }), _)
+            | (_, &ty::Opaque(ty::AliasTy { def_id, substs: _ }))
                 if def_id.is_local() =>
             {
                 self.relate_opaques(a, b)

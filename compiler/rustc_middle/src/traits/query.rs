@@ -76,8 +76,7 @@ pub mod type_op {
     }
 }
 
-pub type CanonicalProjectionGoal<'tcx> =
-    Canonical<'tcx, ty::ParamEnvAnd<'tcx, ty::ProjectionTy<'tcx>>>;
+pub type CanonicalProjectionGoal<'tcx> = Canonical<'tcx, ty::ParamEnvAnd<'tcx, ty::AliasTy<'tcx>>>;
 
 pub type CanonicalTyGoal<'tcx> = Canonical<'tcx, ty::ParamEnvAnd<'tcx, Ty<'tcx>>>;
 
@@ -218,6 +217,6 @@ pub struct NormalizationResult<'tcx> {
 pub enum OutlivesBound<'tcx> {
     RegionSubRegion(ty::Region<'tcx>, ty::Region<'tcx>),
     RegionSubParam(ty::Region<'tcx>, ty::ParamTy),
-    RegionSubProjection(ty::Region<'tcx>, ty::ProjectionTy<'tcx>),
+    RegionSubProjection(ty::Region<'tcx>, ty::AliasTy<'tcx>),
     RegionSubOpaque(ty::Region<'tcx>, DefId, SubstsRef<'tcx>),
 }

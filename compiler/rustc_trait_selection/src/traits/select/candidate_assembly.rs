@@ -536,10 +536,7 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
             let ty = traits::normalize_projection_type(
                 self,
                 param_env,
-                ty::ProjectionTy {
-                    def_id: tcx.lang_items().deref_target()?,
-                    substs: trait_ref.substs,
-                },
+                ty::AliasTy { def_id: tcx.lang_items().deref_target()?, substs: trait_ref.substs },
                 cause.clone(),
                 0,
                 // We're *intentionally* throwing these away,
@@ -830,7 +827,7 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
             | ty::GeneratorWitness(_)
             | ty::Never
             | ty::Projection(_)
-            | ty::Opaque(ty::OpaqueTy { def_id: _, substs: _ })
+            | ty::Opaque(ty::AliasTy { def_id: _, substs: _ })
             | ty::Param(_)
             | ty::Bound(_, _)
             | ty::Error(_)

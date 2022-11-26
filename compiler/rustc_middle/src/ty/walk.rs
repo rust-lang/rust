@@ -188,7 +188,7 @@ fn push_inner<'tcx>(stack: &mut TypeWalkerStack<'tcx>, parent: GenericArg<'tcx>)
                 }));
             }
             ty::Adt(_, substs)
-            | ty::Opaque(ty::OpaqueTy { def_id: _, substs })
+            | ty::Opaque(ty::AliasTy { def_id: _, substs })
             | ty::Closure(_, substs)
             | ty::Generator(_, substs, _)
             | ty::FnDef(_, substs) => {

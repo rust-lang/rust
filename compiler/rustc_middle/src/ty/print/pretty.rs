@@ -728,7 +728,7 @@ pub trait PrettyPrinter<'tcx>:
                 }
             }
             ty::Placeholder(placeholder) => p!(write("Placeholder({:?})", placeholder)),
-            ty::Opaque(ty::OpaqueTy { def_id, substs }) => {
+            ty::Opaque(ty::AliasTy { def_id, substs }) => {
                 // FIXME(eddyb) print this with `print_def_path`.
                 // We use verbose printing in 'NO_QUERIES' mode, to
                 // avoid needing to call `predicates_of`. This should
@@ -743,7 +743,7 @@ pub trait PrettyPrinter<'tcx>:
                 let parent = self.tcx().parent(def_id);
                 match self.tcx().def_kind(parent) {
                     DefKind::TyAlias | DefKind::AssocTy => {
-                        if let ty::Opaque(ty::OpaqueTy { def_id: d, substs: _ }) =
+                        if let ty::Opaque(ty::AliasTy { def_id: d, substs: _ }) =
                             *self.tcx().type_of(parent).kind()
                         {
                             if d == def_id {
@@ -2742,7 +2742,7 @@ define_print_and_forward_display! {
       }
     }
 
-    ty::ProjectionTy<'tcx> {
+    ty::AliasTy<'tcx> {
         p!(print_def_path(self.def_id, self.substs));
     }
 

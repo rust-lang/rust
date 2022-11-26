@@ -1596,7 +1596,7 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
         let tcx = self.infcx.tcx;
         let (def_id, substs) = match *placeholder_trait_predicate.trait_ref.self_ty().kind() {
             ty::Projection(ref data) => (data.def_id, data.substs),
-            ty::Opaque(ty::OpaqueTy { def_id, substs }) => (def_id, substs),
+            ty::Opaque(ty::AliasTy { def_id, substs }) => (def_id, substs),
             _ => {
                 span_bug!(
                     obligation.cause.span,
@@ -2260,7 +2260,7 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
                 t.rebind(def.all_fields().map(|f| f.ty(self.tcx(), substs)).collect())
             }
 
-            ty::Opaque(ty::OpaqueTy { def_id, substs }) => {
+            ty::Opaque(ty::AliasTy { def_id, substs }) => {
                 // We can resolve the `impl Trait` to its concrete type,
                 // which enforces a DAG between the functions requiring
                 // the auto trait bounds in question.

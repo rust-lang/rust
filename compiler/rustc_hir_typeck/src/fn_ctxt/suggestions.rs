@@ -174,7 +174,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                     let fn_sig = substs.as_closure().sig();
                     Some((DefIdOrName::DefId(def_id), fn_sig.output(), fn_sig.inputs().map_bound(|inputs| &inputs[1..])))
                 }
-                ty::Opaque(ty::OpaqueTy { def_id, substs }) => {
+                ty::Opaque(ty::AliasTy { def_id, substs }) => {
                     self.tcx.bound_item_bounds(def_id).subst(self.tcx, substs).iter().find_map(|pred| {
                         if let ty::PredicateKind::Clause(ty::Clause::Projection(proj)) = pred.kind().skip_binder()
                         && Some(proj.projection_ty.def_id) == self.tcx.lang_items().fn_once_output()

@@ -253,7 +253,7 @@ impl<'a, 'tcx> ConstraintContext<'a, 'tcx> {
                 self.add_constraints_from_invariant_substs(current, data.substs, variance);
             }
 
-            ty::Opaque(ty::OpaqueTy { def_id: _, substs }) => {
+            ty::Opaque(ty::AliasTy { def_id: _, substs }) => {
                 self.add_constraints_from_invariant_substs(current, substs, variance);
             }
 

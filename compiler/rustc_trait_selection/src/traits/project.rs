@@ -45,7 +45,7 @@ pub type PolyProjectionObligation<'tcx> = Obligation<'tcx, ty::PolyProjectionPre
 
 pub type ProjectionObligation<'tcx> = Obligation<'tcx, ty::ProjectionPredicate<'tcx>>;
 
-pub type ProjectionTyObligation<'tcx> = Obligation<'tcx, ty::ProjectionTy<'tcx>>;
+pub type ProjectionTyObligation<'tcx> = Obligation<'tcx, ty::AliasTy<'tcx>>;
 
 pub(super) struct InProgress;
 
@@ -496,7 +496,7 @@ impl<'a, 'b, 'tcx> TypeFolder<'tcx> for AssocTypeNormalizer<'a, 'b, 'tcx> {
             // This is really important. While we *can* handle this, this has
             // severe performance implications for large opaque types with
             // late-bound regions. See `issue-88862` benchmark.
-            ty::Opaque(ty::OpaqueTy { def_id, substs }) if !substs.has_escaping_bound_vars() => {
+            ty::Opaque(ty::AliasTy { def_id, substs }) if !substs.has_escaping_bound_vars() => {
                 // Only normalize `impl Trait` outside of type inference, usually in codegen.
                 match self.param_env.reveal() {
                     Reveal::UserFacing => ty.super_fold_with(self),
@@ -957,7 +957,7 @@ impl<'tcx> TypeFolder<'tcx> for PlaceholderReplacer<'_, 'tcx> {
 pub fn normalize_projection_type<'a, 'b, 'tcx>(
     selcx: &'a mut SelectionContext<'b, 'tcx>,
     param_env: ty::ParamEnv<'tcx>,
-    projection_ty: ty::ProjectionTy<'tcx>,
+    projection_ty: ty::AliasTy<'tcx>,
     cause: ObligationCause<'tcx>,
     depth: usize,
     obligations: &mut Vec<PredicateObligation<'tcx>>,
@@ -995,7 +995,7 @@ pub fn normalize_projection_type<'a, 'b, 'tcx>(
 fn opt_normalize_projection_type<'a, 'b, 'tcx>(
     selcx: &'a mut SelectionContext<'b, 'tcx>,
     param_env: ty::ParamEnv<'tcx>,
-    projection_ty: ty::ProjectionTy<'tcx>,
+    projection_ty: ty::AliasTy<'tcx>,
     cause: ObligationCause<'tcx>,
     depth: usize,
     obligations: &mut Vec<PredicateObligation<'tcx>>,
@@ -1177,7 +1177,7 @@ fn opt_normalize_projection_type<'a, 'b, 'tcx>(
 fn normalize_to_error<'a, 'tcx>(
     selcx: &mut SelectionContext<'a, 'tcx>,
     param_env: ty::ParamEnv<'tcx>,
-    projection_ty: ty::ProjectionTy<'tcx>,
+    projection_ty: ty::AliasTy<'tcx>,
     cause: ObligationCause<'tcx>,
     depth: usize,
 ) -> NormalizedTy<'tcx> {
@@ -1376,7 +1376,7 @@ fn assemble_candidates_from_trait_def<'cx, 'tcx>(
     // If so, extract what we know from the trait and try to come up with a good answer.
     let bounds = match *obligation.predicate.self_ty().kind() {
         ty::Projection(ref data) => tcx.bound_item_bounds(data.def_id).subst(tcx, data.substs),
-        ty::Opaque(ty::OpaqueTy { def_id, substs }) => {
+        ty::Opaque(ty::AliasTy { def_id, substs }) => {
             tcx.bound_item_bounds(def_id).subst(tcx, substs)
         }
         ty::Infer(ty::TyVar(_)) => {
@@ -1870,7 +1870,7 @@ fn confirm_generator_candidate<'cx, 'tcx>(
         };
 
         ty::ProjectionPredicate {
-            projection_ty: ty::ProjectionTy {
+            projection_ty: ty::AliasTy {
                 substs: trait_ref.substs,
                 def_id: obligation.predicate.def_id,
             },
@@ -1912,7 +1912,7 @@ fn confirm_future_candidate<'cx, 'tcx>(
         debug_assert_eq!(tcx.associated_item(obligation.predicate.def_id).name, sym::Output);
 
         ty::ProjectionPredicate {
-            projection_ty: ty::ProjectionTy {
+            projection_ty: ty::AliasTy {
                 substs: trait_ref.substs,
                 def_id: obligation.predicate.def_id,
             },
@@ -1969,7 +1969,7 @@ fn confirm_builtin_candidate<'cx, 'tcx>(
     };
 
     let predicate = ty::ProjectionPredicate {
-        projection_ty: ty::ProjectionTy { substs, def_id: item_def_id },
+        projection_ty: ty::AliasTy { substs, def_id: item_def_id },
         term,
     };
 
@@ -2040,7 +2040,7 @@ fn confirm_callable_candidate<'cx, 'tcx>(
         flag,
     )
     .map_bound(|(trait_ref, ret_type)| ty::ProjectionPredicate {
-        projection_ty: ty::ProjectionTy { substs: trait_ref.substs, def_id: fn_once_output_def_id },
+        projection_ty: ty::AliasTy { substs: trait_ref.substs, def_id: fn_once_output_def_id },
         term: ret_type.into(),
     });
 

@@ -338,7 +338,7 @@ where
             substs,
             true,
             |ty| match *ty.kind() {
-                ty::Opaque(ty::OpaqueTy { def_id, substs }) => (def_id, substs),
+                ty::Opaque(ty::AliasTy { def_id, substs }) => (def_id, substs),
                 _ => bug!("expected only projection types from env, not {:?}", ty),
             },
         );
@@ -349,7 +349,7 @@ where
         &mut self,
         origin: infer::SubregionOrigin<'tcx>,
         region: ty::Region<'tcx>,
-        projection_ty: ty::ProjectionTy<'tcx>,
+        projection_ty: ty::AliasTy<'tcx>,
     ) {
         self.generic_must_outlive(
             origin,

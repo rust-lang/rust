@@ -411,7 +411,7 @@ impl<'tcx> ToTrace<'tcx> for ty::PolyTraitRef<'tcx> {
     }
 }
 
-impl<'tcx> ToTrace<'tcx> for ty::ProjectionTy<'tcx> {
+impl<'tcx> ToTrace<'tcx> for ty::AliasTy<'tcx> {
     fn to_trace(
         tcx: TyCtxt<'tcx>,
         cause: &ObligationCause<'tcx>,

@@ -249,7 +249,7 @@ fn extend_cause_with_original_assoc_item_obligation<'tcx>(
             // An associated item obligation born out of the `trait` failed to be met. An example
             // can be seen in `ui/associated-types/point-at-type-on-obligation-failure-2.rs`.
             debug!("extended_cause_with_original_assoc_item_obligation trait proj {:?}", pred);
-            if let ty::Projection(ty::ProjectionTy { def_id, .. }) = *pred.self_ty().kind()
+            if let ty::Projection(ty::AliasTy { def_id, .. }) = *pred.self_ty().kind()
                 && let Some(&impl_item_id) =
                     tcx.impl_item_implementor_ids(impl_def_id).get(&def_id)
                 && let Some(impl_item_span) = items
@@ -369,7 +369,7 @@ impl<'tcx> WfPredicates<'tcx> {
 
     /// Pushes the obligations required for `trait_ref::Item` to be WF
     /// into `self.out`.
-    fn compute_projection(&mut self, data: ty::ProjectionTy<'tcx>) {
+    fn compute_projection(&mut self, data: ty::AliasTy<'tcx>) {
         // A projection is well-formed if
         //
         // (a) its predicates hold (*)
@@ -648,7 +648,7 @@ impl<'tcx> WfPredicates<'tcx> {
                     // types appearing in the fn signature
                 }
 
-                ty::Opaque(ty::OpaqueTy { def_id, substs }) => {
+                ty::Opaque(ty::AliasTy { def_id, substs }) => {
                     // All of the requirements on type parameters
                     // have already been checked for `impl Trait` in
                     // return position. We do need to check type-alias-impl-trait though.

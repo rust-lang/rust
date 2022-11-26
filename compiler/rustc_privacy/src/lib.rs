@@ -88,10 +88,7 @@ trait DefIdVisitor<'tcx> {
     fn visit_trait(&mut self, trait_ref: TraitRef<'tcx>) -> ControlFlow<Self::BreakTy> {
         self.skeleton().visit_trait(trait_ref)
     }
-    fn visit_projection_ty(
-        &mut self,
-        projection: ty::ProjectionTy<'tcx>,
-    ) -> ControlFlow<Self::BreakTy> {
+    fn visit_projection_ty(&mut self, projection: ty::AliasTy<'tcx>) -> ControlFlow<Self::BreakTy> {
         self.skeleton().visit_projection_ty(projection)
     }
     fn visit_predicates(
@@ -118,10 +115,7 @@ where
         if self.def_id_visitor.shallow() { ControlFlow::CONTINUE } else { substs.visit_with(self) }
     }
 
-    fn visit_projection_ty(
-        &mut self,
-        projection: ty::ProjectionTy<'tcx>,
-    ) -> ControlFlow<V::BreakTy> {
+    fn visit_projection_ty(&mut self, projection: ty::AliasTy<'tcx>) -> ControlFlow<V::BreakTy> {
         let tcx = self.def_id_visitor.tcx();
         let (trait_ref, assoc_substs) = if tcx.def_kind(projection.def_id)
             != DefKind::ImplTraitPlaceholder
@@ -241,7 +235,7 @@ where
                     self.def_id_visitor.visit_def_id(def_id, "trait", &trait_ref)?;
                 }
             }
-            ty::Opaque(ty::OpaqueTy { def_id, substs: _ }) => {
+            ty::Opaque(ty::AliasTy { def_id, substs: _ }) => {
                 // Skip repeated `Opaque`s to avoid infinite recursion.
                 if self.visited_opaque_tys.insert(def_id) {
                     // The intent is to treat `impl Trait1 + Trait2` identically to

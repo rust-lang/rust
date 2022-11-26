@@ -93,14 +93,13 @@ pub use self::parameterized::ParameterizedOverTcx;
 pub use self::rvalue_scopes::RvalueScopes;
 pub use self::sty::BoundRegionKind::*;
 pub use self::sty::{
-    Article, Binder, BoundRegion, BoundRegionKind, BoundTy, BoundTyKind, BoundVar,
+    AliasTy, Article, Binder, BoundRegion, BoundRegionKind, BoundTy, BoundTyKind, BoundVar,
     BoundVariableKind, CanonicalPolyFnSig, ClosureSubsts, ClosureSubstsParts, ConstVid,
     EarlyBoundRegion, ExistentialPredicate, ExistentialProjection, ExistentialTraitRef, FnSig,
     FreeRegion, GenSig, GeneratorSubsts, GeneratorSubstsParts, InlineConstSubsts,
-    InlineConstSubstsParts, OpaqueTy, ParamConst, ParamTy, PolyExistentialPredicate,
+    InlineConstSubstsParts, ParamConst, ParamTy, PolyExistentialPredicate,
     PolyExistentialProjection, PolyExistentialTraitRef, PolyFnSig, PolyGenSig, PolyTraitRef,
-    ProjectionTy, Region, RegionKind, RegionVid, TraitRef, TyKind, TypeAndMut, UpvarSubsts,
-    VarianceDiagInfo,
+    Region, RegionKind, RegionVid, TraitRef, TyKind, TypeAndMut, UpvarSubsts, VarianceDiagInfo,
 };
 pub use self::trait_def::TraitDef;
 
@@ -1010,7 +1009,7 @@ impl<'tcx> TermKind<'tcx> {
 #[derive(Copy, Clone, PartialEq, Eq, Hash, TyEncodable, TyDecodable)]
 #[derive(HashStable, TypeFoldable, TypeVisitable, Lift)]
 pub struct ProjectionPredicate<'tcx> {
-    pub projection_ty: ProjectionTy<'tcx>,
+    pub projection_ty: AliasTy<'tcx>,
     pub term: Term<'tcx>,
 }
 

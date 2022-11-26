@@ -16,7 +16,7 @@ impl<'tcx> InferCtxt<'tcx> {
     pub fn infer_projection(
         &self,
         param_env: ty::ParamEnv<'tcx>,
-        projection_ty: ty::ProjectionTy<'tcx>,
+        projection_ty: ty::AliasTy<'tcx>,
         cause: ObligationCause<'tcx>,
         recursion_depth: usize,
         obligations: &mut Vec<PredicateObligation<'tcx>>,

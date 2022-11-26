@@ -66,7 +66,7 @@ impl<'tcx> LowerInto<'tcx, SubstsRef<'tcx>> for &chalk_ir::Substitution<RustInte
     }
 }
 
-impl<'tcx> LowerInto<'tcx, chalk_ir::AliasTy<RustInterner<'tcx>>> for ty::ProjectionTy<'tcx> {
+impl<'tcx> LowerInto<'tcx, chalk_ir::AliasTy<RustInterner<'tcx>>> for ty::AliasTy<'tcx> {
     fn lower_into(self, interner: RustInterner<'tcx>) -> chalk_ir::AliasTy<RustInterner<'tcx>> {
         chalk_ir::AliasTy::Projection(chalk_ir::ProjectionTy {
             associated_ty_id: chalk_ir::AssocTypeId(self.def_id),
@@ -354,7 +354,7 @@ impl<'tcx> LowerInto<'tcx, chalk_ir::Ty<RustInterner<'tcx>>> for Ty<'tcx> {
                 chalk_ir::TyKind::Tuple(types.len(), types.as_substs().lower_into(interner))
             }
             ty::Projection(proj) => chalk_ir::TyKind::Alias(proj.lower_into(interner)),
-            ty::Opaque(ty::OpaqueTy { def_id, substs }) => {
+            ty::Opaque(ty::AliasTy { def_id, substs }) => {
                 chalk_ir::TyKind::Alias(chalk_ir::AliasTy::Opaque(chalk_ir::OpaqueTy {
                     opaque_ty_id: chalk_ir::OpaqueTyId(def_id),
                     substitution: substs.lower_into(interner),
@@ -442,11 +442,11 @@ impl<'tcx> LowerInto<'tcx, Ty<'tcx>> for &chalk_ir::Ty<RustInterner<'tcx>> {
                 mutbl.lower_into(interner),
             ),
             TyKind::Str => ty::Str,
-            TyKind::OpaqueType(opaque_ty, substitution) => ty::Opaque(ty::OpaqueTy {
+            TyKind::OpaqueType(opaque_ty, substitution) => ty::Opaque(ty::AliasTy {
                 def_id: opaque_ty.0,
                 substs: substitution.lower_into(interner),
             }),
-            TyKind::AssociatedType(assoc_ty, substitution) => ty::Projection(ty::ProjectionTy {
+            TyKind::AssociatedType(assoc_ty, substitution) => ty::Projection(ty::AliasTy {
                 substs: substitution.lower_into(interner),
                 def_id: assoc_ty.0,
             }),
@@ -457,11 +457,11 @@ impl<'tcx> LowerInto<'tcx, Ty<'tcx>> for &chalk_ir::Ty<RustInterner<'tcx>> {
                 name: ty::BoundVar::from_usize(placeholder.idx),
             }),
             TyKind::Alias(alias_ty) => match alias_ty {
-                chalk_ir::AliasTy::Projection(projection) => ty::Projection(ty::ProjectionTy {
+                chalk_ir::AliasTy::Projection(projection) => ty::Projection(ty::AliasTy {
                     def_id: projection.associated_ty_id.0,
                     substs: projection.substitution.lower_into(interner),
                 }),
-                chalk_ir::AliasTy::Opaque(opaque) => ty::Opaque(ty::OpaqueTy {
+                chalk_ir::AliasTy::Opaque(opaque) => ty::Opaque(ty::AliasTy {
                     def_id: opaque.opaque_ty_id.0,
                     substs: opaque.substitution.lower_into(interner),
                 }),

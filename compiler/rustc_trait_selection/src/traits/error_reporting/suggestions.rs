@@ -369,7 +369,7 @@ fn suggest_restriction<'tcx>(
     msg: &str,
     err: &mut Diagnostic,
     fn_sig: Option<&hir::FnSig<'_>>,
-    projection: Option<&ty::ProjectionTy<'_>>,
+    projection: Option<&ty::AliasTy<'_>>,
     trait_pred: ty::PolyTraitPredicate<'tcx>,
     // When we are dealing with a trait, `super_traits` will be `Some`:
     // Given `trait T: A + B + C {}`
@@ -855,7 +855,7 @@ impl<'tcx> TypeErrCtxtExt<'tcx> for TypeErrCtxt<'_, 'tcx> {
                     fn_sig.inputs().map_bound(|inputs| &inputs[1..]),
                 ))
             }
-            ty::Opaque(ty::OpaqueTy { def_id, substs }) => {
+            ty::Opaque(ty::AliasTy { def_id, substs }) => {
                 self.tcx.bound_item_bounds(def_id).subst(self.tcx, substs).iter().find_map(|pred| {
                     if let ty::PredicateKind::Clause(ty::Clause::Projection(proj)) = pred.kind().skip_binder()
                     && Some(proj.projection_ty.def_id) == self.tcx.lang_items().fn_once_output()
@@ -2644,7 +2644,7 @@ impl<'tcx> TypeErrCtxtExt<'tcx> for TypeErrCtxt<'_, 'tcx> {
                                 Some(ident) => err.span_note(ident.span, &msg),
                                 None => err.note(&msg),
                             },
-                            ty::Opaque(ty::OpaqueTy { def_id, substs: _ }) => {
+                            ty::Opaque(ty::AliasTy { def_id, substs: _ }) => {
                                 // Avoid printing the future from `core::future::identity_future`, it's not helpful
                                 if tcx.parent(*def_id) == identity_future {
                                     break 'print;
@@ -3248,7 +3248,7 @@ impl<'tcx> TypeErrCtxtExt<'tcx> for TypeErrCtxt<'_, 'tcx> {
                 // This corresponds to `<ExprTy as Iterator>::Item = _`.
                 let trait_ref = ty::Binder::dummy(ty::PredicateKind::Clause(
                     ty::Clause::Projection(ty::ProjectionPredicate {
-                        projection_ty: ty::ProjectionTy { substs, def_id: proj.def_id },
+                        projection_ty: ty::AliasTy { substs, def_id: proj.def_id },
                         term: ty_var.into(),
                     }),
                 ));

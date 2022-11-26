@@ -270,17 +270,17 @@ impl<'tcx> Relate<'tcx> for abi::Abi {
     }
 }
 
-impl<'tcx> Relate<'tcx> for ty::ProjectionTy<'tcx> {
+impl<'tcx> Relate<'tcx> for ty::AliasTy<'tcx> {
     fn relate<R: TypeRelation<'tcx>>(
         relation: &mut R,
-        a: ty::ProjectionTy<'tcx>,
-        b: ty::ProjectionTy<'tcx>,
-    ) -> RelateResult<'tcx, ty::ProjectionTy<'tcx>> {
+        a: ty::AliasTy<'tcx>,
+        b: ty::AliasTy<'tcx>,
+    ) -> RelateResult<'tcx, ty::AliasTy<'tcx>> {
         if a.def_id != b.def_id {
             Err(TypeError::ProjectionMismatched(expected_found(relation, a.def_id, b.def_id)))
         } else {
             let substs = relation.relate(a.substs, b.substs)?;
-            Ok(ty::ProjectionTy { def_id: a.def_id, substs: &substs })
+            Ok(ty::AliasTy { def_id: a.def_id, substs: &substs })
         }
     }
 }
@@ -557,8 +557,8 @@ pub fn super_relate_tys<'tcx, R: TypeRelation<'tcx>>(
         }
 
         (
-            &ty::Opaque(ty::OpaqueTy { def_id: a_def_id, substs: a_substs }),
-            &ty::Opaque(ty::OpaqueTy { def_id: b_def_id, substs: b_substs }),
+            &ty::Opaque(ty::AliasTy { def_id: a_def_id, substs: a_substs }),
+            &ty::Opaque(ty::AliasTy { def_id: b_def_id, substs: b_substs }),
         ) if a_def_id == b_def_id => {
             if relation.intercrate() {
                 // During coherence, opaque types should be treated as equal to each other, even if their generic params

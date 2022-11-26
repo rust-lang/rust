@@ -169,7 +169,7 @@ pub struct Verify<'tcx> {
 #[derive(Copy, Clone, PartialEq, Eq, Hash, TypeFoldable, TypeVisitable)]
 pub enum GenericKind<'tcx> {
     Param(ty::ParamTy),
-    Projection(ty::ProjectionTy<'tcx>),
+    Projection(ty::AliasTy<'tcx>),
     Opaque(DefId, SubstsRef<'tcx>),
 }
 

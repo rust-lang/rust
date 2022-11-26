@@ -160,7 +160,7 @@ impl FlagComputation {
                 self.add_projection_ty(data);
             }
 
-            &ty::Opaque(ty::OpaqueTy { def_id: _, substs }) => {
+            &ty::Opaque(ty::AliasTy { def_id: _, substs }) => {
                 self.add_flags(TypeFlags::HAS_TY_OPAQUE);
                 self.add_substs(substs);
             }
@@ -345,7 +345,7 @@ impl FlagComputation {
         }
     }
 
-    fn add_projection_ty(&mut self, projection_ty: ty::ProjectionTy<'_>) {
+    fn add_projection_ty(&mut self, projection_ty: ty::AliasTy<'_>) {
         self.add_substs(projection_ty.substs);
     }
 

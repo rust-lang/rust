@@ -624,7 +624,7 @@ impl<T> Trait<T> for X {
         diag: &mut Diagnostic,
         msg: &str,
         body_owner_def_id: DefId,
-        proj_ty: &ty::ProjectionTy<'tcx>,
+        proj_ty: &ty::AliasTy<'tcx>,
         ty: Ty<'tcx>,
     ) -> bool {
         let assoc = self.associated_item(proj_ty.def_id);
@@ -680,7 +680,7 @@ impl<T> Trait<T> for X {
     fn expected_projection(
         self,
         diag: &mut Diagnostic,
-        proj_ty: &ty::ProjectionTy<'tcx>,
+        proj_ty: &ty::AliasTy<'tcx>,
         values: ExpectedFound<Ty<'tcx>>,
         body_owner_def_id: DefId,
         cause_code: &ObligationCauseCode<'_>,
@@ -775,11 +775,11 @@ fn foo(&self) -> Self::T { String::new() }
         self,
         diag: &mut Diagnostic,
         msg: &str,
-        proj_ty: &ty::ProjectionTy<'tcx>,
+        proj_ty: &ty::AliasTy<'tcx>,
         ty: Ty<'tcx>,
     ) -> bool {
         let assoc = self.associated_item(proj_ty.def_id);
-        if let ty::Opaque(ty::OpaqueTy { def_id, substs: _ }) = *proj_ty.self_ty().kind() {
+        if let ty::Opaque(ty::AliasTy { def_id, substs: _ }) = *proj_ty.self_ty().kind() {
             let opaque_local_def_id = def_id.as_local();
             let opaque_hir_ty = if let Some(opaque_local_def_id) = opaque_local_def_id {
                 match &self.hir().expect_item(opaque_local_def_id).kind {
@@ -828,7 +828,7 @@ fn foo(&self) -> Self::T { String::new() }
             .filter_map(|(_, item)| {
                 let method = self.fn_sig(item.def_id);
                 match *method.output().skip_binder().kind() {
-                    ty::Projection(ty::ProjectionTy { def_id: item_def_id, .. })
+                    ty::Projection(ty::AliasTy { def_id: item_def_id, .. })
                         if item_def_id == proj_ty_item_def_id =>
                     {
                         Some((

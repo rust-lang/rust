@@ -432,7 +432,7 @@ impl<'tcx> chalk_solve::RustIrDatabase<RustInterner<'tcx>> for RustIrDatabase<'t
                         (ast::Mutability::Not, chalk_ir::Mutability::Not) => true,
                     }
                 }
-                (&ty::Opaque(ty::OpaqueTy { def_id, substs: _ }), OpaqueType(opaque_ty_id, ..)) => {
+                (&ty::Opaque(ty::AliasTy { def_id, substs: _ }), OpaqueType(opaque_ty_id, ..)) => {
                     def_id == opaque_ty_id.0
                 }
                 (&ty::FnDef(def_id, ..), FnDef(fn_def_id, ..)) => def_id == fn_def_id.0,
@@ -788,7 +788,7 @@ impl<'tcx> ty::TypeFolder<'tcx> for ReplaceOpaqueTyFolder<'tcx> {
     }
 
     fn fold_ty(&mut self, ty: Ty<'tcx>) -> Ty<'tcx> {
-        if let ty::Opaque(ty::OpaqueTy { def_id, substs }) = *ty.kind() {
+        if let ty::Opaque(ty::AliasTy { def_id, substs }) = *ty.kind() {
             if def_id == self.opaque_ty_id.0 && substs == self.identity_substs {
                 return self.tcx.mk_ty(ty::Bound(
                     self.binder_index,

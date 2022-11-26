@@ -1139,15 +1139,19 @@ impl<'tcx, T: IntoIterator> Binder<'tcx, T> {
     }
 }
 
-/// Represents the projection of an associated type. In explicit UFCS
-/// form this would be written `<T as Trait<..>>::N`.
+/// Represents the projection of an associated type.
+///
+/// For a projection, this would be `<Ty as Trait<...>>::N`.
+///
+/// For an opaque type, there is no explicit syntax.
 #[derive(Copy, Clone, PartialEq, Eq, PartialOrd, Ord, Hash, Debug, TyEncodable, TyDecodable)]
 #[derive(HashStable, TypeFoldable, TypeVisitable, Lift)]
-pub struct ProjectionTy<'tcx> {
-    /// The parameters of the associated item.
+pub struct AliasTy<'tcx> {
+    /// The parameters of the associated or opaque item.
     pub substs: SubstsRef<'tcx>,
 
-    /// The `DefId` of the `TraitItem` for the associated type `N`.
+    /// The `DefId` of the `TraitItem` for the associated type `N` if this is a projection,
+    /// or the `OpaqueType` item if this is an opaque.
     ///
     /// Note that this is not the `DefId` of the `TraitRef` containing this
     /// associated type, which is in `tcx.associated_item(item_def_id).container`,
@@ -1155,7 +1159,7 @@ pub struct ProjectionTy<'tcx> {
     pub def_id: DefId,
 }
 
-impl<'tcx> ProjectionTy<'tcx> {
+impl<'tcx> AliasTy<'tcx> {
     pub fn trait_def_id(&self, tcx: TyCtxt<'tcx>) -> DefId {
         match tcx.def_kind(self.def_id) {
             DefKind::AssocTy | DefKind::AssocConst => tcx.parent(self.def_id),
@@ -1173,11 +1177,14 @@ impl<'tcx> ProjectionTy<'tcx> {
         &self,
         tcx: TyCtxt<'tcx>,
     ) -> (ty::TraitRef<'tcx>, &'tcx [ty::GenericArg<'tcx>]) {
-        let def_id = tcx.parent(self.def_id);
-        assert_eq!(tcx.def_kind(def_id), DefKind::Trait);
-        let trait_generics = tcx.generics_of(def_id);
+        debug_assert!(matches!(tcx.def_kind(self.def_id), DefKind::AssocTy | DefKind::AssocConst));
+        let trait_def_id = self.trait_def_id(tcx);
+        let trait_generics = tcx.generics_of(trait_def_id);
         (
-            ty::TraitRef { def_id, substs: self.substs.truncate_to(tcx, trait_generics) },
+            ty::TraitRef {
+                def_id: trait_def_id,
+                substs: self.substs.truncate_to(tcx, trait_generics),
+            },
             &self.substs[trait_generics.count()..],
         )
     }
@@ -1197,16 +1204,6 @@ impl<'tcx> ProjectionTy<'tcx> {
     pub fn self_ty(&self) -> Ty<'tcx> {
         self.substs.type_at(0)
     }
-}
-
-#[derive(Copy, Clone, PartialEq, Eq, PartialOrd, Ord, Hash, Debug, TyEncodable, TyDecodable)]
-#[derive(HashStable, TypeFoldable, TypeVisitable, Lift)]
-pub struct OpaqueTy<'tcx> {
-    /// The parameters of the opaque.
-    pub substs: SubstsRef<'tcx>,
-
-    /// The `DefId` of the `impl Trait`.
-    pub def_id: DefId,
 }
 
 #[derive(Copy, Clone, Debug, TypeFoldable, TypeVisitable, Lift)]
@@ -1443,7 +1440,7 @@ impl<'tcx> ExistentialProjection<'tcx> {
         debug_assert!(!self_ty.has_escaping_bound_vars());
 
         ty::ProjectionPredicate {
-            projection_ty: ty::ProjectionTy {
+            projection_ty: ty::AliasTy {
                 def_id: self.def_id,
                 substs: tcx.mk_substs_trait(self_ty, self.substs),
             },

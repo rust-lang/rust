@@ -414,7 +414,7 @@ fn clean_projection_predicate<'tcx>(
 }
 
 fn clean_projection<'tcx>(
-    ty: ty::Binder<'tcx, ty::ProjectionTy<'tcx>>,
+    ty: ty::Binder<'tcx, ty::AliasTy<'tcx>>,
     cx: &mut DocContext<'tcx>,
     def_id: Option<DefId>,
 ) -> Type {
@@ -453,7 +453,7 @@ fn compute_should_show_cast(self_def_id: Option<DefId>, trait_: &Path, self_type
 }
 
 fn projection_to_path_segment<'tcx>(
-    ty: ty::Binder<'tcx, ty::ProjectionTy<'tcx>>,
+    ty: ty::Binder<'tcx, ty::AliasTy<'tcx>>,
     cx: &mut DocContext<'tcx>,
 ) -> PathSegment {
     let item = cx.tcx.associated_item(ty.skip_binder().def_id);
@@ -1833,7 +1833,7 @@ pub(crate) fn clean_middle_ty<'tcx>(
             }
         }
 
-        ty::Opaque(ty::OpaqueTy { def_id, substs }) => {
+        ty::Opaque(ty::AliasTy { def_id, substs }) => {
             // Grab the "TraitA + TraitB" from `impl TraitA + TraitB`,
             // by looking up the bounds associated with the def_id.
             let bounds = cx
