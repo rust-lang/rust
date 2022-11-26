@@ -571,7 +571,7 @@ impl<'tcx> TypeFolder<'tcx> for ImplTraitInTraitCollector<'_, 'tcx> {
     }
 
     fn fold_ty(&mut self, ty: Ty<'tcx>) -> Ty<'tcx> {
-        if let ty::Projection(proj) = ty.kind()
+        if let ty::Alias(ty::Projection, proj) = ty.kind()
             && self.tcx().def_kind(proj.def_id) == DefKind::ImplTraitPlaceholder
         {
             if let Some((ty, _)) = self.types.get(&proj.def_id) {
@@ -1734,7 +1734,7 @@ pub fn check_type_bounds<'tcx>(
     let normalize_param_env = {
         let mut predicates = param_env.caller_bounds().iter().collect::<Vec<_>>();
         match impl_ty_value.kind() {
-            ty::Projection(proj)
+            ty::Alias(ty::Projection, proj)
                 if proj.def_id == trait_ty.def_id && proj.substs == rebased_substs =>
             {
                 // Don't include this predicate if the projected type is

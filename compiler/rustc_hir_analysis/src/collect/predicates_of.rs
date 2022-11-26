@@ -411,7 +411,7 @@ pub(super) fn explicit_predicates_of<'tcx>(
             //       substs are the same as the trait's.
             // * It must be an associated type for this trait (*not* a
             //   supertrait).
-            if let ty::Projection(projection) = ty.kind() {
+            if let ty::Alias(ty::Projection, projection) = ty.kind() {
                 projection.substs == trait_identity_substs
                     && tcx.associated_item(projection.def_id).container_id(tcx) == def_id
             } else {

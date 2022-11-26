@@ -651,9 +651,11 @@ impl<'tcx> TypeSuperFoldable<'tcx> for Ty<'tcx> {
             }
             ty::GeneratorWitness(types) => ty::GeneratorWitness(types.try_fold_with(folder)?),
             ty::Closure(did, substs) => ty::Closure(did, substs.try_fold_with(folder)?),
-            ty::Projection(data) => ty::Projection(data.try_fold_with(folder)?),
-            ty::Opaque(ty::AliasTy { def_id, substs }) => {
-                ty::Opaque(ty::AliasTy { def_id, substs: substs.try_fold_with(folder)? })
+            ty::Alias(ty::Projection, data) => {
+                ty::Alias(ty::Projection, data.try_fold_with(folder)?)
+            }
+            ty::Alias(ty::Opaque, ty::AliasTy { def_id, substs }) => {
+                ty::Alias(ty::Opaque, ty::AliasTy { def_id, substs: substs.try_fold_with(folder)? })
             }
 
             ty::Bool
@@ -699,8 +701,10 @@ impl<'tcx> TypeSuperVisitable<'tcx> for Ty<'tcx> {
             ty::Generator(_did, ref substs, _) => substs.visit_with(visitor),
             ty::GeneratorWitness(ref types) => types.visit_with(visitor),
             ty::Closure(_did, ref substs) => substs.visit_with(visitor),
-            ty::Projection(ref data) => data.visit_with(visitor),
-            ty::Opaque(ty::AliasTy { def_id: _, ref substs }) => substs.visit_with(visitor),
+            ty::Alias(ty::Projection, ref data) => data.visit_with(visitor),
+            ty::Alias(ty::Opaque, ty::AliasTy { def_id: _, ref substs }) => {
+                substs.visit_with(visitor)
+            }
 
             ty::Bool
             | ty::Char

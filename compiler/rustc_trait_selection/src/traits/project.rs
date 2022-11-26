@@ -496,7 +496,9 @@ impl<'a, 'b, 'tcx> TypeFolder<'tcx> for AssocTypeNormalizer<'a, 'b, 'tcx> {
             // This is really important. While we *can* handle this, this has
             // severe performance implications for large opaque types with
             // late-bound regions. See `issue-88862` benchmark.
-            ty::Opaque(ty::AliasTy { def_id, substs }) if !substs.has_escaping_bound_vars() => {
+            ty::Alias(ty::Opaque, ty::AliasTy { def_id, substs })
+                if !substs.has_escaping_bound_vars() =>
+            {
                 // Only normalize `impl Trait` outside of type inference, usually in codegen.
                 match self.param_env.reveal() {
                     Reveal::UserFacing => ty.super_fold_with(self),
@@ -523,7 +525,7 @@ impl<'a, 'b, 'tcx> TypeFolder<'tcx> for AssocTypeNormalizer<'a, 'b, 'tcx> {
                 }
             }
 
-            ty::Projection(data) if !data.has_escaping_bound_vars() => {
+            ty::Alias(ty::Projection, data) if !data.has_escaping_bound_vars() => {
                 // This branch is *mostly* just an optimization: when we don't
                 // have escaping bound vars, we don't need to replace them with
                 // placeholders (see branch below). *Also*, we know that we can
@@ -562,7 +564,7 @@ impl<'a, 'b, 'tcx> TypeFolder<'tcx> for AssocTypeNormalizer<'a, 'b, 'tcx> {
                 normalized_ty.ty().unwrap()
             }
 
-            ty::Projection(data) => {
+            ty::Alias(ty::Projection, data) => {
                 // If there are escaping bound vars, we temporarily replace the
                 // bound vars with placeholders. Note though, that in the case
                 // that we still can't project for whatever reason (e.g. self
@@ -1375,8 +1377,10 @@ fn assemble_candidates_from_trait_def<'cx, 'tcx>(
     // Check whether the self-type is itself a projection.
     // If so, extract what we know from the trait and try to come up with a good answer.
     let bounds = match *obligation.predicate.self_ty().kind() {
-        ty::Projection(ref data) => tcx.bound_item_bounds(data.def_id).subst(tcx, data.substs),
-        ty::Opaque(ty::AliasTy { def_id, substs }) => {
+        ty::Alias(ty::Projection, ref data) => {
+            tcx.bound_item_bounds(data.def_id).subst(tcx, data.substs)
+        }
+        ty::Alias(ty::Opaque, ty::AliasTy { def_id, substs }) => {
             tcx.bound_item_bounds(def_id).subst(tcx, substs)
         }
         ty::Infer(ty::TyVar(_)) => {
@@ -1616,8 +1620,8 @@ fn assemble_candidates_from_impls<'cx, 'tcx>(
                          // type parameters, opaques, and unnormalized projections have pointer
                         // metadata if they're known (e.g. by the param_env) to be sized
                         ty::Param(_)
-                        | ty::Projection(..)
-                        | ty::Opaque(..)
+                        | ty::Alias(ty::Projection, ..)
+                        | ty::Alias(ty::Opaque, ..)
                         | ty::Bound(..)
                         | ty::Placeholder(..)
                         | ty::Infer(..)
@@ -1671,7 +1675,7 @@ fn assemble_candidates_from_impls<'cx, 'tcx>(
 
                         // type parameters, opaques, and unnormalized projections have pointer
                         // metadata if they're known (e.g. by the param_env) to be sized
-                        ty::Param(_) | ty::Projection(..) | ty::Opaque(..)
+                        ty::Param(_) | ty::Alias(ty::Projection, ..) | ty::Alias(ty::Opaque, ..)
                             if selcx.infcx.predicate_must_hold_modulo_regions(
                                 &obligation.with(
                                     selcx.tcx(),
@@ -1687,8 +1691,8 @@ fn assemble_candidates_from_impls<'cx, 'tcx>(
 
                         // FIXME(compiler-errors): are Bound and Placeholder types ever known sized?
                         ty::Param(_)
-                        | ty::Projection(..)
-                        | ty::Opaque(..)
+                        | ty::Alias(ty::Projection, ..)
+                        | ty::Alias(ty::Opaque, ..)
                         | ty::Bound(..)
                         | ty::Placeholder(..)
                         | ty::Infer(..)

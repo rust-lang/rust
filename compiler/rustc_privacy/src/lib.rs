@@ -208,7 +208,7 @@ where
                     }
                 }
             }
-            ty::Projection(proj) => {
+            ty::Alias(ty::Projection, proj) => {
                 if self.def_id_visitor.skip_assoc_tys() {
                     // Visitors searching for minimal visibility/reachability want to
                     // conservatively approximate associated types like `<Type as Trait>::Alias`
@@ -235,7 +235,7 @@ where
                     self.def_id_visitor.visit_def_id(def_id, "trait", &trait_ref)?;
                 }
             }
-            ty::Opaque(ty::AliasTy { def_id, substs: _ }) => {
+            ty::Alias(ty::Opaque, ty::AliasTy { def_id, substs: _ }) => {
                 // Skip repeated `Opaque`s to avoid infinite recursion.
                 if self.visited_opaque_tys.insert(def_id) {
                     // The intent is to treat `impl Trait1 + Trait2` identically to

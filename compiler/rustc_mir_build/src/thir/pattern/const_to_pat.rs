@@ -121,7 +121,7 @@ impl<'tcx> ConstToPat<'tcx> {
                 ty::Dynamic(..) => {
                     "trait objects cannot be used in patterns".to_string()
                 }
-                ty::Opaque(..) => {
+                ty::Alias(ty::Opaque, ..) => {
                     "opaque types cannot be used in patterns".to_string()
                 }
                 ty::Closure(..) => {

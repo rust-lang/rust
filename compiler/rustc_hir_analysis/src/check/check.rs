@@ -1440,7 +1440,7 @@ fn opaque_type_cycle_error(tcx: TyCtxt<'_>, def_id: LocalDefId, span: Span) -> E
                 impl<'tcx> ty::visit::TypeVisitor<'tcx> for OpaqueTypeCollector {
                     fn visit_ty(&mut self, t: Ty<'tcx>) -> ControlFlow<Self::BreakTy> {
                         match *t.kind() {
-                            ty::Opaque(ty::AliasTy { def_id: def, substs: _ }) => {
+                            ty::Alias(ty::Opaque, ty::AliasTy { def_id: def, substs: _ }) => {
                                 self.0.push(def);
                                 ControlFlow::CONTINUE
                             }

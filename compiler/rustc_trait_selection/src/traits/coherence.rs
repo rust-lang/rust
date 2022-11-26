@@ -659,7 +659,7 @@ impl<'tcx> TypeVisitor<'tcx> for OrphanChecker<'tcx> {
             | ty::RawPtr(..)
             | ty::Never
             | ty::Tuple(..)
-            | ty::Projection(..) => self.found_non_local_ty(ty),
+            | ty::Alias(ty::Projection, ..) => self.found_non_local_ty(ty),
 
             ty::Param(..) => self.found_param_ty(ty),
 
@@ -704,7 +704,7 @@ impl<'tcx> TypeVisitor<'tcx> for OrphanChecker<'tcx> {
                 );
                 ControlFlow::Break(OrphanCheckEarlyExit::LocalTy(ty))
             }
-            ty::Opaque(..) => {
+            ty::Alias(ty::Opaque, ..) => {
                 // This merits some explanation.
                 // Normally, opaque types are not involved when performing
                 // coherence checking, since it is illegal to directly

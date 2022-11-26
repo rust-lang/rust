@@ -340,8 +340,8 @@ impl<'tcx> InferCtxt<'tcx> {
     pub fn get_impl_future_output_ty(&self, ty: Ty<'tcx>) -> Option<Ty<'tcx>> {
         // FIXME(alias): Merge these
         let (def_id, substs) = match *ty.kind() {
-            ty::Opaque(ty::AliasTy { def_id, substs }) => (def_id, substs),
-            ty::Projection(data)
+            ty::Alias(ty::Opaque, ty::AliasTy { def_id, substs }) => (def_id, substs),
+            ty::Alias(ty::Projection, data)
                 if self.tcx.def_kind(data.def_id) == DefKind::ImplTraitPlaceholder =>
             {
                 (data.def_id, data.substs)
@@ -1732,7 +1732,7 @@ impl<'tcx> TypeErrCtxt<'_, 'tcx> {
                     let sort_string = |ty: Ty<'tcx>, path: Option<PathBuf>| {
                         // FIXME(alias): Merge these
                         let mut s = match (extra, ty.kind()) {
-                            (true, ty::Opaque(ty::AliasTy { def_id, .. })) => {
+                            (true, ty::Alias(ty::Opaque, ty::AliasTy { def_id, .. })) => {
                                 let sm = self.tcx.sess.source_map();
                                 let pos = sm.lookup_char_pos(self.tcx.def_span(*def_id).lo());
                                 format!(
@@ -1742,7 +1742,7 @@ impl<'tcx> TypeErrCtxt<'_, 'tcx> {
                                     pos.col.to_usize() + 1,
                                 )
                             }
-                            (true, ty::Projection(proj))
+                            (true, ty::Alias(ty::Projection, proj))
                                 if self.tcx.def_kind(proj.def_id)
                                     == DefKind::ImplTraitPlaceholder =>
                             {
@@ -2385,10 +2385,7 @@ impl<'tcx> TypeErrCtxt<'_, 'tcx> {
                         // fn get_later<G, T>(g: G, dest: &mut T) -> impl FnOnce() + '_
                         // suggest:
                         // fn get_later<'a, G: 'a, T>(g: G, dest: &mut T) -> impl FnOnce() + '_ + 'a
-                        ty::Closure(_, _substs)
-                        | ty::Opaque(ty::AliasTy { def_id: _, substs: _substs })
-                            if return_impl_trait =>
-                        {
+                        ty::Closure(..) | ty::Alias(ty::Opaque, ..) if return_impl_trait => {
                             new_binding_suggestion(&mut err, type_param_span);
                         }
                         _ => {
@@ -2770,7 +2767,9 @@ impl TyCategory {
     pub fn from_ty(tcx: TyCtxt<'_>, ty: Ty<'_>) -> Option<(Self, DefId)> {
         match *ty.kind() {
             ty::Closure(def_id, _) => Some((Self::Closure, def_id)),
-            ty::Opaque(ty::AliasTy { def_id, substs: _ }) => Some((Self::Opaque, def_id)),
+            ty::Alias(ty::Opaque, ty::AliasTy { def_id, substs: _ }) => {
+                Some((Self::Opaque, def_id))
+            }
             ty::Generator(def_id, ..) => {
                 Some((Self::Generator(tcx.generator_kind(def_id).unwrap()), def_id))
             }

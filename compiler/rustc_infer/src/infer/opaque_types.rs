@@ -66,7 +66,7 @@ impl<'tcx> InferCtxt<'tcx> {
             lt_op: |lt| lt,
             ct_op: |ct| ct,
             ty_op: |ty| match *ty.kind() {
-                ty::Opaque(ty::AliasTy { def_id, substs: _substs })
+                ty::Alias(ty::Opaque, ty::AliasTy { def_id, substs: _ })
                     if replace_opaque_type(def_id) =>
                 {
                     let def_span = self.tcx.def_span(def_id);
@@ -106,7 +106,7 @@ impl<'tcx> InferCtxt<'tcx> {
         }
         let (a, b) = if a_is_expected { (a, b) } else { (b, a) };
         let process = |a: Ty<'tcx>, b: Ty<'tcx>, a_is_expected| match *a.kind() {
-            ty::Opaque(ty::AliasTy { def_id, substs }) if def_id.is_local() => {
+            ty::Alias(ty::Opaque, ty::AliasTy { def_id, substs }) if def_id.is_local() => {
                 let def_id = def_id.expect_local();
                 let origin = match self.defining_use_anchor {
                     DefiningAnchor::Bind(_) => {
@@ -149,7 +149,9 @@ impl<'tcx> InferCtxt<'tcx> {
                     DefiningAnchor::Bubble => self.opaque_ty_origin_unchecked(def_id, cause.span),
                     DefiningAnchor::Error => return None,
                 };
-                if let ty::Opaque(ty::AliasTy { def_id: b_def_id, substs: _ }) = *b.kind() {
+                if let ty::Alias(ty::Opaque, ty::AliasTy { def_id: b_def_id, substs: _ }) =
+                    *b.kind()
+                {
                     // We could accept this, but there are various ways to handle this situation, and we don't
                     // want to make a decision on it right now. Likely this case is so super rare anyway, that
                     // no one encounters it in practice.
@@ -478,7 +480,7 @@ where
                 substs.as_generator().resume_ty().visit_with(self);
             }
 
-            ty::Opaque(ty::AliasTy { def_id, ref substs }) => {
+            ty::Alias(ty::Opaque, ty::AliasTy { def_id, ref substs }) => {
                 // Skip lifetime paramters that are not captures.
                 let variances = self.tcx.variances_of(*def_id);
 
@@ -489,7 +491,7 @@ where
                 }
             }
 
-            ty::Projection(proj)
+            ty::Alias(ty::Projection, proj)
                 if self.tcx.def_kind(proj.def_id) == DefKind::ImplTraitPlaceholder =>
             {
                 // Skip lifetime paramters that are not captures.
@@ -566,7 +568,7 @@ impl<'tcx> InferCtxt<'tcx> {
                     // We can't normalize associated types from `rustc_infer`,
                     // but we can eagerly register inference variables for them.
                     // FIXME(RPITIT): Don't replace RPITITs with inference vars.
-                    ty::Projection(projection_ty)
+                    ty::Alias(ty::Projection, projection_ty)
                         if !projection_ty.has_escaping_bound_vars()
                             && tcx.def_kind(projection_ty.def_id)
                                 != DefKind::ImplTraitPlaceholder =>
@@ -581,13 +583,13 @@ impl<'tcx> InferCtxt<'tcx> {
                     }
                     // Replace all other mentions of the same opaque type with the hidden type,
                     // as the bounds must hold on the hidden type after all.
-                    ty::Opaque(ty::AliasTy { def_id: def_id2, substs: substs2 })
+                    ty::Alias(ty::Opaque, ty::AliasTy { def_id: def_id2, substs: substs2 })
                         if def_id.to_def_id() == def_id2 && substs == substs2 =>
                     {
                         hidden_ty
                     }
                     // FIXME(RPITIT): This can go away when we move to associated types
-                    ty::Projection(proj)
+                    ty::Alias(ty::Projection, proj)
                         if def_id.to_def_id() == proj.def_id && substs == proj.substs =>
                     {
                         hidden_ty

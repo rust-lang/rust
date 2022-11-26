@@ -52,7 +52,7 @@ pub(super) fn opt_const_param_of(tcx: TyCtxt<'_>, def_id: LocalDefId) -> Option<
             // Using the ItemCtxt convert the HIR for the unresolved assoc type into a
             // ty which is a fully resolved projection.
             // For the code example above, this would mean converting Self::Assoc<3>
-            // into a ty::Projection(<Self as Foo>::Assoc<3>)
+            // into a ty::Alias(ty::Projection, <Self as Foo>::Assoc<3>)
             let item_hir_id = tcx
                 .hir()
                 .parent_iter(hir_id)
@@ -68,7 +68,7 @@ pub(super) fn opt_const_param_of(tcx: TyCtxt<'_>, def_id: LocalDefId) -> Option<
             // the def_id that this query was called with. We filter to only type and const args here
             // as a precaution for if it's ever allowed to elide lifetimes in GAT's. It currently isn't
             // but it can't hurt to be safe ^^
-            if let ty::Projection(projection) = ty.kind() {
+            if let ty::Alias(ty::Projection, projection) = ty.kind() {
                 let generics = tcx.generics_of(projection.def_id);
 
                 let arg_index = segment

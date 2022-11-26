@@ -271,7 +271,7 @@ impl<'tcx> SizeSkeleton<'tcx> {
                 let non_zero = !ty.is_unsafe_ptr();
                 let tail = tcx.struct_tail_erasing_lifetimes(pointee, param_env);
                 match tail.kind() {
-                    ty::Param(_) | ty::Projection(_) => {
+                    ty::Param(_) | ty::Alias(ty::Projection, _) => {
                         debug_assert!(tail.has_non_region_param());
                         Ok(SizeSkeleton::Pointer { non_zero, tail: tcx.erase_regions(tail) })
                     }
@@ -349,7 +349,7 @@ impl<'tcx> SizeSkeleton<'tcx> {
                 }
             }
 
-            ty::Projection(_) | ty::Opaque(..) => {
+            ty::Alias(ty::Projection, _) | ty::Alias(ty::Opaque, ..) => {
                 let normalized = tcx.normalize_erasing_regions(param_env, ty);
                 if ty == normalized {
                     Err(err)
@@ -757,10 +757,10 @@ where
                     }
                 }
 
-                ty::Projection(_)
+                ty::Alias(ty::Projection, _)
                 | ty::Bound(..)
                 | ty::Placeholder(..)
-                | ty::Opaque(..)
+                | ty::Alias(ty::Opaque, ..)
                 | ty::Param(_)
                 | ty::Infer(_)
                 | ty::Error(_) => bug!("TyAndLayout::field: unexpected type `{}`", this.ty),

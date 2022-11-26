@@ -845,7 +845,7 @@ fn is_useful<'p, 'tcx>(
 
         // Opaque types can't get destructured/split, but the patterns can
         // actually hint at hidden types, so we use the patterns' types instead.
-        if let ty::Opaque(..) = ty.kind() {
+        if let ty::Alias(ty::Opaque, ..) = ty.kind() {
             if let Some(row) = rows.first() {
                 ty = row.head().ty();
             }

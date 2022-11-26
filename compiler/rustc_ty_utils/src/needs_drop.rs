@@ -152,7 +152,10 @@ where
                             queue_type(self, required);
                         }
                     }
-                    ty::Array(..) | ty::Opaque(..) | ty::Projection(..) | ty::Param(_) => {
+                    ty::Array(..)
+                    | ty::Alias(ty::Opaque, ..)
+                    | ty::Alias(ty::Projection, ..)
+                    | ty::Param(_) => {
                         if ty == component {
                             // Return the type to the caller: they may be able
                             // to normalize further than we can.

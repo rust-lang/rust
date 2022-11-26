@@ -118,8 +118,8 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             // Pointers to foreign types are thin, despite being unsized
             ty::Foreign(..) => Some(PointerKind::Thin),
             // We should really try to normalize here.
-            ty::Projection(pi) => Some(PointerKind::OfProjection(pi)),
-            ty::Opaque(ty::AliasTy { def_id, substs }) => {
+            ty::Alias(ty::Projection, pi) => Some(PointerKind::OfProjection(pi)),
+            ty::Alias(ty::Opaque, ty::AliasTy { def_id, substs }) => {
                 Some(PointerKind::OfOpaque(def_id, substs))
             }
             ty::Param(p) => Some(PointerKind::OfParam(p)),

@@ -2124,7 +2124,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                         }
                     }
                 }
-                ty::Opaque(ty::AliasTy { def_id: new_def_id, substs: _ })
+                ty::Alias(ty::Opaque, ty::AliasTy { def_id: new_def_id, substs: _ })
                 | ty::Closure(new_def_id, _)
                 | ty::FnDef(new_def_id, _) => {
                     def_id = new_def_id;
@@ -2217,7 +2217,7 @@ fn find_param_in_ty<'tcx>(ty: Ty<'tcx>, param_to_point_at: ty::GenericArg<'tcx>)
         if arg == param_to_point_at {
             return true;
         } else if let ty::GenericArgKind::Type(ty) = arg.unpack()
-            && let ty::Projection(..) = ty.kind()
+            && let ty::Alias(ty::Projection, ..) = ty.kind()
         {
             // This logic may seem a bit strange, but typically when
             // we have a projection type in a function signature, the

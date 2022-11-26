@@ -759,7 +759,7 @@ impl<'tcx> TypeVisitor<'tcx> for GATSubstCollector<'tcx> {
 
     fn visit_ty(&mut self, t: Ty<'tcx>) -> ControlFlow<Self::BreakTy> {
         match t.kind() {
-            ty::Projection(p) if p.def_id == self.gat => {
+            ty::Alias(ty::Projection, p) if p.def_id == self.gat => {
                 for (idx, subst) in p.substs.iter().enumerate() {
                     match subst.unpack() {
                         GenericArgKind::Lifetime(lt) if !lt.is_late_bound() => {
@@ -1592,7 +1592,7 @@ fn check_return_position_impl_trait_in_trait_bounds<'tcx>(
     {
         for arg in fn_output.walk() {
             if let ty::GenericArgKind::Type(ty) = arg.unpack()
-                && let ty::Projection(proj) = ty.kind()
+                && let ty::Alias(ty::Projection, proj) = ty.kind()
                 && tcx.def_kind(proj.def_id) == DefKind::ImplTraitPlaceholder
                 && tcx.impl_trait_in_trait_parent(proj.def_id) == fn_def_id.to_def_id()
             {

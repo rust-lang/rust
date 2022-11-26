@@ -115,8 +115,7 @@ impl<'tcx> Interner for TyCtxt<'tcx> {
     type ListBinderExistentialPredicate = &'tcx List<PolyExistentialPredicate<'tcx>>;
     type BinderListTy = Binder<'tcx, &'tcx List<Ty<'tcx>>>;
     type ListTy = &'tcx List<Ty<'tcx>>;
-    type ProjectionTy = ty::AliasTy<'tcx>;
-    type OpaqueTy = ty::AliasTy<'tcx>;
+    type AliasTy = ty::AliasTy<'tcx>;
     type ParamTy = ParamTy;
     type BoundTy = ty::BoundTy;
     type PlaceholderType = ty::PlaceholderType;
@@ -2145,8 +2144,7 @@ impl<'tcx> TyCtxt<'tcx> {
                     Bound,
                     Param,
                     Infer,
-                    Projection,
-                    Opaque,
+                    Alias,
                     Foreign
                 )?;
 
@@ -2323,7 +2321,7 @@ impl<'tcx> TyCtxt<'tcx> {
 
     /// Given a `ty`, return whether it's an `impl Future<...>`.
     pub fn ty_is_opaque_future(self, ty: Ty<'_>) -> bool {
-        let ty::Opaque(ty::AliasTy { def_id, substs: _ }) = ty.kind() else { return false };
+        let ty::Alias(ty::Opaque, ty::AliasTy { def_id, substs: _ }) = ty.kind() else { return false };
         let future_trait = self.require_lang_item(LangItem::Future, None);
 
         self.explicit_item_bounds(def_id).iter().any(|(predicate, _)| {
@@ -2598,7 +2596,7 @@ impl<'tcx> TyCtxt<'tcx> {
             substs.len(),
             "wrong number of generic parameters for {item_def_id:?}: {substs:?}",
         );
-        self.mk_ty(Projection(AliasTy { def_id: item_def_id, substs }))
+        self.mk_ty(Alias(ty::Projection, AliasTy { def_id: item_def_id, substs }))
     }
 
     #[inline]
@@ -2668,7 +2666,7 @@ impl<'tcx> TyCtxt<'tcx> {
 
     #[inline]
     pub fn mk_opaque(self, def_id: DefId, substs: SubstsRef<'tcx>) -> Ty<'tcx> {
-        self.mk_ty(Opaque(ty::AliasTy { def_id, substs }))
+        self.mk_ty(Alias(ty::Opaque, ty::AliasTy { def_id, substs }))
     }
 
     pub fn mk_place_field(self, place: Place<'tcx>, f: Field, ty: Ty<'tcx>) -> Place<'tcx> {

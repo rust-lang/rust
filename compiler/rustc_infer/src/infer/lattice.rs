@@ -106,11 +106,11 @@ where
         }
 
         (
-            &ty::Opaque(ty::AliasTy { def_id: a_def_id, substs: _ }),
-            &ty::Opaque(ty::AliasTy { def_id: b_def_id, substs: _ }),
+            &ty::Alias(ty::Opaque, ty::AliasTy { def_id: a_def_id, substs: _ }),
+            &ty::Alias(ty::Opaque, ty::AliasTy { def_id: b_def_id, substs: _ }),
         ) if a_def_id == b_def_id => infcx.super_combine_tys(this, a, b),
-        (&ty::Opaque(ty::AliasTy { def_id, substs: _ }), _)
-        | (_, &ty::Opaque(ty::AliasTy { def_id, substs: _ }))
+        (&ty::Alias(ty::Opaque, ty::AliasTy { def_id, substs: _ }), _)
+        | (_, &ty::Alias(ty::Opaque, ty::AliasTy { def_id, substs: _ }))
             if this.define_opaque_types() && def_id.is_local() =>
         {
             this.add_obligations(

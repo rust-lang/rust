@@ -551,14 +551,14 @@ pub fn super_relate_tys<'tcx, R: TypeRelation<'tcx>>(
         }
 
         // these two are already handled downstream in case of lazy normalization
-        (&ty::Projection(a_data), &ty::Projection(b_data)) => {
+        (&ty::Alias(ty::Projection, a_data), &ty::Alias(ty::Projection, b_data)) => {
             let projection_ty = relation.relate(a_data, b_data)?;
             Ok(tcx.mk_projection(projection_ty.def_id, projection_ty.substs))
         }
 
         (
-            &ty::Opaque(ty::AliasTy { def_id: a_def_id, substs: a_substs }),
-            &ty::Opaque(ty::AliasTy { def_id: b_def_id, substs: b_substs }),
+            &ty::Alias(ty::Opaque, ty::AliasTy { def_id: a_def_id, substs: a_substs }),
+            &ty::Alias(ty::Opaque, ty::AliasTy { def_id: b_def_id, substs: b_substs }),
         ) if a_def_id == b_def_id => {
             if relation.intercrate() {
                 // During coherence, opaque types should be treated as equal to each other, even if their generic params

@@ -167,9 +167,10 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         expected_ty: Ty<'tcx>,
     ) -> (Option<ExpectedSig<'tcx>>, Option<ty::ClosureKind>) {
         match *expected_ty.kind() {
-            ty::Opaque(ty::AliasTy { def_id, substs }) => self.deduce_signature_from_predicates(
-                self.tcx.bound_explicit_item_bounds(def_id).subst_iter_copied(self.tcx, substs),
-            ),
+            ty::Alias(ty::Opaque, ty::AliasTy { def_id, substs }) => self
+                .deduce_signature_from_predicates(
+                    self.tcx.bound_explicit_item_bounds(def_id).subst_iter_copied(self.tcx, substs),
+                ),
             ty::Dynamic(ref object_type, ..) => {
                 let sig = object_type.projection_bounds().find_map(|pb| {
                     let pb = pb.with_self_ty(self.tcx, self.tcx.types.trait_object_dummy_self);
@@ -677,13 +678,13 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                     get_future_output(obligation.predicate, obligation.cause.span)
                 })?
             }
-            ty::Opaque(ty::AliasTy { def_id, substs }) => self
+            ty::Alias(ty::Opaque, ty::AliasTy { def_id, substs }) => self
                 .tcx
                 .bound_explicit_item_bounds(def_id)
                 .subst_iter_copied(self.tcx, substs)
                 .find_map(|(p, s)| get_future_output(p, s))?,
             ty::Error(_) => return None,
-            ty::Projection(proj)
+            ty::Alias(ty::Projection, proj)
                 if self.tcx.def_kind(proj.def_id) == DefKind::ImplTraitPlaceholder =>
             {
                 self.tcx

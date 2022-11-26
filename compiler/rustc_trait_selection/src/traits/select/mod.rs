@@ -1595,8 +1595,8 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
 
         let tcx = self.infcx.tcx;
         let (def_id, substs) = match *placeholder_trait_predicate.trait_ref.self_ty().kind() {
-            ty::Projection(ref data) => (data.def_id, data.substs),
-            ty::Opaque(ty::AliasTy { def_id, substs }) => (def_id, substs),
+            ty::Alias(ty::Projection, ref data) => (data.def_id, data.substs),
+            ty::Alias(ty::Opaque, ty::AliasTy { def_id, substs }) => (def_id, substs),
             _ => {
                 span_bug!(
                     obligation.cause.span,
@@ -2067,7 +2067,7 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
                 }))
             }
 
-            ty::Projection(_) | ty::Param(_) | ty::Opaque(..) => None,
+            ty::Alias(ty::Projection, _) | ty::Param(_) | ty::Alias(ty::Opaque, ..) => None,
             ty::Infer(ty::TyVar(_)) => Ambiguous,
 
             ty::Placeholder(..)
@@ -2167,7 +2167,10 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
                 }
             }
 
-            ty::Adt(..) | ty::Projection(..) | ty::Param(..) | ty::Opaque(..) => {
+            ty::Adt(..)
+            | ty::Alias(ty::Projection, ..)
+            | ty::Param(..)
+            | ty::Alias(ty::Opaque, ..) => {
                 // Fallback to whatever user-defined impls exist in this case.
                 None
             }
@@ -2220,7 +2223,7 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
             | ty::Dynamic(..)
             | ty::Param(..)
             | ty::Foreign(..)
-            | ty::Projection(..)
+            | ty::Alias(ty::Projection, ..)
             | ty::Bound(..)
             | ty::Infer(ty::TyVar(_) | ty::FreshTy(_) | ty::FreshIntTy(_) | ty::FreshFloatTy(_)) => {
                 bug!("asked to assemble constituent types of unexpected type: {:?}", t);
@@ -2260,7 +2263,7 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
                 t.rebind(def.all_fields().map(|f| f.ty(self.tcx(), substs)).collect())
             }
 
-            ty::Opaque(ty::AliasTy { def_id, substs }) => {
+            ty::Alias(ty::Opaque, ty::AliasTy { def_id, substs }) => {
                 // We can resolve the `impl Trait` to its concrete type,
                 // which enforces a DAG between the functions requiring
                 // the auto trait bounds in question.

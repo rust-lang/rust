@@ -338,7 +338,7 @@ where
             substs,
             true,
             |ty| match *ty.kind() {
-                ty::Opaque(ty::AliasTy { def_id, substs }) => (def_id, substs),
+                ty::Alias(ty::Opaque, ty::AliasTy { def_id, substs }) => (def_id, substs),
                 _ => bug!("expected only projection types from env, not {:?}", ty),
             },
         );
@@ -359,7 +359,9 @@ where
             projection_ty.substs,
             false,
             |ty| match ty.kind() {
-                ty::Projection(projection_ty) => (projection_ty.def_id, projection_ty.substs),
+                ty::Alias(ty::Projection, projection_ty) => {
+                    (projection_ty.def_id, projection_ty.substs)
+                }
                 _ => bug!("expected only projection types from env, not {:?}", ty),
             },
         );

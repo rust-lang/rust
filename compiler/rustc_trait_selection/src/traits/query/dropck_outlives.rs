@@ -62,9 +62,9 @@ pub fn trivial_dropck_outlives<'tcx>(tcx: TyCtxt<'tcx>, ty: Ty<'tcx>) -> bool {
 
         // The following *might* require a destructor: needs deeper inspection.
         ty::Dynamic(..)
-        | ty::Projection(..)
+        | ty::Alias(ty::Projection, ..)
         | ty::Param(_)
-        | ty::Opaque(..)
+        | ty::Alias(ty::Opaque, ..)
         | ty::Placeholder(..)
         | ty::Infer(_)
         | ty::Bound(..)

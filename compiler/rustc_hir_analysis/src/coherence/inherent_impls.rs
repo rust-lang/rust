@@ -223,7 +223,7 @@ impl<'tcx> InherentCollect<'tcx> {
             | ty::Tuple(..) => {
                 self.check_primitive_impl(item.owner_id.def_id, self_ty, items, ty.span)
             }
-            ty::Projection(..) | ty::Opaque(..) | ty::Param(_) => {
+            ty::Alias(ty::Projection, ..) | ty::Alias(ty::Opaque, ..) | ty::Param(_) => {
                 let mut err = struct_span_err!(
                     self.tcx.sess,
                     ty.span,

@@ -281,7 +281,7 @@ where
         use rustc_span::DUMMY_SP;
 
         match *value_ty.kind() {
-            ty::Projection(other_projection_ty) => {
+            ty::Alias(ty::Projection, other_projection_ty) => {
                 let var = self.infcx.next_ty_var(TypeVariableOrigin {
                     kind: TypeVariableOriginKind::MiscVariable,
                     span: DUMMY_SP,
@@ -335,7 +335,9 @@ where
                 return Ok(value_ty);
             }
 
-            ty::Projection(projection_ty) if D::normalization() == NormalizationStrategy::Lazy => {
+            ty::Alias(ty::Projection, projection_ty)
+                if D::normalization() == NormalizationStrategy::Lazy =>
+            {
                 return Ok(self.relate_projection_ty(projection_ty, self.infcx.tcx.mk_ty_var(vid)));
             }
 
@@ -406,8 +408,8 @@ where
             }
         };
         let (a, b) = match (a.kind(), b.kind()) {
-            (&ty::Opaque(..), _) => (a, generalize(b, false)?),
-            (_, &ty::Opaque(..)) => (generalize(a, true)?, b),
+            (&ty::Alias(ty::Opaque, ..), _) => (a, generalize(b, false)?),
+            (_, &ty::Alias(ty::Opaque, ..)) => (generalize(a, true)?, b),
             _ => unreachable!(),
         };
         let cause = ObligationCause::dummy_with_span(self.delegate.span());
@@ -609,8 +611,8 @@ where
             (&ty::Infer(ty::TyVar(vid)), _) => self.relate_ty_var((vid, b)),
 
             (
-                &ty::Opaque(ty::AliasTy { def_id: a_def_id, substs: _ }),
-                &ty::Opaque(ty::AliasTy { def_id: b_def_id, substs: _ }),
+                &ty::Alias(ty::Opaque, ty::AliasTy { def_id: a_def_id, substs: _ }),
+                &ty::Alias(ty::Opaque, ty::AliasTy { def_id: b_def_id, substs: _ }),
             ) if a_def_id == b_def_id => infcx.super_combine_tys(self, a, b).or_else(|err| {
                 self.tcx().sess.delay_span_bug(
                     self.delegate.span(),
@@ -618,20 +620,20 @@ where
                 );
                 if a_def_id.is_local() { self.relate_opaques(a, b) } else { Err(err) }
             }),
-            (&ty::Opaque(ty::AliasTy { def_id, substs: _ }), _)
-            | (_, &ty::Opaque(ty::AliasTy { def_id, substs: _ }))
+            (&ty::Alias(ty::Opaque, ty::AliasTy { def_id, substs: _ }), _)
+            | (_, &ty::Alias(ty::Opaque, ty::AliasTy { def_id, substs: _ }))
                 if def_id.is_local() =>
             {
                 self.relate_opaques(a, b)
             }
 
-            (&ty::Projection(projection_ty), _)
+            (&ty::Alias(ty::Projection, projection_ty), _)
                 if D::normalization() == NormalizationStrategy::Lazy =>
             {
                 Ok(self.relate_projection_ty(projection_ty, b))
             }
 
-            (_, &ty::Projection(projection_ty))
+            (_, &ty::Alias(ty::Projection, projection_ty))
                 if D::normalization() == NormalizationStrategy::Lazy =>
             {
                 Ok(self.relate_projection_ty(projection_ty, a))

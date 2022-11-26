@@ -131,14 +131,14 @@ impl<'tcx> TypeRelation<'tcx> for Sub<'_, '_, 'tcx> {
             }
 
             (
-                &ty::Opaque(ty::AliasTy { def_id: a_def_id, substs: _ }),
-                &ty::Opaque(ty::AliasTy { def_id: b_def_id, substs: _ }),
+                &ty::Alias(ty::Opaque, ty::AliasTy { def_id: a_def_id, substs: _ }),
+                &ty::Alias(ty::Opaque, ty::AliasTy { def_id: b_def_id, substs: _ }),
             ) if a_def_id == b_def_id => {
                 self.fields.infcx.super_combine_tys(self, a, b)?;
                 Ok(a)
             }
-            (&ty::Opaque(ty::AliasTy { def_id, substs: _ }), _)
-            | (_, &ty::Opaque(ty::AliasTy { def_id, substs: _ }))
+            (&ty::Alias(ty::Opaque, ty::AliasTy { def_id, substs: _ }), _)
+            | (_, &ty::Alias(ty::Opaque, ty::AliasTy { def_id, substs: _ }))
                 if self.fields.define_opaque_types && def_id.is_local() =>
             {
                 self.fields.obligations.extend(

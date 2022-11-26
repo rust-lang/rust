@@ -852,7 +852,10 @@ impl<'a, 'tcx> FindInferSourceVisitor<'a, 'tcx> {
             match inner.unpack() {
                 GenericArgKind::Lifetime(_) => {}
                 GenericArgKind::Type(ty) => {
-                    if matches!(ty.kind(), ty::Opaque(..) | ty::Closure(..) | ty::Generator(..)) {
+                    if matches!(
+                        ty.kind(),
+                        ty::Alias(ty::Opaque, ..) | ty::Closure(..) | ty::Generator(..)
+                    ) {
                         // Opaque types can't be named by the user right now.
                         //
                         // Both the generic arguments of closures and generators can

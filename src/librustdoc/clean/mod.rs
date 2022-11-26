@@ -1487,7 +1487,9 @@ fn clean_qpath<'tcx>(hir_ty: &hir::Ty<'tcx>, cx: &mut DocContext<'tcx>) -> Type 
         hir::QPath::TypeRelative(qself, segment) => {
             let ty = hir_ty_to_ty(cx.tcx, hir_ty);
             let res = match ty.kind() {
-                ty::Projection(proj) => Res::Def(DefKind::Trait, proj.trait_ref(cx.tcx).def_id),
+                ty::Alias(ty::Projection, proj) => {
+                    Res::Def(DefKind::Trait, proj.trait_ref(cx.tcx).def_id)
+                }
                 // Rustdoc handles `ty::Error`s by turning them into `Type::Infer`s.
                 ty::Error(_) => return Type::Infer,
                 // Otherwise, this is an inherent associated type.
@@ -1823,7 +1825,7 @@ pub(crate) fn clean_middle_ty<'tcx>(
             Tuple(t.iter().map(|t| clean_middle_ty(bound_ty.rebind(t), cx, None)).collect())
         }
 
-        ty::Projection(ref data) => clean_projection(bound_ty.rebind(*data), cx, def_id),
+        ty::Alias(ty::Projection, ref data) => clean_projection(bound_ty.rebind(*data), cx, def_id),
 
         ty::Param(ref p) => {
             if let Some(bounds) = cx.impl_trait_bounds.remove(&p.index.into()) {
@@ -1833,7 +1835,7 @@ pub(crate) fn clean_middle_ty<'tcx>(
             }
         }
 
-        ty::Opaque(ty::AliasTy { def_id, substs }) => {
+        ty::Alias(ty::Opaque, ty::AliasTy { def_id, substs }) => {
             // Grab the "TraitA + TraitB" from `impl TraitA + TraitB`,
             // by looking up the bounds associated with the def_id.
             let bounds = cx

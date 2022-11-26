@@ -646,10 +646,10 @@ fn encode_ty<'tcx>(
         | ty::Error(..)
         | ty::GeneratorWitness(..)
         | ty::Infer(..)
-        | ty::Opaque(..)
+        | ty::Alias(ty::Opaque, ..)
         | ty::Param(..)
         | ty::Placeholder(..)
-        | ty::Projection(..) => {
+        | ty::Alias(ty::Projection, ..) => {
             bug!("encode_ty: unexpected `{:?}`", ty.kind());
         }
     };
@@ -799,10 +799,10 @@ fn transform_ty<'tcx>(tcx: TyCtxt<'tcx>, ty: Ty<'tcx>, options: TransformTyOptio
         | ty::Error(..)
         | ty::GeneratorWitness(..)
         | ty::Infer(..)
-        | ty::Opaque(..)
+        | ty::Alias(ty::Opaque, ..)
         | ty::Param(..)
         | ty::Placeholder(..)
-        | ty::Projection(..) => {
+        | ty::Alias(ty::Projection, ..) => {
             bug!("transform_ty: unexpected `{:?}`", ty.kind());
         }
     }
