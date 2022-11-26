@@ -111,8 +111,8 @@ impl Kind {
     pub fn is_variant(self) -> bool {
         matches!(self, Kind::Variant)
     }
-    pub fn is_trait(self) -> bool {
-        matches!(self, Kind::Trait)
+    pub fn is_trait_or_alias(self) -> bool {
+        matches!(self, Kind::Trait | Kind::TraitAlias)
     }
     pub fn is_type(self) -> bool {
         matches!(self, Kind::Struct | Kind::Enum | Kind::Union | Kind::Typedef)
