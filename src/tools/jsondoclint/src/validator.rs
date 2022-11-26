@@ -266,7 +266,7 @@ impl<'a> Validator<'a> {
 
     fn check_path(&mut self, x: &'a Path, kind: PathKind) {
         match kind {
-            PathKind::Trait => self.add_trait_id(&x.id),
+            PathKind::Trait => self.add_trait_or_alias_id(&x.id),
             PathKind::Type => self.add_type_id(&x.id),
         }
         if let Some(args) = &x.args {
@@ -391,8 +391,8 @@ impl<'a> Validator<'a> {
         self.add_id_checked(id, Kind::is_variant, "Variant");
     }
 
-    fn add_trait_id(&mut self, id: &'a Id) {
-        self.add_id_checked(id, Kind::is_trait, "Trait");
+    fn add_trait_or_alias_id(&mut self, id: &'a Id) {
+        self.add_id_checked(id, Kind::is_trait_or_alias, "Trait (or TraitAlias)");
     }
 
     fn add_type_id(&mut self, id: &'a Id) {
