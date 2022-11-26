@@ -74,38 +74,66 @@ const UNIX_IO_ERROR_TABLE: &[(&str, std::io::ErrorKind)] = {
 };
 
 /// Gets an instance for a path.
-fn try_resolve_did<'tcx>(tcx: TyCtxt<'tcx>, path: &[&str], namespace: Namespace) -> Option<DefId> {
-    tcx.crates(()).iter().find(|&&krate| tcx.crate_name(krate).as_str() == path[0]).and_then(
-        |krate| {
-            let krate = DefId { krate: *krate, index: CRATE_DEF_INDEX };
-            let mut items = tcx.module_children(krate);
+///
+/// A `None` namespace indicates we are looking for a module.
+fn try_resolve_did<'tcx>(
+    tcx: TyCtxt<'tcx>,
+    path: &[&str],
+    namespace: Option<Namespace>,
+) -> Option<DefId> {
+    /// Yield all children of the given item, that have the given name.
+    fn find_children<'tcx: 'a, 'a>(
+        tcx: TyCtxt<'tcx>,
+        item: DefId,
+        name: &'a str,
+    ) -> impl Iterator<Item = DefId> + 'a {
+        tcx.module_children(item)
+            .iter()
+            .filter(move |item| item.ident.name.as_str() == name)
+            .map(move |item| item.res.def_id())
+    }
 
-            for &segment in &path[1..path.len() - 1] {
-                let next_mod = items.iter().find(|item| {
-                    item.ident.name.as_str() == segment
-                        && tcx.def_kind(item.res.def_id()) == DefKind::Mod
-                })?;
+    // Take apart the path: leading crate, a sequence of modules, and potentially a final item.
+    let (&crate_name, path) = path.split_first().expect("paths must have at least one segment");
+    let (modules, item) = if let Some(namespace) = namespace {
+        let (&item_name, modules) =
+            path.split_last().expect("non-module paths must have at least 2 segments");
+        (modules, Some((item_name, namespace)))
+    } else {
+        (path, None)
+    };
 
-                items = tcx.module_children(next_mod.res.def_id());
-            }
-
-            let item_name = *path.last().unwrap();
-
-            let item = items.iter().find(|item| {
-                item.ident.name.as_str() == item_name
-                    && tcx.def_kind(item.res.def_id()).ns() == Some(namespace)
-            })?;
-
-            Some(item.res.def_id())
-        },
-    )
+    // First find the crate.
+    let krate =
+        tcx.crates(()).iter().find(|&&krate| tcx.crate_name(krate).as_str() == crate_name)?;
+    let mut cur_item = DefId { krate: *krate, index: CRATE_DEF_INDEX };
+    // Then go over the modules.
+    for &segment in modules {
+        cur_item = find_children(tcx, cur_item, segment)
+            .find(|item| tcx.def_kind(item) == DefKind::Mod)?;
+    }
+    // Finally, look up the desired item in this module, if any.
+    match item {
+        Some((item_name, namespace)) =>
+            Some(
+                find_children(tcx, cur_item, item_name)
+                    .find(|item| tcx.def_kind(item).ns() == Some(namespace))?,
+            ),
+        None => Some(cur_item),
+    }
 }
 
 pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriInterpCxExt<'mir, 'tcx> {
+    /// Checks if the given crate/module exists.
+    fn have_module(&self, path: &[&str]) -> bool {
+        try_resolve_did(*self.eval_context_ref().tcx, path, None).is_some()
+    }
+
     /// Gets an instance for a path; fails gracefully if the path does not exist.
     fn try_resolve_path(&self, path: &[&str], namespace: Namespace) -> Option<ty::Instance<'tcx>> {
-        let did = try_resolve_did(self.eval_context_ref().tcx.tcx, path, namespace)?;
-        Some(ty::Instance::mono(self.eval_context_ref().tcx.tcx, did))
+        let tcx = self.eval_context_ref().tcx.tcx;
+        let did = try_resolve_did(tcx, path, Some(namespace))?;
+        Some(ty::Instance::mono(tcx, did))
     }
 
     /// Gets an instance for a path.
