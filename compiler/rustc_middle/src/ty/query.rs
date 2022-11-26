@@ -276,13 +276,16 @@ macro_rules! define_callbacks {
 
         impl Default for Providers {
             fn default() -> Self {
+                use crate::query::Key;
+
                 Providers {
                     $($name: |_, key| bug!(
-                        "`tcx.{}({:?})` is not supported for external or local crate;\n
-                        hint: Queries can be either made to the local crate, or the external crate. This error means you tried to use it for one that's not supported (likely the local crate).\n
+                        "`tcx.{}({:?})` is not supported for {} crate;\n
+                        hint: Queries can be either made to the local crate, or the external crate. This error means you tried to use it for one that's not supported.\n
                         If that's not the case, {} was likely never assigned to a provider function.\n",
                         stringify!($name),
                         key,
+                        if key.query_crate_is_local() { "local" } else { "external" },
                         stringify!($name),
                     ),)*
                 }
