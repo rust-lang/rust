@@ -949,7 +949,6 @@ so that we can apply CSS-filters to change the arrow color in themes */
 #help dt {
 	float: left;
 	clear: left;
-	display: block;
 	margin-right: 0.5rem;
 }
 #help span.top, #help span.bottom {
