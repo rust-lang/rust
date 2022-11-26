@@ -10,7 +10,7 @@ use rustc_hir::{
     Expr, ExprKind, GenericBound, Node, Path, QPath, Stmt, StmtKind, TyKind, WherePredicate,
 };
 use rustc_hir_analysis::astconv::AstConv;
-use rustc_infer::infer::{self, TyCtxtInferExt};
+use rustc_infer::infer;
 use rustc_infer::traits::{self, StatementAsExpression};
 use rustc_middle::lint::in_external_macro;
 use rustc_middle::ty::{self, Binder, DefIdTree, IsSuggestable, ToPredicate, Ty};
@@ -921,19 +921,13 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             let ty = <dyn AstConv<'_>>::ast_ty_to_ty(self, ty);
             let bound_vars = self.tcx.late_bound_vars(fn_id);
             let ty = self.tcx.erase_late_bound_regions(Binder::bind_with_vars(ty, bound_vars));
-            let ty = self.normalize(expr.span, ty);
             let ty = match self.tcx.asyncness(fn_id.owner) {
-                hir::IsAsync::Async => {
-                    let infcx = self.tcx.infer_ctxt().build();
-                    infcx.get_impl_future_output_ty(ty).unwrap_or_else(|| {
-                        span_bug!(
-                            fn_decl.output.span(),
-                            "failed to get output type of async function"
-                        )
-                    })
-                }
+                hir::IsAsync::Async => self.get_impl_future_output_ty(ty).unwrap_or_else(|| {
+                    span_bug!(fn_decl.output.span(), "failed to get output type of async function")
+                }),
                 hir::IsAsync::NotAsync => ty,
             };
+            let ty = self.normalize(expr.span, ty);
             if self.can_coerce(found, ty) {
                 err.multipart_suggestion(
                     "you might have meant to return this value",
