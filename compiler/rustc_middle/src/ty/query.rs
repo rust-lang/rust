@@ -28,6 +28,7 @@ use crate::traits::query::{
 };
 use crate::traits::specialization_graph;
 use crate::traits::{self, ImplSource};
+use crate::ty::context::TyCtxtFeed;
 use crate::ty::fast_reject::SimplifiedType;
 use crate::ty::layout::TyAndLayout;
 use crate::ty::subst::{GenericArg, SubstsRef};
@@ -85,23 +86,12 @@ pub struct TyCtxtEnsure<'tcx> {
     pub tcx: TyCtxt<'tcx>,
 }
 
-#[derive(Copy, Clone)]
-pub struct TyCtxtFeed<'tcx> {
-    pub tcx: TyCtxt<'tcx>,
-}
-
 impl<'tcx> TyCtxt<'tcx> {
     /// Returns a transparent wrapper for `TyCtxt`, which ensures queries
     /// are executed instead of just returning their results.
     #[inline(always)]
     pub fn ensure(self) -> TyCtxtEnsure<'tcx> {
         TyCtxtEnsure { tcx: self }
-    }
-
-    /// Returns a transparent wrapper for `TyCtxt`, for setting a result into a query.
-    #[inline(always)]
-    pub fn feed(self) -> TyCtxtFeed<'tcx> {
-        TyCtxtFeed { tcx: self }
     }
 
     /// Returns a transparent wrapper for `TyCtxt` which uses
@@ -355,12 +345,8 @@ macro_rules! define_feedable {
         impl<'tcx> TyCtxtFeed<'tcx> {
             $($(#[$attr])*
             #[inline(always)]
-            pub fn $name(
-                self,
-                key: query_helper_param_ty!($($K)*),
-                value: $V,
-            ) -> query_stored::$name<'tcx> {
-                let key = key.into_query_param();
+            pub fn $name(self, value: $V) -> query_stored::$name<'tcx> {
+                let key = self.def_id.into_query_param();
                 opt_remap_env_constness!([$($modifiers)*][key]);
 
                 let tcx = self.tcx;

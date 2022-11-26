@@ -53,6 +53,7 @@ use rustc_hir::{
 use rustc_index::vec::{Idx, IndexVec};
 use rustc_macros::HashStable;
 use rustc_middle::mir::FakeReadCause;
+use rustc_query_system::dep_graph::DepNodeIndex;
 use rustc_query_system::ich::StableHashingContext;
 use rustc_serialize::opaque::{FileEncodeResult, FileEncoder};
 use rustc_session::config::{CrateType, OutputFilenames};
@@ -1009,6 +1010,14 @@ pub struct FreeRegionInfo {
     pub is_impl_item: bool,
 }
 
+#[derive(Copy, Clone)]
+pub struct TyCtxtFeed<'tcx> {
+    pub tcx: TyCtxt<'tcx>,
+    pub def_id: LocalDefId,
+    /// This struct should only be created by `create_def`.
+    _priv: (),
+}
+
 /// The central data structure of the compiler. It stores references
 /// to the various **arenas** and also houses the results of the
 /// various **compiler queries** that have been performed. See the
@@ -1471,12 +1480,15 @@ impl<'tcx> TyCtxt<'tcx> {
     }
 
     /// Create a new definition within the incr. comp. engine.
-    pub fn create_def(self, parent: LocalDefId, data: hir::definitions::DefPathData) -> LocalDefId {
+    pub fn create_def(
+        self,
+        parent: LocalDefId,
+        data: hir::definitions::DefPathData,
+    ) -> TyCtxtFeed<'tcx> {
         // This function modifies `self.definitions` using a side-effect.
         // We need to ensure that these side effects are re-run by the incr. comp. engine.
         // Depending on the forever-red node will tell the graph that the calling query
         // needs to be re-evaluated.
-        use rustc_query_system::dep_graph::DepNodeIndex;
         self.dep_graph.read_index(DepNodeIndex::FOREVER_RED_NODE);
 
         // The following call has the side effect of modifying the tables inside `definitions`.
@@ -1493,23 +1505,38 @@ impl<'tcx> TyCtxt<'tcx> {
         // This is fine because:
         // - those queries are `eval_always` so we won't miss their result changing;
         // - this write will have happened before these queries are called.
-        self.definitions.write().create_def(parent, data)
+        let def_id = self.definitions.write().create_def(parent, data);
+
+        TyCtxtFeed { tcx: self, def_id, _priv: () }
     }
 
     pub fn iter_local_def_id(self) -> impl Iterator<Item = LocalDefId> + 'tcx {
-        // Create a dependency to the crate to be sure we re-execute this when the amount of
+        // Create a dependency to the red node to be sure we re-execute this when the amount of
         // definitions change.
-        self.ensure().hir_crate(());
-        // Leak a read lock once we start iterating on definitions, to prevent adding new ones
-        // while iterating.  If some query needs to add definitions, it should be `ensure`d above.
-        let definitions = self.definitions.leak();
-        definitions.iter_local_def_id()
+        self.dep_graph.read_index(DepNodeIndex::FOREVER_RED_NODE);
+
+        let definitions = &self.definitions;
+        std::iter::from_generator(|| {
+            let mut i = 0;
+
+            // Recompute the number of definitions each time, because our caller may be creating
+            // new ones.
+            while i < { definitions.read().num_definitions() } {
+                let local_def_index = rustc_span::def_id::DefIndex::from_usize(i);
+                yield LocalDefId { local_def_index };
+                i += 1;
+            }
+
+            // Leak a read lock once we finish iterating on definitions, to prevent adding new ones.
+            definitions.leak();
+        })
     }
 
     pub fn def_path_table(self) -> &'tcx rustc_hir::definitions::DefPathTable {
         // Create a dependency to the crate to be sure we re-execute this when the amount of
         // definitions change.
-        self.ensure().hir_crate(());
+        self.dep_graph.read_index(DepNodeIndex::FOREVER_RED_NODE);
+
         // Leak a read lock once we start iterating on definitions, to prevent adding new ones
         // while iterating.  If some query needs to add definitions, it should be `ensure`d above.
         let definitions = self.definitions.leak();
