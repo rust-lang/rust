@@ -49,19 +49,33 @@ extern "C" void *LLVMRustGetSymbols(
   std::unique_ptr<object::SymbolicFile> Obj;
 
   const file_magic Type = identify_magic(Buf->getBuffer());
-  if (Type != file_magic::bitcode) {
-    return ErrorCallback("not bitcode");
+  if (!object::SymbolicFile::isSymbolicFile(Type, &Context)) {
+    return 0;
   }
-  auto ObjOrErr = object::SymbolicFile::createSymbolicFile(
+
+  if (Type == file_magic::bitcode) {
+    auto ObjOrErr = object::SymbolicFile::createSymbolicFile(
       Buf->getMemBufferRef(), file_magic::bitcode, &Context);
-  if (!ObjOrErr) {
-    Error E = ObjOrErr.takeError();
-    SmallString<0> ErrorBuf;
-    raw_svector_ostream Error(ErrorBuf);
-    Error << E << '\0';
-    return ErrorCallback(Error.str().data());
+    if (!ObjOrErr) {
+      Error E = ObjOrErr.takeError();
+      SmallString<0> ErrorBuf;
+      raw_svector_ostream Error(ErrorBuf);
+      Error << E << '\0';
+      return ErrorCallback(Error.str().data());
+    }
+    Obj = std::move(*ObjOrErr);
+  } else {
+    auto ObjOrErr = object::SymbolicFile::createSymbolicFile(Buf->getMemBufferRef());
+    if (!ObjOrErr) {
+      Error E = ObjOrErr.takeError();
+      SmallString<0> ErrorBuf;
+      raw_svector_ostream Error(ErrorBuf);
+      Error << E << '\0';
+      return ErrorCallback(Error.str().data());
+    }
+    Obj = std::move(*ObjOrErr);
   }
-  Obj = std::move(*ObjOrErr);
+
 
   for (const object::BasicSymbolRef &S : Obj->symbols()) {
     if (!isArchiveSymbol(S))

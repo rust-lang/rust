@@ -261,12 +261,20 @@ impl ArchiveBuilderBuilder for LlvmArchiveBuilderBuilder {
     }
 }
 
+// The object crate doesn't know how to get symbols for LLVM bitcode and COFF bigobj files.
+// As such we need to use LLVM for them.
 #[deny(unsafe_op_in_unsafe_fn)]
 fn get_llvm_object_symbols(
     buf: &[u8],
     f: &mut dyn FnMut(&[u8]) -> io::Result<()>,
 ) -> io::Result<bool> {
-    if unsafe { llvm::LLVMRustIsBitcode(buf.as_ptr(), buf.len()) } {
+    let is_bitcode = unsafe { llvm::LLVMRustIsBitcode(buf.as_ptr(), buf.len()) };
+
+    // COFF bigobj file, msvc LTO file or import library. See
+    // https://github.com/llvm/llvm-project/blob/453f27bc9/llvm/lib/BinaryFormat/Magic.cpp#L38-L51
+    let is_unsupported_windows_obj_file = buf.get(0..4) == Some(b"\0\0\xFF\xFF");
+
+    if is_bitcode || is_unsupported_windows_obj_file {
         let mut state = Box::new(f);
 
         let err = unsafe {
