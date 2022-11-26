@@ -6,7 +6,7 @@ pub fn opts(endian: Endian) -> TargetOptions {
         allow_asm: true,
         endian,
         linker_flavor: LinkerFlavor::Bpf,
-        atomic_cas: false,
+        atomic_cas: true,
         dynamic_linking: true,
         no_builtins: true,
         panic_strategy: PanicStrategy::Abort,
@@ -19,6 +19,10 @@ pub fn opts(endian: Endian) -> TargetOptions {
         obj_is_bitcode: true,
         requires_lto: false,
         singlethread: true,
+        // When targeting the `v3` cpu in llvm, 32-bit atomics are also supported.
+        // But making this value change based on the target cpu can be mostly confusing
+        // and would require a bit of a refactor.
+        min_atomic_width: Some(64),
         max_atomic_width: Some(64),
         ..Default::default()
     }
