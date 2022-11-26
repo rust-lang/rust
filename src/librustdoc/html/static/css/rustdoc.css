@@ -1327,8 +1327,8 @@ a.test-arrow:hover {
 	border-bottom: 1px solid;
 	display: flex;
 	height: 40px;
-	justify-content: center;
-	align-items: center;
+	justify-content: stretch;
+	align-items: stretch;
 	z-index: 10;
 }
 #source-sidebar {
@@ -1356,13 +1356,7 @@ a.test-arrow:hover {
 	text-align: center;
 	border: none;
 	outline: none;
-	position: absolute;
-	top: 0;
-	bottom: 0;
-	left: 0;
-	right: 0;
-	/* work around button layout strangeness: https://stackoverflow.com/q/7271561 */
-	width: 100%;
+	flex: 1 1;
 	/* iOS button gradient: https://stackoverflow.com/q/5438567 */
 	-webkit-appearance: none;
 	opacity: 1;
