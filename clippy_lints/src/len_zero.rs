@@ -1,13 +1,13 @@
 use clippy_utils::diagnostics::{span_lint, span_lint_and_sugg, span_lint_and_then};
 use clippy_utils::source::snippet_with_applicability;
-use clippy_utils::{get_item_name, get_parent_as_impl, is_lint_allowed};
+use clippy_utils::{get_item_name, get_parent_as_impl, is_lint_allowed, peel_ref_operators};
 use if_chain::if_chain;
 use rustc_ast::ast::LitKind;
 use rustc_errors::Applicability;
 use rustc_hir::def_id::DefIdSet;
 use rustc_hir::{
     def_id::DefId, AssocItemKind, BinOpKind, Expr, ExprKind, FnRetTy, ImplItem, ImplItemKind, ImplicitSelfKind, Item,
-    ItemKind, Mutability, Node, TraitItemRef, TyKind,
+    ItemKind, Mutability, Node, TraitItemRef, TyKind, UnOp,
 };
 use rustc_lint::{LateContext, LateLintPass};
 use rustc_middle::ty::{self, AssocKind, FnSig, Ty};
@@ -16,6 +16,7 @@ use rustc_span::{
     source_map::{Span, Spanned, Symbol},
     symbol::sym,
 };
+use std::borrow::Cow;
 
 declare_clippy_lint! {
     /// ### What it does
@@ -428,16 +429,23 @@ fn check_len(
 fn check_empty_expr(cx: &LateContext<'_>, span: Span, lit1: &Expr<'_>, lit2: &Expr<'_>, op: &str) {
     if (is_empty_array(lit2) || is_empty_string(lit2)) && has_is_empty(cx, lit1) {
         let mut applicability = Applicability::MachineApplicable;
+
+        let lit1 = peel_ref_operators(cx, lit1);
+        let mut lit_str = snippet_with_applicability(cx, lit1.span, "_", &mut applicability);
+
+        // Wrap the expression in parentheses if it's a deref expression. Otherwise operator precedence will
+        // cause the code to dereference boolean(won't compile).
+        if let ExprKind::Unary(UnOp::Deref, _) = lit1.kind {
+            lit_str = Cow::from(format!("({lit_str})"));
+        }
+
         span_lint_and_sugg(
             cx,
             COMPARISON_TO_EMPTY,
             span,
             "comparison to empty slice",
             &format!("using `{op}is_empty` is clearer and more explicit"),
-            format!(
-                "{op}{}.is_empty()",
-                snippet_with_applicability(cx, lit1.span, "_", &mut applicability)
-            ),
+            format!("{op}{lit_str}.is_empty()"),
             applicability,
         );
     }
