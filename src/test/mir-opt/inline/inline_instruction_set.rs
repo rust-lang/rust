@@ -1,5 +1,7 @@
 // Checks that only functions with the compatible instruction_set attributes are inlined.
 //
+// A function is "compatible" when the *callee* has the same attribute or no attribute.
+//
 // compile-flags: --target thumbv4t-none-eabi
 // needs-llvm-components: arm
 
@@ -36,14 +38,18 @@ fn instruction_set_t32() {}
 #[inline]
 fn instruction_set_default() {}
 
+#[inline(always)]
+fn inline_always_and_using_inline_asm() {
+    unsafe { asm!("/* do nothing */") };
+}
+
 // EMIT_MIR inline_instruction_set.t32.Inline.diff
 #[instruction_set(arm::t32)]
 pub fn t32() {
     instruction_set_a32();
     instruction_set_t32();
-    // The default instruction set is currently
-    // conservatively assumed to be incompatible.
     instruction_set_default();
+    inline_always_and_using_inline_asm();
 }
 
 // EMIT_MIR inline_instruction_set.default.Inline.diff
@@ -51,4 +57,5 @@ pub fn default() {
     instruction_set_a32();
     instruction_set_t32();
     instruction_set_default();
+    inline_always_and_using_inline_asm();
 }
