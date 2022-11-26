@@ -1330,7 +1330,7 @@ fn replace_types<'tcx>(
                     && let Some(term_ty) = projection_predicate.term.ty()
                     && let ty::Param(term_param_ty) = term_ty.kind()
                 {
-                    let item_def_id = projection_predicate.projection_ty.item_def_id;
+                    let item_def_id = projection_predicate.projection_ty.def_id;
                     let assoc_item = cx.tcx.associated_item(item_def_id);
                     let projection = cx.tcx
                         .mk_projection(assoc_item.def_id, cx.tcx.mk_substs_trait(new_ty, []));
