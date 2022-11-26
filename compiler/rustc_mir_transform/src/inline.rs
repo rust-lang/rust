@@ -375,7 +375,12 @@ impl<'tcx> Inliner<'tcx> {
             return Err("incompatible sanitizer set");
         }
 
-        if callee_attrs.instruction_set != self.codegen_fn_attrs.instruction_set {
+        // Two functions are compatible if the callee has no attribute (meaning
+        // that it's codegen agnostic), or sets an attribute that is identical
+        // to this function's attribute.
+        if callee_attrs.instruction_set.is_some()
+            && callee_attrs.instruction_set != self.codegen_fn_attrs.instruction_set
+        {
             return Err("incompatible instruction set");
         }
 
@@ -453,6 +458,15 @@ impl<'tcx> Inliner<'tcx> {
                 if ty.needs_drop(tcx, self.param_env) && let Some(unwind) = unwind {
                         work_list.push(unwind);
                     }
+            } else if callee_attrs.instruction_set != self.codegen_fn_attrs.instruction_set
+                && matches!(term.kind, TerminatorKind::InlineAsm { .. })
+            {
+                // During the attribute checking stage we allow a callee with no
+                // instruction_set assigned to count as compatible with a function that does
+                // assign one. However, during this stage we require an exact match when any
+                // inline-asm is detected. LLVM will still possibly do an inline later on
+                // if the no-attribute function ends up with the same instruction set anyway.
+                return Err("Cannot move inline-asm across instruction sets");
             } else {
                 work_list.extend(term.successors())
             }
