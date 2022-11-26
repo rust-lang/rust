@@ -103,9 +103,9 @@ impl<'a> Validator<'a> {
 
     fn check_import(&mut self, x: &'a Import) {
         if x.glob {
-            self.add_mod_id(x.id.as_ref().unwrap());
+            self.add_glob_import_item_id(x.id.as_ref().unwrap());
         } else if let Some(id) = &x.id {
-            self.add_mod_item_id(id);
+            self.add_import_item_id(id);
         }
     }
 
@@ -402,6 +402,15 @@ impl<'a> Validator<'a> {
     /// Add an Id that appeared in a trait
     fn add_trait_item_id(&mut self, id: &'a Id) {
         self.add_id_checked(id, Kind::can_appear_in_trait, "Trait inner item");
+    }
+
+    /// Add an Id that can be `use`d
+    fn add_import_item_id(&mut self, id: &'a Id) {
+        self.add_id_checked(id, Kind::can_appear_in_import, "Import inner item");
+    }
+
+    fn add_glob_import_item_id(&mut self, id: &'a Id) {
+        self.add_id_checked(id, Kind::can_appear_in_glob_import, "Glob import inner item");
     }
 
     /// Add an Id that appeared in a mod
