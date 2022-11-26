@@ -44,6 +44,7 @@ pub trait Interner {
     type ListTy: Clone + Debug + Hash + PartialEq + Eq + PartialOrd + Ord;
     type ProjectionTy: Clone + Debug + Hash + PartialEq + Eq + PartialOrd + Ord;
     type ParamTy: Clone + Debug + Hash + PartialEq + Eq + PartialOrd + Ord;
+    type OpaqueTy: Clone + Debug + Hash + PartialEq + Eq + PartialOrd + Ord;
     type BoundTy: Clone + Debug + Hash + PartialEq + Eq + PartialOrd + Ord;
     type PlaceholderType: Clone + Debug + Hash + PartialEq + Eq + PartialOrd + Ord;
     type InferTy: Clone + Debug + Hash + PartialEq + Eq + PartialOrd + Ord;

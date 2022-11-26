@@ -184,7 +184,7 @@ pub enum TyKind<I: Interner> {
     /// while for TAIT it is used for the generic parameters of the alias.
     ///
     /// During codegen, `tcx.type_of(def_id)` can be used to get the underlying type.
-    Opaque(I::DefId, I::SubstsRef),
+    Opaque(I::OpaqueTy),
 
     /// A type parameter; for example, `T` in `fn f<T>(x: T) {}`.
     Param(I::ParamTy),
@@ -253,7 +253,7 @@ const fn tykind_discriminant<I: Interner>(value: &TyKind<I>) -> usize {
         Never => 18,
         Tuple(_) => 19,
         Projection(_) => 20,
-        Opaque(_, _) => 21,
+        Opaque(_) => 21,
         Param(_) => 22,
         Bound(_, _) => 23,
         Placeholder(_) => 24,
@@ -287,7 +287,7 @@ impl<I: Interner> Clone for TyKind<I> {
             Never => Never,
             Tuple(t) => Tuple(t.clone()),
             Projection(p) => Projection(p.clone()),
-            Opaque(d, s) => Opaque(d.clone(), s.clone()),
+            Opaque(o) => Opaque(o.clone()),
             Param(p) => Param(p.clone()),
             Bound(d, b) => Bound(d.clone(), b.clone()),
             Placeholder(p) => Placeholder(p.clone()),
@@ -324,7 +324,7 @@ impl<I: Interner> PartialEq for TyKind<I> {
                 (GeneratorWitness(a_g), GeneratorWitness(b_g)) => a_g == b_g,
                 (Tuple(a_t), Tuple(b_t)) => a_t == b_t,
                 (Projection(a_p), Projection(b_p)) => a_p == b_p,
-                (Opaque(a_d, a_s), Opaque(b_d, b_s)) => a_d == b_d && a_s == b_s,
+                (Opaque(a_o), Opaque(b_o)) => a_o == b_o,
                 (Param(a_p), Param(b_p)) => a_p == b_p,
                 (Bound(a_d, a_b), Bound(b_d, b_b)) => a_d == b_d && a_b == b_b,
                 (Placeholder(a_p), Placeholder(b_p)) => a_p == b_p,
@@ -382,7 +382,7 @@ impl<I: Interner> Ord for TyKind<I> {
                 (GeneratorWitness(a_g), GeneratorWitness(b_g)) => a_g.cmp(b_g),
                 (Tuple(a_t), Tuple(b_t)) => a_t.cmp(b_t),
                 (Projection(a_p), Projection(b_p)) => a_p.cmp(b_p),
-                (Opaque(a_d, a_s), Opaque(b_d, b_s)) => a_d.cmp(b_d).then_with(|| a_s.cmp(b_s)),
+                (Opaque(a_o), Opaque(b_o)) => a_o.cmp(b_o),
                 (Param(a_p), Param(b_p)) => a_p.cmp(b_p),
                 (Bound(a_d, a_b), Bound(b_d, b_b)) => a_d.cmp(b_d).then_with(|| a_b.cmp(b_b)),
                 (Placeholder(a_p), Placeholder(b_p)) => a_p.cmp(b_p),
@@ -444,9 +444,8 @@ impl<I: Interner> hash::Hash for TyKind<I> {
             GeneratorWitness(g) => g.hash(state),
             Tuple(t) => t.hash(state),
             Projection(p) => p.hash(state),
-            Opaque(d, s) => {
-                d.hash(state);
-                s.hash(state)
+            Opaque(o) => {
+                o.hash(state);
             }
             Param(p) => p.hash(state),
             Bound(d, b) => {
@@ -486,7 +485,7 @@ impl<I: Interner> fmt::Debug for TyKind<I> {
             Never => f.write_str("Never"),
             Tuple(t) => f.debug_tuple_field1_finish("Tuple", t),
             Projection(p) => f.debug_tuple_field1_finish("Projection", p),
-            Opaque(d, s) => f.debug_tuple_field2_finish("Opaque", d, s),
+            Opaque(o) => f.debug_tuple_field1_finish("Opaque", o),
             Param(p) => f.debug_tuple_field1_finish("Param", p),
             Bound(d, b) => f.debug_tuple_field2_finish("Bound", d, b),
             Placeholder(p) => f.debug_tuple_field1_finish("Placeholder", p),
@@ -515,6 +514,7 @@ where
     I::ListTy: Encodable<E>,
     I::ProjectionTy: Encodable<E>,
     I::ParamTy: Encodable<E>,
+    I::OpaqueTy: Encodable<E>,
     I::BoundTy: Encodable<E>,
     I::PlaceholderType: Encodable<E>,
     I::InferTy: Encodable<E>,
@@ -589,9 +589,8 @@ where
             Projection(p) => e.emit_enum_variant(disc, |e| {
                 p.encode(e);
             }),
-            Opaque(def_id, substs) => e.emit_enum_variant(disc, |e| {
-                def_id.encode(e);
-                substs.encode(e);
+            Opaque(o) => e.emit_enum_variant(disc, |e| {
+                o.encode(e);
             }),
             Param(p) => e.emit_enum_variant(disc, |e| {
                 p.encode(e);
@@ -632,6 +631,7 @@ where
     I::ListTy: Decodable<D>,
     I::ProjectionTy: Decodable<D>,
     I::ParamTy: Decodable<D>,
+    I::OpaqueTy: Decodable<D>,
     I::BoundTy: Decodable<D>,
     I::PlaceholderType: Decodable<D>,
     I::InferTy: Decodable<D>,
@@ -661,7 +661,7 @@ where
             18 => Never,
             19 => Tuple(Decodable::decode(d)),
             20 => Projection(Decodable::decode(d)),
-            21 => Opaque(Decodable::decode(d), Decodable::decode(d)),
+            21 => Opaque(Decodable::decode(d)),
             22 => Param(Decodable::decode(d)),
             23 => Bound(Decodable::decode(d), Decodable::decode(d)),
             24 => Placeholder(Decodable::decode(d)),
@@ -698,6 +698,7 @@ where
     I::ProjectionTy: HashStable<CTX>,
     I::BoundTy: HashStable<CTX>,
     I::ParamTy: HashStable<CTX>,
+    I::OpaqueTy: HashStable<CTX>,
     I::PlaceholderType: HashStable<CTX>,
     I::InferTy: HashStable<CTX>,
     I::ErrorGuaranteed: HashStable<CTX>,
@@ -775,9 +776,8 @@ where
             Projection(p) => {
                 p.hash_stable(__hcx, __hasher);
             }
-            Opaque(def_id, substs) => {
-                def_id.hash_stable(__hcx, __hasher);
-                substs.hash_stable(__hcx, __hasher);
+            Opaque(o) => {
+                o.hash_stable(__hcx, __hasher);
             }
             Param(p) => {
                 p.hash_stable(__hcx, __hasher);

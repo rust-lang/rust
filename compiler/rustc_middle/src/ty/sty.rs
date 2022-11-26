@@ -1199,6 +1199,16 @@ impl<'tcx> ProjectionTy<'tcx> {
     }
 }
 
+#[derive(Copy, Clone, PartialEq, Eq, PartialOrd, Ord, Hash, Debug, TyEncodable, TyDecodable)]
+#[derive(HashStable, TypeFoldable, TypeVisitable, Lift)]
+pub struct OpaqueTy<'tcx> {
+    /// The parameters of the opaque.
+    pub substs: SubstsRef<'tcx>,
+
+    /// The `DefId` of the `impl Trait`.
+    pub def_id: DefId,
+}
+
 #[derive(Copy, Clone, Debug, TypeFoldable, TypeVisitable, Lift)]
 pub struct GenSig<'tcx> {
     pub resume_ty: Ty<'tcx>,
