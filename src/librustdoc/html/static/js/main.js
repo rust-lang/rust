@@ -202,7 +202,7 @@ function loadCss(cssUrl) {
         if (event.ctrlKey || event.altKey || event.metaKey) {
             return;
         }
-        window.hideAllModals();
+        window.hideAllModals(false);
         addClass(getSettingsButton(), "rotate");
         event.preventDefault();
         // Sending request for the CSS and the JS files at the same time so it will
@@ -378,10 +378,7 @@ function loadCss(cssUrl) {
         }
         ev.preventDefault();
         searchState.defocus();
-        // If the notable traits popover is open, and the user presses Escape,
-        // reset focus back to the link.
-        hideNotable(true);
-        window.hideAllModals();
+        window.hideAllModals(true); // true = reset focus for notable traits
     }
 
     function handleShortcut(ev) {
@@ -771,7 +768,7 @@ function loadCss(cssUrl) {
     };
 
     function showSidebar() {
-        window.hideAllModals();
+        window.hideAllModals(false);
         window.rustdocMobileScrollLock();
         const sidebar = document.getElementsByClassName("sidebar")[0];
         addClass(sidebar, "shown");
@@ -848,7 +845,7 @@ function loadCss(cssUrl) {
             // Make this function idempotent.
             return;
         }
-        window.hideAllModals();
+        window.hideAllModals(false);
         const ty = e.getAttribute("data-ty");
         const wrapper = document.createElement("div");
         wrapper.innerHTML = "<div class=\"docblock\">" + window.NOTABLE_TRAITS[ty] + "</div>";
@@ -1057,13 +1054,12 @@ function loadCss(cssUrl) {
     /**
      * Hide popover menus, notable trait tooltips, and the sidebar (if applicable).
      *
-     * This version does not do anything to tweak the focused element. The caller
-     * should make sure it behaves reasonably.
+     * Pass "true" to reset focus for notable traits.
      */
-    window.hideAllModals = function() {
+    window.hideAllModals = function(switchFocus) {
         hideSidebar();
         window.hidePopoverMenus();
-        hideNotable(false);
+        hideNotable(switchFocus);
     };
 
     /**
