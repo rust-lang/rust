@@ -2,10 +2,19 @@
 
 use expect_test::{expect, Expect};
 
-use crate::tests::{check_edit, completion_list_no_kw};
+use crate::tests::{check_edit, completion_list_no_kw, completion_list_with_trigger_character};
 
 fn check(ra_fixture: &str, expect: Expect) {
     let actual = completion_list_no_kw(ra_fixture);
+    expect.assert_eq(&actual)
+}
+
+pub(crate) fn check_with_trigger_character(
+    ra_fixture: &str,
+    trigger_character: Option<char>,
+    expect: Expect,
+) {
+    let actual = completion_list_with_trigger_character(ra_fixture, trigger_character);
     expect.assert_eq(&actual)
 }
 
@@ -892,4 +901,83 @@ fn f() {
             me foo() fn(self)
         "#]],
     );
+}
+
+#[test]
+fn completes_after_colon_with_trigger() {
+    check_with_trigger_character(
+        r#"
+//- minicore: option
+fn foo { ::$0 }
+"#,
+        Some(':'),
+        expect![[r#"
+            md core
+        "#]],
+    );
+    check_with_trigger_character(
+        r#"
+//- minicore: option
+fn foo { /* test */::$0 }
+"#,
+        Some(':'),
+        expect![[r#"
+            md core
+        "#]],
+    );
+
+    check_with_trigger_character(
+        r#"
+fn foo { crate::$0 }
+"#,
+        Some(':'),
+        expect![[r#"
+            fn foo() fn()
+        "#]],
+    );
+
+    check_with_trigger_character(
+        r#"
+fn foo { crate:$0 }
+"#,
+        Some(':'),
+        expect![""],
+    );
+}
+
+#[test]
+fn completes_after_colon_without_trigger() {
+    check_with_trigger_character(
+        r#"
+fn foo { crate::$0 }
+"#,
+        None,
+        expect![[r#"
+            fn foo() fn()
+        "#]],
+    );
+
+    check_with_trigger_character(
+        r#"
+fn foo { crate:$0 }
+"#,
+        None,
+        expect![""],
+    );
+}
+
+#[test]
+fn no_completions_in_invalid_path() {
+    check(
+        r#"
+fn foo { crate:::$0 }
+"#,
+        expect![""],
+    );
+    check(
+        r#"
+fn foo { crate::::$0 }
+"#,
+        expect![""],
+    )
 }

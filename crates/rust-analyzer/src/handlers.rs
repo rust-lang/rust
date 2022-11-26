@@ -28,7 +28,7 @@ use lsp_types::{
 use project_model::{ManifestPath, ProjectWorkspace, TargetKind};
 use serde_json::json;
 use stdx::{format_to, never};
-use syntax::{algo, ast, AstNode, TextRange, TextSize, T};
+use syntax::{algo, ast, AstNode, TextRange, TextSize};
 use vfs::AbsPathBuf;
 
 use crate::{
@@ -811,18 +811,6 @@ pub(crate) fn handle_completion(
     let position = from_proto::file_position(&snap, params.text_document_position)?;
     let completion_trigger_character =
         params.context.and_then(|ctx| ctx.trigger_character).and_then(|s| s.chars().next());
-
-    if Some(':') == completion_trigger_character {
-        let source_file = snap.analysis.parse(position.file_id)?;
-        let left_token = source_file.syntax().token_at_offset(position.offset).left_biased();
-        let completion_triggered_after_single_colon = match left_token {
-            Some(left_token) => left_token.kind() == T![:],
-            None => true,
-        };
-        if completion_triggered_after_single_colon {
-            return Ok(None);
-        }
-    }
 
     let completion_config = &snap.config.completion();
     let items = match snap.analysis.completions(
