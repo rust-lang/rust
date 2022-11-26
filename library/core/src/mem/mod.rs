@@ -1116,7 +1116,7 @@ impl<T> fmt::Debug for Discriminant<T> {
 /// of some variant will not change between compilations with the same compiler. See the [Reference]
 /// for more information.
 ///
-/// [Reference]: ../../reference/items/enumerations.html#discriminants
+/// [Reference]: ../../reference/items/enumerations.html#custom-discriminant-values-for-fieldless-enumerations
 ///
 /// # Examples
 ///
