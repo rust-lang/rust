@@ -581,9 +581,14 @@ impl<'a> CompletionContext<'a> {
                     return None;
                 }
 
-                // has 3 colon in a row
+                // has 3 colon or 2 coloncolon in a row
                 // special casing this as per discussion in https://github.com/rust-lang/rust-analyzer/pull/13611#discussion_r1031845205
-                if prev_token.prev_token().map(|t| t.kind() == T![:]).unwrap_or(false) {
+                // and https://github.com/rust-lang/rust-analyzer/pull/13611#discussion_r1032812751
+                if prev_token
+                    .prev_token()
+                    .map(|t| t.kind() == T![:] || t.kind() == T![::])
+                    .unwrap_or(false)
+                {
                     return None;
                 }
             }
