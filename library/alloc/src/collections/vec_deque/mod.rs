@@ -2152,37 +2152,77 @@ impl<T, A: Allocator> VecDeque<T, A> {
 
             self.head = tail;
         } else {
-            // free is smaller than both head and tail,
-            // this means we have to slowly "swap" the tail and the head.
+            // ´free` is smaller than both `head_len` and `tail_len`.
+            // the general algorithm for this first moves the slices
+            // right next to each other and then uses `slice::rotate`
+            // to rotate them into place:
             //
-            // from: EFGHI...ABCD or HIJK.ABCDEFG
-            // to:   ABCDEFGHI... or ABCDEFGHIJK.
-            let mut left_edge: usize = 0;
-            let mut right_edge: usize = head;
-            unsafe {
-                // The general problem looks like this
-                // GHIJKLM...ABCDEF - before any swaps
-                // ABCDEFM...GHIJKL - after 1 pass of swaps
-                // ABCDEFGHIJM...KL - swap until the left edge reaches the temp store
-                //                  - then restart the algorithm with a new (smaller) store
-                // Sometimes the temp store is reached when the right edge is at the end
-                // of the buffer - this means we've hit the right order with fewer swaps!
-                // E.g
-                // EF..ABCD
-                // ABCDEF.. - after four only swaps we've finished
-                while left_edge < len && right_edge != cap {
-                    let mut right_offset = 0;
-                    for i in left_edge..right_edge {
-                        right_offset = (i - left_edge) % (cap - right_edge);
-                        let src = right_edge + right_offset;
-                        ptr::swap(ptr.add(i), ptr.add(src));
-                    }
-                    let n_ops = right_edge - left_edge;
-                    left_edge += n_ops;
-                    right_edge += right_offset + 1;
-                }
+            // initially:   HIJK..ABCDEFG
+            // step 1:      ..HIJKABCDEFG
+            // step 2:      ..ABCDEFGHIJK
+            //
+            // or:
+            //
+            // initially:   FGHIJK..ABCDE
+            // step 1:      FGHIJKABCDE..
+            // step 2:      ABCDEFGHIJK..
 
-                self.head = 0;
+            // pick the shorter of the 2 slices to reduce the amount
+            // of memory that needs to be moved around.
+            if head_len > tail_len {
+                // tail is shorter, so:
+                //  1. copy tail forwards
+                //  2. rotate used part of the buffer
+                //  3. update head to point to the new beginning (which is just `free`)
+
+                unsafe {
+                    // if there is no free space in the buffer, then the slices are already
+                    // right next to each other and we don't need to move any memory.
+                    if free != 0 {
+                        // because we only move the tail forward as much as there's free space
+                        // behind it, we don't overwrite any elements of the head slice, and
+                        // the slices end up right next to each other.
+                        self.copy(0, free, tail_len);
+                    }
+
+                    // We just copied the tail right next to the head slice,
+                    // so all of the elements in the range are initialized
+                    let slice = &mut *self.buffer_range(free..self.capacity());
+
+                    // because the deque wasn't contiguous, we know that `tail_len < self.len == slice.len()`,
+                    // so this will never panic.
+                    slice.rotate_left(tail_len);
+
+                    // the used part of the buffer now is `free..self.capacity()`, so set
+                    // `head` to the beginning of that range.
+                    self.head = free;
+                }
+            } else {
+                // head is shorter so:
+                //  1. copy head backwards
+                //  2. rotate used part of the buffer
+                //  3. update head to point to the new beginning (which is the beginning of the buffer)
+
+                unsafe {
+                    // if there is no free space in the buffer, then the slices are already
+                    // right next to each other and we don't need to move any memory.
+                    if free != 0 {
+                        // copy the head slice to lie right behind the tail slice.
+                        self.copy(self.head, tail_len, head_len);
+                    }
+
+                    // because we copied the head slice so that both slices lie right
+                    // next to each other, all the elements in the range are initialized.
+                    let slice = &mut *self.buffer_range(0..self.len);
+
+                    // because the deque wasn't contiguous, we know that `head_len < self.len == slice.len()`
+                    // so this will never panic.
+                    slice.rotate_right(head_len);
+
+                    // the used part of the buffer now is `0..self.len`, so set
+                    // `head` to the beginning of that range.
+                    self.head = 0;
+                }
             }
         }
 

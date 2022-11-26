@@ -465,7 +465,7 @@ fn test_binary_search_key() {
 }
 
 #[test]
-fn make_contiguous_big_tail() {
+fn make_contiguous_big_head() {
     let mut tester = VecDeque::with_capacity(15);
 
     for i in 0..3 {
@@ -480,14 +480,14 @@ fn make_contiguous_big_tail() {
     assert_eq!(tester.capacity(), 15);
     assert_eq!((&[9, 8, 7, 6, 5, 4, 3] as &[_], &[0, 1, 2] as &[_]), tester.as_slices());
 
-    let expected_start = tester.to_physical_idx(tester.len);
+    let expected_start = tester.as_slices().1.len();
     tester.make_contiguous();
     assert_eq!(tester.head, expected_start);
     assert_eq!((&[9, 8, 7, 6, 5, 4, 3, 0, 1, 2] as &[_], &[] as &[_]), tester.as_slices());
 }
 
 #[test]
-fn make_contiguous_big_head() {
+fn make_contiguous_big_tail() {
     let mut tester = VecDeque::with_capacity(15);
 
     for i in 0..8 {
@@ -507,13 +507,13 @@ fn make_contiguous_big_head() {
 
 #[test]
 fn make_contiguous_small_free() {
-    let mut tester = VecDeque::with_capacity(15);
+    let mut tester = VecDeque::with_capacity(16);
 
-    for i in 'A' as u8..'I' as u8 {
+    for i in b'A'..b'I' {
         tester.push_back(i as char);
     }
 
-    for i in 'I' as u8..'N' as u8 {
+    for i in b'I'..b'N' {
         tester.push_front(i as char);
     }
 
@@ -529,16 +529,16 @@ fn make_contiguous_small_free() {
     );
 
     tester.clear();
-    for i in 'I' as u8..'N' as u8 {
+    for i in b'I'..b'N' {
         tester.push_back(i as char);
     }
 
-    for i in 'A' as u8..'I' as u8 {
+    for i in b'A'..b'I' {
         tester.push_front(i as char);
     }
 
     // IJKLM...HGFEDCBA
-    let expected_start = 0;
+    let expected_start = 3;
     tester.make_contiguous();
     assert_eq!(tester.head, expected_start);
     assert_eq!(
