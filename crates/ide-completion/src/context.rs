@@ -581,7 +581,9 @@ impl<'a> CompletionContext<'a> {
                     return None;
                 }
 
-                if !is_prev_token_valid_path_start_or_segment(&prev_token) {
+                // has 3 colon in a row
+                // special casing this as per discussion in https://github.com/rust-lang/rust-analyzer/pull/13611#discussion_r1031845205
+                if prev_token.prev_token().map(|t| t.kind() == T![:]).unwrap_or(false) {
                     return None;
                 }
             }
@@ -635,24 +637,6 @@ impl<'a> CompletionContext<'a> {
         };
         Some((ctx, analysis))
     }
-}
-
-fn is_prev_token_valid_path_start_or_segment(token: &SyntaxToken) -> bool {
-    if let Some(prev_token) = token.prev_token() {
-        // token before coloncolon is invalid
-        if !matches!(
-            prev_token.kind(),
-            // trival
-            WHITESPACE | COMMENT
-            // PathIdentSegment
-            | IDENT | T![super] | T![self] | T![Self] | T![crate]
-            // QualifiedPath
-            | T![>]
-        ) {
-            return false;
-        }
-    }
-    true
 }
 
 const OP_TRAIT_LANG_NAMES: &[&str] = &[

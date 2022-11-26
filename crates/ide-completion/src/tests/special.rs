@@ -967,16 +967,10 @@ fn foo { crate:$0 }
 }
 
 #[test]
-fn no_completions_in_invalid_path() {
+fn no_completions_in_after_tripple_colon() {
     check(
         r#"
 fn foo { crate:::$0 }
-"#,
-        expect![""],
-    );
-    check(
-        r#"
-fn foo { crate::::$0 }
 "#,
         expect![""],
     );
