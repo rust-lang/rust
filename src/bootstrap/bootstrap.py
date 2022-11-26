@@ -437,10 +437,19 @@ class RustBuild(object):
             filename = "cargo-{}-{}{}".format(rustc_channel, self.build,
                                             tarball_suffix)
             self._download_component_helper(filename, "cargo", tarball_suffix)
-            self.fix_bin_or_dylib("{}/bin/cargo".format(bin_root))
 
-            self.fix_bin_or_dylib("{}/bin/rustc".format(bin_root))
-            self.fix_bin_or_dylib("{}/bin/rustdoc".format(bin_root))
+            for bin_dir_name in ["bin", "libexec"]:
+                bin_dir = "{}/{}".format(bin_root, bin_dir_name)
+                for bin in os.listdir(bin_dir):
+                    bin_file = os.path.join(bin_dir, bin)
+
+                    # Skip script files, only actual executables need patching.
+                    with open(bin_file, "rb", buffering=0) as f:
+                        if f.read(2) == b"#!":
+                            continue
+
+                    self.fix_bin_or_dylib(bin_file)
+
             lib_dir = "{}/lib".format(bin_root)
             for lib in os.listdir(lib_dir):
                 if lib.endswith(".so"):
