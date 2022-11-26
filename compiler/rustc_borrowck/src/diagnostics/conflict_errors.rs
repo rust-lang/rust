@@ -739,13 +739,15 @@ impl<'cx, 'tcx> MirBorrowckCtxt<'cx, 'tcx> {
         let tcx = self.infcx.tcx;
         // Try to find predicates on *generic params* that would allow copying `ty`
         let infcx = tcx.infer_ctxt().build();
-        if infcx
-            .type_implements_trait(
-                tcx.lang_items().clone_trait().unwrap(),
-                [tcx.erase_regions(ty)],
-                self.param_env,
-            )
-            .must_apply_modulo_regions()
+
+        if let Some(clone_trait_def) = tcx.lang_items().clone_trait()
+            && infcx
+                .type_implements_trait(
+                    clone_trait_def,
+                    [tcx.erase_regions(ty)],
+                    self.param_env,
+                )
+                .must_apply_modulo_regions()
         {
             err.span_suggestion_verbose(
                 span.shrink_to_hi(),
