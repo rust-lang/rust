@@ -1191,6 +1191,7 @@ impl Step for Clippy {
 
         let mut tarball = Tarball::new(builder, "clippy", &target.triple);
         tarball.set_overlay(OverlayKind::Clippy);
+        tarball.is_preview(true);
         tarball.add_file(clippy, "bin", 0o755);
         tarball.add_file(cargoclippy, "bin", 0o755);
         tarball.add_legal_and_readme_to("share/doc/clippy");
@@ -1288,6 +1289,7 @@ impl Step for Rustfmt {
             .expect("cargo fmt expected to build - essential tool");
         let mut tarball = Tarball::new(builder, "rustfmt", &target.triple);
         tarball.set_overlay(OverlayKind::Rustfmt);
+        tarball.is_preview(true);
         tarball.add_file(rustfmt, "bin", 0o755);
         tarball.add_file(cargofmt, "bin", 0o755);
         tarball.add_legal_and_readme_to("share/doc/rustfmt");
@@ -1548,6 +1550,8 @@ impl Step for Extended {
                     format!("{}-{}", name, target.triple)
                 } else if name == "rust-analyzer" {
                     "rust-analyzer-preview".to_string()
+                } else if name == "clippy" {
+                    "clippy-preview".to_string()
                 } else if name == "rust-demangler" {
                     "rust-demangler-preview".to_string()
                 } else if name == "miri" {

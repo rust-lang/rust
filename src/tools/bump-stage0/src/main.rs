@@ -6,7 +6,7 @@ use std::convert::TryInto;
 
 const PATH: &str = "src/stage0.json";
 const COMPILER_COMPONENTS: &[&str] = &["rustc", "rust-std", "cargo"];
-const RUSTFMT_COMPONENTS: &[&str] = &["rustfmt"];
+const RUSTFMT_COMPONENTS: &[&str] = &["rustfmt-preview"];
 
 struct Tool {
     config: Config,
