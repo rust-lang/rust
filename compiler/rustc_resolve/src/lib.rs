@@ -1920,7 +1920,7 @@ impl<'a> Resolver<'a> {
         if let Some(def_id) = def_id.as_local() {
             self.reexport_map.get(&def_id).cloned().unwrap_or_default()
         } else {
-            self.cstore().module_children_untracked(def_id, self.session)
+            self.cstore().module_children_untracked(def_id, self.session).collect()
         }
     }
 

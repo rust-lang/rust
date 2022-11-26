@@ -29,17 +29,16 @@ use rustc_session::cstore::{
     CrateSource, ExternCrate, ForeignModule, LinkagePreference, NativeLib,
 };
 use rustc_session::Session;
-use rustc_span::hygiene::{ExpnIndex, MacroKind};
+use rustc_span::hygiene::ExpnIndex;
 use rustc_span::source_map::{respan, Spanned};
 use rustc_span::symbol::{kw, Ident, Symbol};
 use rustc_span::{self, BytePos, ExpnId, Pos, Span, SyntaxContext, DUMMY_SP};
 
 use proc_macro::bridge::client::ProcMacro;
-use std::io;
 use std::iter::TrustedLen;
-use std::mem;
 use std::num::NonZeroUsize;
 use std::path::Path;
+use std::{io, iter, mem};
 
 pub(super) use cstore_impl::provide;
 pub use cstore_impl::provide_extern;
@@ -984,64 +983,52 @@ impl<'a, 'tcx> CrateMetadataRef<'a> {
         DiagnosticItems { id_to_name, name_to_id }
     }
 
+    fn get_mod_child(self, id: DefIndex, sess: &Session) -> ModChild {
+        let ident = self.item_ident(id, sess);
+        let kind = self.def_kind(id);
+        let def_id = self.local_def_id(id);
+        let res = Res::Def(kind, def_id);
+        let vis = self.get_visibility(id);
+        let span = self.get_span(id, sess);
+        let macro_rules = match kind {
+            DefKind::Macro(..) => self.root.tables.macro_rules.get(self, id).is_some(),
+            _ => false,
+        };
+
+        ModChild { ident, res, vis, span, macro_rules }
+    }
+
     /// Iterates over all named children of the given module,
     /// including both proper items and reexports.
     /// Module here is understood in name resolution sense - it can be a `mod` item,
     /// or a crate root, or an enum, or a trait.
-    fn for_each_module_child(
+    fn get_module_children(
         self,
         id: DefIndex,
-        mut callback: impl FnMut(ModChild),
-        sess: &Session,
-    ) {
-        if let Some(data) = &self.root.proc_macro_data {
-            // If we are loading as a proc macro, we want to return
-            // the view of this crate as a proc macro crate.
-            if id == CRATE_DEF_INDEX {
-                for def_index in data.macros.decode(self) {
-                    let raw_macro = self.raw_proc_macro(def_index);
-                    let res = Res::Def(
-                        DefKind::Macro(macro_kind(raw_macro)),
-                        self.local_def_id(def_index),
-                    );
-                    let ident = self.item_ident(def_index, sess);
-                    callback(ModChild {
-                        ident,
-                        res,
-                        vis: ty::Visibility::Public,
-                        span: ident.span,
-                        macro_rules: false,
-                    });
+        sess: &'a Session,
+    ) -> impl Iterator<Item = ModChild> + 'a {
+        iter::from_generator(move || {
+            if let Some(data) = &self.root.proc_macro_data {
+                // If we are loading as a proc macro, we want to return
+                // the view of this crate as a proc macro crate.
+                if id == CRATE_DEF_INDEX {
+                    for child_index in data.macros.decode(self) {
+                        yield self.get_mod_child(child_index, sess);
+                    }
+                }
+            } else {
+                // Iterate over all children.
+                for child_index in self.root.tables.children.get(self, id).unwrap().decode(self) {
+                    yield self.get_mod_child(child_index, sess);
+                }
+
+                if let Some(reexports) = self.root.tables.module_reexports.get(self, id) {
+                    for reexport in reexports.decode((self, sess)) {
+                        yield reexport;
+                    }
                 }
             }
-            return;
-        }
-
-        // Iterate over all children.
-        if let Some(children) = self.root.tables.children.get(self, id) {
-            for child_index in children.decode((self, sess)) {
-                let ident = self.item_ident(child_index, sess);
-                let kind = self.def_kind(child_index);
-                let def_id = self.local_def_id(child_index);
-                let res = Res::Def(kind, def_id);
-                let vis = self.get_visibility(child_index);
-                let span = self.get_span(child_index, sess);
-                let macro_rules = match kind {
-                    DefKind::Macro(..) => {
-                        self.root.tables.macro_rules.get(self, child_index).is_some()
-                    }
-                    _ => false,
-                };
-
-                callback(ModChild { ident, res, vis, span, macro_rules });
-            }
-        }
-
-        if let Some(exports) = self.root.tables.module_reexports.get(self, id) {
-            for exp in exports.decode((self, sess)) {
-                callback(exp);
-            }
-        }
+        })
     }
 
     fn is_ctfe_mir_available(self, id: DefIndex) -> bool {
@@ -1776,15 +1763,5 @@ impl CrateMetadata {
         }
 
         None
-    }
-}
-
-// Cannot be implemented on 'ProcMacro', as libproc_macro
-// does not depend on librustc_ast
-fn macro_kind(raw: &ProcMacro) -> MacroKind {
-    match raw {
-        ProcMacro::CustomDerive { .. } => MacroKind::Derive,
-        ProcMacro::Attr { .. } => MacroKind::Attr,
-        ProcMacro::Bang { .. } => MacroKind::Bang,
     }
 }

@@ -204,7 +204,9 @@ impl<'a> Resolver<'a> {
     }
 
     pub(crate) fn build_reduced_graph_external(&mut self, module: Module<'a>) {
-        for child in self.cstore().module_children_untracked(module.def_id(), self.session) {
+        for child in
+            Vec::from_iter(self.cstore().module_children_untracked(module.def_id(), self.session))
+        {
             let parent_scope = ParentScope::module(module, self);
             BuildReducedGraphVisitor { r: self, parent_scope }
                 .build_reduced_graph_for_external_crate_res(child);
