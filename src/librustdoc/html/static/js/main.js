@@ -202,6 +202,7 @@ function loadCss(cssUrl) {
         if (event.ctrlKey || event.altKey || event.metaKey) {
             return;
         }
+        window.hideAllModals();
         addClass(getSettingsButton(), "rotate");
         event.preventDefault();
         // Sending request for the CSS and the JS files at the same time so it will
@@ -377,7 +378,10 @@ function loadCss(cssUrl) {
         }
         ev.preventDefault();
         searchState.defocus();
-        window.hidePopoverMenus();
+        // If the notable traits popover is open, and the user presses Escape,
+        // reset focus back to the link.
+        hideNotable(true);
+        window.hideAllModals();
     }
 
     function handleShortcut(ev) {
@@ -767,6 +771,7 @@ function loadCss(cssUrl) {
     };
 
     function showSidebar() {
+        window.hideAllModals();
         window.rustdocMobileScrollLock();
         const sidebar = document.getElementsByClassName("sidebar")[0];
         addClass(sidebar, "shown");
@@ -843,7 +848,7 @@ function loadCss(cssUrl) {
             // Make this function idempotent.
             return;
         }
-        hideNotable(false);
+        window.hideAllModals();
         const ty = e.getAttribute("data-ty");
         const wrapper = document.createElement("div");
         wrapper.innerHTML = "<div class=\"docblock\">" + window.NOTABLE_TRAITS[ty] + "</div>";
@@ -1050,13 +1055,24 @@ function loadCss(cssUrl) {
     }
 
     /**
+     * Hide popover menus, notable trait tooltips, and the sidebar (if applicable).
+     *
+     * This version does not do anything to tweak the focused element. The caller
+     * should make sure it behaves reasonably.
+     */
+    window.hideAllModals = function() {
+        hideSidebar();
+        window.hidePopoverMenus();
+        hideNotable(false);
+    };
+
+    /**
      * Hide all the popover menus.
      */
     window.hidePopoverMenus = function() {
         onEachLazy(document.querySelectorAll(".search-form .popover"), elem => {
             elem.style.display = "none";
         });
-        hideNotable(false);
     };
 
     /**
@@ -1081,7 +1097,7 @@ function loadCss(cssUrl) {
     function showHelp() {
         const menu = getHelpMenu(true);
         if (menu.style.display === "none") {
-            window.hidePopoverMenus();
+            window.hideAllModals();
             menu.style.display = "";
         }
     }
