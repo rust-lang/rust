@@ -939,6 +939,7 @@ impl<'mir, 'tcx> MiriMachine<'mir, 'tcx> {
     /// Get the current span in the topmost function which is workspace-local and not
     /// `#[track_caller]`.
     /// This function is backed by a cache, and can be assumed to be very fast.
+    /// It will work even when the stack is empty.
     pub fn current_span(&self) -> Span {
         self.top_user_relevant_frame()
             .map(|frame_idx| self.stack()[frame_idx].current_span())
@@ -953,10 +954,9 @@ impl<'mir, 'tcx> MiriMachine<'mir, 'tcx> {
     pub fn caller_span(&self) -> Span {
         // We need to go down at least to the caller (len - 2), or however
         // far we have to go to find a frame in a local crate which is also not #[track_caller].
-        self.top_user_relevant_frame()
-            .map(|frame_idx| cmp::min(frame_idx, self.stack().len() - 2))
-            .map(|frame_idx| self.stack()[frame_idx].current_span())
-            .unwrap_or(rustc_span::DUMMY_SP)
+        let frame_idx = self.top_user_relevant_frame().unwrap();
+        let frame_idx = cmp::min(frame_idx, self.stack().len().checked_sub(2).unwrap());
+        self.stack()[frame_idx].current_span()
     }
 
     fn stack(&self) -> &[Frame<'mir, 'tcx, Provenance, machine::FrameData<'tcx>>] {
