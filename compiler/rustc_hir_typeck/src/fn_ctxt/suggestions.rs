@@ -924,15 +924,12 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             let ty = match self.tcx.asyncness(fn_id.owner) {
                 hir::IsAsync::Async => {
                     let infcx = self.tcx.infer_ctxt().build();
-                    infcx
-                        .get_impl_future_output_ty(ty)
-                        .unwrap_or_else(|| {
-                            span_bug!(
-                                fn_decl.output.span(),
-                                "failed to get output type of async function"
-                            )
-                        })
-                        .skip_binder()
+                    infcx.get_impl_future_output_ty(ty).unwrap_or_else(|| {
+                        span_bug!(
+                            fn_decl.output.span(),
+                            "failed to get output type of async function"
+                        )
+                    })
                 }
                 hir::IsAsync::NotAsync => ty,
             };
