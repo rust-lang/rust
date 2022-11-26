@@ -17,7 +17,7 @@ use rustc_lint::LateContext;
 use rustc_middle::mir::interpret::{ConstValue, Scalar};
 use rustc_middle::ty::{
     self, AdtDef, AssocKind, Binder, BoundRegion, DefIdTree, FnSig, IntTy, List, ParamEnv, Predicate, PredicateKind,
-    ProjectionTy, Region, RegionKind, SubstsRef, Ty, TyCtxt, TypeSuperVisitable, TypeVisitable, TypeVisitor, UintTy,
+    AliasTy, Region, RegionKind, SubstsRef, Ty, TyCtxt, TypeSuperVisitable, TypeVisitable, TypeVisitor, UintTy,
     VariantDef, VariantDiscr,
 };
 use rustc_middle::ty::{GenericArg, GenericArgKind};
@@ -79,7 +79,7 @@ pub fn contains_ty_adt_constructor_opaque<'tcx>(cx: &LateContext<'tcx>, ty: Ty<'
                 return true;
             }
 
-            if let ty::Opaque(ty::OpaqueTy { def_id, substs: _ }) = *inner_ty.kind() {
+            if let ty::Opaque(ty::AliasTy { def_id, substs: _ }) = *inner_ty.kind() {
                 for &(predicate, _span) in cx.tcx.explicit_item_bounds(def_id) {
                     match predicate.kind().skip_binder() {
                         // For `impl Trait<U>`, it will register a predicate of `T: Trait<U>`, so we go through
@@ -250,7 +250,7 @@ pub fn is_must_use_ty<'tcx>(cx: &LateContext<'tcx>, ty: Ty<'tcx>) -> bool {
             is_must_use_ty(cx, *ty)
         },
         ty::Tuple(substs) => substs.iter().any(|ty| is_must_use_ty(cx, ty)),
-        ty::Opaque(ty::OpaqueTy { def_id, substs: _ }) => {
+        ty::Opaque(ty::AliasTy { def_id, substs: _ }) => {
             for (predicate, _) in cx.tcx.explicit_item_bounds(*def_id) {
                 if let ty::PredicateKind::Clause(ty::Clause::Trait(trait_predicate)) = predicate.kind().skip_binder() {
                     if cx.tcx.has_attr(trait_predicate.trait_ref.def_id, sym::must_use) {
@@ -631,7 +631,7 @@ pub fn ty_sig<'tcx>(cx: &LateContext<'tcx>, ty: Ty<'tcx>) -> Option<ExprFnSig<'t
             Some(ExprFnSig::Closure(decl, subs.as_closure().sig()))
         },
         ty::FnDef(id, subs) => Some(ExprFnSig::Sig(cx.tcx.bound_fn_sig(id).subst(cx.tcx, subs), Some(id))),
-        ty::Opaque(ty::OpaqueTy{ def_id, substs: _ }) => sig_from_bounds(cx, ty, cx.tcx.item_bounds(def_id), cx.tcx.opt_parent(def_id)),
+        ty::Opaque(ty::AliasTy { def_id, substs: _ }) => sig_from_bounds(cx, ty, cx.tcx.item_bounds(def_id), cx.tcx.opt_parent(def_id)),
         ty::FnPtr(sig) => Some(ExprFnSig::Sig(sig, None)),
         ty::Dynamic(bounds, _, _) => {
             let lang_items = cx.tcx.lang_items();
@@ -701,7 +701,7 @@ fn sig_from_bounds<'tcx>(
     inputs.map(|ty| ExprFnSig::Trait(ty, output, predicates_id))
 }
 
-fn sig_for_projection<'tcx>(cx: &LateContext<'tcx>, ty: ProjectionTy<'tcx>) -> Option<ExprFnSig<'tcx>> {
+fn sig_for_projection<'tcx>(cx: &LateContext<'tcx>, ty: AliasTy<'tcx>) -> Option<ExprFnSig<'tcx>> {
     let mut inputs = None;
     let mut output = None;
     let lang_items = cx.tcx.lang_items();
@@ -980,13 +980,13 @@ pub fn make_projection<'tcx>(
     container_id: DefId,
     assoc_ty: Symbol,
     substs: impl IntoIterator<Item = impl Into<GenericArg<'tcx>>>,
-) -> Option<ProjectionTy<'tcx>> {
+) -> Option<AliasTy<'tcx>> {
     fn helper<'tcx>(
         tcx: TyCtxt<'tcx>,
         container_id: DefId,
         assoc_ty: Symbol,
         substs: SubstsRef<'tcx>,
-    ) -> Option<ProjectionTy<'tcx>> {
+    ) -> Option<AliasTy<'tcx>> {
         let Some(assoc_item) = tcx
             .associated_items(container_id)
             .find_by_name_and_kind(tcx, Ident::with_dummy_span(assoc_ty), AssocKind::Type, container_id)
@@ -1039,7 +1039,7 @@ pub fn make_projection<'tcx>(
             }
         }
 
-        Some(ProjectionTy {
+        Some(AliasTy {
             substs,
             def_id: assoc_item.def_id,
         })
@@ -1065,7 +1065,7 @@ pub fn make_normalized_projection<'tcx>(
     assoc_ty: Symbol,
     substs: impl IntoIterator<Item = impl Into<GenericArg<'tcx>>>,
 ) -> Option<Ty<'tcx>> {
-    fn helper<'tcx>(tcx: TyCtxt<'tcx>, param_env: ParamEnv<'tcx>, ty: ProjectionTy<'tcx>) -> Option<Ty<'tcx>> {
+    fn helper<'tcx>(tcx: TyCtxt<'tcx>, param_env: ParamEnv<'tcx>, ty: AliasTy<'tcx>) -> Option<Ty<'tcx>> {
         #[cfg(debug_assertions)]
         if let Some((i, subst)) = ty
             .substs
