@@ -151,7 +151,7 @@ fn iterates_same_ty<'tcx>(cx: &LateContext<'tcx>, iter_ty: Ty<'tcx>, collect_ty:
         && let Some(into_iter_item_proj) = make_projection(cx.tcx, into_iter_trait, item, [collect_ty])
         && let Ok(into_iter_item_ty) = cx.tcx.try_normalize_erasing_regions(
             cx.param_env,
-            cx.tcx.mk_projection(into_iter_item_proj.item_def_id, into_iter_item_proj.substs)
+            cx.tcx.mk_projection(into_iter_item_proj.def_id, into_iter_item_proj.substs)
         )
     {
         iter_item_ty == into_iter_item_ty

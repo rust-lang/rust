@@ -490,10 +490,10 @@ where
             }
 
             ty::Projection(proj)
-                if self.tcx.def_kind(proj.item_def_id) == DefKind::ImplTraitPlaceholder =>
+                if self.tcx.def_kind(proj.def_id) == DefKind::ImplTraitPlaceholder =>
             {
                 // Skip lifetime paramters that are not captures.
-                let variances = self.tcx.variances_of(proj.item_def_id);
+                let variances = self.tcx.variances_of(proj.def_id);
 
                 for (v, s) in std::iter::zip(variances, proj.substs.iter()) {
                     if *v != ty::Variance::Bivariant {
@@ -568,7 +568,7 @@ impl<'tcx> InferCtxt<'tcx> {
                     // FIXME(RPITIT): Don't replace RPITITs with inference vars.
                     ty::Projection(projection_ty)
                         if !projection_ty.has_escaping_bound_vars()
-                            && tcx.def_kind(projection_ty.item_def_id)
+                            && tcx.def_kind(projection_ty.def_id)
                                 != DefKind::ImplTraitPlaceholder =>
                     {
                         self.infer_projection(
@@ -588,7 +588,7 @@ impl<'tcx> InferCtxt<'tcx> {
                     }
                     // FIXME(RPITIT): This can go away when we move to associated types
                     ty::Projection(proj)
-                        if def_id.to_def_id() == proj.item_def_id && substs == proj.substs =>
+                        if def_id.to_def_id() == proj.def_id && substs == proj.substs =>
                     {
                         hidden_ty
                     }

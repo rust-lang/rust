@@ -21,7 +21,7 @@ impl<'tcx> InferCtxt<'tcx> {
         recursion_depth: usize,
         obligations: &mut Vec<PredicateObligation<'tcx>>,
     ) -> Ty<'tcx> {
-        let def_id = projection_ty.item_def_id;
+        let def_id = projection_ty.def_id;
         let ty_var = self.next_ty_var(TypeVariableOrigin {
             kind: TypeVariableOriginKind::NormalizeProjectionType,
             span: self.tcx.def_span(def_id),

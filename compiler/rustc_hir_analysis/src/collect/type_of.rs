@@ -69,7 +69,7 @@ pub(super) fn opt_const_param_of(tcx: TyCtxt<'_>, def_id: LocalDefId) -> Option<
             // as a precaution for if it's ever allowed to elide lifetimes in GAT's. It currently isn't
             // but it can't hurt to be safe ^^
             if let ty::Projection(projection) = ty.kind() {
-                let generics = tcx.generics_of(projection.item_def_id);
+                let generics = tcx.generics_of(projection.def_id);
 
                 let arg_index = segment
                     .args

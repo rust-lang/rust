@@ -342,9 +342,9 @@ impl<'tcx> InferCtxt<'tcx> {
         let (def_id, substs) = match *ty.kind() {
             ty::Opaque(ty::OpaqueTy { def_id, substs }) => (def_id, substs),
             ty::Projection(data)
-                if self.tcx.def_kind(data.item_def_id) == DefKind::ImplTraitPlaceholder =>
+                if self.tcx.def_kind(data.def_id) == DefKind::ImplTraitPlaceholder =>
             {
-                (data.item_def_id, data.substs)
+                (data.def_id, data.substs)
             }
             _ => return None,
         };
@@ -358,7 +358,7 @@ impl<'tcx> InferCtxt<'tcx> {
                     .kind()
                     .map_bound(|kind| match kind {
                         ty::PredicateKind::Clause(ty::Clause::Projection(projection_predicate))
-                            if projection_predicate.projection_ty.item_def_id == item_def_id =>
+                            if projection_predicate.projection_ty.def_id == item_def_id =>
                         {
                             projection_predicate.term.ty()
                         }
@@ -1743,11 +1743,11 @@ impl<'tcx> TypeErrCtxt<'_, 'tcx> {
                                 )
                             }
                             (true, ty::Projection(proj))
-                                if self.tcx.def_kind(proj.item_def_id)
+                                if self.tcx.def_kind(proj.def_id)
                                     == DefKind::ImplTraitPlaceholder =>
                             {
                                 let sm = self.tcx.sess.source_map();
-                                let pos = sm.lookup_char_pos(self.tcx.def_span(proj.item_def_id).lo());
+                                let pos = sm.lookup_char_pos(self.tcx.def_span(proj.def_id).lo());
                                 format!(
                                     " (trait associated opaque type at <{}:{}:{}>)",
                                     sm.filename_for_diagnostics(&pos.file.name),

@@ -2599,7 +2599,7 @@ impl<'tcx> TyCtxt<'tcx> {
             substs.len(),
             "wrong number of generic parameters for {item_def_id:?}: {substs:?}",
         );
-        self.mk_ty(Projection(ProjectionTy { item_def_id, substs }))
+        self.mk_ty(Projection(ProjectionTy { def_id: item_def_id, substs }))
     }
 
     #[inline]

@@ -276,15 +276,11 @@ impl<'tcx> Relate<'tcx> for ty::ProjectionTy<'tcx> {
         a: ty::ProjectionTy<'tcx>,
         b: ty::ProjectionTy<'tcx>,
     ) -> RelateResult<'tcx, ty::ProjectionTy<'tcx>> {
-        if a.item_def_id != b.item_def_id {
-            Err(TypeError::ProjectionMismatched(expected_found(
-                relation,
-                a.item_def_id,
-                b.item_def_id,
-            )))
+        if a.def_id != b.def_id {
+            Err(TypeError::ProjectionMismatched(expected_found(relation, a.def_id, b.def_id)))
         } else {
             let substs = relation.relate(a.substs, b.substs)?;
-            Ok(ty::ProjectionTy { item_def_id: a.item_def_id, substs: &substs })
+            Ok(ty::ProjectionTy { def_id: a.def_id, substs: &substs })
         }
     }
 }
@@ -295,12 +291,8 @@ impl<'tcx> Relate<'tcx> for ty::ExistentialProjection<'tcx> {
         a: ty::ExistentialProjection<'tcx>,
         b: ty::ExistentialProjection<'tcx>,
     ) -> RelateResult<'tcx, ty::ExistentialProjection<'tcx>> {
-        if a.item_def_id != b.item_def_id {
-            Err(TypeError::ProjectionMismatched(expected_found(
-                relation,
-                a.item_def_id,
-                b.item_def_id,
-            )))
+        if a.def_id != b.def_id {
+            Err(TypeError::ProjectionMismatched(expected_found(relation, a.def_id, b.def_id)))
         } else {
             let term = relation.relate_with_variance(
                 ty::Invariant,
@@ -314,7 +306,7 @@ impl<'tcx> Relate<'tcx> for ty::ExistentialProjection<'tcx> {
                 a.substs,
                 b.substs,
             )?;
-            Ok(ty::ExistentialProjection { item_def_id: a.item_def_id, substs, term })
+            Ok(ty::ExistentialProjection { def_id: a.def_id, substs, term })
         }
     }
 }
@@ -561,7 +553,7 @@ pub fn super_relate_tys<'tcx, R: TypeRelation<'tcx>>(
         // these two are already handled downstream in case of lazy normalization
         (&ty::Projection(a_data), &ty::Projection(b_data)) => {
             let projection_ty = relation.relate(a_data, b_data)?;
-            Ok(tcx.mk_projection(projection_ty.item_def_id, projection_ty.substs))
+            Ok(tcx.mk_projection(projection_ty.def_id, projection_ty.substs))
         }
 
         (

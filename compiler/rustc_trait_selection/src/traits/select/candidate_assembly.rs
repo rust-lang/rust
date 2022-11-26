@@ -537,7 +537,7 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
                 self,
                 param_env,
                 ty::ProjectionTy {
-                    item_def_id: tcx.lang_items().deref_target()?,
+                    def_id: tcx.lang_items().deref_target()?,
                     substs: trait_ref.substs,
                 },
                 cause.clone(),

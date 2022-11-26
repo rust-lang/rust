@@ -202,7 +202,7 @@ fn insert_required_predicates_to_be_wf<'tcx>(
                 debug!("Projection");
                 check_explicit_predicates(
                     tcx,
-                    tcx.parent(obj.item_def_id),
+                    tcx.parent(obj.def_id),
                     obj.substs,
                     required_predicates,
                     explicit_map,

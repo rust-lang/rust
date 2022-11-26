@@ -720,9 +720,9 @@ pub trait PrettyPrinter<'tcx>:
             }
             ty::Projection(ref data) => {
                 if !(self.should_print_verbose() || NO_QUERIES.with(|q| q.get()))
-                    && self.tcx().def_kind(data.item_def_id) == DefKind::ImplTraitPlaceholder
+                    && self.tcx().def_kind(data.def_id) == DefKind::ImplTraitPlaceholder
                 {
-                    return self.pretty_print_opaque_impl_type(data.item_def_id, data.substs);
+                    return self.pretty_print_opaque_impl_type(data.def_id, data.substs);
                 } else {
                     p!(print(data))
                 }
@@ -1022,7 +1022,7 @@ pub trait PrettyPrinter<'tcx>:
                         // unless we can find out what generator return type it comes from.
                         let term = if let Some(ty) = term.skip_binder().ty()
                             && let ty::Projection(proj) = ty.kind()
-                            && let Some(assoc) = tcx.opt_associated_item(proj.item_def_id)
+                            && let Some(assoc) = tcx.opt_associated_item(proj.def_id)
                             && assoc.trait_container(tcx) == tcx.lang_items().gen_trait()
                             && assoc.name == rustc_span::sym::Return
                         {
@@ -2655,7 +2655,7 @@ define_print_and_forward_display! {
     }
 
     ty::ExistentialProjection<'tcx> {
-        let name = cx.tcx().associated_item(self.item_def_id).name;
+        let name = cx.tcx().associated_item(self.def_id).name;
         p!(write("{} = ", name), print(self.term))
     }
 
@@ -2743,7 +2743,7 @@ define_print_and_forward_display! {
     }
 
     ty::ProjectionTy<'tcx> {
-        p!(print_def_path(self.item_def_id, self.substs));
+        p!(print_def_path(self.def_id, self.substs));
     }
 
     ty::ClosureKind {

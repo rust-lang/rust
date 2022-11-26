@@ -509,7 +509,7 @@ impl<'tcx> TypeErrCtxt<'_, 'tcx> {
                     (
                         hir::ItemKind::OpaqueTy(hir::OpaqueTy { bounds: last_bounds, .. }),
                         hir::ItemKind::OpaqueTy(hir::OpaqueTy { bounds: exp_bounds, .. }),
-                    ) if iter::zip(*last_bounds, *exp_bounds).all(|(left, right)| {
+                    ) if std::iter::zip(*last_bounds, *exp_bounds).all(|(left, right)| {
                         match (left, right) {
                             (
                                 hir::GenericBound::Trait(tl, ml),

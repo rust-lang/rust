@@ -1595,7 +1595,7 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
 
         let tcx = self.infcx.tcx;
         let (def_id, substs) = match *placeholder_trait_predicate.trait_ref.self_ty().kind() {
-            ty::Projection(ref data) => (data.item_def_id, data.substs),
+            ty::Projection(ref data) => (data.def_id, data.substs),
             ty::Opaque(ty::OpaqueTy { def_id, substs }) => (def_id, substs),
             _ => {
                 span_bug!(
@@ -1745,7 +1745,7 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
             });
 
         if is_match {
-            let generics = self.tcx().generics_of(obligation.predicate.item_def_id);
+            let generics = self.tcx().generics_of(obligation.predicate.def_id);
             // FIXME(generic-associated-types): Addresses aggressive inference in #92917.
             // If this type is a GAT, and of the GAT substs resolve to something new,
             // that means that we must have newly inferred something about the GAT.

@@ -170,8 +170,7 @@ pub enum TyKind<I: Interner> {
     /// A tuple type. For example, `(i32, bool)`.
     Tuple(I::ListTy),
 
-    /// The projection of an associated type. For example,
-    /// `<T as Trait<..>>::N`.
+    /// A projection or opaque type. Both of these types
     Projection(I::ProjectionTy),
 
     /// Opaque (`impl Trait`) type found in a return type.

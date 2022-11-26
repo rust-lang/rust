@@ -440,7 +440,7 @@ impl<'tcx> Printer<'tcx> for &mut SymbolMangler<'tcx> {
             ty::Adt(ty::AdtDef(Interned(&ty::AdtDefData { did: def_id, .. }, _)), substs)
             | ty::FnDef(def_id, substs)
             | ty::Opaque(ty::OpaqueTy { def_id, substs })
-            | ty::Projection(ty::ProjectionTy { item_def_id: def_id, substs })
+            | ty::Projection(ty::ProjectionTy { def_id, substs })
             | ty::Closure(def_id, substs)
             | ty::Generator(def_id, substs, _) => {
                 self = self.print_def_path(def_id, substs)?;
@@ -544,7 +544,7 @@ impl<'tcx> Printer<'tcx> for &mut SymbolMangler<'tcx> {
                         cx = cx.print_def_path(trait_ref.def_id, trait_ref.substs)?;
                     }
                     ty::ExistentialPredicate::Projection(projection) => {
-                        let name = cx.tcx.associated_item(projection.item_def_id).name;
+                        let name = cx.tcx.associated_item(projection.def_id).name;
                         cx.push("p");
                         cx.push_ident(name.as_str());
                         cx = match projection.term.unpack() {

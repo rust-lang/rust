@@ -1046,7 +1046,7 @@ impl<'tcx> PolyProjectionPredicate<'tcx> {
     /// associated type, which is in `tcx.associated_item(projection_def_id()).container`.
     pub fn projection_def_id(&self) -> DefId {
         // Ok to skip binder since trait `DefId` does not care about regions.
-        self.skip_binder().projection_ty.item_def_id
+        self.skip_binder().projection_ty.def_id
     }
 }
 

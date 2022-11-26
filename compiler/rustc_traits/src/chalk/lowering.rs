@@ -69,7 +69,7 @@ impl<'tcx> LowerInto<'tcx, SubstsRef<'tcx>> for &chalk_ir::Substitution<RustInte
 impl<'tcx> LowerInto<'tcx, chalk_ir::AliasTy<RustInterner<'tcx>>> for ty::ProjectionTy<'tcx> {
     fn lower_into(self, interner: RustInterner<'tcx>) -> chalk_ir::AliasTy<RustInterner<'tcx>> {
         chalk_ir::AliasTy::Projection(chalk_ir::ProjectionTy {
-            associated_ty_id: chalk_ir::AssocTypeId(self.item_def_id),
+            associated_ty_id: chalk_ir::AssocTypeId(self.def_id),
             substitution: self.substs.lower_into(interner),
         })
     }
@@ -448,7 +448,7 @@ impl<'tcx> LowerInto<'tcx, Ty<'tcx>> for &chalk_ir::Ty<RustInterner<'tcx>> {
             }),
             TyKind::AssociatedType(assoc_ty, substitution) => ty::Projection(ty::ProjectionTy {
                 substs: substitution.lower_into(interner),
-                item_def_id: assoc_ty.0,
+                def_id: assoc_ty.0,
             }),
             TyKind::Foreign(def_id) => ty::Foreign(def_id.0),
             TyKind::Error => return interner.tcx.ty_error(),
@@ -458,7 +458,7 @@ impl<'tcx> LowerInto<'tcx, Ty<'tcx>> for &chalk_ir::Ty<RustInterner<'tcx>> {
             }),
             TyKind::Alias(alias_ty) => match alias_ty {
                 chalk_ir::AliasTy::Projection(projection) => ty::Projection(ty::ProjectionTy {
-                    item_def_id: projection.associated_ty_id.0,
+                    def_id: projection.associated_ty_id.0,
                     substs: projection.substitution.lower_into(interner),
                 }),
                 chalk_ir::AliasTy::Opaque(opaque) => ty::Opaque(ty::OpaqueTy {
@@ -690,7 +690,7 @@ impl<'tcx> LowerInto<'tcx, chalk_ir::Binders<chalk_ir::QuantifiedWhereClauses<Ru
                     binders.clone(),
                     chalk_ir::WhereClause::AliasEq(chalk_ir::AliasEq {
                         alias: chalk_ir::AliasTy::Projection(chalk_ir::ProjectionTy {
-                            associated_ty_id: chalk_ir::AssocTypeId(predicate.item_def_id),
+                            associated_ty_id: chalk_ir::AssocTypeId(predicate.def_id),
                             substitution: interner
                                 .tcx
                                 .mk_substs_trait(self_ty, predicate.substs)
@@ -846,7 +846,7 @@ impl<'tcx> LowerInto<'tcx, chalk_solve::rust_ir::AliasEqBound<RustInterner<'tcx>
         let (trait_ref, own_substs) = self.projection_ty.trait_ref_and_own_substs(interner.tcx);
         chalk_solve::rust_ir::AliasEqBound {
             trait_bound: trait_ref.lower_into(interner),
-            associated_ty_id: chalk_ir::AssocTypeId(self.projection_ty.item_def_id),
+            associated_ty_id: chalk_ir::AssocTypeId(self.projection_ty.def_id),
             parameters: own_substs.iter().map(|arg| arg.lower_into(interner)).collect(),
             value: self.term.ty().unwrap().lower_into(interner),
         }

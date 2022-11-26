@@ -1634,8 +1634,7 @@ impl<'tcx> InferCtxtPrivExt<'tcx> for TypeErrCtxt<'_, 'tcx> {
                 let normalized_ty = ocx.normalize(
                     &obligation.cause,
                     obligation.param_env,
-                    self.tcx
-                        .mk_projection(data.projection_ty.item_def_id, data.projection_ty.substs),
+                    self.tcx.mk_projection(data.projection_ty.def_id, data.projection_ty.substs),
                 );
 
                 debug!(?obligation.cause, ?obligation.param_env);
@@ -1686,10 +1685,10 @@ impl<'tcx> InferCtxtPrivExt<'tcx> for TypeErrCtxt<'_, 'tcx> {
             let secondary_span = match predicate.kind().skip_binder() {
                 ty::PredicateKind::Clause(ty::Clause::Projection(proj)) => self
                     .tcx
-                    .opt_associated_item(proj.projection_ty.item_def_id)
+                    .opt_associated_item(proj.projection_ty.def_id)
                     .and_then(|trait_assoc_item| {
                         self.tcx
-                            .trait_of_item(proj.projection_ty.item_def_id)
+                            .trait_of_item(proj.projection_ty.def_id)
                             .map(|id| (trait_assoc_item, id))
                     })
                     .and_then(|(trait_assoc_item, id)| {
@@ -1745,7 +1744,7 @@ impl<'tcx> InferCtxtPrivExt<'tcx> for TypeErrCtxt<'_, 'tcx> {
         let trait_def_id = pred.projection_ty.trait_def_id(self.tcx);
         let self_ty = pred.projection_ty.self_ty();
 
-        if Some(pred.projection_ty.item_def_id) == self.tcx.lang_items().fn_once_output() {
+        if Some(pred.projection_ty.def_id) == self.tcx.lang_items().fn_once_output() {
             Some(format!(
                 "expected `{self_ty}` to be a {fn_kind} that returns `{expected_ty}`, but it returns `{normalized_ty}`",
                 fn_kind = self_ty.prefix_string(self.tcx)

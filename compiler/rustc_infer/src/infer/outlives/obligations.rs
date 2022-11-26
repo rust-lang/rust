@@ -355,11 +355,11 @@ where
             origin,
             region,
             GenericKind::Projection(projection_ty),
-            projection_ty.item_def_id,
+            projection_ty.def_id,
             projection_ty.substs,
             false,
             |ty| match ty.kind() {
-                ty::Projection(projection_ty) => (projection_ty.item_def_id, projection_ty.substs),
+                ty::Projection(projection_ty) => (projection_ty.def_id, projection_ty.substs),
                 _ => bug!("expected only projection types from env, not {:?}", ty),
             },
         );

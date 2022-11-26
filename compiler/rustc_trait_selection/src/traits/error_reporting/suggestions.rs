@@ -858,7 +858,7 @@ impl<'tcx> TypeErrCtxtExt<'tcx> for TypeErrCtxt<'_, 'tcx> {
             ty::Opaque(ty::OpaqueTy { def_id, substs }) => {
                 self.tcx.bound_item_bounds(def_id).subst(self.tcx, substs).iter().find_map(|pred| {
                     if let ty::PredicateKind::Clause(ty::Clause::Projection(proj)) = pred.kind().skip_binder()
-                    && Some(proj.projection_ty.item_def_id) == self.tcx.lang_items().fn_once_output()
+                    && Some(proj.projection_ty.def_id) == self.tcx.lang_items().fn_once_output()
                     // args tuple will always be substs[1]
                     && let ty::Tuple(args) = proj.projection_ty.substs.type_at(1).kind()
                     {
@@ -875,7 +875,7 @@ impl<'tcx> TypeErrCtxtExt<'tcx> for TypeErrCtxt<'_, 'tcx> {
             ty::Dynamic(data, _, ty::Dyn) => {
                 data.iter().find_map(|pred| {
                     if let ty::ExistentialPredicate::Projection(proj) = pred.skip_binder()
-                    && Some(proj.item_def_id) == self.tcx.lang_items().fn_once_output()
+                    && Some(proj.def_id) == self.tcx.lang_items().fn_once_output()
                     // for existential projection, substs are shifted over by 1
                     && let ty::Tuple(args) = proj.substs.type_at(0).kind()
                     {
@@ -892,7 +892,7 @@ impl<'tcx> TypeErrCtxtExt<'tcx> for TypeErrCtxt<'_, 'tcx> {
             ty::Param(_) => {
                 obligation.param_env.caller_bounds().iter().find_map(|pred| {
                     if let ty::PredicateKind::Clause(ty::Clause::Projection(proj)) = pred.kind().skip_binder()
-                    && Some(proj.projection_ty.item_def_id) == self.tcx.lang_items().fn_once_output()
+                    && Some(proj.projection_ty.def_id) == self.tcx.lang_items().fn_once_output()
                     && proj.projection_ty.self_ty() == found
                     // args tuple will always be substs[1]
                     && let ty::Tuple(args) = proj.projection_ty.substs.type_at(1).kind()
@@ -3248,7 +3248,7 @@ impl<'tcx> TypeErrCtxtExt<'tcx> for TypeErrCtxt<'_, 'tcx> {
                 // This corresponds to `<ExprTy as Iterator>::Item = _`.
                 let trait_ref = ty::Binder::dummy(ty::PredicateKind::Clause(
                     ty::Clause::Projection(ty::ProjectionPredicate {
-                        projection_ty: ty::ProjectionTy { substs, item_def_id: proj.item_def_id },
+                        projection_ty: ty::ProjectionTy { substs, def_id: proj.def_id },
                         term: ty_var.into(),
                     }),
                 ));
@@ -3263,7 +3263,7 @@ impl<'tcx> TypeErrCtxtExt<'tcx> for TypeErrCtxt<'_, 'tcx> {
                 if ocx.select_where_possible().is_empty() {
                     // `ty_var` now holds the type that `Item` is for `ExprTy`.
                     let ty_var = self.resolve_vars_if_possible(ty_var);
-                    assocs_in_this_method.push(Some((span, (proj.item_def_id, ty_var))));
+                    assocs_in_this_method.push(Some((span, (proj.def_id, ty_var))));
                 } else {
                     // `<ExprTy as Iterator>` didn't select, so likely we've
                     // reached the end of the iterator chain, like the originating

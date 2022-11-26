@@ -684,10 +684,10 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                 .find_map(|(p, s)| get_future_output(p, s))?,
             ty::Error(_) => return None,
             ty::Projection(proj)
-                if self.tcx.def_kind(proj.item_def_id) == DefKind::ImplTraitPlaceholder =>
+                if self.tcx.def_kind(proj.def_id) == DefKind::ImplTraitPlaceholder =>
             {
                 self.tcx
-                    .bound_explicit_item_bounds(proj.item_def_id)
+                    .bound_explicit_item_bounds(proj.def_id)
                     .subst_iter_copied(self.tcx, proj.substs)
                     .find_map(|(p, s)| get_future_output(p, s))?
             }
@@ -743,11 +743,11 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         // The `Future` trait has only one associated item, `Output`,
         // so check that this is what we see.
         let output_assoc_item = self.tcx.associated_item_def_ids(future_trait)[0];
-        if output_assoc_item != predicate.projection_ty.item_def_id {
+        if output_assoc_item != predicate.projection_ty.def_id {
             span_bug!(
                 cause_span,
                 "projecting associated item `{:?}` from future, which is not Output `{:?}`",
-                predicate.projection_ty.item_def_id,
+                predicate.projection_ty.def_id,
                 output_assoc_item,
             );
         }

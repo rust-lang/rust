@@ -418,10 +418,10 @@ fn clean_projection<'tcx>(
     cx: &mut DocContext<'tcx>,
     def_id: Option<DefId>,
 ) -> Type {
-    if cx.tcx.def_kind(ty.skip_binder().item_def_id) == DefKind::ImplTraitPlaceholder {
+    if cx.tcx.def_kind(ty.skip_binder().def_id) == DefKind::ImplTraitPlaceholder {
         let bounds = cx
             .tcx
-            .explicit_item_bounds(ty.skip_binder().item_def_id)
+            .explicit_item_bounds(ty.skip_binder().def_id)
             .iter()
             .map(|(bound, _)| EarlyBinder(*bound).subst(cx.tcx, ty.skip_binder().substs))
             .collect::<Vec<_>>();
@@ -456,8 +456,8 @@ fn projection_to_path_segment<'tcx>(
     ty: ty::Binder<'tcx, ty::ProjectionTy<'tcx>>,
     cx: &mut DocContext<'tcx>,
 ) -> PathSegment {
-    let item = cx.tcx.associated_item(ty.skip_binder().item_def_id);
-    let generics = cx.tcx.generics_of(ty.skip_binder().item_def_id);
+    let item = cx.tcx.associated_item(ty.skip_binder().def_id);
+    let generics = cx.tcx.generics_of(ty.skip_binder().def_id);
     PathSegment {
         name: item.name,
         args: GenericArgs::AngleBracketed {

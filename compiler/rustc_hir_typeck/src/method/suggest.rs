@@ -559,7 +559,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
 
                                 let quiet_projection_ty = ty::ProjectionTy {
                                     substs: substs_with_infer_self,
-                                    item_def_id: projection_ty.item_def_id,
+                                    def_id: projection_ty.def_id,
                                 };
 
                                 let term = pred.skip_binder().term;
@@ -2269,7 +2269,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                             t.def_id() == info.def_id
                         }
                         ty::PredicateKind::Clause(ty::Clause::Projection(p)) => {
-                            p.projection_ty.item_def_id == info.def_id
+                            p.projection_ty.def_id == info.def_id
                         }
                         _ => false,
                     }

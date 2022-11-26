@@ -685,7 +685,7 @@ fn sig_from_bounds<'tcx>(
                 inputs = Some(i);
             },
             PredicateKind::Clause(ty::Clause::Projection(p))
-                if Some(p.projection_ty.item_def_id) == lang_items.fn_once_output()
+                if Some(p.projection_ty.def_id) == lang_items.fn_once_output()
                     && p.projection_ty.self_ty() == ty =>
             {
                 if output.is_some() {
@@ -708,7 +708,7 @@ fn sig_for_projection<'tcx>(cx: &LateContext<'tcx>, ty: ProjectionTy<'tcx>) -> O
 
     for (pred, _) in cx
         .tcx
-        .bound_explicit_item_bounds(ty.item_def_id)
+        .bound_explicit_item_bounds(ty.def_id)
         .subst_iter_copied(cx.tcx, ty.substs)
     {
         match pred.kind().skip_binder() {
@@ -726,7 +726,7 @@ fn sig_for_projection<'tcx>(cx: &LateContext<'tcx>, ty: ProjectionTy<'tcx>) -> O
                 inputs = Some(i);
             },
             PredicateKind::Clause(ty::Clause::Projection(p))
-                if Some(p.projection_ty.item_def_id) == lang_items.fn_once_output() =>
+                if Some(p.projection_ty.def_id) == lang_items.fn_once_output() =>
             {
                 if output.is_some() {
                     // Multiple different fn trait impls. Is this even allowed?
@@ -1041,7 +1041,7 @@ pub fn make_projection<'tcx>(
 
         Some(ProjectionTy {
             substs,
-            item_def_id: assoc_item.def_id,
+            def_id: assoc_item.def_id,
         })
     }
     helper(
@@ -1081,7 +1081,7 @@ pub fn make_normalized_projection<'tcx>(
             );
             return None;
         }
-        match tcx.try_normalize_erasing_regions(param_env, tcx.mk_projection(ty.item_def_id, ty.substs)) {
+        match tcx.try_normalize_erasing_regions(param_env, tcx.mk_projection(ty.def_id, ty.substs)) {
             Ok(ty) => Some(ty),
             Err(e) => {
                 debug_assert!(false, "failed to normalize type `{ty}`: {e:#?}");

@@ -82,7 +82,7 @@ impl<'tcx> LateLintPass<'tcx> for OpaqueHiddenInferredBound {
             let Some(proj_term) = proj.term.ty() else { continue };
 
             let proj_ty =
-                cx.tcx.mk_projection(proj.projection_ty.item_def_id, proj.projection_ty.substs);
+                cx.tcx.mk_projection(proj.projection_ty.def_id, proj.projection_ty.substs);
             // For every instance of the projection type in the bounds,
             // replace them with the term we're assigning to the associated
             // type in our opaque type.
@@ -97,7 +97,7 @@ impl<'tcx> LateLintPass<'tcx> for OpaqueHiddenInferredBound {
             // with `impl Send: OtherTrait`.
             for (assoc_pred, assoc_pred_span) in cx
                 .tcx
-                .bound_explicit_item_bounds(proj.projection_ty.item_def_id)
+                .bound_explicit_item_bounds(proj.projection_ty.def_id)
                 .subst_iter_copied(cx.tcx, &proj.projection_ty.substs)
             {
                 let assoc_pred = assoc_pred.fold_with(proj_replacer);
