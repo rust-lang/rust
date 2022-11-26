@@ -542,16 +542,6 @@ impl Build {
             metrics: metrics::BuildMetrics::init(),
         };
 
-        build.verbose("finding compilers");
-        cc_detect::find(&mut build);
-        // When running `setup`, the profile is about to change, so any requirements we have now may
-        // be different on the next invocation. Don't check for them until the next time x.py is
-        // run. This is ok because `setup` never runs any build commands, so it won't fail if commands are missing.
-        if !matches!(build.config.cmd, Subcommand::Setup { .. }) {
-            build.verbose("running sanity check");
-            sanity::check(&mut build);
-        }
-
         // If local-rust is the same major.minor as the current version, then force a
         // local-rebuild
         let local_version_verbose =
@@ -567,16 +557,32 @@ impl Build {
             build.local_rebuild = true;
         }
 
-        // Make sure we update these before gathering metadata so we don't get an error about missing
-        // Cargo.toml files.
-        let rust_submodules =
-            ["src/tools/rust-installer", "src/tools/cargo", "library/backtrace", "library/stdarch"];
-        for s in rust_submodules {
-            build.update_submodule(Path::new(s));
-        }
+        build.verbose("finding compilers");
+        cc_detect::find(&mut build);
+        // When running `setup`, the profile is about to change, so any requirements we have now may
+        // be different on the next invocation. Don't check for them until the next time x.py is
+        // run. This is ok because `setup` never runs any build commands, so it won't fail if commands are missing.
+        //
+        // Similarly, for `setup` we don't actually need submodules or cargo metadata.
+        if !matches!(build.config.cmd, Subcommand::Setup { .. }) {
+            build.verbose("running sanity check");
+            sanity::check(&mut build);
 
-        build.verbose("learning about cargo");
-        metadata::build(&mut build);
+            // Make sure we update these before gathering metadata so we don't get an error about missing
+            // Cargo.toml files.
+            let rust_submodules = [
+                "src/tools/rust-installer",
+                "src/tools/cargo",
+                "library/backtrace",
+                "library/stdarch",
+            ];
+            for s in rust_submodules {
+                build.update_submodule(Path::new(s));
+            }
+
+            build.verbose("learning about cargo");
+            metadata::build(&mut build);
+        }
 
         build
     }

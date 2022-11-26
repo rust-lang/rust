@@ -81,8 +81,9 @@ impl fmt::Display for Profile {
     }
 }
 
-pub fn setup(config: &Config, profile: Profile) {
+pub fn setup(config: &Config, profile: Option<Profile>) {
     let path = &config.config.clone().unwrap_or(PathBuf::from("config.toml"));
+    let profile = profile.unwrap_or_else(|| t!(interactive_path()));
 
     if path.exists() {
         eprintln!(
