@@ -261,6 +261,11 @@ trait EvalContextPrivExt<'mir, 'tcx: 'mir>: crate::MiriInterpCxExt<'mir, 'tcx> {
         // (that would be basically https://github.com/rust-lang/miri/issues/450),
         // we specifically look up the static in libstd that we know is placed
         // in that section.
+        if !this.have_module(&["std"]) {
+            // Looks like we are running in a `no_std` crate.
+            // That also means no TLS dtors callback to call.
+            return Ok(());
+        }
         let thread_callback =
             this.eval_windows("thread_local_key", "p_thread_callback")?.to_pointer(this)?;
         let thread_callback = this.get_ptr_fn(thread_callback)?.as_instance()?;
