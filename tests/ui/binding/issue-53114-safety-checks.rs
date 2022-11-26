@@ -36,7 +36,6 @@ fn let_ascribe_gets_unsafe_field() {
     let p = P { a: &2, b: &3 };
     let _: _ = &p.b;  //~ ERROR    reference to packed field
     let _: _ = u1.a;  //~ ERROR  [E0133]
-                      //~^ ERROR  [E0133]
     let _: _ = &u2.a; //~ ERROR  [E0133]
 
     // variation on above with `_` in substructure
