@@ -1,11 +1,12 @@
 error[E0308]: mismatched types
-  --> $DIR/return_type_containing_closure.rs:3:5
+  --> $DIR/return_type_containing_closure.rs:4:5
    |
 LL |     vec!['a'].iter().map(|c| c)
    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^ expected `()`, found struct `Map`
    |
    = note: expected unit type `()`
-                 found struct `Map<std::slice::Iter<'_, char>, [closure@$DIR/return_type_containing_closure.rs:3:26: 3:29]>`
+                 found struct `Map<std::slice::Iter<'_, char>, ...>`
+           the full type name has been written to '$TEST_BUILD_DIR/typeck/return_type_containing_closure/return_type_containing_closure.long-type-hash.txt'
 help: consider using a semicolon here
    |
 LL |     vec!['a'].iter().map(|c| c);

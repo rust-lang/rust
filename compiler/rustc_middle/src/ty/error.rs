@@ -986,8 +986,8 @@ fn foo(&self) -> Self::T { String::new() }
     }
 
     pub fn short_ty_string(self, ty: Ty<'tcx>) -> (String, Option<PathBuf>) {
-        let length_limit = 50;
-        let type_limit = 4;
+        let length_limit = self.sess.diagnostic_width().saturating_sub(20);
+        let mut type_limit = 50;
         let regular = FmtPrinter::new(self, hir::def::Namespace::TypeNS)
             .pretty_print_type(ty)
             .expect("could not write to `String`")
@@ -995,14 +995,22 @@ fn foo(&self) -> Self::T { String::new() }
         if regular.len() <= length_limit {
             return (regular, None);
         }
-        let short = FmtPrinter::new_with_limit(
-            self,
-            hir::def::Namespace::TypeNS,
-            rustc_session::Limit(type_limit),
-        )
-        .pretty_print_type(ty)
-        .expect("could not write to `String`")
-        .into_buffer();
+        let mut short;
+        loop {
+            // Look for the longest properly trimmed path that still fits in lenght_limit.
+            short = FmtPrinter::new_with_limit(
+                self,
+                hir::def::Namespace::TypeNS,
+                rustc_session::Limit(type_limit),
+            )
+            .pretty_print_type(ty)
+            .expect("could not write to `String`")
+            .into_buffer();
+            if short.len() <= length_limit || type_limit == 0 {
+                break;
+            }
+            type_limit -= 1;
+        }
         if regular == short {
             return (regular, None);
         }

@@ -1,3 +1,4 @@
+// normalize-stderr-test: "long-type-\d+" -> "long-type-hash"
 #[allow(unused)]
 fn foo() { //~ HELP a return type might be missing here
     vec!['a'].iter().map(|c| c)
