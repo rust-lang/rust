@@ -9,7 +9,7 @@ use super::{
 };
 use crate::infer::error_reporting::{TyCategory, TypeAnnotationNeeded as ErrorCode};
 use crate::infer::type_variable::{TypeVariableOrigin, TypeVariableOriginKind};
-use crate::infer::{self, InferCtxt, TyCtxtInferExt};
+use crate::infer::{self, InferCtxt};
 use crate::traits::query::evaluate_obligation::InferCtxtExt as _;
 use crate::traits::query::normalize::QueryNormalizeExt as _;
 use crate::traits::specialize::to_pretty_impl_header;
@@ -1930,14 +1930,6 @@ impl<'tcx> InferCtxtPrivExt<'tcx> for TypeErrCtxt<'_, 'tcx> {
             return report(normalized_impl_candidates, err);
         }
 
-        let normalize = |candidate| {
-            let infcx = self.tcx.infer_ctxt().build();
-            infcx
-                .at(&ObligationCause::dummy(), ty::ParamEnv::empty())
-                .query_normalize(candidate)
-                .map_or(candidate, |normalized| normalized.value)
-        };
-
         // Sort impl candidates so that ordering is consistent for UI tests.
         // because the ordering of `impl_candidates` may not be deterministic:
         // https://github.com/rust-lang/rust/pull/57475#issuecomment-455519507
@@ -1947,7 +1939,11 @@ impl<'tcx> InferCtxtPrivExt<'tcx> for TypeErrCtxt<'_, 'tcx> {
         let mut normalized_impl_candidates_and_similarities = impl_candidates
             .into_iter()
             .map(|ImplCandidate { trait_ref, similarity }| {
-                let normalized = normalize(trait_ref);
+                // FIXME(compiler-errors): This should be using `NormalizeExt::normalize`
+                let normalized = self
+                    .at(&ObligationCause::dummy(), ty::ParamEnv::empty())
+                    .query_normalize(trait_ref)
+                    .map_or(trait_ref, |normalized| normalized.value);
                 (similarity, normalized)
             })
             .collect::<Vec<_>>();
