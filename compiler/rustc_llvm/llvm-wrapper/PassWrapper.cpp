@@ -627,7 +627,11 @@ LLVMRustOptimize(
   bool DebugPassManager = false;
 
   PassInstrumentationCallbacks PIC;
+#if LLVM_VERSION_LT(16, 0)
   StandardInstrumentations SI(DebugPassManager);
+#else
+  StandardInstrumentations SI(TheModule->getContext(), DebugPassManager);
+#endif
   SI.registerCallbacks(PIC);
 
   if (LlvmSelfProfiler){
