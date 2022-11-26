@@ -2544,10 +2544,7 @@ impl<'tcx> InferCtxtPrivExt<'tcx> for TypeErrCtxt<'_, 'tcx> {
             let obligation =
                 Obligation::new(self.tcx, ObligationCause::dummy(), param_env, cleaned_pred);
 
-            // We don't use `InferCtxt::predicate_may_hold` because that
-            // will re-run predicates that overflow locally, which ends up
-            // taking a really long time to compute.
-            self.evaluate_obligation(&obligation).map_or(false, |eval| eval.may_apply())
+            self.predicate_may_hold(&obligation)
         })
     }
 
