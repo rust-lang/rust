@@ -326,8 +326,6 @@ impl Config {
         }
 
         let filename = format!("rustfmt-{version}-{build}.tar.xz", build = host.triple);
-        // cfg(bootstrap): will need to be changed from `rustfmt-preview` to `rustfmt` the next time you run `bump-stage0`.
-        // See <https://github.com/rust-lang/rust/pull/103648>
         self.download_component(DownloadSource::Dist, filename, "rustfmt-preview", &date, "stage0");
 
         self.fix_bin_or_dylib(&bin_root.join("bin").join("rustfmt"));
