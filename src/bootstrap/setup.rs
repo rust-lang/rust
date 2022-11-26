@@ -1,15 +1,13 @@
+use crate::Config;
 use crate::{t, VERSION};
-use crate::{Config, TargetSelection};
 use std::env::consts::EXE_SUFFIX;
 use std::fmt::Write as _;
 use std::fs::File;
+use std::io::Write;
 use std::path::{Path, PathBuf, MAIN_SEPARATOR};
 use std::process::Command;
 use std::str::FromStr;
-use std::{
-    env, fmt, fs,
-    io::{self, Write},
-};
+use std::{fmt, fs, io};
 
 #[derive(Clone, Copy, Debug, Eq, PartialEq)]
 pub enum Profile {
@@ -84,34 +82,10 @@ impl fmt::Display for Profile {
 pub fn setup(config: &Config, profile: Option<Profile>) {
     let path = &config.config.clone().unwrap_or(PathBuf::from("config.toml"));
     let profile = profile.unwrap_or_else(|| t!(interactive_path()));
+    setup_config_toml(path, profile, config);
 
-    if path.exists() {
-        eprintln!(
-            "error: you asked `x.py` to setup a new config file, but one already exists at `{}`",
-            path.display()
-        );
-        eprintln!("help: try adding `profile = \"{}\"` at the top of {}", profile, path.display());
-        eprintln!(
-            "note: this will use the configuration in {}",
-            profile.include_path(&config.src).display()
-        );
-        crate::detail_exit(1);
-    }
-
-    let settings = format!(
-        "# Includes one of the default files in src/bootstrap/defaults\n\
-    profile = \"{}\"\n\
-    changelog-seen = {}\n",
-        profile, VERSION
-    );
-    t!(fs::write(path, settings));
-
-    let include_path = profile.include_path(&config.src);
-    println!("`x.py` will now use the configuration at {}", include_path.display());
-
-    let build = TargetSelection::from_user(&env!("BUILD_TRIPLE"));
     let stage_path =
-        ["build", build.rustc_target_arg(), "stage1"].join(&MAIN_SEPARATOR.to_string());
+        ["build", config.build.rustc_target_arg(), "stage1"].join(&MAIN_SEPARATOR.to_string());
 
     println!();
 
@@ -151,6 +125,32 @@ pub fn setup(config: &Config, profile: Option<Profile>) {
             "For more suggestions, see https://rustc-dev-guide.rust-lang.org/building/suggested.html"
         );
     }
+}
+
+fn setup_config_toml(path: &PathBuf, profile: Profile, config: &Config) {
+    if path.exists() {
+        eprintln!(
+            "error: you asked `x.py` to setup a new config file, but one already exists at `{}`",
+            path.display()
+        );
+        eprintln!("help: try adding `profile = \"{}\"` at the top of {}", profile, path.display());
+        eprintln!(
+            "note: this will use the configuration in {}",
+            profile.include_path(&config.src).display()
+        );
+        crate::detail_exit(1);
+    }
+
+    let settings = format!(
+        "# Includes one of the default files in src/bootstrap/defaults\n\
+    profile = \"{}\"\n\
+    changelog-seen = {}\n",
+        profile, VERSION
+    );
+    t!(fs::write(path, settings));
+
+    let include_path = profile.include_path(&config.src);
+    println!("`x.py` will now use the configuration at {}", include_path.display());
 }
 
 fn rustup_installed() -> bool {
