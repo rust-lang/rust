@@ -48,7 +48,7 @@ pub fn symbols(input: TokenStream) -> TokenStream {
 /// `u32::MAX`. You can also customize things like the `Debug` impl,
 /// what traits are derived, and so forth via the macro.
 #[proc_macro]
-#[allow_internal_unstable(step_trait, rustc_attrs, trusted_step)]
+#[allow_internal_unstable(step_trait, rustc_attrs, trusted_step, spec_option_partial_eq)]
 pub fn newtype_index(input: TokenStream) -> TokenStream {
     newtype::newtype(input)
 }
