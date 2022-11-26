@@ -644,7 +644,6 @@ impl Stacks {
         alloc_id: AllocId,
         tag: ProvenanceExtra,
         range: AllocRange,
-        state: &GlobalState,
         machine: &'ecx MiriMachine<'mir, 'tcx>,
     ) -> InterpResult<'tcx>
     where
@@ -657,7 +656,7 @@ impl Stacks {
             range.size.bytes()
         );
         let dcx = DiagnosticCxBuilder::read(machine, tag, range);
-        let state = state.borrow();
+        let state = machine.stacked_borrows.as_ref().unwrap().borrow();
         self.for_each(range, dcx, |stack, dcx, exposed_tags| {
             stack.access(AccessKind::Read, tag, &state, dcx, exposed_tags)
         })
@@ -669,8 +668,7 @@ impl Stacks {
         alloc_id: AllocId,
         tag: ProvenanceExtra,
         range: AllocRange,
-        state: &GlobalState,
-        machine: &'ecx MiriMachine<'mir, 'tcx>,
+        machine: &'ecx mut MiriMachine<'mir, 'tcx>,
     ) -> InterpResult<'tcx> {
         trace!(
             "write access with tag {:?}: {:?}, size {}",
@@ -679,7 +677,7 @@ impl Stacks {
             range.size.bytes()
         );
         let dcx = DiagnosticCxBuilder::write(machine, tag, range);
-        let state = state.borrow();
+        let state = machine.stacked_borrows.as_ref().unwrap().borrow();
         self.for_each(range, dcx, |stack, dcx, exposed_tags| {
             stack.access(AccessKind::Write, tag, &state, dcx, exposed_tags)
         })
@@ -691,12 +689,11 @@ impl Stacks {
         alloc_id: AllocId,
         tag: ProvenanceExtra,
         range: AllocRange,
-        state: &GlobalState,
-        machine: &'ecx MiriMachine<'mir, 'tcx>,
+        machine: &'ecx mut MiriMachine<'mir, 'tcx>,
     ) -> InterpResult<'tcx> {
         trace!("deallocation with tag {:?}: {:?}, size {}", tag, alloc_id, range.size.bytes());
         let dcx = DiagnosticCxBuilder::dealloc(machine, tag);
-        let state = state.borrow();
+        let state = machine.stacked_borrows.as_ref().unwrap().borrow();
         self.for_each(range, dcx, |stack, dcx, exposed_tags| {
             stack.dealloc(tag, &state, dcx, exposed_tags)
         })?;

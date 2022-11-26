@@ -838,18 +838,18 @@ impl VClockAlloc {
         &self,
         alloc_id: AllocId,
         range: AllocRange,
-        global: &GlobalState,
-        thread_mgr: &ThreadManager<'_, '_>,
+        machine: &MiriMachine<'_, '_>,
     ) -> InterpResult<'tcx> {
+        let global = machine.data_race.as_ref().unwrap();
         if global.race_detecting() {
-            let (index, clocks) = global.current_thread_state(thread_mgr);
+            let (index, clocks) = global.current_thread_state(&machine.threads);
             let mut alloc_ranges = self.alloc_ranges.borrow_mut();
             for (offset, range) in alloc_ranges.iter_mut(range.start, range.size) {
                 if let Err(DataRace) = range.read_race_detect(&clocks, index) {
                     // Report data-race.
                     return Self::report_data_race(
                         global,
-                        thread_mgr,
+                        &machine.threads,
                         range,
                         "Read",
                         false,
@@ -869,17 +869,17 @@ impl VClockAlloc {
         alloc_id: AllocId,
         range: AllocRange,
         write_type: WriteType,
-        global: &mut GlobalState,
-        thread_mgr: &ThreadManager<'_, '_>,
+        machine: &mut MiriMachine<'_, '_>,
     ) -> InterpResult<'tcx> {
+        let global = machine.data_race.as_mut().unwrap();
         if global.race_detecting() {
-            let (index, clocks) = global.current_thread_state(thread_mgr);
+            let (index, clocks) = global.current_thread_state(&machine.threads);
             for (offset, range) in self.alloc_ranges.get_mut().iter_mut(range.start, range.size) {
                 if let Err(DataRace) = range.write_race_detect(&clocks, index, write_type) {
                     // Report data-race
                     return Self::report_data_race(
                         global,
-                        thread_mgr,
+                        &machine.threads,
                         range,
                         write_type.get_descriptor(),
                         false,
@@ -901,10 +901,9 @@ impl VClockAlloc {
         &mut self,
         alloc_id: AllocId,
         range: AllocRange,
-        global: &mut GlobalState,
-        thread_mgr: &ThreadManager<'_, '_>,
+        machine: &mut MiriMachine<'_, '_>,
     ) -> InterpResult<'tcx> {
-        self.unique_access(alloc_id, range, WriteType::Write, global, thread_mgr)
+        self.unique_access(alloc_id, range, WriteType::Write, machine)
     }
 
     /// Detect data-races for an unsynchronized deallocate operation, will not perform
@@ -915,10 +914,9 @@ impl VClockAlloc {
         &mut self,
         alloc_id: AllocId,
         range: AllocRange,
-        global: &mut GlobalState,
-        thread_mgr: &ThreadManager<'_, '_>,
+        machine: &mut MiriMachine<'_, '_>,
     ) -> InterpResult<'tcx> {
-        self.unique_access(alloc_id, range, WriteType::Deallocate, global, thread_mgr)
+        self.unique_access(alloc_id, range, WriteType::Deallocate, machine)
     }
 }
 
