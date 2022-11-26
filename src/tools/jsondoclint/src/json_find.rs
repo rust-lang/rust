@@ -72,3 +72,6 @@ fn find_selector_recursive(
         }
     }
 }
+
+#[cfg(test)]
+mod tests;
