@@ -141,7 +141,7 @@ the previous `Data Structures` and `Parallel Iterators`. See [this tracking issu
 
 ## Rustdoc
 
-As of <!-- date-check--> May 2022, there are still a number of steps
+As of <!-- date-check--> November 2022, there are still a number of steps
 to complete before rustdoc rendering can be made parallel. More details on
 this issue can be found [here][parallel-rustdoc].
 

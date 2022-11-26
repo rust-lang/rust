@@ -66,7 +66,7 @@ these passes, please let us know!)
 
 [44136]: https://github.com/rust-lang/rust/issues/44136
 
-Here is the list of passes as of <!-- date-check --> May 2022:
+Here is the list of passes as of <!-- date-check --> November 2022:
 
 - `calculate-doc-coverage` calculates information used for the `--show-coverage`
   flag.
