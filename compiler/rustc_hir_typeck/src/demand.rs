@@ -19,6 +19,7 @@ use rustc_trait_selection::traits::ObligationCause;
 
 use super::method::probe;
 
+use std::cmp::min;
 use std::iter;
 
 impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
@@ -855,31 +856,21 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                             ..
                         })) = self.tcx.hir().find(self.tcx.hir().get_parent_node(expr.hir_id))
                         {
-                            if mutability == hir::Mutability::Mut {
+                            if mutability.is_mut() {
                                 // Suppressing this diagnostic, we'll properly print it in `check_expr_assign`
                                 return None;
                             }
                         }
 
                         let sugg_expr = if needs_parens { format!("({src})") } else { src };
-                        return Some(match mutability {
-                            hir::Mutability::Mut => (
-                                sp,
-                                "consider mutably borrowing here".to_string(),
-                                format!("{prefix}&mut {sugg_expr}"),
-                                Applicability::MachineApplicable,
-                                false,
-                                false,
-                            ),
-                            hir::Mutability::Not => (
-                                sp,
-                                "consider borrowing here".to_string(),
-                                format!("{prefix}&{sugg_expr}"),
-                                Applicability::MachineApplicable,
-                                false,
-                                false,
-                            ),
-                        });
+                        return Some((
+                            sp,
+                            format!("consider {}borrowing here", mutability.mutably_str()),
+                            format!("{prefix}{}{sugg_expr}", mutability.ref_prefix_str()),
+                            Applicability::MachineApplicable,
+                            false,
+                            false,
+                        ));
                     }
                 }
             }
@@ -937,51 +928,24 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                     && let Ok(src) = sm.span_to_snippet(sp)
                 {
                     let derefs = "*".repeat(steps);
-                    if let Some((span, src, applicability)) = match mutbl_b {
-                        hir::Mutability::Mut => {
-                            let new_prefix = "&mut ".to_owned() + &derefs;
-                            match mutbl_a {
-                                hir::Mutability::Mut => {
-                                    replace_prefix(&src, "&mut ", &new_prefix).map(|_| {
-                                        let pos = sp.lo() + BytePos(5);
-                                        let sp = sp.with_lo(pos).with_hi(pos);
-                                        (sp, derefs, Applicability::MachineApplicable)
-                                    })
-                                }
-                                hir::Mutability::Not => {
-                                    replace_prefix(&src, "&", &new_prefix).map(|_| {
-                                        let pos = sp.lo() + BytePos(1);
-                                        let sp = sp.with_lo(pos).with_hi(pos);
-                                        (
-                                            sp,
-                                            format!("mut {derefs}"),
-                                            Applicability::Unspecified,
-                                        )
-                                    })
-                                }
-                            }
-                        }
-                        hir::Mutability::Not => {
-                            let new_prefix = "&".to_owned() + &derefs;
-                            match mutbl_a {
-                                hir::Mutability::Mut => {
-                                    replace_prefix(&src, "&mut ", &new_prefix).map(|_| {
-                                        let lo = sp.lo() + BytePos(1);
-                                        let hi = sp.lo() + BytePos(5);
-                                        let sp = sp.with_lo(lo).with_hi(hi);
-                                        (sp, derefs, Applicability::MachineApplicable)
-                                    })
-                                }
-                                hir::Mutability::Not => {
-                                    replace_prefix(&src, "&", &new_prefix).map(|_| {
-                                        let pos = sp.lo() + BytePos(1);
-                                        let sp = sp.with_lo(pos).with_hi(pos);
-                                        (sp, derefs, Applicability::MachineApplicable)
-                                    })
-                                }
-                            }
-                        }
-                    } {
+                    let old_prefix = mutbl_a.ref_prefix_str();
+                    let new_prefix = mutbl_b.ref_prefix_str().to_owned() + &derefs;
+
+                    let suggestion = replace_prefix(&src, old_prefix, &new_prefix).map(|_| {
+                        // skip `&` or `&mut ` if both mutabilities are mutable
+                        let lo = sp.lo() + BytePos(min(old_prefix.len(), mutbl_b.ref_prefix_str().len()) as _);
+                        // skip `&` or `&mut `
+                        let hi = sp.lo() + BytePos(old_prefix.len() as _);
+                        let sp = sp.with_lo(lo).with_hi(hi);
+
+                        (
+                            sp,
+                            format!("{}{derefs}", if mutbl_a != mutbl_b { mutbl_b.prefix_str() } else { "" }),
+                            if mutbl_b <= mutbl_a { Applicability::MachineApplicable } else { Applicability::MaybeIncorrect }
+                        )
+                    });
+
+                    if let Some((span, src, applicability)) = suggestion {
                         return Some((
                             span,
                             "consider dereferencing".to_string(),
@@ -1005,10 +969,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                             // If the expression has `&`, removing it would fix the error
                             prefix_span = prefix_span.with_hi(inner.span.lo());
                             expr = inner;
-                            remove += match mutbl {
-                                hir::Mutability::Not => "&",
-                                hir::Mutability::Mut => "&mut ",
-                            };
+                            remove.push_str(mutbl.ref_prefix_str());
                             steps -= 1;
                         } else {
                             break;

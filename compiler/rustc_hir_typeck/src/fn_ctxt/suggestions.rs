@@ -345,8 +345,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             }
             if annotation {
                 let suggest_annotation = match expr.peel_drop_temps().kind {
-                    hir::ExprKind::AddrOf(hir::BorrowKind::Ref, hir::Mutability::Not, _) => "&",
-                    hir::ExprKind::AddrOf(hir::BorrowKind::Ref, hir::Mutability::Mut, _) => "&mut ",
+                    hir::ExprKind::AddrOf(hir::BorrowKind::Ref, mutbl, _) => mutbl.ref_prefix_str(),
                     _ => return true,
                 };
                 let mut tuple_indexes = Vec::new();

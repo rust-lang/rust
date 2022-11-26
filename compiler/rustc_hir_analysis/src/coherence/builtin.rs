@@ -370,7 +370,7 @@ pub fn coerce_unsized_info<'tcx>(tcx: TyCtxt<'tcx>, impl_did: DefId) -> CoerceUn
     let check_mutbl = |mt_a: ty::TypeAndMut<'tcx>,
                        mt_b: ty::TypeAndMut<'tcx>,
                        mk_ptr: &dyn Fn(Ty<'tcx>) -> Ty<'tcx>| {
-        if (mt_a.mutbl, mt_b.mutbl) == (hir::Mutability::Not, hir::Mutability::Mut) {
+        if mt_a.mutbl < mt_b.mutbl {
             infcx
                 .err_ctxt()
                 .report_mismatched_types(

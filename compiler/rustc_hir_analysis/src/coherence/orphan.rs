@@ -292,7 +292,7 @@ fn emit_newtype_suggestion_for_raw_ptr(
     diag: &mut Diagnostic,
 ) {
     if !self_ty.needs_subst() {
-        let mut_key = if ptr_ty.mutbl == rustc_middle::mir::Mutability::Mut { "mut " } else { "" };
+        let mut_key = ptr_ty.mutbl.prefix_str();
         let msg_sugg = "consider introducing a new wrapper type".to_owned();
         let sugg = vec![
             (
