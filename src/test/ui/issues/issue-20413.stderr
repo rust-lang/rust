@@ -14,7 +14,7 @@ LL | impl<T> Foo for T where NoData<T>: Foo {
    |                                    ^^^
    |
    = help: consider increasing the recursion limit by adding a `#![recursion_limit = "256"]` attribute to your crate (`issue_20413`)
-note: required for `NoData<NoData<NoData<NoData<NoData<NoData<NoData<NoData<NoData<NoData<NoData<NoData<NoData<NoData<...>>>>>>>>>>>>>>` to implement `Foo`
+note: required for `NoData<NoData<NoData<NoData<NoData<NoData<NoData<NoData<NoData<NoData<NoData<NoData<NoData<...>>>>>>>>>>>>>` to implement `Foo`
   --> $DIR/issue-20413.rs:9:9
    |
 LL | impl<T> Foo for T where NoData<T>: Foo {
@@ -30,13 +30,13 @@ LL | impl<T> Bar for T where EvenLessData<T>: Baz {
    |                                          ^^^
    |
    = help: consider increasing the recursion limit by adding a `#![recursion_limit = "256"]` attribute to your crate (`issue_20413`)
-note: required for `AlmostNoData<EvenLessData<AlmostNoData<EvenLessData<AlmostNoData<EvenLessData<AlmostNoData<EvenLessData<...>>>>>>>>` to implement `Bar`
+note: required for `AlmostNoData<EvenLessData<AlmostNoData<EvenLessData<AlmostNoData<EvenLessData<AlmostNoData<...>>>>>>>` to implement `Bar`
   --> $DIR/issue-20413.rs:28:9
    |
 LL | impl<T> Bar for T where EvenLessData<T>: Baz {
    |         ^^^     ^
    = note: the full type name has been written to '$TEST_BUILD_DIR/issues/issue-20413/issue-20413.long-type-hash.txt'
-note: required for `EvenLessData<AlmostNoData<EvenLessData<AlmostNoData<EvenLessData<AlmostNoData<EvenLessData<AlmostNoData<...>>>>>>>>` to implement `Baz`
+note: required for `EvenLessData<AlmostNoData<EvenLessData<AlmostNoData<EvenLessData<AlmostNoData<EvenLessData<...>>>>>>>` to implement `Baz`
   --> $DIR/issue-20413.rs:35:9
    |
 LL | impl<T> Baz for T where AlmostNoData<T>: Bar {
@@ -52,13 +52,13 @@ LL | impl<T> Baz for T where AlmostNoData<T>: Bar {
    |                                          ^^^
    |
    = help: consider increasing the recursion limit by adding a `#![recursion_limit = "256"]` attribute to your crate (`issue_20413`)
-note: required for `EvenLessData<AlmostNoData<EvenLessData<AlmostNoData<EvenLessData<AlmostNoData<EvenLessData<AlmostNoData<...>>>>>>>>` to implement `Baz`
+note: required for `EvenLessData<AlmostNoData<EvenLessData<AlmostNoData<EvenLessData<AlmostNoData<EvenLessData<...>>>>>>>` to implement `Baz`
   --> $DIR/issue-20413.rs:35:9
    |
 LL | impl<T> Baz for T where AlmostNoData<T>: Bar {
    |         ^^^     ^
    = note: the full type name has been written to '$TEST_BUILD_DIR/issues/issue-20413/issue-20413.long-type-hash.txt'
-note: required for `AlmostNoData<EvenLessData<AlmostNoData<EvenLessData<AlmostNoData<EvenLessData<AlmostNoData<EvenLessData<...>>>>>>>>` to implement `Bar`
+note: required for `AlmostNoData<EvenLessData<AlmostNoData<EvenLessData<AlmostNoData<EvenLessData<AlmostNoData<...>>>>>>>` to implement `Bar`
   --> $DIR/issue-20413.rs:28:9
    |
 LL | impl<T> Bar for T where EvenLessData<T>: Baz {

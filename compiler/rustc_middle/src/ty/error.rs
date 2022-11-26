@@ -986,13 +986,14 @@ fn foo(&self) -> Self::T { String::new() }
     }
 
     pub fn short_ty_string(self, ty: Ty<'tcx>) -> (String, Option<PathBuf>) {
-        let length_limit = self.sess.diagnostic_width().saturating_sub(20);
+        let width = self.sess.diagnostic_width();
+        let length_limit = width.saturating_sub(30);
         let mut type_limit = 50;
         let regular = FmtPrinter::new(self, hir::def::Namespace::TypeNS)
             .pretty_print_type(ty)
             .expect("could not write to `String`")
             .into_buffer();
-        if regular.len() <= length_limit {
+        if regular.len() <= width {
             return (regular, None);
         }
         let mut short;

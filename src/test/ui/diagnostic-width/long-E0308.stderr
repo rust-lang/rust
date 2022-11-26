@@ -18,7 +18,7 @@ LL | |          ))))))))))))))))))))))))))))))
 LL | |      ))))))))))))))))))))))))))))));
    | |___________________________________^ expected struct `Atype`, found enum `Result`
    |
-   = note: expected struct `Atype<Btype<Ctype<..., ...>, ...>, ...>`
+   = note: expected struct `Atype<Btype<..., ...>, ...>`
            the full type name has been written to '$TEST_BUILD_DIR/diagnostic-width/long-E0308/long-E0308.long-type-hash.txt'
                 found enum `Result<Result<..., ...>, ...>`
            the full type name has been written to '$TEST_BUILD_DIR/diagnostic-width/long-E0308/long-E0308.long-type-hash.txt'
@@ -34,7 +34,7 @@ LL | |         ))))))))))))))))))))))))))))))
 LL | |     ))))))))))))))))))))))));
    | |____________________________^ expected enum `Option`, found enum `Result`
    |
-   = note: expected enum `Option<Result<Option<Option<...>>, ...>>`
+   = note: expected enum `Option<Result<..., ...>>`
            the full type name has been written to '$TEST_BUILD_DIR/diagnostic-width/long-E0308/long-E0308.long-type-hash.txt'
               found enum `Result<Result<..., ...>, ...>`
            the full type name has been written to '$TEST_BUILD_DIR/diagnostic-width/long-E0308/long-E0308.long-type-hash.txt'
@@ -54,7 +54,7 @@ LL | |     > = ();
    | |_____|
    |       expected due to this
    |
-   = note: expected struct `Atype<Btype<Ctype<..., ...>, ...>, ...>`
+   = note: expected struct `Atype<Btype<..., ...>, ...>`
            the full type name has been written to '$TEST_BUILD_DIR/diagnostic-width/long-E0308/long-E0308.long-type-hash.txt'
            found unit type `()`
 
