@@ -1176,6 +1176,7 @@ a.test-arrow:hover {
 .item-spacer {
 	width: 100%;
 	height: 12px;
+	display: block;
 }
 
 .out-of-band > span.since {
