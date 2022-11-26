@@ -549,16 +549,55 @@ fn make_contiguous_small_free() {
 
 #[test]
 fn make_contiguous_head_to_end() {
-    let mut dq = VecDeque::with_capacity(3);
-    dq.push_front('B');
-    dq.push_front('A');
-    dq.push_back('C');
-    dq.make_contiguous();
-    let expected_head = 0;
-    let expected_len = 3;
-    assert_eq!(expected_head, dq.head);
-    assert_eq!(expected_len, dq.len);
-    assert_eq!((&['A', 'B', 'C'] as &[_], &[] as &[_]), dq.as_slices());
+    let mut tester = VecDeque::with_capacity(16);
+
+    for i in b'A'..b'L' {
+        tester.push_back(i as char);
+    }
+
+    for i in b'L'..b'Q' {
+        tester.push_front(i as char);
+    }
+
+    assert_eq!(
+        tester,
+        ['P', 'O', 'N', 'M', 'L', 'A', 'B', 'C', 'D', 'E', 'F', 'G', 'H', 'I', 'J', 'K']
+    );
+
+    // ABCDEFGHIJKPONML
+    let expected_start = 0;
+    tester.make_contiguous();
+    assert_eq!(tester.head, expected_start);
+    assert_eq!(
+        (
+            &['P', 'O', 'N', 'M', 'L', 'A', 'B', 'C', 'D', 'E', 'F', 'G', 'H', 'I', 'J', 'K']
+                as &[_],
+            &[] as &[_]
+        ),
+        tester.as_slices()
+    );
+
+    tester.clear();
+    for i in b'L'..b'Q' {
+        tester.push_back(i as char);
+    }
+
+    for i in b'A'..b'L' {
+        tester.push_front(i as char);
+    }
+
+    // LMNOPKJIHGFEDCBA
+    let expected_start = 0;
+    tester.make_contiguous();
+    assert_eq!(tester.head, expected_start);
+    assert_eq!(
+        (
+            &['K', 'J', 'I', 'H', 'G', 'F', 'E', 'D', 'C', 'B', 'A', 'L', 'M', 'N', 'O', 'P']
+                as &[_],
+            &[] as &[_]
+        ),
+        tester.as_slices()
+    );
 }
 
 #[test]
