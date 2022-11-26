@@ -1,7 +1,7 @@
 use rustdoc_json_types::{Item, ItemEnum, ItemKind, ItemSummary};
 
 /// A univeral way to represent an [`ItemEnum`] or [`ItemKind`]
-#[derive(Debug)]
+#[derive(Debug, Clone, Copy)]
 pub(crate) enum Kind {
     Module,
     ExternCrate,
@@ -68,6 +68,22 @@ impl Kind {
         }
     }
 
+    pub fn can_appear_in_import(self) -> bool {
+        match self {
+            Kind::Variant => true,
+            Kind::Import => false,
+            other => other.can_appear_in_mod(),
+        }
+    }
+
+    pub fn can_appear_in_glob_import(self) -> bool {
+        match self {
+            Kind::Module => true,
+            Kind::Enum => true,
+            _ => false,
+        }
+    }
+
     pub fn can_appear_in_trait(self) -> bool {
         match self {
             Kind::AssocConst => true,
@@ -111,8 +127,8 @@ impl Kind {
     pub fn is_variant(self) -> bool {
         matches!(self, Kind::Variant)
     }
-    pub fn is_trait(self) -> bool {
-        matches!(self, Kind::Trait)
+    pub fn is_trait_or_alias(self) -> bool {
+        matches!(self, Kind::Trait | Kind::TraitAlias)
     }
     pub fn is_type(self) -> bool {
         matches!(self, Kind::Struct | Kind::Enum | Kind::Union | Kind::Typedef)

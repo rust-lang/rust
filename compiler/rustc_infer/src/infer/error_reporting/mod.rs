@@ -74,7 +74,7 @@ use rustc_middle::dep_graph::DepContext;
 use rustc_middle::ty::print::with_no_trimmed_paths;
 use rustc_middle::ty::relate::{self, RelateResult, TypeRelation};
 use rustc_middle::ty::{
-    self, error::TypeError, Binder, List, Region, Ty, TyCtxt, TypeFoldable, TypeSuperVisitable,
+    self, error::TypeError, List, Region, Ty, TyCtxt, TypeFoldable, TypeSuperVisitable,
     TypeVisitable,
 };
 use rustc_span::{sym, symbol::kw, BytePos, DesugaringKind, Pos, Span};
@@ -339,16 +339,15 @@ pub fn unexpected_hidden_region_diagnostic<'tcx>(
 }
 
 impl<'tcx> InferCtxt<'tcx> {
-    pub fn get_impl_future_output_ty(&self, ty: Ty<'tcx>) -> Option<Binder<'tcx, Ty<'tcx>>> {
-        if let ty::Opaque(def_id, substs) = ty.kind() {
-            let future_trait = self.tcx.require_lang_item(LangItem::Future, None);
-            // Future::Output
-            let item_def_id = self.tcx.associated_item_def_ids(future_trait)[0];
+    pub fn get_impl_future_output_ty(&self, ty: Ty<'tcx>) -> Option<Ty<'tcx>> {
+        let ty::Opaque(def_id, substs) = *ty.kind() else { return None; };
 
-            let bounds = self.tcx.bound_explicit_item_bounds(*def_id);
+        let future_trait = self.tcx.require_lang_item(LangItem::Future, None);
+        let item_def_id = self.tcx.associated_item_def_ids(future_trait)[0];
 
-            for (predicate, _) in bounds.subst_iter_copied(self.tcx, substs) {
-                let output = predicate
+        self.tcx.bound_explicit_item_bounds(def_id).subst_iter_copied(self.tcx, substs).find_map(
+            |(predicate, _)| {
+                predicate
                     .kind()
                     .map_bound(|kind| match kind {
                         ty::PredicateKind::Clause(ty::Clause::Projection(projection_predicate))
@@ -358,14 +357,10 @@ impl<'tcx> InferCtxt<'tcx> {
                         }
                         _ => None,
                     })
-                    .transpose();
-                if output.is_some() {
-                    // We don't account for multiple `Future::Output = Ty` constraints.
-                    return output;
-                }
-            }
-        }
-        None
+                    .no_bound_vars()
+                    .flatten()
+            },
+        )
     }
 }
 
@@ -2055,8 +2050,8 @@ impl<'tcx> TypeErrCtxt<'_, 'tcx> {
         }
 
         match (
-            self.get_impl_future_output_ty(exp_found.expected).map(Binder::skip_binder),
-            self.get_impl_future_output_ty(exp_found.found).map(Binder::skip_binder),
+            self.get_impl_future_output_ty(exp_found.expected),
+            self.get_impl_future_output_ty(exp_found.found),
         ) {
             (Some(exp), Some(found)) if self.same_type_modulo_infer(exp, found) => match cause
                 .code()

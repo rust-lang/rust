@@ -702,7 +702,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             };
 
             let mut_var_suggestion = 'block: {
-                if !matches!(mutbl, ast::Mutability::Mut) {
+                if mutbl.is_not() {
                     break 'block None;
                 }
 
@@ -749,7 +749,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                         format!("to take parameter `{binding}` by reference, move `&{mutability}` to the type"),
                         vec![
                             (pat.span.until(inner.span), "".to_owned()),
-                            (ty_span.shrink_to_lo(), format!("&{}", mutbl.prefix_str())),
+                            (ty_span.shrink_to_lo(), mutbl.ref_prefix_str().to_owned()),
                         ],
                         Applicability::MachineApplicable
                     );

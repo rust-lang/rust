@@ -108,11 +108,7 @@ fn coerce_mutbls<'tcx>(
     from_mutbl: hir::Mutability,
     to_mutbl: hir::Mutability,
 ) -> RelateResult<'tcx, ()> {
-    match (from_mutbl, to_mutbl) {
-        (hir::Mutability::Mut, hir::Mutability::Mut | hir::Mutability::Not)
-        | (hir::Mutability::Not, hir::Mutability::Not) => Ok(()),
-        (hir::Mutability::Not, hir::Mutability::Mut) => Err(TypeError::Mutability),
-    }
+    if from_mutbl >= to_mutbl { Ok(()) } else { Err(TypeError::Mutability) }
 }
 
 /// Do not require any adjustments, i.e. coerce `x -> x`.
@@ -456,7 +452,7 @@ impl<'f, 'tcx> Coerce<'f, 'tcx> {
             return Err(err);
         };
 
-        if ty == a && mt_a.mutbl == hir::Mutability::Not && autoderef.step_count() == 1 {
+        if ty == a && mt_a.mutbl.is_not() && autoderef.step_count() == 1 {
             // As a special case, if we would produce `&'a *x`, that's
             // a total no-op. We end up with the type `&'a T` just as
             // we started with.  In that case, just skip it
@@ -468,7 +464,7 @@ impl<'f, 'tcx> Coerce<'f, 'tcx> {
             // `self.x` both have `&mut `type would be a move of
             // `self.x`, but we auto-coerce it to `foo(&mut *self.x)`,
             // which is a borrow.
-            assert_eq!(mutbl_b, hir::Mutability::Not); // can only coerce &T -> &U
+            assert!(mutbl_b.is_not()); // can only coerce &T -> &U
             return success(vec![], ty, obligations);
         }
 
@@ -482,12 +478,7 @@ impl<'f, 'tcx> Coerce<'f, 'tcx> {
         let ty::Ref(r_borrow, _, _) = ty.kind() else {
             span_bug!(span, "expected a ref type, got {:?}", ty);
         };
-        let mutbl = match mutbl_b {
-            hir::Mutability::Not => AutoBorrowMutability::Not,
-            hir::Mutability::Mut => {
-                AutoBorrowMutability::Mut { allow_two_phase_borrow: self.allow_two_phase }
-            }
-        };
+        let mutbl = AutoBorrowMutability::new(mutbl_b, self.allow_two_phase);
         adjustments.push(Adjustment {
             kind: Adjust::Borrow(AutoBorrow::Ref(*r_borrow, mutbl)),
             target: ty,
@@ -556,15 +547,12 @@ impl<'f, 'tcx> Coerce<'f, 'tcx> {
 
                 let coercion = Coercion(self.cause.span);
                 let r_borrow = self.next_region_var(coercion);
-                let mutbl = match mutbl_b {
-                    hir::Mutability::Not => AutoBorrowMutability::Not,
-                    hir::Mutability::Mut => AutoBorrowMutability::Mut {
-                        // We don't allow two-phase borrows here, at least for initial
-                        // implementation. If it happens that this coercion is a function argument,
-                        // the reborrow in coerce_borrowed_ptr will pick it up.
-                        allow_two_phase_borrow: AllowTwoPhase::No,
-                    },
-                };
+
+                // We don't allow two-phase borrows here, at least for initial
+                // implementation. If it happens that this coercion is a function argument,
+                // the reborrow in coerce_borrowed_ptr will pick it up.
+                let mutbl = AutoBorrowMutability::new(mutbl_b, AllowTwoPhase::No);
+
                 Some((
                     Adjustment { kind: Adjust::Deref(None), target: ty_a },
                     Adjustment {

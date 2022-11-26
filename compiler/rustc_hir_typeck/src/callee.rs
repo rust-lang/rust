@@ -257,15 +257,11 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                         return None;
                     };
 
-                    let mutbl = match mutbl {
-                        hir::Mutability::Not => AutoBorrowMutability::Not,
-                        hir::Mutability::Mut => AutoBorrowMutability::Mut {
-                            // For initial two-phase borrow
-                            // deployment, conservatively omit
-                            // overloaded function call ops.
-                            allow_two_phase_borrow: AllowTwoPhase::No,
-                        },
-                    };
+                    // For initial two-phase borrow
+                    // deployment, conservatively omit
+                    // overloaded function call ops.
+                    let mutbl = AutoBorrowMutability::new(*mutbl, AllowTwoPhase::No);
+
                     autoref = Some(Adjustment {
                         kind: Adjust::Borrow(AutoBorrow::Ref(*region, mutbl)),
                         target: method.sig.inputs()[0],

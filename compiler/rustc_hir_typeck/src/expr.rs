@@ -2333,12 +2333,9 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         base: &'tcx hir::Expr<'tcx>,
         ty: Ty<'tcx>,
     ) {
-        let output_ty = match self.get_impl_future_output_ty(ty) {
-            Some(output_ty) => self.resolve_vars_if_possible(output_ty),
-            _ => return,
-        };
+        let Some(output_ty) = self.get_impl_future_output_ty(ty) else { return; };
         let mut add_label = true;
-        if let ty::Adt(def, _) = output_ty.skip_binder().kind() {
+        if let ty::Adt(def, _) = output_ty.kind() {
             // no field access on enum type
             if !def.is_enum() {
                 if def

@@ -1147,19 +1147,11 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                 && assoc.kind == ty::AssocKind::Fn
             {
                 let sig = self.tcx.fn_sig(assoc.def_id);
-                if let Some(first) = sig.inputs().skip_binder().get(0) {
-                    if first.peel_refs() == rcvr_ty.peel_refs() {
-                        None
-                    } else {
-                        Some(if first.is_region_ptr() {
-                            if first.is_mutable_ptr() { "&mut " } else { "&" }
-                        } else {
-                            ""
-                        })
-                    }
-                } else {
+                sig.inputs().skip_binder().get(0).and_then(|first| if first.peel_refs() == rcvr_ty.peel_refs() {
                     None
-                }
+                } else {
+                    Some(first.ref_mutability().map_or("", |mutbl| mutbl.ref_prefix_str()))
+                })
             } else {
                 None
             };
@@ -1960,7 +1952,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         span: Span,
     ) {
         let output_ty = match self.get_impl_future_output_ty(ty) {
-            Some(output_ty) => self.resolve_vars_if_possible(output_ty).skip_binder(),
+            Some(output_ty) => self.resolve_vars_if_possible(output_ty),
             _ => return,
         };
         let method_exists = self.method_exists(item_name, output_ty, call.hir_id, true);
@@ -2627,11 +2619,7 @@ fn print_disambiguation_help<'tcx>(
     let (span, sugg) = if let (ty::AssocKind::Fn, Some((receiver, args))) = (kind, args) {
         let args = format!(
             "({}{})",
-            if rcvr_ty.is_region_ptr() {
-                if rcvr_ty.is_mutable_ptr() { "&mut " } else { "&" }
-            } else {
-                ""
-            },
+            rcvr_ty.ref_mutability().map_or("", |mutbl| mutbl.ref_prefix_str()),
             std::iter::once(receiver)
                 .chain(args.iter())
                 .map(|arg| source_map.span_to_snippet(arg.span).unwrap_or_else(|_| {

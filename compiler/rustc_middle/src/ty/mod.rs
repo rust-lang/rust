@@ -1747,7 +1747,7 @@ impl<'tcx> ParamEnv<'tcx> {
         }
 
         ParamEnv::new(
-            tcx.normalize_opaque_types(self.caller_bounds()),
+            tcx.reveal_opaque_types_in_bounds(self.caller_bounds()),
             Reveal::All,
             self.constness(),
         )
