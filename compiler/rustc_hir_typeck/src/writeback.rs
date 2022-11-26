@@ -546,7 +546,7 @@ impl<'cx, 'tcx> WritebackCx<'cx, 'tcx> {
             impl<'tcx> ty::TypeVisitor<'tcx> for RecursionChecker {
                 type BreakTy = ();
                 fn visit_ty(&mut self, t: Ty<'tcx>) -> ControlFlow<Self::BreakTy> {
-                    if let ty::Opaque(def_id, _) = *t.kind() {
+                    if let ty::Opaque(ty::OpaqueTy { def_id, substs: _ }) = *t.kind() {
                         if def_id == self.def_id.to_def_id() {
                             return ControlFlow::Break(());
                         }

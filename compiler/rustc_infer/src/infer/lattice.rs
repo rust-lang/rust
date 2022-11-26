@@ -105,11 +105,13 @@ where
             Ok(v)
         }
 
-        (&ty::Opaque(a_def_id, _), &ty::Opaque(b_def_id, _)) if a_def_id == b_def_id => {
-            infcx.super_combine_tys(this, a, b)
-        }
-        (&ty::Opaque(did, ..), _) | (_, &ty::Opaque(did, ..))
-            if this.define_opaque_types() && did.is_local() =>
+        (
+            &ty::Opaque(ty::OpaqueTy { def_id: a_def_id, substs: _ }),
+            &ty::Opaque(ty::OpaqueTy { def_id: b_def_id, substs: _ }),
+        ) if a_def_id == b_def_id => infcx.super_combine_tys(this, a, b),
+        (&ty::Opaque(ty::OpaqueTy { def_id, substs: _ }), _)
+        | (_, &ty::Opaque(ty::OpaqueTy { def_id, substs: _ }))
+            if this.define_opaque_types() && def_id.is_local() =>
         {
             this.add_obligations(
                 infcx

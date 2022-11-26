@@ -779,7 +779,7 @@ fn foo(&self) -> Self::T { String::new() }
         ty: Ty<'tcx>,
     ) -> bool {
         let assoc = self.associated_item(proj_ty.item_def_id);
-        if let ty::Opaque(def_id, _) = *proj_ty.self_ty().kind() {
+        if let ty::Opaque(ty::OpaqueTy { def_id, substs: _ }) = *proj_ty.self_ty().kind() {
             let opaque_local_def_id = def_id.as_local();
             let opaque_hir_ty = if let Some(opaque_local_def_id) = opaque_local_def_id {
                 match &self.hir().expect_item(opaque_local_def_id).kind {

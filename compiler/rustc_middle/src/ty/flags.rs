@@ -160,7 +160,7 @@ impl FlagComputation {
                 self.add_projection_ty(data);
             }
 
-            &ty::Opaque(_, substs) => {
+            &ty::Opaque(ty::OpaqueTy { def_id: _, substs }) => {
                 self.add_flags(TypeFlags::HAS_TY_OPAQUE);
                 self.add_substs(substs);
             }

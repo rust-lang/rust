@@ -83,7 +83,7 @@ pub(crate) fn eval_nullary_intrinsic<'tcx>(
                 ConstValue::from_machine_usize(adt.variants().len() as u64, &tcx)
             }
             ty::Projection(_)
-            | ty::Opaque(_, _)
+            | ty::Opaque(ty::OpaqueTy { def_id: _, substs: _ })
             | ty::Param(_)
             | ty::Placeholder(_)
             | ty::Infer(_) => throw_inval!(TooGeneric),

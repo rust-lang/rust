@@ -697,8 +697,8 @@ impl<'cx, 'tcx> MirBorrowckCtxt<'cx, 'tcx> {
                     .map_bound(|p| p.predicates),
                 None,
             ),
-            ty::Opaque(did, substs) => {
-                find_fn_kind_from_did(tcx.bound_explicit_item_bounds(*did), Some(*substs))
+            ty::Opaque(ty::OpaqueTy { def_id, substs }) => {
+                find_fn_kind_from_did(tcx.bound_explicit_item_bounds(*def_id), Some(*substs))
             }
             ty::Closure(_, substs) => match substs.as_closure().kind() {
                 ty::ClosureKind::Fn => Some(hir::Mutability::Not),

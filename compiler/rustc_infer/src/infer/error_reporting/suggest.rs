@@ -486,12 +486,14 @@ impl<'tcx> TypeErrCtxt<'_, 'tcx> {
             _ if self.same_type_modulo_infer(last_expr_ty, expected_ty) => {
                 StatementAsExpression::CorrectType
             }
-            (ty::Opaque(last_def_id, _), ty::Opaque(exp_def_id, _))
-                if last_def_id == exp_def_id =>
-            {
-                StatementAsExpression::CorrectType
-            }
-            (ty::Opaque(last_def_id, last_bounds), ty::Opaque(exp_def_id, exp_bounds)) => {
+            (
+                ty::Opaque(ty::OpaqueTy { def_id: last_def_id, substs: _ }),
+                ty::Opaque(ty::OpaqueTy { def_id: exp_def_id, substs: _ }),
+            ) if last_def_id == exp_def_id => StatementAsExpression::CorrectType,
+            (
+                ty::Opaque(ty::OpaqueTy { def_id: last_def_id, substs: last_bounds }),
+                ty::Opaque(ty::OpaqueTy { def_id: exp_def_id, substs: exp_bounds }),
+            ) => {
                 debug!(
                     "both opaque, likely future {:?} {:?} {:?} {:?}",
                     last_def_id, last_bounds, exp_def_id, exp_bounds
@@ -507,7 +509,7 @@ impl<'tcx> TypeErrCtxt<'_, 'tcx> {
                     (
                         hir::ItemKind::OpaqueTy(hir::OpaqueTy { bounds: last_bounds, .. }),
                         hir::ItemKind::OpaqueTy(hir::OpaqueTy { bounds: exp_bounds, .. }),
-                    ) if std::iter::zip(*last_bounds, *exp_bounds).all(|(left, right)| {
+                    ) if iter::zip(*last_bounds, *exp_bounds).all(|(left, right)| {
                         match (left, right) {
                             (
                                 hir::GenericBound::Trait(tl, ml),

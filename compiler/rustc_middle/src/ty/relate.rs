@@ -564,9 +564,10 @@ pub fn super_relate_tys<'tcx, R: TypeRelation<'tcx>>(
             Ok(tcx.mk_projection(projection_ty.item_def_id, projection_ty.substs))
         }
 
-        (&ty::Opaque(a_def_id, a_substs), &ty::Opaque(b_def_id, b_substs))
-            if a_def_id == b_def_id =>
-        {
+        (
+            &ty::Opaque(ty::OpaqueTy { def_id: a_def_id, substs: a_substs }),
+            &ty::Opaque(ty::OpaqueTy { def_id: b_def_id, substs: b_substs }),
+        ) if a_def_id == b_def_id => {
             if relation.intercrate() {
                 // During coherence, opaque types should be treated as equal to each other, even if their generic params
                 // differ, as they could resolve to the same hidden type, even for different generic params.

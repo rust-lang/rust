@@ -648,12 +648,12 @@ impl<'tcx> WfPredicates<'tcx> {
                     // types appearing in the fn signature
                 }
 
-                ty::Opaque(did, substs) => {
+                ty::Opaque(ty::OpaqueTy { def_id, substs }) => {
                     // All of the requirements on type parameters
                     // have already been checked for `impl Trait` in
                     // return position. We do need to check type-alias-impl-trait though.
-                    if ty::is_impl_trait_defn(self.tcx, did).is_none() {
-                        let obligations = self.nominal_obligations(did, substs);
+                    if ty::is_impl_trait_defn(self.tcx, def_id).is_none() {
+                        let obligations = self.nominal_obligations(def_id, substs);
                         self.out.extend(obligations);
                     }
                 }

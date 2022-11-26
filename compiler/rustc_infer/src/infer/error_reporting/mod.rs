@@ -338,8 +338,9 @@ pub fn unexpected_hidden_region_diagnostic<'tcx>(
 
 impl<'tcx> InferCtxt<'tcx> {
     pub fn get_impl_future_output_ty(&self, ty: Ty<'tcx>) -> Option<Ty<'tcx>> {
+        // FIXME(alias): Merge these
         let (def_id, substs) = match *ty.kind() {
-            ty::Opaque(def_id, substs) => (def_id, substs),
+            ty::Opaque(ty::OpaqueTy { def_id, substs }) => (def_id, substs),
             ty::Projection(data)
                 if self.tcx.def_kind(data.item_def_id) == DefKind::ImplTraitPlaceholder =>
             {
@@ -1729,8 +1730,9 @@ impl<'tcx> TypeErrCtxt<'_, 'tcx> {
                 TypeError::Sorts(values) => {
                     let extra = expected == found;
                     let sort_string = |ty: Ty<'tcx>, path: Option<PathBuf>| {
+                        // FIXME(alias): Merge these
                         let mut s = match (extra, ty.kind()) {
-                            (true, ty::Opaque(def_id, _)) => {
+                            (true, ty::Opaque(ty::OpaqueTy { def_id, .. })) => {
                                 let sm = self.tcx.sess.source_map();
                                 let pos = sm.lookup_char_pos(self.tcx.def_span(*def_id).lo());
                                 format!(
@@ -2383,7 +2385,10 @@ impl<'tcx> TypeErrCtxt<'_, 'tcx> {
                         // fn get_later<G, T>(g: G, dest: &mut T) -> impl FnOnce() + '_
                         // suggest:
                         // fn get_later<'a, G: 'a, T>(g: G, dest: &mut T) -> impl FnOnce() + '_ + 'a
-                        ty::Closure(_, _substs) | ty::Opaque(_, _substs) if return_impl_trait => {
+                        ty::Closure(_, _substs)
+                        | ty::Opaque(ty::OpaqueTy { def_id: _, substs: _substs })
+                            if return_impl_trait =>
+                        {
                             new_binding_suggestion(&mut err, type_param_span);
                         }
                         _ => {
@@ -2765,7 +2770,7 @@ impl TyCategory {
     pub fn from_ty(tcx: TyCtxt<'_>, ty: Ty<'_>) -> Option<(Self, DefId)> {
         match *ty.kind() {
             ty::Closure(def_id, _) => Some((Self::Closure, def_id)),
-            ty::Opaque(def_id, _) => Some((Self::Opaque, def_id)),
+            ty::Opaque(ty::OpaqueTy { def_id, substs: _ }) => Some((Self::Opaque, def_id)),
             ty::Generator(def_id, ..) => {
                 Some((Self::Generator(tcx.generator_kind(def_id).unwrap()), def_id))
             }

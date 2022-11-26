@@ -4,7 +4,7 @@ use std::ops::ControlFlow;
 
 use crate::ty::{
     visit::TypeVisitable, Const, ConstKind, DefIdTree, ExistentialPredicate, InferConst, InferTy,
-    PolyTraitPredicate, Ty, TyCtxt, TypeSuperVisitable, TypeVisitor,
+    OpaqueTy, PolyTraitPredicate, Ty, TyCtxt, TypeSuperVisitable, TypeVisitor,
 };
 
 use rustc_data_structures::fx::FxHashMap;
@@ -457,11 +457,11 @@ impl<'tcx> TypeVisitor<'tcx> for IsSuggestableVisitor<'tcx> {
                 return ControlFlow::Break(());
             }
 
-            Opaque(did, _) => {
-                let parent = self.tcx.parent(*did);
+            Opaque(OpaqueTy { def_id, substs: _ }) => {
+                let parent = self.tcx.parent(*def_id);
                 if let hir::def::DefKind::TyAlias | hir::def::DefKind::AssocTy = self.tcx.def_kind(parent)
-                    && let Opaque(parent_did, _) = self.tcx.type_of(parent).kind()
-                    && parent_did == did
+                    && let Opaque(OpaqueTy { def_id: parent_opaque_def_id, substs: _ }) = self.tcx.type_of(parent).kind()
+                    && parent_opaque_def_id == def_id
                 {
                     // Okay
                 } else {

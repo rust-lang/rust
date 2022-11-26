@@ -439,7 +439,7 @@ impl<'tcx> Printer<'tcx> for &mut SymbolMangler<'tcx> {
             // Mangle all nominal types as paths.
             ty::Adt(ty::AdtDef(Interned(&ty::AdtDefData { did: def_id, .. }, _)), substs)
             | ty::FnDef(def_id, substs)
-            | ty::Opaque(def_id, substs)
+            | ty::Opaque(ty::OpaqueTy { def_id, substs })
             | ty::Projection(ty::ProjectionTy { item_def_id: def_id, substs })
             | ty::Closure(def_id, substs)
             | ty::Generator(def_id, substs, _) => {

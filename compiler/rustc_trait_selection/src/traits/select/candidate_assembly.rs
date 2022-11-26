@@ -830,7 +830,7 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
             | ty::GeneratorWitness(_)
             | ty::Never
             | ty::Projection(_)
-            | ty::Opaque(_, _)
+            | ty::Opaque(ty::OpaqueTy { def_id: _, substs: _ })
             | ty::Param(_)
             | ty::Bound(_, _)
             | ty::Error(_)

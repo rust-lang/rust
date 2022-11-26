@@ -354,7 +354,7 @@ impl<'tcx> LowerInto<'tcx, chalk_ir::Ty<RustInterner<'tcx>>> for Ty<'tcx> {
                 chalk_ir::TyKind::Tuple(types.len(), types.as_substs().lower_into(interner))
             }
             ty::Projection(proj) => chalk_ir::TyKind::Alias(proj.lower_into(interner)),
-            ty::Opaque(def_id, substs) => {
+            ty::Opaque(ty::OpaqueTy { def_id, substs }) => {
                 chalk_ir::TyKind::Alias(chalk_ir::AliasTy::Opaque(chalk_ir::OpaqueTy {
                     opaque_ty_id: chalk_ir::OpaqueTyId(def_id),
                     substitution: substs.lower_into(interner),
@@ -442,9 +442,10 @@ impl<'tcx> LowerInto<'tcx, Ty<'tcx>> for &chalk_ir::Ty<RustInterner<'tcx>> {
                 mutbl.lower_into(interner),
             ),
             TyKind::Str => ty::Str,
-            TyKind::OpaqueType(opaque_ty, substitution) => {
-                ty::Opaque(opaque_ty.0, substitution.lower_into(interner))
-            }
+            TyKind::OpaqueType(opaque_ty, substitution) => ty::Opaque(ty::OpaqueTy {
+                def_id: opaque_ty.0,
+                substs: substitution.lower_into(interner),
+            }),
             TyKind::AssociatedType(assoc_ty, substitution) => ty::Projection(ty::ProjectionTy {
                 substs: substitution.lower_into(interner),
                 item_def_id: assoc_ty.0,
@@ -460,9 +461,10 @@ impl<'tcx> LowerInto<'tcx, Ty<'tcx>> for &chalk_ir::Ty<RustInterner<'tcx>> {
                     item_def_id: projection.associated_ty_id.0,
                     substs: projection.substitution.lower_into(interner),
                 }),
-                chalk_ir::AliasTy::Opaque(opaque) => {
-                    ty::Opaque(opaque.opaque_ty_id.0, opaque.substitution.lower_into(interner))
-                }
+                chalk_ir::AliasTy::Opaque(opaque) => ty::Opaque(ty::OpaqueTy {
+                    def_id: opaque.opaque_ty_id.0,
+                    substs: opaque.substitution.lower_into(interner),
+                }),
             },
             TyKind::Function(_quantified_ty) => unimplemented!(),
             TyKind::BoundVar(_bound) => ty::Bound(

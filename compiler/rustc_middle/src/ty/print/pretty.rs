@@ -728,7 +728,7 @@ pub trait PrettyPrinter<'tcx>:
                 }
             }
             ty::Placeholder(placeholder) => p!(write("Placeholder({:?})", placeholder)),
-            ty::Opaque(def_id, substs) => {
+            ty::Opaque(ty::OpaqueTy { def_id, substs }) => {
                 // FIXME(eddyb) print this with `print_def_path`.
                 // We use verbose printing in 'NO_QUERIES' mode, to
                 // avoid needing to call `predicates_of`. This should
@@ -743,7 +743,9 @@ pub trait PrettyPrinter<'tcx>:
                 let parent = self.tcx().parent(def_id);
                 match self.tcx().def_kind(parent) {
                     DefKind::TyAlias | DefKind::AssocTy => {
-                        if let ty::Opaque(d, _) = *self.tcx().type_of(parent).kind() {
+                        if let ty::Opaque(ty::OpaqueTy { def_id: d, substs: _ }) =
+                            *self.tcx().type_of(parent).kind()
+                        {
                             if d == def_id {
                                 // If the type alias directly starts with the `impl` of the
                                 // opaque type we're printing, then skip the `::{opaque#1}`.

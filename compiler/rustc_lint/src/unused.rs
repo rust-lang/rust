@@ -96,7 +96,7 @@ impl<'tcx> LateLintPass<'tcx> for UnusedResults {
 
         if let hir::ExprKind::Match(await_expr, _arms, hir::MatchSource::AwaitDesugar) = expr.kind
             && let ty = cx.typeck_results().expr_ty(&await_expr)
-            && let ty::Opaque(future_def_id, _) = ty.kind()
+            && let ty::Opaque(ty::OpaqueTy { def_id: future_def_id, substs: _ }) = ty.kind()
             && cx.tcx.ty_is_opaque_future(ty)
             // FIXME: This also includes non-async fns that return `impl Future`.
             && let async_fn_def_id = cx.tcx.parent(*future_def_id)
@@ -251,7 +251,7 @@ impl<'tcx> LateLintPass<'tcx> for UnusedResults {
                         .map(|inner| MustUsePath::Boxed(Box::new(inner)))
                 }
                 ty::Adt(def, _) => is_def_must_use(cx, def.did(), span),
-                ty::Opaque(def, _) => {
+                ty::Opaque(ty::OpaqueTy { def_id: def, substs: _ }) => {
                     elaborate_predicates_with_span(
                         cx.tcx,
                         cx.tcx.explicit_item_bounds(def).iter().cloned(),

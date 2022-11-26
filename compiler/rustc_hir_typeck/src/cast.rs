@@ -119,7 +119,9 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             ty::Foreign(..) => Some(PointerKind::Thin),
             // We should really try to normalize here.
             ty::Projection(pi) => Some(PointerKind::OfProjection(pi)),
-            ty::Opaque(def_id, substs) => Some(PointerKind::OfOpaque(def_id, substs)),
+            ty::Opaque(ty::OpaqueTy { def_id, substs }) => {
+                Some(PointerKind::OfOpaque(def_id, substs))
+            }
             ty::Param(p) => Some(PointerKind::OfParam(p)),
             // Insufficient type information.
             ty::Placeholder(..) | ty::Bound(..) | ty::Infer(_) => None,
