@@ -1988,11 +1988,6 @@ impl<'tcx> TypeErrCtxtExt<'tcx> for TypeErrCtxt<'_, 'tcx> {
             .as_local()
             .and_then(|def_id| hir.maybe_body_owned_by(def_id))
             .map(|body_id| hir.body(body_id));
-        let is_async = self
-            .tcx
-            .generator_kind(generator_did)
-            .map(|generator_kind| matches!(generator_kind, hir::GeneratorKind::Async(..)))
-            .unwrap_or(false);
         let mut visitor = AwaitsVisitor::default();
         if let Some(body) = generator_body {
             visitor.visit_body(body);
@@ -2069,6 +2064,7 @@ impl<'tcx> TypeErrCtxtExt<'tcx> for TypeErrCtxt<'_, 'tcx> {
 
         debug!(?interior_or_upvar_span);
         if let Some(interior_or_upvar_span) = interior_or_upvar_span {
+            let is_async = self.tcx.generator_is_async(generator_did);
             let typeck_results = match generator_data {
                 GeneratorData::Local(typeck_results) => Some(typeck_results),
                 GeneratorData::Foreign(_) => None,
@@ -2641,10 +2637,7 @@ impl<'tcx> TypeErrCtxtExt<'tcx> for TypeErrCtxt<'_, 'tcx> {
                                 if is_future
                                     && obligated_types.last().map_or(false, |ty| match ty.kind() {
                                         ty::Generator(last_def_id, ..) => {
-                                            matches!(
-                                                tcx.generator_kind(last_def_id),
-                                                Some(GeneratorKind::Async(..))
-                                            )
+                                            tcx.generator_is_async(*last_def_id)
                                         }
                                         _ => false,
                                     })

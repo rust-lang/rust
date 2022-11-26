@@ -514,12 +514,7 @@ impl<'a, 'tcx> MirBorrowckCtxt<'a, 'tcx> {
             span: *span,
             ty_err: match output_ty.kind() {
                 ty::Closure(_, _) => FnMutReturnTypeErr::ReturnClosure { span: *span },
-                ty::Generator(def, ..)
-                    if matches!(
-                        self.infcx.tcx.generator_kind(def),
-                        Some(hir::GeneratorKind::Async(_))
-                    ) =>
-                {
+                ty::Generator(def, ..) if self.infcx.tcx.generator_is_async(*def) => {
                     FnMutReturnTypeErr::ReturnAsyncBlock { span: *span }
                 }
                 _ => FnMutReturnTypeErr::ReturnRef { span: *span },

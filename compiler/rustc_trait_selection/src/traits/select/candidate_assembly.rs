@@ -430,9 +430,7 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
     ) {
         let self_ty = obligation.self_ty().skip_binder();
         if let ty::Generator(did, ..) = self_ty.kind() {
-            if let Some(rustc_hir::GeneratorKind::Async(_generator_kind)) =
-                self.tcx().generator_kind(did)
-            {
+            if self.tcx().generator_is_async(*did) {
                 debug!(?self_ty, ?obligation, "assemble_future_candidates",);
 
                 candidates.vec.push(FutureCandidate);

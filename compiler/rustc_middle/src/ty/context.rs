@@ -1360,6 +1360,11 @@ impl<'tcx> TyCtxt<'tcx> {
         self.diagnostic_items(did.krate).name_to_id.get(&name) == Some(&did)
     }
 
+    /// Returns `true` if the node pointed to by `def_id` is a generator for an async construct.
+    pub fn generator_is_async(self, def_id: DefId) -> bool {
+        matches!(self.generator_kind(def_id), Some(hir::GeneratorKind::Async(_)))
+    }
+
     pub fn stability(self) -> &'tcx stability::Index {
         self.stability_index(())
     }
