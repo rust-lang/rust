@@ -2055,6 +2055,7 @@ fn confirm_callable_candidate<'cx, 'tcx>(
         obligation.predicate.self_ty(),
         fn_sig,
         flag,
+        false,
     )
     .map_bound(|(trait_ref, ret_type)| ty::ProjectionPredicate {
         projection_ty: ty::ProjectionTy {

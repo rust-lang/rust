@@ -760,3 +760,88 @@ where
 
     value.fold_with(&mut Shifter::new(tcx, amount))
 }
+
+/// Takes a nested binder and flattens it into one, by shifting the outer binder's
+/// bound variables down out one de Bruijn index and reindexing them into a
+/// concatenated the bound vars list.
+pub fn flatten_binders<'tcx, T: TypeFoldable<'tcx>>(
+    tcx: TyCtxt<'tcx>,
+    bound: ty::Binder<'tcx, ty::Binder<'tcx, T>>,
+) -> Binder<'tcx, T> {
+    assert!(!bound.has_escaping_bound_vars());
+
+    let outer_bound_vars = bound.bound_vars();
+    let inner_binder = bound.skip_binder();
+    let inner_bound_vars = inner_binder.bound_vars();
+
+    let combined_vars =
+        tcx.mk_bound_variable_kinds(inner_bound_vars.iter().chain(outer_bound_vars));
+    ty::Binder::bind_with_vars(
+        inner_binder.skip_binder().fold_with(&mut BinderFlattener {
+            tcx,
+            index: ty::INNERMOST,
+            bound_vars_to_shift: inner_bound_vars.len(),
+        }),
+        combined_vars,
+    )
+}
+
+struct BinderFlattener<'tcx> {
+    tcx: TyCtxt<'tcx>,
+    index: ty::DebruijnIndex,
+    bound_vars_to_shift: usize,
+}
+
+impl BinderFlattener<'_> {
+    fn shift_bv(&self, bv: ty::BoundVar) -> ty::BoundVar {
+        ty::BoundVar::from_usize(bv.as_usize() + self.bound_vars_to_shift)
+    }
+}
+
+impl<'tcx> TypeFolder<'tcx> for BinderFlattener<'tcx> {
+    fn tcx(&self) -> TyCtxt<'tcx> {
+        self.tcx
+    }
+
+    fn fold_binder<T: TypeFoldable<'tcx>>(
+        &mut self,
+        t: ty::Binder<'tcx, T>,
+    ) -> ty::Binder<'tcx, T> {
+        self.index.shift_in(1);
+        let t = t.super_fold_with(self);
+        self.index.shift_out(1);
+        t
+    }
+
+    fn fold_ty(&mut self, t: Ty<'tcx>) -> Ty<'tcx> {
+        match *t.kind() {
+            ty::Bound(debruijn, bt) if debruijn > self.index => self.tcx.mk_ty(ty::Bound(
+                self.index,
+                ty::BoundTy { var: self.shift_bv(bt.var), kind: bt.kind },
+            )),
+            _ if t.has_vars_bound_at_or_above(self.index) => t.super_fold_with(self),
+            _ => t,
+        }
+    }
+
+    fn fold_region(&mut self, r: ty::Region<'tcx>) -> ty::Region<'tcx> {
+        match *r {
+            ty::ReLateBound(debruijn, br) if debruijn > self.index => {
+                self.tcx.mk_region(ty::ReLateBound(
+                    self.index,
+                    ty::BoundRegion { var: self.shift_bv(br.var), kind: br.kind },
+                ))
+            }
+            _ => r,
+        }
+    }
+
+    fn fold_const(&mut self, ct: ty::Const<'tcx>) -> ty::Const<'tcx> {
+        match ct.kind() {
+            ty::ConstKind::Bound(debruijn, bv) if debruijn > self.index => {
+                self.tcx.mk_const(ty::ConstKind::Bound(self.index, self.shift_bv(bv)), ct.ty())
+            }
+            _ => ct.super_fold_with(self),
+        }
+    }
+}

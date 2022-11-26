@@ -298,11 +298,15 @@ pub fn get_vtable_index_of_object_method<'tcx, N>(
 pub fn closure_trait_ref_and_return_type<'tcx>(
     tcx: TyCtxt<'tcx>,
     fn_trait_def_id: DefId,
-    self_ty: Ty<'tcx>,
+    mut self_ty: Ty<'tcx>,
     sig: ty::PolyFnSig<'tcx>,
     tuple_arguments: TupleArgumentsFlag,
+    allow_escaping_bound_vars: bool,
 ) -> ty::Binder<'tcx, (ty::TraitRef<'tcx>, Ty<'tcx>)> {
-    assert!(!self_ty.has_escaping_bound_vars());
+    assert!(allow_escaping_bound_vars || !self_ty.has_escaping_bound_vars());
+    if self_ty.has_escaping_bound_vars() {
+        self_ty = ty::fold::shift_vars(tcx, self_ty, 1);
+    }
     let arguments_tuple = match tuple_arguments {
         TupleArgumentsFlag::No => sig.skip_binder().inputs()[0],
         TupleArgumentsFlag::Yes => tcx.intern_tup(sig.skip_binder().inputs()),

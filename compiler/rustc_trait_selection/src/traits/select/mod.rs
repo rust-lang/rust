@@ -2322,6 +2322,7 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
             self_ty,
             closure_sig,
             util::TupleArgumentsFlag::No,
+            false,
         )
         .map_bound(|(trait_ref, _)| trait_ref)
     }

@@ -13,7 +13,7 @@ use rustc_infer::infer::InferOk;
 use rustc_infer::infer::LateBoundRegionConversionTime::HigherRankedType;
 use rustc_middle::ty::{
     self, GenericArg, GenericArgKind, GenericParamDefKind, InternalSubsts, SubstsRef,
-    ToPolyTraitRef, ToPredicate, Ty, TyCtxt,
+    ToPolyTraitRef, ToPredicate, Ty, TyCtxt, TypeVisitable,
 };
 use rustc_span::def_id::DefId;
 
@@ -598,19 +598,26 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
     {
         debug!(?obligation, "confirm_fn_pointer_candidate");
 
-        let self_ty = self
-            .infcx
-            .shallow_resolve(obligation.self_ty().no_bound_vars())
-            .expect("fn pointer should not capture bound vars from predicate");
+        // Skipping binder here (*)
+        let self_ty = self.infcx.shallow_resolve(obligation.self_ty().skip_binder());
         let sig = self_ty.fn_sig(self.tcx());
-        let trait_ref = closure_trait_ref_and_return_type(
+        let mut trait_ref = closure_trait_ref_and_return_type(
             self.tcx(),
             obligation.predicate.def_id(),
             self_ty,
             sig,
             util::TupleArgumentsFlag::Yes,
+            // Only function pointers (currently) can have bound vars that reference
+            // the predicate, since those are the only ones we can name in where clauses.
+            self_ty.is_fn_ptr(),
         )
         .map_bound(|(trait_ref, _)| trait_ref);
+
+        // (*) ... and the binder's escaping bound vars are dealt with here
+        if trait_ref.has_escaping_bound_vars() {
+            trait_ref =
+                ty::fold::flatten_binders(self.infcx.tcx, obligation.predicate.rebind(trait_ref));
+        }
 
         let mut nested = self.confirm_poly_trait_refs(obligation, trait_ref)?;
 
