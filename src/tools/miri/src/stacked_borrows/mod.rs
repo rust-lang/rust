@@ -874,8 +874,8 @@ trait EvalContextPrivExt<'mir: 'ecx, 'tcx: 'mir, 'ecx>: crate::MiriInterpCxExt<'
                 // We need a frozen-sensitive reborrow.
                 // We have to use shared references to alloc/memory_extra here since
                 // `visit_freeze_sensitive` needs to access the global state.
-                let extra = this.get_alloc_extra(alloc_id)?;
-                let mut stacked_borrows = extra
+                let alloc_extra = this.get_alloc_extra(alloc_id)?;
+                let mut stacked_borrows = alloc_extra
                     .stacked_borrows
                     .as_ref()
                     .expect("we should have Stacked Borrows data")
@@ -910,7 +910,16 @@ trait EvalContextPrivExt<'mir: 'ecx, 'tcx: 'mir, 'ecx>: crate::MiriInterpCxExt<'
                     );
                     stacked_borrows.for_each(range, dcx, |stack, dcx, exposed_tags| {
                         stack.grant(orig_tag, item, access, &global, dcx, exposed_tags)
-                    })
+                    })?;
+                    drop(global);
+                    if let Some(access) = access {
+                        assert!(access == AccessKind::Read);
+                        // Make sure the data race model also knows about this.
+                        if let Some(data_race) = alloc_extra.data_race.as_ref() {
+                            data_race.read(alloc_id, range, &this.machine)?;
+                        }
+                    }
+                    Ok(())
                 })?;
                 return Ok(Some(alloc_id));
             }
@@ -938,6 +947,14 @@ trait EvalContextPrivExt<'mir: 'ecx, 'tcx: 'mir, 'ecx>: crate::MiriInterpCxExt<'
         stacked_borrows.for_each(range, dcx, |stack, dcx, exposed_tags| {
             stack.grant(orig_tag, item, access, &global, dcx, exposed_tags)
         })?;
+        drop(global);
+        if let Some(access) = access {
+            assert!(access == AccessKind::Write);
+            // Make sure the data race model also knows about this.
+            if let Some(data_race) = alloc_extra.data_race.as_mut() {
+                data_race.write(alloc_id, range, machine)?;
+            }
+        }
 
         Ok(Some(alloc_id))
     }
