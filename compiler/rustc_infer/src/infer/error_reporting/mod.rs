@@ -2503,7 +2503,10 @@ impl<'tcx> TypeErrCtxt<'_, 'tcx> {
         Some(match (exp_found.expected.unpack(), exp_found.found.unpack()) {
             (ty::TermKind::Ty(expected), ty::TermKind::Ty(found)) => {
                 let (mut exp, mut fnd) = self.cmp(expected, found);
-                let len = self.tcx.sess().diagnostic_width().saturating_sub(20);
+                // Use the terminal width as the basis to determine when to compress the printed
+                // out type, but give ourselves some leeway to avoid ending up creating a file for
+                // a type that is somewhat shorter than the path we'd write to.
+                let len = self.tcx.sess().diagnostic_width() + 40;
                 let exp_s = exp.content();
                 let fnd_s = fnd.content();
                 let mut exp_p = None;

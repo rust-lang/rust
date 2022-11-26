@@ -1,4 +1,4 @@
-// compile-flags: --diagnostic-width=100
+// compile-flags: --diagnostic-width=60
 // normalize-stderr-test: "long-type-\d+" -> "long-type-hash"
 
 struct Atype<T, K>(T, K);
