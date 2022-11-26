@@ -128,6 +128,7 @@ mod handlers {
     mod convert_while_to_loop;
     mod destructure_tuple_binding;
     mod expand_glob_import;
+    mod extract_expressions_from_format_string;
     mod extract_function;
     mod extract_module;
     mod extract_struct_from_enum_variant;
@@ -138,7 +139,6 @@ mod handlers {
     mod flip_binexpr;
     mod flip_comma;
     mod flip_trait_bound;
-    mod extract_expressions_from_format_string;
     mod generate_constant;
     mod generate_default_from_enum_variant;
     mod generate_default_from_new;
