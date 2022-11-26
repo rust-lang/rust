@@ -1,6 +1,17 @@
 #!/bin/bash
 set -euo pipefail
-set -x
+
+function begingroup {
+  echo "::group::$1"
+  set -x
+}
+
+function endgroup {
+  set +x
+  echo "::endgroup"
+}
+
+begingroup "Building Miri"
 
 # Determine configuration for installed build
 echo "Installing release version of Miri"
@@ -14,14 +25,15 @@ export CARGO_EXTRA_FLAGS="--locked"
 ./miri check --no-default-features # make sure this can be built
 ./miri check --all-features # and this, too
 ./miri build --all-targets # the build that all the `./miri test` below will use
-echo
+
+endgroup
 
 # Test
 function run_tests {
   if [ -n "${MIRI_TEST_TARGET+exists}" ]; then
-    echo "Testing foreign architecture $MIRI_TEST_TARGET"
+    begingroup "Testing foreign architecture $MIRI_TEST_TARGET"
   else
-    echo "Testing host architecture"
+    begingroup "Testing host architecture"
   fi
 
   ## ui test suite
@@ -52,7 +64,6 @@ function run_tests {
   echo 'build.rustc-wrapper = "thisdoesnotexist"' > .cargo/config.toml
   # Run the actual test
   ${PYTHON} test-cargo-miri/run-test.py
-  echo
   # Clean up
   unset RUSTC MIRI
   rm -rf .cargo
@@ -63,13 +74,15 @@ function run_tests {
       cargo miri run --manifest-path bench-cargo-miri/$BENCH/Cargo.toml
     done
   fi
+
+  endgroup
 }
 
 function run_tests_minimal {
   if [ -n "${MIRI_TEST_TARGET+exists}" ]; then
-    echo "Testing MINIMAL foreign architecture $MIRI_TEST_TARGET: only testing $@"
+    begingroup "Testing MINIMAL foreign architecture $MIRI_TEST_TARGET: only testing $@"
   else
-    echo "Testing MINIMAL host architecture: only testing $@"
+    begingroup "Testing MINIMAL host architecture: only testing $@"
   fi
 
   ./miri test -- "$@"
@@ -77,6 +90,8 @@ function run_tests_minimal {
   # Ensure that a small smoke test of cargo-miri works.
   # Note: This doesn't work on windows because of TLS.
   cargo miri run --manifest-path test-cargo-miri/no-std-smoke/Cargo.toml
+
+  endgroup
 }
 
 # host
