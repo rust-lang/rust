@@ -80,14 +80,9 @@ impl fmt::Display for Profile {
 }
 
 pub fn setup(config: &Config, profile: Option<Profile>) {
-    let path = &config.config.clone().unwrap_or(PathBuf::from("config.toml"));
     let profile = profile.unwrap_or_else(|| t!(interactive_path()));
-    setup_config_toml(path, profile, config);
-
     let stage_path =
         ["build", config.build.rustc_target_arg(), "stage1"].join(&MAIN_SEPARATOR.to_string());
-
-    println!();
 
     if !rustup_installed() && profile != Profile::User {
         eprintln!("`rustup` is not installed; cannot link `stage1` toolchain");
@@ -109,8 +104,6 @@ pub fn setup(config: &Config, profile: Option<Profile>) {
         Profile::User => &["dist", "build"],
     };
 
-    println!();
-
     t!(install_git_hook_maybe(&config));
 
     println!();
@@ -125,10 +118,14 @@ pub fn setup(config: &Config, profile: Option<Profile>) {
             "For more suggestions, see https://rustc-dev-guide.rust-lang.org/building/suggested.html"
         );
     }
+
+    let path = &config.config.clone().unwrap_or(PathBuf::from("config.toml"));
+    setup_config_toml(path, profile, config);
 }
 
 fn setup_config_toml(path: &PathBuf, profile: Profile, config: &Config) {
     if path.exists() {
+        eprintln!();
         eprintln!(
             "error: you asked `x.py` to setup a new config file, but one already exists at `{}`",
             path.display()
@@ -304,7 +301,18 @@ pub fn interactive_path() -> io::Result<Profile> {
 
 // install a git hook to automatically run tidy --bless, if they want
 fn install_git_hook_maybe(config: &Config) -> io::Result<()> {
+    let git = t!(config.git().args(&["rev-parse", "--git-common-dir"]).output().map(|output| {
+        assert!(output.status.success(), "failed to run `git`");
+        PathBuf::from(t!(String::from_utf8(output.stdout)).trim())
+    }));
+    let dst = git.join("hooks").join("pre-push");
+    if dst.exists() {
+        // The git hook has already been set up, or the user already has a custom hook.
+        return Ok(());
+    }
+
     let mut input = String::new();
+    println!();
     println!(
         "Rust's CI will automatically fail if it doesn't pass `tidy`, the internal tool for ensuring code quality.
 If you'd like, x.py can install a git hook for you that will automatically run `tidy --bless` before
@@ -330,12 +338,6 @@ undesirable, simply delete the `pre-push` file from .git/hooks."
 
     if should_install {
         let src = config.src.join("src").join("etc").join("pre-push.sh");
-        let git =
-            t!(config.git().args(&["rev-parse", "--git-common-dir"]).output().map(|output| {
-                assert!(output.status.success(), "failed to run `git`");
-                PathBuf::from(t!(String::from_utf8(output.stdout)).trim())
-            }));
-        let dst = git.join("hooks").join("pre-push");
         match fs::hard_link(src, &dst) {
             Err(e) => eprintln!(
                 "error: could not create hook {}: do you already have the git hook installed?\n{}",
