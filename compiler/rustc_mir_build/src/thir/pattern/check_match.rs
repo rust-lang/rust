@@ -598,11 +598,6 @@ fn irrefutable_let_patterns(
     count: usize,
     span: Span,
 ) {
-    let span = match source {
-        LetSource::LetElse(span) => span,
-        _ => span,
-    };
-
     macro_rules! emit_diag {
         ($lint:tt) => {{
             tcx.emit_spanned_lint(IRREFUTABLE_LET_PATTERNS, id, span, $lint { count });
@@ -613,7 +608,7 @@ fn irrefutable_let_patterns(
         LetSource::GenericLet => emit_diag!(IrrefutableLetPatternsGenericLet),
         LetSource::IfLet => emit_diag!(IrrefutableLetPatternsIfLet),
         LetSource::IfLetGuard => emit_diag!(IrrefutableLetPatternsIfLetGuard),
-        LetSource::LetElse(..) => emit_diag!(IrrefutableLetPatternsLetElse),
+        LetSource::LetElse => emit_diag!(IrrefutableLetPatternsLetElse),
         LetSource::WhileLet => emit_diag!(IrrefutableLetPatternsWhileLet),
     }
 }
@@ -968,7 +963,10 @@ fn check_borrow_conflicts_in_at_patterns(cx: &MatchVisitor<'_, '_, '_>, pat: &Pa
                     conflicts_ref,
                     name,
                     ty: typeck_results.node_type(pat.hir_id),
-                    suggest_borrowing: pat.span.contains(binding_span).then(|| binding_span.shrink_to_lo()),
+                    suggest_borrowing: pat
+                        .span
+                        .contains(binding_span)
+                        .then(|| binding_span.shrink_to_lo()),
                 });
             }
             return;
@@ -1001,16 +999,15 @@ fn check_borrow_conflicts_in_at_patterns(cx: &MatchVisitor<'_, '_, '_>, pat: &Pa
         // Report mutability conflicts for e.g. `ref mut x @ Some(ref mut y)`.
         let mut occurences = vec![];
 
-        for (span, name) in conflicts_mut_mut {
-            occurences.push(MultipleMutBorrowOccurence::Mutable { span, name_mut: name });
+        for (span, name_mut) in conflicts_mut_mut {
+            occurences.push(MultipleMutBorrowOccurence::Mutable { span, name_mut });
         }
-        for (span, name) in conflicts_mut_ref {
-            occurences.push(MultipleMutBorrowOccurence::Immutable { span, name_immut: name });
+        for (span, name_immut) in conflicts_mut_ref {
+            occurences.push(MultipleMutBorrowOccurence::Immutable { span, name_immut });
         }
-        for (span, name) in conflicts_move {
-            occurences.push(MultipleMutBorrowOccurence::Moved { span, name_moved: name });
+        for (span, name_moved) in conflicts_move {
+            occurences.push(MultipleMutBorrowOccurence::Moved { span, name_moved });
         }
-
         sess.emit_err(MultipleMutBorrows { span: pat.span, binding_span, occurences, name });
     } else if !conflicts_mut_ref.is_empty() {
         // Report mutability conflicts for e.g. `ref x @ Some(ref mut y)` or the converse.
