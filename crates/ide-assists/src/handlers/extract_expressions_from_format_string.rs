@@ -10,7 +10,7 @@ use itertools::Itertools;
 use stdx::format_to;
 use syntax::{ast, AstNode, AstToken, NodeOrToken, SyntaxKind::COMMA, TextRange};
 
-// Assist: move_format_string_arg
+// Assist: extract_expressions_from_format_string
 //
 // Move an expression out of a format string.
 //
@@ -40,7 +40,10 @@ use syntax::{ast, AstNode, AstToken, NodeOrToken, SyntaxKind::COMMA, TextRange};
 // }
 // ```
 
-pub(crate) fn move_format_string_arg(acc: &mut Assists, ctx: &AssistContext<'_>) -> Option<()> {
+pub(crate) fn extract_expressions_from_format_string(
+    acc: &mut Assists,
+    ctx: &AssistContext<'_>,
+) -> Option<()> {
     let fmt_string = ctx.find_token_at_offset::<ast::String>()?;
     let tt = fmt_string.syntax().parent().and_then(ast::TokenTree::cast)?;
 
@@ -58,7 +61,7 @@ pub(crate) fn move_format_string_arg(acc: &mut Assists, ctx: &AssistContext<'_>)
 
     acc.add(
         AssistId(
-            "move_format_string_arg",
+            "extract_expressions_from_format_string",
             // if there aren't any expressions, then make the assist a RefactorExtract
             if extracted_args.iter().filter(|f| matches!(f, Arg::Expr(_))).count() == 0 {
                 AssistKind::RefactorExtract
@@ -171,7 +174,7 @@ macro_rules! print {
     #[test]
     fn multiple_middle_arg() {
         check_assist(
-            move_format_string_arg,
+            extract_expressions_from_format_string,
             &add_macro_decl(
                 r#"
 fn main() {
@@ -192,7 +195,7 @@ fn main() {
     #[test]
     fn single_arg() {
         check_assist(
-            move_format_string_arg,
+            extract_expressions_from_format_string,
             &add_macro_decl(
                 r#"
 fn main() {
@@ -213,7 +216,7 @@ fn main() {
     #[test]
     fn multiple_middle_placeholders_arg() {
         check_assist(
-            move_format_string_arg,
+            extract_expressions_from_format_string,
             &add_macro_decl(
                 r#"
 fn main() {
@@ -234,7 +237,7 @@ fn main() {
     #[test]
     fn multiple_trailing_args() {
         check_assist(
-            move_format_string_arg,
+            extract_expressions_from_format_string,
             &add_macro_decl(
                 r#"
 fn main() {
@@ -255,7 +258,7 @@ fn main() {
     #[test]
     fn improper_commas() {
         check_assist(
-            move_format_string_arg,
+            extract_expressions_from_format_string,
             &add_macro_decl(
                 r#"
 fn main() {
@@ -276,7 +279,7 @@ fn main() {
     #[test]
     fn nested_tt() {
         check_assist(
-            move_format_string_arg,
+            extract_expressions_from_format_string,
             &add_macro_decl(
                 r#"
 fn main() {

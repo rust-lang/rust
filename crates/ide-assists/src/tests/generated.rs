@@ -625,6 +625,37 @@ fn qux(bar: Bar, baz: Baz) {}
 }
 
 #[test]
+fn doctest_extract_expressions_from_format_string() {
+    check_doc_test(
+        "extract_expressions_from_format_string",
+        r#####"
+macro_rules! format_args {
+    ($lit:literal $(tt:tt)*) => { 0 },
+}
+macro_rules! print {
+    ($($arg:tt)*) => (std::io::_print(format_args!($($arg)*)));
+}
+
+fn main() {
+    print!("{x + 1}$0");
+}
+"#####,
+        r#####"
+macro_rules! format_args {
+    ($lit:literal $(tt:tt)*) => { 0 },
+}
+macro_rules! print {
+    ($($arg:tt)*) => (std::io::_print(format_args!($($arg)*)));
+}
+
+fn main() {
+    print!("{}"$0, x + 1);
+}
+"#####,
+    )
+}
+
+#[test]
 fn doctest_extract_function() {
     check_doc_test(
         "extract_function",
@@ -1698,37 +1729,6 @@ impl S {
     fn foo() -> usize {
         Self::C * Self::C
     }
-}
-"#####,
-    )
-}
-
-#[test]
-fn doctest_move_format_string_arg() {
-    check_doc_test(
-        "move_format_string_arg",
-        r#####"
-macro_rules! format_args {
-    ($lit:literal $(tt:tt)*) => { 0 },
-}
-macro_rules! print {
-    ($($arg:tt)*) => (std::io::_print(format_args!($($arg)*)));
-}
-
-fn main() {
-    print!("{x + 1}$0");
-}
-"#####,
-        r#####"
-macro_rules! format_args {
-    ($lit:literal $(tt:tt)*) => { 0 },
-}
-macro_rules! print {
-    ($($arg:tt)*) => (std::io::_print(format_args!($($arg)*)));
-}
-
-fn main() {
-    print!("{}"$0, x + 1);
 }
 "#####,
     )
