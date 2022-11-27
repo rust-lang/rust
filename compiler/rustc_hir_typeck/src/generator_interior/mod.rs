@@ -118,7 +118,8 @@ impl<'a, 'tcx> InteriorVisitor<'a, 'tcx> {
                 } else {
                     let note = format!(
                         "the type is part of the {} because of this {}",
-                        self.kind, yield_data.source
+                        self.kind.descr(),
+                        yield_data.source
                     );
 
                     self.fcx

@@ -1526,9 +1526,9 @@ pub enum AsyncGeneratorKind {
 impl fmt::Display for AsyncGeneratorKind {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         f.write_str(match self {
-            AsyncGeneratorKind::Block => "`async` block",
-            AsyncGeneratorKind::Closure => "`async` closure body",
-            AsyncGeneratorKind::Fn => "`async fn` body",
+            AsyncGeneratorKind::Block => "async block",
+            AsyncGeneratorKind::Closure => "async closure body",
+            AsyncGeneratorKind::Fn => "async fn body",
         })
     }
 }
