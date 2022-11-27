@@ -11,7 +11,6 @@ use std::time::SystemTime;
 use log::trace;
 
 use rustc_data_structures::fx::FxHashMap;
-use rustc_middle::ty::{self, layout::LayoutOf};
 use rustc_target::abi::{Align, Size};
 
 use crate::shims::os_str::bytes_to_os_str;
@@ -1006,12 +1005,7 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriInterpCxExt<'mir, 'tcx> {
         // as `isize`s instead of having the proper types. Thus, we have to recover the layout of
         // `statxbuf_op` by using the `libc::statx` struct type.
         let statxbuf = {
-            // FIXME: This long path is required because `libc::statx` is an struct and also a
-            // function and `resolve_path` is returning the latter.
-            let statx_ty = this
-                .resolve_path(&["libc", "unix", "linux_like", "linux", "gnu", "statx"])
-                .ty(*this.tcx, ty::ParamEnv::reveal_all());
-            let statx_layout = this.layout_of(statx_ty)?;
+            let statx_layout = this.libc_ty_layout("statx")?;
             MPlaceTy::from_aligned_ptr(statxbuf_ptr, statx_layout)
         };
 
@@ -1917,8 +1911,8 @@ struct FileMetadata {
 }
 
 impl FileMetadata {
-    fn from_path<'tcx, 'mir>(
-        ecx: &mut MiriInterpCx<'mir, 'tcx>,
+    fn from_path<'tcx>(
+        ecx: &mut MiriInterpCx<'_, 'tcx>,
         path: &Path,
         follow_symlink: bool,
     ) -> InterpResult<'tcx, Option<FileMetadata>> {
@@ -1928,8 +1922,8 @@ impl FileMetadata {
         FileMetadata::from_meta(ecx, metadata)
     }
 
-    fn from_fd<'tcx, 'mir>(
-        ecx: &mut MiriInterpCx<'mir, 'tcx>,
+    fn from_fd<'tcx>(
+        ecx: &mut MiriInterpCx<'_, 'tcx>,
         fd: i32,
     ) -> InterpResult<'tcx, Option<FileMetadata>> {
         let option = ecx.machine.file_handler.handles.get(&fd);
@@ -1942,8 +1936,8 @@ impl FileMetadata {
         FileMetadata::from_meta(ecx, metadata)
     }
 
-    fn from_meta<'tcx, 'mir>(
-        ecx: &mut MiriInterpCx<'mir, 'tcx>,
+    fn from_meta<'tcx>(
+        ecx: &mut MiriInterpCx<'_, 'tcx>,
         metadata: Result<std::fs::Metadata, std::io::Error>,
     ) -> InterpResult<'tcx, Option<FileMetadata>> {
         let metadata = match metadata {

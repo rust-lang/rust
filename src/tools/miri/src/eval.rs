@@ -9,6 +9,7 @@ use std::thread;
 use log::info;
 
 use rustc_data_structures::fx::FxHashSet;
+use rustc_hir::def::Namespace;
 use rustc_hir::def_id::DefId;
 use rustc_middle::ty::{
     self,
@@ -195,7 +196,7 @@ pub fn create_ecx<'mir, 'tcx: 'mir>(
     MiriMachine::late_init(&mut ecx, config)?;
 
     // Make sure we have MIR. We check MIR for some stable monomorphic function in libcore.
-    let sentinel = ecx.try_resolve_path(&["core", "ascii", "escape_default"]);
+    let sentinel = ecx.try_resolve_path(&["core", "ascii", "escape_default"], Namespace::ValueNS);
     if !matches!(sentinel, Some(s) if tcx.is_mir_available(s.def.def_id())) {
         tcx.sess.fatal(
             "the current sysroot was built without `-Zalways-encode-mir`, or libcore seems missing. \

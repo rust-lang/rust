@@ -2,12 +2,12 @@ pub mod convert;
 
 use std::cmp;
 use std::iter;
-use std::mem;
 use std::num::NonZeroUsize;
 use std::time::Duration;
 
 use log::trace;
 
+use rustc_hir::def::{DefKind, Namespace};
 use rustc_hir::def_id::{DefId, CRATE_DEF_INDEX};
 use rustc_middle::mir;
 use rustc_middle::ty::{
@@ -74,40 +74,67 @@ const UNIX_IO_ERROR_TABLE: &[(&str, std::io::ErrorKind)] = {
 };
 
 /// Gets an instance for a path.
-fn try_resolve_did<'tcx>(tcx: TyCtxt<'tcx>, path: &[&str]) -> Option<DefId> {
-    tcx.crates(()).iter().find(|&&krate| tcx.crate_name(krate).as_str() == path[0]).and_then(
-        |krate| {
-            let krate = DefId { krate: *krate, index: CRATE_DEF_INDEX };
-            let mut items = tcx.module_children(krate);
-            let mut path_it = path.iter().skip(1).peekable();
+///
+/// A `None` namespace indicates we are looking for a module.
+fn try_resolve_did(tcx: TyCtxt<'_>, path: &[&str], namespace: Option<Namespace>) -> Option<DefId> {
+    /// Yield all children of the given item, that have the given name.
+    fn find_children<'tcx: 'a, 'a>(
+        tcx: TyCtxt<'tcx>,
+        item: DefId,
+        name: &'a str,
+    ) -> impl Iterator<Item = DefId> + 'a {
+        tcx.module_children(item)
+            .iter()
+            .filter(move |item| item.ident.name.as_str() == name)
+            .map(move |item| item.res.def_id())
+    }
 
-            while let Some(segment) = path_it.next() {
-                for item in mem::take(&mut items).iter() {
-                    if item.ident.name.as_str() == *segment {
-                        if path_it.peek().is_none() {
-                            return Some(item.res.def_id());
-                        }
+    // Take apart the path: leading crate, a sequence of modules, and potentially a final item.
+    let (&crate_name, path) = path.split_first().expect("paths must have at least one segment");
+    let (modules, item) = if let Some(namespace) = namespace {
+        let (&item_name, modules) =
+            path.split_last().expect("non-module paths must have at least 2 segments");
+        (modules, Some((item_name, namespace)))
+    } else {
+        (path, None)
+    };
 
-                        items = tcx.module_children(item.res.def_id());
-                        break;
-                    }
-                }
-            }
-            None
-        },
-    )
+    // First find the crate.
+    let krate =
+        tcx.crates(()).iter().find(|&&krate| tcx.crate_name(krate).as_str() == crate_name)?;
+    let mut cur_item = DefId { krate: *krate, index: CRATE_DEF_INDEX };
+    // Then go over the modules.
+    for &segment in modules {
+        cur_item = find_children(tcx, cur_item, segment)
+            .find(|item| tcx.def_kind(item) == DefKind::Mod)?;
+    }
+    // Finally, look up the desired item in this module, if any.
+    match item {
+        Some((item_name, namespace)) =>
+            Some(
+                find_children(tcx, cur_item, item_name)
+                    .find(|item| tcx.def_kind(item).ns() == Some(namespace))?,
+            ),
+        None => Some(cur_item),
+    }
 }
 
 pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriInterpCxExt<'mir, 'tcx> {
+    /// Checks if the given crate/module exists.
+    fn have_module(&self, path: &[&str]) -> bool {
+        try_resolve_did(*self.eval_context_ref().tcx, path, None).is_some()
+    }
+
     /// Gets an instance for a path; fails gracefully if the path does not exist.
-    fn try_resolve_path(&self, path: &[&str]) -> Option<ty::Instance<'tcx>> {
-        let did = try_resolve_did(self.eval_context_ref().tcx.tcx, path)?;
-        Some(ty::Instance::mono(self.eval_context_ref().tcx.tcx, did))
+    fn try_resolve_path(&self, path: &[&str], namespace: Namespace) -> Option<ty::Instance<'tcx>> {
+        let tcx = self.eval_context_ref().tcx.tcx;
+        let did = try_resolve_did(tcx, path, Some(namespace))?;
+        Some(ty::Instance::mono(tcx, did))
     }
 
     /// Gets an instance for a path.
-    fn resolve_path(&self, path: &[&str]) -> ty::Instance<'tcx> {
-        self.try_resolve_path(path)
+    fn resolve_path(&self, path: &[&str], namespace: Namespace) -> ty::Instance<'tcx> {
+        self.try_resolve_path(path, namespace)
             .unwrap_or_else(|| panic!("failed to find required Rust item: {path:?}"))
     }
 
@@ -115,7 +142,7 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriInterpCxExt<'mir, 'tcx> {
     /// if the path could be resolved, and None otherwise
     fn eval_path_scalar(&self, path: &[&str]) -> InterpResult<'tcx, Scalar<Provenance>> {
         let this = self.eval_context_ref();
-        let instance = this.resolve_path(path);
+        let instance = this.resolve_path(path, Namespace::ValueNS);
         let cid = GlobalId { instance, promoted: None };
         // We don't give a span -- this isn't actually used directly by the program anyway.
         let const_val = this.eval_global(cid, None)?;
@@ -147,7 +174,9 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriInterpCxExt<'mir, 'tcx> {
     /// Helper function to get the `TyAndLayout` of a `libc` type
     fn libc_ty_layout(&self, name: &str) -> InterpResult<'tcx, TyAndLayout<'tcx>> {
         let this = self.eval_context_ref();
-        let ty = this.resolve_path(&["libc", name]).ty(*this.tcx, ty::ParamEnv::reveal_all());
+        let ty = this
+            .resolve_path(&["libc", name], Namespace::TypeNS)
+            .ty(*this.tcx, ty::ParamEnv::reveal_all());
         this.layout_of(ty)
     }
 
@@ -155,7 +184,7 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriInterpCxExt<'mir, 'tcx> {
     fn windows_ty_layout(&self, name: &str) -> InterpResult<'tcx, TyAndLayout<'tcx>> {
         let this = self.eval_context_ref();
         let ty = this
-            .resolve_path(&["std", "sys", "windows", "c", name])
+            .resolve_path(&["std", "sys", "windows", "c", name], Namespace::TypeNS)
             .ty(*this.tcx, ty::ParamEnv::reveal_all());
         this.layout_of(ty)
     }
@@ -936,31 +965,14 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriInterpCxExt<'mir, 'tcx> {
 }
 
 impl<'mir, 'tcx> MiriMachine<'mir, 'tcx> {
-    pub fn current_span(&self) -> CurrentSpan<'_, 'mir, 'tcx> {
-        CurrentSpan { current_frame_idx: None, machine: self }
-    }
-}
-
-/// A `CurrentSpan` should be created infrequently (ideally once) per interpreter step. It does
-/// nothing on creation, but when `CurrentSpan::get` is called, searches the current stack for the
-/// topmost frame which corresponds to a local crate, and returns the current span in that frame.
-/// The result of that search is cached so that later calls are approximately free.
-#[derive(Clone)]
-pub struct CurrentSpan<'a, 'mir, 'tcx> {
-    current_frame_idx: Option<usize>,
-    machine: &'a MiriMachine<'mir, 'tcx>,
-}
-
-impl<'a, 'mir: 'a, 'tcx: 'a + 'mir> CurrentSpan<'a, 'mir, 'tcx> {
-    pub fn machine(&self) -> &'a MiriMachine<'mir, 'tcx> {
-        self.machine
-    }
-
-    /// Get the current span, skipping non-local frames.
+    /// Get the current span in the topmost function which is workspace-local and not
+    /// `#[track_caller]`.
     /// This function is backed by a cache, and can be assumed to be very fast.
-    pub fn get(&mut self) -> Span {
-        let idx = self.current_frame_idx();
-        self.stack().get(idx).map(Frame::current_span).unwrap_or(rustc_span::DUMMY_SP)
+    /// It will work even when the stack is empty.
+    pub fn current_span(&self) -> Span {
+        self.top_user_relevant_frame()
+            .map(|frame_idx| self.stack()[frame_idx].current_span())
+            .unwrap_or(rustc_span::DUMMY_SP)
     }
 
     /// Returns the span of the *caller* of the current operation, again
@@ -968,46 +980,27 @@ impl<'a, 'mir: 'a, 'tcx: 'a + 'mir> CurrentSpan<'a, 'mir, 'tcx> {
     /// current operation is not in a local crate.
     /// This is useful when we are processing something which occurs on function-entry and we want
     /// to point at the call to the function, not the function definition generally.
-    pub fn get_caller(&mut self) -> Span {
+    pub fn caller_span(&self) -> Span {
         // We need to go down at least to the caller (len - 2), or however
-        // far we have to go to find a frame in a local crate.
-        let local_frame_idx = self.current_frame_idx();
-        let stack = self.stack();
-        let idx = cmp::min(local_frame_idx, stack.len().saturating_sub(2));
-        stack.get(idx).map(Frame::current_span).unwrap_or(rustc_span::DUMMY_SP)
+        // far we have to go to find a frame in a local crate which is also not #[track_caller].
+        let frame_idx = self.top_user_relevant_frame().unwrap();
+        let frame_idx = cmp::min(frame_idx, self.stack().len().checked_sub(2).unwrap());
+        self.stack()[frame_idx].current_span()
     }
 
     fn stack(&self) -> &[Frame<'mir, 'tcx, Provenance, machine::FrameData<'tcx>>] {
-        self.machine.threads.active_thread_stack()
+        self.threads.active_thread_stack()
     }
 
-    fn current_frame_idx(&mut self) -> usize {
-        *self
-            .current_frame_idx
-            .get_or_insert_with(|| Self::compute_current_frame_index(self.machine))
+    fn top_user_relevant_frame(&self) -> Option<usize> {
+        self.threads.active_thread_ref().top_user_relevant_frame()
     }
 
-    // Find the position of the inner-most frame which is part of the crate being
-    // compiled/executed, part of the Cargo workspace, and is also not #[track_caller].
-    #[inline(never)]
-    fn compute_current_frame_index(machine: &MiriMachine<'_, '_>) -> usize {
-        machine
-            .threads
-            .active_thread_stack()
-            .iter()
-            .enumerate()
-            .rev()
-            .find_map(|(idx, frame)| {
-                let def_id = frame.instance.def_id();
-                if (def_id.is_local() || machine.local_crates.contains(&def_id.krate))
-                    && !frame.instance.def.requires_caller_location(machine.tcx)
-                {
-                    Some(idx)
-                } else {
-                    None
-                }
-            })
-            .unwrap_or(0)
+    /// This is the source of truth for the `is_user_relevant` flag in our `FrameExtra`.
+    pub fn is_user_relevant(&self, frame: &Frame<'mir, 'tcx, Provenance>) -> bool {
+        let def_id = frame.instance.def_id();
+        (def_id.is_local() || self.local_crates.contains(&def_id.krate))
+            && !frame.instance.def.requires_caller_location(self.tcx)
     }
 }
 

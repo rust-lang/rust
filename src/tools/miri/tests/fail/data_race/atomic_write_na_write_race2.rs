@@ -1,5 +1,5 @@
-// We want to control preemption here.
-//@compile-flags: -Zmiri-preemption-rate=0
+// We want to control preemption here. Stacked borrows interferes by having its own accesses.
+//@compile-flags: -Zmiri-preemption-rate=0 -Zmiri-disable-stacked-borrows
 
 use std::sync::atomic::AtomicUsize;
 use std::sync::atomic::Ordering;
