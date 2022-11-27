@@ -4,6 +4,7 @@ error: variables can be used directly in the `format!` string
 LL |     println!("val='{}'", var);
    |     ^^^^^^^^^^^^^^^^^^^^^^^^^
    |
+   = note: this lint can also fix mixed format arg inlining if `allow-mixed-uninlined-format-args = false` is set in the `clippy.toml` file
    = note: `-D clippy::uninlined-format-args` implied by `-D warnings`
 help: change this to
    |
