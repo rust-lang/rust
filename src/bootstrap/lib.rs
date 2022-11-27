@@ -647,7 +647,6 @@ impl Build {
         if !update(true).status().map_or(false, |status| status.success()) {
             self.run(&mut update(false));
         }
-        
         self.run(Command::new("git").args(&["stash", "push"]).current_dir(&absolute_path));
         self.run(Command::new("git").args(&["reset", "-q", "--hard"]).current_dir(&absolute_path));
         self.run(Command::new("git").args(&["clean", "-qdfx"]).current_dir(&absolute_path));
