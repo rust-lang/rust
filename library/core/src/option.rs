@@ -615,6 +615,7 @@ impl<T> Option<T> {
     ///
     /// [`map`]: Option::map
     /// [String]: ../../std/string/struct.String.html "String"
+    /// [`String`]: ../../std/string/struct.String.html "String"
     ///
     /// ```
     /// let text: Option<String> = Some("Hello, world!".to_string());
