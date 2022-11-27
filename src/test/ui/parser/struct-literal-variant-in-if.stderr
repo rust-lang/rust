@@ -42,16 +42,11 @@ help: surround the struct literal with parentheses
 LL |     if x == (E::K { field: "" }) {}
    |             +                  +
 
-error[E0423]: expected value, found struct variant `E::V`
+error[E0533]: expected value, found struct variant `E::V`
   --> $DIR/struct-literal-variant-in-if.rs:10:13
    |
 LL |     if x == E::V { field } {}
    |             ^^^^ not a value
-   |
-help: surround the struct literal with parentheses
-   |
-LL |     if x == (E::V { field }) {}
-   |             +              +
 
 error[E0308]: mismatched types
   --> $DIR/struct-literal-variant-in-if.rs:10:20
@@ -72,5 +67,5 @@ LL |     let y: usize = ();
 
 error: aborting due to 7 previous errors
 
-Some errors have detailed explanations: E0308, E0423.
+Some errors have detailed explanations: E0308, E0533.
 For more information about an error, try `rustc --explain E0308`.

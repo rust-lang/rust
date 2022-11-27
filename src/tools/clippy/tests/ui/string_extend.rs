@@ -29,4 +29,7 @@ fn main() {
 
     let f = HasChars;
     s.extend(f.chars());
+
+    // issue #9735
+    s.extend(abc[0..2].chars());
 }

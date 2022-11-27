@@ -97,13 +97,7 @@ fn main() {
         // This... is a bit of a hack how we detect this. Ideally this
         // information should be encoded in the crate I guess? Would likely
         // require an RFC amendment to RFC 1513, however.
-        //
-        // `compiler_builtins` are unconditionally compiled with panic=abort to
-        // workaround undefined references to `rust_eh_unwind_resume` generated
-        // otherwise, see issue https://github.com/rust-lang/rust/issues/43095.
-        if crate_name == Some("panic_abort")
-            || crate_name == Some("compiler_builtins") && stage != "0"
-        {
+        if crate_name == Some("panic_abort") {
             cmd.arg("-C").arg("panic=abort");
         }
 

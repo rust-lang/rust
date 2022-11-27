@@ -2127,7 +2127,8 @@ extern "C" {
         Builder: &DIBuilder<'a>,
         Name: *const c_char,
         NameLen: size_t,
-        Value: i64,
+        Value: *const u64,
+        SizeInBits: c_uint,
         IsUnsigned: bool,
     ) -> &'a DIEnumerator;
 

@@ -1345,5 +1345,36 @@ fn f<F: FnOnce(u8, u16) -> i32>(f: F) {
                  ^^  ---
             "#]],
         );
+        check(
+            r#"
+fn f<T, F: FnOnce(&T, u16) -> &T>(f: F) {
+    f($0)
+}
+"#,
+            expect![[r#"
+                (&T, u16) -> &T
+                 ^^  ---
+            "#]],
+        );
+    }
+
+    #[test]
+    fn regression_13579() {
+        check(
+            r#"
+fn f() {
+    take(2)($0);
+}
+
+fn take<C, Error>(
+    count: C
+) -> impl Fn() -> C  {
+    move || count
+}
+"#,
+            expect![[r#"
+                () -> i32
+            "#]],
+        );
     }
 }

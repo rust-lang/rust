@@ -564,7 +564,7 @@ fn check_for_bindings_named_same_as_variants(
             && let ty::Adt(edef, _) = pat_ty.kind()
             && edef.is_enum()
             && edef.variants().iter().any(|variant| {
-                variant.ident(cx.tcx) == ident && variant.ctor_kind == CtorKind::Const
+                variant.ident(cx.tcx) == ident && variant.ctor_kind() == Some(CtorKind::Const)
             })
         {
             let variant_count = edef.variants().len();
@@ -818,7 +818,7 @@ fn non_exhaustive_match<'p, 'tcx>(
         }
     }
     if let ty::Ref(_, sub_ty, _) = scrut_ty.kind() {
-        if cx.tcx.is_ty_uninhabited_from(cx.module, *sub_ty, cx.param_env) {
+        if !sub_ty.is_inhabited_from(cx.tcx, cx.module, cx.param_env) {
             err.note("references are always considered inhabited");
         }
     }
@@ -1044,11 +1044,19 @@ fn check_borrow_conflicts_in_at_patterns(cx: &MatchVisitor<'_, '_, '_>, pat: &Pa
                     name,
                     typeck_results.node_type(pat.hir_id),
                 );
-                sess.struct_span_err(pat.span, "borrow of moved value")
-                    .span_label(binding_span, format!("value moved into `{}` here", name))
+                let mut err = sess.struct_span_err(pat.span, "borrow of moved value");
+                err.span_label(binding_span, format!("value moved into `{}` here", name))
                     .span_label(binding_span, occurs_because)
-                    .span_labels(conflicts_ref, "value borrowed here after move")
-                    .emit();
+                    .span_labels(conflicts_ref, "value borrowed here after move");
+                if pat.span.contains(binding_span) {
+                    err.span_suggestion_verbose(
+                        binding_span.shrink_to_lo(),
+                        "borrow this binding in the pattern to avoid moving the value",
+                        "ref ".to_string(),
+                        Applicability::MachineApplicable,
+                    );
+                }
+                err.emit();
             }
             return;
         }

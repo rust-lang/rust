@@ -8,6 +8,7 @@ edition = "2021"
 [dependencies]
 rustc_arena = { path = "../rustc_arena" }
 tracing = "0.1"
+either = "1"
 rustc_middle = { path = "../rustc_middle" }
 rustc_apfloat = { path = "../rustc_apfloat" }
 rustc_attr = { path = "../rustc_attr" }

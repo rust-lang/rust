@@ -8,6 +8,11 @@ LL |         Some(_) if { drop(a); false } => None,
    |                           - value moved here
 LL |         x => x,
    |         ^ value used here after move
+   |
+help: consider cloning the value if the performance cost is acceptable
+   |
+LL |         Some(_) if { drop(a.clone()); false } => None,
+   |                            ++++++++
 
 error: aborting due to previous error
 

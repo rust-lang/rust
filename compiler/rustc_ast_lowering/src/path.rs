@@ -185,12 +185,12 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
         itctx: &ImplTraitContext,
     ) -> hir::PathSegment<'hir> {
         debug!("path_span: {:?}, lower_path_segment(segment: {:?})", path_span, segment,);
-        let (mut generic_args, infer_args) = if let Some(ref generic_args) = segment.args {
-            match **generic_args {
-                GenericArgs::AngleBracketed(ref data) => {
+        let (mut generic_args, infer_args) = if let Some(generic_args) = segment.args.as_deref() {
+            match generic_args {
+                GenericArgs::AngleBracketed(data) => {
                     self.lower_angle_bracketed_parameter_data(data, param_mode, itctx)
                 }
-                GenericArgs::Parenthesized(ref data) => match parenthesized_generic_args {
+                GenericArgs::Parenthesized(data) => match parenthesized_generic_args {
                     ParenthesizedGenericArgs::Ok => {
                         self.lower_parenthesized_parameter_data(data, itctx)
                     }
@@ -309,7 +309,7 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
                 let id = NodeId::from_u32(i);
                 let l = self.lower_lifetime(&Lifetime {
                     id,
-                    ident: Ident::new(kw::UnderscoreLifetime, elided_lifetime_span),
+                    ident: Ident::new(kw::Empty, elided_lifetime_span),
                 });
                 GenericArg::Lifetime(l)
             }),

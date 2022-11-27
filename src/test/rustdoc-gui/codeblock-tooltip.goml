@@ -146,7 +146,7 @@ call-function: ("check-colors", {
 })
 call-function: ("check-colors", {
     "theme": "light",
-    "background": "rgb(253, 255, 211)",
+    "background": "rgb(0, 0, 0)",
     "color": "rgb(255, 255, 255)",
     "border": "rgb(224, 224, 224)",
 })

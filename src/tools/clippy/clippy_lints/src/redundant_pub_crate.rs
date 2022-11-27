@@ -70,7 +70,8 @@ impl<'tcx> LateLintPass<'tcx> for RedundantPubCrate {
         }
 
         if let ItemKind::Mod { .. } = item.kind {
-            self.is_exported.push(cx.effective_visibilities.is_exported(item.owner_id.def_id));
+            self.is_exported
+                .push(cx.effective_visibilities.is_exported(item.owner_id.def_id));
         }
     }
 

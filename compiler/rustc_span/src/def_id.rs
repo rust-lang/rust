@@ -34,7 +34,7 @@ impl CrateNum {
 
 impl fmt::Display for CrateNum {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        fmt::Display::fmt(&self.private, f)
+        fmt::Display::fmt(&self.as_u32(), f)
     }
 }
 

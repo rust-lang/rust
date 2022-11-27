@@ -539,18 +539,19 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                         .subst_iter_copied(self.tcx, substs)
                     {
                         let pred = pred.kind().rebind(match pred.kind().skip_binder() {
-                            ty::PredicateKind::Trait(mut trait_pred) => {
+                            ty::PredicateKind::Clause(ty::Clause::Trait(trait_pred)) => {
                                 assert_eq!(trait_pred.trait_ref.self_ty(), opaque_ty);
-                                trait_pred.trait_ref.substs =
-                                    self.tcx.mk_substs_trait(ty, &trait_pred.trait_ref.substs[1..]);
-                                ty::PredicateKind::Trait(trait_pred)
+                                ty::PredicateKind::Clause(ty::Clause::Trait(
+                                    trait_pred.with_self_type(self.tcx, ty),
+                                ))
                             }
-                            ty::PredicateKind::Projection(mut proj_pred) => {
+                            ty::PredicateKind::Clause(ty::Clause::Projection(mut proj_pred)) => {
                                 assert_eq!(proj_pred.projection_ty.self_ty(), opaque_ty);
-                                proj_pred.projection_ty.substs = self
-                                    .tcx
-                                    .mk_substs_trait(ty, &proj_pred.projection_ty.substs[1..]);
-                                ty::PredicateKind::Projection(proj_pred)
+                                proj_pred.projection_ty.substs = self.tcx.mk_substs_trait(
+                                    ty,
+                                    proj_pred.projection_ty.substs.iter().skip(1),
+                                );
+                                ty::PredicateKind::Clause(ty::Clause::Projection(proj_pred))
                             }
                             _ => continue,
                         });
@@ -573,8 +574,5 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
 }
 
 fn arms_contain_ref_bindings<'tcx>(arms: &'tcx [hir::Arm<'tcx>]) -> Option<hir::Mutability> {
-    arms.iter().filter_map(|a| a.pat.contains_explicit_ref_binding()).max_by_key(|m| match *m {
-        hir::Mutability::Mut => 1,
-        hir::Mutability::Not => 0,
-    })
+    arms.iter().filter_map(|a| a.pat.contains_explicit_ref_binding()).max()
 }

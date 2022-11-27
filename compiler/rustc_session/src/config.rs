@@ -11,7 +11,7 @@ use crate::{lint, HashStableContext};
 use rustc_data_structures::fx::{FxHashMap, FxHashSet};
 
 use rustc_data_structures::stable_hasher::ToStableHashKey;
-use rustc_target::abi::{Align, TargetDataLayout};
+use rustc_target::abi::Align;
 use rustc_target::spec::{PanicStrategy, SanitizerSet, SplitDebuginfo};
 use rustc_target::spec::{Target, TargetTriple, TargetWarnings, TARGETS};
 
@@ -900,7 +900,7 @@ fn default_configuration(sess: &Session) -> CrateConfig {
     let min_atomic_width = sess.target.min_atomic_width();
     let max_atomic_width = sess.target.max_atomic_width();
     let atomic_cas = sess.target.atomic_cas;
-    let layout = TargetDataLayout::parse(&sess.target).unwrap_or_else(|err| {
+    let layout = sess.target.parse_data_layout().unwrap_or_else(|err| {
         sess.emit_fatal(err);
     });
 
@@ -1480,7 +1480,7 @@ pub fn get_cmd_lint_options(
 
 /// Parses the `--color` flag.
 pub fn parse_color(matches: &getopts::Matches) -> ColorConfig {
-    match matches.opt_str("color").as_ref().map(|s| &s[..]) {
+    match matches.opt_str("color").as_deref() {
         Some("auto") => ColorConfig::Auto,
         Some("always") => ColorConfig::Always,
         Some("never") => ColorConfig::Never,
@@ -1589,7 +1589,7 @@ pub fn parse_error_format(
     // is unstable, it will not be present. We have to use `opts_present` not
     // `opt_present` because the latter will panic.
     let error_format = if matches.opts_present(&["error-format".to_owned()]) {
-        match matches.opt_str("error-format").as_ref().map(|s| &s[..]) {
+        match matches.opt_str("error-format").as_deref() {
             None | Some("human") => {
                 ErrorOutputType::HumanReadable(HumanReadableErrorType::Default(color))
             }

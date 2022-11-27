@@ -10,14 +10,14 @@
 //! [rustc dev guide]: https://rustc-dev-guide.rust-lang.org/traits/specialization.html
 
 pub mod specialization_graph;
-use rustc_infer::traits::{TraitEngine, TraitEngineExt as _};
 use specialization_graph::GraphExt;
 
 use crate::errors::NegativePositiveConflict;
 use crate::infer::{InferCtxt, InferOk, TyCtxtInferExt};
-use crate::traits::engine::TraitEngineExt as _;
 use crate::traits::select::IntercrateAmbiguityCause;
-use crate::traits::{self, coherence, FutureCompatOverlapErrorKind, ObligationCause};
+use crate::traits::{
+    self, coherence, FutureCompatOverlapErrorKind, ObligationCause, ObligationCtxt,
+};
 use rustc_data_structures::fx::FxIndexSet;
 use rustc_errors::{error_code, DelayDm, Diagnostic};
 use rustc_hir::def_id::{DefId, LocalDefId};
@@ -204,12 +204,12 @@ fn fulfill_implication<'tcx>(
 
     // Needs to be `in_snapshot` because this function is used to rebase
     // substitutions, which may happen inside of a select within a probe.
-    let mut engine = <dyn TraitEngine<'tcx>>::new_in_snapshot(infcx.tcx);
+    let ocx = ObligationCtxt::new_in_snapshot(infcx);
     // attempt to prove all of the predicates for impl2 given those for impl1
     // (which are packed up in penv)
-    engine.register_predicate_obligations(infcx, obligations.chain(more_obligations));
+    ocx.register_obligations(obligations.chain(more_obligations));
 
-    let errors = engine.select_all_or_error(infcx);
+    let errors = ocx.select_all_or_error();
     if !errors.is_empty() {
         // no dice!
         debug!(
@@ -476,7 +476,9 @@ pub(crate) fn to_pretty_impl_header(tcx: TyCtxt<'_>, impl_def_id: DefId) -> Opti
                     trait_pred
                 });
 
-                p = tcx.mk_predicate(new_trait_pred.map_bound(ty::PredicateKind::Trait))
+                p = tcx.mk_predicate(
+                    new_trait_pred.map_bound(|p| ty::PredicateKind::Clause(ty::Clause::Trait(p))),
+                )
             }
         }
         pretty_predicates.push(p.to_string());

@@ -262,7 +262,7 @@ impl CastTarget {
         let mut size = self.rest.total;
         for i in 0..self.prefix.iter().count() {
             match self.prefix[i] {
-                Some(v) => size += Size { raw: v.size.bytes() },
+                Some(v) => size += v.size,
                 None => {}
             }
         }

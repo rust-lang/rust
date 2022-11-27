@@ -1,4 +1,4 @@
-use crate::def_id::{DefId, LocalDefId, CRATE_DEF_ID};
+use crate::def_id::{DefId, DefIndex, LocalDefId, CRATE_DEF_ID};
 use rustc_data_structures::stable_hasher::{HashStable, StableHasher, ToStableHashKey};
 use rustc_span::{def_id::DefPathHash, HashStableContext};
 use std::fmt;
@@ -19,6 +19,18 @@ impl OwnerId {
     #[inline]
     pub fn to_def_id(self) -> DefId {
         self.def_id.to_def_id()
+    }
+}
+
+impl rustc_index::vec::Idx for OwnerId {
+    #[inline]
+    fn new(idx: usize) -> Self {
+        OwnerId { def_id: LocalDefId { local_def_index: DefIndex::from_usize(idx) } }
+    }
+
+    #[inline]
+    fn index(self) -> usize {
+        self.def_id.local_def_index.as_usize()
     }
 }
 

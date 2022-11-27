@@ -450,6 +450,15 @@ impl<'infcx, 'tcx> CombineFields<'infcx, 'tcx> {
             ty::Binder::dummy(predicate),
         ));
     }
+
+    pub fn mark_ambiguous(&mut self) {
+        self.obligations.push(Obligation::new(
+            self.tcx(),
+            self.trace.cause.clone(),
+            self.param_env,
+            ty::Binder::dummy(ty::PredicateKind::Ambiguous),
+        ));
+    }
 }
 
 struct Generalizer<'cx, 'tcx> {
@@ -521,6 +530,11 @@ impl<'tcx> TypeRelation<'tcx> for Generalizer<'_, 'tcx> {
     fn tcx(&self) -> TyCtxt<'tcx> {
         self.infcx.tcx
     }
+
+    fn intercrate(&self) -> bool {
+        self.infcx.intercrate
+    }
+
     fn param_env(&self) -> ty::ParamEnv<'tcx> {
         self.param_env
     }
@@ -531,6 +545,10 @@ impl<'tcx> TypeRelation<'tcx> for Generalizer<'_, 'tcx> {
 
     fn a_is_expected(&self) -> bool {
         true
+    }
+
+    fn mark_ambiguous(&mut self) {
+        span_bug!(self.cause.span, "opaque types are handled in `tys`");
     }
 
     fn binders<T>(
@@ -564,6 +582,7 @@ impl<'tcx> TypeRelation<'tcx> for Generalizer<'_, 'tcx> {
                 &opt_variances,
                 a_subst,
                 b_subst,
+                true,
             )
         }
     }
@@ -655,6 +674,10 @@ impl<'tcx> TypeRelation<'tcx> for Generalizer<'_, 'tcx> {
                 // integer/floating-point types must be equal to be
                 // relatable.
                 Ok(t)
+            }
+            ty::Opaque(def_id, substs) => {
+                let s = self.relate(substs, substs)?;
+                Ok(if s == substs { t } else { self.infcx.tcx.mk_opaque(def_id, s) })
             }
             _ => relate::super_relate_tys(self, t, t),
         }?;
@@ -798,6 +821,11 @@ impl<'tcx> TypeRelation<'tcx> for ConstInferUnifier<'_, 'tcx> {
         self.infcx.tcx
     }
 
+    fn intercrate(&self) -> bool {
+        assert!(!self.infcx.intercrate);
+        false
+    }
+
     fn param_env(&self) -> ty::ParamEnv<'tcx> {
         self.param_env
     }
@@ -808,6 +836,10 @@ impl<'tcx> TypeRelation<'tcx> for ConstInferUnifier<'_, 'tcx> {
 
     fn a_is_expected(&self) -> bool {
         true
+    }
+
+    fn mark_ambiguous(&mut self) {
+        bug!()
     }
 
     fn relate_with_variance<T: Relate<'tcx>>(

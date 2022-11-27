@@ -17,11 +17,11 @@ use crate::traits;
 use crate::ty::query::{self, TyCtxtAt};
 use crate::ty::{
     self, AdtDef, AdtDefData, AdtKind, Binder, BindingMode, BoundVar, CanonicalPolyFnSig,
-    ClosureSizeProfileData, Const, ConstS, ConstVid, DefIdTree, ExistentialPredicate, FloatTy,
-    FloatVar, FloatVid, GenericParamDefKind, InferConst, InferTy, IntTy, IntVar, IntVid, List,
-    ParamConst, ParamTy, PolyFnSig, Predicate, PredicateKind, PredicateS, ProjectionTy, Region,
-    RegionKind, ReprOptions, TraitObjectVisitor, Ty, TyKind, TyS, TyVar, TyVid, TypeAndMut, UintTy,
-    Visibility,
+    ClosureSizeProfileData, Const, ConstS, ConstVid, DefIdTree, FloatTy, FloatVar, FloatVid,
+    GenericParamDefKind, InferConst, InferTy, IntTy, IntVar, IntVid, List, ParamConst, ParamTy,
+    PolyExistentialPredicate, PolyFnSig, Predicate, PredicateKind, PredicateS, ProjectionTy,
+    Region, RegionKind, ReprOptions, TraitObjectVisitor, Ty, TyKind, TyS, TyVar, TyVid, TypeAndMut,
+    UintTy, Visibility,
 };
 use crate::ty::{GenericArg, GenericArgKind, InternalSubsts, SubstsRef, UserSubsts};
 use rustc_ast as ast;
@@ -109,7 +109,7 @@ impl<'tcx> Interner for TyCtxt<'tcx> {
     type Mutability = hir::Mutability;
     type Movability = hir::Movability;
     type PolyFnSig = PolyFnSig<'tcx>;
-    type ListBinderExistentialPredicate = &'tcx List<Binder<'tcx, ExistentialPredicate<'tcx>>>;
+    type ListBinderExistentialPredicate = &'tcx List<PolyExistentialPredicate<'tcx>>;
     type BinderListTy = Binder<'tcx, &'tcx List<Ty<'tcx>>>;
     type ListTy = &'tcx List<Ty<'tcx>>;
     type ProjectionTy = ty::ProjectionTy<'tcx>;
@@ -137,11 +137,11 @@ pub struct CtxtInterners<'tcx> {
     // Specifically use a speedy hash algorithm for these hash sets, since
     // they're accessed quite often.
     type_: InternedSet<'tcx, WithStableHash<TyS<'tcx>>>,
+    const_lists: InternedSet<'tcx, List<ty::Const<'tcx>>>,
     substs: InternedSet<'tcx, InternalSubsts<'tcx>>,
     canonical_var_infos: InternedSet<'tcx, List<CanonicalVarInfo<'tcx>>>,
     region: InternedSet<'tcx, RegionKind<'tcx>>,
-    poly_existential_predicates:
-        InternedSet<'tcx, List<ty::Binder<'tcx, ExistentialPredicate<'tcx>>>>,
+    poly_existential_predicates: InternedSet<'tcx, List<PolyExistentialPredicate<'tcx>>>,
     predicate: InternedSet<'tcx, PredicateS<'tcx>>,
     predicates: InternedSet<'tcx, List<Predicate<'tcx>>>,
     projs: InternedSet<'tcx, List<ProjectionKind>>,
@@ -149,7 +149,7 @@ pub struct CtxtInterners<'tcx> {
     const_: InternedSet<'tcx, ConstS<'tcx>>,
     const_allocation: InternedSet<'tcx, Allocation>,
     bound_variable_kinds: InternedSet<'tcx, List<ty::BoundVariableKind>>,
-    layout: InternedSet<'tcx, LayoutS<'tcx>>,
+    layout: InternedSet<'tcx, LayoutS<VariantIdx>>,
     adt_def: InternedSet<'tcx, AdtDefData>,
 }
 
@@ -158,6 +158,7 @@ impl<'tcx> CtxtInterners<'tcx> {
         CtxtInterners {
             arena,
             type_: Default::default(),
+            const_lists: Default::default(),
             substs: Default::default(),
             region: Default::default(),
             poly_existential_predicates: Default::default(),
@@ -1234,7 +1235,7 @@ impl<'tcx> TyCtxt<'tcx> {
             global_ctxt: untracked_resolutions,
             ast_lowering: untracked_resolver_for_lowering,
         } = resolver_outputs;
-        let data_layout = TargetDataLayout::parse(&s.target).unwrap_or_else(|err| {
+        let data_layout = s.target.parse_data_layout().unwrap_or_else(|err| {
             s.emit_fatal(err);
         });
         let interners = CtxtInterners::new(arena);
@@ -1810,7 +1811,7 @@ nop_lift! {const_; Const<'a> => Const<'tcx>}
 nop_lift! {const_allocation; ConstAllocation<'a> => ConstAllocation<'tcx>}
 nop_lift! {predicate; Predicate<'a> => Predicate<'tcx>}
 
-nop_list_lift! {poly_existential_predicates; ty::Binder<'a, ExistentialPredicate<'a>> => ty::Binder<'tcx, ExistentialPredicate<'tcx>>}
+nop_list_lift! {poly_existential_predicates; PolyExistentialPredicate<'a> => PolyExistentialPredicate<'tcx>}
 nop_list_lift! {predicates; Predicate<'a> => Predicate<'tcx>}
 nop_list_lift! {canonical_var_infos; CanonicalVarInfo<'a> => CanonicalVarInfo<'tcx>}
 nop_list_lift! {projs; ProjectionKind => ProjectionKind}
@@ -2245,7 +2246,7 @@ direct_interners! {
     region: mk_region(RegionKind<'tcx>): Region -> Region<'tcx>,
     const_: mk_const_internal(ConstS<'tcx>): Const -> Const<'tcx>,
     const_allocation: intern_const_alloc(Allocation): ConstAllocation -> ConstAllocation<'tcx>,
-    layout: intern_layout(LayoutS<'tcx>): Layout -> Layout<'tcx>,
+    layout: intern_layout(LayoutS<VariantIdx>): Layout -> Layout<'tcx>,
     adt_def: intern_adt_def(AdtDefData): AdtDef -> AdtDef<'tcx>,
 }
 
@@ -2262,10 +2263,11 @@ macro_rules! slice_interners {
 }
 
 slice_interners!(
+    const_lists: _intern_const_list(Const<'tcx>),
     substs: _intern_substs(GenericArg<'tcx>),
     canonical_var_infos: _intern_canonical_var_infos(CanonicalVarInfo<'tcx>),
     poly_existential_predicates:
-        _intern_poly_existential_predicates(ty::Binder<'tcx, ExistentialPredicate<'tcx>>),
+        _intern_poly_existential_predicates(PolyExistentialPredicate<'tcx>),
     predicates: _intern_predicates(Predicate<'tcx>),
     projs: _intern_projs(ProjectionKind),
     place_elems: _intern_place_elems(PlaceElem<'tcx>),
@@ -2294,10 +2296,10 @@ impl<'tcx> TyCtxt<'tcx> {
     /// Given a `ty`, return whether it's an `impl Future<...>`.
     pub fn ty_is_opaque_future(self, ty: Ty<'_>) -> bool {
         let ty::Opaque(def_id, _) = ty.kind() else { return false };
-        let future_trait = self.lang_items().future_trait().unwrap();
+        let future_trait = self.require_lang_item(LangItem::Future, None);
 
         self.explicit_item_bounds(def_id).iter().any(|(predicate, _)| {
-            let ty::PredicateKind::Trait(trait_predicate) = predicate.kind().skip_binder() else {
+            let ty::PredicateKind::Clause(ty::Clause::Trait(trait_predicate)) = predicate.kind().skip_binder() else {
                 return false;
             };
             trait_predicate.trait_ref.def_id == future_trait
@@ -2320,7 +2322,9 @@ impl<'tcx> TyCtxt<'tcx> {
             let generic_predicates = self.super_predicates_of(trait_did);
 
             for (predicate, _) in generic_predicates.predicates {
-                if let ty::PredicateKind::Trait(data) = predicate.kind().skip_binder() {
+                if let ty::PredicateKind::Clause(ty::Clause::Trait(data)) =
+                    predicate.kind().skip_binder()
+                {
                     if set.insert(data.def_id()) {
                         stack.push(data.def_id());
                     }
@@ -2517,7 +2521,7 @@ impl<'tcx> TyCtxt<'tcx> {
         self.mk_ty(Tuple(self.intern_type_list(&ts)))
     }
 
-    pub fn mk_tup<I: InternAs<[Ty<'tcx>], Ty<'tcx>>>(self, iter: I) -> I::Output {
+    pub fn mk_tup<I: InternAs<Ty<'tcx>, Ty<'tcx>>>(self, iter: I) -> I::Output {
         iter.intern_with(|ts| self.mk_ty(Tuple(self.intern_type_list(&ts))))
     }
 
@@ -2533,6 +2537,11 @@ impl<'tcx> TyCtxt<'tcx> {
 
     #[inline]
     pub fn mk_fn_def(self, def_id: DefId, substs: SubstsRef<'tcx>) -> Ty<'tcx> {
+        debug_assert_eq!(
+            self.generics_of(def_id).count(),
+            substs.len(),
+            "wrong number of generic parameters for {def_id:?}: {substs:?}",
+        );
         self.mk_ty(FnDef(def_id, substs))
     }
 
@@ -2544,7 +2553,7 @@ impl<'tcx> TyCtxt<'tcx> {
     #[inline]
     pub fn mk_dynamic(
         self,
-        obj: &'tcx List<ty::Binder<'tcx, ExistentialPredicate<'tcx>>>,
+        obj: &'tcx List<PolyExistentialPredicate<'tcx>>,
         reg: ty::Region<'tcx>,
         repr: DynKind,
     ) -> Ty<'tcx> {
@@ -2553,6 +2562,11 @@ impl<'tcx> TyCtxt<'tcx> {
 
     #[inline]
     pub fn mk_projection(self, item_def_id: DefId, substs: SubstsRef<'tcx>) -> Ty<'tcx> {
+        debug_assert_eq!(
+            self.generics_of(item_def_id).count(),
+            substs.len(),
+            "wrong number of generic parameters for {item_def_id:?}: {substs:?}",
+        );
         self.mk_ty(Projection(ProjectionTy { item_def_id, substs }))
     }
 
@@ -2682,8 +2696,8 @@ impl<'tcx> TyCtxt<'tcx> {
 
     pub fn intern_poly_existential_predicates(
         self,
-        eps: &[ty::Binder<'tcx, ExistentialPredicate<'tcx>>],
-    ) -> &'tcx List<ty::Binder<'tcx, ExistentialPredicate<'tcx>>> {
+        eps: &[PolyExistentialPredicate<'tcx>],
+    ) -> &'tcx List<PolyExistentialPredicate<'tcx>> {
         assert!(!eps.is_empty());
         assert!(
             eps.array_windows()
@@ -2703,6 +2717,17 @@ impl<'tcx> TyCtxt<'tcx> {
         } else {
             self._intern_predicates(preds)
         }
+    }
+
+    pub fn mk_const_list<I: InternAs<ty::Const<'tcx>, &'tcx List<ty::Const<'tcx>>>>(
+        self,
+        iter: I,
+    ) -> I::Output {
+        iter.intern_with(|xs| self.intern_const_list(xs))
+    }
+
+    pub fn intern_const_list(self, cs: &[ty::Const<'tcx>]) -> &'tcx List<ty::Const<'tcx>> {
+        if cs.is_empty() { List::empty() } else { self._intern_const_list(cs) }
     }
 
     pub fn intern_type_list(self, ts: &[Ty<'tcx>]) -> &'tcx List<Ty<'tcx>> {
@@ -2767,10 +2792,7 @@ impl<'tcx> TyCtxt<'tcx> {
     }
 
     pub fn mk_poly_existential_predicates<
-        I: InternAs<
-            [ty::Binder<'tcx, ExistentialPredicate<'tcx>>],
-            &'tcx List<ty::Binder<'tcx, ExistentialPredicate<'tcx>>>,
-        >,
+        I: InternAs<PolyExistentialPredicate<'tcx>, &'tcx List<PolyExistentialPredicate<'tcx>>>,
     >(
         self,
         iter: I,
@@ -2778,37 +2800,58 @@ impl<'tcx> TyCtxt<'tcx> {
         iter.intern_with(|xs| self.intern_poly_existential_predicates(xs))
     }
 
-    pub fn mk_predicates<I: InternAs<[Predicate<'tcx>], &'tcx List<Predicate<'tcx>>>>(
+    pub fn mk_predicates<I: InternAs<Predicate<'tcx>, &'tcx List<Predicate<'tcx>>>>(
         self,
         iter: I,
     ) -> I::Output {
         iter.intern_with(|xs| self.intern_predicates(xs))
     }
 
-    pub fn mk_type_list<I: InternAs<[Ty<'tcx>], &'tcx List<Ty<'tcx>>>>(self, iter: I) -> I::Output {
+    pub fn mk_type_list<I: InternAs<Ty<'tcx>, &'tcx List<Ty<'tcx>>>>(self, iter: I) -> I::Output {
         iter.intern_with(|xs| self.intern_type_list(xs))
     }
 
-    pub fn mk_substs<I: InternAs<[GenericArg<'tcx>], &'tcx List<GenericArg<'tcx>>>>(
+    pub fn mk_substs<I: InternAs<GenericArg<'tcx>, &'tcx List<GenericArg<'tcx>>>>(
         self,
         iter: I,
     ) -> I::Output {
         iter.intern_with(|xs| self.intern_substs(xs))
     }
 
-    pub fn mk_place_elems<I: InternAs<[PlaceElem<'tcx>], &'tcx List<PlaceElem<'tcx>>>>(
+    pub fn mk_place_elems<I: InternAs<PlaceElem<'tcx>, &'tcx List<PlaceElem<'tcx>>>>(
         self,
         iter: I,
     ) -> I::Output {
         iter.intern_with(|xs| self.intern_place_elems(xs))
     }
 
-    pub fn mk_substs_trait(self, self_ty: Ty<'tcx>, rest: &[GenericArg<'tcx>]) -> SubstsRef<'tcx> {
-        self.mk_substs(iter::once(self_ty.into()).chain(rest.iter().cloned()))
+    pub fn mk_substs_trait(
+        self,
+        self_ty: Ty<'tcx>,
+        rest: impl IntoIterator<Item = GenericArg<'tcx>>,
+    ) -> SubstsRef<'tcx> {
+        self.mk_substs(iter::once(self_ty.into()).chain(rest))
+    }
+
+    pub fn mk_trait_ref(
+        self,
+        trait_def_id: DefId,
+        substs: impl IntoIterator<Item = impl Into<GenericArg<'tcx>>>,
+    ) -> ty::TraitRef<'tcx> {
+        let substs = substs.into_iter().map(Into::into);
+        let n = self.generics_of(trait_def_id).count();
+        debug_assert_eq!(
+            (n, Some(n)),
+            substs.size_hint(),
+            "wrong number of generic parameters for {trait_def_id:?}: {:?} \nDid you accidentally include the self-type in the params list?",
+            substs.collect::<Vec<_>>(),
+        );
+        let substs = self.mk_substs(substs);
+        ty::TraitRef::new(trait_def_id, substs)
     }
 
     pub fn mk_bound_variable_kinds<
-        I: InternAs<[ty::BoundVariableKind], &'tcx List<ty::BoundVariableKind>>,
+        I: InternAs<ty::BoundVariableKind, &'tcx List<ty::BoundVariableKind>>,
     >(
         self,
         iter: I,
@@ -2962,6 +3005,15 @@ impl<'tcx> TyCtxtAt<'tcx> {
     #[track_caller]
     pub fn ty_error_with_message(self, msg: &str) -> Ty<'tcx> {
         self.tcx.ty_error_with_message(self.span, msg)
+    }
+
+    pub fn mk_trait_ref(
+        self,
+        trait_lang_item: LangItem,
+        substs: impl IntoIterator<Item = impl Into<ty::GenericArg<'tcx>>>,
+    ) -> ty::TraitRef<'tcx> {
+        let trait_def_id = self.require_lang_item(trait_lang_item, Some(self.span));
+        self.tcx.mk_trait_ref(trait_def_id, substs)
     }
 }
 

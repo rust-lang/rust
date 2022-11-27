@@ -31,7 +31,6 @@ use rustc_errors::ErrorGuaranteed;
 use rustc_hir as hir;
 use rustc_hir::def_id::DefId;
 use rustc_hir::lang_items::LangItem;
-use rustc_infer::traits::TraitEngineExt as _;
 use rustc_middle::ty::fold::TypeFoldable;
 use rustc_middle::ty::visit::TypeVisitable;
 use rustc_middle::ty::{
@@ -136,7 +135,6 @@ pub fn predicates_for_generics<'tcx>(
 /// `bound` or is not known to meet bound (note that this is
 /// conservative towards *no impl*, which is the opposite of the
 /// `evaluate` methods).
-#[instrument(level = "debug", skip(infcx, param_env, span), ret)]
 pub fn type_known_to_meet_bound_modulo_regions<'tcx>(
     infcx: &InferCtxt<'tcx>,
     param_env: ty::ParamEnv<'tcx>,
@@ -144,33 +142,42 @@ pub fn type_known_to_meet_bound_modulo_regions<'tcx>(
     def_id: DefId,
     span: Span,
 ) -> bool {
-    let trait_ref =
-        ty::Binder::dummy(ty::TraitRef { def_id, substs: infcx.tcx.mk_substs_trait(ty, &[]) });
+    let trait_ref = ty::Binder::dummy(infcx.tcx.mk_trait_ref(def_id, [ty]));
+    pred_known_to_hold_modulo_regions(infcx, param_env, trait_ref.without_const(), span)
+}
+
+#[instrument(level = "debug", skip(infcx, param_env, span, pred), ret)]
+fn pred_known_to_hold_modulo_regions<'tcx>(
+    infcx: &InferCtxt<'tcx>,
+    param_env: ty::ParamEnv<'tcx>,
+    pred: impl ToPredicate<'tcx, ty::Predicate<'tcx>> + TypeVisitable<'tcx>,
+    span: Span,
+) -> bool {
+    let has_non_region_infer = pred.has_non_region_infer();
     let obligation = Obligation {
         param_env,
+        // We can use a dummy node-id here because we won't pay any mind
+        // to region obligations that arise (there shouldn't really be any
+        // anyhow).
         cause: ObligationCause::misc(span, hir::CRATE_HIR_ID),
         recursion_depth: 0,
-        predicate: trait_ref.without_const().to_predicate(infcx.tcx),
+        predicate: pred.to_predicate(infcx.tcx),
     };
 
     let result = infcx.predicate_must_hold_modulo_regions(&obligation);
     debug!(?result);
 
-    if result && ty.has_non_region_infer() {
+    if result && has_non_region_infer {
         // Because of inference "guessing", selection can sometimes claim
         // to succeed while the success requires a guess. To ensure
         // this function's result remains infallible, we must confirm
         // that guess. While imperfect, I believe this is sound.
 
-        // We can use a dummy node-id here because we won't pay any mind
-        // to region obligations that arise (there shouldn't really be any
-        // anyhow).
-        let cause = ObligationCause::misc(span, hir::CRATE_HIR_ID);
-
+        // FIXME(@lcnr): this function doesn't seem right.
         // The handling of regions in this area of the code is terrible,
         // see issue #29149. We should be able to improve on this with
         // NLL.
-        let errors = fully_solve_bound(infcx, cause, param_env, ty, def_id);
+        let errors = fully_solve_obligation(infcx, obligation);
 
         // Note: we only assume something is `Copy` if we can
         // *definitively* show that it implements `Copy`. Otherwise,
@@ -310,7 +317,10 @@ pub fn normalize_param_env_or_error<'tcx>(
     // TypeOutlives predicates - these are normally used by regionck.
     let outlives_predicates: Vec<_> = predicates
         .drain_filter(|predicate| {
-            matches!(predicate.kind().skip_binder(), ty::PredicateKind::TypeOutlives(..))
+            matches!(
+                predicate.kind().skip_binder(),
+                ty::PredicateKind::Clause(ty::Clause::TypeOutlives(..))
+            )
         })
         .collect();
 
@@ -395,9 +405,7 @@ pub fn fully_solve_obligation<'tcx>(
     infcx: &InferCtxt<'tcx>,
     obligation: PredicateObligation<'tcx>,
 ) -> Vec<FulfillmentError<'tcx>> {
-    let mut engine = <dyn TraitEngine<'tcx>>::new(infcx.tcx);
-    engine.register_predicate_obligation(infcx, obligation);
-    engine.select_all_or_error(infcx)
+    fully_solve_obligations(infcx, [obligation])
 }
 
 /// Process a set of obligations (and any nested obligations that come from them)
@@ -406,9 +414,9 @@ pub fn fully_solve_obligations<'tcx>(
     infcx: &InferCtxt<'tcx>,
     obligations: impl IntoIterator<Item = PredicateObligation<'tcx>>,
 ) -> Vec<FulfillmentError<'tcx>> {
-    let mut engine = <dyn TraitEngine<'tcx>>::new(infcx.tcx);
-    engine.register_predicate_obligations(infcx, obligations);
-    engine.select_all_or_error(infcx)
+    let ocx = ObligationCtxt::new(infcx);
+    ocx.register_obligations(obligations);
+    ocx.select_all_or_error()
 }
 
 /// Process a bound (and any nested obligations that come from it) to completion.
@@ -421,9 +429,16 @@ pub fn fully_solve_bound<'tcx>(
     ty: Ty<'tcx>,
     bound: DefId,
 ) -> Vec<FulfillmentError<'tcx>> {
-    let mut engine = <dyn TraitEngine<'tcx>>::new(infcx.tcx);
-    engine.register_bound(infcx, param_env, ty, bound, cause);
-    engine.select_all_or_error(infcx)
+    let tcx = infcx.tcx;
+    let trait_ref = ty::TraitRef { def_id: bound, substs: tcx.mk_substs_trait(ty, []) };
+    let obligation = Obligation {
+        cause,
+        recursion_depth: 0,
+        param_env,
+        predicate: ty::Binder::dummy(trait_ref).without_const().to_predicate(tcx),
+    };
+
+    fully_solve_obligation(infcx, obligation)
 }
 
 /// Normalizes the predicates and checks whether they hold in an empty environment. If this
@@ -465,7 +480,7 @@ fn subst_and_check_impossible_predicates<'tcx>(
     // associated items.
     if let Some(trait_def_id) = tcx.trait_of_item(key.0) {
         let trait_ref = ty::TraitRef::from_method(tcx, trait_def_id, key.1);
-        predicates.push(ty::Binder::dummy(trait_ref).to_poly_trait_predicate().to_predicate(tcx));
+        predicates.push(ty::Binder::dummy(trait_ref).to_predicate(tcx));
     }
 
     predicates.retain(|predicate| !predicate.needs_subst());
@@ -895,10 +910,7 @@ pub fn vtable_trait_upcasting_coercion_new_vptr_slot<'tcx>(
     // this has been typecked-before, so diagnostics is not really needed.
     let unsize_trait_did = tcx.require_lang_item(LangItem::Unsize, None);
 
-    let trait_ref = ty::TraitRef {
-        def_id: unsize_trait_did,
-        substs: tcx.mk_substs_trait(source, &[target.into()]),
-    };
+    let trait_ref = tcx.mk_trait_ref(unsize_trait_did, [source, target]);
 
     match tcx.codegen_select_candidate((ty::ParamEnv::reveal_all(), ty::Binder::dummy(trait_ref))) {
         Ok(ImplSource::TraitUpcasting(implsrc_traitcasting)) => {
@@ -920,10 +932,6 @@ pub fn provide(providers: &mut ty::query::Providers) {
         vtable_trait_upcasting_coercion_new_vptr_slot,
         subst_and_check_impossible_predicates,
         is_impossible_method,
-        try_unify_abstract_consts: |tcx, param_env_and| {
-            let (param_env, (a, b)) = param_env_and.into_parts();
-            const_evaluatable::try_unify_abstract_consts(tcx, (a, b), param_env)
-        },
         ..*providers
     };
 }

@@ -173,7 +173,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                 }
                 ty::Opaque(def_id, substs) => {
                     self.tcx.bound_item_bounds(def_id).subst(self.tcx, substs).iter().find_map(|pred| {
-                        if let ty::PredicateKind::Projection(proj) = pred.kind().skip_binder()
+                        if let ty::PredicateKind::Clause(ty::Clause::Projection(proj)) = pred.kind().skip_binder()
                         && Some(proj.projection_ty.item_def_id) == self.tcx.lang_items().fn_once_output()
                         // args tuple will always be substs[1]
                         && let ty::Tuple(args) = proj.projection_ty.substs.type_at(1).kind()
@@ -208,7 +208,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                 ty::Param(param) => {
                     let def_id = self.tcx.generics_of(self.body_id.owner).type_param(&param, self.tcx).def_id;
                     self.tcx.predicates_of(self.body_id.owner).predicates.iter().find_map(|(pred, _)| {
-                        if let ty::PredicateKind::Projection(proj) = pred.kind().skip_binder()
+                        if let ty::PredicateKind::Clause(ty::Clause::Projection(proj)) = pred.kind().skip_binder()
                         && Some(proj.projection_ty.item_def_id) == self.tcx.lang_items().fn_once_output()
                         && proj.projection_ty.self_ty() == found
                         // args tuple will always be substs[1]
@@ -345,8 +345,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             }
             if annotation {
                 let suggest_annotation = match expr.peel_drop_temps().kind {
-                    hir::ExprKind::AddrOf(hir::BorrowKind::Ref, hir::Mutability::Not, _) => "&",
-                    hir::ExprKind::AddrOf(hir::BorrowKind::Ref, hir::Mutability::Mut, _) => "&mut ",
+                    hir::ExprKind::AddrOf(hir::BorrowKind::Ref, mutbl, _) => mutbl.ref_prefix_str(),
                     _ => return true,
                 };
                 let mut tuple_indexes = Vec::new();
@@ -464,7 +463,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                     ref_cnt += 1;
                 }
                 if let ty::Adt(adt, _) = peeled.kind()
-                    && self.tcx.is_diagnostic_item(sym::String, adt.did())
+                    && Some(adt.did()) == self.tcx.lang_items().string()
                 {
                     err.span_suggestion_verbose(
                         expr.span.shrink_to_hi(),
@@ -925,15 +924,12 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             let ty = match self.tcx.asyncness(fn_id.owner) {
                 hir::IsAsync::Async => {
                     let infcx = self.tcx.infer_ctxt().build();
-                    infcx
-                        .get_impl_future_output_ty(ty)
-                        .unwrap_or_else(|| {
-                            span_bug!(
-                                fn_decl.output.span(),
-                                "failed to get output type of async function"
-                            )
-                        })
-                        .skip_binder()
+                    infcx.get_impl_future_output_ty(ty).unwrap_or_else(|| {
+                        span_bug!(
+                            fn_decl.output.span(),
+                            "failed to get output type of async function"
+                        )
+                    })
                 }
                 hir::IsAsync::NotAsync => ty,
             };
@@ -1093,11 +1089,10 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                 self.tcx,
                 self.misc(expr.span),
                 self.param_env,
-                ty::Binder::dummy(ty::TraitRef {
-                    def_id: into_def_id,
-                    substs: self.tcx.mk_substs_trait(expr_ty, &[expected_ty.into()]),
-                })
-                .to_poly_trait_predicate(),
+                ty::Binder::dummy(self.tcx.mk_trait_ref(
+                    into_def_id,
+                    [expr_ty, expected_ty]
+                )),
             ))
         {
             let sugg = if expr.precedence().order() >= PREC_POSTFIX {

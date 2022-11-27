@@ -1,7 +1,5 @@
-use crate::ty::subst::SubstsRef;
 use crate::ty::{self, Ty, TyCtxt};
 use rustc_hir as hir;
-use rustc_hir::def_id::DefId;
 use rustc_hir::lang_items::LangItem;
 use rustc_macros::HashStable;
 use rustc_span::Span;
@@ -121,7 +119,8 @@ pub struct OverloadedDeref<'tcx> {
 }
 
 impl<'tcx> OverloadedDeref<'tcx> {
-    pub fn method_call(&self, tcx: TyCtxt<'tcx>, source: Ty<'tcx>) -> (DefId, SubstsRef<'tcx>) {
+    /// Get the zst function item type for this method call.
+    pub fn method_call(&self, tcx: TyCtxt<'tcx>, source: Ty<'tcx>) -> Ty<'tcx> {
         let trait_def_id = match self.mutbl {
             hir::Mutability::Not => tcx.require_lang_item(LangItem::Deref, None),
             hir::Mutability::Mut => tcx.require_lang_item(LangItem::DerefMut, None),
@@ -132,7 +131,7 @@ impl<'tcx> OverloadedDeref<'tcx> {
             .find(|m| m.kind == ty::AssocKind::Fn)
             .unwrap()
             .def_id;
-        (method_def_id, tcx.mk_substs_trait(source, &[]))
+        tcx.mk_fn_def(method_def_id, tcx.mk_substs_trait(source, []))
     }
 }
 
@@ -158,6 +157,18 @@ pub enum AllowTwoPhase {
 pub enum AutoBorrowMutability {
     Mut { allow_two_phase_borrow: AllowTwoPhase },
     Not,
+}
+
+impl AutoBorrowMutability {
+    /// Creates an `AutoBorrowMutability` from a mutability and allowance of two phase borrows.
+    ///
+    /// Note that when `mutbl.is_not()`, `allow_two_phase_borrow` is ignored
+    pub fn new(mutbl: hir::Mutability, allow_two_phase_borrow: AllowTwoPhase) -> Self {
+        match mutbl {
+            hir::Mutability::Not => Self::Not,
+            hir::Mutability::Mut => Self::Mut { allow_two_phase_borrow },
+        }
+    }
 }
 
 impl From<AutoBorrowMutability> for hir::Mutability {

@@ -1,0 +1,45 @@
+// run-rustfix
+
+#![feature(custom_inner_attributes)]
+#![allow(unused, dead_code)]
+#![warn(clippy::manual_is_ascii_check)]
+
+fn main() {
+    assert!('x'.is_ascii_lowercase());
+    assert!('X'.is_ascii_uppercase());
+    assert!(b'x'.is_ascii_lowercase());
+    assert!(b'X'.is_ascii_uppercase());
+
+    let num = '2';
+    assert!(num.is_ascii_digit());
+    assert!(b'1'.is_ascii_digit());
+    assert!('x'.is_ascii_alphabetic());
+
+    assert!(matches!('x', 'A'..='Z' | 'a'..='z' | '_'));
+}
+
+fn msrv_1_23() {
+    #![clippy::msrv = "1.23"]
+
+    assert!(matches!(b'1', b'0'..=b'9'));
+    assert!(matches!('X', 'A'..='Z'));
+    assert!(matches!('x', 'A'..='Z' | 'a'..='z'));
+}
+
+fn msrv_1_24() {
+    #![clippy::msrv = "1.24"]
+
+    assert!(b'1'.is_ascii_digit());
+    assert!('X'.is_ascii_uppercase());
+    assert!('x'.is_ascii_alphabetic());
+}
+
+fn msrv_1_46() {
+    #![clippy::msrv = "1.46"]
+    const FOO: bool = matches!('x', '0'..='9');
+}
+
+fn msrv_1_47() {
+    #![clippy::msrv = "1.47"]
+    const FOO: bool = 'x'.is_ascii_digit();
+}

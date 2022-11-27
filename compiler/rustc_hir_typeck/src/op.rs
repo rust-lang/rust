@@ -263,14 +263,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                 let by_ref_binop = !op.node.is_by_value();
                 if is_assign == IsAssign::Yes || by_ref_binop {
                     if let ty::Ref(region, _, mutbl) = method.sig.inputs()[0].kind() {
-                        let mutbl = match mutbl {
-                            hir::Mutability::Not => AutoBorrowMutability::Not,
-                            hir::Mutability::Mut => AutoBorrowMutability::Mut {
-                                // Allow two-phase borrows for binops in initial deployment
-                                // since they desugar to methods
-                                allow_two_phase_borrow: AllowTwoPhase::Yes,
-                            },
-                        };
+                        let mutbl = AutoBorrowMutability::new(*mutbl, AllowTwoPhase::Yes);
                         let autoref = Adjustment {
                             kind: Adjust::Borrow(AutoBorrow::Ref(*region, mutbl)),
                             target: method.sig.inputs()[0],
@@ -280,14 +273,10 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                 }
                 if by_ref_binop {
                     if let ty::Ref(region, _, mutbl) = method.sig.inputs()[1].kind() {
-                        let mutbl = match mutbl {
-                            hir::Mutability::Not => AutoBorrowMutability::Not,
-                            hir::Mutability::Mut => AutoBorrowMutability::Mut {
-                                // Allow two-phase borrows for binops in initial deployment
-                                // since they desugar to methods
-                                allow_two_phase_borrow: AllowTwoPhase::Yes,
-                            },
-                        };
+                        // Allow two-phase borrows for binops in initial deployment
+                        // since they desugar to methods
+                        let mutbl = AutoBorrowMutability::new(*mutbl, AllowTwoPhase::Yes);
+
                         let autoref = Adjustment {
                             kind: Adjust::Borrow(AutoBorrow::Ref(*region, mutbl)),
                             target: method.sig.inputs()[1],
@@ -556,9 +545,9 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         let rm_borrow_msg = "remove the borrow to obtain an owned `String`";
         let to_owned_msg = "create an owned `String` from a string reference";
 
+        let string_type = self.tcx.lang_items().string();
         let is_std_string = |ty: Ty<'tcx>| {
-            ty.ty_adt_def()
-                .map_or(false, |ty_def| self.tcx.is_diagnostic_item(sym::String, ty_def.did()))
+            ty.ty_adt_def().map_or(false, |ty_def| Some(ty_def.did()) == string_type)
         };
 
         match (lhs_ty.kind(), rhs_ty.kind()) {

@@ -3,7 +3,7 @@ use clippy_utils::def_path_res;
 use clippy_utils::diagnostics::span_lint;
 use if_chain::if_chain;
 use rustc_hir as hir;
-use rustc_hir::def::{DefKind, Res};
+use rustc_hir::def::DefKind;
 use rustc_hir::Item;
 use rustc_hir_analysis::hir_ty_to_ty;
 use rustc_lint::{LateContext, LateLintPass};
@@ -63,7 +63,7 @@ impl<'tcx> LateLintPass<'tcx> for InvalidPaths {
 // This is not a complete resolver for paths. It works on all the paths currently used in the paths
 // module.  That's all it does and all it needs to do.
 pub fn check_path(cx: &LateContext<'_>, path: &[&str]) -> bool {
-    if def_path_res(cx, path, None) != Res::Err {
+    if !def_path_res(cx, path).is_empty() {
         return true;
     }
 

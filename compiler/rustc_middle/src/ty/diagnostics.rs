@@ -397,7 +397,7 @@ impl<'v> hir::intravisit::Visitor<'v> for TraitObjectVisitor<'v> {
             hir::TyKind::TraitObject(
                 _,
                 hir::Lifetime {
-                    name:
+                    res:
                         hir::LifetimeName::ImplicitObjectLifetimeDefault | hir::LifetimeName::Static,
                     ..
                 },
@@ -421,10 +421,9 @@ pub struct StaticLifetimeVisitor<'tcx>(pub Vec<Span>, pub crate::hir::map::Map<'
 
 impl<'v> hir::intravisit::Visitor<'v> for StaticLifetimeVisitor<'v> {
     fn visit_lifetime(&mut self, lt: &'v hir::Lifetime) {
-        if let hir::LifetimeName::ImplicitObjectLifetimeDefault | hir::LifetimeName::Static =
-            lt.name
+        if let hir::LifetimeName::ImplicitObjectLifetimeDefault | hir::LifetimeName::Static = lt.res
         {
-            self.0.push(lt.span);
+            self.0.push(lt.ident.span);
         }
     }
 }
@@ -507,12 +506,4 @@ impl<'tcx> TypeVisitor<'tcx> for IsSuggestableVisitor<'tcx> {
 
         c.super_visit_with(self)
     }
-}
-
-#[derive(Diagnostic)]
-#[diag(borrowck_const_not_used_in_type_alias)]
-pub(super) struct ConstNotUsedTraitAlias {
-    pub ct: String,
-    #[primary_span]
-    pub span: Span,
 }

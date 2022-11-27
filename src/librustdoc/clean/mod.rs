@@ -182,9 +182,7 @@ fn clean_poly_trait_ref_with_bindings<'tcx>(
         .collect_referenced_late_bound_regions(&poly_trait_ref)
         .into_iter()
         .filter_map(|br| match br {
-            ty::BrNamed(_, name) if name != kw::UnderscoreLifetime => {
-                Some(GenericParamDef::lifetime(name))
-            }
+            ty::BrNamed(_, name) if br.is_named() => Some(GenericParamDef::lifetime(name)),
             _ => None,
         })
         .collect();
@@ -208,7 +206,7 @@ fn clean_lifetime<'tcx>(lifetime: &hir::Lifetime, cx: &mut DocContext<'tcx>) -> 
             return lt;
         }
     }
-    Lifetime(lifetime.name.ident().name)
+    Lifetime(lifetime.ident.name)
 }
 
 pub(crate) fn clean_const<'tcx>(constant: &hir::ConstArg, cx: &mut DocContext<'tcx>) -> Constant {
@@ -233,16 +231,11 @@ pub(crate) fn clean_middle_const<'tcx>(
 pub(crate) fn clean_middle_region<'tcx>(region: ty::Region<'tcx>) -> Option<Lifetime> {
     match *region {
         ty::ReStatic => Some(Lifetime::statik()),
+        _ if !region.has_name() => None,
         ty::ReLateBound(_, ty::BoundRegion { kind: ty::BrNamed(_, name), .. }) => {
-            if name != kw::UnderscoreLifetime { Some(Lifetime(name)) } else { None }
+            Some(Lifetime(name))
         }
-        ty::ReEarlyBound(ref data) => {
-            if data.name != kw::UnderscoreLifetime {
-                Some(Lifetime(data.name))
-            } else {
-                None
-            }
-        }
+        ty::ReEarlyBound(ref data) => Some(Lifetime(data.name)),
         ty::ReLateBound(..)
         | ty::ReFree(..)
         | ty::ReVar(..)
@@ -302,12 +295,16 @@ pub(crate) fn clean_predicate<'tcx>(
 ) -> Option<WherePredicate> {
     let bound_predicate = predicate.kind();
     match bound_predicate.skip_binder() {
-        ty::PredicateKind::Trait(pred) => {
+        ty::PredicateKind::Clause(ty::Clause::Trait(pred)) => {
             clean_poly_trait_predicate(bound_predicate.rebind(pred), cx)
         }
-        ty::PredicateKind::RegionOutlives(pred) => clean_region_outlives_predicate(pred),
-        ty::PredicateKind::TypeOutlives(pred) => clean_type_outlives_predicate(pred, cx),
-        ty::PredicateKind::Projection(pred) => {
+        ty::PredicateKind::Clause(ty::Clause::RegionOutlives(pred)) => {
+            clean_region_outlives_predicate(pred)
+        }
+        ty::PredicateKind::Clause(ty::Clause::TypeOutlives(pred)) => {
+            clean_type_outlives_predicate(pred, cx)
+        }
+        ty::PredicateKind::Clause(ty::Clause::Projection(pred)) => {
             Some(clean_projection_predicate(bound_predicate.rebind(pred), cx))
         }
         ty::PredicateKind::ConstEvaluatable(..) => None,
@@ -318,6 +315,7 @@ pub(crate) fn clean_predicate<'tcx>(
         | ty::PredicateKind::ObjectSafe(..)
         | ty::PredicateKind::ClosureKind(..)
         | ty::PredicateKind::ConstEquate(..)
+        | ty::PredicateKind::Ambiguous
         | ty::PredicateKind::TypeWellFormedFromEnv(..) => panic!("not user writable"),
     }
 }
@@ -395,7 +393,7 @@ fn clean_projection_predicate<'tcx>(
         .collect_referenced_late_bound_regions(&pred)
         .into_iter()
         .filter_map(|br| match br {
-            ty::BrNamed(_, name) if name != kw::UnderscoreLifetime => Some(Lifetime(name)),
+            ty::BrNamed(_, name) if br.is_named() => Some(Lifetime(name)),
             _ => None,
         })
         .collect();
@@ -659,7 +657,7 @@ fn clean_ty_generics<'tcx>(
         .params
         .iter()
         .filter_map(|param| match param.kind {
-            ty::GenericParamDefKind::Lifetime if param.name == kw::UnderscoreLifetime => None,
+            ty::GenericParamDefKind::Lifetime if param.is_anonymous_lifetime() => None,
             ty::GenericParamDefKind::Lifetime => Some(clean_generic_param_def(param, cx)),
             ty::GenericParamDefKind::Type { synthetic, .. } => {
                 if param.name == kw::SelfUpper {
@@ -688,17 +686,20 @@ fn clean_ty_generics<'tcx>(
             let param_idx = (|| {
                 let bound_p = p.kind();
                 match bound_p.skip_binder() {
-                    ty::PredicateKind::Trait(pred) => {
+                    ty::PredicateKind::Clause(ty::Clause::Trait(pred)) => {
                         if let ty::Param(param) = pred.self_ty().kind() {
                             return Some(param.index);
                         }
                     }
-                    ty::PredicateKind::TypeOutlives(ty::OutlivesPredicate(ty, _reg)) => {
+                    ty::PredicateKind::Clause(ty::Clause::TypeOutlives(ty::OutlivesPredicate(
+                        ty,
+                        _reg,
+                    ))) => {
                         if let ty::Param(param) = ty.kind() {
                             return Some(param.index);
                         }
                     }
-                    ty::PredicateKind::Projection(p) => {
+                    ty::PredicateKind::Clause(ty::Clause::Projection(p)) => {
                         if let ty::Param(param) = p.projection_ty.self_ty().kind() {
                             projection = Some(bound_p.rebind(p));
                             return Some(param.index);
@@ -1459,8 +1460,11 @@ fn maybe_expand_private_type_alias<'tcx>(
                 });
                 if let Some(lt) = lifetime {
                     let lt_def_id = cx.tcx.hir().local_def_id(param.hir_id);
-                    let cleaned =
-                        if !lt.is_elided() { clean_lifetime(lt, cx) } else { Lifetime::elided() };
+                    let cleaned = if !lt.is_anonymous() {
+                        clean_lifetime(lt, cx)
+                    } else {
+                        Lifetime::elided()
+                    };
                     substs.insert(lt_def_id.to_def_id(), SubstParam::Lifetime(cleaned));
                 }
                 indices.lifetimes += 1;
@@ -1523,16 +1527,7 @@ pub(crate) fn clean_ty<'tcx>(ty: &hir::Ty<'tcx>, cx: &mut DocContext<'tcx>) -> T
         TyKind::Never => Primitive(PrimitiveType::Never),
         TyKind::Ptr(ref m) => RawPointer(m.mutbl, Box::new(clean_ty(m.ty, cx))),
         TyKind::Rptr(ref l, ref m) => {
-            // There are two times a `Fresh` lifetime can be created:
-            // 1. For `&'_ x`, written by the user. This corresponds to `lower_lifetime` in `rustc_ast_lowering`.
-            // 2. For `&x` as a parameter to an `async fn`. This corresponds to `elided_ref_lifetime in `rustc_ast_lowering`.
-            //    See #59286 for more information.
-            // Ideally we would only hide the `'_` for case 2., but I don't know a way to distinguish it.
-            // Turning `fn f(&'_ self)` into `fn f(&self)` isn't the worst thing in the world, though;
-            // there's no case where it could cause the function to fail to compile.
-            let elided =
-                l.is_elided() || matches!(l.name, LifetimeName::Param(_, ParamName::Fresh));
-            let lifetime = if elided { None } else { Some(clean_lifetime(*l, cx)) };
+            let lifetime = if l.is_anonymous() { None } else { Some(clean_lifetime(*l, cx)) };
             BorrowedRef { lifetime, mutability: m.mutbl, type_: Box::new(clean_ty(m.ty, cx)) }
         }
         TyKind::Slice(ty) => Slice(Box::new(clean_ty(ty, cx))),
@@ -1771,8 +1766,13 @@ fn clean_middle_opaque_bounds<'tcx>(
         .filter_map(|bound| {
             let bound_predicate = bound.kind();
             let trait_ref = match bound_predicate.skip_binder() {
-                ty::PredicateKind::Trait(tr) => bound_predicate.rebind(tr.trait_ref),
-                ty::PredicateKind::TypeOutlives(ty::OutlivesPredicate(_ty, reg)) => {
+                ty::PredicateKind::Clause(ty::Clause::Trait(tr)) => {
+                    bound_predicate.rebind(tr.trait_ref)
+                }
+                ty::PredicateKind::Clause(ty::Clause::TypeOutlives(ty::OutlivesPredicate(
+                    _ty,
+                    reg,
+                ))) => {
                     if let Some(r) = clean_middle_region(reg) {
                         regions.push(GenericBound::Outlives(r));
                     }
@@ -1791,7 +1791,9 @@ fn clean_middle_opaque_bounds<'tcx>(
             let bindings: ThinVec<_> = bounds
                 .iter()
                 .filter_map(|bound| {
-                    if let ty::PredicateKind::Projection(proj) = bound.kind().skip_binder() {
+                    if let ty::PredicateKind::Clause(ty::Clause::Projection(proj)) =
+                        bound.kind().skip_binder()
+                    {
                         if proj.projection_ty.trait_ref(cx.tcx) == trait_ref.skip_binder() {
                             Some(TypeBinding {
                                 assoc: projection_to_path_segment(proj.projection_ty, cx),
@@ -1842,16 +1844,16 @@ pub(crate) fn clean_field_with_def_id(
 }
 
 pub(crate) fn clean_variant_def<'tcx>(variant: &ty::VariantDef, cx: &mut DocContext<'tcx>) -> Item {
-    let kind = match variant.ctor_kind {
-        CtorKind::Const => Variant::CLike(match variant.discr {
+    let kind = match variant.ctor_kind() {
+        Some(CtorKind::Const) => Variant::CLike(match variant.discr {
             ty::VariantDiscr::Explicit(def_id) => Some(Discriminant { expr: None, value: def_id }),
             ty::VariantDiscr::Relative(_) => None,
         }),
-        CtorKind::Fn => Variant::Tuple(
+        Some(CtorKind::Fn) => Variant::Tuple(
             variant.fields.iter().map(|field| clean_middle_field(field, cx)).collect(),
         ),
-        CtorKind::Fictive => Variant::Struct(VariantStruct {
-            struct_type: CtorKind::Fictive,
+        None => Variant::Struct(VariantStruct {
+            ctor_kind: None,
             fields: variant.fields.iter().map(|field| clean_middle_field(field, cx)).collect(),
         }),
     };
@@ -1865,7 +1867,7 @@ fn clean_variant_data<'tcx>(
 ) -> Variant {
     match variant {
         hir::VariantData::Struct(..) => Variant::Struct(VariantStruct {
-            struct_type: CtorKind::from_hir(variant),
+            ctor_kind: None,
             fields: variant.fields().iter().map(|x| clean_field(x, cx)).collect(),
         }),
         hir::VariantData::Tuple(..) => {
@@ -1900,7 +1902,7 @@ fn clean_generic_args<'tcx>(
             .args
             .iter()
             .map(|arg| match arg {
-                hir::GenericArg::Lifetime(lt) if !lt.is_elided() => {
+                hir::GenericArg::Lifetime(lt) if !lt.is_anonymous() => {
                     GenericArg::Lifetime(clean_lifetime(*lt, cx))
                 }
                 hir::GenericArg::Lifetime(_) => GenericArg::Lifetime(Lifetime::elided()),
@@ -2060,7 +2062,7 @@ fn clean_maybe_renamed_item<'tcx>(
                 fields: variant_data.fields().iter().map(|x| clean_field(x, cx)).collect(),
             }),
             ItemKind::Struct(ref variant_data, generics) => StructItem(Struct {
-                struct_type: CtorKind::from_hir(variant_data),
+                ctor_kind: variant_data.ctor_kind(),
                 generics: clean_generics(generics, cx),
                 fields: variant_data.fields().iter().map(|x| clean_field(x, cx)).collect(),
             }),

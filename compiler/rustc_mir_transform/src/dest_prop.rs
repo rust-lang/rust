@@ -20,7 +20,8 @@
 //! values or the return place `_0`. On a very high level, independent of the actual implementation
 //! details, it does the following:
 //!
-//! 1) Identify `dest = src;` statements that can be soundly eliminated.
+//! 1) Identify `dest = src;` statements with values for `dest` and `src` whose storage can soundly
+//!    be merged.
 //! 2) Replace all mentions of `src` with `dest` ("unifying" them and propagating the destination
 //!    backwards).
 //! 3) Delete the `dest = src;` statement (by making it a `nop`).
@@ -29,44 +30,80 @@
 //!
 //! ## Soundness
 //!
-//! Given an `Assign` statement `dest = src;`, where `dest` is a `Place` and `src` is an `Rvalue`,
-//! there are a few requirements that must hold for the optimization to be sound:
+//! We have a pair of places `p` and `q`, whose memory we would like to merge. In order for this to
+//! be sound, we need to check a number of conditions:
 //!
-//! * `dest` must not contain any *indirection* through a pointer. It must access part of the base
-//!   local. Otherwise it might point to arbitrary memory that is hard to track.
+//! * `p` and `q` must both be *constant* - it does not make much sense to talk about merging them
+//!   if they do not consistently refer to the same place in memory. This is satisfied if they do
+//!   not contain any indirection through a pointer or any indexing projections.
 //!
-//!   It must also not contain any indexing projections, since those take an arbitrary `Local` as
-//!   the index, and that local might only be initialized shortly before `dest` is used.
+//! * We need to make sure that the goal of "merging the memory" is actually structurally possible
+//!   in MIR. For example, even if all the other conditions are satisfied, there is no way to
+//!   "merge" `_5.foo` and `_6.bar`. For now, we ensure this by requiring that both `p` and `q` are
+//!   locals with no further projections. Future iterations of this pass should improve on this.
 //!
-//! * `src` must be a bare `Local` without any indirections or field projections (FIXME: Is this a
-//!   fundamental restriction or just current impl state?). It can be copied or moved by the
-//!   assignment.
+//! * Finally, we want `p` and `q` to use the same memory - however, we still need to make sure that
+//!   each of them has enough "ownership" of that memory to continue "doing its job." More
+//!   precisely, what we will check is that whenever the program performs a write to `p`, then it
+//!   does not currently care about what the value in `q` is (and vice versa). We formalize the
+//!   notion of "does not care what the value in `q` is" by checking the *liveness* of `q`.
 //!
-//! * The `dest` and `src` locals must never be [*live*][liveness] at the same time. If they are, it
-//!   means that they both hold a (potentially different) value that is needed by a future use of
-//!   the locals. Unifying them would overwrite one of the values.
+//!   Because of the difficulty of computing liveness of places that have their address taken, we do
+//!   not even attempt to do it. Any places that are in a local that has its address taken is
+//!   excluded from the optimization.
 //!
-//!   Note that computing liveness of locals that have had their address taken is more difficult:
-//!   Short of doing full escape analysis on the address/pointer/reference, the pass would need to
-//!   assume that any operation that can potentially involve opaque user code (such as function
-//!   calls, destructors, and inline assembly) may access any local that had its address taken
-//!   before that point.
+//! The first two conditions are simple structural requirements on the `Assign` statements that can
+//! be trivially checked. The third requirement however is more difficult and costly to check.
 //!
-//! Here, the first two conditions are simple structural requirements on the `Assign` statements
-//! that can be trivially checked. The liveness requirement however is more difficult and costly to
-//! check.
+//! ## Future Improvements
+//!
+//! There are a number of ways in which this pass could be improved in the future:
+//!
+//! * Merging storage liveness ranges instead of removing storage statements completely. This may
+//!   improve stack usage.
+//!
+//! * Allow merging locals into places with projections, eg `_5` into `_6.foo`.
+//!
+//! * Liveness analysis with more precision than whole locals at a time. The smaller benefit of this
+//!   is that it would allow us to dest prop at "sub-local" levels in some cases. The bigger benefit
+//!   of this is that such liveness analysis can report more accurate results about whole locals at
+//!   a time. For example, consider:
+//!
+//!   ```ignore (syntax-highliting-only)
+//!   _1 = u;
+//!   // unrelated code
+//!   _1.f1 = v;
+//!   _2 = _1.f1;
+//!   ```
+//!
+//!   Because the current analysis only thinks in terms of locals, it does not have enough
+//!   information to report that `_1` is dead in the "unrelated code" section.
+//!
+//! * Liveness analysis enabled by alias analysis. This would allow us to not just bail on locals
+//!   that ever have their address taken. Of course that requires actually having alias analysis
+//!   (and a model to build it on), so this might be a bit of a ways off.
+//!
+//! * Various perf improvents. There are a bunch of comments in here marked `PERF` with ideas for
+//!   how to do things more efficiently. However, the complexity of the pass as a whole should be
+//!   kept in mind.
 //!
 //! ## Previous Work
 //!
-//! A [previous attempt] at implementing an optimization like this turned out to be a significant
-//! regression in compiler performance. Fixing the regressions introduced a lot of undesirable
-//! complexity to the implementation.
+//! A [previous attempt][attempt 1] at implementing an optimization like this turned out to be a
+//! significant regression in compiler performance. Fixing the regressions introduced a lot of
+//! undesirable complexity to the implementation.
 //!
-//! A [subsequent approach] tried to avoid the costly computation by limiting itself to acyclic
-//! CFGs, but still turned out to be far too costly to run due to suboptimal performance within
-//! individual basic blocks, requiring a walk across the entire block for every assignment found
-//! within the block. For the `tuple-stress` benchmark, which has 458745 statements in a single
-//! block, this proved to be far too costly.
+//! A [subsequent approach][attempt 2] tried to avoid the costly computation by limiting itself to
+//! acyclic CFGs, but still turned out to be far too costly to run due to suboptimal performance
+//! within individual basic blocks, requiring a walk across the entire block for every assignment
+//! found within the block. For the `tuple-stress` benchmark, which has 458745 statements in a
+//! single block, this proved to be far too costly.
+//!
+//! [Another approach after that][attempt 3] was much closer to correct, but had some soundness
+//! issues - it was failing to consider stores outside live ranges, and failed to uphold some of the
+//! requirements that MIR has for non-overlapping places within statements. However, it also had
+//! performance issues caused by `O(l² * s)` runtime, where `l` is the number of locals and `s` is
+//! the number of statements and terminators.
 //!
 //! Since the first attempt at this, the compiler has improved dramatically, and new analysis
 //! frameworks have been added that should make this approach viable without requiring a limited
@@ -74,8 +111,7 @@
 //! - rustc now has a powerful dataflow analysis framework that can handle forwards and backwards
 //!   analyses efficiently.
 //! - Layout optimizations for generators have been added to improve code generation for
-//!   async/await, which are very similar in spirit to what this optimization does. Both walk the
-//!   MIR and record conflicting uses of locals in a `BitMatrix`.
+//!   async/await, which are very similar in spirit to what this optimization does.
 //!
 //! Also, rustc now has a simple NRVO pass (see `nrvo.rs`), which handles a subset of the cases that
 //! this destination propagation pass handles, proving that similar optimizations can be performed
@@ -87,253 +123,205 @@
 //! it replaces the eliminated assign statements with `nop`s and leaves unused locals behind.
 //!
 //! [liveness]: https://en.wikipedia.org/wiki/Live_variable_analysis
-//! [previous attempt]: https://github.com/rust-lang/rust/pull/47954
-//! [subsequent approach]: https://github.com/rust-lang/rust/pull/71003
+//! [attempt 1]: https://github.com/rust-lang/rust/pull/47954
+//! [attempt 2]: https://github.com/rust-lang/rust/pull/71003
+//! [attempt 3]: https://github.com/rust-lang/rust/pull/72632
+
+use std::collections::hash_map::{Entry, OccupiedEntry};
 
 use crate::MirPass;
-use itertools::Itertools;
-use rustc_data_structures::unify::{InPlaceUnificationTable, UnifyKey};
-use rustc_index::{
-    bit_set::{BitMatrix, BitSet},
-    vec::IndexVec,
-};
-use rustc_middle::mir::visit::{MutVisitor, PlaceContext, Visitor};
+use rustc_data_structures::fx::FxHashMap;
+use rustc_index::bit_set::BitSet;
 use rustc_middle::mir::{dump_mir, PassWhere};
 use rustc_middle::mir::{
-    traversal, Body, InlineAsmOperand, Local, LocalKind, Location, Operand, Place, PlaceElem,
-    Rvalue, Statement, StatementKind, Terminator, TerminatorKind,
+    traversal, BasicBlock, Body, InlineAsmOperand, Local, LocalKind, Location, Operand, Place,
+    Rvalue, Statement, StatementKind, TerminatorKind,
+};
+use rustc_middle::mir::{
+    visit::{MutVisitor, PlaceContext, Visitor},
+    ProjectionElem,
 };
 use rustc_middle::ty::TyCtxt;
-use rustc_mir_dataflow::impls::{borrowed_locals, MaybeInitializedLocals, MaybeLiveLocals};
-use rustc_mir_dataflow::Analysis;
-
-// Empirical measurements have resulted in some observations:
-// - Running on a body with a single block and 500 locals takes barely any time
-// - Running on a body with ~400 blocks and ~300 relevant locals takes "too long"
-// ...so we just limit both to somewhat reasonable-ish looking values.
-const MAX_LOCALS: usize = 500;
-const MAX_BLOCKS: usize = 250;
+use rustc_mir_dataflow::impls::MaybeLiveLocals;
+use rustc_mir_dataflow::{Analysis, ResultsCursor};
 
 pub struct DestinationPropagation;
 
 impl<'tcx> MirPass<'tcx> for DestinationPropagation {
     fn is_enabled(&self, sess: &rustc_session::Session) -> bool {
-        //  FIXME(#79191, #82678): This is unsound.
-        //
-        // Only run at mir-opt-level=3 or higher for now (we don't fix up debuginfo and remove
-        // storage statements at the moment).
-        sess.opts.unstable_opts.unsound_mir_opts && sess.mir_opt_level() >= 3
+        // For now, only run at MIR opt level 3. Two things need to be changed before this can be
+        // turned on by default:
+        //  1. Because of the overeager removal of storage statements, this can cause stack space
+        //     regressions. This opt is not the place to fix this though, it's a more general
+        //     problem in MIR.
+        //  2. Despite being an overall perf improvement, this still causes a 30% regression in
+        //     keccak. We can temporarily fix this by bounding function size, but in the long term
+        //     we should fix this by being smarter about invalidating analysis results.
+        sess.mir_opt_level() >= 3
     }
 
     fn run_pass(&self, tcx: TyCtxt<'tcx>, body: &mut Body<'tcx>) {
         let def_id = body.source.def_id();
+        let mut allocations = Allocations::default();
+        trace!(func = ?tcx.def_path_str(def_id));
 
-        let candidates = find_candidates(body);
-        if candidates.is_empty() {
-            debug!("{:?}: no dest prop candidates, done", def_id);
-            return;
-        }
+        let borrowed = rustc_mir_dataflow::impls::borrowed_locals(body);
 
-        // Collect all locals we care about. We only compute conflicts for these to save time.
-        let mut relevant_locals = BitSet::new_empty(body.local_decls.len());
-        for CandidateAssignment { dest, src, loc: _ } in &candidates {
-            relevant_locals.insert(dest.local);
-            relevant_locals.insert(*src);
-        }
-
-        // This pass unfortunately has `O(l² * s)` performance, where `l` is the number of locals
-        // and `s` is the number of statements and terminators in the function.
-        // To prevent blowing up compile times too much, we bail out when there are too many locals.
-        let relevant = relevant_locals.count();
-        debug!(
-            "{:?}: {} locals ({} relevant), {} blocks",
-            def_id,
-            body.local_decls.len(),
-            relevant,
-            body.basic_blocks.len()
-        );
-        if relevant > MAX_LOCALS {
-            warn!(
-                "too many candidate locals in {:?} ({}, max is {}), not optimizing",
-                def_id, relevant, MAX_LOCALS
+        // In order to avoid having to collect data for every single pair of locals in the body, we
+        // do not allow doing more than one merge for places that are derived from the same local at
+        // once. To avoid missed opportunities, we instead iterate to a fixed point - we'll refer to
+        // each of these iterations as a "round."
+        //
+        // Reaching a fixed point could in theory take up to `min(l, s)` rounds - however, we do not
+        // expect to see MIR like that. To verify this, a test was run against `[rust-lang/regex]` -
+        // the average MIR body saw 1.32 full iterations of this loop. The most that was hit were 30
+        // for a single function. Only 80/2801 (2.9%) of functions saw at least 5.
+        //
+        // [rust-lang/regex]:
+        //     https://github.com/rust-lang/regex/tree/b5372864e2df6a2f5e543a556a62197f50ca3650
+        let mut round_count = 0;
+        loop {
+            // PERF: Can we do something smarter than recalculating the candidates and liveness
+            // results?
+            let mut candidates = find_candidates(
+                body,
+                &borrowed,
+                &mut allocations.candidates,
+                &mut allocations.candidates_reverse,
             );
-            return;
-        }
-        if body.basic_blocks.len() > MAX_BLOCKS {
-            warn!(
-                "too many blocks in {:?} ({}, max is {}), not optimizing",
-                def_id,
-                body.basic_blocks.len(),
-                MAX_BLOCKS
+            trace!(?candidates);
+            let mut live = MaybeLiveLocals
+                .into_engine(tcx, body)
+                .iterate_to_fixpoint()
+                .into_results_cursor(body);
+            dest_prop_mir_dump(tcx, body, &mut live, round_count);
+
+            FilterInformation::filter_liveness(
+                &mut candidates,
+                &mut live,
+                &mut allocations.write_info,
+                body,
             );
-            return;
-        }
 
-        let mut conflicts = Conflicts::build(tcx, body, &relevant_locals);
+            // Because we do not update liveness information, it is unsound to use a local for more
+            // than one merge operation within a single round of optimizations. We store here which
+            // ones we have already used.
+            let mut merged_locals: BitSet<Local> = BitSet::new_empty(body.local_decls.len());
 
-        let mut replacements = Replacements::new(body.local_decls.len());
-        for candidate @ CandidateAssignment { dest, src, loc } in candidates {
-            // Merge locals that don't conflict.
-            if !conflicts.can_unify(dest.local, src) {
-                debug!("at assignment {:?}, conflict {:?} vs. {:?}", loc, dest.local, src);
-                continue;
+            // This is the set of merges we will apply this round. It is a subset of the candidates.
+            let mut merges = FxHashMap::default();
+
+            for (src, candidates) in candidates.c.iter() {
+                if merged_locals.contains(*src) {
+                    continue;
+                }
+                let Some(dest) =
+                    candidates.iter().find(|dest| !merged_locals.contains(**dest)) else {
+                        continue;
+                };
+                if !tcx.consider_optimizing(|| {
+                    format!("{} round {}", tcx.def_path_str(def_id), round_count)
+                }) {
+                    break;
+                }
+                merges.insert(*src, *dest);
+                merged_locals.insert(*src);
+                merged_locals.insert(*dest);
             }
+            trace!(merging = ?merges);
 
-            if replacements.for_src(candidate.src).is_some() {
-                debug!("src {:?} already has replacement", candidate.src);
-                continue;
-            }
-
-            if !tcx.consider_optimizing(|| {
-                format!("DestinationPropagation {:?} {:?}", def_id, candidate)
-            }) {
+            if merges.is_empty() {
                 break;
             }
+            round_count += 1;
 
-            replacements.push(candidate);
-            conflicts.unify(candidate.src, candidate.dest.local);
+            apply_merges(body, tcx, &merges, &merged_locals);
         }
 
-        replacements.flatten(tcx);
-
-        debug!("replacements {:?}", replacements.map);
-
-        Replacer { tcx, replacements, place_elem_cache: Vec::new() }.visit_body(body);
-
-        // FIXME fix debug info
+        trace!(round_count);
     }
 }
 
-#[derive(Debug, Eq, PartialEq, Copy, Clone)]
-struct UnifyLocal(Local);
-
-impl From<Local> for UnifyLocal {
-    fn from(l: Local) -> Self {
-        Self(l)
-    }
+/// Container for the various allocations that we need.
+///
+/// We store these here and hand out `&mut` access to them, instead of dropping and recreating them
+/// frequently. Everything with a `&'alloc` lifetime points into here.
+#[derive(Default)]
+struct Allocations {
+    candidates: FxHashMap<Local, Vec<Local>>,
+    candidates_reverse: FxHashMap<Local, Vec<Local>>,
+    write_info: WriteInfo,
+    // PERF: Do this for `MaybeLiveLocals` allocations too.
 }
 
-impl UnifyKey for UnifyLocal {
-    type Value = ();
-    #[inline]
-    fn index(&self) -> u32 {
-        self.0.as_u32()
-    }
-    #[inline]
-    fn from_index(u: u32) -> Self {
-        Self(Local::from_u32(u))
-    }
-    fn tag() -> &'static str {
-        "UnifyLocal"
-    }
+#[derive(Debug)]
+struct Candidates<'alloc> {
+    /// The set of candidates we are considering in this optimization.
+    ///
+    /// We will always merge the key into at most one of its values.
+    ///
+    /// Whether a place ends up in the key or the value does not correspond to whether it appears as
+    /// the lhs or rhs of any assignment. As a matter of fact, the places in here might never appear
+    /// in an assignment at all. This happens because if we see an assignment like this:
+    ///
+    /// ```ignore (syntax-highlighting-only)
+    /// _1.0 = _2.0
+    /// ```
+    ///
+    /// We will still report that we would like to merge `_1` and `_2` in an attempt to allow us to
+    /// remove that assignment.
+    c: &'alloc mut FxHashMap<Local, Vec<Local>>,
+    /// A reverse index of the `c` set; if the `c` set contains `a => Place { local: b, proj }`,
+    /// then this contains `b => a`.
+    // PERF: Possibly these should be `SmallVec`s?
+    reverse: &'alloc mut FxHashMap<Local, Vec<Local>>,
 }
 
-struct Replacements<'tcx> {
-    /// Maps locals to their replacement.
-    map: IndexVec<Local, Option<Place<'tcx>>>,
+//////////////////////////////////////////////////////////
+// Merging
+//
+// Applies the actual optimization
 
-    /// Whose locals' live ranges to kill.
-    kill: BitSet<Local>,
-}
-
-impl<'tcx> Replacements<'tcx> {
-    fn new(locals: usize) -> Self {
-        Self { map: IndexVec::from_elem_n(None, locals), kill: BitSet::new_empty(locals) }
-    }
-
-    fn push(&mut self, candidate: CandidateAssignment<'tcx>) {
-        trace!("Replacements::push({:?})", candidate);
-        let entry = &mut self.map[candidate.src];
-        assert!(entry.is_none());
-
-        *entry = Some(candidate.dest);
-        self.kill.insert(candidate.src);
-        self.kill.insert(candidate.dest.local);
-    }
-
-    /// Applies the stored replacements to all replacements, until no replacements would result in
-    /// locals that need further replacements when applied.
-    fn flatten(&mut self, tcx: TyCtxt<'tcx>) {
-        // Note: This assumes that there are no cycles in the replacements, which is enforced via
-        // `self.unified_locals`. Otherwise this can cause an infinite loop.
-
-        for local in self.map.indices() {
-            if let Some(replacement) = self.map[local] {
-                // Substitute the base local of `replacement` until fixpoint.
-                let mut base = replacement.local;
-                let mut reversed_projection_slices = Vec::with_capacity(1);
-                while let Some(replacement_for_replacement) = self.map[base] {
-                    base = replacement_for_replacement.local;
-                    reversed_projection_slices.push(replacement_for_replacement.projection);
-                }
-
-                let projection: Vec<_> = reversed_projection_slices
-                    .iter()
-                    .rev()
-                    .flat_map(|projs| projs.iter())
-                    .chain(replacement.projection.iter())
-                    .collect();
-                let projection = tcx.intern_place_elems(&projection);
-
-                // Replace with the final `Place`.
-                self.map[local] = Some(Place { local: base, projection });
-            }
-        }
-    }
-
-    fn for_src(&self, src: Local) -> Option<Place<'tcx>> {
-        self.map[src]
-    }
-}
-
-struct Replacer<'tcx> {
+fn apply_merges<'tcx>(
+    body: &mut Body<'tcx>,
     tcx: TyCtxt<'tcx>,
-    replacements: Replacements<'tcx>,
-    place_elem_cache: Vec<PlaceElem<'tcx>>,
+    merges: &FxHashMap<Local, Local>,
+    merged_locals: &BitSet<Local>,
+) {
+    let mut merger = Merger { tcx, merges, merged_locals };
+    merger.visit_body_preserves_cfg(body);
 }
 
-impl<'tcx> MutVisitor<'tcx> for Replacer<'tcx> {
+struct Merger<'a, 'tcx> {
+    tcx: TyCtxt<'tcx>,
+    merges: &'a FxHashMap<Local, Local>,
+    merged_locals: &'a BitSet<Local>,
+}
+
+impl<'a, 'tcx> MutVisitor<'tcx> for Merger<'a, 'tcx> {
     fn tcx(&self) -> TyCtxt<'tcx> {
         self.tcx
     }
 
-    fn visit_local(&mut self, local: &mut Local, context: PlaceContext, location: Location) {
-        if context.is_use() && self.replacements.for_src(*local).is_some() {
-            bug!(
-                "use of local {:?} should have been replaced by visit_place; context={:?}, loc={:?}",
-                local,
-                context,
-                location,
-            );
+    fn visit_local(&mut self, local: &mut Local, _: PlaceContext, _location: Location) {
+        if let Some(dest) = self.merges.get(local) {
+            *local = *dest;
         }
-    }
-
-    fn visit_place(&mut self, place: &mut Place<'tcx>, context: PlaceContext, location: Location) {
-        if let Some(replacement) = self.replacements.for_src(place.local) {
-            // Rebase `place`s projections onto `replacement`'s.
-            self.place_elem_cache.clear();
-            self.place_elem_cache.extend(replacement.projection.iter().chain(place.projection));
-            let projection = self.tcx.intern_place_elems(&self.place_elem_cache);
-            let new_place = Place { local: replacement.local, projection };
-
-            debug!("Replacer: {:?} -> {:?}", place, new_place);
-            *place = new_place;
-        }
-
-        self.super_place(place, context, location);
     }
 
     fn visit_statement(&mut self, statement: &mut Statement<'tcx>, location: Location) {
-        self.super_statement(statement, location);
-
         match &statement.kind {
-            // FIXME: Don't delete storage statements, merge the live ranges instead
+            // FIXME: Don't delete storage statements, but "merge" the storage ranges instead.
             StatementKind::StorageDead(local) | StatementKind::StorageLive(local)
-                if self.replacements.kill.contains(*local) =>
+                if self.merged_locals.contains(*local) =>
             {
-                statement.make_nop()
+                statement.make_nop();
+                return;
             }
-
+            _ => (),
+        };
+        self.super_statement(statement, location);
+        match &statement.kind {
             StatementKind::Assign(box (dest, rvalue)) => {
                 match rvalue {
                     Rvalue::Use(Operand::Copy(place) | Operand::Move(place)) => {
@@ -353,524 +341,427 @@ impl<'tcx> MutVisitor<'tcx> for Replacer<'tcx> {
     }
 }
 
-struct Conflicts<'a> {
-    relevant_locals: &'a BitSet<Local>,
+//////////////////////////////////////////////////////////
+// Liveness filtering
+//
+// This section enforces bullet point 2
 
-    /// The conflict matrix. It is always symmetric and the adjacency matrix of the corresponding
-    /// conflict graph.
-    matrix: BitMatrix<Local, Local>,
-
-    /// Preallocated `BitSet` used by `unify`.
-    unify_cache: BitSet<Local>,
-
-    /// Tracks locals that have been merged together to prevent cycles and propagate conflicts.
-    unified_locals: InPlaceUnificationTable<UnifyLocal>,
+struct FilterInformation<'a, 'body, 'alloc, 'tcx> {
+    body: &'body Body<'tcx>,
+    live: &'a mut ResultsCursor<'body, 'tcx, MaybeLiveLocals>,
+    candidates: &'a mut Candidates<'alloc>,
+    write_info: &'alloc mut WriteInfo,
+    at: Location,
 }
 
-impl<'a> Conflicts<'a> {
-    fn build<'tcx>(
-        tcx: TyCtxt<'tcx>,
-        body: &'_ Body<'tcx>,
-        relevant_locals: &'a BitSet<Local>,
-    ) -> Self {
-        // We don't have to look out for locals that have their address taken, since
-        // `find_candidates` already takes care of that.
-
-        let conflicts = BitMatrix::from_row_n(
-            &BitSet::new_empty(body.local_decls.len()),
-            body.local_decls.len(),
-        );
-
-        let mut init = MaybeInitializedLocals
-            .into_engine(tcx, body)
-            .iterate_to_fixpoint()
-            .into_results_cursor(body);
-        let mut live =
-            MaybeLiveLocals.into_engine(tcx, body).iterate_to_fixpoint().into_results_cursor(body);
-
-        let mut reachable = None;
-        dump_mir(tcx, None, "DestinationPropagation-dataflow", &"", body, |pass_where, w| {
-            let reachable = reachable.get_or_insert_with(|| traversal::reachable_as_bitset(body));
-
-            match pass_where {
-                PassWhere::BeforeLocation(loc) if reachable.contains(loc.block) => {
-                    init.seek_before_primary_effect(loc);
-                    live.seek_after_primary_effect(loc);
-
-                    writeln!(w, "        // init: {:?}", init.get())?;
-                    writeln!(w, "        // live: {:?}", live.get())?;
-                }
-                PassWhere::AfterTerminator(bb) if reachable.contains(bb) => {
-                    let loc = body.terminator_loc(bb);
-                    init.seek_after_primary_effect(loc);
-                    live.seek_before_primary_effect(loc);
-
-                    writeln!(w, "        // init: {:?}", init.get())?;
-                    writeln!(w, "        // live: {:?}", live.get())?;
-                }
-
-                PassWhere::BeforeBlock(bb) if reachable.contains(bb) => {
-                    init.seek_to_block_start(bb);
-                    live.seek_to_block_start(bb);
-
-                    writeln!(w, "    // init: {:?}", init.get())?;
-                    writeln!(w, "    // live: {:?}", live.get())?;
-                }
-
-                PassWhere::BeforeCFG | PassWhere::AfterCFG | PassWhere::AfterLocation(_) => {}
-
-                PassWhere::BeforeLocation(_) | PassWhere::AfterTerminator(_) => {
-                    writeln!(w, "        // init: <unreachable>")?;
-                    writeln!(w, "        // live: <unreachable>")?;
-                }
-
-                PassWhere::BeforeBlock(_) => {
-                    writeln!(w, "    // init: <unreachable>")?;
-                    writeln!(w, "    // live: <unreachable>")?;
-                }
+// We first implement some utility functions which we will expose removing candidates according to
+// different needs. Throughout the livenss filtering, the `candidates` are only ever accessed
+// through these methods, and not directly.
+impl<'alloc> Candidates<'alloc> {
+    /// Just `Vec::retain`, but the condition is inverted and we add debugging output
+    fn vec_remove_debug(
+        src: Local,
+        v: &mut Vec<Local>,
+        mut f: impl FnMut(Local) -> bool,
+        at: Location,
+    ) {
+        v.retain(|dest| {
+            let remove = f(*dest);
+            if remove {
+                trace!("eliminating {:?} => {:?} due to conflict at {:?}", src, dest, at);
             }
-
-            Ok(())
+            !remove
         });
+    }
 
-        let mut this = Self {
-            relevant_locals,
-            matrix: conflicts,
-            unify_cache: BitSet::new_empty(body.local_decls.len()),
-            unified_locals: {
-                let mut table = InPlaceUnificationTable::new();
-                // Pre-fill table with all locals (this creates N nodes / "connected" components,
-                // "graph"-ically speaking).
-                for local in 0..body.local_decls.len() {
-                    assert_eq!(table.new_key(()), UnifyLocal(Local::from_usize(local)));
-                }
-                table
-            },
+    /// `vec_remove_debug` but for an `Entry`
+    fn entry_remove(
+        mut entry: OccupiedEntry<'_, Local, Vec<Local>>,
+        p: Local,
+        f: impl FnMut(Local) -> bool,
+        at: Location,
+    ) {
+        let candidates = entry.get_mut();
+        Self::vec_remove_debug(p, candidates, f, at);
+        if candidates.len() == 0 {
+            entry.remove();
+        }
+    }
+
+    /// Removes all candidates `(p, q)` or `(q, p)` where `p` is the indicated local and `f(q)` is true.
+    fn remove_candidates_if(&mut self, p: Local, mut f: impl FnMut(Local) -> bool, at: Location) {
+        // Cover the cases where `p` appears as a `src`
+        if let Entry::Occupied(entry) = self.c.entry(p) {
+            Self::entry_remove(entry, p, &mut f, at);
+        }
+        // And the cases where `p` appears as a `dest`
+        let Some(srcs) = self.reverse.get_mut(&p) else {
+            return;
         };
-
-        let mut live_and_init_locals = Vec::new();
-
-        // Visit only reachable basic blocks. The exact order is not important.
-        for (block, data) in traversal::preorder(body) {
-            // We need to observe the dataflow state *before* all possible locations (statement or
-            // terminator) in each basic block, and then observe the state *after* the terminator
-            // effect is applied. As long as neither `init` nor `borrowed` has a "before" effect,
-            // we will observe all possible dataflow states.
-
-            // Since liveness is a backwards analysis, we need to walk the results backwards. To do
-            // that, we first collect in the `MaybeInitializedLocals` results in a forwards
-            // traversal.
-
-            live_and_init_locals.resize_with(data.statements.len() + 1, || {
-                BitSet::new_empty(body.local_decls.len())
-            });
-
-            // First, go forwards for `MaybeInitializedLocals` and apply intra-statement/terminator
-            // conflicts.
-            for (i, statement) in data.statements.iter().enumerate() {
-                this.record_statement_conflicts(statement);
-
-                let loc = Location { block, statement_index: i };
-                init.seek_before_primary_effect(loc);
-
-                live_and_init_locals[i].clone_from(init.get());
+        // We use `retain` here to remove the elements from the reverse set if we've removed the
+        // matching candidate in the forward set.
+        srcs.retain(|src| {
+            if !f(*src) {
+                return true;
             }
+            let Entry::Occupied(entry) = self.c.entry(*src) else {
+                return false;
+            };
+            Self::entry_remove(entry, *src, |dest| dest == p, at);
+            false
+        });
+    }
+}
 
-            this.record_terminator_conflicts(data.terminator());
-            let term_loc = Location { block, statement_index: data.statements.len() };
-            init.seek_before_primary_effect(term_loc);
-            live_and_init_locals[term_loc.statement_index].clone_from(init.get());
+impl<'a, 'body, 'alloc, 'tcx> FilterInformation<'a, 'body, 'alloc, 'tcx> {
+    /// Filters the set of candidates to remove those that conflict.
+    ///
+    /// The steps we take are exactly those that are outlined at the top of the file. For each
+    /// statement/terminator, we collect the set of locals that are written to in that
+    /// statement/terminator, and then we remove all pairs of candidates that contain one such local
+    /// and another one that is live.
+    ///
+    /// We need to be careful about the ordering of operations within each statement/terminator
+    /// here. Many statements might write and read from more than one place, and we need to consider
+    /// them all. The strategy for doing this is as follows: We first gather all the places that are
+    /// written to within the statement/terminator via `WriteInfo`. Then, we use the liveness
+    /// analysis from *before* the statement/terminator (in the control flow sense) to eliminate
+    /// candidates - this is because we want to conservatively treat a pair of locals that is both
+    /// read and written in the statement/terminator to be conflicting, and the liveness analysis
+    /// before the statement/terminator will correctly report locals that are read in the
+    /// statement/terminator to be live. We are additionally conservative by treating all written to
+    /// locals as also being read from.
+    fn filter_liveness<'b>(
+        candidates: &mut Candidates<'alloc>,
+        live: &mut ResultsCursor<'b, 'tcx, MaybeLiveLocals>,
+        write_info_alloc: &'alloc mut WriteInfo,
+        body: &'b Body<'tcx>,
+    ) {
+        let mut this = FilterInformation {
+            body,
+            live,
+            candidates,
+            // We don't actually store anything at this scope, we just keep things here to be able
+            // to reuse the allocation.
+            write_info: write_info_alloc,
+            // Doesn't matter what we put here, will be overwritten before being used
+            at: Location { block: BasicBlock::from_u32(0), statement_index: 0 },
+        };
+        this.internal_filter_liveness();
+    }
 
-            // Now, go backwards and union with the liveness results.
-            for statement_index in (0..=data.statements.len()).rev() {
-                let loc = Location { block, statement_index };
-                live.seek_after_primary_effect(loc);
+    fn internal_filter_liveness(&mut self) {
+        for (block, data) in traversal::preorder(self.body) {
+            self.at = Location { block, statement_index: data.statements.len() };
+            self.live.seek_after_primary_effect(self.at);
+            self.write_info.for_terminator(&data.terminator().kind);
+            self.apply_conflicts();
 
-                live_and_init_locals[statement_index].intersect(live.get());
-
-                trace!("record conflicts at {:?}", loc);
-
-                this.record_dataflow_conflicts(&mut live_and_init_locals[statement_index]);
+            for (i, statement) in data.statements.iter().enumerate().rev() {
+                self.at = Location { block, statement_index: i };
+                self.live.seek_after_primary_effect(self.at);
+                self.get_statement_write_info(&statement.kind);
+                self.apply_conflicts();
             }
-
-            init.seek_to_block_end(block);
-            live.seek_to_block_end(block);
-            let mut conflicts = init.get().clone();
-            conflicts.intersect(live.get());
-            trace!("record conflicts at end of {:?}", block);
-
-            this.record_dataflow_conflicts(&mut conflicts);
-        }
-
-        this
-    }
-
-    fn record_dataflow_conflicts(&mut self, new_conflicts: &mut BitSet<Local>) {
-        // Remove all locals that are not candidates.
-        new_conflicts.intersect(self.relevant_locals);
-
-        for local in new_conflicts.iter() {
-            self.matrix.union_row_with(&new_conflicts, local);
-        }
-    }
-
-    fn record_local_conflict(&mut self, a: Local, b: Local, why: &str) {
-        trace!("conflict {:?} <-> {:?} due to {}", a, b, why);
-        self.matrix.insert(a, b);
-        self.matrix.insert(b, a);
-    }
-
-    /// Records locals that must not overlap during the evaluation of `stmt`. These locals conflict
-    /// and must not be merged.
-    fn record_statement_conflicts(&mut self, stmt: &Statement<'_>) {
-        match &stmt.kind {
-            // While the left and right sides of an assignment must not overlap, we do not mark
-            // conflicts here as that would make this optimization useless. When we optimize, we
-            // eliminate the resulting self-assignments automatically.
-            StatementKind::Assign(_) => {}
-
-            StatementKind::SetDiscriminant { .. }
-            | StatementKind::Deinit(..)
-            | StatementKind::StorageLive(..)
-            | StatementKind::StorageDead(..)
-            | StatementKind::Retag(..)
-            | StatementKind::FakeRead(..)
-            | StatementKind::AscribeUserType(..)
-            | StatementKind::Coverage(..)
-            | StatementKind::Intrinsic(..)
-            | StatementKind::Nop => {}
         }
     }
 
-    fn record_terminator_conflicts(&mut self, term: &Terminator<'_>) {
-        match &term.kind {
-            TerminatorKind::DropAndReplace {
-                place: dropped_place,
-                value,
-                target: _,
-                unwind: _,
-            } => {
-                if let Some(place) = value.place()
-                    && !place.is_indirect()
-                    && !dropped_place.is_indirect()
-                {
-                    self.record_local_conflict(
-                        place.local,
-                        dropped_place.local,
-                        "DropAndReplace operand overlap",
-                    );
-                }
-            }
-            TerminatorKind::Yield { value, resume: _, resume_arg, drop: _ } => {
-                if let Some(place) = value.place() {
-                    if !place.is_indirect() && !resume_arg.is_indirect() {
-                        self.record_local_conflict(
-                            place.local,
-                            resume_arg.local,
-                            "Yield operand overlap",
-                        );
+    fn apply_conflicts(&mut self) {
+        let writes = &self.write_info.writes;
+        for p in writes {
+            self.candidates.remove_candidates_if(
+                *p,
+                // It is possible that a local may be live for less than the
+                // duration of a statement This happens in the case of function
+                // calls or inline asm. Because of this, we also mark locals as
+                // conflicting when both of them are written to in the same
+                // statement.
+                |q| self.live.contains(q) || writes.contains(&q),
+                self.at,
+            );
+        }
+    }
+
+    /// Gets the write info for the `statement`.
+    fn get_statement_write_info(&mut self, statement: &StatementKind<'tcx>) {
+        self.write_info.writes.clear();
+        match statement {
+            StatementKind::Assign(box (lhs, rhs)) => match rhs {
+                Rvalue::Use(op) => {
+                    if !lhs.is_indirect() {
+                        self.get_assign_use_write_info(*lhs, op);
+                        return;
                     }
                 }
-            }
-            TerminatorKind::Call {
-                func,
-                args,
-                destination,
-                target: _,
-                cleanup: _,
-                from_hir_call: _,
-                fn_span: _,
-            } => {
-                // No arguments may overlap with the destination.
-                for arg in args.iter().chain(Some(func)) {
-                    if let Some(place) = arg.place() {
-                        if !place.is_indirect() && !destination.is_indirect() {
-                            self.record_local_conflict(
-                                destination.local,
-                                place.local,
-                                "call dest/arg overlap",
-                            );
+                _ => (),
+            },
+            _ => (),
+        }
+
+        self.write_info.for_statement(statement);
+    }
+
+    fn get_assign_use_write_info(&mut self, lhs: Place<'tcx>, rhs: &Operand<'tcx>) {
+        // We register the writes for the operand unconditionally
+        self.write_info.add_operand(rhs);
+        // However, we cannot do the same thing for the `lhs` as that would always block the
+        // optimization. Instead, we consider removing candidates manually.
+        let Some(rhs) = rhs.place() else {
+            self.write_info.add_place(lhs);
+            return;
+        };
+        // Find out which candidate pair we should skip, if any
+        let Some((src, dest)) = places_to_candidate_pair(lhs, rhs, self.body) else {
+            self.write_info.add_place(lhs);
+            return;
+        };
+        self.candidates.remove_candidates_if(
+            lhs.local,
+            |other| {
+                // Check if this is the candidate pair that should not be removed
+                if (lhs.local == src && other == dest) || (lhs.local == dest && other == src) {
+                    return false;
+                }
+                // Otherwise, do the "standard" thing
+                self.live.contains(other)
+            },
+            self.at,
+        )
+    }
+}
+
+/// Describes where a statement/terminator writes to
+#[derive(Default, Debug)]
+struct WriteInfo {
+    writes: Vec<Local>,
+}
+
+impl WriteInfo {
+    fn for_statement<'tcx>(&mut self, statement: &StatementKind<'tcx>) {
+        match statement {
+            StatementKind::Assign(box (lhs, rhs)) => {
+                self.add_place(*lhs);
+                match rhs {
+                    Rvalue::Use(op) | Rvalue::Repeat(op, _) => {
+                        self.add_operand(op);
+                    }
+                    Rvalue::Cast(_, op, _)
+                    | Rvalue::UnaryOp(_, op)
+                    | Rvalue::ShallowInitBox(op, _) => {
+                        self.add_operand(op);
+                    }
+                    Rvalue::BinaryOp(_, ops) | Rvalue::CheckedBinaryOp(_, ops) => {
+                        for op in [&ops.0, &ops.1] {
+                            self.add_operand(op);
                         }
                     }
+                    Rvalue::Aggregate(_, ops) => {
+                        for op in ops {
+                            self.add_operand(op);
+                        }
+                    }
+                    Rvalue::ThreadLocalRef(_)
+                    | Rvalue::NullaryOp(_, _)
+                    | Rvalue::Ref(_, _, _)
+                    | Rvalue::AddressOf(_, _)
+                    | Rvalue::Len(_)
+                    | Rvalue::Discriminant(_)
+                    | Rvalue::CopyForDeref(_) => (),
                 }
             }
-            TerminatorKind::InlineAsm {
-                template: _,
-                operands,
-                options: _,
-                line_spans: _,
-                destination: _,
-                cleanup: _,
-            } => {
-                // The intended semantics here aren't documented, we just assume that nothing that
-                // could be written to by the assembly may overlap with any other operands.
-                for op in operands {
-                    match op {
-                        InlineAsmOperand::Out { reg: _, late: _, place: Some(dest_place) }
-                        | InlineAsmOperand::InOut {
-                            reg: _,
-                            late: _,
-                            in_value: _,
-                            out_place: Some(dest_place),
-                        } => {
-                            // For output place `place`, add all places accessed by the inline asm.
-                            for op in operands {
-                                match op {
-                                    InlineAsmOperand::In { reg: _, value } => {
-                                        if let Some(p) = value.place()
-                                            && !p.is_indirect()
-                                            && !dest_place.is_indirect()
-                                        {
-                                            self.record_local_conflict(
-                                                p.local,
-                                                dest_place.local,
-                                                "asm! operand overlap",
-                                            );
-                                        }
-                                    }
-                                    InlineAsmOperand::Out {
-                                        reg: _,
-                                        late: _,
-                                        place: Some(place),
-                                    } => {
-                                        if !place.is_indirect() && !dest_place.is_indirect() {
-                                            self.record_local_conflict(
-                                                place.local,
-                                                dest_place.local,
-                                                "asm! operand overlap",
-                                            );
-                                        }
-                                    }
-                                    InlineAsmOperand::InOut {
-                                        reg: _,
-                                        late: _,
-                                        in_value,
-                                        out_place,
-                                    } => {
-                                        if let Some(place) = in_value.place()
-                                            && !place.is_indirect()
-                                            && !dest_place.is_indirect()
-                                        {
-                                            self.record_local_conflict(
-                                                place.local,
-                                                dest_place.local,
-                                                "asm! operand overlap",
-                                            );
-                                        }
+            // Retags are technically also reads, but reporting them as a write suffices
+            StatementKind::SetDiscriminant { place, .. }
+            | StatementKind::Deinit(place)
+            | StatementKind::Retag(_, place) => {
+                self.add_place(**place);
+            }
+            StatementKind::Intrinsic(_)
+            | StatementKind::Nop
+            | StatementKind::Coverage(_)
+            | StatementKind::StorageLive(_)
+            | StatementKind::StorageDead(_) => (),
+            StatementKind::FakeRead(_) | StatementKind::AscribeUserType(_, _) => {
+                bug!("{:?} not found in this MIR phase", statement)
+            }
+        }
+    }
 
-                                        if let Some(place) = out_place
-                                            && !place.is_indirect()
-                                            && !dest_place.is_indirect()
-                                        {
-                                            self.record_local_conflict(
-                                                place.local,
-                                                dest_place.local,
-                                                "asm! operand overlap",
-                                            );
-                                        }
-                                    }
-                                    InlineAsmOperand::Out { reg: _, late: _, place: None }
-                                    | InlineAsmOperand::Const { value: _ }
-                                    | InlineAsmOperand::SymFn { value: _ }
-                                    | InlineAsmOperand::SymStatic { def_id: _ } => {}
-                                }
+    fn for_terminator<'tcx>(&mut self, terminator: &TerminatorKind<'tcx>) {
+        self.writes.clear();
+        match terminator {
+            TerminatorKind::SwitchInt { discr: op, .. }
+            | TerminatorKind::Assert { cond: op, .. } => {
+                self.add_operand(op);
+            }
+            TerminatorKind::Call { destination, func, args, .. } => {
+                self.add_place(*destination);
+                self.add_operand(func);
+                for arg in args {
+                    self.add_operand(arg);
+                }
+            }
+            TerminatorKind::InlineAsm { operands, .. } => {
+                for asm_operand in operands {
+                    match asm_operand {
+                        InlineAsmOperand::In { value, .. } => {
+                            self.add_operand(value);
+                        }
+                        InlineAsmOperand::Out { place, .. } => {
+                            if let Some(place) = place {
+                                self.add_place(*place);
                             }
                         }
-                        InlineAsmOperand::InOut {
-                            reg: _,
-                            late: _,
-                            in_value: _,
-                            out_place: None,
+                        // Note that the `late` field in `InOut` is about whether the registers used
+                        // for these things overlap, and is of absolutely no interest to us.
+                        InlineAsmOperand::InOut { in_value, out_place, .. } => {
+                            if let Some(place) = out_place {
+                                self.add_place(*place);
+                            }
+                            self.add_operand(in_value);
                         }
-                        | InlineAsmOperand::In { reg: _, value: _ }
-                        | InlineAsmOperand::Out { reg: _, late: _, place: None }
-                        | InlineAsmOperand::Const { value: _ }
-                        | InlineAsmOperand::SymFn { value: _ }
-                        | InlineAsmOperand::SymStatic { def_id: _ } => {}
+                        InlineAsmOperand::Const { .. }
+                        | InlineAsmOperand::SymFn { .. }
+                        | InlineAsmOperand::SymStatic { .. } => (),
                     }
                 }
             }
-
             TerminatorKind::Goto { .. }
-            | TerminatorKind::SwitchInt { .. }
-            | TerminatorKind::Resume
-            | TerminatorKind::Abort
+            | TerminatorKind::Resume { .. }
+            | TerminatorKind::Abort { .. }
             | TerminatorKind::Return
-            | TerminatorKind::Unreachable
-            | TerminatorKind::Drop { .. }
-            | TerminatorKind::Assert { .. }
+            | TerminatorKind::Unreachable { .. } => (),
+            TerminatorKind::Drop { .. } => {
+                // `Drop`s create a `&mut` and so are not considered
+            }
+            TerminatorKind::DropAndReplace { .. }
+            | TerminatorKind::Yield { .. }
             | TerminatorKind::GeneratorDrop
             | TerminatorKind::FalseEdge { .. }
-            | TerminatorKind::FalseUnwind { .. } => {}
+            | TerminatorKind::FalseUnwind { .. } => {
+                bug!("{:?} not found in this MIR phase", terminator)
+            }
         }
     }
 
-    /// Checks whether `a` and `b` may be merged. Returns `false` if there's a conflict.
-    fn can_unify(&mut self, a: Local, b: Local) -> bool {
-        // After some locals have been unified, their conflicts are only tracked in the root key,
-        // so look that up.
-        let a = self.unified_locals.find(a).0;
-        let b = self.unified_locals.find(b).0;
-
-        if a == b {
-            // Already merged (part of the same connected component).
-            return false;
-        }
-
-        if self.matrix.contains(a, b) {
-            // Conflict (derived via dataflow, intra-statement conflicts, or inherited from another
-            // local during unification).
-            return false;
-        }
-
-        true
+    fn add_place<'tcx>(&mut self, place: Place<'tcx>) {
+        self.writes.push(place.local);
     }
 
-    /// Merges the conflicts of `a` and `b`, so that each one inherits all conflicts of the other.
-    ///
-    /// `can_unify` must have returned `true` for the same locals, or this may panic or lead to
-    /// miscompiles.
-    ///
-    /// This is called when the pass makes the decision to unify `a` and `b` (or parts of `a` and
-    /// `b`) and is needed to ensure that future unification decisions take potentially newly
-    /// introduced conflicts into account.
-    ///
-    /// For an example, assume we have locals `_0`, `_1`, `_2`, and `_3`. There are these conflicts:
-    ///
-    /// * `_0` <-> `_1`
-    /// * `_1` <-> `_2`
-    /// * `_3` <-> `_0`
-    ///
-    /// We then decide to merge `_2` with `_3` since they don't conflict. Then we decide to merge
-    /// `_2` with `_0`, which also doesn't have a conflict in the above list. However `_2` is now
-    /// `_3`, which does conflict with `_0`.
-    fn unify(&mut self, a: Local, b: Local) {
-        trace!("unify({:?}, {:?})", a, b);
-
-        // Get the root local of the connected components. The root local stores the conflicts of
-        // all locals in the connected component (and *is stored* as the conflicting local of other
-        // locals).
-        let a = self.unified_locals.find(a).0;
-        let b = self.unified_locals.find(b).0;
-        assert_ne!(a, b);
-
-        trace!("roots: a={:?}, b={:?}", a, b);
-        trace!("{:?} conflicts: {:?}", a, self.matrix.iter(a).format(", "));
-        trace!("{:?} conflicts: {:?}", b, self.matrix.iter(b).format(", "));
-
-        self.unified_locals.union(a, b);
-
-        let root = self.unified_locals.find(a).0;
-        assert!(root == a || root == b);
-
-        // Make all locals that conflict with `a` also conflict with `b`, and vice versa.
-        self.unify_cache.clear();
-        for conflicts_with_a in self.matrix.iter(a) {
-            self.unify_cache.insert(conflicts_with_a);
+    fn add_operand<'tcx>(&mut self, op: &Operand<'tcx>) {
+        match op {
+            // FIXME(JakobDegen): In a previous version, the `Move` case was incorrectly treated as
+            // being a read only. This was unsound, however we cannot add a regression test because
+            // it is not possible to set this off with current MIR. Once we have that ability, a
+            // regression test should be added.
+            Operand::Move(p) => self.add_place(*p),
+            Operand::Copy(_) | Operand::Constant(_) => (),
         }
-        for conflicts_with_b in self.matrix.iter(b) {
-            self.unify_cache.insert(conflicts_with_b);
-        }
-        for conflicts_with_a_or_b in self.unify_cache.iter() {
-            // Set both `a` and `b` for this local's row.
-            self.matrix.insert(conflicts_with_a_or_b, a);
-            self.matrix.insert(conflicts_with_a_or_b, b);
-        }
-
-        // Write the locals `a` conflicts with to `b`'s row.
-        self.matrix.union_rows(a, b);
-        // Write the locals `b` conflicts with to `a`'s row.
-        self.matrix.union_rows(b, a);
     }
 }
 
-/// A `dest = {move} src;` statement at `loc`.
-///
-/// We want to consider merging `dest` and `src` due to this assignment.
-#[derive(Debug, Copy, Clone)]
-struct CandidateAssignment<'tcx> {
-    /// Does not contain indirection or indexing (so the only local it contains is the place base).
-    dest: Place<'tcx>,
-    src: Local,
-    loc: Location,
+/////////////////////////////////////////////////////
+// Candidate accumulation
+
+fn is_constant<'tcx>(place: Place<'tcx>) -> bool {
+    place.projection.iter().all(|p| !matches!(p, ProjectionElem::Deref | ProjectionElem::Index(_)))
 }
 
-/// Scans the MIR for assignments between locals that we might want to consider merging.
+/// If the pair of places is being considered for merging, returns the candidate which would be
+/// merged in order to accomplish this.
 ///
-/// This will filter out assignments that do not match the right form (as described in the top-level
-/// comment) and also throw out assignments that involve a local that has its address taken or is
-/// otherwise ineligible (eg. locals used as array indices are ignored because we cannot propagate
-/// arbitrary places into array indices).
-fn find_candidates<'tcx>(body: &Body<'tcx>) -> Vec<CandidateAssignment<'tcx>> {
-    let mut visitor = FindAssignments {
-        body,
-        candidates: Vec::new(),
-        ever_borrowed_locals: borrowed_locals(body),
-        locals_used_as_array_index: locals_used_as_array_index(body),
+/// The contract here is in one direction - there is a guarantee that merging the locals that are
+/// outputted by this function would result in an assignment between the inputs becoming a
+/// self-assignment. However, there is no guarantee that the returned pair is actually suitable for
+/// merging - candidate collection must still check this independently.
+///
+/// This output is unique for each unordered pair of input places.
+fn places_to_candidate_pair<'tcx>(
+    a: Place<'tcx>,
+    b: Place<'tcx>,
+    body: &Body<'tcx>,
+) -> Option<(Local, Local)> {
+    let (mut a, mut b) = if a.projection.len() == 0 && b.projection.len() == 0 {
+        (a.local, b.local)
+    } else {
+        return None;
     };
+
+    // By sorting, we make sure we're input order independent
+    if a > b {
+        std::mem::swap(&mut a, &mut b);
+    }
+
+    // We could now return `(a, b)`, but then we miss some candidates in the case where `a` can't be
+    // used as a `src`.
+    if is_local_required(a, body) {
+        std::mem::swap(&mut a, &mut b);
+    }
+    // We could check `is_local_required` again here, but there's no need - after all, we make no
+    // promise that the candidate pair is actually valid
+    Some((a, b))
+}
+
+/// Collects the candidates for merging
+///
+/// This is responsible for enforcing the first and third bullet point.
+fn find_candidates<'alloc, 'tcx>(
+    body: &Body<'tcx>,
+    borrowed: &BitSet<Local>,
+    candidates: &'alloc mut FxHashMap<Local, Vec<Local>>,
+    candidates_reverse: &'alloc mut FxHashMap<Local, Vec<Local>>,
+) -> Candidates<'alloc> {
+    candidates.clear();
+    candidates_reverse.clear();
+    let mut visitor = FindAssignments { body, candidates, borrowed };
     visitor.visit_body(body);
-    visitor.candidates
+    // Deduplicate candidates
+    for (_, cands) in candidates.iter_mut() {
+        cands.sort();
+        cands.dedup();
+    }
+    // Generate the reverse map
+    for (src, cands) in candidates.iter() {
+        for dest in cands.iter().copied() {
+            candidates_reverse.entry(dest).or_default().push(*src);
+        }
+    }
+    Candidates { c: candidates, reverse: candidates_reverse }
 }
 
-struct FindAssignments<'a, 'tcx> {
+struct FindAssignments<'a, 'alloc, 'tcx> {
     body: &'a Body<'tcx>,
-    candidates: Vec<CandidateAssignment<'tcx>>,
-    ever_borrowed_locals: BitSet<Local>,
-    locals_used_as_array_index: BitSet<Local>,
+    candidates: &'alloc mut FxHashMap<Local, Vec<Local>>,
+    borrowed: &'a BitSet<Local>,
 }
 
-impl<'tcx> Visitor<'tcx> for FindAssignments<'_, 'tcx> {
-    fn visit_statement(&mut self, statement: &Statement<'tcx>, location: Location) {
+impl<'tcx> Visitor<'tcx> for FindAssignments<'_, '_, 'tcx> {
+    fn visit_statement(&mut self, statement: &Statement<'tcx>, _: Location) {
         if let StatementKind::Assign(box (
-            dest,
-            Rvalue::Use(Operand::Copy(src) | Operand::Move(src)),
+            lhs,
+            Rvalue::Use(Operand::Copy(rhs) | Operand::Move(rhs)),
         )) = &statement.kind
         {
-            // `dest` must not have pointer indirection.
-            if dest.is_indirect() {
+            if !is_constant(*lhs) || !is_constant(*rhs) {
                 return;
             }
 
-            // `src` must be a plain local.
-            if !src.projection.is_empty() {
+            let Some((src, dest)) = places_to_candidate_pair(*lhs, *rhs, self.body) else {
+                return;
+            };
+
+            // As described at the top of the file, we do not go near things that have their address
+            // taken.
+            if self.borrowed.contains(src) || self.borrowed.contains(dest) {
                 return;
             }
 
-            // Since we want to replace `src` with `dest`, `src` must not be required.
-            if is_local_required(src.local, self.body) {
+            // Also, we need to make sure that MIR actually allows the `src` to be removed
+            if is_local_required(src, self.body) {
                 return;
             }
 
-            // Can't optimize if either local ever has their address taken. This optimization does
-            // liveness analysis only based on assignments, and a local can be live even if its
-            // never assigned to again, because a reference to it might be live.
-            // FIXME: This can be smarter and take `StorageDead` into  account (which invalidates
-            // borrows).
-            if self.ever_borrowed_locals.contains(dest.local)
-                || self.ever_borrowed_locals.contains(src.local)
-            {
-                return;
-            }
-
-            assert_ne!(dest.local, src.local, "self-assignments are UB");
-
-            // We can't replace locals occurring in `PlaceElem::Index` for now.
-            if self.locals_used_as_array_index.contains(src.local) {
-                return;
-            }
-
-            for elem in dest.projection {
-                if let PlaceElem::Index(_) = elem {
-                    // `dest` contains an indexing projection.
-                    return;
-                }
-            }
-
-            self.candidates.push(CandidateAssignment {
-                dest: *dest,
-                src: src.local,
-                loc: location,
-            });
+            // We may insert duplicates here, but that's fine
+            self.candidates.entry(src).or_default().push(dest);
         }
     }
 }
@@ -886,32 +777,46 @@ fn is_local_required(local: Local, body: &Body<'_>) -> bool {
     }
 }
 
-/// `PlaceElem::Index` only stores a `Local`, so we can't replace that with a full `Place`.
-///
-/// Collect locals used as indices so we don't generate candidates that are impossible to apply
-/// later.
-fn locals_used_as_array_index(body: &Body<'_>) -> BitSet<Local> {
-    let mut visitor = IndexCollector { locals: BitSet::new_empty(body.local_decls.len()) };
-    visitor.visit_body(body);
-    visitor.locals
-}
+/////////////////////////////////////////////////////////
+// MIR Dump
 
-struct IndexCollector {
-    locals: BitSet<Local>,
-}
+fn dest_prop_mir_dump<'body, 'tcx>(
+    tcx: TyCtxt<'tcx>,
+    body: &'body Body<'tcx>,
+    live: &mut ResultsCursor<'body, 'tcx, MaybeLiveLocals>,
+    round: usize,
+) {
+    let mut reachable = None;
+    dump_mir(tcx, None, "DestinationPropagation-dataflow", &round, body, |pass_where, w| {
+        let reachable = reachable.get_or_insert_with(|| traversal::reachable_as_bitset(body));
 
-impl<'tcx> Visitor<'tcx> for IndexCollector {
-    fn visit_projection_elem(
-        &mut self,
-        local: Local,
-        proj_base: &[PlaceElem<'tcx>],
-        elem: PlaceElem<'tcx>,
-        context: PlaceContext,
-        location: Location,
-    ) {
-        if let PlaceElem::Index(i) = elem {
-            self.locals.insert(i);
+        match pass_where {
+            PassWhere::BeforeLocation(loc) if reachable.contains(loc.block) => {
+                live.seek_after_primary_effect(loc);
+                writeln!(w, "        // live: {:?}", live.get())?;
+            }
+            PassWhere::AfterTerminator(bb) if reachable.contains(bb) => {
+                let loc = body.terminator_loc(bb);
+                live.seek_before_primary_effect(loc);
+                writeln!(w, "        // live: {:?}", live.get())?;
+            }
+
+            PassWhere::BeforeBlock(bb) if reachable.contains(bb) => {
+                live.seek_to_block_start(bb);
+                writeln!(w, "    // live: {:?}", live.get())?;
+            }
+
+            PassWhere::BeforeCFG | PassWhere::AfterCFG | PassWhere::AfterLocation(_) => {}
+
+            PassWhere::BeforeLocation(_) | PassWhere::AfterTerminator(_) => {
+                writeln!(w, "        // live: <unreachable>")?;
+            }
+
+            PassWhere::BeforeBlock(_) => {
+                writeln!(w, "    // live: <unreachable>")?;
+            }
         }
-        self.super_projection_elem(local, proj_base, elem, context, location);
-    }
+
+        Ok(())
+    });
 }

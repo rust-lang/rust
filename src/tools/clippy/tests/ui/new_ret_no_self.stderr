@@ -76,5 +76,21 @@ LL | |             unimplemented!();
 LL | |         }
    | |_________^
 
-error: aborting due to 10 previous errors
+error: methods called `new` usually return `Self`
+  --> $DIR/new_ret_no_self.rs:368:9
+   |
+LL | /         fn new(t: T) -> impl Into<i32> {
+LL | |             1
+LL | |         }
+   | |_________^
+
+error: methods called `new` usually return `Self`
+  --> $DIR/new_ret_no_self.rs:389:9
+   |
+LL | /         fn new(t: T) -> impl Trait2<(), i32> {
+LL | |             unimplemented!()
+LL | |         }
+   | |_________^
+
+error: aborting due to 12 previous errors
 

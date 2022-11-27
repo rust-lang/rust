@@ -8,8 +8,6 @@ use crate::ty::{
 };
 use crate::ty::{GenericArgKind, SubstsRef};
 use rustc_apfloat::Float as _;
-use rustc_ast as ast;
-use rustc_attr::{self as attr, SignedInt, UnsignedInt};
 use rustc_data_structures::fx::{FxHashMap, FxHashSet};
 use rustc_data_structures::stable_hasher::{HashStable, StableHasher};
 use rustc_errors::ErrorGuaranteed;
@@ -19,7 +17,7 @@ use rustc_hir::def_id::DefId;
 use rustc_index::bit_set::GrowableBitSet;
 use rustc_macros::HashStable;
 use rustc_span::{sym, DUMMY_SP};
-use rustc_target::abi::{Integer, Size, TargetDataLayout};
+use rustc_target::abi::{Integer, IntegerType, Size, TargetDataLayout};
 use rustc_target::spec::abi::Abi;
 use smallvec::SmallVec;
 use std::{fmt, iter};
@@ -104,21 +102,12 @@ pub trait IntTypeExt {
     fn initial_discriminant<'tcx>(&self, tcx: TyCtxt<'tcx>) -> Discr<'tcx>;
 }
 
-impl IntTypeExt for attr::IntType {
+impl IntTypeExt for IntegerType {
     fn to_ty<'tcx>(&self, tcx: TyCtxt<'tcx>) -> Ty<'tcx> {
-        match *self {
-            SignedInt(ast::IntTy::I8) => tcx.types.i8,
-            SignedInt(ast::IntTy::I16) => tcx.types.i16,
-            SignedInt(ast::IntTy::I32) => tcx.types.i32,
-            SignedInt(ast::IntTy::I64) => tcx.types.i64,
-            SignedInt(ast::IntTy::I128) => tcx.types.i128,
-            SignedInt(ast::IntTy::Isize) => tcx.types.isize,
-            UnsignedInt(ast::UintTy::U8) => tcx.types.u8,
-            UnsignedInt(ast::UintTy::U16) => tcx.types.u16,
-            UnsignedInt(ast::UintTy::U32) => tcx.types.u32,
-            UnsignedInt(ast::UintTy::U64) => tcx.types.u64,
-            UnsignedInt(ast::UintTy::U128) => tcx.types.u128,
-            UnsignedInt(ast::UintTy::Usize) => tcx.types.usize,
+        match self {
+            IntegerType::Pointer(true) => tcx.types.isize,
+            IntegerType::Pointer(false) => tcx.types.usize,
+            IntegerType::Fixed(i, s) => i.to_ty(tcx, *s),
         }
     }
 
@@ -1259,9 +1248,9 @@ where
 #[derive(Copy, Clone, Debug, HashStable, TyEncodable, TyDecodable)]
 pub struct AlwaysRequiresDrop;
 
-/// Normalizes all opaque types in the given value, replacing them
+/// Reveals all opaque types in the given value, replacing them
 /// with their underlying types.
-pub fn normalize_opaque_types<'tcx>(
+pub fn reveal_opaque_types_in_bounds<'tcx>(
     tcx: TyCtxt<'tcx>,
     val: &'tcx ty::List<ty::Predicate<'tcx>>,
 ) -> &'tcx ty::List<ty::Predicate<'tcx>> {
@@ -1298,7 +1287,7 @@ pub fn is_intrinsic(tcx: TyCtxt<'_>, def_id: DefId) -> bool {
 
 pub fn provide(providers: &mut ty::query::Providers) {
     *providers = ty::query::Providers {
-        normalize_opaque_types,
+        reveal_opaque_types_in_bounds,
         is_doc_hidden,
         is_doc_notable_trait,
         is_intrinsic,

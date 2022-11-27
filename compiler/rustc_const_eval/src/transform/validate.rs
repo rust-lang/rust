@@ -81,6 +81,7 @@ struct TypeChecker<'a, 'tcx> {
 }
 
 impl<'a, 'tcx> TypeChecker<'a, 'tcx> {
+    #[track_caller]
     fn fail(&self, location: Location, msg: impl AsRef<str>) {
         let span = self.body.source_info(location).span;
         // We use `delay_span_bug` as we might see broken MIR when other errors have already
@@ -226,12 +227,12 @@ impl<'a, 'tcx> Visitor<'tcx> for TypeChecker<'a, 'tcx> {
                 let check_equal = |this: &Self, location, f_ty| {
                     if !this.mir_assign_valid_types(ty, f_ty) {
                         this.fail(
-                        location,
-                        format!(
-                            "Field projection `{:?}.{:?}` specified type `{:?}`, but actual type is `{:?}`",
-                            parent, f, ty, f_ty
+                            location,
+                            format!(
+                                "Field projection `{:?}.{:?}` specified type `{:?}`, but actual type is `{:?}`",
+                                parent, f, ty, f_ty
+                            )
                         )
-                    )
                     }
                 };
 

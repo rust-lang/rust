@@ -15,7 +15,9 @@ error[E0382]: use of moved value: `value`
    |
 LL |     let value = NonCopy{};
    |         ----- move occurs because `value` has type `NonCopy`, which does not implement the `Copy` trait
-...
+LL |
+LL |     loop {
+   |     ---- inside of this loop
 LL |         let _used = value;
    |                     ----- value moved here
 ...
@@ -27,7 +29,9 @@ error[E0382]: use of moved value: `value`
    |
 LL |     let value = NonCopy{};
    |         ----- move occurs because `value` has type `NonCopy`, which does not implement the `Copy` trait
-...
+LL |
+LL |     loop {
+   |     ---- inside of this loop
 LL |         let _used = value;
    |                     ^^^^^ value moved here, in previous iteration of loop
 
@@ -37,6 +41,8 @@ error[E0382]: use of moved value: `value`
 LL |     let mut value = NonCopy{};
    |         --------- move occurs because `value` has type `NonCopy`, which does not implement the `Copy` trait
 ...
+LL |     loop {
+   |     ---- inside of this loop
 LL |         let _used2 = value;
    |                      ^^^^^ value moved here, in previous iteration of loop
 

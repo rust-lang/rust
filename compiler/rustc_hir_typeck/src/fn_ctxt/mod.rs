@@ -201,7 +201,9 @@ impl<'a, 'tcx> AstConv<'tcx> for FnCtxt<'a, 'tcx> {
             predicates: tcx.arena.alloc_from_iter(
                 self.param_env.caller_bounds().iter().filter_map(|predicate| {
                     match predicate.kind().skip_binder() {
-                        ty::PredicateKind::Trait(data) if data.self_ty().is_param(index) => {
+                        ty::PredicateKind::Clause(ty::Clause::Trait(data))
+                            if data.self_ty().is_param(index) =>
+                        {
                             // HACK(eddyb) should get the original `Span`.
                             let span = tcx.def_span(def_id);
                             Some((predicate, span))

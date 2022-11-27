@@ -11,7 +11,7 @@ LL |     type Assoc<'a> where Self: 'a;
    |          ^^^^^ --
 help: add missing lifetime argument
    |
-LL |     fn g(&self) -> Self::Assoc<'a>;
+LL |     fn g(&self) -> Self::Assoc<'_>;
    |                          ~~~~~~~~~
 
 error[E0107]: missing generics for associated type `Trait::Assoc`
@@ -27,7 +27,7 @@ LL |     type Assoc<'a> where Self: 'a;
    |          ^^^^^ --
 help: add missing lifetime argument
    |
-LL |     fn g(&self) -> Self::Assoc<'a> {
+LL |     fn g(&self) -> Self::Assoc<'_> {
    |                          ~~~~~~~~~
 
 error: aborting due to 2 previous errors

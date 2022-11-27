@@ -43,9 +43,9 @@ pub fn compute_drop_ranges<'a, 'tcx>(
         let typeck_results = &fcx.typeck_results.borrow();
         let num_exprs = fcx.tcx.region_scope_tree(def_id).body_expr_count(body.id()).unwrap_or(0);
         let (mut drop_ranges, borrowed_temporaries) = build_control_flow_graph(
-            fcx.tcx.hir(),
-            fcx.tcx,
+            &fcx,
             typeck_results,
+            fcx.param_env,
             consumed_borrowed_places,
             body,
             num_exprs,

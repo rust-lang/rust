@@ -1587,10 +1587,11 @@ impl<T: ?Sized> Arc<T> {
     ///
     /// # Safety
     ///
-    /// Any other `Arc` or [`Weak`] pointers to the same allocation must not be dereferenced
-    /// for the duration of the returned borrow.
-    /// This is trivially the case if no such pointers exist,
-    /// for example immediately after `Arc::new`.
+    /// If any other `Arc` or [`Weak`] pointers to the same allocation exist, then
+    /// they must be must not be dereferenced or have active borrows for the duration
+    /// of the returned borrow, and their inner type must be exactly the same as the
+    /// inner type of this Rc (including lifetimes). This is trivially the case if no
+    /// such pointers exist, for example immediately after `Arc::new`.
     ///
     /// # Examples
     ///
@@ -1604,6 +1605,38 @@ impl<T: ?Sized> Arc<T> {
     ///     Arc::get_mut_unchecked(&mut x).push_str("foo")
     /// }
     /// assert_eq!(*x, "foo");
+    /// ```
+    /// Other `Arc` pointers to the same allocation must be to the same type.
+    /// ```no_run
+    /// #![feature(get_mut_unchecked)]
+    ///
+    /// use std::sync::Arc;
+    ///
+    /// let x: Arc<str> = Arc::from("Hello, world!");
+    /// let mut y: Arc<[u8]> = x.clone().into();
+    /// unsafe {
+    ///     // this is Undefined Behavior, because x's inner type is str, not [u8]
+    ///     Arc::get_mut_unchecked(&mut y).fill(0xff); // 0xff is invalid in UTF-8
+    /// }
+    /// println!("{}", &*x); // Invalid UTF-8 in a str
+    /// ```
+    /// Other `Arc` pointers to the same allocation must be to the exact same type, including lifetimes.
+    /// ```no_run
+    /// #![feature(get_mut_unchecked)]
+    ///
+    /// use std::sync::Arc;
+    ///
+    /// let x: Arc<&str> = Arc::new("Hello, world!");
+    /// {
+    ///     let s = String::from("Oh, no!");
+    ///     let mut y: Arc<&str> = x.clone().into();
+    ///     unsafe {
+    ///         // this is Undefined Behavior, because x's inner type
+    ///         // is &'long str, not &'short str
+    ///         *Arc::get_mut_unchecked(&mut y) = &s;
+    ///     }
+    /// }
+    /// println!("{}", &*x); // Use-after-free
     /// ```
     #[inline]
     #[unstable(feature = "get_mut_unchecked", issue = "63292")]

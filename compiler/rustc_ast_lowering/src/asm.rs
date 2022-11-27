@@ -123,7 +123,7 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
             .operands
             .iter()
             .map(|(op, op_sp)| {
-                let lower_reg = |reg| match reg {
+                let lower_reg = |&reg: &_| match reg {
                     InlineAsmRegOrRegClass::Reg(reg) => {
                         asm::InlineAsmRegOrRegClass::Reg(if let Some(asm_arch) = asm_arch {
                             asm::InlineAsmReg::parse(asm_arch, reg).unwrap_or_else(|error| {
@@ -152,32 +152,30 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
                     }
                 };
 
-                let op = match *op {
-                    InlineAsmOperand::In { reg, ref expr } => hir::InlineAsmOperand::In {
+                let op = match op {
+                    InlineAsmOperand::In { reg, expr } => hir::InlineAsmOperand::In {
                         reg: lower_reg(reg),
                         expr: self.lower_expr(expr),
                     },
-                    InlineAsmOperand::Out { reg, late, ref expr } => hir::InlineAsmOperand::Out {
+                    InlineAsmOperand::Out { reg, late, expr } => hir::InlineAsmOperand::Out {
                         reg: lower_reg(reg),
-                        late,
+                        late: *late,
                         expr: expr.as_ref().map(|expr| self.lower_expr(expr)),
                     },
-                    InlineAsmOperand::InOut { reg, late, ref expr } => {
-                        hir::InlineAsmOperand::InOut {
-                            reg: lower_reg(reg),
-                            late,
-                            expr: self.lower_expr(expr),
-                        }
-                    }
-                    InlineAsmOperand::SplitInOut { reg, late, ref in_expr, ref out_expr } => {
+                    InlineAsmOperand::InOut { reg, late, expr } => hir::InlineAsmOperand::InOut {
+                        reg: lower_reg(reg),
+                        late: *late,
+                        expr: self.lower_expr(expr),
+                    },
+                    InlineAsmOperand::SplitInOut { reg, late, in_expr, out_expr } => {
                         hir::InlineAsmOperand::SplitInOut {
                             reg: lower_reg(reg),
-                            late,
+                            late: *late,
                             in_expr: self.lower_expr(in_expr),
                             out_expr: out_expr.as_ref().map(|expr| self.lower_expr(expr)),
                         }
                     }
-                    InlineAsmOperand::Const { ref anon_const } => {
+                    InlineAsmOperand::Const { anon_const } => {
                         if !self.tcx.features().asm_const {
                             feature_err(
                                 &sess.parse_sess,
@@ -191,7 +189,7 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
                             anon_const: self.lower_anon_const(anon_const),
                         }
                     }
-                    InlineAsmOperand::Sym { ref sym } => {
+                    InlineAsmOperand::Sym { sym } => {
                         let static_def_id = self
                             .resolver
                             .get_partial_res(sym.id)
@@ -347,7 +345,7 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
                                     skip = true;
 
                                     let idx2 = *o.get();
-                                    let &(ref op2, op_sp2) = &operands[idx2];
+                                    let (ref op2, op_sp2) = operands[idx2];
                                     let Some(asm::InlineAsmRegOrRegClass::Reg(reg2)) = op2.reg() else {
                                         unreachable!();
                                     };

@@ -22,8 +22,8 @@ use crate::traits::util::{self, closure_trait_ref_and_return_type, predicate_for
 use crate::traits::{
     BuiltinDerivedObligation, ImplDerivedObligation, ImplDerivedObligationCause, ImplSource,
     ImplSourceAutoImplData, ImplSourceBuiltinData, ImplSourceClosureData,
-    ImplSourceConstDestructData, ImplSourceDiscriminantKindData, ImplSourceFnPointerData,
-    ImplSourceGeneratorData, ImplSourceObjectData, ImplSourcePointeeData, ImplSourceTraitAliasData,
+    ImplSourceConstDestructData, ImplSourceFnPointerData, ImplSourceFutureData,
+    ImplSourceGeneratorData, ImplSourceObjectData, ImplSourceTraitAliasData,
     ImplSourceTraitUpcastingData, ImplSourceUserDefinedData, Normalized, ObjectCastObligation,
     Obligation, ObligationCause, OutputTypeParameterMismatch, PredicateObligation, Selection,
     SelectionError, TraitNotObjectSafe, TraitObligation, Unimplemented, VtblSegment,
@@ -89,16 +89,15 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
                 ImplSource::Generator(vtable_generator)
             }
 
+            FutureCandidate => {
+                let vtable_future = self.confirm_future_candidate(obligation)?;
+                ImplSource::Future(vtable_future)
+            }
+
             FnPointerCandidate { .. } => {
                 let data = self.confirm_fn_pointer_candidate(obligation)?;
                 ImplSource::FnPointer(data)
             }
-
-            DiscriminantKindCandidate => {
-                ImplSource::DiscriminantKind(ImplSourceDiscriminantKindData)
-            }
-
-            PointeeCandidate => ImplSource::Pointee(ImplSourcePointeeData),
 
             TraitAliasCandidate => {
                 let data = self.confirm_trait_alias_candidate(obligation);
@@ -599,8 +598,10 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
     {
         debug!(?obligation, "confirm_fn_pointer_candidate");
 
-        // Okay to skip binder; it is reintroduced below.
-        let self_ty = self.infcx.shallow_resolve(obligation.self_ty().skip_binder());
+        let self_ty = self
+            .infcx
+            .shallow_resolve(obligation.self_ty().no_bound_vars())
+            .expect("fn pointer should not capture bound vars from predicate");
         let sig = self_ty.fn_sig(self.tcx());
         let trait_ref = closure_trait_ref_and_return_type(
             self.tcx(),
@@ -615,15 +616,7 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
 
         // Confirm the `type Output: Sized;` bound that is present on `FnOnce`
         let cause = obligation.derived_cause(BuiltinDerivedObligation);
-        // The binder on the Fn obligation is "less" important than the one on
-        // the signature, as evidenced by how we treat it during projection.
-        // The safe thing to do here is to liberate it, though, which should
-        // have no worse effect than skipping the binder here.
-        let liberated_fn_ty =
-            self.infcx.replace_bound_vars_with_placeholders(obligation.predicate.rebind(self_ty));
-        let output_ty = self
-            .infcx
-            .replace_bound_vars_with_placeholders(liberated_fn_ty.fn_sig(self.tcx()).output());
+        let output_ty = self.infcx.replace_bound_vars_with_placeholders(sig.output());
         let output_ty = normalize_with_depth_to(
             self,
             obligation.param_env,
@@ -632,16 +625,9 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
             output_ty,
             &mut nested,
         );
-        let tr = ty::Binder::dummy(ty::TraitRef::new(
-            self.tcx().require_lang_item(LangItem::Sized, None),
-            self.tcx().mk_substs_trait(output_ty, &[]),
-        ));
-        nested.push(Obligation::new(
-            self.infcx.tcx,
-            cause,
-            obligation.param_env,
-            tr.to_poly_trait_predicate(),
-        ));
+        let tr =
+            ty::Binder::dummy(self.tcx().at(cause.span).mk_trait_ref(LangItem::Sized, [output_ty]));
+        nested.push(Obligation::new(self.infcx.tcx, cause, obligation.param_env, tr));
 
         Ok(ImplSourceFnPointerData { fn_ty: self_ty, nested })
     }
@@ -687,12 +673,59 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
 
         debug!(?obligation, ?generator_def_id, ?substs, "confirm_generator_candidate");
 
-        let trait_ref = self.generator_trait_ref_unnormalized(obligation, substs);
+        let gen_sig = substs.as_generator().poly_sig();
+
+        // NOTE: The self-type is a generator type and hence is
+        // in fact unparameterized (or at least does not reference any
+        // regions bound in the obligation).
+        let self_ty = obligation
+            .predicate
+            .self_ty()
+            .no_bound_vars()
+            .expect("unboxed closure type should not capture bound vars from the predicate");
+
+        let trait_ref = super::util::generator_trait_ref_and_outputs(
+            self.tcx(),
+            obligation.predicate.def_id(),
+            self_ty,
+            gen_sig,
+        )
+        .map_bound(|(trait_ref, ..)| trait_ref);
 
         let nested = self.confirm_poly_trait_refs(obligation, trait_ref)?;
         debug!(?trait_ref, ?nested, "generator candidate obligations");
 
         Ok(ImplSourceGeneratorData { generator_def_id, substs, nested })
+    }
+
+    fn confirm_future_candidate(
+        &mut self,
+        obligation: &TraitObligation<'tcx>,
+    ) -> Result<ImplSourceFutureData<'tcx, PredicateObligation<'tcx>>, SelectionError<'tcx>> {
+        // Okay to skip binder because the substs on generator types never
+        // touch bound regions, they just capture the in-scope
+        // type/region parameters.
+        let self_ty = self.infcx.shallow_resolve(obligation.self_ty().skip_binder());
+        let ty::Generator(generator_def_id, substs, _) = *self_ty.kind() else {
+            bug!("closure candidate for non-closure {:?}", obligation);
+        };
+
+        debug!(?obligation, ?generator_def_id, ?substs, "confirm_future_candidate");
+
+        let gen_sig = substs.as_generator().poly_sig();
+
+        let trait_ref = super::util::future_trait_ref_and_outputs(
+            self.tcx(),
+            obligation.predicate.def_id(),
+            obligation.predicate.no_bound_vars().expect("future has no bound vars").self_ty(),
+            gen_sig,
+        )
+        .map_bound(|(trait_ref, ..)| trait_ref);
+
+        let nested = self.confirm_poly_trait_refs(obligation, trait_ref)?;
+        debug!(?trait_ref, ?nested, "future candidate obligations");
+
+        Ok(ImplSourceFutureData { generator_def_id, substs, nested })
     }
 
     #[instrument(skip(self), level = "debug")]
@@ -805,9 +838,10 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
         let upcast_trait_ref;
         match (source.kind(), target.kind()) {
             // TraitA+Kx+'a -> TraitB+Ky+'b (trait upcasting coercion).
-            (&ty::Dynamic(ref data_a, r_a, repr_a), &ty::Dynamic(ref data_b, r_b, repr_b))
-                if repr_a == repr_b =>
-            {
+            (
+                &ty::Dynamic(ref data_a, r_a, repr_a @ ty::Dyn),
+                &ty::Dynamic(ref data_b, r_b, ty::Dyn),
+            ) => {
                 // See `assemble_candidates_for_unsizing` for more info.
                 // We already checked the compatibility of auto traits within `assemble_candidates_for_unsizing`.
                 let principal_a = data_a.principal().unwrap();
@@ -833,7 +867,7 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
                             .map(ty::Binder::dummy),
                     );
                 let existential_predicates = tcx.mk_poly_existential_predicates(iter);
-                let source_trait = tcx.mk_dynamic(existential_predicates, r_b, repr_b);
+                let source_trait = tcx.mk_dynamic(existential_predicates, r_b, repr_a);
 
                 // Require that the traits involved in this upcast are **equal**;
                 // only the **lifetime bound** is changed.
@@ -996,10 +1030,8 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
                 );
 
                 // We can only make objects from sized types.
-                let tr = ty::Binder::dummy(ty::TraitRef::new(
-                    tcx.require_lang_item(LangItem::Sized, None),
-                    tcx.mk_substs_trait(source, &[]),
-                ));
+                let tr =
+                    ty::Binder::dummy(tcx.at(cause.span).mk_trait_ref(LangItem::Sized, [source]));
                 nested.push(predicate_to_obligation(tr.without_const().to_predicate(tcx)));
 
                 // If the type is `Foo + 'a`, ensure that the type
@@ -1105,8 +1137,7 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
                     obligation.cause.clone(),
                     obligation.predicate.def_id(),
                     obligation.recursion_depth + 1,
-                    source_tail,
-                    &[target_tail.into()],
+                    [source_tail, target_tail],
                 ));
             }
 
@@ -1136,8 +1167,7 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
                         obligation.cause.clone(),
                         obligation.predicate.def_id(),
                         obligation.recursion_depth + 1,
-                        a_last,
-                        &[b_last.into()],
+                        [a_last, b_last],
                     )
                 }));
             }
@@ -1253,10 +1283,10 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
                         cause.clone(),
                         obligation.recursion_depth + 1,
                         self_ty.rebind(ty::TraitPredicate {
-                            trait_ref: ty::TraitRef {
-                                def_id: self.tcx().require_lang_item(LangItem::Destruct, None),
-                                substs: self.tcx().mk_substs_trait(nested_ty, &[]),
-                            },
+                            trait_ref: self
+                                .tcx()
+                                .at(cause.span)
+                                .mk_trait_ref(LangItem::Destruct, [nested_ty]),
                             constness: ty::BoundConstness::ConstIfConst,
                             polarity: ty::ImplPolarity::Positive,
                         }),
@@ -1277,10 +1307,10 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
                 // or it's an ADT (and we need to check for a custom impl during selection)
                 _ => {
                     let predicate = self_ty.rebind(ty::TraitPredicate {
-                        trait_ref: ty::TraitRef {
-                            def_id: self.tcx().require_lang_item(LangItem::Destruct, None),
-                            substs: self.tcx().mk_substs_trait(nested_ty, &[]),
-                        },
+                        trait_ref: self
+                            .tcx()
+                            .at(cause.span)
+                            .mk_trait_ref(LangItem::Destruct, [nested_ty]),
                         constness: ty::BoundConstness::ConstIfConst,
                         polarity: ty::ImplPolarity::Positive,
                     });

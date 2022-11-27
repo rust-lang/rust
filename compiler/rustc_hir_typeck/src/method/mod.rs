@@ -348,7 +348,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                     },
                 ),
                 self.param_env,
-                poly_trait_ref.without_const(),
+                poly_trait_ref,
             ),
             substs,
         )
@@ -566,6 +566,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         let tcx = self.tcx;
 
         // Check if we have an enum variant.
+        let mut struct_variant = None;
         if let ty::Adt(adt_def, _) = self_ty.kind() {
             if adt_def.is_enum() {
                 let variant_def = adt_def
@@ -573,16 +574,17 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                     .iter()
                     .find(|vd| tcx.hygienic_eq(method_name, vd.ident(tcx), adt_def.did()));
                 if let Some(variant_def) = variant_def {
-                    // Braced variants generate unusable names in value namespace (reserved for
-                    // possible future use), so variants resolved as associated items may refer to
-                    // them as well. It's ok to use the variant's id as a ctor id since an
-                    // error will be reported on any use of such resolution anyway.
-                    let ctor_def_id = variant_def.ctor_def_id.unwrap_or(variant_def.def_id);
-                    tcx.check_stability(ctor_def_id, Some(expr_id), span, Some(method_name.span));
-                    return Ok((
-                        DefKind::Ctor(CtorOf::Variant, variant_def.ctor_kind),
-                        ctor_def_id,
-                    ));
+                    if let Some((ctor_kind, ctor_def_id)) = variant_def.ctor {
+                        tcx.check_stability(
+                            ctor_def_id,
+                            Some(expr_id),
+                            span,
+                            Some(method_name.span),
+                        );
+                        return Ok((DefKind::Ctor(CtorOf::Variant, ctor_kind), ctor_def_id));
+                    } else {
+                        struct_variant = Some((DefKind::Variant, variant_def.def_id));
+                    }
                 }
             }
         }
@@ -594,7 +596,12 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             self_ty,
             expr_id,
             ProbeScope::TraitsInScope,
-        )?;
+        );
+        let pick = match (pick, struct_variant) {
+            // Fall back to a resolution that will produce an error later.
+            (Err(_), Some(res)) => return Ok(res),
+            (pick, _) => pick?,
+        };
 
         pick.maybe_emit_unstable_name_collision_hint(self.tcx, span, expr_id);
 

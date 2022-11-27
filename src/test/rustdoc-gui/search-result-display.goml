@@ -22,7 +22,8 @@ size: (900, 900)
 
 // First we check the current width, height and position.
 assert-css: ("#crate-search", {"width": "223px"})
-assert-css: (".search-results-title", {"height": "44px", "width": "336px"})
+assert-css: (".search-results-title", {"height": "44px", "width": "640px"})
+assert-css: ("#search", {"width": "640px"})
 
 // Then we update the text of one of the `<option>`.
 text: (

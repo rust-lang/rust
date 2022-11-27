@@ -223,7 +223,7 @@ impl<'tcx> FormatRenderer<'tcx> for JsonRenderer<'tcx> {
                     false
                 }
 
-                types::ItemEnum::Method(_)
+                types::ItemEnum::Function(_)
                 | types::ItemEnum::Module(_)
                 | types::ItemEnum::AssocConst { .. }
                 | types::ItemEnum::AssocType { .. } => true,
@@ -231,7 +231,6 @@ impl<'tcx> FormatRenderer<'tcx> for JsonRenderer<'tcx> {
                 | types::ItemEnum::Import(_)
                 | types::ItemEnum::StructField(_)
                 | types::ItemEnum::Variant(_)
-                | types::ItemEnum::Function(_)
                 | types::ItemEnum::TraitAlias(_)
                 | types::ItemEnum::Impl(_)
                 | types::ItemEnum::Typedef(_)

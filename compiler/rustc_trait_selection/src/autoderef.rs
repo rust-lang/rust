@@ -1,10 +1,11 @@
 use crate::errors::AutoDerefReachedRecursionLimit;
+use crate::infer::InferCtxtExt as _;
 use crate::traits::query::evaluate_obligation::InferCtxtExt;
 use crate::traits::{self, TraitEngine, TraitEngineExt};
 use rustc_hir as hir;
 use rustc_infer::infer::InferCtxt;
 use rustc_middle::ty::TypeVisitable;
-use rustc_middle::ty::{self, TraitRef, Ty, TyCtxt};
+use rustc_middle::ty::{self, Ty, TyCtxt};
 use rustc_session::Limit;
 use rustc_span::def_id::LOCAL_CRATE;
 use rustc_span::Span;
@@ -122,10 +123,7 @@ impl<'a, 'tcx> Autoderef<'a, 'tcx> {
         let tcx = self.infcx.tcx;
 
         // <ty as Deref>
-        let trait_ref = TraitRef {
-            def_id: tcx.lang_items().deref_trait()?,
-            substs: tcx.mk_substs_trait(ty, &[]),
-        };
+        let trait_ref = tcx.mk_trait_ref(tcx.lang_items().deref_trait()?, [ty]);
 
         let cause = traits::ObligationCause::misc(self.span, self.body_id);
 
@@ -133,23 +131,21 @@ impl<'a, 'tcx> Autoderef<'a, 'tcx> {
             tcx,
             cause.clone(),
             self.param_env,
-            ty::Binder::dummy(trait_ref).without_const(),
+            ty::Binder::dummy(trait_ref),
         );
         if !self.infcx.predicate_may_hold(&obligation) {
             debug!("overloaded_deref_ty: cannot match obligation");
             return None;
         }
 
-        let mut fulfillcx = <dyn TraitEngine<'tcx>>::new_in_snapshot(tcx);
-        let normalized_ty = fulfillcx.normalize_projection_type(
-            &self.infcx,
-            self.param_env,
-            ty::ProjectionTy {
-                item_def_id: tcx.lang_items().deref_target()?,
-                substs: trait_ref.substs,
-            },
+        let normalized_ty = self.infcx.partially_normalize_associated_types_in(
             cause,
+            self.param_env,
+            tcx.mk_projection(tcx.lang_items().deref_target()?, trait_ref.substs),
         );
+        let mut fulfillcx = <dyn TraitEngine<'tcx>>::new_in_snapshot(tcx);
+        let normalized_ty =
+            normalized_ty.into_value_registering_obligations(self.infcx, &mut *fulfillcx);
         let errors = fulfillcx.select_where_possible(&self.infcx);
         if !errors.is_empty() {
             // This shouldn't happen, except for evaluate/fulfill mismatches,

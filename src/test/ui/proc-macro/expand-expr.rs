@@ -123,4 +123,10 @@ expand_expr_fail!(echo_pm!(arbitrary_expression() + "etc"));
 
 const _: u32 = recursive_expand!(); //~ ERROR: recursion limit reached while expanding `recursive_expand!`
 
-fn main() {}
+fn main() {
+    // https://github.com/rust-lang/rust/issues/104414
+    match b"Included file contents\n" {
+        include_bytes!("auxiliary/included-file.txt") => (),
+        _ => panic!("include_bytes! in pattern"),
+    }
+}

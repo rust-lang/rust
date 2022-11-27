@@ -1,12 +1,15 @@
 //! lint when there is a large size difference between variants on an enum
 
 use clippy_utils::source::snippet_with_applicability;
-use clippy_utils::{diagnostics::span_lint_and_then, ty::approx_ty_size, ty::is_copy};
+use clippy_utils::{
+    diagnostics::span_lint_and_then,
+    ty::{approx_ty_size, is_copy, AdtVariantInfo},
+};
 use rustc_errors::Applicability;
 use rustc_hir::{Item, ItemKind};
 use rustc_lint::{LateContext, LateLintPass};
 use rustc_middle::lint::in_external_macro;
-use rustc_middle::ty::{Adt, AdtDef, GenericArg, List, Ty};
+use rustc_middle::ty::{Adt, Ty};
 use rustc_session::{declare_tool_lint, impl_lint_pass};
 use rustc_span::source_map::Span;
 
@@ -72,49 +75,6 @@ impl LargeEnumVariant {
     }
 }
 
-struct FieldInfo {
-    ind: usize,
-    size: u64,
-}
-
-struct VariantInfo {
-    ind: usize,
-    size: u64,
-    fields_size: Vec<FieldInfo>,
-}
-
-fn variants_size<'tcx>(
-    cx: &LateContext<'tcx>,
-    adt: AdtDef<'tcx>,
-    subst: &'tcx List<GenericArg<'tcx>>,
-) -> Vec<VariantInfo> {
-    let mut variants_size = adt
-        .variants()
-        .iter()
-        .enumerate()
-        .map(|(i, variant)| {
-            let mut fields_size = variant
-                .fields
-                .iter()
-                .enumerate()
-                .map(|(i, f)| FieldInfo {
-                    ind: i,
-                    size: approx_ty_size(cx, f.ty(cx.tcx, subst)),
-                })
-                .collect::<Vec<_>>();
-            fields_size.sort_by(|a, b| (a.size.cmp(&b.size)));
-
-            VariantInfo {
-                ind: i,
-                size: fields_size.iter().map(|info| info.size).sum(),
-                fields_size,
-            }
-        })
-        .collect::<Vec<_>>();
-    variants_size.sort_by(|a, b| (b.size.cmp(&a.size)));
-    variants_size
-}
-
 impl_lint_pass!(LargeEnumVariant => [LARGE_ENUM_VARIANT]);
 
 impl<'tcx> LateLintPass<'tcx> for LargeEnumVariant {
@@ -130,7 +90,7 @@ impl<'tcx> LateLintPass<'tcx> for LargeEnumVariant {
             if adt.variants().len() <= 1 {
                 return;
             }
-            let variants_size = variants_size(cx, *adt, subst);
+            let variants_size = AdtVariantInfo::new(cx, *adt, subst);
 
             let mut difference = variants_size[0].size - variants_size[1].size;
             if difference > self.maximum_size_difference_allowed {
@@ -173,16 +133,16 @@ impl<'tcx> LateLintPass<'tcx> for LargeEnumVariant {
                                 .fields_size
                                 .iter()
                                 .rev()
-                                .map_while(|val| {
+                                .map_while(|&(ind, size)| {
                                     if difference > self.maximum_size_difference_allowed {
-                                        difference = difference.saturating_sub(val.size);
+                                        difference = difference.saturating_sub(size);
                                         Some((
-                                            fields[val.ind].ty.span,
+                                            fields[ind].ty.span,
                                             format!(
                                                 "Box<{}>",
                                                 snippet_with_applicability(
                                                     cx,
-                                                    fields[val.ind].ty.span,
+                                                    fields[ind].ty.span,
                                                     "..",
                                                     &mut applicability
                                                 )

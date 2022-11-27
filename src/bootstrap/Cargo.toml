@@ -36,12 +36,13 @@ test = false
 
 [dependencies]
 cmake = "0.1.38"
-fd-lock = "3.0.7"
+fd-lock = "3.0.8"
 filetime = "0.2"
 getopts = "0.2.19"
 cc = "1.0.69"
 libc = "0.2"
 hex = "0.4"
+object = { version = "0.29.0", default-features = false, features = ["archive", "coff", "read_core", "unaligned"] }
 serde = { version = "1.0.8", features = ["derive"] }
 serde_json = "1.0.2"
 sha2 = "0.10"
@@ -54,7 +55,7 @@ xz2 = "0.1"
 walkdir = "2"
 
 # Dependencies needed by the build-metrics feature
-sysinfo = { version = "0.24.1", optional = true }
+sysinfo = { version = "0.26.0", optional = true }
 
 [target.'cfg(windows)'.dependencies.winapi]
 version = "0.3"

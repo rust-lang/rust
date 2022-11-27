@@ -58,3 +58,31 @@ session_expr_parentheses_needed = parentheses are required to parse this as an e
 session_skipping_const_checks = skipping const checks
 session_unleashed_feature_help_named = skipping check for `{$gate}` feature
 session_unleashed_feature_help_unnamed = skipping check that does not even have a feature gate
+
+session_hexadecimal_float_literal_not_supported = hexadecimal float literal is not supported
+session_octal_float_literal_not_supported = octal float literal is not supported
+session_binary_float_literal_not_supported = binary float literal is not supported
+session_not_supported = not supported
+
+session_invalid_literal_suffix = suffixes on {$kind} literals are invalid
+    .label = invalid suffix `{$suffix}`
+
+session_invalid_num_literal_base_prefix = invalid base prefix for number literal
+    .note = base prefixes (`0xff`, `0b1010`, `0o755`) are lowercase
+    .suggestion = try making the prefix lowercase
+
+session_invalid_num_literal_suffix = invalid suffix `{$suffix}` for number literal
+    .label = invalid suffix `{$suffix}`
+    .help = the suffix must be one of the numeric types (`u32`, `isize`, `f32`, etc.)
+
+session_invalid_float_literal_width = invalid width `{$width}` for float literal
+    .help = valid widths are 32 and 64
+
+session_invalid_float_literal_suffix = invalid suffix `{$suffix}` for float literal
+    .label = invalid suffix `{$suffix}`
+    .help = valid suffixes are `f32` and `f64`
+
+session_int_literal_too_large = integer literal is too large
+
+session_invalid_int_literal_width = invalid width `{$width}` for integer literal
+    .help = valid widths are 8, 16, 32, 64 and 128

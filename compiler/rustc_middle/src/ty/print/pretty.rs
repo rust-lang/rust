@@ -11,6 +11,7 @@ use rustc_hir as hir;
 use rustc_hir::def::{self, CtorKind, DefKind, Namespace};
 use rustc_hir::def_id::{DefId, DefIdSet, CRATE_DEF_ID, LOCAL_CRATE};
 use rustc_hir::definitions::{DefPathData, DefPathDataName, DisambiguatedDefPathData};
+use rustc_hir::LangItem;
 use rustc_session::config::TrimmedDefPaths;
 use rustc_session::cstore::{ExternCrate, ExternCrateSource};
 use rustc_session::Limit;
@@ -680,6 +681,17 @@ pub trait PrettyPrinter<'tcx>:
             }
             ty::Str => p!("str"),
             ty::Generator(did, substs, movability) => {
+                // FIXME(swatinem): async constructs used to be pretty printed
+                // as `impl Future` previously due to the `from_generator` wrapping.
+                // lets special case this here for now to avoid churn in diagnostics.
+                let generator_kind = self.tcx().generator_kind(did);
+                if matches!(generator_kind, Some(hir::GeneratorKind::Async(..))) {
+                    let return_ty = substs.as_generator().return_ty();
+                    p!(write("impl Future<Output = {}>", return_ty));
+
+                    return Ok(self);
+                }
+
                 p!(write("["));
                 match movability {
                     hir::Movability::Movable => {}
@@ -802,7 +814,7 @@ pub trait PrettyPrinter<'tcx>:
             let bound_predicate = predicate.kind();
 
             match bound_predicate.skip_binder() {
-                ty::PredicateKind::Trait(pred) => {
+                ty::PredicateKind::Clause(ty::Clause::Trait(pred)) => {
                     let trait_ref = bound_predicate.rebind(pred.trait_ref);
 
                     // Don't print + Sized, but rather + ?Sized if absent.
@@ -813,7 +825,7 @@ pub trait PrettyPrinter<'tcx>:
 
                     self.insert_trait_and_projection(trait_ref, None, &mut traits, &mut fn_traits);
                 }
-                ty::PredicateKind::Projection(pred) => {
+                ty::PredicateKind::Clause(ty::Clause::Projection(pred)) => {
                     let proj_ref = bound_predicate.rebind(pred);
                     let trait_ref = proj_ref.required_poly_trait_ref(tcx);
 
@@ -827,7 +839,7 @@ pub trait PrettyPrinter<'tcx>:
                         &mut fn_traits,
                     );
                 }
-                ty::PredicateKind::TypeOutlives(outlives) => {
+                ty::PredicateKind::Clause(ty::Clause::TypeOutlives(outlives)) => {
                     lifetimes.push(outlives.1);
                 }
                 _ => {}
@@ -889,7 +901,7 @@ pub trait PrettyPrinter<'tcx>:
                                 // Group the return ty with its def id, if we had one.
                                 entry
                                     .return_ty
-                                    .map(|ty| (tcx.lang_items().fn_once_output().unwrap(), ty)),
+                                    .map(|ty| (tcx.require_lang_item(LangItem::FnOnce, None), ty)),
                             );
                         }
                         if let Some(trait_ref) = entry.fn_mut_trait_ref {
@@ -1060,7 +1072,7 @@ pub trait PrettyPrinter<'tcx>:
 
     fn pretty_print_dyn_existential(
         mut self,
-        predicates: &'tcx ty::List<ty::Binder<'tcx, ty::ExistentialPredicate<'tcx>>>,
+        predicates: &'tcx ty::List<ty::PolyExistentialPredicate<'tcx>>,
     ) -> Result<Self::DynExistential, Self::Error> {
         // Generate the main trait ref, including associated types.
         let mut first = true;
@@ -1241,6 +1253,9 @@ pub trait PrettyPrinter<'tcx>:
                 self.pretty_print_bound_var(debruijn, bound_var)?
             }
             ty::ConstKind::Placeholder(placeholder) => p!(write("Placeholder({:?})", placeholder)),
+            // FIXME(generic_const_exprs):
+            // write out some legible representation of an abstract const?
+            ty::ConstKind::Expr(_) => p!("[Const Expr]"),
             ty::ConstKind::Error(_) => p!("[const error]"),
         };
         Ok(self)
@@ -1487,12 +1502,12 @@ pub trait PrettyPrinter<'tcx>:
                             contents.variant.expect("destructed const of adt without variant idx");
                         let variant_def = &def.variant(variant_idx);
                         p!(print_value_path(variant_def.def_id, substs));
-                        match variant_def.ctor_kind {
-                            CtorKind::Const => {}
-                            CtorKind::Fn => {
+                        match variant_def.ctor_kind() {
+                            Some(CtorKind::Const) => {}
+                            Some(CtorKind::Fn) => {
                                 p!("(", comma_sep(fields), ")");
                             }
-                            CtorKind::Fictive => {
+                            None => {
                                 p!(" {{ ");
                                 let mut first = true;
                                 for (field_def, field) in iter::zip(&variant_def.fields, fields) {
@@ -1772,7 +1787,7 @@ impl<'tcx> Printer<'tcx> for FmtPrinter<'_, 'tcx> {
 
     fn print_dyn_existential(
         self,
-        predicates: &'tcx ty::List<ty::Binder<'tcx, ty::ExistentialPredicate<'tcx>>>,
+        predicates: &'tcx ty::List<ty::PolyExistentialPredicate<'tcx>>,
     ) -> Result<Self::DynExistential, Self::Error> {
         self.pretty_print_dyn_existential(predicates)
     }
@@ -1962,17 +1977,13 @@ impl<'tcx> PrettyPrinter<'tcx> for FmtPrinter<'_, 'tcx> {
         let identify_regions = self.tcx.sess.opts.unstable_opts.identify_regions;
 
         match *region {
-            ty::ReEarlyBound(ref data) => {
-                data.name != kw::Empty && data.name != kw::UnderscoreLifetime
-            }
+            ty::ReEarlyBound(ref data) => data.has_name(),
 
             ty::ReLateBound(_, ty::BoundRegion { kind: br, .. })
             | ty::ReFree(ty::FreeRegion { bound_region: br, .. })
             | ty::RePlaceholder(ty::Placeholder { name: br, .. }) => {
-                if let ty::BrNamed(_, name) = br {
-                    if name != kw::Empty && name != kw::UnderscoreLifetime {
-                        return true;
-                    }
+                if br.is_named() {
+                    return true;
                 }
 
                 if let Some((region, _)) = highlight.highlight_bound_region {
@@ -2048,11 +2059,9 @@ impl<'tcx> FmtPrinter<'_, 'tcx> {
             ty::ReLateBound(_, ty::BoundRegion { kind: br, .. })
             | ty::ReFree(ty::FreeRegion { bound_region: br, .. })
             | ty::RePlaceholder(ty::Placeholder { name: br, .. }) => {
-                if let ty::BrNamed(_, name) = br {
-                    if name != kw::Empty && name != kw::UnderscoreLifetime {
-                        p!(write("{}", name));
-                        return Ok(self);
-                    }
+                if let ty::BrNamed(_, name) = br && br.is_named() {
+                    p!(write("{}", name));
+                    return Ok(self);
                 }
 
                 if let Some((region, counter)) = highlight.highlight_bound_region {
@@ -2265,7 +2274,7 @@ impl<'tcx> FmtPrinter<'_, 'tcx> {
 
                         (name, ty::BrNamed(CRATE_DEF_ID.to_def_id(), name))
                     }
-                    ty::BrNamed(def_id, kw::UnderscoreLifetime) => {
+                    ty::BrNamed(def_id, kw::UnderscoreLifetime | kw::Empty) => {
                         let name = next_name(&self);
 
                         if let Some(lt_idx) = lifetime_idx {
@@ -2530,12 +2539,12 @@ pub struct PrintClosureAsImpl<'tcx> {
 forward_display_to_print! {
     ty::Region<'tcx>,
     Ty<'tcx>,
-    &'tcx ty::List<ty::Binder<'tcx, ty::ExistentialPredicate<'tcx>>>,
+    &'tcx ty::List<ty::PolyExistentialPredicate<'tcx>>,
     ty::Const<'tcx>,
 
     // HACK(eddyb) these are exhaustive instead of generic,
     // because `for<'tcx>` isn't possible yet.
-    ty::Binder<'tcx, ty::ExistentialPredicate<'tcx>>,
+    ty::PolyExistentialPredicate<'tcx>,
     ty::Binder<'tcx, ty::TraitRef<'tcx>>,
     ty::Binder<'tcx, ty::ExistentialTraitRef<'tcx>>,
     ty::Binder<'tcx, TraitRefPrintOnlyTraitPath<'tcx>>,
@@ -2677,14 +2686,14 @@ define_print_and_forward_display! {
 
     ty::PredicateKind<'tcx> {
         match *self {
-            ty::PredicateKind::Trait(ref data) => {
+            ty::PredicateKind::Clause(ty::Clause::Trait(ref data)) => {
                 p!(print(data))
             }
             ty::PredicateKind::Subtype(predicate) => p!(print(predicate)),
             ty::PredicateKind::Coerce(predicate) => p!(print(predicate)),
-            ty::PredicateKind::RegionOutlives(predicate) => p!(print(predicate)),
-            ty::PredicateKind::TypeOutlives(predicate) => p!(print(predicate)),
-            ty::PredicateKind::Projection(predicate) => p!(print(predicate)),
+            ty::PredicateKind::Clause(ty::Clause::RegionOutlives(predicate)) => p!(print(predicate)),
+            ty::PredicateKind::Clause(ty::Clause::TypeOutlives(predicate)) => p!(print(predicate)),
+            ty::PredicateKind::Clause(ty::Clause::Projection(predicate)) => p!(print(predicate)),
             ty::PredicateKind::WellFormed(arg) => p!(print(arg), " well-formed"),
             ty::PredicateKind::ObjectSafe(trait_def_id) => {
                 p!("the trait `", print_def_path(trait_def_id, &[]), "` is object-safe")
@@ -2703,6 +2712,7 @@ define_print_and_forward_display! {
             ty::PredicateKind::TypeWellFormedFromEnv(ty) => {
                 p!("the type `", print(ty), "` is found in the environment")
             }
+            ty::PredicateKind::Ambiguous => p!("ambiguous"),
         }
     }
 

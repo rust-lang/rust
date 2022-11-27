@@ -241,14 +241,14 @@ impl<'o, 'tcx> dyn AstConv<'tcx> + 'o {
             }
 
             None => {
-                self.re_infer(def, lifetime.span).unwrap_or_else(|| {
+                self.re_infer(def, lifetime.ident.span).unwrap_or_else(|| {
                     debug!(?lifetime, "unelided lifetime in signature");
 
                     // This indicates an illegal lifetime
                     // elision. `resolve_lifetime` should have
                     // reported an error in this case -- but if
                     // not, let's error out.
-                    tcx.sess.delay_span_bug(lifetime.span, "unelided lifetime in signature");
+                    tcx.sess.delay_span_bug(lifetime.ident.span, "unelided lifetime in signature");
 
                     // Supply some dummy value. We don't have an
                     // `re_error`, annoyingly, so use `'static`.
@@ -961,9 +961,10 @@ impl<'o, 'tcx> dyn AstConv<'tcx> + 'o {
                 }
                 hir::GenericBound::Outlives(lifetime) => {
                     let region = self.ast_region_to_region(lifetime, None);
-                    bounds
-                        .region_bounds
-                        .push((ty::Binder::bind_with_vars(region, bound_vars), lifetime.span));
+                    bounds.region_bounds.push((
+                        ty::Binder::bind_with_vars(region, bound_vars),
+                        lifetime.ident.span,
+                    ));
                 }
             }
         }
@@ -1378,7 +1379,7 @@ impl<'o, 'tcx> dyn AstConv<'tcx> + 'o {
 
                 let bound_predicate = obligation.predicate.kind();
                 match bound_predicate.skip_binder() {
-                    ty::PredicateKind::Trait(pred) => {
+                    ty::PredicateKind::Clause(ty::Clause::Trait(pred)) => {
                         let pred = bound_predicate.rebind(pred);
                         associated_types.entry(span).or_default().extend(
                             tcx.associated_items(pred.def_id())
@@ -1387,7 +1388,7 @@ impl<'o, 'tcx> dyn AstConv<'tcx> + 'o {
                                 .map(|item| item.def_id),
                         );
                     }
-                    ty::PredicateKind::Projection(pred) => {
+                    ty::PredicateKind::Clause(ty::Clause::Projection(pred)) => {
                         let pred = bound_predicate.rebind(pred);
                         // A `Self` within the original bound will be substituted with a
                         // `trait_object_dummy_self`, so check for that.
@@ -2777,35 +2778,11 @@ impl<'o, 'tcx> dyn AstConv<'tcx> + 'o {
         let substs = InternalSubsts::for_item(tcx, def_id, |param, _| {
             if let Some(i) = (param.index as usize).checked_sub(generics.parent_count) {
                 // Our own parameters are the resolved lifetimes.
-                if let GenericParamDefKind::Lifetime = param.kind {
-                    if let hir::GenericArg::Lifetime(lifetime) = &lifetimes[i] {
-                        self.ast_region_to_region(lifetime, None).into()
-                    } else {
-                        bug!()
-                    }
-                } else {
-                    bug!()
-                }
+                let GenericParamDefKind::Lifetime { .. } = param.kind else { bug!() };
+                let hir::GenericArg::Lifetime(lifetime) = &lifetimes[i] else { bug!() };
+                self.ast_region_to_region(lifetime, None).into()
             } else {
-                match param.kind {
-                    // For RPIT (return position impl trait), only lifetimes
-                    // mentioned in the impl Trait predicate are captured by
-                    // the opaque type, so the lifetime parameters from the
-                    // parent item need to be replaced with `'static`.
-                    //
-                    // For `impl Trait` in the types of statics, constants,
-                    // locals and type aliases. These capture all parent
-                    // lifetimes, so they can use their identity subst.
-                    GenericParamDefKind::Lifetime
-                        if matches!(
-                            origin,
-                            hir::OpaqueTyOrigin::FnReturn(..) | hir::OpaqueTyOrigin::AsyncFn(..)
-                        ) =>
-                    {
-                        tcx.lifetimes.re_static.into()
-                    }
-                    _ => tcx.mk_param_from_def(param),
-                }
+                tcx.mk_param_from_def(param)
             }
         });
         debug!("impl_trait_ty_to_ty: substs={:?}", substs);
@@ -2982,6 +2959,7 @@ impl<'o, 'tcx> dyn AstConv<'tcx> + 'o {
         Some(tcx.liberate_late_bound_regions(fn_hir_id.expect_owner().to_def_id(), ty))
     }
 
+    #[instrument(level = "trace", skip(self, generate_err))]
     fn validate_late_bound_regions(
         &self,
         constrained_regions: FxHashSet<ty::BoundRegionKind>,
@@ -3023,7 +3001,7 @@ impl<'o, 'tcx> dyn AstConv<'tcx> + 'o {
     fn compute_object_lifetime_bound(
         &self,
         span: Span,
-        existential_predicates: &'tcx ty::List<ty::Binder<'tcx, ty::ExistentialPredicate<'tcx>>>,
+        existential_predicates: &'tcx ty::List<ty::PolyExistentialPredicate<'tcx>>,
     ) -> Option<ty::Region<'tcx>> // if None, use the default
     {
         let tcx = self.tcx();

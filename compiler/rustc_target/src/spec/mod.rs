@@ -35,7 +35,10 @@
 //! to the list specified by the target, rather than replace.
 
 use crate::abi::call::Conv;
-use crate::abi::Endian;
+use crate::abi::{
+    AbiAndPrefAlign, AddressSpace, Align, Endian, Integer, Size, TargetDataLayout,
+    TargetDataLayoutErrors,
+};
 use crate::json::{Json, ToJson};
 use crate::spec::abi::{lookup as lookup_abi, Abi};
 use crate::spec::crt_objects::{CrtObjects, LinkSelfContainedDefault};
@@ -58,6 +61,7 @@ use rustc_macros::HashStable_Generic;
 pub mod abi;
 pub mod crt_objects;
 
+mod aix_base;
 mod android_base;
 mod apple_base;
 mod avr_gnu_base;
@@ -1027,6 +1031,7 @@ supported_targets! {
     ("powerpc-unknown-linux-gnu", powerpc_unknown_linux_gnu),
     ("powerpc-unknown-linux-gnuspe", powerpc_unknown_linux_gnuspe),
     ("powerpc-unknown-linux-musl", powerpc_unknown_linux_musl),
+    ("powerpc64-ibm-aix", powerpc64_ibm_aix),
     ("powerpc64-unknown-linux-gnu", powerpc64_unknown_linux_gnu),
     ("powerpc64-unknown-linux-musl", powerpc64_unknown_linux_musl),
     ("powerpc64le-unknown-linux-gnu", powerpc64le_unknown_linux_gnu),
@@ -1315,6 +1320,120 @@ pub struct Target {
     pub options: TargetOptions,
 }
 
+impl Target {
+    pub fn parse_data_layout<'a>(&'a self) -> Result<TargetDataLayout, TargetDataLayoutErrors<'a>> {
+        // Parse an address space index from a string.
+        let parse_address_space = |s: &'a str, cause: &'a str| {
+            s.parse::<u32>().map(AddressSpace).map_err(|err| {
+                TargetDataLayoutErrors::InvalidAddressSpace { addr_space: s, cause, err }
+            })
+        };
+
+        // Parse a bit count from a string.
+        let parse_bits = |s: &'a str, kind: &'a str, cause: &'a str| {
+            s.parse::<u64>().map_err(|err| TargetDataLayoutErrors::InvalidBits {
+                kind,
+                bit: s,
+                cause,
+                err,
+            })
+        };
+
+        // Parse a size string.
+        let size = |s: &'a str, cause: &'a str| parse_bits(s, "size", cause).map(Size::from_bits);
+
+        // Parse an alignment string.
+        let align = |s: &[&'a str], cause: &'a str| {
+            if s.is_empty() {
+                return Err(TargetDataLayoutErrors::MissingAlignment { cause });
+            }
+            let align_from_bits = |bits| {
+                Align::from_bits(bits)
+                    .map_err(|err| TargetDataLayoutErrors::InvalidAlignment { cause, err })
+            };
+            let abi = parse_bits(s[0], "alignment", cause)?;
+            let pref = s.get(1).map_or(Ok(abi), |pref| parse_bits(pref, "alignment", cause))?;
+            Ok(AbiAndPrefAlign { abi: align_from_bits(abi)?, pref: align_from_bits(pref)? })
+        };
+
+        let mut dl = TargetDataLayout::default();
+        let mut i128_align_src = 64;
+        for spec in self.data_layout.split('-') {
+            let spec_parts = spec.split(':').collect::<Vec<_>>();
+
+            match &*spec_parts {
+                ["e"] => dl.endian = Endian::Little,
+                ["E"] => dl.endian = Endian::Big,
+                [p] if p.starts_with('P') => {
+                    dl.instruction_address_space = parse_address_space(&p[1..], "P")?
+                }
+                ["a", ref a @ ..] => dl.aggregate_align = align(a, "a")?,
+                ["f32", ref a @ ..] => dl.f32_align = align(a, "f32")?,
+                ["f64", ref a @ ..] => dl.f64_align = align(a, "f64")?,
+                [p @ "p", s, ref a @ ..] | [p @ "p0", s, ref a @ ..] => {
+                    dl.pointer_size = size(s, p)?;
+                    dl.pointer_align = align(a, p)?;
+                }
+                [s, ref a @ ..] if s.starts_with('i') => {
+                    let Ok(bits) = s[1..].parse::<u64>() else {
+                        size(&s[1..], "i")?; // For the user error.
+                        continue;
+                    };
+                    let a = align(a, s)?;
+                    match bits {
+                        1 => dl.i1_align = a,
+                        8 => dl.i8_align = a,
+                        16 => dl.i16_align = a,
+                        32 => dl.i32_align = a,
+                        64 => dl.i64_align = a,
+                        _ => {}
+                    }
+                    if bits >= i128_align_src && bits <= 128 {
+                        // Default alignment for i128 is decided by taking the alignment of
+                        // largest-sized i{64..=128}.
+                        i128_align_src = bits;
+                        dl.i128_align = a;
+                    }
+                }
+                [s, ref a @ ..] if s.starts_with('v') => {
+                    let v_size = size(&s[1..], "v")?;
+                    let a = align(a, s)?;
+                    if let Some(v) = dl.vector_align.iter_mut().find(|v| v.0 == v_size) {
+                        v.1 = a;
+                        continue;
+                    }
+                    // No existing entry, add a new one.
+                    dl.vector_align.push((v_size, a));
+                }
+                _ => {} // Ignore everything else.
+            }
+        }
+
+        // Perform consistency checks against the Target information.
+        if dl.endian != self.endian {
+            return Err(TargetDataLayoutErrors::InconsistentTargetArchitecture {
+                dl: dl.endian.as_str(),
+                target: self.endian.as_str(),
+            });
+        }
+
+        let target_pointer_width: u64 = self.pointer_width.into();
+        if dl.pointer_size.bits() != target_pointer_width {
+            return Err(TargetDataLayoutErrors::InconsistentTargetPointerWidth {
+                pointer_size: dl.pointer_size.bits(),
+                target: self.pointer_width,
+            });
+        }
+
+        dl.c_enum_min_size = match Integer::from_size(Size::from_bits(self.c_enum_min_bits)) {
+            Ok(bits) => bits,
+            Err(err) => return Err(TargetDataLayoutErrors::InvalidBitsSize { err }),
+        };
+
+        Ok(dl)
+    }
+}
+
 pub trait HasTargetSpec {
     fn target_spec(&self) -> &Target;
 }
@@ -1454,6 +1573,9 @@ pub struct TargetOptions {
     pub families: StaticCow<[StaticCow<str>]>,
     /// Whether the target toolchain's ABI supports returning small structs as an integer.
     pub abi_return_struct_as_int: bool,
+    /// Whether the target toolchain is like AIX's. Linker options on AIX are special and it uses
+    /// XCOFF as binary format. Defaults to false.
+    pub is_like_aix: bool,
     /// Whether the target toolchain is like macOS's. Only useful for compiling against iOS/macOS,
     /// in particular running dsymutil and some other stuff like `-dead_strip`. Defaults to false.
     /// Also indiates whether to use Apple-specific ABI changes, such as extending function
@@ -1817,6 +1939,7 @@ impl Default for TargetOptions {
             staticlib_suffix: ".a".into(),
             families: cvs![],
             abi_return_struct_as_int: false,
+            is_like_aix: false,
             is_like_osx: false,
             is_like_solaris: false,
             is_like_windows: false,
@@ -2488,6 +2611,7 @@ impl Target {
         key!(staticlib_suffix);
         key!(families, TargetFamilies);
         key!(abi_return_struct_as_int, bool);
+        key!(is_like_aix, bool);
         key!(is_like_osx, bool);
         key!(is_like_solaris, bool);
         key!(is_like_windows, bool);
@@ -2741,6 +2865,7 @@ impl ToJson for Target {
         target_option_val!(staticlib_suffix);
         target_option_val!(families, "target-family");
         target_option_val!(abi_return_struct_as_int);
+        target_option_val!(is_like_aix);
         target_option_val!(is_like_osx);
         target_option_val!(is_like_solaris);
         target_option_val!(is_like_windows);

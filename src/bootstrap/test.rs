@@ -473,7 +473,7 @@ impl Miri {
         miri: &Path,
         target: TargetSelection,
     ) -> String {
-        let miri_sysroot = builder.out.join(compiler.host.triple).join("miri-sysrot");
+        let miri_sysroot = builder.out.join(compiler.host.triple).join("miri-sysroot");
         let mut cargo = tool::prepare_tool_cargo(
             builder,
             compiler,
@@ -1011,6 +1011,8 @@ impl Step for RustdocGUI {
                 //        instead of hard-coding this test
                 if entry.file_name() == "link_to_definition" {
                     cargo.env("RUSTDOCFLAGS", "-Zunstable-options --generate-link-to-definition");
+                } else if entry.file_name() == "scrape_examples" {
+                    cargo.arg("-Zrustdoc-scrape-examples=examples");
                 }
                 builder.run(&mut cargo);
             }

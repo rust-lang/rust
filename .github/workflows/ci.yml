@@ -96,6 +96,9 @@ jobs:
       - name: install sccache
         run: src/ci/scripts/install-sccache.sh
         if: success() && !env.SKIP_JOB
+      - name: select Xcode
+        run: src/ci/scripts/select-xcode.sh
+        if: success() && !env.SKIP_JOB
       - name: install clang
         run: src/ci/scripts/install-clang.sh
         if: success() && !env.SKIP_JOB
@@ -301,6 +304,7 @@ jobs:
               RUST_CONFIGURE_ARGS: "--enable-full-tools --enable-sanitizers --enable-profiler --set rust.jemalloc --set llvm.ninja=false"
               RUSTC_RETRY_LINKER_ON_SEGFAULT: 1
               MACOSX_DEPLOYMENT_TARGET: 10.7
+              SELECT_XCODE: /Applications/Xcode_13.4.1.app
               NO_LLVM_ASSERTIONS: 1
               NO_DEBUG_ASSERTIONS: 1
               NO_OVERFLOW_CHECKS: 1
@@ -312,6 +316,7 @@ jobs:
               RUST_CONFIGURE_ARGS: "--enable-sanitizers --enable-profiler --set rust.jemalloc --set llvm.ninja=false"
               RUSTC_RETRY_LINKER_ON_SEGFAULT: 1
               MACOSX_DEPLOYMENT_TARGET: 10.7
+              SELECT_XCODE: /Applications/Xcode_13.4.1.app
               NO_LLVM_ASSERTIONS: 1
               NO_DEBUG_ASSERTIONS: 1
               NO_OVERFLOW_CHECKS: 1
@@ -322,6 +327,7 @@ jobs:
               RUST_CONFIGURE_ARGS: "--enable-extended --enable-profiler --set rust.jemalloc --set llvm.ninja=false"
               RUSTC_RETRY_LINKER_ON_SEGFAULT: 1
               MACOSX_DEPLOYMENT_TARGET: 10.7
+              SELECT_XCODE: /Applications/Xcode_13.4.1.app
               NO_LLVM_ASSERTIONS: 1
               NO_DEBUG_ASSERTIONS: 1
               NO_OVERFLOW_CHECKS: 1
@@ -353,6 +359,7 @@ jobs:
               SCRIPT: "./x.py dist bootstrap --include-default-paths --stage 2"
               RUST_CONFIGURE_ARGS: "--build=x86_64-apple-darwin --host=aarch64-apple-darwin --target=aarch64-apple-darwin --enable-full-tools --enable-sanitizers --enable-profiler --disable-docs --set rust.jemalloc --set llvm.ninja=false"
               RUSTC_RETRY_LINKER_ON_SEGFAULT: 1
+              SELECT_XCODE: /Applications/Xcode_13.4.1.app
               USE_XCODE_CLANG: 1
               MACOSX_DEPLOYMENT_TARGET: 11.0
               MACOSX_STD_DEPLOYMENT_TARGET: 11.0
@@ -503,6 +510,9 @@ jobs:
       - name: install sccache
         run: src/ci/scripts/install-sccache.sh
         if: success() && !env.SKIP_JOB
+      - name: select Xcode
+        run: src/ci/scripts/select-xcode.sh
+        if: success() && !env.SKIP_JOB
       - name: install clang
         run: src/ci/scripts/install-clang.sh
         if: success() && !env.SKIP_JOB
@@ -614,6 +624,9 @@ jobs:
         if: success() && !env.SKIP_JOB
       - name: install sccache
         run: src/ci/scripts/install-sccache.sh
+        if: success() && !env.SKIP_JOB
+      - name: select Xcode
+        run: src/ci/scripts/select-xcode.sh
         if: success() && !env.SKIP_JOB
       - name: install clang
         run: src/ci/scripts/install-clang.sh

@@ -58,11 +58,11 @@ fn expand<'cx>(
                         .collect(),
                     tokens: None,
                 },
-                args: P(MacArgs::Delimited(
-                    DelimSpan::from_single(sp),
-                    MacDelimiter::Parenthesis,
-                    tts,
-                )),
+                args: P(DelimArgs {
+                    dspan: DelimSpan::from_single(sp),
+                    delim: MacDelimiter::Parenthesis,
+                    tokens: tts,
+                }),
                 prior_type_ascription: None,
             })),
         ),

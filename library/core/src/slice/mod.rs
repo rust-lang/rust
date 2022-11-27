@@ -7,6 +7,7 @@
 #![stable(feature = "rust1", since = "1.0.0")]
 
 use crate::cmp::Ordering::{self, Greater, Less};
+use crate::fmt;
 use crate::intrinsics::{assert_unsafe_precondition, exact_div};
 use crate::marker::Copy;
 use crate::mem::{self, SizedTypeProperties};
@@ -4082,6 +4083,88 @@ impl<T> [T] {
         *self = rem;
         Some(last)
     }
+
+    /// Returns mutable references to many indices at once, without doing any checks.
+    ///
+    /// For a safe alternative see [`get_many_mut`].
+    ///
+    /// # Safety
+    ///
+    /// Calling this method with overlapping or out-of-bounds indices is *[undefined behavior]*
+    /// even if the resulting references are not used.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// #![feature(get_many_mut)]
+    ///
+    /// let x = &mut [1, 2, 4];
+    ///
+    /// unsafe {
+    ///     let [a, b] = x.get_many_unchecked_mut([0, 2]);
+    ///     *a *= 10;
+    ///     *b *= 100;
+    /// }
+    /// assert_eq!(x, &[10, 2, 400]);
+    /// ```
+    ///
+    /// [`get_many_mut`]: slice::get_many_mut
+    /// [undefined behavior]: https://doc.rust-lang.org/reference/behavior-considered-undefined.html
+    #[unstable(feature = "get_many_mut", issue = "104642")]
+    #[inline]
+    pub unsafe fn get_many_unchecked_mut<const N: usize>(
+        &mut self,
+        indices: [usize; N],
+    ) -> [&mut T; N] {
+        // NB: This implementation is written as it is because any variation of
+        // `indices.map(|i| self.get_unchecked_mut(i))` would make miri unhappy,
+        // or generate worse code otherwise. This is also why we need to go
+        // through a raw pointer here.
+        let slice: *mut [T] = self;
+        let mut arr: mem::MaybeUninit<[&mut T; N]> = mem::MaybeUninit::uninit();
+        let arr_ptr = arr.as_mut_ptr();
+
+        // SAFETY: We expect `indices` to contain disjunct values that are
+        // in bounds of `self`.
+        unsafe {
+            for i in 0..N {
+                let idx = *indices.get_unchecked(i);
+                *(*arr_ptr).get_unchecked_mut(i) = &mut *slice.get_unchecked_mut(idx);
+            }
+            arr.assume_init()
+        }
+    }
+
+    /// Returns mutable references to many indices at once.
+    ///
+    /// Returns an error if any index is out-of-bounds, or if the same index was
+    /// passed more than once.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// #![feature(get_many_mut)]
+    ///
+    /// let v = &mut [1, 2, 3];
+    /// if let Ok([a, b]) = v.get_many_mut([0, 2]) {
+    ///     *a = 413;
+    ///     *b = 612;
+    /// }
+    /// assert_eq!(v, &[413, 2, 612]);
+    /// ```
+    #[unstable(feature = "get_many_mut", issue = "104642")]
+    #[inline]
+    pub fn get_many_mut<const N: usize>(
+        &mut self,
+        indices: [usize; N],
+    ) -> Result<[&mut T; N], GetManyMutError<N>> {
+        if !get_many_check_valid(&indices, self.len()) {
+            return Err(GetManyMutError { _private: () });
+        }
+        // SAFETY: The `get_many_check_valid()` call checked that all indices
+        // are disjunct and in bounds.
+        unsafe { Ok(self.get_many_unchecked_mut(indices)) }
+    }
 }
 
 impl<T, const N: usize> [[T; N]] {
@@ -4302,5 +4385,58 @@ impl<T, const N: usize> SlicePattern for [T; N] {
     #[inline]
     fn as_slice(&self) -> &[Self::Item] {
         self
+    }
+}
+
+/// This checks every index against each other, and against `len`.
+///
+/// This will do `binomial(N + 1, 2) = N * (N + 1) / 2 = 0, 1, 3, 6, 10, ..`
+/// comparison operations.
+fn get_many_check_valid<const N: usize>(indices: &[usize; N], len: usize) -> bool {
+    // NB: The optimzer should inline the loops into a sequence
+    // of instructions without additional branching.
+    let mut valid = true;
+    for (i, &idx) in indices.iter().enumerate() {
+        valid &= idx < len;
+        for &idx2 in &indices[..i] {
+            valid &= idx != idx2;
+        }
+    }
+    valid
+}
+
+/// The error type returned by [`get_many_mut<N>`][`slice::get_many_mut`].
+///
+/// It indicates one of two possible errors:
+/// - An index is out-of-bounds.
+/// - The same index appeared multiple times in the array.
+///
+/// # Examples
+///
+/// ```
+/// #![feature(get_many_mut)]
+///
+/// let v = &mut [1, 2, 3];
+/// assert!(v.get_many_mut([0, 999]).is_err());
+/// assert!(v.get_many_mut([1, 1]).is_err());
+/// ```
+#[unstable(feature = "get_many_mut", issue = "104642")]
+// NB: The N here is there to be forward-compatible with adding more details
+// to the error type at a later point
+pub struct GetManyMutError<const N: usize> {
+    _private: (),
+}
+
+#[unstable(feature = "get_many_mut", issue = "104642")]
+impl<const N: usize> fmt::Debug for GetManyMutError<N> {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        f.debug_struct("GetManyMutError").finish_non_exhaustive()
+    }
+}
+
+#[unstable(feature = "get_many_mut", issue = "104642")]
+impl<const N: usize> fmt::Display for GetManyMutError<N> {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        fmt::Display::fmt("an index is out of bounds or appeared multiple times in the array", f)
     }
 }

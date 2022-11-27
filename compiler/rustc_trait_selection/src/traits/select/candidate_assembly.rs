@@ -6,12 +6,9 @@
 //!
 //! [rustc dev guide]:https://rustc-dev-guide.rust-lang.org/traits/resolution.html#candidate-assembly
 use hir::LangItem;
-use rustc_errors::DelayDm;
 use rustc_hir as hir;
-use rustc_hir::def_id::DefId;
 use rustc_infer::traits::ObligationCause;
 use rustc_infer::traits::{Obligation, SelectionError, TraitObligation};
-use rustc_lint_defs::builtin::DEREF_INTO_DYN_SUPERTRAIT;
 use rustc_middle::ty::print::with_no_trimmed_paths;
 use rustc_middle::ty::{self, Ty, TypeVisitable};
 use rustc_target::spec::abi::Abi;
@@ -285,10 +282,10 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
                 self.assemble_builtin_bound_candidates(copy_conditions, &mut candidates);
             } else if lang_items.discriminant_kind_trait() == Some(def_id) {
                 // `DiscriminantKind` is automatically implemented for every type.
-                candidates.vec.push(DiscriminantKindCandidate);
+                candidates.vec.push(BuiltinCandidate { has_nested: false });
             } else if lang_items.pointee_trait() == Some(def_id) {
                 // `Pointee` is automatically implemented for every type.
-                candidates.vec.push(PointeeCandidate);
+                candidates.vec.push(BuiltinCandidate { has_nested: false });
             } else if lang_items.sized_trait() == Some(def_id) {
                 // Sized is never implementable by end-users, it is
                 // always automatically computed.
@@ -315,7 +312,12 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
                     self.assemble_builtin_bound_candidates(clone_conditions, &mut candidates);
                 }
 
-                self.assemble_generator_candidates(obligation, &mut candidates);
+                if lang_items.gen_trait() == Some(def_id) {
+                    self.assemble_generator_candidates(obligation, &mut candidates);
+                } else if lang_items.future_trait() == Some(def_id) {
+                    self.assemble_future_candidates(obligation, &mut candidates);
+                }
+
                 self.assemble_closure_candidates(obligation, &mut candidates);
                 self.assemble_fn_pointer_candidates(obligation, &mut candidates);
                 self.assemble_candidates_from_impls(obligation, &mut candidates);
@@ -403,10 +405,6 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
         obligation: &TraitObligation<'tcx>,
         candidates: &mut SelectionCandidateSet<'tcx>,
     ) {
-        if self.tcx().lang_items().gen_trait() != Some(obligation.predicate.def_id()) {
-            return;
-        }
-
         // Okay to skip binder because the substs on generator types never
         // touch bound regions, they just capture the in-scope
         // type/region parameters.
@@ -422,6 +420,23 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
                 candidates.ambiguous = true;
             }
             _ => {}
+        }
+    }
+
+    fn assemble_future_candidates(
+        &mut self,
+        obligation: &TraitObligation<'tcx>,
+        candidates: &mut SelectionCandidateSet<'tcx>,
+    ) {
+        let self_ty = obligation.self_ty().skip_binder();
+        if let ty::Generator(did, ..) = self_ty.kind() {
+            if let Some(rustc_hir::GeneratorKind::Async(_generator_kind)) =
+                self.tcx().generator_kind(did)
+            {
+                debug!(?self_ty, ?obligation, "assemble_future_candidates",);
+
+                candidates.vec.push(FutureCandidate);
+            }
         }
     }
 
@@ -707,49 +722,40 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
         ty: Ty<'tcx>,
         param_env: ty::ParamEnv<'tcx>,
         cause: &ObligationCause<'tcx>,
-    ) -> Option<(Ty<'tcx>, DefId)> {
+    ) -> Option<ty::PolyExistentialTraitRef<'tcx>> {
         let tcx = self.tcx();
         if tcx.features().trait_upcasting {
             return None;
         }
 
         // <ty as Deref>
-        let trait_ref = ty::TraitRef {
-            def_id: tcx.lang_items().deref_trait()?,
-            substs: tcx.mk_substs_trait(ty, &[]),
-        };
+        let trait_ref = tcx.mk_trait_ref(tcx.lang_items().deref_trait()?, [ty]);
 
-        let obligation = traits::Obligation::new(
-            tcx,
-            cause.clone(),
-            param_env,
-            ty::Binder::dummy(trait_ref).without_const(),
-        );
+        let obligation =
+            traits::Obligation::new(tcx, cause.clone(), param_env, ty::Binder::dummy(trait_ref));
         if !self.infcx.predicate_may_hold(&obligation) {
             return None;
         }
 
-        let ty = traits::normalize_projection_type(
-            self,
-            param_env,
-            ty::ProjectionTy {
-                item_def_id: tcx.lang_items().deref_target()?,
-                substs: trait_ref.substs,
-            },
-            cause.clone(),
-            0,
-            // We're *intentionally* throwing these away,
-            // since we don't actually use them.
-            &mut vec![],
-        )
-        .ty()
-        .unwrap();
+        self.infcx.probe(|_| {
+            let ty = traits::normalize_projection_type(
+                self,
+                param_env,
+                ty::ProjectionTy {
+                    item_def_id: tcx.lang_items().deref_target()?,
+                    substs: trait_ref.substs,
+                },
+                cause.clone(),
+                0,
+                // We're *intentionally* throwing these away,
+                // since we don't actually use them.
+                &mut vec![],
+            )
+            .ty()
+            .unwrap();
 
-        if let ty::Dynamic(data, ..) = ty.kind() {
-            Some((ty, data.principal_def_id()?))
-        } else {
-            None
-        }
+            if let ty::Dynamic(data, ..) = ty.kind() { data.principal() } else { None }
+        })
     }
 
     /// Searches for unsizing that might apply to `obligation`.
@@ -782,9 +788,7 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
 
         match (source.kind(), target.kind()) {
             // Trait+Kx+'a -> Trait+Ky+'b (upcasts).
-            (&ty::Dynamic(ref data_a, _, dyn_a), &ty::Dynamic(ref data_b, _, dyn_b))
-                if dyn_a == dyn_b =>
-            {
+            (&ty::Dynamic(ref data_a, _, ty::Dyn), &ty::Dynamic(ref data_b, _, ty::Dyn)) => {
                 // Upcast coercions permit several things:
                 //
                 // 1. Dropping auto traits, e.g., `Foo + Send` to `Foo`
@@ -811,24 +815,12 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
                         let principal_a = data_a.principal().unwrap();
                         let target_trait_did = principal_def_id_b.unwrap();
                         let source_trait_ref = principal_a.with_self_ty(self.tcx(), source);
-                        if let Some((deref_output_ty, deref_output_trait_did)) = self
-                            .need_migrate_deref_output_trait_object(
-                                source,
-                                obligation.param_env,
-                                &obligation.cause,
-                            )
-                        {
-                            if deref_output_trait_did == target_trait_did {
-                                self.tcx().struct_span_lint_hir(
-                                    DEREF_INTO_DYN_SUPERTRAIT,
-                                    obligation.cause.body_id,
-                                    obligation.cause.span,
-                                    DelayDm(|| format!(
-                                        "`{}` implements `Deref` with supertrait `{}` as output",
-                                        source, deref_output_ty
-                                    )),
-                                    |lint| lint,
-                                );
+                        if let Some(deref_trait_ref) = self.need_migrate_deref_output_trait_object(
+                            source,
+                            obligation.param_env,
+                            &obligation.cause,
+                        ) {
+                            if deref_trait_ref.def_id() == target_trait_did {
                                 return;
                             }
                         }

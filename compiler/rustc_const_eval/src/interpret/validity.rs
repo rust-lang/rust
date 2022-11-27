@@ -8,6 +8,8 @@ use std::convert::TryFrom;
 use std::fmt::{Display, Write};
 use std::num::NonZeroUsize;
 
+use either::{Left, Right};
+
 use rustc_ast::Mutability;
 use rustc_data_structures::fx::FxHashSet;
 use rustc_hir as hir;
@@ -783,18 +785,10 @@ impl<'rt, 'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> ValueVisitor<'mir, 'tcx, M>
                 }
             }
             Abi::ScalarPair(a_layout, b_layout) => {
-                // There is no `rustc_layout_scalar_valid_range_start` for pairs, so
-                // we would validate these things as we descend into the fields,
-                // but that can miss bugs in layout computation. Layout computation
-                // is subtle due to enums having ScalarPair layout, where one field
-                // is the discriminant.
-                if cfg!(debug_assertions)
-                    && !a_layout.is_uninit_valid()
-                    && !b_layout.is_uninit_valid()
-                {
-                    // We can only proceed if *both* scalars need to be initialized.
-                    // FIXME: find a way to also check ScalarPair when one side can be uninit but
-                    // the other must be init.
+                // We can only proceed if *both* scalars need to be initialized.
+                // FIXME: find a way to also check ScalarPair when one side can be uninit but
+                // the other must be init.
+                if !a_layout.is_uninit_valid() && !b_layout.is_uninit_valid() {
                     let (a, b) =
                         self.read_immediate(op, "initiailized scalar value")?.to_scalar_pair();
                     self.visit_scalar(a, a_layout)?;
@@ -852,9 +846,9 @@ impl<'rt, 'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> ValueVisitor<'mir, 'tcx, M>
                     return Ok(());
                 }
                 // Now that we definitely have a non-ZST array, we know it lives in memory.
-                let mplace = match op.try_as_mplace() {
-                    Ok(mplace) => mplace,
-                    Err(imm) => match *imm {
+                let mplace = match op.as_mplace_or_imm() {
+                    Left(mplace) => mplace,
+                    Right(imm) => match *imm {
                         Immediate::Uninit =>
                             throw_validation_failure!(self.path, { "uninitialized bytes" }),
                         Immediate::Scalar(..) | Immediate::ScalarPair(..) =>

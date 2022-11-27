@@ -669,7 +669,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
 
         self.fulfillment_cx.borrow().pending_obligations().into_iter().filter_map(
             move |obligation| match &obligation.predicate.kind().skip_binder() {
-                ty::PredicateKind::Projection(data)
+                ty::PredicateKind::Clause(ty::Clause::Projection(data))
                     if self.self_type_matches_expected_vid(
                         data.projection_ty.self_ty(),
                         ty_var_root,
@@ -677,18 +677,18 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                 {
                     Some(obligation)
                 }
-                ty::PredicateKind::Trait(data)
+                ty::PredicateKind::Clause(ty::Clause::Trait(data))
                     if self.self_type_matches_expected_vid(data.self_ty(), ty_var_root) =>
                 {
                     Some(obligation)
                 }
 
-                ty::PredicateKind::Trait(..)
-                | ty::PredicateKind::Projection(..)
+                ty::PredicateKind::Clause(ty::Clause::Trait(..))
+                | ty::PredicateKind::Clause(ty::Clause::Projection(..))
                 | ty::PredicateKind::Subtype(..)
                 | ty::PredicateKind::Coerce(..)
-                | ty::PredicateKind::RegionOutlives(..)
-                | ty::PredicateKind::TypeOutlives(..)
+                | ty::PredicateKind::Clause(ty::Clause::RegionOutlives(..))
+                | ty::PredicateKind::Clause(ty::Clause::TypeOutlives(..))
                 | ty::PredicateKind::WellFormed(..)
                 | ty::PredicateKind::ObjectSafe(..)
                 | ty::PredicateKind::ConstEvaluatable(..)
@@ -702,6 +702,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                 // code is looking for a self type of an unresolved
                 // inference variable.
                 | ty::PredicateKind::ClosureKind(..)
+                | ty::PredicateKind::Ambiguous
                 | ty::PredicateKind::TypeWellFormedFromEnv(..) => None,
             },
         )
@@ -711,7 +712,9 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         let sized_did = self.tcx.lang_items().sized_trait();
         self.obligations_for_self_ty(self_ty).any(|obligation| {
             match obligation.predicate.kind().skip_binder() {
-                ty::PredicateKind::Trait(data) => Some(data.def_id()) == sized_did,
+                ty::PredicateKind::Clause(ty::Clause::Trait(data)) => {
+                    Some(data.def_id()) == sized_did
+                }
                 _ => false,
             }
         })
@@ -1164,11 +1167,8 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             match *ty.kind() {
                 ty::Adt(adt_def, substs) if adt_def.has_ctor() => {
                     let variant = adt_def.non_enum_variant();
-                    let ctor_def_id = variant.ctor_def_id.unwrap();
-                    (
-                        Res::Def(DefKind::Ctor(CtorOf::Struct, variant.ctor_kind), ctor_def_id),
-                        Some(substs),
-                    )
+                    let (ctor_kind, ctor_def_id) = variant.ctor.unwrap();
+                    (Res::Def(DefKind::Ctor(CtorOf::Struct, ctor_kind), ctor_def_id), Some(substs))
                 }
                 _ => {
                     let mut err = tcx.sess.struct_span_err(

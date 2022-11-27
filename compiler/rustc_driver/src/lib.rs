@@ -318,7 +318,7 @@ fn run_compiler(
                             compiler.input(),
                             &*expanded_crate,
                             *ppm,
-                            compiler.output_file().as_ref().map(|p| &**p),
+                            compiler.output_file().as_deref(),
                         );
                         Ok(())
                     })?;
@@ -329,7 +329,7 @@ fn run_compiler(
                         compiler.input(),
                         &krate,
                         *ppm,
-                        compiler.output_file().as_ref().map(|p| &**p),
+                        compiler.output_file().as_deref(),
                     );
                 }
                 trace!("finished pretty-printing");
@@ -383,10 +383,7 @@ fn run_compiler(
                             &crate_name,
                             compiler.input(),
                             None,
-                            DumpHandler::new(
-                                compiler.output_dir().as_ref().map(|p| &**p),
-                                &crate_name,
-                            ),
+                            DumpHandler::new(compiler.output_dir().as_deref(), &crate_name),
                         )
                     });
                 }

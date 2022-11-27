@@ -1,10 +1,11 @@
 use rustc_errors::ErrorGuaranteed;
 use rustc_hir::def::DefKind;
 use rustc_hir::def_id::LocalDefId;
-use rustc_index::vec::IndexVec;
 use rustc_middle::mir::interpret::{LitToConstError, LitToConstInput};
-use rustc_middle::ty::abstract_const::{CastKind, Node, NodeId};
-use rustc_middle::ty::{self, TyCtxt, TypeVisitable};
+use rustc_middle::thir::visit;
+use rustc_middle::thir::visit::Visitor;
+use rustc_middle::ty::abstract_const::CastKind;
+use rustc_middle::ty::{self, ConstKind, Expr, TyCtxt, TypeVisitable};
 use rustc_middle::{mir, thir};
 use rustc_span::Span;
 use rustc_target::abi::VariantIdx;
@@ -76,326 +77,278 @@ pub(crate) fn destructure_const<'tcx>(
     ty::DestructuredConst { variant, fields }
 }
 
-pub struct AbstractConstBuilder<'a, 'tcx> {
-    tcx: TyCtxt<'tcx>,
-    body_id: thir::ExprId,
-    body: &'a thir::Thir<'tcx>,
-    /// The current WIP node tree.
-    nodes: IndexVec<NodeId, Node<'tcx>>,
+/// We do not allow all binary operations in abstract consts, so filter disallowed ones.
+fn check_binop(op: mir::BinOp) -> bool {
+    use mir::BinOp::*;
+    match op {
+        Add | Sub | Mul | Div | Rem | BitXor | BitAnd | BitOr | Shl | Shr | Eq | Lt | Le | Ne
+        | Ge | Gt => true,
+        Offset => false,
+    }
 }
 
-impl<'a, 'tcx> AbstractConstBuilder<'a, 'tcx> {
-    fn root_span(&self) -> Span {
-        self.body.exprs[self.body_id].span
+/// While we currently allow all unary operations, we still want to explicitly guard against
+/// future changes here.
+fn check_unop(op: mir::UnOp) -> bool {
+    use mir::UnOp::*;
+    match op {
+        Not | Neg => true,
     }
+}
 
-    fn error(&mut self, sub: GenericConstantTooComplexSub) -> Result<!, ErrorGuaranteed> {
-        let reported = self.tcx.sess.emit_err(GenericConstantTooComplex {
-            span: self.root_span(),
-            maybe_supported: None,
-            sub,
-        });
+fn recurse_build<'tcx>(
+    tcx: TyCtxt<'tcx>,
+    body: &thir::Thir<'tcx>,
+    node: thir::ExprId,
+    root_span: Span,
+) -> Result<ty::Const<'tcx>, ErrorGuaranteed> {
+    use thir::ExprKind;
+    let node = &body.exprs[node];
 
-        Err(reported)
-    }
+    let maybe_supported_error = |a| maybe_supported_error(tcx, a, root_span);
+    let error = |a| error(tcx, a, root_span);
 
-    fn maybe_supported_error(
-        &mut self,
-        sub: GenericConstantTooComplexSub,
-    ) -> Result<!, ErrorGuaranteed> {
-        let reported = self.tcx.sess.emit_err(GenericConstantTooComplex {
-            span: self.root_span(),
-            maybe_supported: Some(()),
-            sub,
-        });
-
-        Err(reported)
-    }
-
-    #[instrument(skip(tcx, body, body_id), level = "debug")]
-    pub fn new(
-        tcx: TyCtxt<'tcx>,
-        (body, body_id): (&'a thir::Thir<'tcx>, thir::ExprId),
-    ) -> Result<Option<AbstractConstBuilder<'a, 'tcx>>, ErrorGuaranteed> {
-        let builder = AbstractConstBuilder { tcx, body_id, body, nodes: IndexVec::new() };
-
-        struct IsThirPolymorphic<'a, 'tcx> {
-            is_poly: bool,
-            thir: &'a thir::Thir<'tcx>,
+    Ok(match &node.kind {
+        // I dont know if handling of these 3 is correct
+        &ExprKind::Scope { value, .. } => recurse_build(tcx, body, value, root_span)?,
+        &ExprKind::PlaceTypeAscription { source, .. }
+        | &ExprKind::ValueTypeAscription { source, .. } => {
+            recurse_build(tcx, body, source, root_span)?
         }
-
-        use crate::rustc_middle::thir::visit::Visitor;
-        use thir::visit;
-
-        impl<'a, 'tcx> IsThirPolymorphic<'a, 'tcx> {
-            fn expr_is_poly(&mut self, expr: &thir::Expr<'tcx>) -> bool {
-                if expr.ty.has_non_region_param() {
-                    return true;
+        &ExprKind::Literal { lit, neg } => {
+            let sp = node.span;
+            match tcx.at(sp).lit_to_const(LitToConstInput { lit: &lit.node, ty: node.ty, neg }) {
+                Ok(c) => c,
+                Err(LitToConstError::Reported(guar)) => {
+                    tcx.const_error_with_guaranteed(node.ty, guar)
                 }
-
-                match expr.kind {
-                    thir::ExprKind::NamedConst { substs, .. } => substs.has_non_region_param(),
-                    thir::ExprKind::ConstParam { .. } => true,
-                    thir::ExprKind::Repeat { value, count } => {
-                        self.visit_expr(&self.thir()[value]);
-                        count.has_non_region_param()
-                    }
-                    _ => false,
-                }
-            }
-
-            fn pat_is_poly(&mut self, pat: &thir::Pat<'tcx>) -> bool {
-                if pat.ty.has_non_region_param() {
-                    return true;
-                }
-
-                match pat.kind {
-                    thir::PatKind::Constant { value } => value.has_non_region_param(),
-                    thir::PatKind::Range(box thir::PatRange { lo, hi, .. }) => {
-                        lo.has_non_region_param() || hi.has_non_region_param()
-                    }
-                    _ => false,
+                Err(LitToConstError::TypeError) => {
+                    bug!("encountered type error in lit_to_const")
                 }
             }
         }
+        &ExprKind::NonHirLiteral { lit, user_ty: _ } => {
+            let val = ty::ValTree::from_scalar_int(lit);
+            ty::Const::from_value(tcx, val, node.ty)
+        }
+        &ExprKind::ZstLiteral { user_ty: _ } => {
+            let val = ty::ValTree::zst();
+            ty::Const::from_value(tcx, val, node.ty)
+        }
+        &ExprKind::NamedConst { def_id, substs, user_ty: _ } => {
+            let uneval = ty::UnevaluatedConst::new(ty::WithOptConstParam::unknown(def_id), substs);
+            tcx.mk_const(ty::ConstKind::Unevaluated(uneval), node.ty)
+        }
+        ExprKind::ConstParam { param, .. } => tcx.mk_const(ty::ConstKind::Param(*param), node.ty),
 
-        impl<'a, 'tcx> visit::Visitor<'a, 'tcx> for IsThirPolymorphic<'a, 'tcx> {
-            fn thir(&self) -> &'a thir::Thir<'tcx> {
-                &self.thir
+        ExprKind::Call { fun, args, .. } => {
+            let fun = recurse_build(tcx, body, *fun, root_span)?;
+
+            let mut new_args = Vec::<ty::Const<'tcx>>::with_capacity(args.len());
+            for &id in args.iter() {
+                new_args.push(recurse_build(tcx, body, id, root_span)?);
             }
-
-            #[instrument(skip(self), level = "debug")]
-            fn visit_expr(&mut self, expr: &thir::Expr<'tcx>) {
-                self.is_poly |= self.expr_is_poly(expr);
-                if !self.is_poly {
-                    visit::walk_expr(self, expr)
-                }
-            }
-
-            #[instrument(skip(self), level = "debug")]
-            fn visit_pat(&mut self, pat: &thir::Pat<'tcx>) {
-                self.is_poly |= self.pat_is_poly(pat);
-                if !self.is_poly {
-                    visit::walk_pat(self, pat);
-                }
+            let new_args = tcx.mk_const_list(new_args.iter());
+            tcx.mk_const(ConstKind::Expr(Expr::FunctionCall(fun, new_args)), node.ty)
+        }
+        &ExprKind::Binary { op, lhs, rhs } if check_binop(op) => {
+            let lhs = recurse_build(tcx, body, lhs, root_span)?;
+            let rhs = recurse_build(tcx, body, rhs, root_span)?;
+            tcx.mk_const(ConstKind::Expr(Expr::Binop(op, lhs, rhs)), node.ty)
+        }
+        &ExprKind::Unary { op, arg } if check_unop(op) => {
+            let arg = recurse_build(tcx, body, arg, root_span)?;
+            tcx.mk_const(ConstKind::Expr(Expr::UnOp(op, arg)), node.ty)
+        }
+        // This is necessary so that the following compiles:
+        //
+        // ```
+        // fn foo<const N: usize>(a: [(); N + 1]) {
+        //     bar::<{ N + 1 }>();
+        // }
+        // ```
+        ExprKind::Block { block } => {
+            if let thir::Block { stmts: box [], expr: Some(e), .. } = &body.blocks[*block] {
+                recurse_build(tcx, body, *e, root_span)?
+            } else {
+                maybe_supported_error(GenericConstantTooComplexSub::BlockNotSupported(node.span))?
             }
         }
+        // `ExprKind::Use` happens when a `hir::ExprKind::Cast` is a
+        // "coercion cast" i.e. using a coercion or is a no-op.
+        // This is important so that `N as usize as usize` doesnt unify with `N as usize`. (untested)
+        &ExprKind::Use { source } => {
+            let arg = recurse_build(tcx, body, source, root_span)?;
+            tcx.mk_const(ConstKind::Expr(Expr::Cast(CastKind::Use, arg, node.ty)), node.ty)
+        }
+        &ExprKind::Cast { source } => {
+            let arg = recurse_build(tcx, body, source, root_span)?;
+            tcx.mk_const(ConstKind::Expr(Expr::Cast(CastKind::As, arg, node.ty)), node.ty)
+        }
+        ExprKind::Borrow { arg, .. } => {
+            let arg_node = &body.exprs[*arg];
 
-        let mut is_poly_vis = IsThirPolymorphic { is_poly: false, thir: body };
-        visit::walk_expr(&mut is_poly_vis, &body[body_id]);
-        debug!("AbstractConstBuilder: is_poly={}", is_poly_vis.is_poly);
-        if !is_poly_vis.is_poly {
-            return Ok(None);
+            // Skip reborrows for now until we allow Deref/Borrow/AddressOf
+            // expressions.
+            // FIXME(generic_const_exprs): Verify/explain why this is sound
+            if let ExprKind::Deref { arg } = arg_node.kind {
+                recurse_build(tcx, body, arg, root_span)?
+            } else {
+                maybe_supported_error(GenericConstantTooComplexSub::BorrowNotSupported(node.span))?
+            }
+        }
+        // FIXME(generic_const_exprs): We may want to support these.
+        ExprKind::AddressOf { .. } | ExprKind::Deref { .. } => maybe_supported_error(
+            GenericConstantTooComplexSub::AddressAndDerefNotSupported(node.span),
+        )?,
+        ExprKind::Repeat { .. } | ExprKind::Array { .. } => {
+            maybe_supported_error(GenericConstantTooComplexSub::ArrayNotSupported(node.span))?
+        }
+        ExprKind::NeverToAny { .. } => {
+            maybe_supported_error(GenericConstantTooComplexSub::NeverToAnyNotSupported(node.span))?
+        }
+        ExprKind::Tuple { .. } => {
+            maybe_supported_error(GenericConstantTooComplexSub::TupleNotSupported(node.span))?
+        }
+        ExprKind::Index { .. } => {
+            maybe_supported_error(GenericConstantTooComplexSub::IndexNotSupported(node.span))?
+        }
+        ExprKind::Field { .. } => {
+            maybe_supported_error(GenericConstantTooComplexSub::FieldNotSupported(node.span))?
+        }
+        ExprKind::ConstBlock { .. } => {
+            maybe_supported_error(GenericConstantTooComplexSub::ConstBlockNotSupported(node.span))?
+        }
+        ExprKind::Adt(_) => {
+            maybe_supported_error(GenericConstantTooComplexSub::AdtNotSupported(node.span))?
+        }
+        // dont know if this is correct
+        ExprKind::Pointer { .. } => {
+            error(GenericConstantTooComplexSub::PointerNotSupported(node.span))?
+        }
+        ExprKind::Yield { .. } => {
+            error(GenericConstantTooComplexSub::YieldNotSupported(node.span))?
+        }
+        ExprKind::Continue { .. } | ExprKind::Break { .. } | ExprKind::Loop { .. } => {
+            error(GenericConstantTooComplexSub::LoopNotSupported(node.span))?
+        }
+        ExprKind::Box { .. } => error(GenericConstantTooComplexSub::BoxNotSupported(node.span))?,
+
+        ExprKind::Unary { .. } => unreachable!(),
+        // we handle valid unary/binary ops above
+        ExprKind::Binary { .. } => {
+            error(GenericConstantTooComplexSub::BinaryNotSupported(node.span))?
+        }
+        ExprKind::LogicalOp { .. } => {
+            error(GenericConstantTooComplexSub::LogicalOpNotSupported(node.span))?
+        }
+        ExprKind::Assign { .. } | ExprKind::AssignOp { .. } => {
+            error(GenericConstantTooComplexSub::AssignNotSupported(node.span))?
+        }
+        ExprKind::Closure { .. } | ExprKind::Return { .. } => {
+            error(GenericConstantTooComplexSub::ClosureAndReturnNotSupported(node.span))?
+        }
+        // let expressions imply control flow
+        ExprKind::Match { .. } | ExprKind::If { .. } | ExprKind::Let { .. } => {
+            error(GenericConstantTooComplexSub::ControlFlowNotSupported(node.span))?
+        }
+        ExprKind::InlineAsm { .. } => {
+            error(GenericConstantTooComplexSub::InlineAsmNotSupported(node.span))?
         }
 
-        Ok(Some(builder))
+        // we dont permit let stmts so `VarRef` and `UpvarRef` cant happen
+        ExprKind::VarRef { .. }
+        | ExprKind::UpvarRef { .. }
+        | ExprKind::StaticRef { .. }
+        | ExprKind::ThreadLocalRef(_) => {
+            error(GenericConstantTooComplexSub::OperationNotSupported(node.span))?
+        }
+    })
+}
+
+struct IsThirPolymorphic<'a, 'tcx> {
+    is_poly: bool,
+    thir: &'a thir::Thir<'tcx>,
+}
+
+fn error<'tcx>(
+    tcx: TyCtxt<'tcx>,
+    sub: GenericConstantTooComplexSub,
+    root_span: Span,
+) -> Result<!, ErrorGuaranteed> {
+    let reported = tcx.sess.emit_err(GenericConstantTooComplex {
+        span: root_span,
+        maybe_supported: None,
+        sub,
+    });
+
+    Err(reported)
+}
+
+fn maybe_supported_error<'tcx>(
+    tcx: TyCtxt<'tcx>,
+    sub: GenericConstantTooComplexSub,
+    root_span: Span,
+) -> Result<!, ErrorGuaranteed> {
+    let reported = tcx.sess.emit_err(GenericConstantTooComplex {
+        span: root_span,
+        maybe_supported: Some(()),
+        sub,
+    });
+
+    Err(reported)
+}
+
+impl<'a, 'tcx> IsThirPolymorphic<'a, 'tcx> {
+    fn expr_is_poly(&mut self, expr: &thir::Expr<'tcx>) -> bool {
+        if expr.ty.has_non_region_param() {
+            return true;
+        }
+
+        match expr.kind {
+            thir::ExprKind::NamedConst { substs, .. } => substs.has_non_region_param(),
+            thir::ExprKind::ConstParam { .. } => true,
+            thir::ExprKind::Repeat { value, count } => {
+                self.visit_expr(&self.thir()[value]);
+                count.has_non_region_param()
+            }
+            _ => false,
+        }
+    }
+    fn pat_is_poly(&mut self, pat: &thir::Pat<'tcx>) -> bool {
+        if pat.ty.has_non_region_param() {
+            return true;
+        }
+
+        match pat.kind {
+            thir::PatKind::Constant { value } => value.has_non_region_param(),
+            thir::PatKind::Range(box thir::PatRange { lo, hi, .. }) => {
+                lo.has_non_region_param() || hi.has_non_region_param()
+            }
+            _ => false,
+        }
+    }
+}
+
+impl<'a, 'tcx> visit::Visitor<'a, 'tcx> for IsThirPolymorphic<'a, 'tcx> {
+    fn thir(&self) -> &'a thir::Thir<'tcx> {
+        &self.thir
     }
 
-    /// We do not allow all binary operations in abstract consts, so filter disallowed ones.
-    fn check_binop(op: mir::BinOp) -> bool {
-        use mir::BinOp::*;
-        match op {
-            Add | Sub | Mul | Div | Rem | BitXor | BitAnd | BitOr | Shl | Shr | Eq | Lt | Le
-            | Ne | Ge | Gt => true,
-            Offset => false,
+    #[instrument(skip(self), level = "debug")]
+    fn visit_expr(&mut self, expr: &thir::Expr<'tcx>) {
+        self.is_poly |= self.expr_is_poly(expr);
+        if !self.is_poly {
+            visit::walk_expr(self, expr)
         }
     }
 
-    /// While we currently allow all unary operations, we still want to explicitly guard against
-    /// future changes here.
-    fn check_unop(op: mir::UnOp) -> bool {
-        use mir::UnOp::*;
-        match op {
-            Not | Neg => true,
+    #[instrument(skip(self), level = "debug")]
+    fn visit_pat(&mut self, pat: &thir::Pat<'tcx>) {
+        self.is_poly |= self.pat_is_poly(pat);
+        if !self.is_poly {
+            visit::walk_pat(self, pat);
         }
-    }
-
-    /// Builds the abstract const by walking the thir and bailing out when
-    /// encountering an unsupported operation.
-    pub fn build(mut self) -> Result<&'tcx [Node<'tcx>], ErrorGuaranteed> {
-        debug!("AbstractConstBuilder::build: body={:?}", &*self.body);
-        self.recurse_build(self.body_id)?;
-
-        Ok(self.tcx.arena.alloc_from_iter(self.nodes.into_iter()))
-    }
-
-    fn recurse_build(&mut self, node: thir::ExprId) -> Result<NodeId, ErrorGuaranteed> {
-        use thir::ExprKind;
-        let node = &self.body.exprs[node];
-        Ok(match &node.kind {
-            // I dont know if handling of these 3 is correct
-            &ExprKind::Scope { value, .. } => self.recurse_build(value)?,
-            &ExprKind::PlaceTypeAscription { source, .. }
-            | &ExprKind::ValueTypeAscription { source, .. } => self.recurse_build(source)?,
-            &ExprKind::Literal { lit, neg } => {
-                let sp = node.span;
-                let constant = match self.tcx.at(sp).lit_to_const(LitToConstInput {
-                    lit: &lit.node,
-                    ty: node.ty,
-                    neg,
-                }) {
-                    Ok(c) => c,
-                    Err(LitToConstError::Reported(guar)) => {
-                        self.tcx.const_error_with_guaranteed(node.ty, guar)
-                    }
-                    Err(LitToConstError::TypeError) => {
-                        bug!("encountered type error in lit_to_const")
-                    }
-                };
-
-                self.nodes.push(Node::Leaf(constant))
-            }
-            &ExprKind::NonHirLiteral { lit, user_ty: _ } => {
-                let val = ty::ValTree::from_scalar_int(lit);
-                self.nodes.push(Node::Leaf(ty::Const::from_value(self.tcx, val, node.ty)))
-            }
-            &ExprKind::ZstLiteral { user_ty: _ } => {
-                let val = ty::ValTree::zst();
-                self.nodes.push(Node::Leaf(ty::Const::from_value(self.tcx, val, node.ty)))
-            }
-            &ExprKind::NamedConst { def_id, substs, user_ty: _ } => {
-                let uneval =
-                    ty::UnevaluatedConst::new(ty::WithOptConstParam::unknown(def_id), substs);
-
-                let constant = self.tcx.mk_const(ty::ConstKind::Unevaluated(uneval), node.ty);
-
-                self.nodes.push(Node::Leaf(constant))
-            }
-
-            ExprKind::ConstParam { param, .. } => {
-                let const_param = self.tcx.mk_const(ty::ConstKind::Param(*param), node.ty);
-                self.nodes.push(Node::Leaf(const_param))
-            }
-
-            ExprKind::Call { fun, args, .. } => {
-                let fun = self.recurse_build(*fun)?;
-
-                let mut new_args = Vec::<NodeId>::with_capacity(args.len());
-                for &id in args.iter() {
-                    new_args.push(self.recurse_build(id)?);
-                }
-                let new_args = self.tcx.arena.alloc_slice(&new_args);
-                self.nodes.push(Node::FunctionCall(fun, new_args))
-            }
-            &ExprKind::Binary { op, lhs, rhs } if Self::check_binop(op) => {
-                let lhs = self.recurse_build(lhs)?;
-                let rhs = self.recurse_build(rhs)?;
-                self.nodes.push(Node::Binop(op, lhs, rhs))
-            }
-            &ExprKind::Unary { op, arg } if Self::check_unop(op) => {
-                let arg = self.recurse_build(arg)?;
-                self.nodes.push(Node::UnaryOp(op, arg))
-            }
-            // This is necessary so that the following compiles:
-            //
-            // ```
-            // fn foo<const N: usize>(a: [(); N + 1]) {
-            //     bar::<{ N + 1 }>();
-            // }
-            // ```
-            ExprKind::Block { block } => {
-                if let thir::Block { stmts: box [], expr: Some(e), .. } = &self.body.blocks[*block]
-                {
-                    self.recurse_build(*e)?
-                } else {
-                    self.maybe_supported_error(GenericConstantTooComplexSub::BlockNotSupported(
-                        node.span,
-                    ))?
-                }
-            }
-            // `ExprKind::Use` happens when a `hir::ExprKind::Cast` is a
-            // "coercion cast" i.e. using a coercion or is a no-op.
-            // This is important so that `N as usize as usize` doesnt unify with `N as usize`. (untested)
-            &ExprKind::Use { source } => {
-                let arg = self.recurse_build(source)?;
-                self.nodes.push(Node::Cast(CastKind::Use, arg, node.ty))
-            }
-            &ExprKind::Cast { source } => {
-                let arg = self.recurse_build(source)?;
-                self.nodes.push(Node::Cast(CastKind::As, arg, node.ty))
-            }
-            ExprKind::Borrow { arg, .. } => {
-                let arg_node = &self.body.exprs[*arg];
-
-                // Skip reborrows for now until we allow Deref/Borrow/AddressOf
-                // expressions.
-                // FIXME(generic_const_exprs): Verify/explain why this is sound
-                if let ExprKind::Deref { arg } = arg_node.kind {
-                    self.recurse_build(arg)?
-                } else {
-                    self.maybe_supported_error(GenericConstantTooComplexSub::BorrowNotSupported(
-                        node.span,
-                    ))?
-                }
-            }
-            // FIXME(generic_const_exprs): We may want to support these.
-            ExprKind::AddressOf { .. } | ExprKind::Deref { .. } => self.maybe_supported_error(
-                GenericConstantTooComplexSub::AddressAndDerefNotSupported(node.span),
-            )?,
-            ExprKind::Repeat { .. } | ExprKind::Array { .. } => self.maybe_supported_error(
-                GenericConstantTooComplexSub::ArrayNotSupported(node.span),
-            )?,
-            ExprKind::NeverToAny { .. } => self.maybe_supported_error(
-                GenericConstantTooComplexSub::NeverToAnyNotSupported(node.span),
-            )?,
-            ExprKind::Tuple { .. } => self.maybe_supported_error(
-                GenericConstantTooComplexSub::TupleNotSupported(node.span),
-            )?,
-            ExprKind::Index { .. } => self.maybe_supported_error(
-                GenericConstantTooComplexSub::IndexNotSupported(node.span),
-            )?,
-            ExprKind::Field { .. } => self.maybe_supported_error(
-                GenericConstantTooComplexSub::FieldNotSupported(node.span),
-            )?,
-            ExprKind::ConstBlock { .. } => self.maybe_supported_error(
-                GenericConstantTooComplexSub::ConstBlockNotSupported(node.span),
-            )?,
-            ExprKind::Adt(_) => self
-                .maybe_supported_error(GenericConstantTooComplexSub::AdtNotSupported(node.span))?,
-            // dont know if this is correct
-            ExprKind::Pointer { .. } => {
-                self.error(GenericConstantTooComplexSub::PointerNotSupported(node.span))?
-            }
-            ExprKind::Yield { .. } => {
-                self.error(GenericConstantTooComplexSub::YieldNotSupported(node.span))?
-            }
-            ExprKind::Continue { .. } | ExprKind::Break { .. } | ExprKind::Loop { .. } => {
-                self.error(GenericConstantTooComplexSub::LoopNotSupported(node.span))?
-            }
-            ExprKind::Box { .. } => {
-                self.error(GenericConstantTooComplexSub::BoxNotSupported(node.span))?
-            }
-
-            ExprKind::Unary { .. } => unreachable!(),
-            // we handle valid unary/binary ops above
-            ExprKind::Binary { .. } => {
-                self.error(GenericConstantTooComplexSub::BinaryNotSupported(node.span))?
-            }
-            ExprKind::LogicalOp { .. } => {
-                self.error(GenericConstantTooComplexSub::LogicalOpNotSupported(node.span))?
-            }
-            ExprKind::Assign { .. } | ExprKind::AssignOp { .. } => {
-                self.error(GenericConstantTooComplexSub::AssignNotSupported(node.span))?
-            }
-            ExprKind::Closure { .. } | ExprKind::Return { .. } => {
-                self.error(GenericConstantTooComplexSub::ClosureAndReturnNotSupported(node.span))?
-            }
-            // let expressions imply control flow
-            ExprKind::Match { .. } | ExprKind::If { .. } | ExprKind::Let { .. } => {
-                self.error(GenericConstantTooComplexSub::ControlFlowNotSupported(node.span))?
-            }
-            ExprKind::InlineAsm { .. } => {
-                self.error(GenericConstantTooComplexSub::InlineAsmNotSupported(node.span))?
-            }
-
-            // we dont permit let stmts so `VarRef` and `UpvarRef` cant happen
-            ExprKind::VarRef { .. }
-            | ExprKind::UpvarRef { .. }
-            | ExprKind::StaticRef { .. }
-            | ExprKind::ThreadLocalRef(_) => {
-                self.error(GenericConstantTooComplexSub::OperationNotSupported(node.span))?
-            }
-        })
     }
 }
 
@@ -403,7 +356,7 @@ impl<'a, 'tcx> AbstractConstBuilder<'a, 'tcx> {
 pub fn thir_abstract_const<'tcx>(
     tcx: TyCtxt<'tcx>,
     def: ty::WithOptConstParam<LocalDefId>,
-) -> Result<Option<&'tcx [Node<'tcx>]>, ErrorGuaranteed> {
+) -> Result<Option<ty::Const<'tcx>>, ErrorGuaranteed> {
     if tcx.features().generic_const_exprs {
         match tcx.def_kind(def.did) {
             // FIXME(generic_const_exprs): We currently only do this for anonymous constants,
@@ -416,10 +369,17 @@ pub fn thir_abstract_const<'tcx>(
         }
 
         let body = tcx.thir_body(def)?;
+        let (body, body_id) = (&*body.0.borrow(), body.1);
 
-        AbstractConstBuilder::new(tcx, (&*body.0.borrow(), body.1))?
-            .map(AbstractConstBuilder::build)
-            .transpose()
+        let mut is_poly_vis = IsThirPolymorphic { is_poly: false, thir: body };
+        visit::walk_expr(&mut is_poly_vis, &body[body_id]);
+        if !is_poly_vis.is_poly {
+            return Ok(None);
+        }
+
+        let root_span = body.exprs[body_id].span;
+
+        Some(recurse_build(tcx, body, body_id, root_span)).transpose()
     } else {
         Ok(None)
     }

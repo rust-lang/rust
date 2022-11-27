@@ -460,7 +460,7 @@ impl<'tcx> OnUnimplementedDirective {
         info!("evaluate({:?}, trait_ref={:?}, options={:?})", self, trait_ref, options);
 
         let options_map: FxHashMap<Symbol, String> =
-            options.iter().filter_map(|(k, v)| v.as_ref().map(|v| (*k, v.to_owned()))).collect();
+            options.iter().filter_map(|(k, v)| v.clone().map(|v| (*k, v))).collect();
 
         for command in self.subcommands.iter().chain(Some(self)).rev() {
             if let Some(ref condition) = command.condition && !attr::eval_condition(

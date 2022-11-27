@@ -1,6 +1,7 @@
 use clippy_utils::diagnostics::{span_lint, span_lint_and_then};
 use clippy_utils::macros::{root_macro_call_first_node, FormatArgsExpn, MacroCall};
 use clippy_utils::source::{expand_past_previous_comma, snippet_opt};
+use clippy_utils::{is_in_cfg_test, is_in_test_function};
 use rustc_ast::LitKind;
 use rustc_errors::Applicability;
 use rustc_hir::{Expr, ExprKind, HirIdMap, Impl, Item, ItemKind};
@@ -232,6 +233,16 @@ declare_clippy_lint! {
 #[derive(Default)]
 pub struct Write {
     in_debug_impl: bool,
+    allow_print_in_tests: bool,
+}
+
+impl Write {
+    pub fn new(allow_print_in_tests: bool) -> Self {
+        Self {
+            allow_print_in_tests,
+            ..Default::default()
+        }
+    }
 }
 
 impl_lint_pass!(Write => [
@@ -271,13 +282,15 @@ impl<'tcx> LateLintPass<'tcx> for Write {
             .as_ref()
             .map_or(false, |crate_name| crate_name == "build_script_build");
 
+        let allowed_in_tests = self.allow_print_in_tests
+            && (is_in_test_function(cx.tcx, expr.hir_id) || is_in_cfg_test(cx.tcx, expr.hir_id));
         match diag_name {
-            sym::print_macro | sym::println_macro => {
+            sym::print_macro | sym::println_macro if !allowed_in_tests => {
                 if !is_build_script {
                     span_lint(cx, PRINT_STDOUT, macro_call.span, &format!("use of `{name}!`"));
                 }
             },
-            sym::eprint_macro | sym::eprintln_macro => {
+            sym::eprint_macro | sym::eprintln_macro if !allowed_in_tests => {
                 span_lint(cx, PRINT_STDERR, macro_call.span, &format!("use of `{name}!`"));
             },
             sym::write_macro | sym::writeln_macro => {},

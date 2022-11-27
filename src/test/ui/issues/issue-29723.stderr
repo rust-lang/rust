@@ -9,6 +9,11 @@ LL |         0 if { drop(s); false } => String::from("oops"),
 ...
 LL |             s
    |             ^ value used here after move
+   |
+help: consider cloning the value if the performance cost is acceptable
+   |
+LL |         0 if { drop(s.clone()); false } => String::from("oops"),
+   |                      ++++++++
 
 error: aborting due to previous error
 

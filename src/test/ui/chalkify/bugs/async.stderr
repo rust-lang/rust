@@ -1,32 +1,47 @@
-error[E0277]: the trait bound `[static generator@$DIR/async.rs:7:29: 9:2]: Generator<ResumeTy>` is not satisfied
+error[E0277]: `impl Future<Output = u32>` is not a future
   --> $DIR/async.rs:7:29
    |
 LL |   async fn foo(x: u32) -> u32 {
-   |  _____________________________^
+   |  _____________________________-
 LL | |     x
 LL | | }
-   | |_^ the trait `Generator<ResumeTy>` is not implemented for `[static generator@$DIR/async.rs:7:29: 9:2]`
+   | | ^
+   | | |
+   | |_`impl Future<Output = u32>` is not a future
+   |   required by a bound introduced by this call
    |
-note: required by a bound in `std::future::from_generator`
+   = help: the trait `Future` is not implemented for `impl Future<Output = u32>`
+   = note: impl Future<Output = u32> must be a future or must implement `IntoFuture` to be awaited
+note: required by a bound in `identity_future`
   --> $SRC_DIR/core/src/future/mod.rs:LL:COL
    |
-LL |     T: Generator<ResumeTy, Yield = ()>,
-   |        ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ required by this bound in `std::future::from_generator`
+LL | pub const fn identity_future<O, Fut: Future<Output = O>>(f: Fut) -> Fut {
+   |                                      ^^^^^^^^^^^^^^^^^^ required by this bound in `identity_future`
 
-error[E0280]: the requirement `<[static generator@$DIR/async.rs:7:29: 9:2] as Generator<ResumeTy>>::Yield == ()` is not satisfied
+error[E0277]: the size for values of type `<impl Future<Output = u32> as Future>::Output` cannot be known at compilation time
   --> $DIR/async.rs:7:29
    |
 LL |   async fn foo(x: u32) -> u32 {
    |  _____________________________^
 LL | |     x
 LL | | }
-   | |_^
+   | |_^ doesn't have a size known at compile-time
    |
-note: required by a bound in `std::future::from_generator`
+   = help: the trait `Sized` is not implemented for `<impl Future<Output = u32> as Future>::Output`
+note: required by a bound in `identity_future`
   --> $SRC_DIR/core/src/future/mod.rs:LL:COL
    |
-LL |     T: Generator<ResumeTy, Yield = ()>,
-   |                            ^^^^^^^^^^ required by this bound in `std::future::from_generator`
+LL | pub const fn identity_future<O, Fut: Future<Output = O>>(f: Fut) -> Fut {
+   |                              ^ required by this bound in `identity_future`
+
+error[E0277]: `impl Future<Output = u32>` is not a future
+  --> $DIR/async.rs:7:25
+   |
+LL | async fn foo(x: u32) -> u32 {
+   |                         ^^^ `impl Future<Output = u32>` is not a future
+   |
+   = help: the trait `Future` is not implemented for `impl Future<Output = u32>`
+   = note: impl Future<Output = u32> must be a future or must implement `IntoFuture` to be awaited
 
 error[E0280]: the requirement `<impl Future<Output = u32> as Future>::Output == u32` is not satisfied
   --> $DIR/async.rs:7:25
@@ -34,6 +49,6 @@ error[E0280]: the requirement `<impl Future<Output = u32> as Future>::Output == 
 LL | async fn foo(x: u32) -> u32 {
    |                         ^^^
 
-error: aborting due to 3 previous errors
+error: aborting due to 4 previous errors
 
 For more information about this error, try `rustc --explain E0277`.

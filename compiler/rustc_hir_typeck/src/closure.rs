@@ -212,7 +212,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             // Given a Projection predicate, we can potentially infer
             // the complete signature.
             if expected_sig.is_none()
-                && let ty::PredicateKind::Projection(proj_predicate) = bound_predicate.skip_binder()
+                && let ty::PredicateKind::Clause(ty::Clause::Projection(proj_predicate)) = bound_predicate.skip_binder()
             {
                 expected_sig = self.normalize_associated_types_in(
                     obligation.cause.span,
@@ -228,10 +228,10 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             // like `F : Fn<A>`. Note that due to subtyping we could encounter
             // many viable options, so pick the most restrictive.
             let trait_def_id = match bound_predicate.skip_binder() {
-                ty::PredicateKind::Projection(data) => {
+                ty::PredicateKind::Clause(ty::Clause::Projection(data)) => {
                     Some(data.projection_ty.trait_def_id(self.tcx))
                 }
-                ty::PredicateKind::Trait(data) => Some(data.def_id()),
+                ty::PredicateKind::Clause(ty::Clause::Trait(data)) => Some(data.def_id()),
                 _ => None,
             };
             if let Some(closure_kind) =
@@ -658,7 +658,9 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             // where R is the return type we are expecting. This type `T`
             // will be our output.
             let bound_predicate = predicate.kind();
-            if let ty::PredicateKind::Projection(proj_predicate) = bound_predicate.skip_binder() {
+            if let ty::PredicateKind::Clause(ty::Clause::Projection(proj_predicate)) =
+                bound_predicate.skip_binder()
+            {
                 self.deduce_future_output_from_projection(
                     span,
                     bound_predicate.rebind(proj_predicate),

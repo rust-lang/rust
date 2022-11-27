@@ -110,25 +110,6 @@ pub struct SelectionContext<'cx, 'tcx> {
     /// require themselves.
     freshener: TypeFreshener<'cx, 'tcx>,
 
-    /// During coherence we have to assume that other crates may add
-    /// additional impls which we currently don't know about.
-    ///
-    /// To deal with this evaluation should be conservative
-    /// and consider the possibility of impls from outside this crate.
-    /// This comes up primarily when resolving ambiguity. Imagine
-    /// there is some trait reference `$0: Bar` where `$0` is an
-    /// inference variable. If `intercrate` is true, then we can never
-    /// say for sure that this reference is not implemented, even if
-    /// there are *no impls at all for `Bar`*, because `$0` could be
-    /// bound to some type that in a downstream crate that implements
-    /// `Bar`.
-    ///
-    /// Outside of coherence we set this to false because we are only
-    /// interested in types that the user could actually have written.
-    /// In other words, we consider `$0: Bar` to be unimplemented if
-    /// there is no type that the user could *actually name* that
-    /// would satisfy it. This avoids crippling inference, basically.
-    intercrate: bool,
     /// If `intercrate` is set, we remember predicates which were
     /// considered ambiguous because of impls potentially added in other crates.
     /// This is used in coherence to give improved diagnostics.
@@ -226,14 +207,9 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
         SelectionContext {
             infcx,
             freshener: infcx.freshener_keep_static(),
-            intercrate: false,
             intercrate_ambiguity_causes: None,
             query_mode: TraitQueryMode::Standard,
         }
-    }
-
-    pub fn intercrate(infcx: &'cx InferCtxt<'tcx>) -> SelectionContext<'cx, 'tcx> {
-        SelectionContext { intercrate: true, ..SelectionContext::new(infcx) }
     }
 
     pub fn with_query_mode(
@@ -247,7 +223,7 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
     /// Enables tracking of intercrate ambiguity causes. See
     /// the documentation of [`Self::intercrate_ambiguity_causes`] for more.
     pub fn enable_tracking_intercrate_ambiguity_causes(&mut self) {
-        assert!(self.intercrate);
+        assert!(self.is_intercrate());
         assert!(self.intercrate_ambiguity_causes.is_none());
         self.intercrate_ambiguity_causes = Some(FxIndexSet::default());
         debug!("selcx: enable_tracking_intercrate_ambiguity_causes");
@@ -257,7 +233,7 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
     /// was enabled and disables tracking at the same time. If
     /// tracking is not enabled, just returns an empty vector.
     pub fn take_intercrate_ambiguity_causes(&mut self) -> FxIndexSet<IntercrateAmbiguityCause> {
-        assert!(self.intercrate);
+        assert!(self.is_intercrate());
         self.intercrate_ambiguity_causes.take().unwrap_or_default()
     }
 
@@ -270,7 +246,7 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
     }
 
     pub fn is_intercrate(&self) -> bool {
-        self.intercrate
+        self.infcx.intercrate
     }
 
     ///////////////////////////////////////////////////////////////////////////
@@ -443,7 +419,7 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
         ensure_sufficient_stack(|| {
             let bound_predicate = obligation.predicate.kind();
             match bound_predicate.skip_binder() {
-                ty::PredicateKind::Trait(t) => {
+                ty::PredicateKind::Clause(ty::Clause::Trait(t)) => {
                     let t = bound_predicate.rebind(t);
                     debug_assert!(!t.has_escaping_bound_vars());
                     let obligation = obligation.with(self.tcx(), t);
@@ -570,7 +546,7 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
                     }
                 }
 
-                ty::PredicateKind::TypeOutlives(pred) => {
+                ty::PredicateKind::Clause(ty::Clause::TypeOutlives(pred)) => {
                     // A global type with no late-bound regions can only
                     // contain the "'static" lifetime (any other lifetime
                     // would either be late-bound or local), so it is guaranteed
@@ -582,7 +558,7 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
                     }
                 }
 
-                ty::PredicateKind::RegionOutlives(..) => {
+                ty::PredicateKind::Clause(ty::Clause::RegionOutlives(..)) => {
                     // We do not consider region relationships when evaluating trait matches.
                     Ok(EvaluatedToOkModuloRegions)
                 }
@@ -595,7 +571,7 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
                     }
                 }
 
-                ty::PredicateKind::Projection(data) => {
+                ty::PredicateKind::Clause(ty::Clause::Projection(data)) => {
                     let data = bound_predicate.rebind(data);
                     let project_obligation = obligation.with(self.tcx(), data);
                     match project::poly_project_and_unify_type(self, &project_obligation) {
@@ -681,21 +657,62 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
                 }
 
                 ty::PredicateKind::ConstEquate(c1, c2) => {
+                    let tcx = self.tcx();
                     assert!(
-                        self.tcx().features().generic_const_exprs,
+                        tcx.features().generic_const_exprs,
                         "`ConstEquate` without a feature gate: {c1:?} {c2:?}",
                     );
-                    debug!(?c1, ?c2, "evaluate_predicate_recursively: equating consts");
 
-                    // FIXME: we probably should only try to unify abstract constants
-                    // if the constants depend on generic parameters.
-                    //
-                    // Let's just see where this breaks :shrug:
-                    if let (ty::ConstKind::Unevaluated(a), ty::ConstKind::Unevaluated(b)) =
-                        (c1.kind(), c2.kind())
                     {
-                        if self.infcx.try_unify_abstract_consts(a, b, obligation.param_env) {
-                            return Ok(EvaluatedToOk);
+                        let c1 = tcx.expand_abstract_consts(c1);
+                        let c2 = tcx.expand_abstract_consts(c2);
+                        debug!(
+                            "evalaute_predicate_recursively: equating consts:\nc1= {:?}\nc2= {:?}",
+                            c1, c2
+                        );
+
+                        use rustc_hir::def::DefKind;
+                        use ty::ConstKind::Unevaluated;
+                        match (c1.kind(), c2.kind()) {
+                            (Unevaluated(a), Unevaluated(b))
+                                if a.def.did == b.def.did
+                                    && tcx.def_kind(a.def.did) == DefKind::AssocConst =>
+                            {
+                                if let Ok(new_obligations) = self
+                                    .infcx
+                                    .at(&obligation.cause, obligation.param_env)
+                                    .trace(c1, c2)
+                                    .eq(a.substs, b.substs)
+                                {
+                                    let mut obligations = new_obligations.obligations;
+                                    self.add_depth(
+                                        obligations.iter_mut(),
+                                        obligation.recursion_depth,
+                                    );
+                                    return self.evaluate_predicates_recursively(
+                                        previous_stack,
+                                        obligations.into_iter(),
+                                    );
+                                }
+                            }
+                            (_, Unevaluated(_)) | (Unevaluated(_), _) => (),
+                            (_, _) => {
+                                if let Ok(new_obligations) = self
+                                    .infcx
+                                    .at(&obligation.cause, obligation.param_env)
+                                    .eq(c1, c2)
+                                {
+                                    let mut obligations = new_obligations.obligations;
+                                    self.add_depth(
+                                        obligations.iter_mut(),
+                                        obligation.recursion_depth,
+                                    );
+                                    return self.evaluate_predicates_recursively(
+                                        previous_stack,
+                                        obligations.into_iter(),
+                                    );
+                                }
+                            }
                         }
                     }
 
@@ -722,7 +739,10 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
                                 .at(&obligation.cause, obligation.param_env)
                                 .eq(c1, c2)
                             {
-                                Ok(_) => Ok(EvaluatedToOk),
+                                Ok(inf_ok) => self.evaluate_predicates_recursively(
+                                    previous_stack,
+                                    inf_ok.into_obligations(),
+                                ),
                                 Err(_) => Ok(EvaluatedToErr),
                             }
                         }
@@ -741,6 +761,7 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
                 ty::PredicateKind::TypeWellFormedFromEnv(..) => {
                     bug!("TypeWellFormedFromEnv is only used for chalk")
                 }
+                ty::PredicateKind::Ambiguous => Ok(EvaluatedToAmbig),
             }
         })
     }
@@ -751,7 +772,7 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
         previous_stack: TraitObligationStackList<'o, 'tcx>,
         mut obligation: TraitObligation<'tcx>,
     ) -> Result<EvaluationResult, OverflowError> {
-        if !self.intercrate
+        if !self.is_intercrate()
             && obligation.is_global()
             && obligation.param_env.caller_bounds().iter().all(|bound| bound.needs_subst())
         {
@@ -954,7 +975,9 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
 
     fn coinductive_predicate(&self, predicate: ty::Predicate<'tcx>) -> bool {
         let result = match predicate.kind().skip_binder() {
-            ty::PredicateKind::Trait(ref data) => self.tcx().trait_is_coinductive(data.def_id()),
+            ty::PredicateKind::Clause(ty::Clause::Trait(ref data)) => {
+                self.tcx().trait_is_coinductive(data.def_id())
+            }
             ty::PredicateKind::WellFormed(_) => true,
             _ => false,
         };
@@ -1014,7 +1037,7 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
         // mode, so don't do any caching. In particular, we might
         // re-use the same `InferCtxt` with both an intercrate
         // and non-intercrate `SelectionContext`
-        if self.intercrate {
+        if self.is_intercrate() {
             return None;
         }
 
@@ -1044,7 +1067,7 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
         // mode, so don't do any caching. In particular, we might
         // re-use the same `InferCtxt` with both an intercrate
         // and non-intercrate `SelectionContext`
-        if self.intercrate {
+        if self.is_intercrate() {
             return;
         }
 
@@ -1162,9 +1185,10 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
                     ProjectionCandidate(_, ty::BoundConstness::ConstIfConst) => {}
                     // auto trait impl
                     AutoImplCandidate => {}
-                    // generator, this will raise error in other places
+                    // generator / future, this will raise error in other places
                     // or ignore error with const_async_blocks feature
                     GeneratorCandidate => {}
+                    FutureCandidate => {}
                     // FnDef where the function is const
                     FnPointerCandidate { is_const: true } => {}
                     ConstDestructCandidate(_) => {}
@@ -1225,9 +1249,9 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
     }
 
     fn is_knowable<'o>(&mut self, stack: &TraitObligationStack<'o, 'tcx>) -> Result<(), Conflict> {
-        debug!("is_knowable(intercrate={:?})", self.intercrate);
+        debug!("is_knowable(intercrate={:?})", self.is_intercrate());
 
-        if !self.intercrate || stack.obligation.polarity() == ty::ImplPolarity::Negative {
+        if !self.is_intercrate() || stack.obligation.polarity() == ty::ImplPolarity::Negative {
             return Ok(());
         }
 
@@ -1258,7 +1282,7 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
         // the master cache. Since coherence executes pretty quickly,
         // it's not worth going to more trouble to increase the
         // hit-rate, I don't think.
-        if self.intercrate {
+        if self.is_intercrate() {
             return false;
         }
 
@@ -1275,7 +1299,7 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
         // mode, so don't do any caching. In particular, we might
         // re-use the same `InferCtxt` with both an intercrate
         // and non-intercrate `SelectionContext`
-        if self.intercrate {
+        if self.is_intercrate() {
             return None;
         }
         let tcx = self.tcx();
@@ -1314,7 +1338,7 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
         // mode, so don't do any caching. In particular, we might
         // re-use the same `InferCtxt` with both an intercrate
         // and non-intercrate `SelectionContext`
-        if self.intercrate {
+        if self.is_intercrate() {
             return false;
         }
         match result {
@@ -1399,7 +1423,9 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
             .enumerate()
             .filter_map(|(idx, bound)| {
                 let bound_predicate = bound.kind();
-                if let ty::PredicateKind::Trait(pred) = bound_predicate.skip_binder() {
+                if let ty::PredicateKind::Clause(ty::Clause::Trait(pred)) =
+                    bound_predicate.skip_binder()
+                {
                     let bound = bound_predicate.rebind(pred.trait_ref);
                     if self.infcx.probe(|_| {
                         match self.match_normalize_trait_ref(
@@ -1591,20 +1617,8 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
             (TransmutabilityCandidate, _) | (_, TransmutabilityCandidate) => false,
 
             // (*)
-            (
-                BuiltinCandidate { has_nested: false }
-                | DiscriminantKindCandidate
-                | PointeeCandidate
-                | ConstDestructCandidate(_),
-                _,
-            ) => true,
-            (
-                _,
-                BuiltinCandidate { has_nested: false }
-                | DiscriminantKindCandidate
-                | PointeeCandidate
-                | ConstDestructCandidate(_),
-            ) => false,
+            (BuiltinCandidate { has_nested: false } | ConstDestructCandidate(_), _) => true,
+            (_, BuiltinCandidate { has_nested: false } | ConstDestructCandidate(_)) => false,
 
             (ParamCandidate(other), ParamCandidate(victim)) => {
                 let same_except_bound_vars = other.skip_binder().trait_ref
@@ -1643,6 +1657,7 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
                 ImplCandidate(..)
                 | ClosureCandidate
                 | GeneratorCandidate
+                | FutureCandidate
                 | FnPointerCandidate { .. }
                 | BuiltinObjectCandidate
                 | BuiltinUnsizeCandidate
@@ -1661,6 +1676,7 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
                 ImplCandidate(_)
                 | ClosureCandidate
                 | GeneratorCandidate
+                | FutureCandidate
                 | FnPointerCandidate { .. }
                 | BuiltinObjectCandidate
                 | BuiltinUnsizeCandidate
@@ -1691,6 +1707,7 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
                 ImplCandidate(..)
                 | ClosureCandidate
                 | GeneratorCandidate
+                | FutureCandidate
                 | FnPointerCandidate { .. }
                 | BuiltinObjectCandidate
                 | BuiltinUnsizeCandidate
@@ -1703,6 +1720,7 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
                 ImplCandidate(..)
                 | ClosureCandidate
                 | GeneratorCandidate
+                | FutureCandidate
                 | FnPointerCandidate { .. }
                 | BuiltinObjectCandidate
                 | BuiltinUnsizeCandidate
@@ -1784,6 +1802,7 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
                 ImplCandidate(_)
                 | ClosureCandidate
                 | GeneratorCandidate
+                | FutureCandidate
                 | FnPointerCandidate { .. }
                 | BuiltinObjectCandidate
                 | BuiltinUnsizeCandidate
@@ -1793,6 +1812,7 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
                 ImplCandidate(_)
                 | ClosureCandidate
                 | GeneratorCandidate
+                | FutureCandidate
                 | FnPointerCandidate { .. }
                 | BuiltinObjectCandidate
                 | BuiltinUnsizeCandidate
@@ -2100,8 +2120,7 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
                     cause.clone(),
                     trait_def_id,
                     recursion_depth,
-                    normalized_ty,
-                    &[],
+                    [normalized_ty],
                 );
                 obligations.push(placeholder_obligation);
                 obligations
@@ -2192,7 +2211,7 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
             .map_err(|e| debug!("match_impl: failed eq_trait_refs due to `{e}`"))?;
         nested_obligations.extend(obligations);
 
-        if !self.intercrate
+        if !self.is_intercrate()
             && self.tcx().impl_polarity(impl_def_id) == ty::ImplPolarity::Reservation
         {
             debug!("reservation impls only apply in intercrate mode");
@@ -2288,41 +2307,23 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
 
         debug!(?closure_sig);
 
-        // (1) Feels icky to skip the binder here, but OTOH we know
-        // that the self-type is an unboxed closure type and hence is
+        // NOTE: The self-type is an unboxed closure type and hence is
         // in fact unparameterized (or at least does not reference any
-        // regions bound in the obligation). Still probably some
-        // refactoring could make this nicer.
+        // regions bound in the obligation).
+        let self_ty = obligation
+            .predicate
+            .self_ty()
+            .no_bound_vars()
+            .expect("unboxed closure type should not capture bound vars from the predicate");
+
         closure_trait_ref_and_return_type(
             self.tcx(),
             obligation.predicate.def_id(),
-            obligation.predicate.skip_binder().self_ty(), // (1)
+            self_ty,
             closure_sig,
             util::TupleArgumentsFlag::No,
         )
         .map_bound(|(trait_ref, _)| trait_ref)
-    }
-
-    fn generator_trait_ref_unnormalized(
-        &mut self,
-        obligation: &TraitObligation<'tcx>,
-        substs: SubstsRef<'tcx>,
-    ) -> ty::PolyTraitRef<'tcx> {
-        let gen_sig = substs.as_generator().poly_sig();
-
-        // (1) Feels icky to skip the binder here, but OTOH we know
-        // that the self-type is an generator type and hence is
-        // in fact unparameterized (or at least does not reference any
-        // regions bound in the obligation). Still probably some
-        // refactoring could make this nicer.
-
-        super::util::generator_trait_ref_and_outputs(
-            self.tcx(),
-            obligation.predicate.def_id(),
-            obligation.predicate.skip_binder().self_ty(), // (1)
-            gen_sig,
-        )
-        .map_bound(|(trait_ref, ..)| trait_ref)
     }
 
     /// Returns the obligations that are implied by instantiating an

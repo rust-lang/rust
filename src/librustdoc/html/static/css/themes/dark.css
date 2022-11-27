@@ -36,9 +36,11 @@
 	--sidebar-current-link-background-color: #444;
 	--search-result-link-focus-background-color: #616161;
 	--search-result-border-color: #aaa3;
+	--search-color: #111;
+	--search-results-alias-color: #fff;
+	--search-results-grey-color: #ccc;
 	--stab-background-color: #314559;
 	--stab-code-color: #e6e1cf;
-	--search-color: #111;
 	--code-highlight-kw-color: #ab8ac1;
 	--code-highlight-kw-2-color: #769acb;
 	--code-highlight-lifetime-color: #d97f26;
@@ -64,6 +66,9 @@
 	--target-border-color: #bb7410;
 	--tooltip-background-color: #000;
 	--tooltip-color: #fff;
+	--kbd-color: #000;
+	--kbd-background: #fafbfc;
+	--kbd-box-shadow-color: #c6cbd1;
 	--rust-logo-filter: drop-shadow(1px 0 0px #fff)
 		drop-shadow(0 1px 0 #fff)
 		drop-shadow(-1px 0 0 #fff)
@@ -74,6 +79,8 @@
 	--crate-search-div-hover-filter: invert(69%) sepia(60%) saturate(6613%) hue-rotate(184deg)
 		brightness(100%) contrast(91%);
 	--crate-search-hover-border: #2196f3;
+	--source-sidebar-background-selected: #333;
+	--source-sidebar-background-hover: #444;
 }
 
 .content .item-info::before { color: #ccc; }
@@ -98,27 +105,6 @@ details.rustdoc-toggle > summary::before {
 
 #titles > button > div.count {
 	color: #888;
-}
-
-kbd {
-	color: #000;
-	background-color: #fafbfc;
-	box-shadow: inset 0 -1px 0 #c6cbd1;
-}
-
-.search-results .result-name span.alias {
-	color: #fff;
-}
-.search-results .result-name span.grey {
-	color: #ccc;
-}
-
-#source-sidebar div.files > a:hover, details.dir-entry summary:hover,
-#source-sidebar div.files > a:focus, details.dir-entry summary:focus {
-	background-color: #444;
-}
-#source-sidebar div.files > a.selected {
-	background-color: #333;
 }
 
 .scraped-example-list .scrape-help {

@@ -1,7 +1,7 @@
 use rustdoc_json_types::{Item, ItemEnum, ItemKind, ItemSummary};
 
 /// A univeral way to represent an [`ItemEnum`] or [`ItemKind`]
-#[derive(Debug)]
+#[derive(Debug, Clone, Copy)]
 pub(crate) enum Kind {
     Module,
     ExternCrate,
@@ -17,7 +17,6 @@ pub(crate) enum Kind {
     Constant,
     Trait,
     TraitAlias,
-    Method,
     Impl,
     Static,
     ForeignType,
@@ -63,10 +62,25 @@ impl Kind {
             // Only in traits
             AssocConst => false,
             AssocType => false,
-            Method => false,
 
             StructField => false, // Only in structs or variants
             Variant => false,     // Only in enums
+        }
+    }
+
+    pub fn can_appear_in_import(self) -> bool {
+        match self {
+            Kind::Variant => true,
+            Kind::Import => false,
+            other => other.can_appear_in_mod(),
+        }
+    }
+
+    pub fn can_appear_in_glob_import(self) -> bool {
+        match self {
+            Kind::Module => true,
+            Kind::Enum => true,
+            _ => false,
         }
     }
 
@@ -74,7 +88,7 @@ impl Kind {
         match self {
             Kind::AssocConst => true,
             Kind::AssocType => true,
-            Kind::Method => true,
+            Kind::Function => true,
 
             Kind::Module => false,
             Kind::ExternCrate => false,
@@ -84,7 +98,6 @@ impl Kind {
             Kind::Union => false,
             Kind::Enum => false,
             Kind::Variant => false,
-            Kind::Function => false,
             Kind::Typedef => false,
             Kind::OpaqueTy => false,
             Kind::Constant => false,
@@ -114,11 +127,11 @@ impl Kind {
     pub fn is_variant(self) -> bool {
         matches!(self, Kind::Variant)
     }
-    pub fn is_trait(self) -> bool {
-        matches!(self, Kind::Trait)
+    pub fn is_trait_or_alias(self) -> bool {
+        matches!(self, Kind::Trait | Kind::TraitAlias)
     }
-    pub fn is_struct_enum_union(self) -> bool {
-        matches!(self, Kind::Struct | Kind::Enum | Kind::Union)
+    pub fn is_type(self) -> bool {
+        matches!(self, Kind::Struct | Kind::Enum | Kind::Union | Kind::Typedef)
     }
 
     pub fn from_item(i: &Item) -> Self {
@@ -134,7 +147,6 @@ impl Kind {
             ItemEnum::Function(_) => Function,
             ItemEnum::Trait(_) => Trait,
             ItemEnum::TraitAlias(_) => TraitAlias,
-            ItemEnum::Method(_) => Method,
             ItemEnum::Impl(_) => Impl,
             ItemEnum::Typedef(_) => Typedef,
             ItemEnum::OpaqueTy(_) => OpaqueTy,
@@ -164,7 +176,6 @@ impl Kind {
             ItemKind::Import => Import,
             ItemKind::Keyword => Keyword,
             ItemKind::Macro => Macro,
-            ItemKind::Method => Method,
             ItemKind::Module => Module,
             ItemKind::OpaqueTy => OpaqueTy,
             ItemKind::Primitive => Primitive,
