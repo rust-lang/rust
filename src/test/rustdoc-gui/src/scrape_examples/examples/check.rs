@@ -22,4 +22,5 @@ fn main() {
         println!("hello world!");
         println!("hello world!");
     }
+    scrape_examples::test();
 }
