@@ -2159,7 +2159,7 @@ impl<'a> State<'a> {
     }
 
     pub fn print_lifetime(&mut self, lifetime: &hir::Lifetime) {
-        self.print_ident(lifetime.name.ident())
+        self.print_ident(lifetime.ident)
     }
 
     pub fn print_where_clause(&mut self, generics: &hir::Generics<'_>) {

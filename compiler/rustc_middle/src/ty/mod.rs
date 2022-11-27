@@ -208,6 +208,8 @@ pub struct ResolverAstLowering {
     /// A small map keeping true kinds of built-in macros that appear to be fn-like on
     /// the surface (`macro` items in libcore), but are actually attributes or derives.
     pub builtin_macro_kinds: FxHashMap<LocalDefId, MacroKind>,
+    /// List functions and methods for which lifetime elision was successful.
+    pub lifetime_elision_allowed: FxHashSet<ast::NodeId>,
 }
 
 #[derive(Clone, Copy, Debug)]
@@ -529,7 +531,7 @@ impl ty::EarlyBoundRegion {
     /// Does this early bound region have a name? Early bound regions normally
     /// always have names except when using anonymous lifetimes (`'_`).
     pub fn has_name(&self) -> bool {
-        self.name != kw::UnderscoreLifetime
+        self.name != kw::UnderscoreLifetime && self.name != kw::Empty
     }
 }
 

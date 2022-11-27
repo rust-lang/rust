@@ -182,9 +182,7 @@ fn clean_poly_trait_ref_with_bindings<'tcx>(
         .collect_referenced_late_bound_regions(&poly_trait_ref)
         .into_iter()
         .filter_map(|br| match br {
-            ty::BrNamed(_, name) if name != kw::UnderscoreLifetime => {
-                Some(GenericParamDef::lifetime(name))
-            }
+            ty::BrNamed(_, name) if br.is_named() => Some(GenericParamDef::lifetime(name)),
             _ => None,
         })
         .collect();
@@ -208,7 +206,7 @@ fn clean_lifetime<'tcx>(lifetime: &hir::Lifetime, cx: &mut DocContext<'tcx>) -> 
             return lt;
         }
     }
-    Lifetime(lifetime.name.ident().name)
+    Lifetime(lifetime.ident.name)
 }
 
 pub(crate) fn clean_const<'tcx>(constant: &hir::ConstArg, cx: &mut DocContext<'tcx>) -> Constant {
@@ -233,16 +231,11 @@ pub(crate) fn clean_middle_const<'tcx>(
 pub(crate) fn clean_middle_region<'tcx>(region: ty::Region<'tcx>) -> Option<Lifetime> {
     match *region {
         ty::ReStatic => Some(Lifetime::statik()),
+        _ if !region.has_name() => None,
         ty::ReLateBound(_, ty::BoundRegion { kind: ty::BrNamed(_, name), .. }) => {
-            if name != kw::UnderscoreLifetime { Some(Lifetime(name)) } else { None }
+            Some(Lifetime(name))
         }
-        ty::ReEarlyBound(ref data) => {
-            if data.name != kw::UnderscoreLifetime {
-                Some(Lifetime(data.name))
-            } else {
-                None
-            }
-        }
+        ty::ReEarlyBound(ref data) => Some(Lifetime(data.name)),
         ty::ReLateBound(..)
         | ty::ReFree(..)
         | ty::ReVar(..)
@@ -400,7 +393,7 @@ fn clean_projection_predicate<'tcx>(
         .collect_referenced_late_bound_regions(&pred)
         .into_iter()
         .filter_map(|br| match br {
-            ty::BrNamed(_, name) if name != kw::UnderscoreLifetime => Some(Lifetime(name)),
+            ty::BrNamed(_, name) if br.is_named() => Some(Lifetime(name)),
             _ => None,
         })
         .collect();
@@ -664,7 +657,7 @@ fn clean_ty_generics<'tcx>(
         .params
         .iter()
         .filter_map(|param| match param.kind {
-            ty::GenericParamDefKind::Lifetime if param.name == kw::UnderscoreLifetime => None,
+            ty::GenericParamDefKind::Lifetime if param.is_anonymous_lifetime() => None,
             ty::GenericParamDefKind::Lifetime => Some(clean_generic_param_def(param, cx)),
             ty::GenericParamDefKind::Type { synthetic, .. } => {
                 if param.name == kw::SelfUpper {
@@ -1467,8 +1460,11 @@ fn maybe_expand_private_type_alias<'tcx>(
                 });
                 if let Some(lt) = lifetime {
                     let lt_def_id = cx.tcx.hir().local_def_id(param.hir_id);
-                    let cleaned =
-                        if !lt.is_elided() { clean_lifetime(lt, cx) } else { Lifetime::elided() };
+                    let cleaned = if !lt.is_anonymous() {
+                        clean_lifetime(lt, cx)
+                    } else {
+                        Lifetime::elided()
+                    };
                     substs.insert(lt_def_id.to_def_id(), SubstParam::Lifetime(cleaned));
                 }
                 indices.lifetimes += 1;
@@ -1531,16 +1527,7 @@ pub(crate) fn clean_ty<'tcx>(ty: &hir::Ty<'tcx>, cx: &mut DocContext<'tcx>) -> T
         TyKind::Never => Primitive(PrimitiveType::Never),
         TyKind::Ptr(ref m) => RawPointer(m.mutbl, Box::new(clean_ty(m.ty, cx))),
         TyKind::Rptr(ref l, ref m) => {
-            // There are two times a `Fresh` lifetime can be created:
-            // 1. For `&'_ x`, written by the user. This corresponds to `lower_lifetime` in `rustc_ast_lowering`.
-            // 2. For `&x` as a parameter to an `async fn`. This corresponds to `elided_ref_lifetime in `rustc_ast_lowering`.
-            //    See #59286 for more information.
-            // Ideally we would only hide the `'_` for case 2., but I don't know a way to distinguish it.
-            // Turning `fn f(&'_ self)` into `fn f(&self)` isn't the worst thing in the world, though;
-            // there's no case where it could cause the function to fail to compile.
-            let elided =
-                l.is_elided() || matches!(l.name, LifetimeName::Param(_, ParamName::Fresh));
-            let lifetime = if elided { None } else { Some(clean_lifetime(*l, cx)) };
+            let lifetime = if l.is_anonymous() { None } else { Some(clean_lifetime(*l, cx)) };
             BorrowedRef { lifetime, mutability: m.mutbl, type_: Box::new(clean_ty(m.ty, cx)) }
         }
         TyKind::Slice(ty) => Slice(Box::new(clean_ty(ty, cx))),
@@ -1915,7 +1902,7 @@ fn clean_generic_args<'tcx>(
             .args
             .iter()
             .map(|arg| match arg {
-                hir::GenericArg::Lifetime(lt) if !lt.is_elided() => {
+                hir::GenericArg::Lifetime(lt) if !lt.is_anonymous() => {
                     GenericArg::Lifetime(clean_lifetime(*lt, cx))
                 }
                 hir::GenericArg::Lifetime(_) => GenericArg::Lifetime(Lifetime::elided()),

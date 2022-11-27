@@ -1838,6 +1838,7 @@ impl<'a: 'ast, 'b, 'ast> LateResolutionVisitor<'a, 'b, 'ast> {
 
         let outer_failures = take(&mut self.diagnostic_metadata.current_elision_failures);
         let output_rib = if let Ok(res) = elision_lifetime.as_ref() {
+            self.r.lifetime_elision_allowed.insert(fn_id);
             LifetimeRibKind::Elided(*res)
         } else {
             LifetimeRibKind::ElisionFailure

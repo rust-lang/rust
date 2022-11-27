@@ -229,7 +229,7 @@ fn gather_explicit_predicates_of(tcx: TyCtxt<'_>, def_id: DefId) -> ty::GenericP
                 predicates.extend(region_pred.bounds.iter().map(|bound| {
                     let (r2, span) = match bound {
                         hir::GenericBound::Outlives(lt) => {
-                            (<dyn AstConv<'_>>::ast_region_to_region(&icx, lt, None), lt.span)
+                            (<dyn AstConv<'_>>::ast_region_to_region(&icx, lt, None), lt.ident.span)
                         }
                         _ => bug!(),
                     };

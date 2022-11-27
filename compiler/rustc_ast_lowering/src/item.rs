@@ -274,7 +274,7 @@ impl<'hir> LoweringContext<'_, 'hir> {
                     let mut itctx = ImplTraitContext::Universal;
                     let (generics, decl) = this.lower_generics(generics, id, &mut itctx, |this| {
                         let ret_id = asyncness.opt_return_id();
-                        this.lower_fn_decl(&decl, Some(id), *fn_sig_span, FnDeclKind::Fn, ret_id)
+                        this.lower_fn_decl(&decl, id, *fn_sig_span, FnDeclKind::Fn, ret_id)
                     });
                     let sig = hir::FnSig {
                         decl,
@@ -659,7 +659,7 @@ impl<'hir> LoweringContext<'_, 'hir> {
                                 // Disallow `impl Trait` in foreign items.
                                 this.lower_fn_decl(
                                     fdec,
-                                    None,
+                                    i.id,
                                     sig.span,
                                     FnDeclKind::ExternFn,
                                     None,
@@ -1247,7 +1247,7 @@ impl<'hir> LoweringContext<'_, 'hir> {
         let header = self.lower_fn_header(sig.header);
         let mut itctx = ImplTraitContext::Universal;
         let (generics, decl) = self.lower_generics(generics, id, &mut itctx, |this| {
-            this.lower_fn_decl(&sig.decl, Some(id), sig.span, kind, is_async)
+            this.lower_fn_decl(&sig.decl, id, sig.span, kind, is_async)
         });
         (generics, hir::FnSig { header, decl, span: self.lower_span(sig.span) })
     }
@@ -1479,10 +1479,9 @@ impl<'hir> LoweringContext<'_, 'hir> {
                 }))
             }
             GenericParamKind::Lifetime => {
-                let ident_span = self.lower_span(ident.span);
                 let ident = self.lower_ident(ident);
                 let lt_id = self.next_node_id();
-                let lifetime = self.new_named_lifetime(id, lt_id, ident_span, ident);
+                let lifetime = self.new_named_lifetime(id, lt_id, ident);
                 Some(hir::WherePredicate::RegionPredicate(hir::WhereRegionPredicate {
                     lifetime,
                     span,

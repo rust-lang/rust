@@ -576,30 +576,10 @@ impl<'tcx> MirBorrowckCtxt<'_, 'tcx> {
         let args = last_segment.args.as_ref()?;
         let lifetime =
             self.try_match_adt_and_generic_args(substs, needle_fr, args, search_stack)?;
-        match lifetime.name {
-            hir::LifetimeName::Param(_, hir::ParamName::Plain(_) | hir::ParamName::Error)
-            | hir::LifetimeName::Error
-            | hir::LifetimeName::Static => {
-                let lifetime_span = lifetime.span;
-                Some(RegionNameHighlight::MatchedAdtAndSegment(lifetime_span))
-            }
-
-            hir::LifetimeName::Param(_, hir::ParamName::Fresh)
-            | hir::LifetimeName::ImplicitObjectLifetimeDefault
-            | hir::LifetimeName::Infer => {
-                // In this case, the user left off the lifetime; so
-                // they wrote something like:
-                //
-                // ```
-                // x: Foo<T>
-                // ```
-                //
-                // where the fully elaborated form is `Foo<'_, '1,
-                // T>`. We don't consider this a match; instead we let
-                // the "fully elaborated" type fallback above handle
-                // it.
-                None
-            }
+        if lifetime.is_anonymous() {
+            None
+        } else {
+            Some(RegionNameHighlight::MatchedAdtAndSegment(lifetime.ident.span))
         }
     }
 

@@ -241,14 +241,14 @@ impl<'o, 'tcx> dyn AstConv<'tcx> + 'o {
             }
 
             None => {
-                self.re_infer(def, lifetime.span).unwrap_or_else(|| {
+                self.re_infer(def, lifetime.ident.span).unwrap_or_else(|| {
                     debug!(?lifetime, "unelided lifetime in signature");
 
                     // This indicates an illegal lifetime
                     // elision. `resolve_lifetime` should have
                     // reported an error in this case -- but if
                     // not, let's error out.
-                    tcx.sess.delay_span_bug(lifetime.span, "unelided lifetime in signature");
+                    tcx.sess.delay_span_bug(lifetime.ident.span, "unelided lifetime in signature");
 
                     // Supply some dummy value. We don't have an
                     // `re_error`, annoyingly, so use `'static`.
@@ -961,9 +961,10 @@ impl<'o, 'tcx> dyn AstConv<'tcx> + 'o {
                 }
                 hir::GenericBound::Outlives(lifetime) => {
                     let region = self.ast_region_to_region(lifetime, None);
-                    bounds
-                        .region_bounds
-                        .push((ty::Binder::bind_with_vars(region, bound_vars), lifetime.span));
+                    bounds.region_bounds.push((
+                        ty::Binder::bind_with_vars(region, bound_vars),
+                        lifetime.ident.span,
+                    ));
                 }
             }
         }

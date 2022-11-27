@@ -605,6 +605,7 @@ impl<'hir> LoweringContext<'_, 'hir> {
             output,
             c_variadic: false,
             implicit_self: hir::ImplicitSelfKind::None,
+            lifetime_elision_allowed: false,
         });
 
         // Lower the argument pattern/ident. The ident is used again in the `.await` lowering.
@@ -917,7 +918,7 @@ impl<'hir> LoweringContext<'_, 'hir> {
 
         let bound_generic_params = self.lower_lifetime_binder(closure_id, generic_params);
         // Lower outside new scope to preserve `is_in_loop_condition`.
-        let fn_decl = self.lower_fn_decl(decl, None, fn_decl_span, FnDeclKind::Closure, None);
+        let fn_decl = self.lower_fn_decl(decl, closure_id, fn_decl_span, FnDeclKind::Closure, None);
 
         let c = self.arena.alloc(hir::Closure {
             def_id: self.local_def_id(closure_id),
@@ -1027,7 +1028,7 @@ impl<'hir> LoweringContext<'_, 'hir> {
         // have to conserve the state of being inside a loop condition for the
         // closure argument types.
         let fn_decl =
-            self.lower_fn_decl(&outer_decl, None, fn_decl_span, FnDeclKind::Closure, None);
+            self.lower_fn_decl(&outer_decl, closure_id, fn_decl_span, FnDeclKind::Closure, None);
 
         let c = self.arena.alloc(hir::Closure {
             def_id: self.local_def_id(closure_id),

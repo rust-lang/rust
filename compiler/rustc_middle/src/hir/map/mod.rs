@@ -1058,7 +1058,7 @@ impl<'hir> Map<'hir> {
             Node::Arm(arm) => arm.span,
             Node::Block(block) => block.span,
             Node::Ctor(..) => self.span_with_body(self.get_parent_node(hir_id)),
-            Node::Lifetime(lifetime) => lifetime.span,
+            Node::Lifetime(lifetime) => lifetime.ident.span,
             Node::GenericParam(param) => param.span,
             Node::Infer(i) => i.span,
             Node::Local(local) => local.span,

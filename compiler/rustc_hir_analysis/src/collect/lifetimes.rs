@@ -595,7 +595,7 @@ impl<'a, 'tcx> Visitor<'tcx> for LifetimeContext<'a, 'tcx> {
                         this.visit_poly_trait_ref(bound);
                     }
                 });
-                match lifetime.name {
+                match lifetime.res {
                     LifetimeName::ImplicitObjectLifetimeDefault => {
                         // If the user does not write *anything*, we
                         // use the object lifetime defaulting
@@ -686,7 +686,7 @@ impl<'a, 'tcx> Visitor<'tcx> for LifetimeContext<'a, 'tcx> {
                     if !parent_id.is_owner() {
                         struct_span_err!(
                             self.tcx.sess,
-                            lifetime.span,
+                            lifetime.ident.span,
                             E0657,
                             "`impl Trait` can only capture lifetimes bound at the fn or impl level"
                         )
@@ -698,7 +698,7 @@ impl<'a, 'tcx> Visitor<'tcx> for LifetimeContext<'a, 'tcx> {
                     }) = self.tcx.hir().get(parent_id)
                     {
                         let mut err = self.tcx.sess.struct_span_err(
-                            lifetime.span,
+                            lifetime.ident.span,
                             "higher kinded lifetime bounds on nested opaque types are not supported yet",
                         );
                         err.span_note(self.tcx.def_span(def_id), "lifetime declared here");
@@ -802,9 +802,9 @@ impl<'a, 'tcx> Visitor<'tcx> for LifetimeContext<'a, 'tcx> {
 
     #[instrument(level = "debug", skip(self))]
     fn visit_lifetime(&mut self, lifetime_ref: &'tcx hir::Lifetime) {
-        match lifetime_ref.name {
+        match lifetime_ref.res {
             hir::LifetimeName::Static => self.insert_lifetime(lifetime_ref, Region::Static),
-            hir::LifetimeName::Param(param_def_id, _) => {
+            hir::LifetimeName::Param(param_def_id) => {
                 self.resolve_lifetime_ref(param_def_id, lifetime_ref)
             }
             // If we've already reported an error, just ignore `lifetime_ref`.
@@ -912,27 +912,27 @@ impl<'a, 'tcx> Visitor<'tcx> for LifetimeContext<'a, 'tcx> {
                         this.visit_lifetime(lifetime);
                         walk_list!(this, visit_param_bound, bounds);
 
-                        if lifetime.name != hir::LifetimeName::Static {
+                        if lifetime.res != hir::LifetimeName::Static {
                             for bound in bounds {
                                 let hir::GenericBound::Outlives(ref lt) = bound else {
                                     continue;
                                 };
-                                if lt.name != hir::LifetimeName::Static {
+                                if lt.res != hir::LifetimeName::Static {
                                     continue;
                                 }
                                 this.insert_lifetime(lt, Region::Static);
                                 this.tcx
                                     .sess
                                     .struct_span_warn(
-                                        lifetime.span,
+                                        lifetime.ident.span,
                                         &format!(
                                             "unnecessary lifetime parameter `{}`",
-                                            lifetime.name.ident(),
+                                            lifetime.ident,
                                         ),
                                     )
                                     .help(&format!(
                                         "you can use the `'static` lifetime directly, in place of `{}`",
-                                        lifetime.name.ident(),
+                                        lifetime.ident,
                                     ))
                                     .emit();
                             }
@@ -1043,7 +1043,7 @@ fn object_lifetime_default<'tcx>(tcx: TyCtxt<'tcx>, param_def_id: DefId) -> Obje
 
                 for bound in bound.bounds {
                     if let hir::GenericBound::Outlives(ref lifetime) = *bound {
-                        set.insert(lifetime.name.normalize_to_macros_2_0());
+                        set.insert(lifetime.res);
                     }
                 }
             }
@@ -1051,7 +1051,7 @@ fn object_lifetime_default<'tcx>(tcx: TyCtxt<'tcx>, param_def_id: DefId) -> Obje
             match set {
                 Set1::Empty => ObjectLifetimeDefault::Empty,
                 Set1::One(hir::LifetimeName::Static) => ObjectLifetimeDefault::Static,
-                Set1::One(hir::LifetimeName::Param(param_def_id, _)) => {
+                Set1::One(hir::LifetimeName::Param(param_def_id)) => {
                     ObjectLifetimeDefault::Param(param_def_id.to_def_id())
                 }
                 _ => ObjectLifetimeDefault::Ambiguous,
@@ -1195,42 +1195,50 @@ impl<'a, 'tcx> LifetimeContext<'a, 'tcx> {
                     // Fresh lifetimes in APIT used to be allowed in async fns and forbidden in
                     // regular fns.
                     if let Some(hir::PredicateOrigin::ImplTrait) = where_bound_origin
-                        && let hir::LifetimeName::Param(_, hir::ParamName::Fresh) = lifetime_ref.name
+                        && let hir::LifetimeName::Param(_) = lifetime_ref.res
+                        && lifetime_ref.is_anonymous()
                         && let hir::IsAsync::NotAsync = self.tcx.asyncness(lifetime_ref.hir_id.owner.def_id)
                         && !self.tcx.features().anonymous_lifetime_in_impl_trait
                     {
                         let mut diag =  rustc_session::parse::feature_err(
                             &self.tcx.sess.parse_sess,
                             sym::anonymous_lifetime_in_impl_trait,
-                            lifetime_ref.span,
+                            lifetime_ref.ident.span,
                             "anonymous lifetimes in `impl Trait` are unstable",
                         );
 
-                        match self.tcx.hir().get_generics(lifetime_ref.hir_id.owner.def_id) {
-                            Some(generics) => {
+                        if let Some(generics) =
+                            self.tcx.hir().get_generics(lifetime_ref.hir_id.owner.def_id)
+                        {
+                            let new_param_sugg = if let Some(span) =
+                                generics.span_for_lifetime_suggestion()
+                            {
+                                (span, "'a, ".to_owned())
+                            } else {
+                                (generics.span, "<'a>".to_owned())
+                            };
 
-                                let new_param_sugg_tuple;
+                            let lifetime_sugg = match lifetime_ref.suggestion_position() {
+                                (hir::LifetimeSuggestionPosition::Normal, span) => (span, "'a".to_owned()),
+                                (hir::LifetimeSuggestionPosition::Ampersand, span) => (span, "'a ".to_owned()),
+                                (hir::LifetimeSuggestionPosition::ElidedPath, span) => (span, "<'a>".to_owned()),
+                                (hir::LifetimeSuggestionPosition::ElidedPathArgument, span) => (span, "'a, ".to_owned()),
+                                (hir::LifetimeSuggestionPosition::ObjectDefault, span) => (span, "+ 'a".to_owned()),
+                            };
+                            let suggestions = vec![
+                                lifetime_sugg,
+                                new_param_sugg,
+                            ];
 
-                                new_param_sugg_tuple = match generics.span_for_param_suggestion() {
-                                    Some(_) => {
-                                        Some((self.tcx.sess.source_map().span_through_char(generics.span, '<').shrink_to_hi(), "'a, ".to_owned()))
-                                    },
-                                    None => Some((generics.span, "<'a>".to_owned()))
-                                };
-
-                                let mut multi_sugg_vec = vec![(lifetime_ref.span.shrink_to_hi(), "'a ".to_owned())];
-
-                                if let Some(new_tuple) =  new_param_sugg_tuple{
-                                    multi_sugg_vec.push(new_tuple);
-                                }
-
-                                diag.span_label(lifetime_ref.span, "expected named lifetime parameter");
-                                diag.multipart_suggestion("consider introducing a named lifetime parameter",
-                                multi_sugg_vec,
-                                rustc_errors::Applicability::MaybeIncorrect);
-
-                            },
-                            None => { }
+                            diag.span_label(
+                                lifetime_ref.ident.span,
+                                "expected named lifetime parameter",
+                            );
+                            diag.multipart_suggestion(
+                                "consider introducing a named lifetime parameter",
+                                suggestions,
+                                rustc_errors::Applicability::MaybeIncorrect,
+                            );
                         }
 
                         diag.emit();
@@ -1287,7 +1295,7 @@ impl<'a, 'tcx> LifetimeContext<'a, 'tcx> {
                     where_bound_origin: Some(hir::PredicateOrigin::ImplTrait), ..
                 } => {
                     let mut err = self.tcx.sess.struct_span_err(
-                        lifetime_ref.span,
+                        lifetime_ref.ident.span,
                         "`impl Trait` can only mention lifetimes bound at the fn or impl level",
                     );
                     err.span_note(self.tcx.def_span(region_def_id), "lifetime declared here");
@@ -1307,7 +1315,7 @@ impl<'a, 'tcx> LifetimeContext<'a, 'tcx> {
         }
 
         self.tcx.sess.delay_span_bug(
-            lifetime_ref.span,
+            lifetime_ref.ident.span,
             &format!("Could not resolve {:?} in scope {:#?}", lifetime_ref, self.scope,),
         );
     }
@@ -1625,10 +1633,7 @@ impl<'a, 'tcx> LifetimeContext<'a, 'tcx> {
 
     #[instrument(level = "debug", skip(self))]
     fn insert_lifetime(&mut self, lifetime_ref: &'tcx hir::Lifetime, def: Region) {
-        debug!(
-            node = ?self.tcx.hir().node_to_string(lifetime_ref.hir_id),
-            span = ?self.tcx.sess.source_map().span_to_diagnostic_string(lifetime_ref.span)
-        );
+        debug!(span = ?lifetime_ref.ident.span);
         self.map.defs.insert(lifetime_ref.hir_id, def);
     }
 
@@ -1839,7 +1844,7 @@ fn is_late_bound_map(tcx: TyCtxt<'_>, def_id: LocalDefId) -> Option<&FxIndexSet<
         }
 
         fn visit_lifetime(&mut self, lifetime_ref: &'v hir::Lifetime) {
-            if let hir::LifetimeName::Param(def_id, _) = lifetime_ref.name {
+            if let hir::LifetimeName::Param(def_id) = lifetime_ref.res {
                 self.regions.insert(def_id);
             }
         }
@@ -1852,7 +1857,7 @@ fn is_late_bound_map(tcx: TyCtxt<'_>, def_id: LocalDefId) -> Option<&FxIndexSet<
 
     impl<'v> Visitor<'v> for AllCollector {
         fn visit_lifetime(&mut self, lifetime_ref: &'v hir::Lifetime) {
-            if let hir::LifetimeName::Param(def_id, _) = lifetime_ref.name {
+            if let hir::LifetimeName::Param(def_id) = lifetime_ref.res {
                 self.regions.insert(def_id);
             }
         }
