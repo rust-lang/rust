@@ -2612,7 +2612,7 @@ fn add_static_crate<'a>(
             sess.target.no_builtins || !codegen_results.crate_info.is_no_builtins.contains(&cnum);
 
         let mut archive = archive_builder_builder.new_archive_builder(sess);
-        if let Err(e) = archive.add_archive(
+        if let Err(error) = archive.add_archive(
             cratepath,
             Box::new(move |f| {
                 if f == METADATA_FILENAME {
@@ -2652,7 +2652,7 @@ fn add_static_crate<'a>(
                 false
             }),
         ) {
-            sess.fatal(&format!("failed to build archive from rlib: {}", e));
+            sess.emit_fatal(errors::RlibArchiveBuildFailure { error });
         }
         if archive.build(&dst) {
             link_upstream(&dst);
