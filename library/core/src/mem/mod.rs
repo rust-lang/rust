@@ -1113,7 +1113,10 @@ impl<T> fmt::Debug for Discriminant<T> {
 /// # Stability
 ///
 /// The discriminant of an enum variant may change if the enum definition changes. A discriminant
-/// of some variant will not change between compilations with the same compiler.
+/// of some variant will not change between compilations with the same compiler. See the [Reference]
+/// for more information.
+///
+/// [Reference]: ../../reference/items/enumerations.html#custom-discriminant-values-for-fieldless-enumerations
 ///
 /// # Examples
 ///
@@ -1128,6 +1131,62 @@ impl<T> fmt::Debug for Discriminant<T> {
 /// assert_eq!(mem::discriminant(&Foo::A("bar")), mem::discriminant(&Foo::A("baz")));
 /// assert_eq!(mem::discriminant(&Foo::B(1)), mem::discriminant(&Foo::B(2)));
 /// assert_ne!(mem::discriminant(&Foo::B(3)), mem::discriminant(&Foo::C(3)));
+/// ```
+///
+/// ## Accessing the numeric value of the discriminant
+///
+/// Note that it is *undefined behavior* to [`transmute`] from [`Discriminant`] to a primitive!
+///
+/// If an enum has only unit variants, then the numeric value of the discriminant can be accessed
+/// with an [`as`] cast:
+///
+/// ```
+/// enum Enum {
+///     Foo,
+///     Bar,
+///     Baz,
+/// }
+///
+/// assert_eq!(0, Enum::Foo as isize);
+/// assert_eq!(1, Enum::Bar as isize);
+/// assert_eq!(2, Enum::Baz as isize);
+/// ```
+///
+/// If an enum has opted-in to having a [primitive representation] for its discriminant,
+/// then it's possible to use pointers to read the memory location storing the discriminant.
+/// That **cannot** be done for enums using the [default representation], however, as it's
+/// undefined what layout the discriminant has and where it's stored — it might not even be
+/// stored at all!
+///
+/// [`as`]: ../../std/keyword.as.html
+/// [primitive representation]: ../../reference/type-layout.html#primitive-representations
+/// [default representation]: ../../reference/type-layout.html#the-default-representation
+/// ```
+/// #[repr(u8)]
+/// enum Enum {
+///     Unit,
+///     Tuple(bool),
+///     Struct { a: bool },
+/// }
+///
+/// impl Enum {
+///     fn discriminant(&self) -> u8 {
+///         // SAFETY: Because `Self` is marked `repr(u8)`, its layout is a `repr(C)` `union`
+///         // between `repr(C)` structs, each of which has the `u8` discriminant as its first
+///         // field, so we can read the discriminant without offsetting the pointer.
+///         unsafe { *<*const _>::from(self).cast::<u8>() }
+///     }
+/// }
+///
+/// let unit_like = Enum::Unit;
+/// let tuple_like = Enum::Tuple(true);
+/// let struct_like = Enum::Struct { a: false };
+/// assert_eq!(0, unit_like.discriminant());
+/// assert_eq!(1, tuple_like.discriminant());
+/// assert_eq!(2, struct_like.discriminant());
+///
+/// // ⚠️ This is undefined behavior. Don't do this. ⚠️
+/// // assert_eq!(0, unsafe { std::mem::transmute::<_, u8>(std::mem::discriminant(&unit_like)) });
 /// ```
 #[stable(feature = "discriminant_value", since = "1.21.0")]
 #[rustc_const_unstable(feature = "const_discriminant", issue = "69821")]
