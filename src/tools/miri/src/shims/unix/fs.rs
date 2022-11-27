@@ -1911,8 +1911,8 @@ struct FileMetadata {
 }
 
 impl FileMetadata {
-    fn from_path<'tcx, 'mir>(
-        ecx: &mut MiriInterpCx<'mir, 'tcx>,
+    fn from_path<'tcx>(
+        ecx: &mut MiriInterpCx<'_, 'tcx>,
         path: &Path,
         follow_symlink: bool,
     ) -> InterpResult<'tcx, Option<FileMetadata>> {
@@ -1922,8 +1922,8 @@ impl FileMetadata {
         FileMetadata::from_meta(ecx, metadata)
     }
 
-    fn from_fd<'tcx, 'mir>(
-        ecx: &mut MiriInterpCx<'mir, 'tcx>,
+    fn from_fd<'tcx>(
+        ecx: &mut MiriInterpCx<'_, 'tcx>,
         fd: i32,
     ) -> InterpResult<'tcx, Option<FileMetadata>> {
         let option = ecx.machine.file_handler.handles.get(&fd);
@@ -1936,8 +1936,8 @@ impl FileMetadata {
         FileMetadata::from_meta(ecx, metadata)
     }
 
-    fn from_meta<'tcx, 'mir>(
-        ecx: &mut MiriInterpCx<'mir, 'tcx>,
+    fn from_meta<'tcx>(
+        ecx: &mut MiriInterpCx<'_, 'tcx>,
         metadata: Result<std::fs::Metadata, std::io::Error>,
     ) -> InterpResult<'tcx, Option<FileMetadata>> {
         let metadata = match metadata {
