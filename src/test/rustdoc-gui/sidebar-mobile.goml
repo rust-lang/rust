@@ -32,6 +32,12 @@ assert-css: ("//nav[contains(@class, 'sidebar')]//h2/a[text()='In test_docs']/pa
 click: "body"
 assert-css: (".sidebar", {"display": "block", "left": "-1000px"})
 
+// Open the sidebar menu, and make sure pressing Escape closes it.
+click: ".sidebar-menu-toggle"
+assert-css: (".sidebar", {"left": "0px"})
+press-key: "Escape"
+assert-css: (".sidebar", {"display": "block", "left": "-1000px"})
+
 // Check that the topbar is visible
 assert-property: (".mobile-topbar", {"clientHeight": "45"})
 
