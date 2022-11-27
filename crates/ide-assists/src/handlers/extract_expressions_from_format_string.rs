@@ -69,7 +69,7 @@ pub(crate) fn extract_expressions_from_format_string(
                 AssistKind::QuickFix
             },
         ),
-        "Extract format args",
+        "Extract format expressions",
         tt.syntax().text_range(),
         |edit| {
             let fmt_range = fmt_string.syntax().text_range();
