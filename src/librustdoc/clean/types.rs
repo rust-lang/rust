@@ -115,7 +115,6 @@ impl From<DefId> for ItemId {
 #[derive(Clone, Debug)]
 pub(crate) struct Crate {
     pub(crate) module: Item,
-    pub(crate) primitives: ThinVec<(DefId, PrimitiveType)>,
     /// Only here so that they can be filtered through the rustdoc passes.
     pub(crate) external_traits: Rc<RefCell<FxHashMap<DefId, Trait>>>,
 }
@@ -2572,7 +2571,7 @@ mod size_asserts {
     use super::*;
     use rustc_data_structures::static_assert_size;
     // tidy-alphabetical-start
-    static_assert_size!(Crate, 72); // frequently moved by-value
+    static_assert_size!(Crate, 64); // frequently moved by-value
     static_assert_size!(DocFragment, 32);
     static_assert_size!(GenericArg, 32);
     static_assert_size!(GenericArgs, 32);
