@@ -22,14 +22,12 @@ tempfile = "3"
 thin-vec = "0.2.9"
 tracing = "0.1"
 tracing-tree = "0.2.0"
+rayon = "1.5.1"
 
 [dependencies.tracing-subscriber]
 version = "0.3.3"
 default-features = false
 features = ["fmt", "env-filter", "smallvec", "parking_lot", "ansi"]
-
-[target.'cfg(windows)'.dependencies]
-rayon = "1.5.1"
 
 [dependencies.cargo-deadlinks]
 git = "https://github.com/jyn514/cargo-deadlinks/"

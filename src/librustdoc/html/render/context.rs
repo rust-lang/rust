@@ -168,6 +168,17 @@ impl<'tcx> Context<'tcx> {
         "../".repeat(self.current.len())
     }
 
+    fn check_dead_links(&mut self) {
+        use cargo_deadlinks::*;
+        use rayon::iter::ParallelIterator;
+
+        let path = self.dst.canonicalize().unwrap();
+        let errors: Vec<_> = unavailable_urls(&path, &CheckContext::default()).collect();
+        for err in errors {
+            self.sess().struct_warn(&err.to_string().replace('\t', "    ")).emit();
+        }
+    }
+
     fn render_item(&mut self, it: &clean::Item, is_module: bool) -> String {
         let mut title = String::new();
         if !is_module {
@@ -707,6 +718,8 @@ impl<'tcx> FormatRenderer<'tcx> for Context<'tcx> {
 
         // No need for it anymore.
         drop(shared);
+
+        self.check_dead_links();
 
         // Flush pending errors.
         Rc::get_mut(&mut self.shared).unwrap().fs.close();
