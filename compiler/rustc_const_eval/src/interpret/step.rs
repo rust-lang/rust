@@ -32,11 +32,6 @@ fn binop_right_homogeneous(op: mir::BinOp) -> bool {
 }
 
 impl<'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
-    pub fn run(&mut self) -> InterpResult<'tcx> {
-        while self.step()? {}
-        Ok(())
-    }
-
     /// Returns `true` as long as there are more things to do.
     ///
     /// This is used by [priroda](https://github.com/oli-obk/priroda)
