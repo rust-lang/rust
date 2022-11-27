@@ -31,6 +31,11 @@ features = ["fmt", "env-filter", "smallvec", "parking_lot", "ansi"]
 [target.'cfg(windows)'.dependencies]
 rayon = "1.5.1"
 
+[dependencies.cargo-deadlinks]
+git = "https://github.com/jyn514/cargo-deadlinks/"
+branch = "http-feature"
+default-features = false
+
 [dev-dependencies]
 expect-test = "1.0"
 
