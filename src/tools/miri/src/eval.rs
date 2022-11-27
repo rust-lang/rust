@@ -24,6 +24,11 @@ use rustc_session::config::EntryFnType;
 use crate::shims::tls;
 use crate::*;
 
+/// When the main thread would exit, we will yield to any other thread that is ready to execute.
+/// But we must only do that a finite number of times, or a background thread running `loop {}`
+/// will hang the program.
+const MAIN_THREAD_YIELDS_AT_SHUTDOWN: u32 = 1_000;
+
 #[derive(Copy, Clone, Debug, PartialEq)]
 pub enum AlignmentCheck {
     /// Do not check alignment.
@@ -180,6 +185,10 @@ enum MainThreadState {
     #[default]
     Running,
     TlsDtors(tls::TlsDtorsState),
+    Yield {
+        remaining: u32,
+    },
+    Done,
 }
 
 impl MainThreadState {
@@ -196,22 +205,36 @@ impl MainThreadState {
                 match state.on_stack_empty(this)? {
                     Poll::Pending => {} // just keep going
                     Poll::Ready(()) => {
-                        // Need to call `thread_terminated` ourselves since we are not going to
-                        // return to the scheduler loop.
-                        this.thread_terminated()?;
-                        // Raise exception to stop program execution.
-                        let ret_place = MPlaceTy::from_aligned_ptr(
-                            this.machine.main_fn_ret_place.unwrap().ptr,
-                            this.machine.layouts.isize,
-                        );
-                        let exit_code =
-                            this.read_scalar(&ret_place.into())?.to_machine_isize(this)?;
-                        throw_machine_stop!(TerminationInfo::Exit {
-                            code: exit_code,
-                            leak_check: true
-                        });
+                        // Give background threads a chance to finish by yielding the main thread a
+                        // couple of times -- but only if we would also preempt threads randomly.
+                        if this.machine.preemption_rate > 0.0 {
+                            *self = Yield { remaining: MAIN_THREAD_YIELDS_AT_SHUTDOWN };
+                        } else {
+                            *self = Done;
+                        }
                     }
                 },
+            Yield { remaining } =>
+                match remaining.checked_sub(1) {
+                    None => *self = Done,
+                    Some(new_remaining) => {
+                        *remaining = new_remaining;
+                        this.yield_active_thread();
+                    }
+                },
+            Done => {
+                // Figure out exit code.
+                let ret_place = MPlaceTy::from_aligned_ptr(
+                    this.machine.main_fn_ret_place.unwrap().ptr,
+                    this.machine.layouts.isize,
+                );
+                let exit_code = this.read_scalar(&ret_place.into())?.to_machine_isize(this)?;
+                // Need to call `thread_terminated` ourselves since we are not going to
+                // return to the scheduler loop.
+                this.thread_terminated()?;
+                // Stop interpreter loop.
+                throw_machine_stop!(TerminationInfo::Exit { code: exit_code, leak_check: true });
+            }
         }
         Ok(Poll::Pending)
     }
