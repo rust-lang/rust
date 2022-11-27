@@ -121,15 +121,14 @@ pub(crate) fn extract_expressions_from_format_string(
             let mut placeholder_idx = 1;
 
             for extracted_args in extracted_args {
-                // remove expr from format string
-                args.push_str(", ");
-
                 match extracted_args {
-                    Arg::Ident(s) | Arg::Expr(s) => {
+                    Arg::Expr(s)=> {
+                        args.push_str(", ");
                         // insert arg
                         args.push_str(&s);
                     }
                     Arg::Placeholder => {
+                        args.push_str(", ");
                         // try matching with existing argument
                         match existing_args.next() {
                             Some(ea) => {
@@ -142,6 +141,7 @@ pub(crate) fn extract_expressions_from_format_string(
                             }
                         }
                     }
+                    Arg::Ident(_s) => (),
                 }
             }
 
@@ -291,6 +291,29 @@ fn main() {
                 r#"
 fn main() {
     print!("My name is {} {}"$0, stringify!(Paperino), x + x)
+}
+"#,
+            ),
+        );
+    }
+
+    #[test]
+    fn extract_only_expressions() {
+        check_assist(
+            extract_expressions_from_format_string,
+            &add_macro_decl(
+                r#"
+fn main() {
+    let var = 1 + 1;
+    print!("foobar {var} {var:?} {x$0 + x}")
+}
+"#,
+            ),
+            &add_macro_decl(
+                r#"
+fn main() {
+    let var = 1 + 1;
+    print!("foobar {var} {var:?} {}"$0, x + x)
 }
 "#,
             ),
