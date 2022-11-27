@@ -32,6 +32,14 @@ pub(crate) fn codegen_aarch64_llvm_intrinsic_call<'tcx>(
             });
         }
 
+        _ if intrinsic.starts_with("llvm.aarch64.neon.rbit.v") => {
+            intrinsic_args!(fx, args => (a); intrinsic);
+
+            simd_for_each_lane(fx, a, ret, &|fx, _lane_ty, _res_lane_ty, lane| {
+                fx.bcx.ins().bitrev(lane)
+            });
+        }
+
         _ if intrinsic.starts_with("llvm.aarch64.neon.sqadd.v") => {
             intrinsic_args!(fx, args => (x, y); intrinsic);
 
@@ -45,6 +53,78 @@ pub(crate) fn codegen_aarch64_llvm_intrinsic_call<'tcx>(
 
             simd_pair_for_each_lane_typed(fx, x, y, ret, &|fx, x_lane, y_lane| {
                 crate::num::codegen_saturating_int_binop(fx, BinOp::Sub, x_lane, y_lane)
+            });
+        }
+
+        _ if intrinsic.starts_with("llvm.aarch64.neon.smax.v") => {
+            intrinsic_args!(fx, args => (x, y); intrinsic);
+
+            simd_pair_for_each_lane(fx, x, y, ret, &|fx, _lane_ty, _res_lane_ty, x_lane, y_lane| {
+                let gt = fx.bcx.ins().icmp(IntCC::SignedGreaterThan, x_lane, y_lane);
+                fx.bcx.ins().select(gt, x_lane, y_lane)
+            });
+        }
+
+        _ if intrinsic.starts_with("llvm.aarch64.neon.umax.v") => {
+            intrinsic_args!(fx, args => (x, y); intrinsic);
+
+            simd_pair_for_each_lane(fx, x, y, ret, &|fx, _lane_ty, _res_lane_ty, x_lane, y_lane| {
+                let gt = fx.bcx.ins().icmp(IntCC::UnsignedGreaterThan, x_lane, y_lane);
+                fx.bcx.ins().select(gt, x_lane, y_lane)
+            });
+        }
+
+        _ if intrinsic.starts_with("llvm.aarch64.neon.smaxv.i") => {
+            intrinsic_args!(fx, args => (v); intrinsic);
+
+            simd_reduce(fx, v, None, ret, &|fx, _ty, a, b| {
+                let gt = fx.bcx.ins().icmp(IntCC::SignedGreaterThan, a, b);
+                fx.bcx.ins().select(gt, a, b)
+            });
+        }
+
+        _ if intrinsic.starts_with("llvm.aarch64.neon.umaxv.i") => {
+            intrinsic_args!(fx, args => (v); intrinsic);
+
+            simd_reduce(fx, v, None, ret, &|fx, _ty, a, b| {
+                let gt = fx.bcx.ins().icmp(IntCC::UnsignedGreaterThan, a, b);
+                fx.bcx.ins().select(gt, a, b)
+            });
+        }
+
+        _ if intrinsic.starts_with("llvm.aarch64.neon.smin.v") => {
+            intrinsic_args!(fx, args => (x, y); intrinsic);
+
+            simd_pair_for_each_lane(fx, x, y, ret, &|fx, _lane_ty, _res_lane_ty, x_lane, y_lane| {
+                let gt = fx.bcx.ins().icmp(IntCC::SignedLessThan, x_lane, y_lane);
+                fx.bcx.ins().select(gt, x_lane, y_lane)
+            });
+        }
+
+        _ if intrinsic.starts_with("llvm.aarch64.neon.umin.v") => {
+            intrinsic_args!(fx, args => (x, y); intrinsic);
+
+            simd_pair_for_each_lane(fx, x, y, ret, &|fx, _lane_ty, _res_lane_ty, x_lane, y_lane| {
+                let gt = fx.bcx.ins().icmp(IntCC::UnsignedLessThan, x_lane, y_lane);
+                fx.bcx.ins().select(gt, x_lane, y_lane)
+            });
+        }
+
+        _ if intrinsic.starts_with("llvm.aarch64.neon.sminv.i") => {
+            intrinsic_args!(fx, args => (v); intrinsic);
+
+            simd_reduce(fx, v, None, ret, &|fx, _ty, a, b| {
+                let gt = fx.bcx.ins().icmp(IntCC::SignedLessThan, a, b);
+                fx.bcx.ins().select(gt, a, b)
+            });
+        }
+
+        _ if intrinsic.starts_with("llvm.aarch64.neon.uminv.i") => {
+            intrinsic_args!(fx, args => (v); intrinsic);
+
+            simd_reduce(fx, v, None, ret, &|fx, _ty, a, b| {
+                let gt = fx.bcx.ins().icmp(IntCC::UnsignedLessThan, a, b);
+                fx.bcx.ins().select(gt, a, b)
             });
         }
 
