@@ -90,10 +90,14 @@ pub macro mir {
     (
         $(let $local_decl:ident $(: $local_decl_ty:ty)? ;)*
 
-        $entry_block:block
+        {
+            $($entry:tt)*
+        }
 
         $(
-            $block_name:ident = $block:block
+            $block_name:ident = {
+                $($block:tt)*
+            }
         )*
     ) => {{
         // First, we declare all basic blocks.
@@ -109,15 +113,146 @@ pub macro mir {
                 let $local_decl $(: $local_decl_ty)? ;
             )*
 
+            ::core::intrinsics::mir::__internal_extract_let!($($entry)*);
+            $(
+                ::core::intrinsics::mir::__internal_extract_let!($($block)*);
+            )*
+
             {
                 // Finally, the contents of the basic blocks
-                $entry_block;
+                ::core::intrinsics::mir::__internal_remove_let!({
+                    {}
+                    { $($entry)* }
+                });
                 $(
-                    $block;
+                    ::core::intrinsics::mir::__internal_remove_let!({
+                        {}
+                        { $($block)* }
+                    });
                 )*
 
                 RET
             }
         }
     }}
+}
+
+/// Helper macro that extracts the `let` declarations out of a bunch of statements.
+///
+/// This macro is written using the "statement muncher" strategy. Each invocation parses the first
+/// statement out of the input, does the appropriate thing with it, and then recursively calls the
+/// same macro on the remainder of the input.
+#[doc(hidden)]
+pub macro __internal_extract_let {
+    // If it's a `let` like statement, keep the `let`
+    (
+        let $var:ident $(: $ty:ty)? = $expr:expr; $($rest:tt)*
+    ) => {
+        let $var $(: $ty)?;
+        ::core::intrinsics::mir::__internal_extract_let!($($rest)*);
+    },
+    // Otherwise, output nothing
+    (
+        $stmt:stmt; $($rest:tt)*
+    ) => {
+        ::core::intrinsics::mir::__internal_extract_let!($($rest)*);
+    },
+    (
+        $expr:expr
+    ) => {}
+}
+
+/// Helper macro that removes the `let` declarations from a bunch of statements.
+///
+/// Because expression position macros cannot expand to statements + expressions, we need to be
+/// slightly creative here. The general strategy is also statement munching as above, but the output
+/// of the macro is "stored" in the subsequent macro invocation. Easiest understood via example:
+/// ```text
+/// invoke!(
+///     {
+///         {
+///             x = 5;
+///         }
+///         {
+///             let d = e;
+///             Call()
+///         }
+///     }
+/// )
+/// ```
+/// becomes
+/// ```text
+/// invoke!(
+///     {
+///         {
+///             x = 5;
+///             d = e;
+///         }
+///         {
+///             Call()
+///         }
+///     }
+/// )
+/// ```
+#[doc(hidden)]
+pub macro __internal_remove_let {
+    // If it's a `let` like statement, remove the `let`
+    (
+        {
+            {
+                $($already_parsed:tt)*
+            }
+            {
+                let $var:ident $(: $ty:ty)? = $expr:expr;
+                $($rest:tt)*
+            }
+        }
+    ) => { ::core::intrinsics::mir::__internal_remove_let!(
+        {
+            {
+                $($already_parsed)*
+                $var = $expr;
+            }
+            {
+                $($rest)*
+            }
+        }
+    )},
+    // Otherwise, keep going
+    (
+        {
+            {
+                $($already_parsed:tt)*
+            }
+            {
+                $stmt:stmt;
+                $($rest:tt)*
+            }
+        }
+    ) => { ::core::intrinsics::mir::__internal_remove_let!(
+        {
+            {
+                $($already_parsed)*
+                $stmt;
+            }
+            {
+                $($rest)*
+            }
+        }
+    )},
+    (
+        {
+            {
+                $($already_parsed:tt)*
+            }
+            {
+                $expr:expr
+            }
+        }
+    ) => {
+        {
+            $($already_parsed)*
+            $expr
+        }
+    },
 }
