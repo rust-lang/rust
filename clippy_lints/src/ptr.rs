@@ -12,8 +12,8 @@ use rustc_hir::hir_id::HirIdMap;
 use rustc_hir::intravisit::{walk_expr, Visitor};
 use rustc_hir::{
     self as hir, AnonConst, BinOpKind, BindingAnnotation, Body, Expr, ExprKind, FnRetTy, FnSig, GenericArg,
-    ImplItemKind, ItemKind, Lifetime, LifetimeName, Mutability, Node, Param, ParamName, PatKind, QPath, TraitFn,
-    TraitItem, TraitItemKind, TyKind, Unsafety,
+    ImplItemKind, ItemKind, Lifetime, Mutability, Node, Param, PatKind, QPath, TraitFn, TraitItem, TraitItemKind,
+    TyKind, Unsafety,
 };
 use rustc_infer::infer::TyCtxtInferExt;
 use rustc_infer::traits::{Obligation, ObligationCause};
@@ -343,21 +343,16 @@ impl PtrArg<'_> {
 }
 
 struct RefPrefix {
-    lt: LifetimeName,
+    lt: Lifetime,
     mutability: Mutability,
 }
 impl fmt::Display for RefPrefix {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         use fmt::Write;
         f.write_char('&')?;
-        match self.lt {
-            LifetimeName::Param(_, ParamName::Plain(name)) => {
-                name.fmt(f)?;
-                f.write_char(' ')?;
-            },
-            LifetimeName::Infer => f.write_str("'_ ")?,
-            LifetimeName::Static => f.write_str("'static ")?,
-            _ => (),
+        if !self.lt.is_anonymous() {
+            self.lt.ident.fmt(f)?;
+            f.write_char(' ')?;
         }
         f.write_str(self.mutability.prefix_str())
     }
@@ -495,7 +490,7 @@ fn check_fn_args<'cx, 'tcx: 'cx>(
                         ty_name: name.ident.name,
                         method_renames,
                         ref_prefix: RefPrefix {
-                            lt: lt.name,
+                            lt: lt.clone(),
                             mutability,
                         },
                         deref_ty,

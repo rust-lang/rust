@@ -7,7 +7,7 @@ use rustc_hir::def::Res;
 use rustc_hir::HirIdMap;
 use rustc_hir::{
     ArrayLen, BinOpKind, BindingAnnotation, Block, BodyId, Closure, Expr, ExprField, ExprKind, FnRetTy, GenericArg,
-    GenericArgs, Guard, HirId, InlineAsmOperand, Let, Lifetime, LifetimeName, ParamName, Pat, PatField, PatKind, Path,
+    GenericArgs, Guard, HirId, InlineAsmOperand, Let, Lifetime, LifetimeName, Pat, PatField, PatKind, Path,
     PathSegment, PrimTy, QPath, Stmt, StmtKind, Ty, TyKind, TypeBinding,
 };
 use rustc_lexer::{tokenize, TokenKind};
@@ -337,7 +337,7 @@ impl HirEqInterExpr<'_, '_, '_> {
     }
 
     fn eq_lifetime(left: &Lifetime, right: &Lifetime) -> bool {
-        left.name == right.name
+        left.res == right.res
     }
 
     fn eq_pat_field(&mut self, left: &PatField<'_>, right: &PatField<'_>) -> bool {
@@ -925,16 +925,10 @@ impl<'a, 'tcx> SpanlessHash<'a, 'tcx> {
     }
 
     pub fn hash_lifetime(&mut self, lifetime: &Lifetime) {
-        std::mem::discriminant(&lifetime.name).hash(&mut self.s);
-        if let LifetimeName::Param(param_id, ref name) = lifetime.name {
-            std::mem::discriminant(name).hash(&mut self.s);
+        lifetime.ident.name.hash(&mut self.s);
+        std::mem::discriminant(&lifetime.res).hash(&mut self.s);
+        if let LifetimeName::Param(param_id) = lifetime.res {
             param_id.hash(&mut self.s);
-            match name {
-                ParamName::Plain(ref ident) => {
-                    ident.name.hash(&mut self.s);
-                },
-                ParamName::Fresh | ParamName::Error => {},
-            }
         }
     }
 
