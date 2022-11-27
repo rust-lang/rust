@@ -9,16 +9,17 @@ use rustc_hir as hir;
 use rustc_hir::def::{CtorKind, CtorOf, DefKind, Res};
 use rustc_hir::def_id::DefId;
 use rustc_hir::{Expr, FnDecl, LangItem, TyKind, Unsafety};
-use rustc_infer::infer::TyCtxtInferExt;
+use rustc_infer::infer::{TyCtxtInferExt, type_variable::{TypeVariableOrigin, TypeVariableOriginKind}};
 use rustc_lint::LateContext;
 use rustc_middle::mir::interpret::{ConstValue, Scalar};
 use rustc_middle::ty::{
-    self, AdtDef, Binder, BoundRegion, DefIdTree, FnSig, IntTy, ParamEnv, Predicate, PredicateKind, ProjectionTy,
-    Region, RegionKind, Ty, TyCtxt, TypeSuperVisitable, TypeVisitable, TypeVisitor, UintTy, VariantDef, VariantDiscr,
+    self, AdtDef, AssocKind, Binder, BoundRegion, DefIdTree, FnSig, IntTy, List, ParamEnv, Predicate, PredicateKind,
+    ProjectionTy, Region, RegionKind, SubstsRef, Ty, TyCtxt, TypeSuperVisitable, TypeVisitable, TypeVisitor, UintTy,
+    VariantDef, VariantDiscr,
 };
 use rustc_middle::ty::{GenericArg, GenericArgKind};
 use rustc_span::symbol::Ident;
-use rustc_span::{sym, Span, Symbol};
+use rustc_span::{sym, Span, Symbol, DUMMY_SP};
 use rustc_target::abi::{Size, VariantIdx};
 use rustc_trait_selection::infer::InferCtxtExt;
 use rustc_trait_selection::traits::query::normalize::AtExt;
@@ -59,29 +60,64 @@ pub fn contains_adt_constructor<'tcx>(ty: Ty<'tcx>, adt: AdtDef<'tcx>) -> bool {
     })
 }
 
+/// Walks into `ty` and returns `true` if any inner type is an instance of the given type, or adt
+/// constructor of the same type.
+///
+/// This method also recurses into opaque type predicates, so call it with `impl Trait<U>` and `U`
+/// will also return `true`.
+pub fn contains_ty_adt_constructor_opaque<'tcx>(cx: &LateContext<'tcx>, ty: Ty<'tcx>, needle: Ty<'tcx>) -> bool {
+    ty.walk().any(|inner| match inner.unpack() {
+        GenericArgKind::Type(inner_ty) => {
+            if inner_ty == needle {
+                return true;
+            }
+
+            if inner_ty.ty_adt_def() == needle.ty_adt_def() {
+                return true;
+            }
+
+            if let ty::Opaque(def_id, _) = *inner_ty.kind() {
+                for &(predicate, _span) in cx.tcx.explicit_item_bounds(def_id) {
+                    match predicate.kind().skip_binder() {
+                        // For `impl Trait<U>`, it will register a predicate of `T: Trait<U>`, so we go through
+                        // and check substituions to find `U`.
+                        ty::PredicateKind::Clause(ty::Clause::Trait(trait_predicate)) => {
+                            if trait_predicate
+                                .trait_ref
+                                .substs
+                                .types()
+                                .skip(1) // Skip the implicit `Self` generic parameter
+                                .any(|ty| contains_ty_adt_constructor_opaque(cx, ty, needle))
+                            {
+                                return true;
+                            }
+                        },
+                        // For `impl Trait<Assoc=U>`, it will register a predicate of `<T as Trait>::Assoc = U`,
+                        // so we check the term for `U`.
+                        ty::PredicateKind::Clause(ty::Clause::Projection(projection_predicate)) => {
+                            if let ty::TermKind::Ty(ty) = projection_predicate.term.unpack() {
+                                if contains_ty_adt_constructor_opaque(cx, ty, needle) {
+                                    return true;
+                                }
+                            };
+                        },
+                        _ => (),
+                    }
+                }
+            }
+
+            false
+        },
+        GenericArgKind::Lifetime(_) | GenericArgKind::Const(_) => false,
+    })
+}
+
 /// Resolves `<T as Iterator>::Item` for `T`
 /// Do not invoke without first verifying that the type implements `Iterator`
 pub fn get_iterator_item_ty<'tcx>(cx: &LateContext<'tcx>, ty: Ty<'tcx>) -> Option<Ty<'tcx>> {
     cx.tcx
         .get_diagnostic_item(sym::Iterator)
-        .and_then(|iter_did| get_associated_type(cx, ty, iter_did, "Item"))
-}
-
-/// Returns the associated type `name` for `ty` as an implementation of `trait_id`.
-/// Do not invoke without first verifying that the type implements the trait.
-pub fn get_associated_type<'tcx>(
-    cx: &LateContext<'tcx>,
-    ty: Ty<'tcx>,
-    trait_id: DefId,
-    name: &str,
-) -> Option<Ty<'tcx>> {
-    cx.tcx
-        .associated_items(trait_id)
-        .find_by_name_and_kind(cx.tcx, Ident::from_str(name), ty::AssocKind::Type, trait_id)
-        .and_then(|assoc| {
-            let proj = cx.tcx.mk_projection(assoc.def_id, cx.tcx.mk_substs_trait(ty, &[]));
-            cx.tcx.try_normalize_erasing_regions(cx.param_env, proj).ok()
-        })
+        .and_then(|iter_did| cx.get_associated_type(ty, iter_did, "Item"))
 }
 
 /// Get the diagnostic name of a type, e.g. `sym::HashMap`. To check if a type
@@ -153,7 +189,7 @@ pub fn implements_trait<'tcx>(
     trait_id: DefId,
     ty_params: &[GenericArg<'tcx>],
 ) -> bool {
-    implements_trait_with_env(cx.tcx, cx.param_env, ty, trait_id, ty_params)
+    implements_trait_with_env(cx.tcx, cx.param_env, ty, trait_id, ty_params.iter().map(|&arg| Some(arg)))
 }
 
 /// Same as `implements_trait` but allows using a `ParamEnv` different from the lint context.
@@ -162,7 +198,7 @@ pub fn implements_trait_with_env<'tcx>(
     param_env: ParamEnv<'tcx>,
     ty: Ty<'tcx>,
     trait_id: DefId,
-    ty_params: &[GenericArg<'tcx>],
+    ty_params: impl IntoIterator<Item = Option<GenericArg<'tcx>>>,
 ) -> bool {
     // Clippy shouldn't have infer types
     assert!(!ty.needs_infer());
@@ -171,10 +207,14 @@ pub fn implements_trait_with_env<'tcx>(
     if ty.has_escaping_bound_vars() {
         return false;
     }
-    let ty_params = tcx.mk_substs(ty_params.iter());
     let infcx = tcx.infer_ctxt().build();
+    let orig = TypeVariableOrigin {
+        kind: TypeVariableOriginKind::MiscVariable,
+        span: DUMMY_SP,
+    };
+    let ty_params = tcx.mk_substs(ty_params.into_iter().map(|arg| arg.unwrap_or_else(|| infcx.next_ty_var(orig).into())));
     infcx
-        .type_implements_trait(trait_id, ty, ty_params, param_env)
+        .type_implements_trait(trait_id, [ty.into()].into_iter().chain(ty_params), param_env)
         .must_apply_modulo_regions()
 }
 
@@ -199,7 +239,7 @@ pub fn is_must_use_ty<'tcx>(cx: &LateContext<'tcx>, ty: Ty<'tcx>) -> bool {
         ty::Tuple(substs) => substs.iter().any(|ty| is_must_use_ty(cx, ty)),
         ty::Opaque(def_id, _) => {
             for (predicate, _) in cx.tcx.explicit_item_bounds(*def_id) {
-                if let ty::PredicateKind::Trait(trait_predicate) = predicate.kind().skip_binder() {
+                if let ty::PredicateKind::Clause(ty::Clause::Trait(trait_predicate)) = predicate.kind().skip_binder() {
                     if cx.tcx.has_attr(trait_predicate.trait_ref.def_id, sym::must_use) {
                         return true;
                     }
@@ -618,7 +658,7 @@ fn sig_from_bounds<'tcx>(
 
     for pred in predicates {
         match pred.kind().skip_binder() {
-            PredicateKind::Trait(p)
+            PredicateKind::Clause(ty::Clause::Trait(p))
                 if (lang_items.fn_trait() == Some(p.def_id())
                     || lang_items.fn_mut_trait() == Some(p.def_id())
                     || lang_items.fn_once_trait() == Some(p.def_id()))
@@ -631,7 +671,7 @@ fn sig_from_bounds<'tcx>(
                 }
                 inputs = Some(i);
             },
-            PredicateKind::Projection(p)
+            PredicateKind::Clause(ty::Clause::Projection(p))
                 if Some(p.projection_ty.item_def_id) == lang_items.fn_once_output()
                     && p.projection_ty.self_ty() == ty =>
             {
@@ -659,7 +699,7 @@ fn sig_for_projection<'tcx>(cx: &LateContext<'tcx>, ty: ProjectionTy<'tcx>) -> O
         .subst_iter_copied(cx.tcx, ty.substs)
     {
         match pred.kind().skip_binder() {
-            PredicateKind::Trait(p)
+            PredicateKind::Clause(ty::Clause::Trait(p))
                 if (lang_items.fn_trait() == Some(p.def_id())
                     || lang_items.fn_mut_trait() == Some(p.def_id())
                     || lang_items.fn_once_trait() == Some(p.def_id())) =>
@@ -672,7 +712,7 @@ fn sig_for_projection<'tcx>(cx: &LateContext<'tcx>, ty: ProjectionTy<'tcx>) -> O
                 }
                 inputs = Some(i);
             },
-            PredicateKind::Projection(p) if Some(p.projection_ty.item_def_id) == lang_items.fn_once_output() => {
+            PredicateKind::Clause(ty::Clause::Projection(p)) if Some(p.projection_ty.item_def_id) == lang_items.fn_once_output() => {
                 if output.is_some() {
                     // Multiple different fn trait impls. Is this even allowed?
                     return None;
@@ -701,7 +741,7 @@ impl core::ops::Add<u32> for EnumValue {
     }
 }
 
-/// Attempts to read the given constant as though it were an an enum value.
+/// Attempts to read the given constant as though it were an enum value.
 #[expect(clippy::cast_possible_truncation, clippy::cast_possible_wrap)]
 pub fn read_explicit_enum_value(tcx: TyCtxt<'_>, id: DefId) -> Option<EnumValue> {
     if let Ok(ConstValue::Scalar(Scalar::Int(value))) = tcx.const_eval_poly(id) {
@@ -782,6 +822,42 @@ pub fn for_each_top_level_late_bound_region<B>(
     ty.visit_with(&mut V { index: 0, f })
 }
 
+pub struct AdtVariantInfo {
+    pub ind: usize,
+    pub size: u64,
+
+    /// (ind, size)
+    pub fields_size: Vec<(usize, u64)>,
+}
+
+impl AdtVariantInfo {
+    /// Returns ADT variants ordered by size
+    pub fn new<'tcx>(cx: &LateContext<'tcx>, adt: AdtDef<'tcx>, subst: &'tcx List<GenericArg<'tcx>>) -> Vec<Self> {
+        let mut variants_size = adt
+            .variants()
+            .iter()
+            .enumerate()
+            .map(|(i, variant)| {
+                let mut fields_size = variant
+                    .fields
+                    .iter()
+                    .enumerate()
+                    .map(|(i, f)| (i, approx_ty_size(cx, f.ty(cx.tcx, subst))))
+                    .collect::<Vec<_>>();
+                fields_size.sort_by(|(_, a_size), (_, b_size)| (a_size.cmp(b_size)));
+
+                Self {
+                    ind: i,
+                    size: fields_size.iter().map(|(_, size)| size).sum(),
+                    fields_size,
+                }
+            })
+            .collect::<Vec<_>>();
+        variants_size.sort_by(|a, b| (b.size.cmp(&a.size)));
+        variants_size
+    }
+}
+
 /// Gets the struct or enum variant from the given `Res`
 pub fn variant_of_res<'tcx>(cx: &LateContext<'tcx>, res: Res) -> Option<&'tcx VariantDef> {
     match res {
@@ -811,7 +887,7 @@ pub fn ty_is_fn_once_param<'tcx>(tcx: TyCtxt<'_>, ty: Ty<'tcx>, predicates: &'tc
     predicates
         .iter()
         .try_fold(false, |found, p| {
-            if let PredicateKind::Trait(p) = p.kind().skip_binder()
+            if let PredicateKind::Clause(ty::Clause::Trait(p)) = p.kind().skip_binder()
             && let ty::Param(self_ty) = p.trait_ref.self_ty().kind()
             && ty.index == self_ty.index
         {
@@ -875,4 +951,133 @@ pub fn approx_ty_size<'tcx>(cx: &LateContext<'tcx>, ty: Ty<'tcx>) -> u64 {
             .unwrap_or_default(),
         (Err(_), _) => 0,
     }
+}
+
+/// Makes the projection type for the named associated type in the given impl or trait impl.
+///
+/// This function is for associated types which are "known" to exist, and as such, will only return
+/// `None` when debug assertions are disabled in order to prevent ICE's. With debug assertions
+/// enabled this will check that the named associated type exists, the correct number of
+/// substitutions are given, and that the correct kinds of substitutions are given (lifetime,
+/// constant or type). This will not check if type normalization would succeed.
+pub fn make_projection<'tcx>(
+    tcx: TyCtxt<'tcx>,
+    container_id: DefId,
+    assoc_ty: Symbol,
+    substs: impl IntoIterator<Item = impl Into<GenericArg<'tcx>>>,
+) -> Option<ProjectionTy<'tcx>> {
+    fn helper<'tcx>(
+        tcx: TyCtxt<'tcx>,
+        container_id: DefId,
+        assoc_ty: Symbol,
+        substs: SubstsRef<'tcx>,
+    ) -> Option<ProjectionTy<'tcx>> {
+        let Some(assoc_item) = tcx
+            .associated_items(container_id)
+            .find_by_name_and_kind(tcx, Ident::with_dummy_span(assoc_ty), AssocKind::Type, container_id)
+        else {
+            debug_assert!(false, "type `{assoc_ty}` not found in `{container_id:?}`");
+            return None;
+        };
+        #[cfg(debug_assertions)]
+        {
+            let generics = tcx.generics_of(assoc_item.def_id);
+            let generic_count = generics.parent_count + generics.params.len();
+            let params = generics
+                .parent
+                .map_or([].as_slice(), |id| &*tcx.generics_of(id).params)
+                .iter()
+                .chain(&generics.params)
+                .map(|x| &x.kind);
+
+            debug_assert!(
+                generic_count == substs.len(),
+                "wrong number of substs for `{:?}`: found `{}` expected `{}`.\n\
+                    note: the expected parameters are: {:#?}\n\
+                    the given arguments are: `{:#?}`",
+                assoc_item.def_id,
+                substs.len(),
+                generic_count,
+                params.map(ty::GenericParamDefKind::descr).collect::<Vec<_>>(),
+                substs,
+            );
+
+            if let Some((idx, (param, arg))) = params
+                .clone()
+                .zip(substs.iter().map(GenericArg::unpack))
+                .enumerate()
+                .find(|(_, (param, arg))| {
+                    !matches!(
+                        (param, arg),
+                        (ty::GenericParamDefKind::Lifetime, GenericArgKind::Lifetime(_))
+                            | (ty::GenericParamDefKind::Type { .. }, GenericArgKind::Type(_))
+                            | (ty::GenericParamDefKind::Const { .. }, GenericArgKind::Const(_))
+                    )
+                })
+            {
+                debug_assert!(
+                    false,
+                    "mismatched subst type at index {}: expected a {}, found `{:?}`\n\
+                        note: the expected parameters are {:#?}\n\
+                        the given arguments are {:#?}",
+                    idx,
+                    param.descr(),
+                    arg,
+                    params.map(ty::GenericParamDefKind::descr).collect::<Vec<_>>(),
+                    substs,
+                );
+            }
+        }
+
+        Some(ProjectionTy {
+            substs,
+            item_def_id: assoc_item.def_id,
+        })
+    }
+    helper(
+        tcx,
+        container_id,
+        assoc_ty,
+        tcx.mk_substs(substs.into_iter().map(Into::into)),
+    )
+}
+
+/// Normalizes the named associated type in the given impl or trait impl.
+///
+/// This function is for associated types which are "known" to be valid with the given
+/// substitutions, and as such, will only return `None` when debug assertions are disabled in order
+/// to prevent ICE's. With debug assertions enabled this will check that that type normalization
+/// succeeds as well as everything checked by `make_projection`.
+pub fn make_normalized_projection<'tcx>(
+    tcx: TyCtxt<'tcx>,
+    param_env: ParamEnv<'tcx>,
+    container_id: DefId,
+    assoc_ty: Symbol,
+    substs: impl IntoIterator<Item = impl Into<GenericArg<'tcx>>>,
+) -> Option<Ty<'tcx>> {
+    fn helper<'tcx>(tcx: TyCtxt<'tcx>, param_env: ParamEnv<'tcx>, ty: ProjectionTy<'tcx>) -> Option<Ty<'tcx>> {
+        #[cfg(debug_assertions)]
+        if let Some((i, subst)) = ty
+            .substs
+            .iter()
+            .enumerate()
+            .find(|(_, subst)| subst.has_late_bound_regions())
+        {
+            debug_assert!(
+                false,
+                "substs contain late-bound region at index `{i}` which can't be normalized.\n\
+                    use `TyCtxt::erase_late_bound_regions`\n\
+                    note: subst is `{subst:#?}`",
+            );
+            return None;
+        }
+        match tcx.try_normalize_erasing_regions(param_env, tcx.mk_projection(ty.item_def_id, ty.substs)) {
+            Ok(ty) => Some(ty),
+            Err(e) => {
+                debug_assert!(false, "failed to normalize type `{ty}`: {e:#?}");
+                None
+            },
+        }
+    }
+    helper(tcx, param_env, make_projection(tcx, container_id, assoc_ty, substs)?)
 }

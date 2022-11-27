@@ -812,8 +812,8 @@ LL |         trait GenericLifetimeLifetimeAT<'a, 'b> {
    |               ^^^^^^^^^^^^^^^^^^^^^^^^^ --  --
 help: add missing lifetime argument
    |
-LL |         type B = Box<dyn GenericLifetimeLifetimeAT<'static, 'b, AssocTy=()>>;
-   |                                                           ++++
+LL |         type B = Box<dyn GenericLifetimeLifetimeAT<'static, 'static, AssocTy=()>>;
+   |                                                           +++++++++
 
 error[E0107]: this trait takes 1 generic argument but 0 generic arguments were supplied
   --> $DIR/wrong-number-of-args.rs:287:26
@@ -846,8 +846,8 @@ LL |         trait GenericLifetimeLifetimeTypeAT<'a, 'b, A> {
    |               ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ --  --
 help: add missing lifetime argument
    |
-LL |         type B = Box<dyn GenericLifetimeLifetimeTypeAT<'static, 'b, AssocTy=()>>;
-   |                                                               ++++
+LL |         type B = Box<dyn GenericLifetimeLifetimeTypeAT<'static, 'static, AssocTy=()>>;
+   |                                                               +++++++++
 
 error[E0107]: this trait takes 1 generic argument but 0 generic arguments were supplied
   --> $DIR/wrong-number-of-args.rs:294:26
@@ -880,8 +880,8 @@ LL |         trait GenericLifetimeLifetimeTypeAT<'a, 'b, A> {
    |               ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ --  --
 help: add missing lifetime argument
    |
-LL |         type C = Box<dyn GenericLifetimeLifetimeTypeAT<'static, 'b, (), AssocTy=()>>;
-   |                                                               ++++
+LL |         type C = Box<dyn GenericLifetimeLifetimeTypeAT<'static, 'static, (), AssocTy=()>>;
+   |                                                               +++++++++
 
 error[E0107]: missing generics for struct `HashMap`
   --> $DIR/wrong-number-of-args.rs:310:18

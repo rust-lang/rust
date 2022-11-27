@@ -17,11 +17,10 @@ use hir::def::DefKind;
 use rustc_errors::{DelayDm, FatalError, MultiSpan};
 use rustc_hir as hir;
 use rustc_hir::def_id::DefId;
-use rustc_middle::ty::abstract_const::{walk_abstract_const, AbstractConst};
+use rustc_middle::ty::subst::{GenericArg, InternalSubsts};
 use rustc_middle::ty::{
     self, EarlyBinder, Ty, TyCtxt, TypeSuperVisitable, TypeVisitable, TypeVisitor,
 };
-use rustc_middle::ty::{GenericArg, InternalSubsts};
 use rustc_middle::ty::{Predicate, ToPredicate};
 use rustc_session::lint::builtin::WHERE_CLAUSES_OBJECT_SAFETY;
 use rustc_span::symbol::Symbol;
@@ -288,11 +287,11 @@ fn predicate_references_self<'tcx>(
     let self_ty = tcx.types.self_param;
     let has_self_ty = |arg: &GenericArg<'tcx>| arg.walk().any(|arg| arg == self_ty.into());
     match predicate.kind().skip_binder() {
-        ty::PredicateKind::Trait(ref data) => {
+        ty::PredicateKind::Clause(ty::Clause::Trait(ref data)) => {
             // In the case of a trait predicate, we can skip the "self" type.
             if data.trait_ref.substs[1..].iter().any(has_self_ty) { Some(sp) } else { None }
         }
-        ty::PredicateKind::Projection(ref data) => {
+        ty::PredicateKind::Clause(ty::Clause::Projection(ref data)) => {
             // And similarly for projections. This should be redundant with
             // the previous check because any projection should have a
             // matching `Trait` predicate with the same inputs, but we do
@@ -312,13 +311,14 @@ fn predicate_references_self<'tcx>(
         }
         ty::PredicateKind::WellFormed(..)
         | ty::PredicateKind::ObjectSafe(..)
-        | ty::PredicateKind::TypeOutlives(..)
-        | ty::PredicateKind::RegionOutlives(..)
+        | ty::PredicateKind::Clause(ty::Clause::TypeOutlives(..))
+        | ty::PredicateKind::Clause(ty::Clause::RegionOutlives(..))
         | ty::PredicateKind::ClosureKind(..)
         | ty::PredicateKind::Subtype(..)
         | ty::PredicateKind::Coerce(..)
         | ty::PredicateKind::ConstEvaluatable(..)
         | ty::PredicateKind::ConstEquate(..)
+        | ty::PredicateKind::Ambiguous
         | ty::PredicateKind::TypeWellFormedFromEnv(..) => None,
     }
 }
@@ -337,19 +337,20 @@ fn generics_require_sized_self(tcx: TyCtxt<'_>, def_id: DefId) -> bool {
     let predicates = predicates.instantiate_identity(tcx).predicates;
     elaborate_predicates(tcx, predicates.into_iter()).any(|obligation| {
         match obligation.predicate.kind().skip_binder() {
-            ty::PredicateKind::Trait(ref trait_pred) => {
+            ty::PredicateKind::Clause(ty::Clause::Trait(ref trait_pred)) => {
                 trait_pred.def_id() == sized_def_id && trait_pred.self_ty().is_param(0)
             }
-            ty::PredicateKind::Projection(..)
+            ty::PredicateKind::Clause(ty::Clause::Projection(..))
             | ty::PredicateKind::Subtype(..)
             | ty::PredicateKind::Coerce(..)
-            | ty::PredicateKind::RegionOutlives(..)
+            | ty::PredicateKind::Clause(ty::Clause::RegionOutlives(..))
             | ty::PredicateKind::WellFormed(..)
             | ty::PredicateKind::ObjectSafe(..)
             | ty::PredicateKind::ClosureKind(..)
-            | ty::PredicateKind::TypeOutlives(..)
+            | ty::PredicateKind::Clause(ty::Clause::TypeOutlives(..))
             | ty::PredicateKind::ConstEvaluatable(..)
             | ty::PredicateKind::ConstEquate(..)
+            | ty::PredicateKind::Ambiguous
             | ty::PredicateKind::TypeWellFormedFromEnv(..) => false,
         }
     })
@@ -685,10 +686,9 @@ fn receiver_is_dispatchable<'tcx>(
         let param_env = tcx.param_env(method.def_id);
 
         // Self: Unsize<U>
-        let unsize_predicate = ty::Binder::dummy(ty::TraitRef {
-            def_id: unsize_did,
-            substs: tcx.mk_substs_trait(tcx.types.self_param, &[unsized_self_ty.into()]),
-        })
+        let unsize_predicate = ty::Binder::dummy(
+            tcx.mk_trait_ref(unsize_did, [tcx.types.self_param, unsized_self_ty]),
+        )
         .without_const()
         .to_predicate(tcx);
 
@@ -720,11 +720,9 @@ fn receiver_is_dispatchable<'tcx>(
 
     // Receiver: DispatchFromDyn<Receiver[Self => U]>
     let obligation = {
-        let predicate = ty::Binder::dummy(ty::TraitRef {
-            def_id: dispatch_from_dyn_did,
-            substs: tcx.mk_substs_trait(receiver_ty, &[unsized_receiver_ty.into()]),
-        })
-        .without_const();
+        let predicate = ty::Binder::dummy(
+            tcx.mk_trait_ref(dispatch_from_dyn_did, [receiver_ty, unsized_receiver_ty]),
+        );
 
         Obligation::new(tcx, ObligationCause::dummy(), param_env, predicate)
     };
@@ -838,23 +836,9 @@ fn contains_illegal_self_type_reference<'tcx, T: TypeVisitable<'tcx>>(
         }
 
         fn visit_const(&mut self, ct: ty::Const<'tcx>) -> ControlFlow<Self::BreakTy> {
-            // Constants can only influence object safety if they reference `Self`.
+            // Constants can only influence object safety if they are generic and reference `Self`.
             // This is only possible for unevaluated constants, so we walk these here.
-            //
-            // If `AbstractConst::from_const` returned an error we already failed compilation
-            // so we don't have to emit an additional error here.
-            use rustc_middle::ty::abstract_const::Node;
-            if let Ok(Some(ct)) = AbstractConst::from_const(self.tcx, ct) {
-                walk_abstract_const(self.tcx, ct, |node| match node.root(self.tcx) {
-                    Node::Leaf(leaf) => self.visit_const(leaf),
-                    Node::Cast(_, _, ty) => self.visit_ty(ty),
-                    Node::Binop(..) | Node::UnaryOp(..) | Node::FunctionCall(_, _) => {
-                        ControlFlow::CONTINUE
-                    }
-                })
-            } else {
-                ct.super_visit_with(self)
-            }
+            self.tcx.expand_abstract_consts(ct).super_visit_with(self)
         }
     }
 

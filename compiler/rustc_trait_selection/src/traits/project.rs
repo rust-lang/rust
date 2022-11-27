@@ -11,8 +11,8 @@ use super::Selection;
 use super::SelectionContext;
 use super::SelectionError;
 use super::{
-    ImplSourceClosureData, ImplSourceDiscriminantKindData, ImplSourceFnPointerData,
-    ImplSourceGeneratorData, ImplSourcePointeeData, ImplSourceUserDefinedData,
+    ImplSourceClosureData, ImplSourceFnPointerData, ImplSourceFutureData, ImplSourceGeneratorData,
+    ImplSourceUserDefinedData,
 };
 use super::{Normalized, NormalizedTy, ProjectionCacheEntry, ProjectionCacheKey};
 
@@ -28,6 +28,7 @@ use rustc_hir::def::DefKind;
 use rustc_hir::def_id::DefId;
 use rustc_hir::lang_items::LangItem;
 use rustc_infer::infer::resolve::OpportunisticRegionResolver;
+use rustc_infer::traits::ImplSourceBuiltinData;
 use rustc_middle::traits::select::OverflowError;
 use rustc_middle::ty::fold::{TypeFoldable, TypeFolder, TypeSuperFoldable};
 use rustc_middle::ty::visit::{MaxUniverse, TypeVisitable};
@@ -566,22 +567,6 @@ impl<'a, 'b, 'tcx> TypeFolder<'tcx> for AssocTypeNormalizer<'a, 'b, 'tcx> {
                     .flatten()
                     .unwrap_or_else(|| ty.super_fold_with(self).into())
                 };
-                // For cases like #95134 we would like to catch overflows early
-                // otherwise they slip away and cause ICE.
-                let recursion_limit = self.tcx().recursion_limit();
-                if !recursion_limit.value_within_limit(self.depth)
-                    // HACK: Don't overflow when running cargo doc see #100991
-                    && !self.tcx().sess.opts.actually_rustdoc
-                {
-                    let obligation = Obligation::with_depth(
-                        self.selcx.tcx(),
-                        self.cause.clone(),
-                        recursion_limit.0,
-                        self.param_env,
-                        ty,
-                    );
-                    self.selcx.infcx().err_ctxt().report_overflow_error(&obligation, true);
-                }
                 debug!(
                     ?self.depth,
                     ?ty,
@@ -1343,8 +1328,7 @@ fn assemble_candidate_for_impl_trait_in_trait<'cx, 'tcx>(
             obligation.predicate.substs.truncate_to(tcx, tcx.generics_of(trait_def_id));
         // FIXME(named-returns): Binders
         let trait_predicate =
-            ty::Binder::dummy(ty::TraitRef { def_id: trait_def_id, substs: trait_substs })
-                .to_poly_trait_predicate();
+            ty::Binder::dummy(ty::TraitRef { def_id: trait_def_id, substs: trait_substs });
 
         let _ = selcx.infcx().commit_if_ok(|_| {
             match selcx.select(&obligation.with(tcx, trait_predicate)) {
@@ -1492,7 +1476,9 @@ fn assemble_candidates_from_predicates<'cx, 'tcx>(
     let infcx = selcx.infcx();
     for predicate in env_predicates {
         let bound_predicate = predicate.kind();
-        if let ty::PredicateKind::Projection(data) = predicate.kind().skip_binder() {
+        if let ty::PredicateKind::Clause(ty::Clause::Projection(data)) =
+            predicate.kind().skip_binder()
+        {
             let data = bound_predicate.rebind(data);
             if data.projection_def_id() != obligation.predicate.item_def_id {
                 continue;
@@ -1542,7 +1528,7 @@ fn assemble_candidates_from_impls<'cx, 'tcx>(
     // If we are resolving `<T as TraitRef<...>>::Item == Type`,
     // start out by selecting the predicate `T as TraitRef<...>`:
     let poly_trait_ref = ty::Binder::dummy(obligation.predicate.trait_ref(selcx.tcx()));
-    let trait_obligation = obligation.with(selcx.tcx(), poly_trait_ref.to_poly_trait_predicate());
+    let trait_obligation = obligation.with(selcx.tcx(), poly_trait_ref);
     let _ = selcx.infcx().commit_if_ok(|_| {
         let impl_source = match selcx.select(&trait_obligation) {
             Ok(Some(impl_source)) => impl_source,
@@ -1560,6 +1546,7 @@ fn assemble_candidates_from_impls<'cx, 'tcx>(
         let eligible = match &impl_source {
             super::ImplSource::Closure(_)
             | super::ImplSource::Generator(_)
+            | super::ImplSource::Future(_)
             | super::ImplSource::FnPointer(_)
             | super::ImplSource::TraitAlias(_) => true,
             super::ImplSource::UserDefined(impl_data) => {
@@ -1612,128 +1599,126 @@ fn assemble_candidates_from_impls<'cx, 'tcx>(
                     }
                 }
             }
-            super::ImplSource::DiscriminantKind(..) => {
-                // While `DiscriminantKind` is automatically implemented for every type,
-                // the concrete discriminant may not be known yet.
-                //
-                // Any type with multiple potential discriminant types is therefore not eligible.
+            super::ImplSource::Builtin(..) => {
+                // While a builtin impl may be known to exist, the associated type may not yet
+                // be known. Any type with multiple potential associated types is therefore
+                // not eligible.
                 let self_ty = selcx.infcx().shallow_resolve(obligation.predicate.self_ty());
 
-                match self_ty.kind() {
-                    ty::Bool
-                    | ty::Char
-                    | ty::Int(_)
-                    | ty::Uint(_)
-                    | ty::Float(_)
-                    | ty::Adt(..)
-                    | ty::Foreign(_)
-                    | ty::Str
-                    | ty::Array(..)
-                    | ty::Slice(_)
-                    | ty::RawPtr(..)
-                    | ty::Ref(..)
-                    | ty::FnDef(..)
-                    | ty::FnPtr(..)
-                    | ty::Dynamic(..)
-                    | ty::Closure(..)
-                    | ty::Generator(..)
-                    | ty::GeneratorWitness(..)
-                    | ty::Never
-                    | ty::Tuple(..)
-                    // Integers and floats always have `u8` as their discriminant.
-                    | ty::Infer(ty::InferTy::IntVar(_) | ty::InferTy::FloatVar(..)) => true,
+                let lang_items = selcx.tcx().lang_items();
+                if lang_items.discriminant_kind_trait() == Some(poly_trait_ref.def_id()) {
+                    match self_ty.kind() {
+                        ty::Bool
+                        | ty::Char
+                        | ty::Int(_)
+                        | ty::Uint(_)
+                        | ty::Float(_)
+                        | ty::Adt(..)
+                        | ty::Foreign(_)
+                        | ty::Str
+                        | ty::Array(..)
+                        | ty::Slice(_)
+                        | ty::RawPtr(..)
+                        | ty::Ref(..)
+                        | ty::FnDef(..)
+                        | ty::FnPtr(..)
+                        | ty::Dynamic(..)
+                        | ty::Closure(..)
+                        | ty::Generator(..)
+                        | ty::GeneratorWitness(..)
+                        | ty::Never
+                        | ty::Tuple(..)
+                        // Integers and floats always have `u8` as their discriminant.
+                        | ty::Infer(ty::InferTy::IntVar(_) | ty::InferTy::FloatVar(..)) => true,
 
-                    ty::Projection(..)
-                    | ty::Opaque(..)
-                    | ty::Param(..)
-                    | ty::Bound(..)
-                    | ty::Placeholder(..)
-                    | ty::Infer(..)
-                    | ty::Error(_) => false,
-                }
-            }
-            super::ImplSource::Pointee(..) => {
-                // While `Pointee` is automatically implemented for every type,
-                // the concrete metadata type may not be known yet.
-                //
-                // Any type with multiple potential metadata types is therefore not eligible.
-                let self_ty = selcx.infcx().shallow_resolve(obligation.predicate.self_ty());
-
-                let tail = selcx.tcx().struct_tail_with_normalize(
-                    self_ty,
-                    |ty| {
-                        // We throw away any obligations we get from this, since we normalize
-                        // and confirm these obligations once again during confirmation
-                        normalize_with_depth(
-                            selcx,
-                            obligation.param_env,
-                            obligation.cause.clone(),
-                            obligation.recursion_depth + 1,
-                            ty,
-                        )
-                        .value
-                    },
-                    || {},
-                );
-
-                match tail.kind() {
-                    ty::Bool
-                    | ty::Char
-                    | ty::Int(_)
-                    | ty::Uint(_)
-                    | ty::Float(_)
-                    | ty::Str
-                    | ty::Array(..)
-                    | ty::Slice(_)
-                    | ty::RawPtr(..)
-                    | ty::Ref(..)
-                    | ty::FnDef(..)
-                    | ty::FnPtr(..)
-                    | ty::Dynamic(..)
-                    | ty::Closure(..)
-                    | ty::Generator(..)
-                    | ty::GeneratorWitness(..)
-                    | ty::Never
-                    // Extern types have unit metadata, according to RFC 2850
-                    | ty::Foreign(_)
-                    // If returned by `struct_tail_without_normalization` this is a unit struct
-                    // without any fields, or not a struct, and therefore is Sized.
-                    | ty::Adt(..)
-                    // If returned by `struct_tail_without_normalization` this is the empty tuple.
-                    | ty::Tuple(..)
-                    // Integers and floats are always Sized, and so have unit type metadata.
-                    | ty::Infer(ty::InferTy::IntVar(_) | ty::InferTy::FloatVar(..)) => true,
-
-                    // type parameters, opaques, and unnormalized projections have pointer
-                    // metadata if they're known (e.g. by the param_env) to be sized
-                    ty::Param(_) | ty::Projection(..) | ty::Opaque(..)
-                        if selcx.infcx().predicate_must_hold_modulo_regions(
-                            &obligation.with(
-                                selcx.tcx(),
-                                ty::Binder::dummy(ty::TraitRef::new(
-                                    selcx.tcx().require_lang_item(LangItem::Sized, None),
-                                    selcx.tcx().mk_substs_trait(self_ty, &[]),
-                                ))
-                                .without_const(),
-                            ),
-                        ) =>
-                    {
-                        true
+                         // type parameters, opaques, and unnormalized projections have pointer
+                        // metadata if they're known (e.g. by the param_env) to be sized
+                        ty::Param(_)
+                        | ty::Projection(..)
+                        | ty::Opaque(..)
+                        | ty::Bound(..)
+                        | ty::Placeholder(..)
+                        | ty::Infer(..)
+                        | ty::Error(_) => false,
                     }
+                } else if lang_items.pointee_trait() == Some(poly_trait_ref.def_id()) {
+                    let tail = selcx.tcx().struct_tail_with_normalize(
+                        self_ty,
+                        |ty| {
+                            // We throw away any obligations we get from this, since we normalize
+                            // and confirm these obligations once again during confirmation
+                            normalize_with_depth(
+                                selcx,
+                                obligation.param_env,
+                                obligation.cause.clone(),
+                                obligation.recursion_depth + 1,
+                                ty,
+                            )
+                            .value
+                        },
+                        || {},
+                    );
 
-                    // FIXME(compiler-errors): are Bound and Placeholder types ever known sized?
-                    ty::Param(_)
-                    | ty::Projection(..)
-                    | ty::Opaque(..)
-                    | ty::Bound(..)
-                    | ty::Placeholder(..)
-                    | ty::Infer(..)
-                    | ty::Error(_) => {
-                        if tail.has_infer_types() {
-                            candidate_set.mark_ambiguous();
+                    match tail.kind() {
+                        ty::Bool
+                        | ty::Char
+                        | ty::Int(_)
+                        | ty::Uint(_)
+                        | ty::Float(_)
+                        | ty::Str
+                        | ty::Array(..)
+                        | ty::Slice(_)
+                        | ty::RawPtr(..)
+                        | ty::Ref(..)
+                        | ty::FnDef(..)
+                        | ty::FnPtr(..)
+                        | ty::Dynamic(..)
+                        | ty::Closure(..)
+                        | ty::Generator(..)
+                        | ty::GeneratorWitness(..)
+                        | ty::Never
+                        // Extern types have unit metadata, according to RFC 2850
+                        | ty::Foreign(_)
+                        // If returned by `struct_tail_without_normalization` this is a unit struct
+                        // without any fields, or not a struct, and therefore is Sized.
+                        | ty::Adt(..)
+                        // If returned by `struct_tail_without_normalization` this is the empty tuple.
+                        | ty::Tuple(..)
+                        // Integers and floats are always Sized, and so have unit type metadata.
+                        | ty::Infer(ty::InferTy::IntVar(_) | ty::InferTy::FloatVar(..)) => true,
+
+                        // type parameters, opaques, and unnormalized projections have pointer
+                        // metadata if they're known (e.g. by the param_env) to be sized
+                        ty::Param(_) | ty::Projection(..) | ty::Opaque(..)
+                            if selcx.infcx().predicate_must_hold_modulo_regions(
+                                &obligation.with(
+                                    selcx.tcx(),
+                                    ty::Binder::dummy(
+                                        selcx.tcx().at(obligation.cause.span()).mk_trait_ref(LangItem::Sized, [self_ty]),
+                                    )
+                                    .without_const(),
+                                ),
+                            ) =>
+                        {
+                            true
                         }
-                        false
+
+                        // FIXME(compiler-errors): are Bound and Placeholder types ever known sized?
+                        ty::Param(_)
+                        | ty::Projection(..)
+                        | ty::Opaque(..)
+                        | ty::Bound(..)
+                        | ty::Placeholder(..)
+                        | ty::Infer(..)
+                        | ty::Error(_) => {
+                            if tail.has_infer_types() {
+                                candidate_set.mark_ambiguous();
+                            }
+                            false
+                        }
                     }
+                } else {
+                    bug!("unexpected builtin trait with associated type: {poly_trait_ref:?}")
                 }
             }
             super::ImplSource::Param(..) => {
@@ -1771,7 +1756,6 @@ fn assemble_candidates_from_impls<'cx, 'tcx>(
                 false
             }
             super::ImplSource::AutoImpl(..)
-            | super::ImplSource::Builtin(..)
             | super::ImplSource::TraitUpcasting(_)
             | super::ImplSource::ConstDestruct(_) => {
                 // These traits have no associated types.
@@ -1848,16 +1832,13 @@ fn confirm_select_candidate<'cx, 'tcx>(
     match impl_source {
         super::ImplSource::UserDefined(data) => confirm_impl_candidate(selcx, obligation, data),
         super::ImplSource::Generator(data) => confirm_generator_candidate(selcx, obligation, data),
+        super::ImplSource::Future(data) => confirm_future_candidate(selcx, obligation, data),
         super::ImplSource::Closure(data) => confirm_closure_candidate(selcx, obligation, data),
         super::ImplSource::FnPointer(data) => confirm_fn_pointer_candidate(selcx, obligation, data),
-        super::ImplSource::DiscriminantKind(data) => {
-            confirm_discriminant_kind_candidate(selcx, obligation, data)
-        }
-        super::ImplSource::Pointee(data) => confirm_pointee_candidate(selcx, obligation, data),
+        super::ImplSource::Builtin(data) => confirm_builtin_candidate(selcx, obligation, data),
         super::ImplSource::Object(_)
         | super::ImplSource::AutoImpl(..)
         | super::ImplSource::Param(..)
-        | super::ImplSource::Builtin(..)
         | super::ImplSource::TraitUpcasting(_)
         | super::ImplSource::TraitAlias(..)
         | super::ImplSource::ConstDestruct(_) => {
@@ -1921,69 +1902,97 @@ fn confirm_generator_candidate<'cx, 'tcx>(
         .with_addl_obligations(obligations)
 }
 
-fn confirm_discriminant_kind_candidate<'cx, 'tcx>(
+fn confirm_future_candidate<'cx, 'tcx>(
     selcx: &mut SelectionContext<'cx, 'tcx>,
     obligation: &ProjectionTyObligation<'tcx>,
-    _: ImplSourceDiscriminantKindData,
+    impl_source: ImplSourceFutureData<'tcx, PredicateObligation<'tcx>>,
 ) -> Progress<'tcx> {
+    let gen_sig = impl_source.substs.as_generator().poly_sig();
+    let Normalized { value: gen_sig, obligations } = normalize_with_depth(
+        selcx,
+        obligation.param_env,
+        obligation.cause.clone(),
+        obligation.recursion_depth + 1,
+        gen_sig,
+    );
+
+    debug!(?obligation, ?gen_sig, ?obligations, "confirm_future_candidate");
+
     let tcx = selcx.tcx();
+    let fut_def_id = tcx.require_lang_item(LangItem::Future, None);
 
-    let self_ty = selcx.infcx().shallow_resolve(obligation.predicate.self_ty());
-    // We get here from `poly_project_and_unify_type` which replaces bound vars
-    // with placeholders
-    debug_assert!(!self_ty.has_escaping_bound_vars());
-    let substs = tcx.mk_substs([self_ty.into()].iter());
+    let predicate = super::util::future_trait_ref_and_outputs(
+        tcx,
+        fut_def_id,
+        obligation.predicate.self_ty(),
+        gen_sig,
+    )
+    .map_bound(|(trait_ref, return_ty)| {
+        debug_assert_eq!(tcx.associated_item(obligation.predicate.item_def_id).name, sym::Output);
 
-    let discriminant_def_id = tcx.require_lang_item(LangItem::Discriminant, None);
+        ty::ProjectionPredicate {
+            projection_ty: ty::ProjectionTy {
+                substs: trait_ref.substs,
+                item_def_id: obligation.predicate.item_def_id,
+            },
+            term: return_ty.into(),
+        }
+    });
 
-    let predicate = ty::ProjectionPredicate {
-        projection_ty: ty::ProjectionTy { substs, item_def_id: discriminant_def_id },
-        term: self_ty.discriminant_ty(tcx).into(),
-    };
-
-    // We get here from `poly_project_and_unify_type` which replaces bound vars
-    // with placeholders, so dummy is okay here.
-    confirm_param_env_candidate(selcx, obligation, ty::Binder::dummy(predicate), false)
+    confirm_param_env_candidate(selcx, obligation, predicate, false)
+        .with_addl_obligations(impl_source.nested)
+        .with_addl_obligations(obligations)
 }
 
-fn confirm_pointee_candidate<'cx, 'tcx>(
+fn confirm_builtin_candidate<'cx, 'tcx>(
     selcx: &mut SelectionContext<'cx, 'tcx>,
     obligation: &ProjectionTyObligation<'tcx>,
-    _: ImplSourcePointeeData,
+    data: ImplSourceBuiltinData<PredicateObligation<'tcx>>,
 ) -> Progress<'tcx> {
     let tcx = selcx.tcx();
-    let self_ty = selcx.infcx().shallow_resolve(obligation.predicate.self_ty());
-
-    let mut obligations = vec![];
-    let (metadata_ty, check_is_sized) = self_ty.ptr_metadata_ty(tcx, |ty| {
-        normalize_with_depth_to(
-            selcx,
-            obligation.param_env,
-            obligation.cause.clone(),
-            obligation.recursion_depth + 1,
-            ty,
-            &mut obligations,
-        )
-    });
-    if check_is_sized {
-        let sized_predicate = ty::Binder::dummy(ty::TraitRef::new(
-            tcx.require_lang_item(LangItem::Sized, None),
-            tcx.mk_substs_trait(self_ty, &[]),
-        ))
-        .without_const();
-        obligations.push(obligation.with(tcx, sized_predicate));
-    }
-
+    let self_ty = obligation.predicate.self_ty();
     let substs = tcx.mk_substs([self_ty.into()].iter());
-    let metadata_def_id = tcx.require_lang_item(LangItem::Metadata, None);
+    let lang_items = tcx.lang_items();
+    let item_def_id = obligation.predicate.item_def_id;
+    let trait_def_id = tcx.trait_of_item(item_def_id).unwrap();
+    let (term, obligations) = if lang_items.discriminant_kind_trait() == Some(trait_def_id) {
+        let discriminant_def_id = tcx.require_lang_item(LangItem::Discriminant, None);
+        assert_eq!(discriminant_def_id, item_def_id);
 
-    let predicate = ty::ProjectionPredicate {
-        projection_ty: ty::ProjectionTy { substs, item_def_id: metadata_def_id },
-        term: metadata_ty.into(),
+        (self_ty.discriminant_ty(tcx).into(), Vec::new())
+    } else if lang_items.pointee_trait() == Some(trait_def_id) {
+        let metadata_def_id = tcx.require_lang_item(LangItem::Metadata, None);
+        assert_eq!(metadata_def_id, item_def_id);
+
+        let mut obligations = Vec::new();
+        let (metadata_ty, check_is_sized) = self_ty.ptr_metadata_ty(tcx, |ty| {
+            normalize_with_depth_to(
+                selcx,
+                obligation.param_env,
+                obligation.cause.clone(),
+                obligation.recursion_depth + 1,
+                ty,
+                &mut obligations,
+            )
+        });
+        if check_is_sized {
+            let sized_predicate = ty::Binder::dummy(
+                tcx.at(obligation.cause.span()).mk_trait_ref(LangItem::Sized, [self_ty]),
+            )
+            .without_const();
+            obligations.push(obligation.with(tcx, sized_predicate));
+        }
+        (metadata_ty.into(), obligations)
+    } else {
+        bug!("unexpected builtin trait with associated type: {:?}", obligation.predicate);
     };
+
+    let predicate =
+        ty::ProjectionPredicate { projection_ty: ty::ProjectionTy { substs, item_def_id }, term };
 
     confirm_param_env_candidate(selcx, obligation, ty::Binder::dummy(predicate), false)
         .with_addl_obligations(obligations)
+        .with_addl_obligations(data.nested)
 }
 
 fn confirm_fn_pointer_candidate<'cx, 'tcx>(

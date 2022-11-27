@@ -332,32 +332,11 @@ impl<'tcx> InferCtxt<'tcx> {
         concrete_ty: Ty<'tcx>,
         span: Span,
     ) {
-        let def_id = opaque_type_key.def_id;
-
-        let tcx = self.tcx;
-
         let concrete_ty = self.resolve_vars_if_possible(concrete_ty);
-
         debug!(?concrete_ty);
 
-        let first_own_region = match self.opaque_ty_origin_unchecked(def_id, span) {
-            hir::OpaqueTyOrigin::FnReturn(..) | hir::OpaqueTyOrigin::AsyncFn(..) => {
-                // We lower
-                //
-                // fn foo<'l0..'ln>() -> impl Trait<'l0..'lm>
-                //
-                // into
-                //
-                // type foo::<'p0..'pn>::Foo<'q0..'qm>
-                // fn foo<l0..'ln>() -> foo::<'static..'static>::Foo<'l0..'lm>.
-                //
-                // For these types we only iterate over `'l0..lm` below.
-                tcx.generics_of(def_id).parent_count
-            }
-            // These opaque type inherit all lifetime parameters from their
-            // parent, so we have to check them all.
-            hir::OpaqueTyOrigin::TyAlias => 0,
-        };
+        let variances = self.tcx.variances_of(opaque_type_key.def_id);
+        debug!(?variances);
 
         // For a case like `impl Foo<'a, 'b>`, we would generate a constraint
         // `'r in ['a, 'b, 'static]` for each region `'r` that appears in the
@@ -370,9 +349,12 @@ impl<'tcx> InferCtxt<'tcx> {
         // type can be equal to any of the region parameters of the
         // opaque type definition.
         let choice_regions: Lrc<Vec<ty::Region<'tcx>>> = Lrc::new(
-            opaque_type_key.substs[first_own_region..]
+            opaque_type_key
+                .substs
                 .iter()
-                .filter_map(|arg| match arg.unpack() {
+                .enumerate()
+                .filter(|(i, _)| variances[*i] == ty::Variance::Invariant)
+                .filter_map(|(_, arg)| match arg.unpack() {
                     GenericArgKind::Lifetime(r) => Some(r),
                     GenericArgKind::Type(_) | GenericArgKind::Const(_) => None,
                 })
@@ -381,6 +363,7 @@ impl<'tcx> InferCtxt<'tcx> {
         );
 
         concrete_ty.visit_with(&mut ConstrainOpaqueTypeRegionVisitor {
+            tcx: self.tcx,
             op: |r| self.member_constraint(opaque_type_key, span, concrete_ty, r, &choice_regions),
         });
     }
@@ -440,11 +423,12 @@ impl<'tcx> InferCtxt<'tcx> {
 //
 // We ignore any type parameters because impl trait values are assumed to
 // capture all the in-scope type parameters.
-struct ConstrainOpaqueTypeRegionVisitor<OP> {
-    op: OP,
+pub struct ConstrainOpaqueTypeRegionVisitor<'tcx, OP: FnMut(ty::Region<'tcx>)> {
+    pub tcx: TyCtxt<'tcx>,
+    pub op: OP,
 }
 
-impl<'tcx, OP> TypeVisitor<'tcx> for ConstrainOpaqueTypeRegionVisitor<OP>
+impl<'tcx, OP> TypeVisitor<'tcx> for ConstrainOpaqueTypeRegionVisitor<'tcx, OP>
 where
     OP: FnMut(ty::Region<'tcx>),
 {
@@ -490,6 +474,31 @@ where
                 substs.as_generator().yield_ty().visit_with(self);
                 substs.as_generator().resume_ty().visit_with(self);
             }
+
+            ty::Opaque(def_id, ref substs) => {
+                // Skip lifetime paramters that are not captures.
+                let variances = self.tcx.variances_of(*def_id);
+
+                for (v, s) in std::iter::zip(variances, substs.iter()) {
+                    if *v != ty::Variance::Bivariant {
+                        s.visit_with(self);
+                    }
+                }
+            }
+
+            ty::Projection(proj)
+                if self.tcx.def_kind(proj.item_def_id) == DefKind::ImplTraitPlaceholder =>
+            {
+                // Skip lifetime paramters that are not captures.
+                let variances = self.tcx.variances_of(proj.item_def_id);
+
+                for (v, s) in std::iter::zip(variances, proj.substs.iter()) {
+                    if *v != ty::Variance::Bivariant {
+                        s.visit_with(self);
+                    }
+                }
+            }
+
             _ => {
                 ty.super_visit_with(self);
             }
@@ -586,7 +595,9 @@ impl<'tcx> InferCtxt<'tcx> {
                 ct_op: |ct| ct,
             });
 
-            if let ty::PredicateKind::Projection(projection) = predicate.kind().skip_binder() {
+            if let ty::PredicateKind::Clause(ty::Clause::Projection(projection)) =
+                predicate.kind().skip_binder()
+            {
                 if projection.term.references_error() {
                     // No point on adding these obligations since there's a type error involved.
                     return Ok(InferOk { value: (), obligations: vec![] });

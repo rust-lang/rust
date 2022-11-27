@@ -4,13 +4,13 @@ pub mod suggestions;
 
 use super::{
     FulfillmentError, FulfillmentErrorCode, MismatchedProjectionTypes, Obligation, ObligationCause,
-    ObligationCauseCode, OutputTypeParameterMismatch, Overflow, PredicateObligation,
-    SelectionContext, SelectionError, TraitNotObjectSafe,
+    ObligationCauseCode, ObligationCtxt, OutputTypeParameterMismatch, Overflow,
+    PredicateObligation, SelectionContext, SelectionError, TraitNotObjectSafe,
 };
 use crate::infer::error_reporting::{TyCategory, TypeAnnotationNeeded as ErrorCode};
 use crate::infer::type_variable::{TypeVariableOrigin, TypeVariableOriginKind};
+use crate::infer::InferCtxtExt as _;
 use crate::infer::{self, InferCtxt, TyCtxtInferExt};
-use crate::traits::engine::TraitEngineExt as _;
 use crate::traits::query::evaluate_obligation::InferCtxtExt as _;
 use crate::traits::query::normalize::AtExt as _;
 use crate::traits::specialize::to_pretty_impl_header;
@@ -29,8 +29,7 @@ use rustc_hir::GenericParam;
 use rustc_hir::Item;
 use rustc_hir::Node;
 use rustc_infer::infer::error_reporting::TypeErrCtxt;
-use rustc_infer::infer::TypeTrace;
-use rustc_infer::traits::TraitEngine;
+use rustc_infer::infer::{InferOk, TypeTrace};
 use rustc_middle::traits::select::OverflowError;
 use rustc_middle::ty::abstract_const::NotConstEvaluatable;
 use rustc_middle::ty::error::ExpectedFound;
@@ -347,20 +346,16 @@ impl<'tcx> InferCtxtExt<'tcx> for InferCtxt<'tcx> {
                     span: DUMMY_SP,
                     kind: TypeVariableOriginKind::MiscVariable,
                 });
-                let substs = self.tcx.mk_substs_trait(ty.skip_binder(), &[var.into()]);
+                let trait_ref = self.tcx.mk_trait_ref(trait_def_id, [ty.skip_binder(), var]);
                 let obligation = Obligation::new(
                     self.tcx,
                     ObligationCause::dummy(),
                     param_env,
-                    ty.rebind(ty::TraitPredicate {
-                        trait_ref: ty::TraitRef::new(trait_def_id, substs),
-                        constness,
-                        polarity,
-                    }),
+                    ty.rebind(ty::TraitPredicate { trait_ref, constness, polarity }),
                 );
-                let mut fulfill_cx = <dyn TraitEngine<'tcx>>::new_in_snapshot(self.tcx);
-                fulfill_cx.register_predicate_obligation(self, obligation);
-                if fulfill_cx.select_all_or_error(self).is_empty() {
+                let ocx = ObligationCtxt::new_in_snapshot(self);
+                ocx.register_obligation(obligation);
+                if ocx.select_all_or_error().is_empty() {
                     return Ok((
                         ty::ClosureKind::from_def_id(self.tcx, trait_def_id)
                             .expect("expected to map DefId to ClosureKind"),
@@ -593,7 +588,7 @@ impl<'tcx> TypeErrCtxtExt<'tcx> for TypeErrCtxt<'_, 'tcx> {
 
                 let bound_predicate = obligation.predicate.kind();
                 match bound_predicate.skip_binder() {
-                    ty::PredicateKind::Trait(trait_predicate) => {
+                    ty::PredicateKind::Clause(ty::Clause::Trait(trait_predicate)) => {
                         let trait_predicate = bound_predicate.rebind(trait_predicate);
                         let mut trait_predicate = self.resolve_vars_if_possible(trait_predicate);
 
@@ -1001,12 +996,8 @@ impl<'tcx> TypeErrCtxtExt<'tcx> for TypeErrCtxt<'_, 'tcx> {
                         if trait_predicate.skip_binder().self_ty().is_never()
                             && self.fallback_has_occurred
                         {
-                            let predicate = trait_predicate.map_bound(|mut trait_pred| {
-                                trait_pred.trait_ref.substs = self.tcx.mk_substs_trait(
-                                    self.tcx.mk_unit(),
-                                    &trait_pred.trait_ref.substs[1..],
-                                );
-                                trait_pred
+                            let predicate = trait_predicate.map_bound(|trait_pred| {
+                                trait_pred.with_self_type(self.tcx, self.tcx.mk_unit())
                             });
                             let unit_obligation = obligation.with(tcx, predicate);
                             if self.predicate_may_hold(&unit_obligation) {
@@ -1061,9 +1052,9 @@ impl<'tcx> TypeErrCtxtExt<'tcx> for TypeErrCtxt<'_, 'tcx> {
                         span_bug!(span, "coerce requirement gave wrong error: `{:?}`", predicate)
                     }
 
-                    ty::PredicateKind::RegionOutlives(..)
-                    | ty::PredicateKind::Projection(..)
-                    | ty::PredicateKind::TypeOutlives(..) => {
+                    ty::PredicateKind::Clause(ty::Clause::RegionOutlives(..))
+                    | ty::PredicateKind::Clause(ty::Clause::Projection(..))
+                    | ty::PredicateKind::Clause(ty::Clause::TypeOutlives(..)) => {
                         let predicate = self.resolve_vars_if_possible(obligation.predicate);
                         struct_span_err!(
                             self.tcx.sess,
@@ -1175,6 +1166,8 @@ impl<'tcx> TypeErrCtxtExt<'tcx> for TypeErrCtxt<'_, 'tcx> {
                             obligation
                         )
                     }
+
+                    ty::PredicateKind::Ambiguous => span_bug!(span, "ambiguous"),
 
                     ty::PredicateKind::TypeWellFormedFromEnv(..) => span_bug!(
                         span,
@@ -1481,9 +1474,10 @@ impl<'tcx> InferCtxtPrivExt<'tcx> for TypeErrCtxt<'_, 'tcx> {
         // FIXME: It should be possible to deal with `ForAll` in a cleaner way.
         let bound_error = error.kind();
         let (cond, error) = match (cond.kind().skip_binder(), bound_error.skip_binder()) {
-            (ty::PredicateKind::Trait(..), ty::PredicateKind::Trait(error)) => {
-                (cond, bound_error.rebind(error))
-            }
+            (
+                ty::PredicateKind::Clause(ty::Clause::Trait(..)),
+                ty::PredicateKind::Clause(ty::Clause::Trait(error)),
+            ) => (cond, bound_error.rebind(error)),
             _ => {
                 // FIXME: make this work in other cases too.
                 return false;
@@ -1492,7 +1486,9 @@ impl<'tcx> InferCtxtPrivExt<'tcx> for TypeErrCtxt<'_, 'tcx> {
 
         for obligation in super::elaborate_predicates(self.tcx, std::iter::once(cond)) {
             let bound_predicate = obligation.predicate.kind();
-            if let ty::PredicateKind::Trait(implication) = bound_predicate.skip_binder() {
+            if let ty::PredicateKind::Clause(ty::Clause::Trait(implication)) =
+                bound_predicate.skip_binder()
+            {
                 let error = error.to_poly_trait_ref();
                 let implication = bound_predicate.rebind(implication.trait_ref);
                 // FIXME: I'm just not taking associated types at all here.
@@ -1589,7 +1585,9 @@ impl<'tcx> InferCtxtPrivExt<'tcx> for TypeErrCtxt<'_, 'tcx> {
             // this can fail if the problem was higher-ranked, in which
             // cause I have no idea for a good error message.
             let bound_predicate = predicate.kind();
-            if let ty::PredicateKind::Projection(data) = bound_predicate.skip_binder() {
+            if let ty::PredicateKind::Clause(ty::Clause::Projection(data)) =
+                bound_predicate.skip_binder()
+            {
                 let mut selcx = SelectionContext::new(self);
                 let data = self.replace_bound_vars_with_fresh_vars(
                     obligation.cause.span,
@@ -1637,7 +1635,7 @@ impl<'tcx> InferCtxtPrivExt<'tcx> for TypeErrCtxt<'_, 'tcx> {
             let mut diag = struct_span_err!(self.tcx.sess, obligation.cause.span, E0271, "{msg}");
 
             let secondary_span = match predicate.kind().skip_binder() {
-                ty::PredicateKind::Projection(proj) => self
+                ty::PredicateKind::Clause(ty::Clause::Projection(proj)) => self
                     .tcx
                     .opt_associated_item(proj.projection_ty.item_def_id)
                     .and_then(|trait_assoc_item| {
@@ -1729,7 +1727,7 @@ impl<'tcx> InferCtxtPrivExt<'tcx> for TypeErrCtxt<'_, 'tcx> {
                 ty::Bool => Some(0),
                 ty::Char => Some(1),
                 ty::Str => Some(2),
-                ty::Adt(def, _) if tcx.is_diagnostic_item(sym::String, def.did()) => Some(2),
+                ty::Adt(def, _) if Some(def.did()) == tcx.lang_items().string() => Some(2),
                 ty::Int(..)
                 | ty::Uint(..)
                 | ty::Float(..)
@@ -2028,13 +2026,8 @@ impl<'tcx> InferCtxtPrivExt<'tcx> for TypeErrCtxt<'_, 'tcx> {
         param_env: ty::ParamEnv<'tcx>,
         trait_ref_and_ty: ty::Binder<'tcx, (ty::TraitPredicate<'tcx>, Ty<'tcx>)>,
     ) -> PredicateObligation<'tcx> {
-        let trait_pred = trait_ref_and_ty.map_bound_ref(|(tr, new_self_ty)| ty::TraitPredicate {
-            trait_ref: ty::TraitRef {
-                substs: self.tcx.mk_substs_trait(*new_self_ty, &tr.trait_ref.substs[1..]),
-                ..tr.trait_ref
-            },
-            ..*tr
-        });
+        let trait_pred = trait_ref_and_ty
+            .map_bound(|(tr, new_self_ty)| tr.with_self_type(self.tcx, new_self_ty));
 
         Obligation::new(self.tcx, ObligationCause::dummy(), param_env, trait_pred)
     }
@@ -2060,7 +2053,7 @@ impl<'tcx> InferCtxtPrivExt<'tcx> for TypeErrCtxt<'_, 'tcx> {
 
         let bound_predicate = predicate.kind();
         let mut err = match bound_predicate.skip_binder() {
-            ty::PredicateKind::Trait(data) => {
+            ty::PredicateKind::Clause(ty::Clause::Trait(data)) => {
                 let trait_ref = bound_predicate.rebind(data.trait_ref);
                 debug!(?trait_ref);
 
@@ -2124,11 +2117,8 @@ impl<'tcx> InferCtxtPrivExt<'tcx> for TypeErrCtxt<'_, 'tcx> {
                     )
                 };
 
-                let obligation = obligation.with(self.tcx, trait_ref.to_poly_trait_predicate());
-                let mut selcx = SelectionContext::with_query_mode(
-                    &self,
-                    crate::traits::TraitQueryMode::Standard,
-                );
+                let obligation = obligation.with(self.tcx, trait_ref);
+                let mut selcx = SelectionContext::new(&self);
                 match selcx.select_from_obligation(&obligation) {
                     Ok(None) => {
                         let impls = ambiguity::recompute_applicable_impls(self.infcx, &obligation);
@@ -2340,7 +2330,7 @@ impl<'tcx> InferCtxtPrivExt<'tcx> for TypeErrCtxt<'_, 'tcx> {
                 assert!(a.is_ty_var() && b.is_ty_var());
                 self.emit_inference_failure_err(body_id, span, a.into(), ErrorCode::E0282, true)
             }
-            ty::PredicateKind::Projection(data) => {
+            ty::PredicateKind::Clause(ty::Clause::Projection(data)) => {
                 if predicate.references_error() || self.tainted_by_errors().is_some() {
                     return;
                 }
@@ -2541,23 +2531,23 @@ impl<'tcx> InferCtxtPrivExt<'tcx> for TypeErrCtxt<'_, 'tcx> {
         }
 
         self.probe(|_| {
-            let mut selcx = SelectionContext::new(self);
-
             let cleaned_pred =
                 pred.fold_with(&mut ParamToVarFolder { infcx: self, var_map: Default::default() });
 
-            let cleaned_pred = super::project::normalize(
-                &mut selcx,
-                param_env,
-                ObligationCause::dummy(),
-                cleaned_pred,
-            )
-            .value;
+            let InferOk { value: cleaned_pred, .. } =
+                self.infcx.partially_normalize_associated_types_in(
+                    ObligationCause::dummy(),
+                    param_env,
+                    cleaned_pred,
+                );
 
             let obligation =
                 Obligation::new(self.tcx, ObligationCause::dummy(), param_env, cleaned_pred);
 
-            self.predicate_may_hold(&obligation)
+            // We don't use `InferCtxt::predicate_may_hold` because that
+            // will re-run predicates that overflow locally, which ends up
+            // taking a really long time to compute.
+            self.evaluate_obligation(&obligation).map_or(false, |eval| eval.may_apply())
         })
     }
 
@@ -2583,7 +2573,7 @@ impl<'tcx> InferCtxtPrivExt<'tcx> for TypeErrCtxt<'_, 'tcx> {
         err: &mut Diagnostic,
         obligation: &PredicateObligation<'tcx>,
     ) {
-        let ty::PredicateKind::Trait(pred) = obligation.predicate.kind().skip_binder() else { return; };
+        let ty::PredicateKind::Clause(ty::Clause::Trait(pred)) = obligation.predicate.kind().skip_binder() else { return; };
         let (ObligationCauseCode::BindingObligation(item_def_id, span)
         | ObligationCauseCode::ExprBindingObligation(item_def_id, span, ..))
             = *obligation.cause.code().peel_derives() else { return; };

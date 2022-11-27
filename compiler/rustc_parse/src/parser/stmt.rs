@@ -167,14 +167,13 @@ impl<'a> Parser<'a> {
     /// Parses a statement macro `mac!(args)` provided a `path` representing `mac`.
     /// At this point, the `!` token after the path has already been eaten.
     fn parse_stmt_mac(&mut self, lo: Span, attrs: AttrVec, path: ast::Path) -> PResult<'a, Stmt> {
-        let args = self.parse_mac_args()?;
-        let delim = args.delim();
+        let args = self.parse_delim_args()?;
+        let delim = args.delim.to_token();
         let hi = self.prev_token.span;
 
         let style = match delim {
-            Some(Delimiter::Brace) => MacStmtStyle::Braces,
-            Some(_) => MacStmtStyle::NoBraces,
-            None => unreachable!(),
+            Delimiter::Brace => MacStmtStyle::Braces,
+            _ => MacStmtStyle::NoBraces,
         };
 
         let mac = P(MacCall { path, args, prior_type_ascription: self.last_type_ascription });
@@ -564,9 +563,9 @@ impl<'a> Parser<'a> {
         };
 
         let mut eat_semi = true;
-        match stmt.kind {
+        match &mut stmt.kind {
             // Expression without semicolon.
-            StmtKind::Expr(ref mut expr)
+            StmtKind::Expr(expr)
                 if self.token != token::Eof && classify::expr_requires_semi_to_be_stmt(expr) => {
                 // Just check for errors and recover; do not eat semicolon yet.
                 // `expect_one_of` returns PResult<'a, bool /* recovered */>
@@ -612,7 +611,7 @@ impl<'a> Parser<'a> {
                 }
             }
             StmtKind::Expr(_) | StmtKind::MacCall(_) => {}
-            StmtKind::Local(ref mut local) if let Err(e) = self.expect_semi() => {
+            StmtKind::Local(local) if let Err(e) = self.expect_semi() => {
                 // We might be at the `,` in `let x = foo<bar, baz>;`. Try to recover.
                 match &mut local.kind {
                     LocalKind::Init(expr) | LocalKind::InitElse(expr, _) => {

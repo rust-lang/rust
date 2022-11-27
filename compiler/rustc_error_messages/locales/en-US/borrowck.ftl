@@ -24,9 +24,6 @@ borrowck_var_does_not_need_mut =
     variable does not need to be mutable
     .suggestion = remove this `mut`
 
-borrowck_const_not_used_in_type_alias =
-    const parameter `{$ct}` is part of concrete type but not used in parameter list for the `impl Trait` type alias
-
 borrowck_var_cannot_escape_closure =
     captured variable cannot escape `FnMut` closure body
     .note = `FnMut` closures only have access to their captured variables while they are executing...

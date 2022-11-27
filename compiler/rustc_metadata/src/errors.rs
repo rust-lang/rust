@@ -692,6 +692,7 @@ pub struct CrateLocationUnknownType<'a> {
     #[primary_span]
     pub span: Span,
     pub path: &'a Path,
+    pub crate_name: Symbol,
 }
 
 #[derive(Diagnostic)]

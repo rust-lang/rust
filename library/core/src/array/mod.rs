@@ -23,7 +23,8 @@ mod iter;
 #[stable(feature = "array_value_iter", since = "1.51.0")]
 pub use iter::IntoIter;
 
-/// Creates an array `[T; N]` where each array element `T` is returned by the `cb` call.
+/// Creates an array of type [T; N], where each element `T` is the returned value from `cb`
+/// using that element's index.
 ///
 /// # Arguments
 ///
@@ -36,8 +37,18 @@ pub use iter::IntoIter;
 /// // elements to produce is the length of array down there: only arrays of
 /// // equal lengths can be compared, so the const generic parameter `N` is
 /// // inferred to be 5, thus creating array of 5 elements.
+///
 /// let array = core::array::from_fn(|i| i);
+/// // indexes are:    0  1  2  3  4
 /// assert_eq!(array, [0, 1, 2, 3, 4]);
+///
+/// let array2: [usize; 8] = core::array::from_fn(|i| i * 2);
+/// // indexes are:     0  1  2  3  4  5   6   7
+/// assert_eq!(array2, [0, 2, 4, 6, 8, 10, 12, 14]);
+///
+/// let bool_arr = core::array::from_fn::<_, 5, _>(|i| i % 2 == 0);
+/// // indexes are:       0     1      2     3      4
+/// assert_eq!(bool_arr, [true, false, true, false, true]);
 /// ```
 #[inline]
 #[stable(feature = "array_from_fn", since = "1.63.0")]

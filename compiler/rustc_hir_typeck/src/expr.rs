@@ -5,6 +5,7 @@
 use crate::cast;
 use crate::coercion::CoerceMany;
 use crate::coercion::DynamicCoerceMany;
+use crate::errors::TypeMismatchFruTypo;
 use crate::errors::{AddressOfTemporaryTaken, ReturnStmtOutsideOfFnBody, StructExprNonExhaustive};
 use crate::errors::{
     FieldMultiplySpecifiedInInitializer, FunctionalRecordUpdateOnNonStruct,
@@ -532,8 +533,8 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                 self.set_tainted_by_errors(e);
                 tcx.ty_error_with_guaranteed(e)
             }
-            Res::Def(DefKind::Ctor(_, CtorKind::Fictive), _) => {
-                let e = report_unexpected_variant_res(tcx, res, qpath, expr.span);
+            Res::Def(DefKind::Variant, _) => {
+                let e = report_unexpected_variant_res(tcx, res, qpath, expr.span, "E0533", "value");
                 tcx.ty_error_with_guaranteed(e)
             }
             _ => self.instantiate_value_path(segs, opt_ty, res, expr.span, expr.hir_id).0,
@@ -1117,9 +1118,8 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                 let lhs_deref_ty_is_sized = self
                     .infcx
                     .type_implements_trait(
-                        self.tcx.lang_items().sized_trait().unwrap(),
-                        lhs_deref_ty,
-                        ty::List::empty(),
+                        self.tcx.require_lang_item(LangItem::Sized, None),
+                        [lhs_deref_ty],
                         self.param_env,
                     )
                     .may_apply();
@@ -1616,10 +1616,16 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                 self.demand_coerce_diag(&field.expr, ty, field_type, None, AllowTwoPhase::No);
 
             if let Some(mut diag) = diag {
-                if idx == ast_fields.len() - 1 && remaining_fields.is_empty() {
-                    self.suggest_fru_from_range(field, variant, substs, &mut diag);
+                if idx == ast_fields.len() - 1 {
+                    if remaining_fields.is_empty() {
+                        self.suggest_fru_from_range(field, variant, substs, &mut diag);
+                        diag.emit();
+                    } else {
+                        diag.stash(field.span, StashKey::MaybeFruTypo);
+                    }
+                } else {
+                    diag.emit();
                 }
-                diag.emit();
             }
         }
 
@@ -1877,19 +1883,39 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                 .map(|adt| adt.did())
                 != range_def_id
         {
-            let instead = self
+            // Suppress any range expr type mismatches
+            if let Some(mut diag) = self
+                .tcx
+                .sess
+                .diagnostic()
+                .steal_diagnostic(last_expr_field.span, StashKey::MaybeFruTypo)
+            {
+                diag.delay_as_bug();
+            }
+
+            // Use a (somewhat arbitrary) filtering heuristic to avoid printing
+            // expressions that are either too long, or have control character
+            //such as newlines in them.
+            let expr = self
                 .tcx
                 .sess
                 .source_map()
                 .span_to_snippet(range_end.expr.span)
-                .map(|s| format!(" from `{s}`"))
-                .unwrap_or_default();
-            err.span_suggestion(
-                range_start.span.shrink_to_hi(),
-                &format!("to set the remaining fields{instead}, separate the last named field with a comma"),
-                ",",
-                Applicability::MaybeIncorrect,
-            );
+                .ok()
+                .filter(|s| s.len() < 25 && !s.contains(|c: char| c.is_control()));
+
+            let fru_span = self
+                .tcx
+                .sess
+                .source_map()
+                .span_extend_while(range_start.span, |c| c.is_whitespace())
+                .unwrap_or(range_start.span).shrink_to_hi().to(range_end.span);
+
+            err.subdiagnostic(TypeMismatchFruTypo {
+                expr_span: range_start.span,
+                fru_span,
+                expr,
+            });
         }
     }
 
@@ -1998,8 +2024,8 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         );
 
         let variant_ident_span = self.tcx.def_ident_span(variant.def_id).unwrap();
-        match variant.ctor_kind {
-            CtorKind::Fn => match ty.kind() {
+        match variant.ctor_kind() {
+            Some(CtorKind::Fn) => match ty.kind() {
                 ty::Adt(adt, ..) if adt.is_enum() => {
                     err.span_label(
                         variant_ident_span,
@@ -2307,12 +2333,9 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         base: &'tcx hir::Expr<'tcx>,
         ty: Ty<'tcx>,
     ) {
-        let output_ty = match self.get_impl_future_output_ty(ty) {
-            Some(output_ty) => self.resolve_vars_if_possible(output_ty),
-            _ => return,
-        };
+        let Some(output_ty) = self.get_impl_future_output_ty(ty) else { return; };
         let mut add_label = true;
-        if let ty::Adt(def, _) = output_ty.skip_binder().kind() {
+        if let ty::Adt(def, _) = output_ty.kind() {
             // no field access on enum type
             if !def.is_enum() {
                 if def
@@ -2798,7 +2821,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
     ) {
         for error in errors {
             match error.obligation.predicate.kind().skip_binder() {
-                ty::PredicateKind::Trait(predicate)
+                ty::PredicateKind::Clause(ty::Clause::Trait(predicate))
                     if self.tcx.is_diagnostic_item(sym::SliceIndex, predicate.trait_ref.def_id) => {
                 }
                 _ => continue,

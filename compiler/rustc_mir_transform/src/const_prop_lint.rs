@@ -1,10 +1,10 @@
 //! Propagates constants for early reporting of statically known
 //! assertion failures
 
-use crate::const_prop::CanConstProp;
-use crate::const_prop::ConstPropMachine;
-use crate::const_prop::ConstPropMode;
-use crate::MirLint;
+use std::cell::Cell;
+
+use either::{Left, Right};
+
 use rustc_const_eval::interpret::Immediate;
 use rustc_const_eval::interpret::{
     self, InterpCx, InterpResult, LocalState, LocalValue, MemoryKind, OpTy, Scalar, StackPopCleanup,
@@ -26,12 +26,17 @@ use rustc_session::lint;
 use rustc_span::Span;
 use rustc_target::abi::{HasDataLayout, Size, TargetDataLayout};
 use rustc_trait_selection::traits;
-use std::cell::Cell;
+
+use crate::const_prop::CanConstProp;
+use crate::const_prop::ConstPropMachine;
+use crate::const_prop::ConstPropMode;
+use crate::MirLint;
 
 /// The maximum number of bytes that we'll allocate space for a local or the return value.
 /// Needed for #66397, because otherwise we eval into large places and that can cause OOM or just
 /// Severely regress performance.
 const MAX_ALLOC_LIMIT: u64 = 1024;
+
 pub struct ConstProp;
 
 impl<'tcx> MirLint<'tcx> for ConstProp {
@@ -243,7 +248,7 @@ impl<'mir, 'tcx> ConstPropagator<'mir, 'tcx> {
         // Try to read the local as an immediate so that if it is representable as a scalar, we can
         // handle it as such, but otherwise, just return the value as is.
         Some(match self.ecx.read_immediate_raw(&op) {
-            Ok(Ok(imm)) => imm.into(),
+            Ok(Left(imm)) => imm.into(),
             _ => op,
         })
     }
@@ -266,7 +271,7 @@ impl<'mir, 'tcx> ConstPropagator<'mir, 'tcx> {
         F: FnOnce(&mut Self) -> InterpResult<'tcx, T>,
     {
         // Overwrite the PC -- whatever the interpreter does to it does not make any sense anyway.
-        self.ecx.frame_mut().loc = Err(source_info.span);
+        self.ecx.frame_mut().loc = Right(source_info.span);
         match f(self) {
             Ok(val) => Some(val),
             Err(error) => {

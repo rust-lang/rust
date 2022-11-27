@@ -296,6 +296,13 @@ needed.
 
 ### Exporting changes to the rustc repo
 
+Keep in mind that pushing is the most complicated job that josh has to do --
+pulling just filters the rustc history, but pushing needs to construct a new
+rustc history that would filter to the given Miri history! To avoid problems, it
+is a good idea to always pull immediately before you push. In particular, you
+should never do two josh pushes without an intermediate pull; that can lead to
+duplicated commits.
+
 Josh needs to be running, as described above. We will use the josh proxy to push
 to your fork of rustc. Run the following in the Miri repo, assuming we are on an
 up-to-date master branch:

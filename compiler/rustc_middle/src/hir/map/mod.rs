@@ -245,15 +245,15 @@ impl<'hir> Map<'hir> {
             },
             Node::Variant(_) => DefKind::Variant,
             Node::Ctor(variant_data) => {
-                // FIXME(eddyb) is this even possible, if we have a `Node::Ctor`?
-                assert_ne!(variant_data.ctor_hir_id(), None);
-
                 let ctor_of = match self.find(self.get_parent_node(hir_id)) {
                     Some(Node::Item(..)) => def::CtorOf::Struct,
                     Some(Node::Variant(..)) => def::CtorOf::Variant,
                     _ => unreachable!(),
                 };
-                DefKind::Ctor(ctor_of, def::CtorKind::from_hir(variant_data))
+                match variant_data.ctor_kind() {
+                    Some(kind) => DefKind::Ctor(ctor_of, kind),
+                    None => bug!("constructor node without a constructor"),
+                }
             }
             Node::AnonConst(_) => {
                 let inline = match self.find(self.get_parent_node(hir_id)) {
@@ -1058,7 +1058,7 @@ impl<'hir> Map<'hir> {
             Node::Arm(arm) => arm.span,
             Node::Block(block) => block.span,
             Node::Ctor(..) => self.span_with_body(self.get_parent_node(hir_id)),
-            Node::Lifetime(lifetime) => lifetime.span,
+            Node::Lifetime(lifetime) => lifetime.ident.span,
             Node::GenericParam(param) => param.span,
             Node::Infer(i) => i.span,
             Node::Local(local) => local.span,

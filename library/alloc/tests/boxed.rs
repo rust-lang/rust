@@ -102,8 +102,18 @@ unsafe impl const Allocator for ConstAllocator {
 
         let new_ptr = self.allocate(new_layout)?;
         if new_layout.size() > 0 {
-            new_ptr.as_mut_ptr().copy_from_nonoverlapping(ptr.as_ptr(), old_layout.size());
-            self.deallocate(ptr, old_layout);
+            // Safety: `new_ptr` is valid for writes and `ptr` for reads of
+            // `old_layout.size()`, because `new_layout.size() >=
+            // old_layout.size()` (which is an invariant that must be upheld by
+            // callers).
+            unsafe {
+                new_ptr.as_mut_ptr().copy_from_nonoverlapping(ptr.as_ptr(), old_layout.size());
+            }
+            // Safety: `ptr` is never used again is also an invariant which must
+            // be upheld by callers.
+            unsafe {
+                self.deallocate(ptr, old_layout);
+            }
         }
         Ok(new_ptr)
     }
@@ -114,12 +124,21 @@ unsafe impl const Allocator for ConstAllocator {
         old_layout: Layout,
         new_layout: Layout,
     ) -> Result<NonNull<[u8]>, AllocError> {
-        let new_ptr = self.grow(ptr, old_layout, new_layout)?;
+        // Safety: Invariants of `grow_zeroed` and `grow` are the same, and must
+        // be enforced by callers.
+        let new_ptr = unsafe { self.grow(ptr, old_layout, new_layout)? };
         if new_layout.size() > 0 {
             let old_size = old_layout.size();
             let new_size = new_layout.size();
             let raw_ptr = new_ptr.as_mut_ptr();
-            raw_ptr.add(old_size).write_bytes(0, new_size - old_size);
+            // Safety:
+            // - `grow` returned Ok, so the returned pointer must be valid for
+            //   `new_size` bytes
+            // - `new_size` must be larger than `old_size`, which is an
+            //   invariant which must be upheld by callers.
+            unsafe {
+                raw_ptr.add(old_size).write_bytes(0, new_size - old_size);
+            }
         }
         Ok(new_ptr)
     }
@@ -137,8 +156,18 @@ unsafe impl const Allocator for ConstAllocator {
 
         let new_ptr = self.allocate(new_layout)?;
         if new_layout.size() > 0 {
-            new_ptr.as_mut_ptr().copy_from_nonoverlapping(ptr.as_ptr(), new_layout.size());
-            self.deallocate(ptr, old_layout);
+            // Safety: `new_ptr` and `ptr` are valid for reads/writes of
+            // `new_layout.size()` because of the invariants of shrink, which
+            // include `new_layout.size()` being smaller than (or equal to)
+            // `old_layout.size()`.
+            unsafe {
+                new_ptr.as_mut_ptr().copy_from_nonoverlapping(ptr.as_ptr(), new_layout.size());
+            }
+            // Safety: `ptr` is never used again is also an invariant which must
+            // be upheld by callers.
+            unsafe {
+                self.deallocate(ptr, old_layout);
+            }
         }
         Ok(new_ptr)
     }

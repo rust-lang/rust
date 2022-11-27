@@ -55,7 +55,7 @@ impl<'a> Parser<'a> {
                     let span = self.token.span;
                     let mut err = self.sess.span_diagnostic.struct_span_err_with_code(
                         span,
-                        fluent::parser_inner_doc_comment_not_permitted,
+                        fluent::parse_inner_doc_comment_not_permitted,
                         error_code!(E0753),
                     );
                     if let Some(replacement_span) = self.annotate_following_item_if_applicable(
@@ -200,7 +200,7 @@ impl<'a> Parser<'a> {
                 Some(InnerAttrForbiddenReason::AfterOuterDocComment { prev_doc_comment_span }) => {
                     let mut diag = self.struct_span_err(
                         attr_sp,
-                        fluent::parser_inner_attr_not_permitted_after_outer_doc_comment,
+                        fluent::parse_inner_attr_not_permitted_after_outer_doc_comment,
                     );
                     diag.span_label(attr_sp, fluent::label_attr)
                         .span_label(prev_doc_comment_span, fluent::label_prev_doc_comment);
@@ -209,18 +209,18 @@ impl<'a> Parser<'a> {
                 Some(InnerAttrForbiddenReason::AfterOuterAttribute { prev_outer_attr_sp }) => {
                     let mut diag = self.struct_span_err(
                         attr_sp,
-                        fluent::parser_inner_attr_not_permitted_after_outer_attr,
+                        fluent::parse_inner_attr_not_permitted_after_outer_attr,
                     );
                     diag.span_label(attr_sp, fluent::label_attr)
                         .span_label(prev_outer_attr_sp, fluent::label_prev_attr);
                     diag
                 }
                 Some(InnerAttrForbiddenReason::InCodeBlock) | None => {
-                    self.struct_span_err(attr_sp, fluent::parser_inner_attr_not_permitted)
+                    self.struct_span_err(attr_sp, fluent::parse_inner_attr_not_permitted)
                 }
             };
 
-            diag.note(fluent::parser_inner_attr_explanation);
+            diag.note(fluent::parse_inner_attr_explanation);
             if self
                 .annotate_following_item_if_applicable(
                     &mut diag,
@@ -229,7 +229,7 @@ impl<'a> Parser<'a> {
                 )
                 .is_some()
             {
-                diag.note(fluent::parser_outer_attr_explanation);
+                diag.note(fluent::parse_outer_attr_explanation);
             };
             diag.emit();
         }
@@ -245,9 +245,9 @@ impl<'a> Parser<'a> {
     ///     PATH `=` UNSUFFIXED_LIT
     /// The delimiters or `=` are still put into the resulting token stream.
     pub fn parse_attr_item(&mut self, capture_tokens: bool) -> PResult<'a, ast::AttrItem> {
-        let item = match self.token.kind {
-            token::Interpolated(ref nt) => match **nt {
-                Nonterminal::NtMeta(ref item) => Some(item.clone().into_inner()),
+        let item = match &self.token.kind {
+            token::Interpolated(nt) => match &**nt {
+                Nonterminal::NtMeta(item) => Some(item.clone().into_inner()),
                 _ => None,
             },
             _ => None,
@@ -364,9 +364,9 @@ impl<'a> Parser<'a> {
     /// meta_item_inner : (meta_item | UNSUFFIXED_LIT) (',' meta_item_inner)? ;
     /// ```
     pub fn parse_meta_item(&mut self) -> PResult<'a, ast::MetaItem> {
-        let nt_meta = match self.token.kind {
-            token::Interpolated(ref nt) => match **nt {
-                token::NtMeta(ref e) => Some(e.clone()),
+        let nt_meta = match &self.token.kind {
+            token::Interpolated(nt) => match &**nt {
+                token::NtMeta(e) => Some(e.clone()),
                 _ => None,
             },
             _ => None,

@@ -175,9 +175,9 @@ impl GenericArgs {
     }
 
     pub fn span(&self) -> Span {
-        match *self {
-            AngleBracketed(ref data) => data.span,
-            Parenthesized(ref data) => data.span,
+        match self {
+            AngleBracketed(data) => data.span,
+            Parenthesized(data) => data.span,
         }
     }
 }
@@ -312,8 +312,8 @@ pub enum GenericBound {
 impl GenericBound {
     pub fn span(&self) -> Span {
         match self {
-            GenericBound::Trait(ref t, ..) => t.span,
-            GenericBound::Outlives(ref l) => l.ident.span,
+            GenericBound::Trait(t, ..) => t.span,
+            GenericBound::Outlives(l) => l.ident.span,
         }
     }
 }
@@ -775,8 +775,9 @@ pub enum PatKind {
 #[derive(Clone, PartialEq, Eq, PartialOrd, Ord, Hash, Debug, Copy)]
 #[derive(HashStable_Generic, Encodable, Decodable)]
 pub enum Mutability {
-    Mut,
+    // N.B. Order is deliberate, so that Not < Mut
     Not,
+    Mut,
 }
 
 impl Mutability {
@@ -787,11 +788,38 @@ impl Mutability {
         }
     }
 
-    pub fn prefix_str(&self) -> &'static str {
+    /// Returns `""` (empty string) or `"mut "` depending on the mutability.
+    pub fn prefix_str(self) -> &'static str {
         match self {
             Mutability::Mut => "mut ",
             Mutability::Not => "",
         }
+    }
+
+    /// Returns `"&"` or `"&mut "` depending on the mutability.
+    pub fn ref_prefix_str(self) -> &'static str {
+        match self {
+            Mutability::Not => "&",
+            Mutability::Mut => "&mut ",
+        }
+    }
+
+    /// Returns `""` (empty string) or `"mutably "` depending on the mutability.
+    pub fn mutably_str(self) -> &'static str {
+        match self {
+            Mutability::Not => "",
+            Mutability::Mut => "mutably ",
+        }
+    }
+
+    /// Return `true` if self is mutable
+    pub fn is_mut(self) -> bool {
+        matches!(self, Self::Mut)
+    }
+
+    /// Return `true` if self is **not** mutable
+    pub fn is_not(self) -> bool {
+        matches!(self, Self::Not)
     }
 }
 
@@ -1115,23 +1143,23 @@ impl Expr {
     /// If this is not the case, name resolution does not resolve `N` when using
     /// `min_const_generics` as more complex expressions are not supported.
     pub fn is_potential_trivial_const_param(&self) -> bool {
-        let this = if let ExprKind::Block(ref block, None) = self.kind {
-            if block.stmts.len() == 1 {
-                if let StmtKind::Expr(ref expr) = block.stmts[0].kind { expr } else { self }
-            } else {
-                self
-            }
+        let this = if let ExprKind::Block(block, None) = &self.kind
+            && block.stmts.len() == 1
+            && let StmtKind::Expr(expr) = &block.stmts[0].kind
+        {
+            expr
         } else {
             self
         };
 
-        if let ExprKind::Path(None, ref path) = this.kind {
-            if path.segments.len() == 1 && path.segments[0].args.is_none() {
-                return true;
-            }
+        if let ExprKind::Path(None, path) = &this.kind
+            && path.segments.len() == 1
+            && path.segments[0].args.is_none()
+        {
+            true
+        } else {
+            false
         }
-
-        false
     }
 
     pub fn to_bound(&self) -> Option<GenericBound> {
@@ -1376,7 +1404,7 @@ pub enum ExprKind {
     /// Conditionless loop (can be exited with `break`, `continue`, or `return`).
     ///
     /// `'label: loop { block }`
-    Loop(P<Block>, Option<Label>),
+    Loop(P<Block>, Option<Label>, Span),
     /// A `match` block.
     Match(P<Expr>, Vec<Arm>),
     /// A closure (e.g., `move |a, b, c| a + b + c`).
@@ -1544,55 +1572,48 @@ pub enum ClosureBinder {
 #[derive(Clone, Encodable, Decodable, Debug)]
 pub struct MacCall {
     pub path: Path,
-    pub args: P<MacArgs>,
+    pub args: P<DelimArgs>,
     pub prior_type_ascription: Option<(Span, bool)>,
 }
 
 impl MacCall {
     pub fn span(&self) -> Span {
-        self.path.span.to(self.args.span().unwrap_or(self.path.span))
+        self.path.span.to(self.args.dspan.entire())
     }
 }
 
-/// Arguments passed to an attribute or a function-like macro.
+/// Arguments passed to an attribute macro.
 #[derive(Clone, Encodable, Decodable, Debug)]
-pub enum MacArgs {
-    /// No arguments - `#[attr]`.
+pub enum AttrArgs {
+    /// No arguments: `#[attr]`.
     Empty,
-    /// Delimited arguments - `#[attr()/[]/{}]` or `mac!()/[]/{}`.
-    Delimited(DelimSpan, MacDelimiter, TokenStream),
-    /// Arguments of a key-value attribute - `#[attr = "value"]`.
+    /// Delimited arguments: `#[attr()/[]/{}]`.
+    Delimited(DelimArgs),
+    /// Arguments of a key-value attribute: `#[attr = "value"]`.
     Eq(
         /// Span of the `=` token.
         Span,
         /// The "value".
-        MacArgsEq,
+        AttrArgsEq,
     ),
 }
 
-// The RHS of a `MacArgs::Eq` starts out as an expression. Once macro expansion
-// is completed, all cases end up either as a literal, which is the form used
-// after lowering to HIR, or as an error.
+// The RHS of an `AttrArgs::Eq` starts out as an expression. Once macro
+// expansion is completed, all cases end up either as a literal, which is the
+// form used after lowering to HIR, or as an error.
 #[derive(Clone, Encodable, Decodable, Debug)]
-pub enum MacArgsEq {
+pub enum AttrArgsEq {
     Ast(P<Expr>),
     Hir(Lit),
 }
 
-impl MacArgs {
-    pub fn delim(&self) -> Option<Delimiter> {
-        match self {
-            MacArgs::Delimited(_, delim, _) => Some(delim.to_token()),
-            MacArgs::Empty | MacArgs::Eq(..) => None,
-        }
-    }
-
+impl AttrArgs {
     pub fn span(&self) -> Option<Span> {
         match self {
-            MacArgs::Empty => None,
-            MacArgs::Delimited(dspan, ..) => Some(dspan.entire()),
-            MacArgs::Eq(eq_span, MacArgsEq::Ast(expr)) => Some(eq_span.to(expr.span)),
-            MacArgs::Eq(_, MacArgsEq::Hir(lit)) => {
+            AttrArgs::Empty => None,
+            AttrArgs::Delimited(args) => Some(args.dspan.entire()),
+            AttrArgs::Eq(eq_span, AttrArgsEq::Ast(expr)) => Some(eq_span.to(expr.span)),
+            AttrArgs::Eq(_, AttrArgsEq::Hir(lit)) => {
                 unreachable!("in literal form when getting span: {:?}", lit);
             }
         }
@@ -1602,43 +1623,61 @@ impl MacArgs {
     /// Proc macros see these tokens, for example.
     pub fn inner_tokens(&self) -> TokenStream {
         match self {
-            MacArgs::Empty => TokenStream::default(),
-            MacArgs::Delimited(.., tokens) => tokens.clone(),
-            MacArgs::Eq(_, MacArgsEq::Ast(expr)) => TokenStream::from_ast(expr),
-            MacArgs::Eq(_, MacArgsEq::Hir(lit)) => {
+            AttrArgs::Empty => TokenStream::default(),
+            AttrArgs::Delimited(args) => args.tokens.clone(),
+            AttrArgs::Eq(_, AttrArgsEq::Ast(expr)) => TokenStream::from_ast(expr),
+            AttrArgs::Eq(_, AttrArgsEq::Hir(lit)) => {
                 unreachable!("in literal form when getting inner tokens: {:?}", lit)
             }
         }
     }
-
-    /// Whether a macro with these arguments needs a semicolon
-    /// when used as a standalone item or statement.
-    pub fn need_semicolon(&self) -> bool {
-        !matches!(self, MacArgs::Delimited(_, MacDelimiter::Brace, _))
-    }
 }
 
-impl<CTX> HashStable<CTX> for MacArgs
+impl<CTX> HashStable<CTX> for AttrArgs
 where
     CTX: crate::HashStableContext,
 {
     fn hash_stable(&self, ctx: &mut CTX, hasher: &mut StableHasher) {
         mem::discriminant(self).hash_stable(ctx, hasher);
         match self {
-            MacArgs::Empty => {}
-            MacArgs::Delimited(dspan, delim, tokens) => {
-                dspan.hash_stable(ctx, hasher);
-                delim.hash_stable(ctx, hasher);
-                tokens.hash_stable(ctx, hasher);
-            }
-            MacArgs::Eq(_eq_span, MacArgsEq::Ast(expr)) => {
+            AttrArgs::Empty => {}
+            AttrArgs::Delimited(args) => args.hash_stable(ctx, hasher),
+            AttrArgs::Eq(_eq_span, AttrArgsEq::Ast(expr)) => {
                 unreachable!("hash_stable {:?}", expr);
             }
-            MacArgs::Eq(eq_span, MacArgsEq::Hir(lit)) => {
+            AttrArgs::Eq(eq_span, AttrArgsEq::Hir(lit)) => {
                 eq_span.hash_stable(ctx, hasher);
                 lit.hash_stable(ctx, hasher);
             }
         }
+    }
+}
+
+/// Delimited arguments, as used in `#[attr()/[]/{}]` or `mac!()/[]/{}`.
+#[derive(Clone, Encodable, Decodable, Debug)]
+pub struct DelimArgs {
+    pub dspan: DelimSpan,
+    pub delim: MacDelimiter,
+    pub tokens: TokenStream,
+}
+
+impl DelimArgs {
+    /// Whether a macro with these arguments needs a semicolon
+    /// when used as a standalone item or statement.
+    pub fn need_semicolon(&self) -> bool {
+        !matches!(self, DelimArgs { delim: MacDelimiter::Brace, .. })
+    }
+}
+
+impl<CTX> HashStable<CTX> for DelimArgs
+where
+    CTX: crate::HashStableContext,
+{
+    fn hash_stable(&self, ctx: &mut CTX, hasher: &mut StableHasher) {
+        let DelimArgs { dspan, delim, tokens } = self;
+        dspan.hash_stable(ctx, hasher);
+        delim.hash_stable(ctx, hasher);
+        tokens.hash_stable(ctx, hasher);
     }
 }
 
@@ -1671,7 +1710,7 @@ impl MacDelimiter {
 /// Represents a macro definition.
 #[derive(Clone, Encodable, Decodable, Debug, HashStable_Generic)]
 pub struct MacroDef {
-    pub body: P<MacArgs>,
+    pub body: P<DelimArgs>,
     /// `true` if macro was defined with `macro_rules`.
     pub macro_rules: bool,
 }
@@ -2393,9 +2432,9 @@ pub enum FnRetTy {
 
 impl FnRetTy {
     pub fn span(&self) -> Span {
-        match *self {
-            FnRetTy::Default(span) => span,
-            FnRetTy::Ty(ref ty) => ty.span,
+        match self {
+            &FnRetTy::Default(span) => span,
+            FnRetTy::Ty(ty) => ty.span,
         }
     }
 }
@@ -2534,7 +2573,7 @@ impl<D: Decoder> Decodable<D> for AttrId {
 #[derive(Clone, Encodable, Decodable, Debug, HashStable_Generic)]
 pub struct AttrItem {
     pub path: Path,
-    pub args: MacArgs,
+    pub args: AttrArgs,
     pub tokens: Option<LazyAttrTokenStream>,
 }
 
@@ -2657,14 +2696,14 @@ pub enum VariantData {
 impl VariantData {
     /// Return the fields of this variant.
     pub fn fields(&self) -> &[FieldDef] {
-        match *self {
-            VariantData::Struct(ref fields, ..) | VariantData::Tuple(ref fields, _) => fields,
+        match self {
+            VariantData::Struct(fields, ..) | VariantData::Tuple(fields, _) => fields,
             _ => &[],
         }
     }
 
     /// Return the `NodeId` of this variant's constructor, if it has one.
-    pub fn ctor_id(&self) -> Option<NodeId> {
+    pub fn ctor_node_id(&self) -> Option<NodeId> {
         match *self {
             VariantData::Struct(..) => None,
             VariantData::Tuple(_, id) | VariantData::Unit(id) => Some(id),

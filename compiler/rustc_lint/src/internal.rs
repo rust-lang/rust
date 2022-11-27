@@ -272,11 +272,7 @@ fn gen_args(segment: &PathSegment<'_>) -> String {
             .args
             .iter()
             .filter_map(|arg| {
-                if let GenericArg::Lifetime(lt) = arg {
-                    Some(lt.name.ident().to_string())
-                } else {
-                    None
-                }
+                if let GenericArg::Lifetime(lt) = arg { Some(lt.ident.to_string()) } else { None }
             })
             .collect::<Vec<_>>();
 

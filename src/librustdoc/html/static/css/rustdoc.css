@@ -290,19 +290,20 @@ p:last-child {
 button {
 	/* Buttons on Safari have different default padding than other platforms. Make them the same. */
 	padding: 1px 6px;
+	/* Opinionated tweak: use pointer cursor as clickability signifier. */
+	cursor: pointer;
 }
+
+/* end tweaks for normalize.css 8 */
 
 button#toggle-all-docs {
 	padding: 0;
 	background: none;
 	border: none;
-	cursor: pointer;
 	/* iOS button gradient: https://stackoverflow.com/q/5438567 */
 	-webkit-appearance: none;
 	opacity: 1;
 }
-
-/* end tweaks for normalize.css 8 */
 
 .rustdoc {
 	display: flex;
@@ -700,6 +701,8 @@ a {
 }
 
 .small-section-header {
+	/* fields use <span> tags, but should get their own lines */
+	display: block;
 	position: relative;
 }
 
@@ -726,9 +729,6 @@ a {
 }
 h2.small-section-header > .anchor {
 	padding-right: 6px;
-}
-.anchor::before {
-	content: '§';
 }
 
 .main-heading a:hover,
@@ -784,8 +784,7 @@ table,
 	margin-top: 0;
 	white-space: nowrap;
 	/* flex layout allows shrinking the <select> appropriately if it becomes too large */
-	display: inline-flex;
-	max-width: 100%;
+	display: flex;
 	/* make things look like in a line, despite the fact that we're using a layout
 	with boxes (i.e. from the flex layout) */
 	align-items: baseline;
@@ -906,6 +905,13 @@ so that we can apply CSS-filters to change the arrow color in themes */
 	background-color: var(--search-result-link-focus-background-color);
 }
 
+.search-results .result-name span.alias {
+	color: var(--search-results-alias-color);
+}
+.search-results .result-name span.grey {
+	color: var(--search-results-grey-color);
+}
+
 .popover {
 	position: absolute;
 	right: 0;
@@ -924,7 +930,6 @@ so that we can apply CSS-filters to change the arrow color in themes */
 	right: var(--popover-arrow-offset);
 	border: solid var(--border-color);
 	border-width: 1px 1px 0 0;
-	display: inline-block;
 	padding: 4px;
 	transform: rotate(-45deg);
 	top: -5px;
@@ -944,7 +949,6 @@ so that we can apply CSS-filters to change the arrow color in themes */
 #help dt {
 	float: left;
 	clear: left;
-	display: block;
 	margin-right: 0.5rem;
 }
 #help span.top, #help span.bottom {
@@ -1134,7 +1138,6 @@ pre.rust .doccomment {
 .example-wrap .tooltip {
 	position: absolute;
 	display: block;
-	cursor: pointer;
 	left: -25px;
 	top: 5px;
 }
@@ -1192,7 +1195,6 @@ pre.rust .doccomment {
 }
 
 a.test-arrow {
-	display: inline-block;
 	visibility: hidden;
 	position: absolute;
 	padding: 5px 10px 5px 10px;
@@ -1305,7 +1307,6 @@ a.test-arrow:hover {
 #titles > button {
 	text-align: center;
 	font-size: 1.125rem;
-	cursor: pointer;
 	border: 0;
 	border-top: 2px solid;
 	flex: 1;
@@ -1326,8 +1327,8 @@ a.test-arrow:hover {
 	border-bottom: 1px solid;
 	display: flex;
 	height: 40px;
-	justify-content: center;
-	align-items: center;
+	justify-content: stretch;
+	align-items: stretch;
 	z-index: 10;
 }
 #source-sidebar {
@@ -1340,22 +1341,22 @@ a.test-arrow:hover {
 	border-bottom: 1px solid var(--border-color);
 	margin-bottom: 6px;
 }
+#source-sidebar div.files > a:hover, details.dir-entry summary:hover,
+#source-sidebar div.files > a:focus, details.dir-entry summary:focus {
+	background-color: var(--source-sidebar-background-hover);
+}
+#source-sidebar div.files > a.selected {
+	background-color: var(--source-sidebar-background-selected);
+}
 #sidebar-toggle > button {
 	font-size: inherit;
 	font-weight: bold;
 	background: none;
 	color: inherit;
-	cursor: pointer;
 	text-align: center;
 	border: none;
 	outline: none;
-	position: absolute;
-	top: 0;
-	bottom: 0;
-	left: 0;
-	right: 0;
-	/* work around button layout strangeness: https://stackoverflow.com/q/7271561 */
-	width: 100%;
+	flex: 1 1;
 	/* iOS button gradient: https://stackoverflow.com/q/5438567 */
 	-webkit-appearance: none;
 	opacity: 1;
@@ -1367,7 +1368,6 @@ a.test-arrow:hover {
 
 #settings-menu > a, #help-button > a, #copy-path {
 	width: 33px;
-	cursor: pointer;
 	line-height: 1.5;
 }
 
@@ -1431,6 +1431,9 @@ kbd {
 	border: solid 1px var(--border-color);
 	border-radius: 3px;
 	cursor: default;
+	color: var(--kbd--color);
+	background-color: var(--kbd-background);
+	box-shadow: inset 0 -1px 0 var(--kbd-box-shadow-color);
 }
 
 ul.all-items > li {
@@ -1793,7 +1796,6 @@ in storage.js
 		z-index: 10;
 		border-top-right-radius: 3px;
 		border-bottom-right-radius: 3px;
-		cursor: pointer;
 		border: 1px solid;
 		border-left: 0;
 	}
@@ -1964,7 +1966,12 @@ in storage.js
 	position: absolute;
 	top: 0.25em;
 	z-index: 1;
-	cursor: pointer;
+	padding: 0;
+	background: none;
+	border: none;
+	/* iOS button gradient: https://stackoverflow.com/q/5438567 */
+	-webkit-appearance: none;
+	opacity: 1;
 }
 .scraped-example .code-wrapper .prev {
 	right: 2.25em;

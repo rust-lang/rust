@@ -7,6 +7,9 @@
 use crate::ty::{self, print::describe_as_module, TyCtxt};
 use rustc_span::def_id::LOCAL_CRATE;
 
+mod keys;
+pub use keys::Key;
+
 // Each of these queries corresponds to a function pointer field in the
 // `Providers` struct for requesting a value of that type, and a method
 // on `tcx: TyCtxt` (and `tcx.at(span)`) for doing that request in a way
@@ -397,7 +400,7 @@ rustc_queries! {
     /// Try to build an abstract representation of the given constant.
     query thir_abstract_const(
         key: DefId
-    ) -> Result<Option<&'tcx [ty::abstract_const::Node<'tcx>]>, ErrorGuaranteed> {
+    ) -> Result<Option<ty::Const<'tcx>>, ErrorGuaranteed> {
         desc {
             |tcx| "building an abstract representation for `{}`", tcx.def_path_str(key),
         }
@@ -406,20 +409,11 @@ rustc_queries! {
     /// Try to build an abstract representation of the given constant.
     query thir_abstract_const_of_const_arg(
         key: (LocalDefId, DefId)
-    ) -> Result<Option<&'tcx [ty::abstract_const::Node<'tcx>]>, ErrorGuaranteed> {
+    ) -> Result<Option<ty::Const<'tcx>>, ErrorGuaranteed> {
         desc {
             |tcx|
             "building an abstract representation for the const argument `{}`",
             tcx.def_path_str(key.0.to_def_id()),
-        }
-    }
-
-    query try_unify_abstract_consts(key:
-        ty::ParamEnvAnd<'tcx, (ty::UnevaluatedConst<'tcx>, ty::UnevaluatedConst<'tcx>
-    )>) -> bool {
-        desc {
-            |tcx| "trying to unify the generic constants `{}` and `{}`",
-            tcx.def_path_str(key.value.0.def.did), tcx.def_path_str(key.value.1.def.did)
         }
     }
 
@@ -1648,6 +1642,8 @@ rustc_queries! {
     /// a generic type parameter will panic if you call this method on it:
     ///
     /// ```
+    /// use std::fmt::Debug;
+    ///
     /// pub trait Foo<T: Debug> {}
     /// ```
     ///
@@ -2072,19 +2068,8 @@ rustc_queries! {
         remap_env_constness
     }
 
-    query normalize_opaque_types(key: &'tcx ty::List<ty::Predicate<'tcx>>) -> &'tcx ty::List<ty::Predicate<'tcx>> {
-        desc { "normalizing opaque types in `{:?}`", key }
-    }
-
-    /// Checks whether a type is definitely uninhabited. This is
-    /// conservative: for some types that are uninhabited we return `false`,
-    /// but we only return `true` for types that are definitely uninhabited.
-    /// `ty.conservative_is_privately_uninhabited` implies that any value of type `ty`
-    /// will be `Abi::Uninhabited`. (Note that uninhabited types may have nonzero
-    /// size, to account for partial initialisation. See #49298 for details.)
-    query conservative_is_privately_uninhabited(key: ty::ParamEnvAnd<'tcx, Ty<'tcx>>) -> bool {
-        desc { "conservatively checking if `{}` is privately uninhabited", key.value }
-        remap_env_constness
+    query reveal_opaque_types_in_bounds(key: &'tcx ty::List<ty::Predicate<'tcx>>) -> &'tcx ty::List<ty::Predicate<'tcx>> {
+        desc { "revealing opaque types in `{:?}`", key }
     }
 
     query limits(key: ()) -> Limits {

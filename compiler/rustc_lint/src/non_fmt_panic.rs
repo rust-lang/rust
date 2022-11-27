@@ -5,7 +5,6 @@ use rustc_hir as hir;
 use rustc_infer::infer::TyCtxtInferExt;
 use rustc_middle::lint::in_external_macro;
 use rustc_middle::ty;
-use rustc_middle::ty::subst::InternalSubsts;
 use rustc_parse_format::{ParseMode, Parser, Piece};
 use rustc_session::lint::FutureIncompatibilityReason;
 use rustc_span::edition::Edition;
@@ -148,22 +147,22 @@ fn check_panic<'tcx>(cx: &LateContext<'tcx>, f: &'tcx hir::Expr<'tcx>, arg: &'tc
                 ty::Ref(_, r, _) if *r.kind() == ty::Str,
             ) || matches!(
                 ty.ty_adt_def(),
-                Some(ty_def) if cx.tcx.is_diagnostic_item(sym::String, ty_def.did()),
+                Some(ty_def) if Some(ty_def.did()) == cx.tcx.lang_items().string(),
             );
 
             let infcx = cx.tcx.infer_ctxt().build();
             let suggest_display = is_str
-                || cx.tcx.get_diagnostic_item(sym::Display).map(|t| {
-                    infcx
-                        .type_implements_trait(t, ty, InternalSubsts::empty(), cx.param_env)
-                        .may_apply()
-                }) == Some(true);
+                || cx
+                    .tcx
+                    .get_diagnostic_item(sym::Display)
+                    .map(|t| infcx.type_implements_trait(t, [ty], cx.param_env).may_apply())
+                    == Some(true);
             let suggest_debug = !suggest_display
-                && cx.tcx.get_diagnostic_item(sym::Debug).map(|t| {
-                    infcx
-                        .type_implements_trait(t, ty, InternalSubsts::empty(), cx.param_env)
-                        .may_apply()
-                }) == Some(true);
+                && cx
+                    .tcx
+                    .get_diagnostic_item(sym::Debug)
+                    .map(|t| infcx.type_implements_trait(t, [ty], cx.param_env).may_apply())
+                    == Some(true);
 
             let suggest_panic_any = !is_str && panic == sym::std_panic_macro;
 

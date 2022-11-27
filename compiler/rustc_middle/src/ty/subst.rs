@@ -140,6 +140,15 @@ impl<'tcx> From<ty::Const<'tcx>> for GenericArg<'tcx> {
     }
 }
 
+impl<'tcx> From<ty::Term<'tcx>> for GenericArg<'tcx> {
+    fn from(value: ty::Term<'tcx>) -> Self {
+        match value.unpack() {
+            ty::TermKind::Ty(t) => t.into(),
+            ty::TermKind::Const(c) => c.into(),
+        }
+    }
+}
+
 impl<'tcx> GenericArg<'tcx> {
     #[inline]
     pub fn unpack(self) -> GenericArgKind<'tcx> {
@@ -589,6 +598,10 @@ where
     fn next(&mut self) -> Option<Self::Item> {
         Some(EarlyBinder(self.it.next()?).subst(self.tcx, self.substs))
     }
+
+    fn size_hint(&self) -> (usize, Option<usize>) {
+        self.it.size_hint()
+    }
 }
 
 impl<'tcx, I: IntoIterator> DoubleEndedIterator for SubstIter<'_, 'tcx, I>
@@ -631,6 +644,10 @@ where
     fn next(&mut self) -> Option<Self::Item> {
         Some(EarlyBinder(*self.it.next()?).subst(self.tcx, self.substs))
     }
+
+    fn size_hint(&self) -> (usize, Option<usize>) {
+        self.it.size_hint()
+    }
 }
 
 impl<'tcx, I: IntoIterator> DoubleEndedIterator for SubstIterCopied<'_, 'tcx, I>
@@ -659,6 +676,10 @@ impl<T: Iterator> Iterator for EarlyBinderIter<T> {
 
     fn next(&mut self) -> Option<Self::Item> {
         self.t.next().map(|i| EarlyBinder(i))
+    }
+
+    fn size_hint(&self) -> (usize, Option<usize>) {
+        self.t.size_hint()
     }
 }
 

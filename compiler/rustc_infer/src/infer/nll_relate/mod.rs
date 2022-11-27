@@ -25,7 +25,7 @@ use crate::infer::combine::ConstEquateRelation;
 use crate::infer::InferCtxt;
 use crate::infer::{ConstVarValue, ConstVariableValue};
 use crate::infer::{TypeVariableOrigin, TypeVariableOriginKind};
-use crate::traits::PredicateObligation;
+use crate::traits::{Obligation, PredicateObligation};
 use rustc_data_structures::fx::FxHashMap;
 use rustc_middle::traits::ObligationCause;
 use rustc_middle::ty::error::TypeError;
@@ -92,11 +92,7 @@ pub trait TypeRelatingDelegate<'tcx> {
         info: ty::VarianceDiagInfo<'tcx>,
     );
 
-    fn const_equate(&mut self, a: ty::Const<'tcx>, b: ty::Const<'tcx>);
-    fn register_opaque_type_obligations(
-        &mut self,
-        obligations: Vec<PredicateObligation<'tcx>>,
-    ) -> Result<(), TypeError<'tcx>>;
+    fn register_obligations(&mut self, obligations: Vec<PredicateObligation<'tcx>>);
 
     /// Creates a new universe index. Used when instantiating placeholders.
     fn create_next_universe(&mut self) -> ty::UniverseIndex;
@@ -419,7 +415,7 @@ where
             .infcx
             .handle_opaque_type(a, b, true, &cause, self.delegate.param_env())?
             .obligations;
-        self.delegate.register_opaque_type_obligations(obligations)?;
+        self.delegate.register_obligations(obligations);
         trace!(a = ?a.kind(), b = ?b.kind(), "opaque type instantiated");
         Ok(a)
     }
@@ -531,6 +527,10 @@ where
         self.infcx.tcx
     }
 
+    fn intercrate(&self) -> bool {
+        self.infcx.intercrate
+    }
+
     fn param_env(&self) -> ty::ParamEnv<'tcx> {
         self.delegate.param_env()
     }
@@ -541,6 +541,17 @@ where
 
     fn a_is_expected(&self) -> bool {
         true
+    }
+
+    fn mark_ambiguous(&mut self) {
+        let cause = ObligationCause::dummy_with_span(self.delegate.span());
+        let param_env = self.delegate.param_env();
+        self.delegate.register_obligations(vec![Obligation::new(
+            self.tcx(),
+            cause,
+            param_env,
+            ty::Binder::dummy(ty::PredicateKind::Ambiguous),
+        )]);
     }
 
     #[instrument(skip(self, info), level = "trace", ret)]
@@ -800,8 +811,12 @@ impl<'tcx, D> ConstEquateRelation<'tcx> for TypeRelating<'_, 'tcx, D>
 where
     D: TypeRelatingDelegate<'tcx>,
 {
-    fn const_equate_obligation(&mut self, a: ty::Const<'tcx>, b: ty::Const<'tcx>) {
-        self.delegate.const_equate(a, b);
+    fn const_equate_obligation(&mut self, _a: ty::Const<'tcx>, _b: ty::Const<'tcx>) {
+        // We don't have to worry about the equality of consts during borrow checking
+        // as consts always have a static lifetime.
+        // FIXME(oli-obk): is this really true? We can at least have HKL and with
+        // inline consts we may have further lifetimes that may be unsound to treat as
+        // 'static.
     }
 }
 
@@ -898,6 +913,11 @@ where
         self.infcx.tcx
     }
 
+    fn intercrate(&self) -> bool {
+        assert!(!self.infcx.intercrate);
+        false
+    }
+
     fn param_env(&self) -> ty::ParamEnv<'tcx> {
         self.delegate.param_env()
     }
@@ -908,6 +928,10 @@ where
 
     fn a_is_expected(&self) -> bool {
         true
+    }
+
+    fn mark_ambiguous(&mut self) {
+        bug!()
     }
 
     fn relate_with_variance<T: Relate<'tcx>>(

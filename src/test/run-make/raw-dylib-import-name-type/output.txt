@@ -1,3 +1,4 @@
+LooksLikeAPrivateGlobal(13)
 cdecl_fn_undecorated(1)
 cdecl_fn_undecorated2(10)
 cdecl_fn_noprefix(2)

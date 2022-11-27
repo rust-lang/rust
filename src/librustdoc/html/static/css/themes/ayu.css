@@ -41,9 +41,11 @@ Original by Dempfi (https://github.com/dempfi/ayu)
 	--sidebar-current-link-background-color: transparent;
 	--search-result-link-focus-background-color: #3c3c3c;
 	--search-result-border-color: #aaa3;
+	--search-color: #fff;
+	--search-results-alias-color: #c5c5c5;
+	--search-results-grey-color: #999;
 	--stab-background-color: #314559;
 	--stab-code-color: #e6e1cf;
-	--search-color: #fff;
 	--code-highlight-kw-color: #ff7733;
 	--code-highlight-kw-2-color: #ff7733;
 	--code-highlight-lifetime-color: #ff7733;
@@ -69,6 +71,9 @@ Original by Dempfi (https://github.com/dempfi/ayu)
 	--target-border-color: rgba(255, 180, 76, 0.85);
 	--tooltip-background-color: #314559;
 	--tooltip-color: #c5c5c5;
+	--kbd-color: #c5c5c5;
+	--kbd-background: #314559;
+	--kbd-box-shadow-color: #5c6773;
 	--rust-logo-filter: drop-shadow(1px 0 0px #fff)
 		drop-shadow(0 1px 0 #fff)
 		drop-shadow(-1px 0 0 #fff)
@@ -79,6 +84,8 @@ Original by Dempfi (https://github.com/dempfi/ayu)
 	--crate-search-div-hover-filter: invert(98%) sepia(12%) saturate(81%) hue-rotate(343deg)
 		brightness(113%) contrast(76%);
 	--crate-search-hover-border: #e0e0e0;
+	--source-sidebar-background-selected: #14191f;
+	--source-sidebar-background-hover: #14191f;
 }
 
 h1, h2, h3, h4 {
@@ -195,33 +202,16 @@ pre.rust .kw {}
 pre.rust .self, pre.rust .bool-val, pre.rust .prelude-val, pre.rust .attribute {}
 pre.rust .kw-2, pre.rust .prelude-ty {}
 
-kbd {
-	color: #c5c5c5;
-	background-color: #314559;
-	box-shadow: inset 0 -1px 0 #5c6773;
-}
-
 #settings-menu > a img {
 	filter: invert(100);
-}
-
-.search-results .result-name span.alias {
-	color: #c5c5c5;
-}
-.search-results .result-name span.grey {
-	color: #999;
 }
 
 #source-sidebar > .title {
 	color: #fff;
 }
 #source-sidebar div.files > a:hover, details.dir-entry summary:hover,
-#source-sidebar div.files > a:focus, details.dir-entry summary:focus {
-	background-color: #14191f;
-	color: #ffb44c;
-}
+#source-sidebar div.files > a:focus, details.dir-entry summary:focus,
 #source-sidebar div.files > a.selected {
-	background-color: #14191f;
 	color: #ffb44c;
 }
 

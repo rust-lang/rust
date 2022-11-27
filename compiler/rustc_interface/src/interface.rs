@@ -304,7 +304,7 @@ pub fn run_compiler<R: Send>(config: Config, f: impl FnOnce(&Compiler) -> R + Se
                 parse_sess_created(&mut sess.parse_sess);
             }
 
-            let temps_dir = sess.opts.unstable_opts.temps_dir.as_ref().map(|o| PathBuf::from(&o));
+            let temps_dir = sess.opts.unstable_opts.temps_dir.as_deref().map(PathBuf::from);
 
             let compiler = Compiler {
                 sess: Lrc::new(sess),

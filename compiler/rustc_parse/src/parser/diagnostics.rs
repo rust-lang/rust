@@ -937,7 +937,7 @@ impl<'a> Parser<'a> {
                     if self.eat(&token::Gt) {
                         e.span_suggestion_verbose(
                             binop.span.shrink_to_lo(),
-                            fluent::parser_sugg_turbofish_syntax,
+                            fluent::parse_sugg_turbofish_syntax,
                             "::",
                             Applicability::MaybeIncorrect,
                         )
@@ -973,7 +973,7 @@ impl<'a> Parser<'a> {
         inner_op: &Expr,
         outer_op: &Spanned<AssocOp>,
     ) -> bool /* advanced the cursor */ {
-        if let ExprKind::Binary(op, ref l1, ref r1) = inner_op.kind {
+        if let ExprKind::Binary(op, l1, r1) = &inner_op.kind {
             if let ExprKind::Field(_, ident) = l1.kind
                 && ident.as_str().parse::<i32>().is_err()
                 && !matches!(r1.kind, ExprKind::Lit(_))
@@ -1079,8 +1079,8 @@ impl<'a> Parser<'a> {
 
         let mk_err_expr = |this: &Self, span| Ok(Some(this.mk_expr(span, ExprKind::Err)));
 
-        match inner_op.kind {
-            ExprKind::Binary(op, ref l1, ref r1) if op.node.is_comparison() => {
+        match &inner_op.kind {
+            ExprKind::Binary(op, l1, r1) if op.node.is_comparison() => {
                 let mut err = ComparisonOperatorsCannotBeChained {
                     span: vec![op.span, self.prev_token.span],
                     suggest_turbofish: None,
@@ -1237,8 +1237,8 @@ impl<'a> Parser<'a> {
         let bounds = self.parse_generic_bounds(None)?;
         let sum_span = ty.span.to(self.prev_token.span);
 
-        let sub = match ty.kind {
-            TyKind::Rptr(ref lifetime, ref mut_ty) => {
+        let sub = match &ty.kind {
+            TyKind::Rptr(lifetime, mut_ty) => {
                 let sum_with_parens = pprust::to_string(|s| {
                     s.s.word("&");
                     s.print_opt_lifetime(lifetime);
@@ -2565,7 +2565,7 @@ impl<'a> Parser<'a> {
             if let [a, b] = segments {
                 let (a_span, b_span) = (a.span(), b.span());
                 let between_span = a_span.shrink_to_hi().to(b_span.shrink_to_lo());
-                if self.span_to_snippet(between_span).as_ref().map(|a| &a[..]) == Ok(":: ") {
+                if self.span_to_snippet(between_span).as_deref() == Ok(":: ") {
                     return Err(DoubleColonInBound {
                         span: path.span.shrink_to_hi(),
                         between: between_span,

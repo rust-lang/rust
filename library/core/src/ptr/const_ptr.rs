@@ -112,13 +112,20 @@ impl<T: ?Sized> *const T {
     ///
     /// ```
     /// #![feature(ptr_to_from_bits)]
+    /// # #[cfg(not(miri))] { // doctest does not work with strict provenance
     /// let array = [13, 42];
     /// let p0: *const i32 = &array[0];
     /// assert_eq!(<*const _>::from_bits(p0.to_bits()), p0);
     /// let p1: *const i32 = &array[1];
     /// assert_eq!(p1.to_bits() - p0.to_bits(), 4);
+    /// # }
     /// ```
     #[unstable(feature = "ptr_to_from_bits", issue = "91126")]
+    #[deprecated(
+        since = "1.67",
+        note = "replaced by the `exposed_addr` method, or update your code \
+            to follow the strict provenance rules using its APIs"
+    )]
     pub fn to_bits(self) -> usize
     where
         T: Sized,
@@ -135,11 +142,19 @@ impl<T: ?Sized> *const T {
     ///
     /// ```
     /// #![feature(ptr_to_from_bits)]
+    /// # #[cfg(not(miri))] { // doctest does not work with strict provenance
     /// use std::ptr::NonNull;
     /// let dangling: *const u8 = NonNull::dangling().as_ptr();
     /// assert_eq!(<*const u8>::from_bits(1), dangling);
+    /// # }
     /// ```
     #[unstable(feature = "ptr_to_from_bits", issue = "91126")]
+    #[deprecated(
+        since = "1.67",
+        note = "replaced by the `ptr::from_exposed_addr` function, or update \
+            your code to follow the strict provenance rules using its APIs"
+    )]
+    #[allow(fuzzy_provenance_casts)] // this is an unstable and semi-deprecated cast function
     pub fn from_bits(bits: usize) -> Self
     where
         T: Sized,

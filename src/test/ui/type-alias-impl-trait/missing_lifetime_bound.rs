@@ -2,6 +2,6 @@
 
 type Opaque<'a, T> = impl Sized;
 fn defining<'a, T>(x: &'a i32) -> Opaque<T> { x }
-//~^ ERROR: non-defining opaque type use in defining scope
+//~^ ERROR: hidden type for `Opaque<'a, T>` captures lifetime that does not appear in bounds
 
 fn main() {}

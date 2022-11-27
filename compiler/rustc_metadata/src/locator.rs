@@ -707,6 +707,12 @@ impl<'a> CrateLocator<'a> {
                     loc.original().clone(),
                 ));
             }
+            if !loc.original().is_file() {
+                return Err(CrateError::ExternLocationNotFile(
+                    self.crate_name,
+                    loc.original().clone(),
+                ));
+            }
             let Some(file) = loc.original().file_name().and_then(|s| s.to_str()) else {
                 return Err(CrateError::ExternLocationNotFile(
                     self.crate_name,
@@ -1020,11 +1026,10 @@ impl CrateError {
                     None => String::new(),
                     Some(r) => format!(" which `{}` depends on", r.name),
                 };
-                // FIXME: There are no tests for CrateLocationUnknownType or LibFilenameForm
                 if !locator.crate_rejections.via_filename.is_empty() {
                     let mismatches = locator.crate_rejections.via_filename.iter();
                     for CrateMismatch { path, .. } in mismatches {
-                        sess.emit_err(CrateLocationUnknownType { span, path: &path });
+                        sess.emit_err(CrateLocationUnknownType { span, path: &path, crate_name });
                         sess.emit_err(LibFilenameForm {
                             span,
                             dll_prefix: &locator.dll_prefix,

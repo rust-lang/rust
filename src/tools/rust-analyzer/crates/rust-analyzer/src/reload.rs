@@ -106,6 +106,14 @@ impl GlobalState {
             status.health = lsp_ext::Health::Error;
             status.message = Some(error)
         }
+
+        if self.config.linked_projects().is_empty()
+            && self.config.detached_files().is_empty()
+            && self.config.notifications().cargo_toml_not_found
+        {
+            status.health = lsp_ext::Health::Warning;
+            status.message = Some("Workspace reload required".to_string())
+        }
         status
     }
 
@@ -198,12 +206,9 @@ impl GlobalState {
             self.show_and_log_error("failed to run build scripts".to_string(), Some(error));
         }
 
-        let workspaces = self
-            .fetch_workspaces_queue
-            .last_op_result()
-            .iter()
-            .filter_map(|res| res.as_ref().ok().cloned())
-            .collect::<Vec<_>>();
+        let Some(workspaces) = self.fetch_workspaces_queue.last_op_result() else { return; };
+        let workspaces =
+            workspaces.iter().filter_map(|res| res.as_ref().ok().cloned()).collect::<Vec<_>>();
 
         fn eq_ignore_build_data<'a>(
             left: &'a ProjectWorkspace,
@@ -300,9 +305,6 @@ impl GlobalState {
         let files_config = self.config.files();
         let project_folders = ProjectFolders::new(&self.workspaces, &files_config.exclude);
 
-        let standalone_server_name =
-            format!("rust-analyzer-proc-macro-srv{}", std::env::consts::EXE_SUFFIX);
-
         if self.proc_macro_clients.is_empty() {
             if let Some((path, path_manually_set)) = self.config.proc_macro_srv() {
                 tracing::info!("Spawning proc-macro servers");
@@ -310,40 +312,17 @@ impl GlobalState {
                     .workspaces
                     .iter()
                     .map(|ws| {
-                        let (path, args) = if path_manually_set {
+                        let (path, args): (_, &[_]) = if path_manually_set {
                             tracing::debug!(
                                 "Pro-macro server path explicitly set: {}",
                                 path.display()
                             );
-                            (path.clone(), vec![])
+                            (path.clone(), &[])
                         } else {
-                            let mut sysroot_server = None;
-                            if let ProjectWorkspace::Cargo { sysroot, .. }
-                            | ProjectWorkspace::Json { sysroot, .. } = ws
-                            {
-                                if let Some(sysroot) = sysroot.as_ref() {
-                                    let server_path = sysroot
-                                        .root()
-                                        .join("libexec")
-                                        .join(&standalone_server_name);
-                                    if std::fs::metadata(&server_path).is_ok() {
-                                        tracing::debug!(
-                                            "Sysroot proc-macro server exists at {}",
-                                            server_path.display()
-                                        );
-                                        sysroot_server = Some(server_path);
-                                    } else {
-                                        tracing::debug!(
-                                            "Sysroot proc-macro server does not exist at {}",
-                                            server_path.display()
-                                        );
-                                    }
-                                }
+                            match ws.find_sysroot_proc_macro_srv() {
+                                Some(server_path) => (server_path, &[]),
+                                None => (path.clone(), &["proc-macro"]),
                             }
-                            sysroot_server.map_or_else(
-                                || (path.clone(), vec!["proc-macro".to_owned()]),
-                                |path| (path, vec![]),
-                            )
                         };
 
                         tracing::info!(?args, "Using proc-macro server at {}", path.display(),);
@@ -427,9 +406,14 @@ impl GlobalState {
     fn fetch_workspace_error(&self) -> Result<(), String> {
         let mut buf = String::new();
 
-        for ws in self.fetch_workspaces_queue.last_op_result() {
-            if let Err(err) = ws {
-                stdx::format_to!(buf, "rust-analyzer failed to load workspace: {:#}\n", err);
+        let Some(last_op_result) = self.fetch_workspaces_queue.last_op_result() else { return Ok(()) };
+        if last_op_result.is_empty() {
+            stdx::format_to!(buf, "rust-analyzer failed to discover workspace");
+        } else {
+            for ws in last_op_result {
+                if let Err(err) = ws {
+                    stdx::format_to!(buf, "rust-analyzer failed to load workspace: {:#}\n", err);
+                }
             }
         }
 

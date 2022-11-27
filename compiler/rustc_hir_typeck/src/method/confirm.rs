@@ -170,14 +170,11 @@ impl<'a, 'tcx> ConfirmContext<'a, 'tcx> {
                 let base_ty = target;
 
                 target = self.tcx.mk_ref(region, ty::TypeAndMut { mutbl, ty: target });
-                let mutbl = match mutbl {
-                    hir::Mutability::Not => AutoBorrowMutability::Not,
-                    hir::Mutability::Mut => AutoBorrowMutability::Mut {
-                        // Method call receivers are the primary use case
-                        // for two-phase borrows.
-                        allow_two_phase_borrow: AllowTwoPhase::Yes,
-                    },
-                };
+
+                // Method call receivers are the primary use case
+                // for two-phase borrows.
+                let mutbl = AutoBorrowMutability::new(mutbl, AllowTwoPhase::Yes);
+
                 adjustments.push(Adjustment {
                     kind: Adjust::Borrow(AutoBorrow::Ref(region, mutbl)),
                     target,
@@ -202,7 +199,7 @@ impl<'a, 'tcx> ConfirmContext<'a, 'tcx> {
             Some(probe::AutorefOrPtrAdjustment::ToConstPtr) => {
                 target = match target.kind() {
                     &ty::RawPtr(ty::TypeAndMut { ty, mutbl }) => {
-                        assert_eq!(mutbl, hir::Mutability::Mut);
+                        assert!(mutbl.is_mut());
                         self.tcx.mk_ptr(ty::TypeAndMut { mutbl: hir::Mutability::Not, ty })
                     }
                     other => panic!("Cannot adjust receiver type {:?} to const ptr", other),
@@ -531,7 +528,9 @@ impl<'a, 'tcx> ConfirmContext<'a, 'tcx> {
         traits::elaborate_predicates(self.tcx, predicates.predicates.iter().copied())
             // We don't care about regions here.
             .filter_map(|obligation| match obligation.predicate.kind().skip_binder() {
-                ty::PredicateKind::Trait(trait_pred) if trait_pred.def_id() == sized_def_id => {
+                ty::PredicateKind::Clause(ty::Clause::Trait(trait_pred))
+                    if trait_pred.def_id() == sized_def_id =>
+                {
                     let span = iter::zip(&predicates.predicates, &predicates.spans)
                         .find_map(
                             |(p, span)| {

@@ -36,9 +36,11 @@
 	--sidebar-current-link-background-color: #fff;
 	--search-result-link-focus-background-color: #ccc;
 	--search-result-border-color: #aaa3;
+	--search-color: #000;
+	--search-results-alias-color: #000;
+	--search-results-grey-color: #999;
 	--stab-background-color: #fff5d6;
 	--stab-code-color: #000;
-	--search-color: #000;
 	--code-highlight-kw-color: #8959a8;
 	--code-highlight-kw-2-color: #4271ae;
 	--code-highlight-lifetime-color: #b76514;
@@ -62,8 +64,11 @@
 	--test-arrow-hover-background-color: #4e8bca;
 	--target-background-color: #fdffd3;
 	--target-border-color: #ad7c37;
-	--tooltip-background-color: #fdffd3;
+	--tooltip-background-color: #000;
 	--tooltip-color: #fff;
+	--kbd-color: #000;
+	--kbd-background: #fafbfc;
+	--kbd-box-shadow-color: #c6cbd1;
 	--rust-logo-filter: initial;
 	/* match border-color; uses https://codepen.io/sosuke/pen/Pjoqqp */
 	--crate-search-div-filter: invert(100%) sepia(0%) saturate(4223%) hue-rotate(289deg)
@@ -71,6 +76,8 @@
 	--crate-search-div-hover-filter: invert(44%) sepia(18%) saturate(23%) hue-rotate(317deg)
 		brightness(96%) contrast(93%);
 	--crate-search-hover-border: #717171;
+	--source-sidebar-background-selected: #fff;
+	--source-sidebar-background-hover: #e0e0e0;
 }
 
 .content .item-info::before { color: #ccc; }
@@ -93,26 +100,6 @@ body.source .example-wrap pre.rust a {
 	color: #888;
 }
 
-kbd {
-	color: #000;
-	background-color: #fafbfc;
-	box-shadow: inset 0 -1px 0 #c6cbd1;
-}
-
-.search-results .result-name span.alias {
-	color: #000;
-}
-.search-results .result-name span.grey {
-	color: #999;
-}
-
-#source-sidebar div.files > a:hover, details.dir-entry summary:hover,
-#source-sidebar div.files > a:focus, details.dir-entry summary:focus {
-	background-color: #E0E0E0;
-}
-#source-sidebar div.files > a.selected {
-	background-color: #fff;
-}
 .scraped-example-list .scrape-help {
 	border-color: #555;
 	color: #333;

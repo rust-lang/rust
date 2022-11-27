@@ -4,7 +4,7 @@ import * as ra from "../src/lsp_ext";
 import * as Is from "vscode-languageclient/lib/common/utils/is";
 import { assert } from "./util";
 import { WorkspaceEdit } from "vscode";
-import { substituteVSCodeVariables } from "./config";
+import { Config, substituteVSCodeVariables } from "./config";
 import { randomUUID } from "crypto";
 
 export interface Env {
@@ -66,7 +66,8 @@ export async function createClient(
     traceOutputChannel: vscode.OutputChannel,
     outputChannel: vscode.OutputChannel,
     initializationOptions: vscode.WorkspaceConfiguration,
-    serverOptions: lc.ServerOptions
+    serverOptions: lc.ServerOptions,
+    config: Config
 ): Promise<lc.LanguageClient> {
     const clientOptions: lc.LanguageClientOptions = {
         documentSelector: [{ scheme: "file", language: "rust" }],
@@ -98,6 +99,43 @@ export async function createClient(
                         return resp;
                     }
                 },
+            },
+            async handleDiagnostics(
+                uri: vscode.Uri,
+                diagnostics: vscode.Diagnostic[],
+                next: lc.HandleDiagnosticsSignature
+            ) {
+                const preview = config.previewRustcOutput;
+                diagnostics.forEach((diag, idx) => {
+                    // Abuse the fact that VSCode leaks the LSP diagnostics data field through the
+                    // Diagnostic class, if they ever break this we are out of luck and have to go
+                    // back to the worst diagnostics experience ever:)
+
+                    // We encode the rendered output of a rustc diagnostic in the rendered field of
+                    // the data payload of the lsp diagnostic. If that field exists, overwrite the
+                    // diagnostic code such that clicking it opens the diagnostic in a readonly
+                    // text editor for easy inspection
+                    const rendered = (diag as unknown as { data?: { rendered?: string } }).data
+                        ?.rendered;
+                    if (rendered) {
+                        if (preview) {
+                            const index = rendered.match(/^(note|help):/m)?.index || 0;
+                            diag.message = rendered
+                                .substring(0, index)
+                                .replace(/^ -->[^\n]+\n/m, "");
+                        }
+                        diag.code = {
+                            target: vscode.Uri.from({
+                                scheme: "rust-analyzer-diagnostics-view",
+                                path: "/diagnostic message",
+                                fragment: uri.toString(),
+                                query: idx.toString(),
+                            }),
+                            value: "Click for full compiler diagnostic",
+                        };
+                    }
+                });
+                return next(uri, diagnostics);
             },
             async provideHover(
                 document: vscode.TextDocument,

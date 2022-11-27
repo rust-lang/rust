@@ -182,6 +182,28 @@ struct DiagnosticsContext<'a> {
     resolve: &'a AssistResolveStrategy,
 }
 
+impl<'a> DiagnosticsContext<'a> {
+    fn resolve_precise_location(
+        &self,
+        node: &InFile<SyntaxNodePtr>,
+        precise_location: Option<TextRange>,
+    ) -> TextRange {
+        let sema = &self.sema;
+        (|| {
+            let precise_location = precise_location?;
+            let root = sema.parse_or_expand(node.file_id)?;
+            match root.covering_element(precise_location) {
+                syntax::NodeOrToken::Node(it) => Some(sema.original_range(&it)),
+                syntax::NodeOrToken::Token(it) => {
+                    node.with_value(it).original_file_range_opt(sema.db)
+                }
+            }
+        })()
+        .unwrap_or_else(|| sema.diagnostics_display_range(node.clone()))
+        .range
+    }
+}
+
 pub fn diagnostics(
     db: &RootDatabase,
     config: &DiagnosticsConfig,

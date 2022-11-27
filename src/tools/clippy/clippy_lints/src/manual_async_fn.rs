@@ -118,7 +118,7 @@ fn future_trait_ref<'tcx>(
                 .iter()
                 .filter_map(|bound| {
                     if let GenericArg::Lifetime(lt) = bound {
-                        Some(lt.name)
+                        Some(lt.res)
                     } else {
                         None
                     }
@@ -153,7 +153,7 @@ fn captures_all_lifetimes(inputs: &[Ty<'_>], output_lifetimes: &[LifetimeName]) 
         .iter()
         .filter_map(|ty| {
             if let TyKind::Rptr(lt, _) = ty.kind {
-                Some(lt.name)
+                Some(lt.res)
             } else {
                 None
             }
@@ -177,7 +177,7 @@ fn desugared_async_block<'tcx>(cx: &LateContext<'tcx>, block: &'tcx Block<'tcx>)
         if let Some(args) = cx
             .tcx
             .lang_items()
-            .from_generator_fn()
+            .identity_future_fn()
             .and_then(|def_id| match_function_call_with_def_id(cx, block_expr, def_id));
         if args.len() == 1;
         if let Expr {

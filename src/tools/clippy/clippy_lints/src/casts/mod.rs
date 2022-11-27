@@ -593,7 +593,7 @@ declare_clippy_lint! {
     /// let _: *mut [u8] = std::ptr::slice_from_raw_parts_mut(ptr, len);
     /// ```
     /// [safety requirements]: https://doc.rust-lang.org/std/slice/fn.from_raw_parts.html#safety
-    #[clippy::version = "1.64.0"]
+    #[clippy::version = "1.65.0"]
     pub CAST_SLICE_FROM_RAW_PARTS,
     suspicious,
     "casting a slice created from a pointer and length to a slice pointer"

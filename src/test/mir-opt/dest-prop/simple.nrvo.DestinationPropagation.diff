@@ -17,18 +17,22 @@
           StorageLive(_2);                 // scope 0 at $DIR/simple.rs:+1:9: +1:16
           _2 = [const 0_u8; 1024];         // scope 0 at $DIR/simple.rs:+1:19: +1:28
           StorageLive(_3);                 // scope 1 at $DIR/simple.rs:+2:5: +2:19
-          StorageLive(_4);                 // scope 1 at $DIR/simple.rs:+2:5: +2:9
-          _4 = _1;                         // scope 1 at $DIR/simple.rs:+2:5: +2:9
+-         StorageLive(_4);                 // scope 1 at $DIR/simple.rs:+2:5: +2:9
+-         _4 = _1;                         // scope 1 at $DIR/simple.rs:+2:5: +2:9
++         nop;                             // scope 1 at $DIR/simple.rs:+2:5: +2:9
++         nop;                             // scope 1 at $DIR/simple.rs:+2:5: +2:9
           StorageLive(_5);                 // scope 1 at $DIR/simple.rs:+2:10: +2:18
           StorageLive(_6);                 // scope 1 at $DIR/simple.rs:+2:10: +2:18
           _6 = &mut _2;                    // scope 1 at $DIR/simple.rs:+2:10: +2:18
           _5 = &mut (*_6);                 // scope 1 at $DIR/simple.rs:+2:10: +2:18
-          _3 = move _4(move _5) -> bb1;    // scope 1 at $DIR/simple.rs:+2:5: +2:19
+-         _3 = move _4(move _5) -> bb1;    // scope 1 at $DIR/simple.rs:+2:5: +2:19
++         _3 = move _1(move _5) -> bb1;    // scope 1 at $DIR/simple.rs:+2:5: +2:19
       }
   
       bb1: {
           StorageDead(_5);                 // scope 1 at $DIR/simple.rs:+2:18: +2:19
-          StorageDead(_4);                 // scope 1 at $DIR/simple.rs:+2:18: +2:19
+-         StorageDead(_4);                 // scope 1 at $DIR/simple.rs:+2:18: +2:19
++         nop;                             // scope 1 at $DIR/simple.rs:+2:18: +2:19
           StorageDead(_6);                 // scope 1 at $DIR/simple.rs:+2:19: +2:20
           StorageDead(_3);                 // scope 1 at $DIR/simple.rs:+2:19: +2:20
           _0 = _2;                         // scope 1 at $DIR/simple.rs:+3:5: +3:8

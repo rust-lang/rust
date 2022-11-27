@@ -1,5 +1,4 @@
 use crate::mir::interpret::LitToConstInput;
-use crate::mir::ConstantKind;
 use crate::ty::{self, DefIdTree, InternalSubsts, ParamEnv, ParamEnvAnd, Ty, TyCtxt};
 use rustc_data_structures::intern::Interned;
 use rustc_hir as hir;
@@ -227,20 +226,6 @@ impl<'tcx> Const<'tcx> {
         } else {
             // Either the constant isn't evaluatable or ValTree creation failed.
             self
-        }
-    }
-
-    #[inline]
-    /// Tries to evaluate the constant if it is `Unevaluated` and creates a ConstValue if the
-    /// evaluation succeeds. If it doesn't succeed, returns the unevaluated constant.
-    pub fn eval_for_mir(self, tcx: TyCtxt<'tcx>, param_env: ParamEnv<'tcx>) -> ConstantKind<'tcx> {
-        if let Some(val) = self.kind().try_eval_for_mir(tcx, param_env) {
-            match val {
-                Ok(const_val) => ConstantKind::from_value(const_val, self.ty()),
-                Err(guar) => ConstantKind::Ty(tcx.const_error_with_guaranteed(self.ty(), guar)),
-            }
-        } else {
-            ConstantKind::Ty(self)
         }
     }
 

@@ -547,10 +547,7 @@ impl<'a, 'b, 'tcx> TypeVerifier<'a, 'b, 'tcx> {
 
         if let PlaceContext::NonMutatingUse(NonMutatingUseContext::Copy) = context {
             let tcx = self.tcx();
-            let trait_ref = ty::TraitRef {
-                def_id: tcx.require_lang_item(LangItem::Copy, Some(self.last_span)),
-                substs: tcx.mk_substs_trait(place_ty.ty, &[]),
-            };
+            let trait_ref = tcx.at(self.last_span).mk_trait_ref(LangItem::Copy, [place_ty.ty]);
 
             // To have a `Copy` operand, the type `T` of the
             // value must be `Copy`. Note that we prove that `T: Copy`,
@@ -1273,10 +1270,8 @@ impl<'a, 'tcx> TypeChecker<'a, 'tcx> {
 
                 self.check_rvalue(body, rv, location);
                 if !self.unsized_feature_enabled() {
-                    let trait_ref = ty::TraitRef {
-                        def_id: tcx.require_lang_item(LangItem::Sized, Some(self.last_span)),
-                        substs: tcx.mk_substs_trait(place_ty, &[]),
-                    };
+                    let trait_ref =
+                        tcx.at(self.last_span).mk_trait_ref(LangItem::Sized, [place_ty]);
                     self.prove_trait_ref(
                         trait_ref,
                         location.to_locations(),
@@ -1564,10 +1559,7 @@ impl<'a, 'tcx> TypeChecker<'a, 'tcx> {
                 }
             }
             None => {
-                if !self
-                    .tcx()
-                    .conservative_is_privately_uninhabited(self.param_env.and(sig.output()))
-                {
+                if !sig.output().is_privately_uninhabited(self.tcx(), self.param_env) {
                     span_mirbug!(self, term, "call to converging function {:?} w/o dest", sig);
                 }
             }
@@ -1843,6 +1835,7 @@ impl<'a, 'tcx> TypeChecker<'a, 'tcx> {
     #[instrument(skip(self, body), level = "debug")]
     fn check_rvalue(&mut self, body: &Body<'tcx>, rvalue: &Rvalue<'tcx>, location: Location) {
         let tcx = self.tcx();
+        let span = body.source_info(location).span;
 
         match rvalue {
             Rvalue::Aggregate(ak, ops) => {
@@ -1866,12 +1859,8 @@ impl<'a, 'tcx> TypeChecker<'a, 'tcx> {
                         }
                         Operand::Move(place) => {
                             // Make sure that repeated elements implement `Copy`.
-                            let span = body.source_info(location).span;
                             let ty = place.ty(body, tcx).ty;
-                            let trait_ref = ty::TraitRef::new(
-                                tcx.require_lang_item(LangItem::Copy, Some(span)),
-                                tcx.mk_substs_trait(ty, &[]),
-                            );
+                            let trait_ref = tcx.at(span).mk_trait_ref(LangItem::Copy, [ty]);
 
                             self.prove_trait_ref(
                                 trait_ref,
@@ -1884,10 +1873,7 @@ impl<'a, 'tcx> TypeChecker<'a, 'tcx> {
             }
 
             &Rvalue::NullaryOp(NullOp::SizeOf | NullOp::AlignOf, ty) => {
-                let trait_ref = ty::TraitRef {
-                    def_id: tcx.require_lang_item(LangItem::Sized, Some(self.last_span)),
-                    substs: tcx.mk_substs_trait(ty, &[]),
-                };
+                let trait_ref = tcx.at(span).mk_trait_ref(LangItem::Sized, [ty]);
 
                 self.prove_trait_ref(
                     trait_ref,
@@ -1899,10 +1885,7 @@ impl<'a, 'tcx> TypeChecker<'a, 'tcx> {
             Rvalue::ShallowInitBox(operand, ty) => {
                 self.check_operand(operand, location);
 
-                let trait_ref = ty::TraitRef {
-                    def_id: tcx.require_lang_item(LangItem::Sized, Some(self.last_span)),
-                    substs: tcx.mk_substs_trait(*ty, &[]),
-                };
+                let trait_ref = tcx.at(span).mk_trait_ref(LangItem::Sized, [*ty]);
 
                 self.prove_trait_ref(
                     trait_ref,
@@ -1999,11 +1982,9 @@ impl<'a, 'tcx> TypeChecker<'a, 'tcx> {
 
                     CastKind::Pointer(PointerCast::Unsize) => {
                         let &ty = ty;
-                        let trait_ref = ty::TraitRef {
-                            def_id: tcx
-                                .require_lang_item(LangItem::CoerceUnsized, Some(self.last_span)),
-                            substs: tcx.mk_substs_trait(op.ty(body, tcx), &[ty.into()]),
-                        };
+                        let trait_ref = tcx
+                            .at(span)
+                            .mk_trait_ref(LangItem::CoerceUnsized, [op.ty(body, tcx), ty]);
 
                         self.prove_trait_ref(
                             trait_ref,
@@ -2032,8 +2013,8 @@ impl<'a, 'tcx> TypeChecker<'a, 'tcx> {
                         );
 
                         let outlives_predicate =
-                            tcx.mk_predicate(Binder::dummy(ty::PredicateKind::TypeOutlives(
-                                ty::OutlivesPredicate(self_ty, *region),
+                            tcx.mk_predicate(Binder::dummy(ty::PredicateKind::Clause(
+                                ty::Clause::TypeOutlives(ty::OutlivesPredicate(self_ty, *region)),
                             )));
                         self.prove_predicate(
                             outlives_predicate,
@@ -2607,7 +2588,6 @@ impl<'a, 'tcx> TypeChecker<'a, 'tcx> {
             }
 
             // For closures, we have some **extra requirements** we
-            //
             // have to check. In particular, in their upvars and
             // signatures, closures often reference various regions
             // from the surrounding function -- we call those the

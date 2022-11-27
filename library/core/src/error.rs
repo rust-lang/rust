@@ -506,3 +506,6 @@ impl Error for crate::ffi::FromBytesWithNulError {
 
 #[unstable(feature = "cstr_from_bytes_until_nul", issue = "95027")]
 impl Error for crate::ffi::FromBytesUntilNulError {}
+
+#[unstable(feature = "get_many_mut", issue = "104642")]
+impl<const N: usize> Error for crate::slice::GetManyMutError<N> {}

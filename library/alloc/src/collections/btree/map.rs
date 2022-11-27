@@ -46,8 +46,8 @@ pub(super) const MIN_LEN: usize = node::MIN_LEN_AFTER_SPLIT;
 /// is done is *very* inefficient for modern computer architectures. In particular, every element
 /// is stored in its own individually heap-allocated node. This means that every single insertion
 /// triggers a heap-allocation, and every single comparison should be a cache-miss. Since these
-/// are both notably expensive things to do in practice, we are forced to at very least reconsider
-/// the BST strategy.
+/// are both notably expensive things to do in practice, we are forced to, at the very least,
+/// reconsider the BST strategy.
 ///
 /// A B-Tree instead makes each node contain B-1 to 2B-1 elements in a contiguous array. By doing
 /// this, we reduce the number of allocations by a factor of B, and improve cache efficiency in

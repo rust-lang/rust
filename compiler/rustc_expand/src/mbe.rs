@@ -3,6 +3,7 @@
 //! why we call this module `mbe`. For external documentation, prefer the
 //! official terminology: "declarative macros".
 
+pub(crate) mod diagnostics;
 pub(crate) mod macro_check;
 pub(crate) mod macro_parser;
 pub(crate) mod macro_rules;

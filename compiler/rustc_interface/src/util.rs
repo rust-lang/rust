@@ -68,10 +68,7 @@ pub fn create_session(
     let codegen_backend = if let Some(make_codegen_backend) = make_codegen_backend {
         make_codegen_backend(&sopts)
     } else {
-        get_codegen_backend(
-            &sopts.maybe_sysroot,
-            sopts.unstable_opts.codegen_backend.as_ref().map(|name| &name[..]),
-        )
+        get_codegen_backend(&sopts.maybe_sysroot, sopts.unstable_opts.codegen_backend.as_deref())
     };
 
     // target_override is documented to be called before init(), so this is okay
@@ -260,7 +257,7 @@ pub fn rustc_path<'a>() -> Option<&'a Path> {
 
     const BIN_PATH: &str = env!("RUSTC_INSTALL_BINDIR");
 
-    RUSTC_PATH.get_or_init(|| get_rustc_path_inner(BIN_PATH)).as_ref().map(|v| &**v)
+    RUSTC_PATH.get_or_init(|| get_rustc_path_inner(BIN_PATH)).as_deref()
 }
 
 fn get_rustc_path_inner(bin_path: &str) -> Option<PathBuf> {

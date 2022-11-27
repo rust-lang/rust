@@ -414,7 +414,7 @@ impl<'a> Parser<'a> {
                 self.sess.ambiguous_block_expr_parse.borrow_mut().insert(sp, lhs.span);
                 false
             }
-            (true, Some(ref op)) if !op.can_continue_expr_unambiguously() => false,
+            (true, Some(op)) if !op.can_continue_expr_unambiguously() => false,
             (true, Some(_)) => {
                 self.error_found_expr_would_be_stmt(lhs);
                 true
@@ -1501,7 +1501,7 @@ impl<'a> Parser<'a> {
             let lo = path.span;
             let mac = P(MacCall {
                 path,
-                args: self.parse_mac_args()?,
+                args: self.parse_delim_args()?,
                 prior_type_ascription: self.last_type_ascription,
             });
             (lo.to(self.prev_token.span), ExprKind::MacCall(mac))
@@ -1728,13 +1728,13 @@ impl<'a> Parser<'a> {
             || !self.restrictions.contains(Restrictions::NO_STRUCT_LITERAL)
         {
             let expr = self.parse_expr_opt()?;
-            if let Some(ref expr) = expr {
+            if let Some(expr) = &expr {
                 if label.is_some()
                     && matches!(
                         expr.kind,
                         ExprKind::While(_, _, None)
                             | ExprKind::ForLoop(_, _, _, None)
-                            | ExprKind::Loop(_, None)
+                            | ExprKind::Loop(_, None, _)
                             | ExprKind::Block(_, None)
                     )
                 {
@@ -2078,12 +2078,7 @@ impl<'a> Parser<'a> {
 
         if self.token.kind == TokenKind::Semi
             && matches!(self.token_cursor.frame.delim_sp, Some((Delimiter::Parenthesis, _)))
-            // HACK: This is needed so we can detect whether we're inside a macro,
-            // where regular assumptions about what tokens can follow other tokens
-            // don't necessarily apply.
             && self.may_recover()
-            // FIXME(Nilstrieb): Remove this check once `may_recover` actually stops recovery
-            && self.subparser_name.is_none()
         {
             // It is likely that the closure body is a block but where the
             // braces have been removed. We will recover and eat the next
@@ -2449,10 +2444,11 @@ impl<'a> Parser<'a> {
 
     /// Parses `loop { ... }` (`loop` token already eaten).
     fn parse_loop_expr(&mut self, opt_label: Option<Label>, lo: Span) -> PResult<'a, P<Expr>> {
+        let loop_span = self.prev_token.span;
         let (attrs, body) = self.parse_inner_attrs_and_block()?;
         Ok(self.mk_expr_with_attrs(
             lo.to(self.prev_token.span),
-            ExprKind::Loop(body, opt_label),
+            ExprKind::Loop(body, opt_label, loop_span),
             attrs,
         ))
     }
@@ -2595,8 +2591,8 @@ impl<'a> Parser<'a> {
         // Used to check the `let_chains` and `if_let_guard` features mostly by scanning
         // `&&` tokens.
         fn check_let_expr(expr: &Expr) -> (bool, bool) {
-            match expr.kind {
-                ExprKind::Binary(BinOp { node: BinOpKind::And, .. }, ref lhs, ref rhs) => {
+            match &expr.kind {
+                ExprKind::Binary(BinOp { node: BinOpKind::And, .. }, lhs, rhs) => {
                     let lhs_rslt = check_let_expr(lhs);
                     let rhs_rslt = check_let_expr(rhs);
                     (lhs_rslt.0 || rhs_rslt.0, false)

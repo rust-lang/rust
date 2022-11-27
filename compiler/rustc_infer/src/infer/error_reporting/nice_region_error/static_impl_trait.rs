@@ -314,10 +314,10 @@ pub fn suggest_new_region_bound(
                     .iter()
                     .filter_map(|arg| match arg {
                         GenericBound::Outlives(Lifetime {
-                            name: LifetimeName::Static,
-                            span,
+                            res: LifetimeName::Static,
+                            ident,
                             ..
-                        }) => Some(*span),
+                        }) => Some(ident.span),
                         _ => None,
                     })
                     .next()
@@ -342,10 +342,10 @@ pub fn suggest_new_region_bound(
                     .bounds
                     .iter()
                     .filter_map(|arg| match arg {
-                        GenericBound::Outlives(Lifetime { name, span, .. })
-                            if name.ident().to_string() == lifetime_name =>
+                        GenericBound::Outlives(Lifetime { ident, .. })
+                            if ident.name.to_string() == lifetime_name =>
                         {
-                            Some(*span)
+                            Some(ident.span)
                         }
                         _ => None,
                     })
@@ -361,8 +361,8 @@ pub fn suggest_new_region_bound(
                     );
                 }
             }
-            TyKind::TraitObject(_, lt, _) => match lt.name {
-                LifetimeName::ImplicitObjectLifetimeDefault => {
+            TyKind::TraitObject(_, lt, _) => {
+                if let LifetimeName::ImplicitObjectLifetimeDefault = lt.res {
                     err.span_suggestion_verbose(
                         fn_return.span.shrink_to_hi(),
                         &format!(
@@ -374,15 +374,14 @@ pub fn suggest_new_region_bound(
                         &plus_lt,
                         Applicability::MaybeIncorrect,
                     );
-                }
-                name if name.ident().to_string() != lifetime_name => {
+                } else if lt.ident.name.to_string() != lifetime_name {
                     // With this check we avoid suggesting redundant bounds. This
                     // would happen if there are nested impl/dyn traits and only
                     // one of them has the bound we'd suggest already there, like
                     // in `impl Foo<X = dyn Bar> + '_`.
                     if let Some(explicit_static) = &explicit_static {
                         err.span_suggestion_verbose(
-                            lt.span,
+                            lt.ident.span,
                             &format!("{} the trait object's {}", consider, explicit_static),
                             &lifetime_name,
                             Applicability::MaybeIncorrect,
@@ -397,8 +396,7 @@ pub fn suggest_new_region_bound(
                         );
                     }
                 }
-                _ => {}
-            },
+            }
             _ => {}
         }
     }
@@ -561,7 +559,7 @@ impl<'a, 'tcx> Visitor<'tcx> for HirTraitObjectVisitor<'a> {
     fn visit_ty(&mut self, t: &'tcx hir::Ty<'tcx>) {
         if let TyKind::TraitObject(
             poly_trait_refs,
-            Lifetime { name: LifetimeName::ImplicitObjectLifetimeDefault, .. },
+            Lifetime { res: LifetimeName::ImplicitObjectLifetimeDefault, .. },
             _,
         ) = t.kind
         {

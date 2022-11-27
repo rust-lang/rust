@@ -199,7 +199,7 @@ fn in_impl<'tcx>(
     }
 }
 
-fn are_equal<'tcx>(cx: &LateContext<'tcx>, middle_ty: Ty<'_>, hir_ty: &rustc_hir::Ty<'_>) -> bool {
+fn are_equal(cx: &LateContext<'_>, middle_ty: Ty<'_>, hir_ty: &rustc_hir::Ty<'_>) -> bool {
     if_chain! {
         if let ty::Adt(adt_def, _) = middle_ty.kind();
         if let Some(local_did) = adt_def.did().as_local();

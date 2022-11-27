@@ -7,6 +7,11 @@ LL |     let _bar = foo;
    |                --- value moved here
 LL |     let _baz = [foo; 0];
    |                 ^^^ value used here after move
+   |
+help: consider cloning the value if the performance cost is acceptable
+   |
+LL |     let _bar = foo.clone();
+   |                   ++++++++
 
 error[E0493]: destructor of `String` cannot be evaluated at compile-time
   --> $DIR/repeat-drop-2.rs:7:25

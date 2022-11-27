@@ -663,12 +663,12 @@ impl Stacks {
     }
 
     #[inline(always)]
-    pub fn before_memory_write<'tcx, 'mir, 'ecx>(
+    pub fn before_memory_write<'tcx>(
         &mut self,
         alloc_id: AllocId,
         tag: ProvenanceExtra,
         range: AllocRange,
-        machine: &'ecx mut MiriMachine<'mir, 'tcx>,
+        machine: &mut MiriMachine<'_, 'tcx>,
     ) -> InterpResult<'tcx> {
         trace!(
             "write access with tag {:?}: {:?}, size {}",
@@ -684,12 +684,12 @@ impl Stacks {
     }
 
     #[inline(always)]
-    pub fn before_memory_deallocation<'tcx, 'mir, 'ecx>(
+    pub fn before_memory_deallocation<'tcx>(
         &mut self,
         alloc_id: AllocId,
         tag: ProvenanceExtra,
         range: AllocRange,
-        machine: &'ecx mut MiriMachine<'mir, 'tcx>,
+        machine: &mut MiriMachine<'_, 'tcx>,
     ) -> InterpResult<'tcx> {
         trace!("deallocation with tag {:?}: {:?}, size {}", tag, alloc_id, range.size.bytes());
         let dcx = DiagnosticCxBuilder::dealloc(machine, tag);

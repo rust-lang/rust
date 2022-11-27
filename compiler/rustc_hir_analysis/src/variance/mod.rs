@@ -5,9 +5,10 @@
 
 use rustc_arena::DroplessArena;
 use rustc_hir::def::DefKind;
-use rustc_hir::def_id::DefId;
+use rustc_hir::def_id::{DefId, LocalDefId};
 use rustc_middle::ty::query::Providers;
-use rustc_middle::ty::{self, CrateVariancesMap, TyCtxt};
+use rustc_middle::ty::{self, CrateVariancesMap, TyCtxt, TypeSuperVisitable, TypeVisitable};
+use std::ops::ControlFlow;
 
 /// Defines the `TermsContext` basically houses an arena where we can
 /// allocate terms.
@@ -50,6 +51,9 @@ fn variances_of(tcx: TyCtxt<'_>, item_def_id: DefId) -> &[ty::Variance] {
         | DefKind::Union
         | DefKind::Variant
         | DefKind::Ctor(..) => {}
+        DefKind::OpaqueTy | DefKind::ImplTraitPlaceholder => {
+            return variance_of_opaque(tcx, item_def_id.expect_local());
+        }
         _ => {
             // Variance not relevant.
             span_bug!(tcx.def_span(item_def_id), "asked to compute variance for wrong kind of item")
@@ -60,4 +64,93 @@ fn variances_of(tcx: TyCtxt<'_>, item_def_id: DefId) -> &[ty::Variance] {
 
     let crate_map = tcx.crate_variances(());
     crate_map.variances.get(&item_def_id).copied().unwrap_or(&[])
+}
+
+#[instrument(level = "trace", skip(tcx), ret)]
+fn variance_of_opaque(tcx: TyCtxt<'_>, item_def_id: LocalDefId) -> &[ty::Variance] {
+    let generics = tcx.generics_of(item_def_id);
+
+    // Opaque types may only use regions that are bound. So for
+    // ```rust
+    // type Foo<'a, 'b, 'c> = impl Trait<'a> + 'b;
+    // ```
+    // we may not use `'c` in the hidden type.
+    struct OpaqueTypeLifetimeCollector {
+        variances: Vec<ty::Variance>,
+    }
+
+    impl<'tcx> ty::TypeVisitor<'tcx> for OpaqueTypeLifetimeCollector {
+        #[instrument(level = "trace", skip(self), ret)]
+        fn visit_region(&mut self, r: ty::Region<'tcx>) -> ControlFlow<Self::BreakTy> {
+            if let ty::RegionKind::ReEarlyBound(ebr) = r.kind() {
+                self.variances[ebr.index as usize] = ty::Invariant;
+            }
+            r.super_visit_with(self)
+        }
+    }
+
+    // By default, RPIT are invariant wrt type and const generics, but they are bivariant wrt
+    // lifetime generics.
+    let mut variances: Vec<_> = std::iter::repeat(ty::Invariant).take(generics.count()).collect();
+
+    // Mark all lifetimes from parent generics as unused (Bivariant).
+    // This will be overridden later if required.
+    {
+        let mut generics = generics;
+        while let Some(def_id) = generics.parent {
+            generics = tcx.generics_of(def_id);
+            for param in &generics.params {
+                match param.kind {
+                    ty::GenericParamDefKind::Lifetime => {
+                        variances[param.index as usize] = ty::Bivariant;
+                    }
+                    ty::GenericParamDefKind::Type { .. }
+                    | ty::GenericParamDefKind::Const { .. } => {}
+                }
+            }
+        }
+    }
+
+    let mut collector = OpaqueTypeLifetimeCollector { variances };
+    let id_substs = ty::InternalSubsts::identity_for_item(tcx, item_def_id.to_def_id());
+    for pred in tcx.bound_explicit_item_bounds(item_def_id.to_def_id()).transpose_iter() {
+        let pred = pred.map_bound(|(pred, _)| *pred).subst(tcx, id_substs);
+        debug!(?pred);
+
+        // We only ignore opaque type substs if the opaque type is the outermost type.
+        // The opaque type may be nested within itself via recursion in e.g.
+        // type Foo<'a> = impl PartialEq<Foo<'a>>;
+        // which thus mentions `'a` and should thus accept hidden types that borrow 'a
+        // instead of requiring an additional `+ 'a`.
+        match pred.kind().skip_binder() {
+            ty::PredicateKind::Clause(ty::Clause::Trait(ty::TraitPredicate {
+                trait_ref: ty::TraitRef { def_id: _, substs },
+                constness: _,
+                polarity: _,
+            })) => {
+                for subst in &substs[1..] {
+                    subst.visit_with(&mut collector);
+                }
+            }
+            ty::PredicateKind::Clause(ty::Clause::Projection(ty::ProjectionPredicate {
+                projection_ty: ty::ProjectionTy { substs, item_def_id: _ },
+                term,
+            })) => {
+                for subst in &substs[1..] {
+                    subst.visit_with(&mut collector);
+                }
+                term.visit_with(&mut collector);
+            }
+            ty::PredicateKind::Clause(ty::Clause::TypeOutlives(ty::OutlivesPredicate(
+                _,
+                region,
+            ))) => {
+                region.visit_with(&mut collector);
+            }
+            _ => {
+                pred.visit_with(&mut collector);
+            }
+        }
+    }
+    tcx.arena.alloc_from_iter(collector.variances.into_iter())
 }

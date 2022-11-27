@@ -1109,17 +1109,7 @@ pub fn walk_generic_arg<'v, V: Visitor<'v>>(visitor: &mut V, generic_arg: &'v Ge
 
 pub fn walk_lifetime<'v, V: Visitor<'v>>(visitor: &mut V, lifetime: &'v Lifetime) {
     visitor.visit_id(lifetime.hir_id);
-    match lifetime.name {
-        LifetimeName::Param(_, ParamName::Plain(ident)) => {
-            visitor.visit_ident(ident);
-        }
-        LifetimeName::Param(_, ParamName::Fresh)
-        | LifetimeName::Param(_, ParamName::Error)
-        | LifetimeName::Static
-        | LifetimeName::Error
-        | LifetimeName::ImplicitObjectLifetimeDefault
-        | LifetimeName::Infer => {}
-    }
+    visitor.visit_ident(lifetime.ident);
 }
 
 pub fn walk_qpath<'v, V: Visitor<'v>>(visitor: &mut V, qpath: &'v QPath<'v>, id: HirId) {

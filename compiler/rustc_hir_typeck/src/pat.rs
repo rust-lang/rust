@@ -401,6 +401,16 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             }
         }
 
+        if self.tcx.features().string_deref_patterns && let hir::ExprKind::Lit(Spanned { node: ast::LitKind::Str(..), .. }) = lt.kind {
+            let tcx = self.tcx;
+            let expected = self.resolve_vars_if_possible(expected);
+            pat_ty = match expected.kind() {
+                ty::Adt(def, _) if Some(def.did()) == tcx.lang_items().string() => expected,
+                ty::Str => tcx.mk_static_str(),
+                _ => pat_ty,
+            };
+        }
+
         // Somewhat surprising: in this case, the subtyping relation goes the
         // opposite way as the other cases. Actually what we really want is not
         // a subtyping relation at all but rather that there exists a LUB
@@ -692,7 +702,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             };
 
             let mut_var_suggestion = 'block: {
-                if !matches!(mutbl, ast::Mutability::Mut) {
+                if mutbl.is_not() {
                     break 'block None;
                 }
 
@@ -739,7 +749,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                         format!("to take parameter `{binding}` by reference, move `&{mutability}` to the type"),
                         vec![
                             (pat.span.until(inner.span), "".to_owned()),
-                            (ty_span.shrink_to_lo(), format!("&{}", mutbl.prefix_str())),
+                            (ty_span.shrink_to_lo(), mutbl.ref_prefix_str().to_owned()),
                         ],
                         Applicability::MachineApplicable
                     );
@@ -843,8 +853,9 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                 self.set_tainted_by_errors(e);
                 return tcx.ty_error_with_guaranteed(e);
             }
-            Res::Def(DefKind::AssocFn | DefKind::Ctor(_, CtorKind::Fictive | CtorKind::Fn), _) => {
-                let e = report_unexpected_variant_res(tcx, res, qpath, pat.span);
+            Res::Def(DefKind::AssocFn | DefKind::Ctor(_, CtorKind::Fn) | DefKind::Variant, _) => {
+                let expected = "unit struct, unit variant or constant";
+                let e = report_unexpected_variant_res(tcx, res, qpath, pat.span, "E0533", expected);
                 return tcx.ty_error_with_guaranteed(e);
             }
             Res::SelfCtor(..)
@@ -992,30 +1003,8 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             }
         };
         let report_unexpected_res = |res: Res| {
-            let sm = tcx.sess.source_map();
-            let path_str = sm
-                .span_to_snippet(sm.span_until_char(pat.span, '('))
-                .map_or_else(|_| String::new(), |s| format!(" `{}`", s.trim_end()));
-            let msg = format!(
-                "expected tuple struct or tuple variant, found {}{}",
-                res.descr(),
-                path_str
-            );
-
-            let mut err = struct_span_err!(tcx.sess, pat.span, E0164, "{msg}");
-            match res {
-                Res::Def(DefKind::Fn | DefKind::AssocFn, _) => {
-                    err.span_label(pat.span, "`fn` calls are not allowed in patterns");
-                    err.help(
-                        "for more information, visit \
-                              https://doc.rust-lang.org/book/ch18-00-patterns.html",
-                    );
-                }
-                _ => {
-                    err.span_label(pat.span, "not a tuple variant or struct");
-                }
-            }
-            let e = err.emit();
+            let expected = "tuple struct or tuple variant";
+            let e = report_unexpected_variant_res(tcx, res, qpath, pat.span, "E0164", expected);
             on_error(e);
             e
         };
@@ -1471,8 +1460,8 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         // if this is a tuple struct, then all field names will be numbers
         // so if any fields in a struct pattern use shorthand syntax, they will
         // be invalid identifiers (for example, Foo { 0, 1 }).
-        if let (CtorKind::Fn, PatKind::Struct(qpath, field_patterns, ..)) =
-            (variant.ctor_kind, &pat.kind)
+        if let (Some(CtorKind::Fn), PatKind::Struct(qpath, field_patterns, ..)) =
+            (variant.ctor_kind(), &pat.kind)
         {
             let has_shorthand_field_name = field_patterns.iter().any(|field| field.is_shorthand);
             if has_shorthand_field_name {
@@ -1649,7 +1638,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         fields: &'tcx [hir::PatField<'tcx>],
         variant: &ty::VariantDef,
     ) -> Option<DiagnosticBuilder<'tcx, ErrorGuaranteed>> {
-        if let (CtorKind::Fn, PatKind::Struct(qpath, ..)) = (variant.ctor_kind, &pat.kind) {
+        if let (Some(CtorKind::Fn), PatKind::Struct(qpath, ..)) = (variant.ctor_kind(), &pat.kind) {
             let path = rustc_hir_pretty::to_string(rustc_hir_pretty::NO_ANN, |s| {
                 s.print_qpath(qpath, false)
             });

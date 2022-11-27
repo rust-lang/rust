@@ -132,8 +132,7 @@ fn test_unescape_str_good() {
                 }
             }
         });
-        let buf = buf.as_ref().map(|it| it.as_ref());
-        assert_eq!(buf, Ok(expected))
+        assert_eq!(buf.as_deref(), Ok(expected))
     }
 
     check("foo", "foo");
@@ -250,8 +249,7 @@ fn test_unescape_byte_str_good() {
                 }
             }
         });
-        let buf = buf.as_ref().map(|it| it.as_ref());
-        assert_eq!(buf, Ok(expected))
+        assert_eq!(buf.as_deref(), Ok(expected))
     }
 
     check("foo", b"foo");

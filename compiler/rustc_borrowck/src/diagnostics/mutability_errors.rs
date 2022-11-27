@@ -389,13 +389,13 @@ impl<'a, 'tcx> MirBorrowckCtxt<'a, 'tcx> {
             // diagnostic: if the span starts with a mutable borrow of
             // a local variable, then just suggest the user remove it.
             PlaceRef { local: _, projection: [] }
-                if {
-                    if let Ok(snippet) = self.infcx.tcx.sess.source_map().span_to_snippet(span) {
-                        snippet.starts_with("&mut ")
-                    } else {
-                        false
-                    }
-                } =>
+                if self
+                    .infcx
+                    .tcx
+                    .sess
+                    .source_map()
+                    .span_to_snippet(span)
+                    .map_or(false, |snippet| snippet.starts_with("&mut ")) =>
             {
                 err.span_label(span, format!("cannot {ACT}", ACT = act));
                 err.span_suggestion(
@@ -1211,7 +1211,7 @@ fn get_mut_span_in_struct_field<'tcx>(
         && let hir::Node::Field(field) = node
         && let hir::TyKind::Rptr(lt, hir::MutTy { mutbl: hir::Mutability::Not, ty }) = field.ty.kind
     {
-        return Some(lt.span.between(ty.span));
+        return Some(lt.ident.span.between(ty.span));
     }
 
     None
