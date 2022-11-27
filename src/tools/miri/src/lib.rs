@@ -81,7 +81,7 @@ pub use crate::shims::intrinsics::EvalContextExt as _;
 pub use crate::shims::os_str::EvalContextExt as _;
 pub use crate::shims::panic::{CatchUnwindData, EvalContextExt as _};
 pub use crate::shims::time::EvalContextExt as _;
-pub use crate::shims::tls::{EvalContextExt as _, TlsData};
+pub use crate::shims::tls::TlsData;
 pub use crate::shims::EvalContextExt as _;
 
 pub use crate::clock::{Clock, Instant};
@@ -89,7 +89,10 @@ pub use crate::concurrency::{
     data_race::{AtomicFenceOrd, AtomicReadOrd, AtomicRwOrd, AtomicWriteOrd, EvalContextExt as _},
     init_once::{EvalContextExt as _, InitOnceId},
     sync::{CondvarId, EvalContextExt as _, MutexId, RwLockId, SyncId},
-    thread::{EvalContextExt as _, SchedulingAction, ThreadId, ThreadManager, ThreadState, Time},
+    thread::{
+        EvalContextExt as _, SchedulingAction, StackEmptyCallback, ThreadId, ThreadManager,
+        ThreadState, Time,
+    },
 };
 pub use crate::diagnostics::{
     report_error, EvalContextExt as _, NonHaltingDiagnostic, TerminationInfo,

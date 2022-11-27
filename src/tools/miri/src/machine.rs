@@ -363,6 +363,9 @@ pub struct MiriMachine<'mir, 'tcx> {
     /// Miri does not expose env vars from the host to the emulated program.
     pub(crate) env_vars: EnvVars<'tcx>,
 
+    /// Return place of the main function.
+    pub(crate) main_fn_ret_place: Option<MemPlace<Provenance>>,
+
     /// Program arguments (`Option` because we can only initialize them after creating the ecx).
     /// These are *pointers* to argc/argv because macOS.
     /// We also need the full command line as one string because of Windows.
@@ -492,6 +495,7 @@ impl<'mir, 'tcx> MiriMachine<'mir, 'tcx> {
             intptrcast: RefCell::new(intptrcast::GlobalStateInner::new(config)),
             // `env_vars` depends on a full interpreter so we cannot properly initialize it yet.
             env_vars: EnvVars::default(),
+            main_fn_ret_place: None,
             argc: None,
             argv: None,
             cmd_line: None,
@@ -556,10 +560,11 @@ impl<'mir, 'tcx> MiriMachine<'mir, 'tcx> {
     pub(crate) fn late_init(
         this: &mut MiriInterpCx<'mir, 'tcx>,
         config: &MiriConfig,
+        on_main_stack_empty: StackEmptyCallback<'mir, 'tcx>,
     ) -> InterpResult<'tcx> {
         EnvVars::init(this, config)?;
         MiriMachine::init_extern_statics(this)?;
-        ThreadManager::init(this);
+        ThreadManager::init(this, on_main_stack_empty);
         Ok(())
     }
 
@@ -657,6 +662,7 @@ impl VisitTags for MiriMachine<'_, '_> {
             threads,
             tls,
             env_vars,
+            main_fn_ret_place,
             argc,
             argv,
             cmd_line,
@@ -702,6 +708,7 @@ impl VisitTags for MiriMachine<'_, '_> {
         data_race.visit_tags(visit);
         stacked_borrows.visit_tags(visit);
         intptrcast.visit_tags(visit);
+        main_fn_ret_place.visit_tags(visit);
         argc.visit_tags(visit);
         argv.visit_tags(visit);
         cmd_line.visit_tags(visit);

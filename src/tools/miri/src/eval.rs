@@ -4,6 +4,7 @@ use std::ffi::{OsStr, OsString};
 use std::iter;
 use std::panic::{self, AssertUnwindSafe};
 use std::path::PathBuf;
+use std::task::Poll;
 use std::thread;
 
 use log::info;
@@ -20,6 +21,7 @@ use rustc_target::spec::abi::Abi;
 
 use rustc_session::config::EntryFnType;
 
+use crate::shims::tls;
 use crate::*;
 
 #[derive(Copy, Clone, Debug, PartialEq)]
@@ -172,17 +174,57 @@ impl Default for MiriConfig {
     }
 }
 
-/// Returns a freshly created `InterpCx`, along with an `MPlaceTy` representing
-/// the location where the return value of the `start` function will be
-/// written to.
+/// The state of the main thread. Implementation detail of `on_main_stack_empty`.
+#[derive(Default, Debug)]
+enum MainThreadState {
+    #[default]
+    Running,
+    TlsDtors(tls::TlsDtorsState),
+}
+
+impl MainThreadState {
+    fn on_main_stack_empty<'tcx>(
+        &mut self,
+        this: &mut MiriInterpCx<'_, 'tcx>,
+    ) -> InterpResult<'tcx, Poll<()>> {
+        use MainThreadState::*;
+        match self {
+            Running => {
+                *self = TlsDtors(Default::default());
+            }
+            TlsDtors(state) =>
+                match state.on_stack_empty(this)? {
+                    Poll::Pending => {} // just keep going
+                    Poll::Ready(()) => {
+                        // Need to call `thread_terminated` ourselves since we are not going to
+                        // return to the scheduler loop.
+                        this.thread_terminated()?;
+                        // Raise exception to stop program execution.
+                        let ret_place = MPlaceTy::from_aligned_ptr(
+                            this.machine.main_fn_ret_place.unwrap().ptr,
+                            this.machine.layouts.isize,
+                        );
+                        let exit_code =
+                            this.read_scalar(&ret_place.into())?.to_machine_isize(this)?;
+                        throw_machine_stop!(TerminationInfo::Exit {
+                            code: exit_code,
+                            leak_check: true
+                        });
+                    }
+                },
+        }
+        Ok(Poll::Pending)
+    }
+}
+
+/// Returns a freshly created `InterpCx`.
 /// Public because this is also used by `priroda`.
 pub fn create_ecx<'mir, 'tcx: 'mir>(
     tcx: TyCtxt<'tcx>,
     entry_id: DefId,
     entry_type: EntryFnType,
     config: &MiriConfig,
-) -> InterpResult<'tcx, (InterpCx<'mir, 'tcx, MiriMachine<'mir, 'tcx>>, MPlaceTy<'tcx, Provenance>)>
-{
+) -> InterpResult<'tcx, InterpCx<'mir, 'tcx, MiriMachine<'mir, 'tcx>>> {
     let param_env = ty::ParamEnv::reveal_all();
     let layout_cx = LayoutCx { tcx, param_env };
     let mut ecx = InterpCx::new(
@@ -193,7 +235,11 @@ pub fn create_ecx<'mir, 'tcx: 'mir>(
     );
 
     // Some parts of initialization require a full `InterpCx`.
-    MiriMachine::late_init(&mut ecx, config)?;
+    MiriMachine::late_init(&mut ecx, config, {
+        let mut state = MainThreadState::default();
+        // Cannot capture anything GC-relevant here.
+        Box::new(move |m| state.on_main_stack_empty(m))
+    })?;
 
     // Make sure we have MIR. We check MIR for some stable monomorphic function in libcore.
     let sentinel = ecx.try_resolve_path(&["core", "ascii", "escape_default"], Namespace::ValueNS);
@@ -274,6 +320,7 @@ pub fn create_ecx<'mir, 'tcx: 'mir>(
 
     // Return place (in static memory so that it does not count as leak).
     let ret_place = ecx.allocate(ecx.machine.layouts.isize, MiriMemoryKind::Machine.into())?;
+    ecx.machine.main_fn_ret_place = Some(*ret_place);
     // Call start function.
 
     match entry_type {
@@ -321,7 +368,7 @@ pub fn create_ecx<'mir, 'tcx: 'mir>(
         }
     }
 
-    Ok((ecx, ret_place))
+    Ok(ecx)
 }
 
 /// Evaluates the entry function specified by `entry_id`.
@@ -337,7 +384,7 @@ pub fn eval_entry<'tcx>(
     // Copy setting before we move `config`.
     let ignore_leaks = config.ignore_leaks;
 
-    let (mut ecx, ret_place) = match create_ecx(tcx, entry_id, entry_type, &config) {
+    let mut ecx = match create_ecx(tcx, entry_id, entry_type, &config) {
         Ok(v) => v,
         Err(err) => {
             err.print_backtrace();
@@ -346,34 +393,37 @@ pub fn eval_entry<'tcx>(
     };
 
     // Perform the main execution.
-    let res: thread::Result<InterpResult<'_, i64>> = panic::catch_unwind(AssertUnwindSafe(|| {
-        // Main loop.
+    let res: thread::Result<InterpResult<'_, !>> = panic::catch_unwind(AssertUnwindSafe(|| {
+        // Main loop. Goes on forever until an interrupt is triggered (represented as `InterpError`).
         loop {
             match ecx.schedule()? {
                 SchedulingAction::ExecuteStep => {
-                    assert!(ecx.step()?, "a terminated thread was scheduled for execution");
+                    if !ecx.step()? {
+                        // See if this thread can do something else.
+                        match ecx.run_on_stack_empty()? {
+                            Poll::Pending => {} // keep going
+                            Poll::Ready(()) => ecx.thread_terminated()?,
+                        }
+                    }
                 }
                 SchedulingAction::ExecuteTimeoutCallback => {
                     ecx.run_timeout_callback()?;
                 }
-                SchedulingAction::ExecuteDtors => {
-                    // This will either enable the thread again (so we go back
-                    // to `ExecuteStep`), or determine that this thread is done
-                    // for good.
-                    ecx.schedule_next_tls_dtor_for_active_thread()?;
-                }
-                SchedulingAction::Stop => {
-                    break;
+                SchedulingAction::Sleep(duration) => {
+                    ecx.machine.clock.sleep(duration);
                 }
             }
         }
-        let return_code = ecx.read_scalar(&ret_place.into())?.to_machine_isize(&ecx)?;
-        Ok(return_code)
     }));
     let res = res.unwrap_or_else(|panic_payload| {
         ecx.handle_ice();
         panic::resume_unwind(panic_payload)
     });
+    let res = match res {
+        Err(res) => res,
+        // `Ok` can never happen
+        Ok(never) => match never {},
+    };
 
     // Machine cleanup. Only do this if all threads have terminated; threads that are still running
     // might cause Stacked Borrows errors (https://github.com/rust-lang/miri/issues/2396).
@@ -386,32 +436,26 @@ pub fn eval_entry<'tcx>(
     }
 
     // Process the result.
-    match res {
-        Ok(return_code) => {
-            if !ignore_leaks {
-                // Check for thread leaks.
-                if !ecx.have_all_terminated() {
-                    tcx.sess.err(
-                        "the main thread terminated without waiting for all remaining threads",
-                    );
-                    tcx.sess.note_without_error("pass `-Zmiri-ignore-leaks` to disable this check");
-                    return None;
-                }
-                // Check for memory leaks.
-                info!("Additonal static roots: {:?}", ecx.machine.static_roots);
-                let leaks = ecx.leak_report(&ecx.machine.static_roots);
-                if leaks != 0 {
-                    tcx.sess.err("the evaluated program leaked memory");
-                    tcx.sess.note_without_error("pass `-Zmiri-ignore-leaks` to disable this check");
-                    // Ignore the provided return code - let the reported error
-                    // determine the return code.
-                    return None;
-                }
-            }
-            Some(return_code)
+    let (return_code, leak_check) = report_error(&ecx, res)?;
+    if leak_check && !ignore_leaks {
+        // Check for thread leaks.
+        if !ecx.have_all_terminated() {
+            tcx.sess.err("the main thread terminated without waiting for all remaining threads");
+            tcx.sess.note_without_error("pass `-Zmiri-ignore-leaks` to disable this check");
+            return None;
         }
-        Err(e) => report_error(&ecx, e),
+        // Check for memory leaks.
+        info!("Additonal static roots: {:?}", ecx.machine.static_roots);
+        let leaks = ecx.leak_report(&ecx.machine.static_roots);
+        if leaks != 0 {
+            tcx.sess.err("the evaluated program leaked memory");
+            tcx.sess.note_without_error("pass `-Zmiri-ignore-leaks` to disable this check");
+            // Ignore the provided return code - let the reported error
+            // determine the return code.
+            return None;
+        }
     }
+    Some(return_code)
 }
 
 /// Turns an array of arguments into a Windows command line string.

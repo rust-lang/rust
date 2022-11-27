@@ -46,7 +46,7 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriInterpCxExt<'mir, 'tcx> {
             throw_unsup_format!("non-null `lpThreadAttributes` in `CreateThread`")
         }
 
-        this.start_thread(
+        this.start_regular_thread(
             thread,
             start_routine,
             Abi::System { unwind: false },
