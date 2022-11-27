@@ -1164,7 +1164,7 @@ pub(crate) fn code_lens(
             let r = runnable(snap, run)?;
 
             let lens_config = snap.config.lens();
-            if lens_config.run && client_commands_config.run_single {
+            if lens_config.run && client_commands_config.run_single && r.args.workspace_root.is_some() {
                 let command = command::run_single(&r, &title);
                 acc.push(lsp_types::CodeLens {
                     range: annotation_range,
