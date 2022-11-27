@@ -8,8 +8,8 @@ LL |     fun(async {}, async {});
    |         |         arguments to this function are incorrect
    |         the expected `async` block
    |
-   = note: expected `async` block `impl Future<Output = ()>` (`async` block)
-              found `async` block `impl Future<Output = ()>` (`async` block)
+   = note: expected `async` block `[async block@$DIR/generator-desc.rs:10:9: 10:17]`
+              found `async` block `[async block@$DIR/generator-desc.rs:10:19: 10:27]`
 note: function defined here
   --> $SRC_DIR/core/src/future/mod.rs:LL:COL
    |
@@ -53,8 +53,8 @@ LL |     fun((async || {})(), (async || {})());
    |     |             the expected `async` closure body
    |     arguments to this function are incorrect
    |
-   = note: expected `async` closure body `impl Future<Output = ()>` (`async` closure body)
-              found `async` closure body `impl Future<Output = ()>` (`async` closure body)
+   = note: expected `async` closure body `[async closure body@$DIR/generator-desc.rs:14:19: 14:21]`
+              found `async` closure body `[async closure body@$DIR/generator-desc.rs:14:36: 14:38]`
 note: function defined here
   --> $DIR/generator-desc.rs:8:4
    |
