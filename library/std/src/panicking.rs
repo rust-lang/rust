@@ -594,8 +594,8 @@ pub fn begin_panic_handler(info: &PanicInfo<'_>) -> ! {
 // lang item for CTFE panic support
 // never inline unless panic_immediate_abort to avoid code
 // bloat at the call sites as much as possible
-#[cfg_attr(not(feature = "panic_immediate_abort"), inline(never))]
-#[cold]
+#[cfg_attr(not(feature = "panic_immediate_abort"), inline(never), cold)]
+#[cfg_attr(feature = "panic_immediate_abort", inline)]
 #[track_caller]
 #[rustc_do_not_const_check] // hooked by const-eval
 pub const fn begin_panic<M: Any + Send>(msg: M) -> ! {
