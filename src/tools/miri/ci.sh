@@ -88,7 +88,7 @@ function run_tests_minimal {
   ./miri test -- "$@"
 
   # Ensure that a small smoke test of cargo-miri works.
-  cargo miri run --manifest-path test-cargo-miri/no-std-smoke/Cargo.toml
+  cargo miri run --manifest-path test-cargo-miri/no-std-smoke/Cargo.toml --target ${MIRI_TEST_TARGET-$HOST_TARGET}
 
   endgroup
 }
