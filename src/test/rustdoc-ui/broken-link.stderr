@@ -1,0 +1,5 @@
+error: Found invalid urls in $TEST_BUILD_DIR/broken-link/broken_link/index.html:
+           Linked file at path $TEST_BUILD_DIR/broken-link/broken_link/not-here.html does not exist!
+
+error: aborting due to previous error
+

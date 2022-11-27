@@ -6,7 +6,7 @@ use std::rc::Rc;
 use std::sync::mpsc::{channel, Receiver};
 
 use rustc_data_structures::fx::{FxHashMap, FxHashSet};
-use rustc_hir::HirId;
+// use rustc_hir::HirId;
 use rustc_hir::def_id::{DefId, LOCAL_CRATE};
 use rustc_middle::ty::TyCtxt;
 use rustc_session::Session;
@@ -34,7 +34,7 @@ use crate::html::format::{join_with_double_colon, Buffer};
 use crate::html::markdown::{self, plain_text_summary, ErrorCodes, IdMap};
 use crate::html::url_parts_builder::UrlPartsBuilder;
 use crate::html::{layout, sources, static_files};
-use crate::lint::BROKEN_HTML_LINKS;
+// use crate::lint::BROKEN_HTML_LINKS;
 use crate::scrape_examples::AllCallLocations;
 use crate::try_err;
 
@@ -176,14 +176,14 @@ impl<'tcx> Context<'tcx> {
 
         let path = self.dst.canonicalize().unwrap();
         let errors: Vec<_> = unavailable_urls(&path, &CheckContext::default()).collect();
-        let tcx = self.tcx();
+        // let tcx = self.tcx();
         for err in errors {
-            // self.sess().struct_warn(&err.to_string().replace('\t', "    ")).emit();
-            let msg = err.to_string().replace('\t', "    ");
-            // TODO: map files back to items
-            let hir_id: HirId = todo!();
-            let span = tcx.def_span(tcx.hir().local_def_id(hir_id));
-            self.tcx().struct_span_lint_hir(BROKEN_HTML_LINKS, hir_id, span, msg, |err| err);
+            self.sess().struct_err(&err.to_string().replace('\t', "    ")).emit();
+            // let msg = err.to_string().replace('\t', "    ");
+            // // TODO: map files back to items
+            // let hir_id: HirId = todo!();
+            // let span = tcx.def_span(tcx.hir().local_def_id(hir_id));
+            // self.tcx().struct_span_lint_hir(BROKEN_HTML_LINKS, hir_id, span, msg, |err| err);
         }
     }
 
