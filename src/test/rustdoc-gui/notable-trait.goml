@@ -200,12 +200,14 @@ move-cursor-to: "//*[@class='notable popover']"
 assert-count: ("//*[@class='notable popover']", 1)
 press-key: "Escape"
 assert-count: ("//*[@class='notable popover']", 0)
+assert: "#method\.create_an_iterator_from_read .notable-traits:focus"
 
 // Check that clicking outside works.
 click: "//*[@id='method.create_an_iterator_from_read']//*[@class='notable-traits']"
 assert-count: ("//*[@class='notable popover']", 1)
 click: ".search-input"
 assert-count: ("//*[@class='notable popover']", 0)
+assert-false: "#method\.create_an_iterator_from_read .notable-traits:focus"
 
 // Check that pressing tab over and over works.
 click: "//*[@id='method.create_an_iterator_from_read']//*[@class='notable-traits']"
@@ -249,3 +251,26 @@ click: "#settings-menu a"
 press-key: "Escape"
 // We ensure we didn't come back to the previous focused item.
 assert-window-property-false: {"scrollY": |scroll|}
+
+// Opening the mobile sidebar should close the popover.
+size: (650, 600)
+click: "//*[@id='method.create_an_iterator_from_read']//*[@class='notable-traits']"
+assert-count: ("//*[@class='notable popover']", 1)
+click: ".sidebar-menu-toggle"
+assert: "//*[@class='sidebar shown']"
+assert-count: ("//*[@class='notable popover']", 0)
+assert-false: "#method\.create_an_iterator_from_read .notable-traits:focus"
+// Clicking a notable popover should close the sidebar.
+click: "//*[@id='method.create_an_iterator_from_read']//*[@class='notable-traits']"
+assert-count: ("//*[@class='notable popover']", 1)
+assert-false: "//*[@class='sidebar shown']"
+
+// Also check the focus handling for the help button.
+size: (1100, 600)
+reload:
+assert-count: ("//*[@class='notable popover']", 0)
+click: "//*[@id='method.create_an_iterator_from_read']//*[@class='notable-traits']"
+assert-count: ("//*[@class='notable popover']", 1)
+click: "#help-button a"
+assert-count: ("//*[@class='notable popover']", 0)
+assert-false: "#method\.create_an_iterator_from_read .notable-traits:focus"
