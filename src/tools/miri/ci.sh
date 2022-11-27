@@ -2,7 +2,7 @@
 set -euo pipefail
 
 function begingroup {
-  echo "::group::$1"
+  echo "::group::$@"
   set -x
 }
 
