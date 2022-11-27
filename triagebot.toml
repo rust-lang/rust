@@ -405,6 +405,9 @@ cc = ["@rust-lang/clippy"]
 message = "The Miri subtree was changed"
 cc = ["@rust-lang/miri"]
 
+[mentions."src/tools/rust-analyzer"]
+cc = ["@rust-lang/wg-rls-2"]
+
 [mentions."src/tools/rustfmt"]
 cc = ["@rust-lang/rustfmt"]
 
