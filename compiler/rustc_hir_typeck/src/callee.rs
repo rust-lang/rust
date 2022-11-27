@@ -181,7 +181,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             // where F:Fn and so forth. In the particular case of types
             // like `f: &mut FnMut()`, if there is a call `f()`, we would
             // normally translate to `FnMut::call_mut(&mut f, ())`, but
-            // that winds up requiring the user to potentially mark their
+            // that winds up potentially requiring the user to mark their
             // variable as `mut` which feels unnecessary and unexpected.
             //
             //     fn foo(f: &mut impl FnMut()) { f() }
