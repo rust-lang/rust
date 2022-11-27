@@ -336,20 +336,26 @@ pub mod panic_count {
     pub fn increase() -> (bool, usize) {
         let global_count = GLOBAL_PANIC_COUNT.fetch_add(1, Ordering::Relaxed);
         let must_abort = global_count & ALWAYS_ABORT_FLAG != 0;
-        let panics = if must_abort {
-            global_count & !ALWAYS_ABORT_FLAG
-        } else {
-            LOCAL_PANIC_COUNT.with(|c| {
+        let mut panics = global_count & !ALWAYS_ABORT_FLAG;
+
+        // In a restricted_std environment, we likely don't have thread_local.
+        // If we attempt to use LOCAL_PANIC_COUNT here, it is probable that another panic will
+        // occur, sending us into an infinite panic loop that never calls the panic handler.
+        #[cfg(not(feature = "restricted-std"))]
+        if !must_abort {
+            panics = LOCAL_PANIC_COUNT.with(|c| {
                 let next = c.get() + 1;
                 c.set(next);
                 next
-            })
+            });
         };
+
         (must_abort, panics)
     }
 
     pub fn decrease() {
         GLOBAL_PANIC_COUNT.fetch_sub(1, Ordering::Relaxed);
+        #[cfg(not(feature = "restricted-std"))]
         LOCAL_PANIC_COUNT.with(|c| {
             let next = c.get() - 1;
             c.set(next);
