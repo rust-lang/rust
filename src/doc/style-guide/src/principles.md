@@ -8,7 +8,9 @@ following principles (in rough priority order):
     - avoiding misleading formatting
     - accessibility - readable and editable by users using the the widest
       variety of hardware, including non-visual accessibility interfaces
-    - readability of code when quoted in rustc error messages
+    - readability of code in contexts without syntax highlighting or IDE
+      assistance, such as rustc error messages, diffs, grep, and other
+      plain-text contexts
 
 * aesthetics
     - sense of 'beauty'
