@@ -334,6 +334,13 @@ cc = ["@rust-lang/wg-mir-opt"]
 message = "Some changes occurred in const_evaluatable.rs"
 cc = ["@lcnr"]
 
+[mentions."compiler/rustc_trait_selection/src/traits/engine.rs"]
+message = """
+Some changes occurred in engine.rs, potentially modifying the public API \
+of `ObligationCtxt`.
+"""
+cc = ["@lcnr"]
+
 [mentions."compiler/rustc_error_codes/src/error_codes.rs"]
 message = "Some changes occurred in diagnostic error codes"
 cc = ["@GuillaumeGomez"]
