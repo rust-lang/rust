@@ -26,9 +26,9 @@ use thin_vec::thin_vec;
 pub struct MarkedAttrs(GrowableBitSet<AttrId>);
 
 impl MarkedAttrs {
-    // We have no idea how many attributes there will be, so just
-    // initiate the vectors with 0 bits. We'll grow them as necessary.
     pub fn new() -> Self {
+        // We have no idea how many attributes there will be, so just
+        // initiate the vectors with 0 bits. We'll grow them as necessary.
         MarkedAttrs(GrowableBitSet::new_empty())
     }
 
@@ -174,9 +174,11 @@ impl MetaItem {
         self.ident().unwrap_or_else(Ident::empty).name
     }
 
-    // Example:
-    //     #[attribute(name = "value")]
-    //                 ^^^^^^^^^^^^^^
+    /// ```text
+    /// Example:
+    ///     #[attribute(name = "value")]
+    ///                 ^^^^^^^^^^^^^^
+    /// ```
     pub fn name_value_literal(&self) -> Option<&Lit> {
         match &self.kind {
             MetaItemKind::NameValue(v) => Some(v),

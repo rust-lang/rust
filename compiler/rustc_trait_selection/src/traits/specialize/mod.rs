@@ -230,7 +230,7 @@ fn fulfill_implication<'tcx>(
     Ok(infcx.resolve_vars_if_possible(target_substs))
 }
 
-// Query provider for `specialization_graph_of`.
+/// Query provider for `specialization_graph_of`.
 pub(super) fn specialization_graph_provider(
     tcx: TyCtxt<'_>,
     trait_id: DefId,

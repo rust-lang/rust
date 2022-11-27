@@ -2241,7 +2241,7 @@ impl<'tcx> Ty<'tcx> {
         }
     }
 
-    // If `self` is a primitive, return its [`Symbol`].
+    /// If `self` is a primitive, return its [`Symbol`].
     pub fn primitive_symbol(self) -> Option<Symbol> {
         match self.kind() {
             ty::Bool => Some(sym::bool),

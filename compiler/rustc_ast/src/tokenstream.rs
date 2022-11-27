@@ -86,12 +86,12 @@ impl TokenTree {
         }
     }
 
-    // Create a `TokenTree::Token` with alone spacing.
+    /// Create a `TokenTree::Token` with alone spacing.
     pub fn token_alone(kind: TokenKind, span: Span) -> TokenTree {
         TokenTree::Token(Token::new(kind, span), Spacing::Alone)
     }
 
-    // Create a `TokenTree::Token` with joint spacing.
+    /// Create a `TokenTree::Token` with joint spacing.
     pub fn token_joint(kind: TokenKind, span: Span) -> TokenTree {
         TokenTree::Token(Token::new(kind, span), Spacing::Joint)
     }
@@ -413,17 +413,17 @@ impl TokenStream {
         TokenStream(Lrc::new(self.0.iter().enumerate().map(|(i, tree)| f(i, tree)).collect()))
     }
 
-    // Create a token stream containing a single token with alone spacing.
+    /// Create a token stream containing a single token with alone spacing.
     pub fn token_alone(kind: TokenKind, span: Span) -> TokenStream {
         TokenStream::new(vec![TokenTree::token_alone(kind, span)])
     }
 
-    // Create a token stream containing a single token with joint spacing.
+    /// Create a token stream containing a single token with joint spacing.
     pub fn token_joint(kind: TokenKind, span: Span) -> TokenStream {
         TokenStream::new(vec![TokenTree::token_joint(kind, span)])
     }
 
-    // Create a token stream containing a single `Delimited`.
+    /// Create a token stream containing a single `Delimited`.
     pub fn delimited(span: DelimSpan, delim: Delimiter, tts: TokenStream) -> TokenStream {
         TokenStream::new(vec![TokenTree::Delimited(span, delim, tts)])
     }
@@ -522,8 +522,8 @@ impl TokenStream {
         }
     }
 
-    // Push `tt` onto the end of the stream, possibly gluing it to the last
-    // token. Uses `make_mut` to maximize efficiency.
+    /// Push `tt` onto the end of the stream, possibly gluing it to the last
+    /// token. Uses `make_mut` to maximize efficiency.
     pub fn push_tree(&mut self, tt: TokenTree) {
         let vec_mut = Lrc::make_mut(&mut self.0);
 
@@ -534,9 +534,9 @@ impl TokenStream {
         }
     }
 
-    // Push `stream` onto the end of the stream, possibly gluing the first
-    // token tree to the last token. (No other token trees will be glued.)
-    // Uses `make_mut` to maximize efficiency.
+    /// Push `stream` onto the end of the stream, possibly gluing the first
+    /// token tree to the last token. (No other token trees will be glued.)
+    /// Uses `make_mut` to maximize efficiency.
     pub fn push_stream(&mut self, stream: TokenStream) {
         let vec_mut = Lrc::make_mut(&mut self.0);
 

@@ -34,9 +34,9 @@ pub fn disable_localization(linker: &mut Command) {
     linker.env("VSLANG", "1033");
 }
 
-// The third parameter is for env vars, used on windows to set up the
-// path for MSVC to find its DLLs, and gcc to find its bundled
-// toolchain
+/// The third parameter is for env vars, used on windows to set up the
+/// path for MSVC to find its DLLs, and gcc to find its bundled
+/// toolchain
 pub fn get_linker<'a>(
     sess: &'a Session,
     linker: &Path,

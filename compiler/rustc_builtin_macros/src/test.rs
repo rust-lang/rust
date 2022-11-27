@@ -13,13 +13,13 @@ use rustc_span::Span;
 use std::iter;
 use thin_vec::thin_vec;
 
-// #[test_case] is used by custom test authors to mark tests
-// When building for test, it needs to make the item public and gensym the name
-// Otherwise, we'll omit the item. This behavior means that any item annotated
-// with #[test_case] is never addressable.
-//
-// We mark item with an inert attribute "rustc_test_marker" which the test generation
-// logic will pick up on.
+/// #[test_case] is used by custom test authors to mark tests
+/// When building for test, it needs to make the item public and gensym the name
+/// Otherwise, we'll omit the item. This behavior means that any item annotated
+/// with #[test_case] is never addressable.
+///
+/// We mark item with an inert attribute "rustc_test_marker" which the test generation
+/// logic will pick up on.
 pub fn expand_test_case(
     ecx: &mut ExtCtxt<'_>,
     attr_sp: Span,

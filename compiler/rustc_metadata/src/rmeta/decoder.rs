@@ -67,10 +67,10 @@ impl std::ops::Deref for MetadataBlob {
     }
 }
 
-// A map from external crate numbers (as decoded from some crate file) to
-// local crate numbers (as generated during this session). Each external
-// crate may refer to types in other external crates, and each has their
-// own crate numbers.
+/// A map from external crate numbers (as decoded from some crate file) to
+/// local crate numbers (as generated during this session). Each external
+/// crate may refer to types in other external crates, and each has their
+/// own crate numbers.
 pub(crate) type CrateNumMap = IndexVec<CrateNum, CrateNum>;
 
 pub(crate) struct CrateMetadata {

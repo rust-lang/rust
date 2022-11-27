@@ -111,8 +111,8 @@ impl<CTX: rustc_span::HashStableContext> HashStable<CTX> for Path {
 }
 
 impl Path {
-    // Convert a span and an identifier to the corresponding
-    // one-segment path.
+    /// Convert a span and an identifier to the corresponding
+    /// one-segment path.
     pub fn from_ident(ident: Ident) -> Path {
         Path { segments: thin_vec![PathSegment::from_ident(ident)], span: ident.span, tokens: None }
     }
@@ -1283,7 +1283,7 @@ impl Expr {
         )
     }
 
-    // To a first-order approximation, is this a pattern
+    /// To a first-order approximation, is this a pattern?
     pub fn is_approximately_pattern(&self) -> bool {
         match &self.peel_parens().kind {
             ExprKind::Box(_)

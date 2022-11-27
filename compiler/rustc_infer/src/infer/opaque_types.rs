@@ -410,19 +410,19 @@ impl<'tcx> InferCtxt<'tcx> {
     }
 }
 
-// Visitor that requires that (almost) all regions in the type visited outlive
-// `least_region`. We cannot use `push_outlives_components` because regions in
-// closure signatures are not included in their outlives components. We need to
-// ensure all regions outlive the given bound so that we don't end up with,
-// say, `ReVar` appearing in a return type and causing ICEs when other
-// functions end up with region constraints involving regions from other
-// functions.
-//
-// We also cannot use `for_each_free_region` because for closures it includes
-// the regions parameters from the enclosing item.
-//
-// We ignore any type parameters because impl trait values are assumed to
-// capture all the in-scope type parameters.
+/// Visitor that requires that (almost) all regions in the type visited outlive
+/// `least_region`. We cannot use `push_outlives_components` because regions in
+/// closure signatures are not included in their outlives components. We need to
+/// ensure all regions outlive the given bound so that we don't end up with,
+/// say, `ReVar` appearing in a return type and causing ICEs when other
+/// functions end up with region constraints involving regions from other
+/// functions.
+///
+/// We also cannot use `for_each_free_region` because for closures it includes
+/// the regions parameters from the enclosing item.
+///
+/// We ignore any type parameters because impl trait values are assumed to
+/// capture all the in-scope type parameters.
 pub struct ConstrainOpaqueTypeRegionVisitor<'tcx, OP: FnMut(ty::Region<'tcx>)> {
     pub tcx: TyCtxt<'tcx>,
     pub op: OP,

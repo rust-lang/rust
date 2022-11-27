@@ -50,7 +50,7 @@ impl AttrWrapper {
         self.attrs
     }
 
-    // Prepend `self.attrs` to `attrs`.
+    /// Prepend `self.attrs` to `attrs`.
     // FIXME: require passing an NT to prevent misuse of this method
     pub(crate) fn prepend_to_nt_inner(self, attrs: &mut AttrVec) {
         let mut self_attrs = self.attrs;
