@@ -484,6 +484,9 @@ fn run_analysis_to_runtime_passes<'tcx>(tcx: TyCtxt<'tcx>, body: &mut Body<'tcx>
     run_runtime_lowering_passes(tcx, body);
     assert!(body.phase == MirPhase::Runtime(RuntimePhase::Initial));
 
+    // Always run extra MIR validation here where we still have storage markers around.
+    validate_body(tcx, body, "after runtime lowering".into());
+
     debug!("runtime_mir_cleanup({:?})", did);
     run_runtime_cleanup_passes(tcx, body);
     assert!(body.phase == MirPhase::Runtime(RuntimePhase::PostCleanup));
@@ -658,4 +661,8 @@ fn promoted_mir<'tcx>(
     debug_assert!(!promoted.has_free_regions(), "Free regions in promoted MIR");
 
     tcx.arena.alloc(promoted)
+}
+
+fn validate_body<'tcx>(tcx: TyCtxt<'tcx>, body: &mut Body<'tcx>, when: String) {
+    validate::Validator { when, mir_phase: body.phase }.run_pass(tcx, body);
 }

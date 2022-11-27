@@ -4,7 +4,7 @@ use rustc_middle::mir::{self, Body, MirPhase, RuntimePhase};
 use rustc_middle::ty::TyCtxt;
 use rustc_session::Session;
 
-use crate::{validate, MirPass};
+use crate::{validate_body, MirPass};
 
 /// Just like `MirPass`, except it cannot mutate `Body`.
 pub trait MirLint<'tcx> {
@@ -154,10 +154,6 @@ fn run_passes_inner<'tcx>(
 
         body.pass_count = 1;
     }
-}
-
-pub fn validate_body<'tcx>(tcx: TyCtxt<'tcx>, body: &mut Body<'tcx>, when: String) {
-    validate::Validator { when, mir_phase: body.phase }.run_pass(tcx, body);
 }
 
 pub fn dump_mir_for_pass<'tcx>(
