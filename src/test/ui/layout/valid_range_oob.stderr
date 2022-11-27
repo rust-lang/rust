@@ -1,0 +1,6 @@
+error: internal compiler error: unexpected panic
+
+query stack during panic:
+#0 [layout_of] computing layout of `Foo`
+#1 [eval_to_allocation_raw] const-evaluating + checking `FOO`
+end of query stack

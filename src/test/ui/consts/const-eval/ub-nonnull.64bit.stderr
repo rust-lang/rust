@@ -65,6 +65,17 @@ LL | const BAD_RANGE2: RestrictedRange2 = unsafe { RestrictedRange2(20) };
                14 00 00 00                                     │ ....
            }
 
-error: aborting due to 7 previous errors
+error[E0080]: it is undefined behavior to use this value
+  --> $DIR/ub-nonnull.rs:50:1
+   |
+LL | const NULL_FAT_PTR: NonNull<dyn Send> = unsafe {
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ constructing invalid value: encountered 0, but expected something greater or equal to 1
+   |
+   = note: The rules on what exactly is undefined behavior aren't clear, so this check might be overzealous. Please open an issue on the rustc repository if you believe it should not be considered undefined behavior.
+   = note: the raw bytes of the constant (size: 16, align: 8) {
+               00 00 00 00 00 00 00 00 ╾───────alloc26───────╼ │ ........╾──────╼
+           }
+
+error: aborting due to 8 previous errors
 
 For more information about this error, try `rustc --explain E0080`.

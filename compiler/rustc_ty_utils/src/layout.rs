@@ -325,8 +325,8 @@ fn layout_of_uncached<'tcx>(
 
                 // Extract the number of elements from the layout of the array field:
                 let FieldsShape::Array { count, .. } = cx.layout_of(f0_ty)?.layout.fields() else {
-                        return Err(LayoutError::Unknown(ty));
-                    };
+                    return Err(LayoutError::Unknown(ty));
+                };
 
                 (*e_ty, *count, true)
             } else {
@@ -351,14 +351,14 @@ fn layout_of_uncached<'tcx>(
             // Compute the ABI of the element type:
             let e_ly = cx.layout_of(e_ty)?;
             let Abi::Scalar(e_abi) = e_ly.abi else {
-                    // This error isn't caught in typeck, e.g., if
-                    // the element type of the vector is generic.
-                    tcx.sess.fatal(&format!(
-                        "monomorphising SIMD type `{}` with a non-primitive-scalar \
-                        (integer/float/pointer) element type `{}`",
-                        ty, e_ty
-                    ))
-                };
+                // This error isn't caught in typeck, e.g., if
+                // the element type of the vector is generic.
+                tcx.sess.fatal(&format!(
+                    "monomorphising SIMD type `{}` with a non-primitive-scalar \
+                    (integer/float/pointer) element type `{}`",
+                    ty, e_ty
+                ))
+            };
 
             // Compute the size and alignment of the vector:
             let size = e_ly.size.checked_mul(e_len, dl).ok_or(LayoutError::SizeOverflow(ty))?;
@@ -597,8 +597,8 @@ fn generator_layout<'tcx>(
     let subst_field = |ty: Ty<'tcx>| EarlyBinder(ty).subst(tcx, substs);
 
     let Some(info) = tcx.generator_layout(def_id) else {
-            return Err(LayoutError::Unknown(ty));
-        };
+        return Err(LayoutError::Unknown(ty));
+    };
     let (ineligible_locals, assignments) = generator_saved_local_eligibility(&info);
 
     // Build a prefix layout, including "promoting" all ineligible
@@ -701,8 +701,8 @@ fn generator_layout<'tcx>(
             variant.variants = Variants::Single { index };
 
             let FieldsShape::Arbitrary { offsets, memory_index } = variant.fields else {
-                    bug!();
-                };
+                bug!();
+            };
 
             // Now, stitch the promoted and variant-only fields back together in
             // the order they are mentioned by our GeneratorLayout.
