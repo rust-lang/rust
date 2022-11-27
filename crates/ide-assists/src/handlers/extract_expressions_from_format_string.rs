@@ -23,7 +23,7 @@ use syntax::{ast, AstNode, AstToken, NodeOrToken, SyntaxKind::COMMA, TextRange};
 // }
 //
 // fn main() {
-//     print!("{x + 1}$0");
+//     print!("{var} {x + 1}$0");
 // }
 // ```
 // ->
@@ -36,7 +36,7 @@ use syntax::{ast, AstNode, AstToken, NodeOrToken, SyntaxKind::COMMA, TextRange};
 // }
 //
 // fn main() {
-//     print!("{}"$0, x + 1);
+//     print!("{var} {}"$0, x + 1);
 // }
 // ```
 

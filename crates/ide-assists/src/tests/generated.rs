@@ -637,7 +637,7 @@ macro_rules! print {
 }
 
 fn main() {
-    print!("{x + 1}$0");
+    print!("{var} {x + 1}$0");
 }
 "#####,
         r#####"
@@ -649,7 +649,7 @@ macro_rules! print {
 }
 
 fn main() {
-    print!("{}"$0, x + 1);
+    print!("{var} {}"$0, x + 1);
 }
 "#####,
     )
