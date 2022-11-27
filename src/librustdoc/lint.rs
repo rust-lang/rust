@@ -174,6 +174,17 @@ declare_rustdoc_lint! {
    "codeblock could not be parsed as valid Rust or is empty"
 }
 
+declare_rustdoc_lint! {
+   /// The `broken_html_links` lint detects generated links that are broken.
+   /// Unlike `broken_intra_doc_links`, this also works for manual links.
+   /// This is a `rustdoc` only lint, see the documentation in the [rustdoc book].
+   ///
+   /// [rustdoc book]: ../../../rustdoc/lints.html#broken_html_links
+   BROKEN_HTML_LINKS,
+   Warn,
+   "generated link pointed to an invalid path"
+}
+
 pub(crate) static RUSTDOC_LINTS: Lazy<Vec<&'static Lint>> = Lazy::new(|| {
     vec![
         BROKEN_INTRA_DOC_LINKS,
