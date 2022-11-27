@@ -229,9 +229,9 @@ impl MainThreadState {
                     this.machine.layouts.isize,
                 );
                 let exit_code = this.read_scalar(&ret_place.into())?.to_machine_isize(this)?;
-                // Need to call `thread_terminated` ourselves since we are not going to
-                // return to the scheduler loop.
-                this.thread_terminated()?;
+                // Need to call this ourselves since we are not going to return to the scheduler
+                // loop, and we want the main thread TLS to not show up as memory leaks.
+                this.terminate_active_thread()?;
                 // Stop interpreter loop.
                 throw_machine_stop!(TerminationInfo::Exit { code: exit_code, leak_check: true });
             }
@@ -416,28 +416,8 @@ pub fn eval_entry<'tcx>(
     };
 
     // Perform the main execution.
-    let res: thread::Result<InterpResult<'_, !>> = panic::catch_unwind(AssertUnwindSafe(|| {
-        // Main loop. Goes on forever until an interrupt is triggered (represented as `InterpError`).
-        loop {
-            match ecx.schedule()? {
-                SchedulingAction::ExecuteStep => {
-                    if !ecx.step()? {
-                        // See if this thread can do something else.
-                        match ecx.run_on_stack_empty()? {
-                            Poll::Pending => {} // keep going
-                            Poll::Ready(()) => ecx.thread_terminated()?,
-                        }
-                    }
-                }
-                SchedulingAction::ExecuteTimeoutCallback => {
-                    ecx.run_timeout_callback()?;
-                }
-                SchedulingAction::Sleep(duration) => {
-                    ecx.machine.clock.sleep(duration);
-                }
-            }
-        }
-    }));
+    let res: thread::Result<InterpResult<'_, !>> =
+        panic::catch_unwind(AssertUnwindSafe(|| ecx.run_threads()));
     let res = res.unwrap_or_else(|panic_payload| {
         ecx.handle_ice();
         panic::resume_unwind(panic_payload)

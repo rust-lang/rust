@@ -21,7 +21,7 @@ use crate::shims::tls;
 use crate::*;
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
-pub enum SchedulingAction {
+enum SchedulingAction {
     /// Execute step on the active thread.
     ExecuteStep,
     /// Execute a timeout callback.
@@ -450,8 +450,7 @@ impl<'mir, 'tcx: 'mir> ThreadManager<'mir, 'tcx> {
     }
 
     /// Get a mutable borrow of the currently active thread.
-    /// (Private for a bit of protection.)
-    fn active_thread_mut(&mut self) -> &mut Thread<'mir, 'tcx> {
+    pub fn active_thread_mut(&mut self) -> &mut Thread<'mir, 'tcx> {
         &mut self.threads[self.active_thread]
     }
 
@@ -718,6 +717,51 @@ impl<'mir, 'tcx: 'mir> ThreadManager<'mir, 'tcx> {
     }
 }
 
+impl<'mir, 'tcx: 'mir> EvalContextPrivExt<'mir, 'tcx> for MiriInterpCx<'mir, 'tcx> {}
+trait EvalContextPrivExt<'mir, 'tcx: 'mir>: MiriInterpCxExt<'mir, 'tcx> {
+    /// Execute a timeout callback on the callback's thread.
+    #[inline]
+    fn run_timeout_callback(&mut self) -> InterpResult<'tcx> {
+        let this = self.eval_context_mut();
+        let (thread, callback) = if let Some((thread, callback)) =
+            this.machine.threads.get_ready_callback(&this.machine.clock)
+        {
+            (thread, callback)
+        } else {
+            // get_ready_callback can return None if the computer's clock
+            // was shifted after calling the scheduler and before the call
+            // to get_ready_callback (see issue
+            // https://github.com/rust-lang/miri/issues/1763). In this case,
+            // just do nothing, which effectively just returns to the
+            // scheduler.
+            return Ok(());
+        };
+        // This back-and-forth with `set_active_thread` is here because of two
+        // design decisions:
+        // 1. Make the caller and not the callback responsible for changing
+        //    thread.
+        // 2. Make the scheduler the only place that can change the active
+        //    thread.
+        let old_thread = this.set_active_thread(thread);
+        callback.call(this)?;
+        this.set_active_thread(old_thread);
+        Ok(())
+    }
+
+    #[inline]
+    fn run_on_stack_empty(&mut self) -> InterpResult<'tcx, Poll<()>> {
+        let this = self.eval_context_mut();
+        let mut callback = this
+            .active_thread_mut()
+            .on_stack_empty
+            .take()
+            .expect("`on_stack_empty` not set up, or already running");
+        let res = callback(this)?;
+        this.active_thread_mut().on_stack_empty = Some(callback);
+        Ok(res)
+    }
+}
+
 // Public interface to thread management.
 impl<'mir, 'tcx: 'mir> EvalContextExt<'mir, 'tcx> for crate::MiriInterpCx<'mir, 'tcx> {}
 pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriInterpCxExt<'mir, 'tcx> {
@@ -961,53 +1005,29 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriInterpCxExt<'mir, 'tcx> {
         this.machine.threads.unregister_timeout_callback_if_exists(thread);
     }
 
-    /// Execute a timeout callback on the callback's thread.
-    #[inline]
-    fn run_timeout_callback(&mut self) -> InterpResult<'tcx> {
+    /// Run the core interpreter loop. Returns only when an interrupt occurs (an error or program
+    /// termination).
+    fn run_threads(&mut self) -> InterpResult<'tcx, !> {
         let this = self.eval_context_mut();
-        let (thread, callback) = if let Some((thread, callback)) =
-            this.machine.threads.get_ready_callback(&this.machine.clock)
-        {
-            (thread, callback)
-        } else {
-            // get_ready_callback can return None if the computer's clock
-            // was shifted after calling the scheduler and before the call
-            // to get_ready_callback (see issue
-            // https://github.com/rust-lang/miri/issues/1763). In this case,
-            // just do nothing, which effectively just returns to the
-            // scheduler.
-            return Ok(());
-        };
-        // This back-and-forth with `set_active_thread` is here because of two
-        // design decisions:
-        // 1. Make the caller and not the callback responsible for changing
-        //    thread.
-        // 2. Make the scheduler the only place that can change the active
-        //    thread.
-        let old_thread = this.set_active_thread(thread);
-        callback.call(this)?;
-        this.set_active_thread(old_thread);
-        Ok(())
-    }
-
-    #[inline]
-    fn run_on_stack_empty(&mut self) -> InterpResult<'tcx, Poll<()>> {
-        let this = self.eval_context_mut();
-        let mut callback = this
-            .active_thread_mut()
-            .on_stack_empty
-            .take()
-            .expect("`on_stack_empty` not set up, or already running");
-        let res = callback(this)?;
-        this.active_thread_mut().on_stack_empty = Some(callback);
-        Ok(res)
-    }
-
-    /// Decide which action to take next and on which thread.
-    #[inline]
-    fn schedule(&mut self) -> InterpResult<'tcx, SchedulingAction> {
-        let this = self.eval_context_mut();
-        this.machine.threads.schedule(&this.machine.clock)
+        loop {
+            match this.machine.threads.schedule(&this.machine.clock)? {
+                SchedulingAction::ExecuteStep => {
+                    if !this.step()? {
+                        // See if this thread can do something else.
+                        match this.run_on_stack_empty()? {
+                            Poll::Pending => {} // keep going
+                            Poll::Ready(()) => this.terminate_active_thread()?,
+                        }
+                    }
+                }
+                SchedulingAction::ExecuteTimeoutCallback => {
+                    this.run_timeout_callback()?;
+                }
+                SchedulingAction::Sleep(duration) => {
+                    this.machine.clock.sleep(duration);
+                }
+            }
+        }
     }
 
     /// Handles thread termination of the active thread: wakes up threads joining on this one,
@@ -1015,7 +1035,7 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriInterpCxExt<'mir, 'tcx> {
     ///
     /// This is called by the eval loop when a thread's on_stack_empty returns `Ready`.
     #[inline]
-    fn thread_terminated(&mut self) -> InterpResult<'tcx> {
+    fn terminate_active_thread(&mut self) -> InterpResult<'tcx> {
         let this = self.eval_context_mut();
         let thread = this.active_thread_mut();
         assert!(thread.stack.is_empty(), "only threads with an empty stack can be terminated");

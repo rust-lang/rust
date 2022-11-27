@@ -89,9 +89,7 @@ pub use crate::concurrency::{
     data_race::{AtomicFenceOrd, AtomicReadOrd, AtomicRwOrd, AtomicWriteOrd, EvalContextExt as _},
     init_once::{EvalContextExt as _, InitOnceId},
     sync::{CondvarId, EvalContextExt as _, MutexId, RwLockId, SyncId},
-    thread::{
-        EvalContextExt as _, SchedulingAction, StackEmptyCallback, ThreadId, ThreadManager, Time,
-    },
+    thread::{EvalContextExt as _, StackEmptyCallback, ThreadId, ThreadManager, Time},
 };
 pub use crate::diagnostics::{
     report_error, EvalContextExt as _, NonHaltingDiagnostic, TerminationInfo,
