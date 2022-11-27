@@ -176,18 +176,6 @@ macro_rules! opt_remap_env_constness {
     };
 }
 
-macro_rules! hash_result {
-    ([]) => {{
-        Some(dep_graph::hash_result)
-    }};
-    ([(no_hash) $($rest:tt)*]) => {{
-        None
-    }};
-    ([$other:tt $($modifiers:tt)*]) => {
-        hash_result!([$($modifiers)*])
-    };
-}
-
 macro_rules! define_callbacks {
     (
      $($(#[$attr:meta])*
@@ -372,7 +360,7 @@ macro_rules! define_feedable {
                     tcx,
                     key,
                     &value,
-                    hash_result!([$($modifiers)*]).unwrap(),
+                    dep_graph::hash_result,
                 );
                 cache.complete(key, value, dep_node_index)
             })*
