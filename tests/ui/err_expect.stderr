@@ -1,5 +1,5 @@
 error: called `.err().expect()` on a `Result` value
-  --> $DIR/err_expect.rs:13:16
+  --> $DIR/err_expect.rs:12:16
    |
 LL |     test_debug.err().expect("Testing debug type");
    |                ^^^^^^^^^^^^ help: try: `expect_err`
@@ -7,7 +7,7 @@ LL |     test_debug.err().expect("Testing debug type");
    = note: `-D clippy::err-expect` implied by `-D warnings`
 
 error: called `.err().expect()` on a `Result` value
-  --> $DIR/err_expect.rs:30:7
+  --> $DIR/err_expect.rs:27:7
    |
 LL |     x.err().expect("17");
    |       ^^^^^^^^^^^^ help: try: `expect_err`

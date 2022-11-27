@@ -224,7 +224,7 @@ in the `Cargo.toml` can be used.
 rust-version = "1.30"
 ```
 
-The MSRV can also be specified as an inner attribute, like below.
+The MSRV can also be specified as an attribute, like below.
 
 ```rust
 #![feature(custom_inner_attributes)]

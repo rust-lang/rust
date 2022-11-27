@@ -5,7 +5,7 @@ use rustc_semver::RustcVersion;
 use rustc_session::Session;
 use rustc_span::Span;
 
-use crate::attrs::get_unique_inner_attr;
+use crate::attrs::get_unique_attr;
 
 macro_rules! msrv_aliases {
     ($($major:literal,$minor:literal,$patch:literal {
@@ -118,7 +118,7 @@ impl Msrv {
     }
 
     fn parse_attr(sess: &Session, attrs: &[Attribute]) -> Option<RustcVersion> {
-        if let Some(msrv_attr) = get_unique_inner_attr(sess, attrs, "msrv") {
+        if let Some(msrv_attr) = get_unique_attr(sess, attrs, "msrv") {
             if let Some(msrv) = msrv_attr.value_str() {
                 return parse_msrv(&msrv.to_string(), Some(sess), Some(msrv_attr.span));
             }

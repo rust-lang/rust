@@ -463,7 +463,7 @@ if !self.msrv.meets(msrvs::STR_STRIP_PREFIX) {
 }
 ```
 
-The project's MSRV can also be specified as an inner attribute, which overrides
+The project's MSRV can also be specified as an attribute, which overrides
 the value from `clippy.toml`. This can be accounted for using the
 `extract_msrv_attr!(LintContext)` macro and passing
 `LateContext`/`EarlyContext`.
@@ -483,19 +483,15 @@ have a case for the version below the MSRV and one with the same contents but
 for the MSRV version itself.
 
 ```rust
-#![feature(custom_inner_attributes)]
-
 ...
 
+#[clippy::msrv = "1.44"]
 fn msrv_1_44() {
-    #![clippy::msrv = "1.44"]
-
     /* something that would trigger the lint */
 }
 
+#[clippy::msrv = "1.45"]
 fn msrv_1_45() {
-    #![clippy::msrv = "1.45"]
-
     /* something that would trigger the lint */
 }
 ```
