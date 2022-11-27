@@ -14,6 +14,8 @@ macro_rules! intrinsic_args {
 
 mod cpuid;
 mod llvm;
+mod llvm_aarch64;
+mod llvm_x86;
 mod simd;
 
 pub(crate) use cpuid::codegen_cpuid_call;
