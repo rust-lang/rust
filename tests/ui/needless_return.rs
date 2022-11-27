@@ -269,4 +269,17 @@ fn issue9503(x: usize) -> isize {
     };
 }
 
+mod issue9416 {
+    pub fn with_newline() {
+        let _ = 42;
+
+        return;
+    }
+
+    #[rustfmt::skip]
+    pub fn oneline() {
+        let _ = 42; return;
+    }
+}
+
 fn main() {}
