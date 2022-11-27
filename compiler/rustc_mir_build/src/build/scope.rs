@@ -443,8 +443,9 @@ impl<'tcx> Scopes<'tcx> {
 impl<'a, 'tcx> Builder<'a, 'tcx> {
     // Adding and removing scopes
     // ==========================
-    //  Start a breakable scope, which tracks where `continue`, `break` and
-    //  `return` should branch to.
+
+    ///  Start a breakable scope, which tracks where `continue`, `break` and
+    ///  `return` should branch to.
     pub(crate) fn in_breakable_scope<F>(
         &mut self,
         loop_block: Option<BasicBlock>,
@@ -799,6 +800,7 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
 
     // Finding scopes
     // ==============
+
     /// Returns the scope that we should use as the lifetime of an
     /// operand. Basically, an operand must live until it is consumed.
     /// This is similar to, but not quite the same as, the temporary
@@ -824,6 +826,7 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
 
     // Scheduling drops
     // ================
+
     pub(crate) fn schedule_drop_storage_and_value(
         &mut self,
         span: Span,
@@ -996,6 +999,7 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
 
     // Other
     // =====
+
     /// Returns the [DropIdx] for the innermost drop if the function unwound at
     /// this point. The `DropIdx` will be created if it doesn't already exist.
     fn diverge_cleanup(&mut self) -> DropIdx {

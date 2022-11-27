@@ -130,14 +130,14 @@ impl FileLoader for RealFileLoader {
 /// different has no real downsides.
 #[derive(Copy, Clone, PartialEq, Eq, Hash, Encodable, Decodable, Debug)]
 pub struct StableSourceFileId {
-    // A hash of the source file's FileName. This is hash so that it's size
-    // is more predictable than if we included the actual FileName value.
+    /// A hash of the source file's [`FileName`]. This is hash so that it's size
+    /// is more predictable than if we included the actual [`FileName`] value.
     pub file_name_hash: u64,
 
-    // The CrateNum of the crate this source file was originally parsed for.
-    // We cannot include this information in the hash because at the time
-    // of hashing we don't have the context to map from the CrateNum's numeric
-    // value to a StableCrateId.
+    /// The [`CrateNum`] of the crate this source file was originally parsed for.
+    /// We cannot include this information in the hash because at the time
+    /// of hashing we don't have the context to map from the [`CrateNum`]'s numeric
+    /// value to a `StableCrateId`.
     pub cnum: CrateNum,
 }
 
@@ -402,7 +402,7 @@ impl SourceMap {
         source_file
     }
 
-    // If there is a doctest offset, applies it to the line.
+    /// If there is a doctest offset, applies it to the line.
     pub fn doctest_offset_line(&self, file: &FileName, orig: usize) -> usize {
         match file {
             FileName::DocTest(_, offset) => {
@@ -429,7 +429,7 @@ impl SourceMap {
         Loc { file: sf, line, col, col_display }
     }
 
-    // If the corresponding `SourceFile` is empty, does not return a line number.
+    /// If the corresponding `SourceFile` is empty, does not return a line number.
     pub fn lookup_line(&self, pos: BytePos) -> Result<SourceFileAndLine, Lrc<SourceFile>> {
         let f = self.lookup_source_file(pos);
 
@@ -1053,9 +1053,9 @@ impl SourceMap {
         SourceFileAndBytePos { sf, pos: offset }
     }
 
-    // Returns the index of the `SourceFile` (in `self.files`) that contains `pos`.
-    // This index is guaranteed to be valid for the lifetime of this `SourceMap`,
-    // since `source_files` is a `MonotonicVec`
+    /// Returns the index of the [`SourceFile`] (in `self.files`) that contains `pos`.
+    /// This index is guaranteed to be valid for the lifetime of this `SourceMap`,
+    /// since `source_files` is a `MonotonicVec`
     pub fn lookup_source_file_idx(&self, pos: BytePos) -> usize {
         self.files
             .borrow()

@@ -1336,8 +1336,8 @@ mod signal_handler {
         }
     }
 
-    // When an error signal (such as SIGABRT or SIGSEGV) is delivered to the
-    // process, print a stack trace and then exit.
+    /// When an error signal (such as SIGABRT or SIGSEGV) is delivered to the
+    /// process, print a stack trace and then exit.
     pub(super) fn install() {
         unsafe {
             const ALT_STACK_SIZE: usize = libc::MINSIGSTKSZ + 64 * 1024;

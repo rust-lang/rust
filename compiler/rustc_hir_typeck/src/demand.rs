@@ -57,8 +57,8 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         self.note_internal_mutation_in_method(err, expr, expected, expr_ty);
     }
 
-    // Requires that the two types unify, and prints an error message if
-    // they don't.
+    /// Requires that the two types unify, and prints an error message if
+    /// they don't.
     pub fn demand_suptype(&self, sp: Span, expected: Ty<'tcx>, actual: Ty<'tcx>) {
         if let Some(mut e) = self.demand_suptype_diag(sp, expected, actual) {
             e.emit();

@@ -914,8 +914,8 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
     }
 
     // Check if an expression `original_expr_id` comes from the condition of a while loop,
-    // as opposed from the body of a while loop, which we can naively check by iterating
-    // parents until we find a loop...
+    /// as opposed from the body of a while loop, which we can naively check by iterating
+    /// parents until we find a loop...
     pub(super) fn comes_from_while_condition(
         &self,
         original_expr_id: HirId,

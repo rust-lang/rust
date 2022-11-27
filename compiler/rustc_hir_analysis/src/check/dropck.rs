@@ -233,9 +233,10 @@ fn ensure_drop_predicates_are_implied_by_item_defn<'tcx>(
     result
 }
 
-// This is an implementation of the TypeRelation trait with the
-// aim of simply comparing for equality (without side-effects).
-// It is not intended to be used anywhere else other than here.
+/// This is an implementation of the [`TypeRelation`] trait with the
+/// aim of simply comparing for equality (without side-effects).
+///
+/// It is not intended to be used anywhere else other than here.
 pub(crate) struct SimpleEqRelation<'tcx> {
     tcx: TyCtxt<'tcx>,
     param_env: ty::ParamEnv<'tcx>,

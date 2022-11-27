@@ -2051,8 +2051,8 @@ impl Symbol {
 }
 
 impl Ident {
-    // Returns `true` for reserved identifiers used internally for elided lifetimes,
-    // unnamed method parameters, crate root module, error recovery etc.
+    /// Returns `true` for reserved identifiers used internally for elided lifetimes,
+    /// unnamed method parameters, crate root module, error recovery etc.
     pub fn is_special(self) -> bool {
         self.name.is_special()
     }

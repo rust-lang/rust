@@ -15,8 +15,8 @@ use super::{Ty, TyCtxt};
 
 use self::BorrowKind::*;
 
-// Captures are represented using fields inside a structure.
-// This represents accessing self in the closure structure
+/// Captures are represented using fields inside a structure.
+/// This represents accessing self in the closure structure
 pub const CAPTURE_STRUCT_LOCAL: mir::Local = mir::Local::from_u32(1);
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq, Hash, TyEncodable, TyDecodable, HashStable)]
@@ -91,7 +91,7 @@ pub enum ClosureKind {
 }
 
 impl<'tcx> ClosureKind {
-    // This is the initial value used when doing upvar inference.
+    /// This is the initial value used when doing upvar inference.
     pub const LATTICE_BOTTOM: ClosureKind = ClosureKind::Fn;
 
     /// Returns `true` if a type that impls this closure kind

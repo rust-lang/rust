@@ -211,7 +211,7 @@ impl<'tcx> TyCtxt<'tcx> {
     }
 }
 
-// Query provider for `trait_impls_of`.
+/// Query provider for `trait_impls_of`.
 pub(super) fn trait_impls_of_provider(tcx: TyCtxt<'_>, trait_id: DefId) -> TraitImpls {
     let mut impls = TraitImpls::default();
 
@@ -255,7 +255,7 @@ pub(super) fn trait_impls_of_provider(tcx: TyCtxt<'_>, trait_id: DefId) -> Trait
     impls
 }
 
-// Query provider for `incoherent_impls`.
+/// Query provider for `incoherent_impls`.
 pub(super) fn incoherent_impls_provider(tcx: TyCtxt<'_>, simp: SimplifiedType) -> &[DefId] {
     let mut impls = Vec::new();
 

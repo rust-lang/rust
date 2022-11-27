@@ -686,7 +686,7 @@ impl<'tcx> NonConstOp<'tcx> for ThreadLocalAccess {
     }
 }
 
-// Types that cannot appear in the signature or locals of a `const fn`.
+/// Types that cannot appear in the signature or locals of a `const fn`.
 pub mod ty {
     use super::*;
 

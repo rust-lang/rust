@@ -20,8 +20,8 @@ use super::{
 /// Represents the result of const evaluation via the `eval_to_allocation` query.
 #[derive(Copy, Clone, HashStable, TyEncodable, TyDecodable, Debug, Hash, Eq, PartialEq)]
 pub struct ConstAlloc<'tcx> {
-    // the value lives here, at offset 0, and that allocation definitely is an `AllocKind::Memory`
-    // (so you can use `AllocMap::unwrap_memory`).
+    /// The value lives here, at offset 0, and that allocation definitely is an `AllocKind::Memory`
+    /// (so you can use `AllocMap::unwrap_memory`).
     pub alloc_id: AllocId,
     pub ty: Ty<'tcx>,
 }

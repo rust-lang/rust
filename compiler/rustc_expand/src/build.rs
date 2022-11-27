@@ -193,7 +193,7 @@ impl<'a> ExtCtxt<'a> {
         self.stmt_local(local, sp)
     }
 
-    // Generates `let _: Type;`, which is usually used for type assertions.
+    /// Generates `let _: Type;`, which is usually used for type assertions.
     pub fn stmt_let_type_only(&self, span: Span, ty: P<ast::Ty>) -> ast::Stmt {
         let local = P(ast::Local {
             pat: self.pat_wild(span),

@@ -194,8 +194,8 @@ pub fn to_llvm_features<'a>(sess: &Session, s: &'a str) -> SmallVec<[&'a str; 2]
     }
 }
 
-// Given a map from target_features to whether they are enabled or disabled,
-// ensure only valid combinations are allowed.
+/// Given a map from target_features to whether they are enabled or disabled,
+/// ensure only valid combinations are allowed.
 pub fn check_tied_features(
     sess: &Session,
     features: &FxHashMap<&str, bool>,
@@ -213,8 +213,8 @@ pub fn check_tied_features(
     return None;
 }
 
-// Used to generate cfg variables and apply features
-// Must express features in the way Rust understands them
+/// Used to generate cfg variables and apply features
+/// Must express features in the way Rust understands them
 pub fn target_features(sess: &Session, allow_unstable: bool) -> Vec<Symbol> {
     let target_machine = create_informational_target_machine(sess);
     let mut features: Vec<Symbol> = supported_target_features(sess)

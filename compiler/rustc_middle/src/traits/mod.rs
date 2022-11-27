@@ -471,7 +471,7 @@ pub struct ImplDerivedObligationCause<'tcx> {
 }
 
 impl<'tcx> ObligationCauseCode<'tcx> {
-    // Return the base obligation, ignoring derived obligations.
+    /// Returns the base obligation, ignoring derived obligations.
     pub fn peel_derives(&self) -> &Self {
         let mut base_cause = self;
         while let Some((parent_code, _)) = base_cause.parent() {

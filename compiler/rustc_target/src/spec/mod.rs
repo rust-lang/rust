@@ -1650,9 +1650,9 @@ pub struct TargetOptions {
 
     /// Flag indicating whether #[thread_local] is available for this target.
     pub has_thread_local: bool,
-    // This is mainly for easy compatibility with emscripten.
-    // If we give emcc .o files that are actually .bc files it
-    // will 'just work'.
+    /// This is mainly for easy compatibility with emscripten.
+    /// If we give emcc .o files that are actually .bc files it
+    /// will 'just work'.
     pub obj_is_bitcode: bool,
     /// Whether the target requires that emitted object code includes bitcode.
     pub forces_embed_bitcode: bool,
@@ -1792,12 +1792,12 @@ pub struct TargetOptions {
     /// since this is most common among tier 1 and tier 2 targets.
     pub supports_stack_protector: bool,
 
-    // The name of entry function.
-    // Default value is "main"
+    /// The name of entry function.
+    /// Default value is "main"
     pub entry_name: StaticCow<str>,
 
-    // The ABI of entry function.
-    // Default value is `Conv::C`, i.e. C call convention
+    /// The ABI of entry function.
+    /// Default value is `Conv::C`, i.e. C call convention
     pub entry_abi: Conv,
 }
 

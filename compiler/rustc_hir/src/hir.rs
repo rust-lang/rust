@@ -981,8 +981,8 @@ pub struct Pat<'hir> {
     pub hir_id: HirId,
     pub kind: PatKind<'hir>,
     pub span: Span,
-    // Whether to use default binding modes.
-    // At present, this is false only for destructuring assignment.
+    /// Whether to use default binding modes.
+    /// At present, this is false only for destructuring assignment.
     pub default_binding_modes: bool,
 }
 
@@ -1090,7 +1090,7 @@ impl fmt::Display for RangeEnd {
 pub struct DotDotPos(u32);
 
 impl DotDotPos {
-    // Panics if n >= u32::MAX.
+    /// Panics if n >= u32::MAX.
     pub fn new(n: Option<usize>) -> Self {
         match n {
             Some(n) => {
@@ -1694,10 +1694,10 @@ impl Expr<'_> {
         }
     }
 
-    // Whether this looks like a place expr, without checking for deref
-    // adjustments.
-    // This will return `true` in some potentially surprising cases such as
-    // `CONSTANT.field`.
+    /// Whether this looks like a place expr, without checking for deref
+    /// adjustments.
+    /// This will return `true` in some potentially surprising cases such as
+    /// `CONSTANT.field`.
     pub fn is_syntactic_place_expr(&self) -> bool {
         self.is_place_expr(|_| true)
     }
@@ -1838,7 +1838,7 @@ impl Expr<'_> {
         }
     }
 
-    // To a first-order approximation, is this a pattern
+    /// To a first-order approximation, is this a pattern?
     pub fn is_approximately_pattern(&self) -> bool {
         match &self.kind {
             ExprKind::Box(_)
@@ -2160,11 +2160,11 @@ impl fmt::Display for LoopIdError {
 
 #[derive(Copy, Clone, Encodable, Debug, HashStable_Generic)]
 pub struct Destination {
-    // This is `Some(_)` iff there is an explicit user-specified `label
+    /// This is `Some(_)` iff there is an explicit user-specified 'label
     pub label: Option<Label>,
 
-    // These errors are caught and then reported during the diagnostics pass in
-    // librustc_passes/loops.rs
+    /// These errors are caught and then reported during the diagnostics pass in
+    /// `librustc_passes/loops.rs`
     pub target_id: Result<HirId, LoopIdError>,
 }
 
@@ -2335,7 +2335,7 @@ pub enum ImplItemKind<'hir> {
     Type(&'hir Ty<'hir>),
 }
 
-// The name of the associated type for `Fn` return types.
+/// The name of the associated type for `Fn` return types.
 pub const FN_OUTPUT_NAME: Symbol = sym::Output;
 
 /// Bind a type to an associated type (i.e., `A = Foo`).
@@ -3261,7 +3261,7 @@ pub enum ForeignItemKind<'hir> {
 /// A variable captured by a closure.
 #[derive(Debug, Copy, Clone, Encodable, HashStable_Generic)]
 pub struct Upvar {
-    // First span where it is accessed (there can be multiple).
+    /// First span where it is accessed (there can be multiple).
     pub span: Span,
 }
 

@@ -7,7 +7,7 @@ macro_rules! max_leb128_len {
     };
 }
 
-// Returns the longest LEB128 encoding of all supported integer types.
+/// Returns the longest LEB128 encoding of all supported integer types.
 pub const fn max_leb128_len() -> usize {
     max_leb128_len!(u128)
 }

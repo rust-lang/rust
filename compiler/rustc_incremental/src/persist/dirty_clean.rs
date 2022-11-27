@@ -438,9 +438,9 @@ fn expect_associated_value(tcx: TyCtxt<'_>, item: &NestedMetaItem) -> Symbol {
     }
 }
 
-// A visitor that collects all #[rustc_clean] attributes from
-// the HIR. It is used to verify that we really ran checks for all annotated
-// nodes.
+/// A visitor that collects all `#[rustc_clean]` attributes from
+/// the HIR. It is used to verify that we really ran checks for all annotated
+/// nodes.
 pub struct FindAllAttrs<'tcx> {
     tcx: TyCtxt<'tcx>,
     found_attrs: Vec<&'tcx Attribute>,
