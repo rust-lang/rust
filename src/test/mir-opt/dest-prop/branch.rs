@@ -1,5 +1,5 @@
 //! Tests that assignment in both branches of an `if` are eliminated.
-// compile-flags: -Zunsound-mir-opts
+// unit-test: DestinationPropagation
 fn val() -> i32 {
     1
 }
@@ -8,8 +8,8 @@ fn cond() -> bool {
     true
 }
 
-// EMIT_MIR branch.main.DestinationPropagation.diff
-fn main() {
+// EMIT_MIR branch.foo.DestinationPropagation.diff
+fn foo() -> i32 {
     let x = val();
 
     let y = if cond() {
@@ -18,4 +18,10 @@ fn main() {
         val();
         x
     };
+
+    y
+}
+
+fn main() {
+    foo();
 }

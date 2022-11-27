@@ -7,9 +7,8 @@ fn array_bound(_1: usize, _2: &[u8; N]) -> u8 {
     let mut _3: bool;                    // in scope 0 at $DIR/lower_array_len_e2e.rs:+1:8: +1:27
     let mut _4: usize;                   // in scope 0 at $DIR/lower_array_len_e2e.rs:+1:8: +1:13
     let mut _5: usize;                   // in scope 0 at $DIR/lower_array_len_e2e.rs:+1:16: +1:27
-    let _6: usize;                       // in scope 0 at $DIR/lower_array_len_e2e.rs:+2:15: +2:20
-    let mut _7: usize;                   // in scope 0 at $DIR/lower_array_len_e2e.rs:+2:9: +2:21
-    let mut _8: bool;                    // in scope 0 at $DIR/lower_array_len_e2e.rs:+2:9: +2:21
+    let mut _6: usize;                   // in scope 0 at $DIR/lower_array_len_e2e.rs:+2:9: +2:21
+    let mut _7: bool;                    // in scope 0 at $DIR/lower_array_len_e2e.rs:+2:9: +2:21
 
     bb0: {
         StorageLive(_3);                 // scope 0 at $DIR/lower_array_len_e2e.rs:+1:8: +1:27
@@ -24,16 +23,13 @@ fn array_bound(_1: usize, _2: &[u8; N]) -> u8 {
     }
 
     bb1: {
-        StorageLive(_6);                 // scope 0 at $DIR/lower_array_len_e2e.rs:+2:15: +2:20
-        _6 = _1;                         // scope 0 at $DIR/lower_array_len_e2e.rs:+2:15: +2:20
-        _7 = const N;                    // scope 0 at $DIR/lower_array_len_e2e.rs:+2:9: +2:21
-        _8 = Lt(_6, _7);                 // scope 0 at $DIR/lower_array_len_e2e.rs:+2:9: +2:21
-        assert(move _8, "index out of bounds: the length is {} but the index is {}", move _7, _6) -> bb2; // scope 0 at $DIR/lower_array_len_e2e.rs:+2:9: +2:21
+        _6 = const N;                    // scope 0 at $DIR/lower_array_len_e2e.rs:+2:9: +2:21
+        _7 = Lt(_1, _6);                 // scope 0 at $DIR/lower_array_len_e2e.rs:+2:9: +2:21
+        assert(move _7, "index out of bounds: the length is {} but the index is {}", move _6, _1) -> bb2; // scope 0 at $DIR/lower_array_len_e2e.rs:+2:9: +2:21
     }
 
     bb2: {
-        _0 = (*_2)[_6];                  // scope 0 at $DIR/lower_array_len_e2e.rs:+2:9: +2:21
-        StorageDead(_6);                 // scope 0 at $DIR/lower_array_len_e2e.rs:+3:5: +3:6
+        _0 = (*_2)[_1];                  // scope 0 at $DIR/lower_array_len_e2e.rs:+2:9: +2:21
         goto -> bb4;                     // scope 0 at $DIR/lower_array_len_e2e.rs:+1:5: +5:6
     }
 
