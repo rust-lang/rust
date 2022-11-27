@@ -1620,8 +1620,7 @@ fn assemble_candidates_from_impls<'cx, 'tcx>(
                          // type parameters, opaques, and unnormalized projections have pointer
                         // metadata if they're known (e.g. by the param_env) to be sized
                         ty::Param(_)
-                        | ty::Alias(ty::Projection, ..)
-                        | ty::Alias(ty::Opaque, ..)
+                        | ty::Alias(..)
                         | ty::Bound(..)
                         | ty::Placeholder(..)
                         | ty::Infer(..)
@@ -1675,7 +1674,7 @@ fn assemble_candidates_from_impls<'cx, 'tcx>(
 
                         // type parameters, opaques, and unnormalized projections have pointer
                         // metadata if they're known (e.g. by the param_env) to be sized
-                        ty::Param(_) | ty::Alias(ty::Projection, ..) | ty::Alias(ty::Opaque, ..)
+                        ty::Param(_) | ty::Alias(..)
                             if selcx.infcx.predicate_must_hold_modulo_regions(
                                 &obligation.with(
                                     selcx.tcx(),
@@ -1691,8 +1690,7 @@ fn assemble_candidates_from_impls<'cx, 'tcx>(
 
                         // FIXME(compiler-errors): are Bound and Placeholder types ever known sized?
                         ty::Param(_)
-                        | ty::Alias(ty::Projection, ..)
-                        | ty::Alias(ty::Opaque, ..)
+                        | ty::Alias(..)
                         | ty::Bound(..)
                         | ty::Placeholder(..)
                         | ty::Infer(..)

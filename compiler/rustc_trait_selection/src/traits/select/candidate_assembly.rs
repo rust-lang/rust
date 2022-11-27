@@ -138,7 +138,7 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
         // Before we go into the whole placeholder thing, just
         // quickly check if the self-type is a projection at all.
         match obligation.predicate.skip_binder().trait_ref.self_ty().kind() {
-            ty::Alias(ty::Projection, _) | ty::Alias(ty::Opaque, ..) => {}
+            ty::Alias(..) => {}
             ty::Infer(ty::TyVar(_)) => {
                 span_bug!(
                     obligation.cause.span,
@@ -734,13 +734,12 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
 
         let self_ty = self.infcx.shallow_resolve(obligation.self_ty());
         match self_ty.skip_binder().kind() {
-            ty::Alias(ty::Opaque, ..)
+            ty::Alias(..)
             | ty::Dynamic(..)
             | ty::Error(_)
             | ty::Bound(..)
             | ty::Param(_)
-            | ty::Placeholder(_)
-            | ty::Alias(ty::Projection, _) => {
+            | ty::Placeholder(_) => {
                 // We don't know if these are `~const Destruct`, at least
                 // not structurally... so don't push a candidate.
             }
@@ -826,8 +825,7 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
             | ty::Generator(_, _, _)
             | ty::GeneratorWitness(_)
             | ty::Never
-            | ty::Alias(ty::Projection, _)
-            | ty::Alias(ty::Opaque, ty::AliasTy { def_id: _, substs: _ })
+            | ty::Alias(..)
             | ty::Param(_)
             | ty::Bound(_, _)
             | ty::Error(_)

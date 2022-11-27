@@ -349,7 +349,7 @@ impl<'tcx> SizeSkeleton<'tcx> {
                 }
             }
 
-            ty::Alias(ty::Projection, _) | ty::Alias(ty::Opaque, ..) => {
+            ty::Alias(..) => {
                 let normalized = tcx.normalize_erasing_regions(param_env, ty);
                 if ty == normalized {
                     Err(err)
@@ -757,10 +757,9 @@ where
                     }
                 }
 
-                ty::Alias(ty::Projection, _)
+                ty::Alias(..)
                 | ty::Bound(..)
                 | ty::Placeholder(..)
-                | ty::Alias(ty::Opaque, ..)
                 | ty::Param(_)
                 | ty::Infer(_)
                 | ty::Error(_) => bug!("TyAndLayout::field: unexpected type `{}`", this.ty),

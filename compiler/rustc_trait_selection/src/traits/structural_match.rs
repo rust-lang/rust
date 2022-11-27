@@ -95,10 +95,7 @@ impl<'tcx> TypeVisitor<'tcx> for Search<'tcx> {
             ty::Foreign(_) => {
                 return ControlFlow::Break(ty);
             }
-            ty::Alias(ty::Opaque, ..) => {
-                return ControlFlow::Break(ty);
-            }
-            ty::Alias(ty::Projection, ..) => {
+            ty::Alias(..) => {
                 return ControlFlow::Break(ty);
             }
             ty::Closure(..) => {

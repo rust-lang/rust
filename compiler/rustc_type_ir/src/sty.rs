@@ -636,11 +636,11 @@ where
             18 => Never,
             19 => Tuple(Decodable::decode(d)),
             20 => Alias(Decodable::decode(d), Decodable::decode(d)),
-            22 => Param(Decodable::decode(d)),
-            23 => Bound(Decodable::decode(d), Decodable::decode(d)),
-            24 => Placeholder(Decodable::decode(d)),
-            25 => Infer(Decodable::decode(d)),
-            26 => Error(Decodable::decode(d)),
+            21 => Param(Decodable::decode(d)),
+            22 => Bound(Decodable::decode(d), Decodable::decode(d)),
+            23 => Placeholder(Decodable::decode(d)),
+            24 => Infer(Decodable::decode(d)),
+            25 => Error(Decodable::decode(d)),
             _ => panic!(
                 "{}",
                 format!(

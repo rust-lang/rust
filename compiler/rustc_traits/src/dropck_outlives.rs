@@ -112,7 +112,7 @@ fn dropck_outlives<'tcx>(
 
                     // A projection that we couldn't resolve - it
                     // might have a destructor.
-                    ty::Alias(ty::Projection, ..) | ty::Alias(ty::Opaque, ..) => {
+                    ty::Alias(..) => {
                         result.kinds.push(ty.into());
                     }
 
@@ -268,7 +268,7 @@ fn dtorck_constraint_for_ty<'tcx>(
         }
 
         // Types that can't be resolved. Pass them forward.
-        ty::Alias(ty::Projection, ..) | ty::Alias(ty::Opaque, ..) | ty::Param(..) => {
+        ty::Alias(..) | ty::Param(..) => {
             constraints.dtorck_types.push(ty);
         }
 

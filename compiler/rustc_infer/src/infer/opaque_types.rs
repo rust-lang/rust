@@ -589,8 +589,8 @@ impl<'tcx> InferCtxt<'tcx> {
                         hidden_ty
                     }
                     // FIXME(RPITIT): This can go away when we move to associated types
-                    ty::Alias(ty::Projection, proj)
-                        if def_id.to_def_id() == proj.def_id && substs == proj.substs =>
+                    ty::Alias(ty::Projection, ty::AliasTy { def_id: def_id2, substs: substs2 })
+                        if def_id.to_def_id() == def_id2 && substs == substs2 =>
                     {
                         hidden_ty
                     }

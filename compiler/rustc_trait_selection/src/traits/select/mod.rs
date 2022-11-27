@@ -1595,8 +1595,7 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
 
         let tcx = self.infcx.tcx;
         let (def_id, substs) = match *placeholder_trait_predicate.trait_ref.self_ty().kind() {
-            ty::Alias(ty::Projection, ref data) => (data.def_id, data.substs),
-            ty::Alias(ty::Opaque, ty::AliasTy { def_id, substs }) => (def_id, substs),
+            ty::Alias(_, ty::AliasTy { def_id, substs }) => (def_id, substs),
             _ => {
                 span_bug!(
                     obligation.cause.span,
@@ -2067,7 +2066,7 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
                 }))
             }
 
-            ty::Alias(ty::Projection, _) | ty::Param(_) | ty::Alias(ty::Opaque, ..) => None,
+            ty::Alias(..) | ty::Param(_) => None,
             ty::Infer(ty::TyVar(_)) => Ambiguous,
 
             ty::Placeholder(..)
@@ -2167,10 +2166,7 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
                 }
             }
 
-            ty::Adt(..)
-            | ty::Alias(ty::Projection, ..)
-            | ty::Param(..)
-            | ty::Alias(ty::Opaque, ..) => {
+            ty::Adt(..) | ty::Alias(..) | ty::Param(..) => {
                 // Fallback to whatever user-defined impls exist in this case.
                 None
             }

@@ -155,8 +155,7 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
         let placeholder_self_ty = placeholder_trait_predicate.self_ty();
         let placeholder_trait_predicate = ty::Binder::dummy(placeholder_trait_predicate);
         let (def_id, substs) = match *placeholder_self_ty.kind() {
-            ty::Alias(ty::Projection, proj) => (proj.def_id, proj.substs),
-            ty::Alias(ty::Opaque, ty::AliasTy { def_id, substs }) => (def_id, substs),
+            ty::Alias(_, ty::AliasTy { def_id, substs }) => (def_id, substs),
             _ => bug!("projection candidate for unexpected type: {:?}", placeholder_self_ty),
         };
 

@@ -453,10 +453,9 @@ impl<'cx, 'tcx> TypeFolder<'tcx> for Canonicalizer<'cx, 'tcx> {
             | ty::Dynamic(..)
             | ty::Never
             | ty::Tuple(..)
-            | ty::Alias(ty::Projection, ..)
+            | ty::Alias(..)
             | ty::Foreign(..)
-            | ty::Param(..)
-            | ty::Alias(ty::Opaque, ..) => {
+            | ty::Param(..) => {
                 if t.flags().intersects(self.needs_canonical_flags) {
                     t.super_fold_with(self)
                 } else {

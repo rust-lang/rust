@@ -165,7 +165,7 @@ fn push_inner<'tcx>(stack: &mut TypeWalkerStack<'tcx>, parent: GenericArg<'tcx>)
                 stack.push(ty.into());
                 stack.push(lt.into());
             }
-            ty::Alias(ty::Projection, data) => {
+            ty::Alias(_, data) => {
                 stack.extend(data.substs.iter().rev());
             }
             ty::Dynamic(obj, lt, _) => {
@@ -188,7 +188,6 @@ fn push_inner<'tcx>(stack: &mut TypeWalkerStack<'tcx>, parent: GenericArg<'tcx>)
                 }));
             }
             ty::Adt(_, substs)
-            | ty::Alias(ty::Opaque, ty::AliasTy { def_id: _, substs })
             | ty::Closure(_, substs)
             | ty::Generator(_, substs, _)
             | ty::FnDef(_, substs) => {
