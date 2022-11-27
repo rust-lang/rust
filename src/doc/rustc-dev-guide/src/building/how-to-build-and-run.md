@@ -154,7 +154,7 @@ You will probably find that building the stage1 `std` is a bottleneck for you,
 but fear not, there is a (hacky) workaround...
 see [the section on avoiding rebuilds for std][keep-stage].
 
-[keep-stage]: ./suggested.md#incremental-builds-with---keep-stage
+[keep-stage]: ./suggested.md#faster-builds-with---keep-stage
 
 Note that this whole command just gives you a subset of the full `rustc`
 build. The **full** `rustc` build (what you get with `./x.py build
