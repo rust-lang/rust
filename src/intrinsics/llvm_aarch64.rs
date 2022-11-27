@@ -59,19 +59,31 @@ pub(crate) fn codegen_aarch64_llvm_intrinsic_call<'tcx>(
         _ if intrinsic.starts_with("llvm.aarch64.neon.smax.v") => {
             intrinsic_args!(fx, args => (x, y); intrinsic);
 
-            simd_pair_for_each_lane(fx, x, y, ret, &|fx, _lane_ty, _res_lane_ty, x_lane, y_lane| {
-                let gt = fx.bcx.ins().icmp(IntCC::SignedGreaterThan, x_lane, y_lane);
-                fx.bcx.ins().select(gt, x_lane, y_lane)
-            });
+            simd_pair_for_each_lane(
+                fx,
+                x,
+                y,
+                ret,
+                &|fx, _lane_ty, _res_lane_ty, x_lane, y_lane| {
+                    let gt = fx.bcx.ins().icmp(IntCC::SignedGreaterThan, x_lane, y_lane);
+                    fx.bcx.ins().select(gt, x_lane, y_lane)
+                },
+            );
         }
 
         _ if intrinsic.starts_with("llvm.aarch64.neon.umax.v") => {
             intrinsic_args!(fx, args => (x, y); intrinsic);
 
-            simd_pair_for_each_lane(fx, x, y, ret, &|fx, _lane_ty, _res_lane_ty, x_lane, y_lane| {
-                let gt = fx.bcx.ins().icmp(IntCC::UnsignedGreaterThan, x_lane, y_lane);
-                fx.bcx.ins().select(gt, x_lane, y_lane)
-            });
+            simd_pair_for_each_lane(
+                fx,
+                x,
+                y,
+                ret,
+                &|fx, _lane_ty, _res_lane_ty, x_lane, y_lane| {
+                    let gt = fx.bcx.ins().icmp(IntCC::UnsignedGreaterThan, x_lane, y_lane);
+                    fx.bcx.ins().select(gt, x_lane, y_lane)
+                },
+            );
         }
 
         _ if intrinsic.starts_with("llvm.aarch64.neon.smaxv.i") => {
@@ -95,19 +107,31 @@ pub(crate) fn codegen_aarch64_llvm_intrinsic_call<'tcx>(
         _ if intrinsic.starts_with("llvm.aarch64.neon.smin.v") => {
             intrinsic_args!(fx, args => (x, y); intrinsic);
 
-            simd_pair_for_each_lane(fx, x, y, ret, &|fx, _lane_ty, _res_lane_ty, x_lane, y_lane| {
-                let gt = fx.bcx.ins().icmp(IntCC::SignedLessThan, x_lane, y_lane);
-                fx.bcx.ins().select(gt, x_lane, y_lane)
-            });
+            simd_pair_for_each_lane(
+                fx,
+                x,
+                y,
+                ret,
+                &|fx, _lane_ty, _res_lane_ty, x_lane, y_lane| {
+                    let gt = fx.bcx.ins().icmp(IntCC::SignedLessThan, x_lane, y_lane);
+                    fx.bcx.ins().select(gt, x_lane, y_lane)
+                },
+            );
         }
 
         _ if intrinsic.starts_with("llvm.aarch64.neon.umin.v") => {
             intrinsic_args!(fx, args => (x, y); intrinsic);
 
-            simd_pair_for_each_lane(fx, x, y, ret, &|fx, _lane_ty, _res_lane_ty, x_lane, y_lane| {
-                let gt = fx.bcx.ins().icmp(IntCC::UnsignedLessThan, x_lane, y_lane);
-                fx.bcx.ins().select(gt, x_lane, y_lane)
-            });
+            simd_pair_for_each_lane(
+                fx,
+                x,
+                y,
+                ret,
+                &|fx, _lane_ty, _res_lane_ty, x_lane, y_lane| {
+                    let gt = fx.bcx.ins().icmp(IntCC::UnsignedLessThan, x_lane, y_lane);
+                    fx.bcx.ins().select(gt, x_lane, y_lane)
+                },
+            );
         }
 
         _ if intrinsic.starts_with("llvm.aarch64.neon.sminv.i") => {
@@ -178,7 +202,6 @@ pub(crate) fn codegen_aarch64_llvm_intrinsic_call<'tcx>(
             });
         }
         */
-
         _ => {
             fx.tcx.sess.warn(&format!(
                 "unsupported AArch64 llvm intrinsic {}; replacing with trap",
