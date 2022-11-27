@@ -6,12 +6,12 @@ edition = "2021"
 [lib]
 
 [dependencies]
-libloading = "0.7.1"
+libloading = "0.7.4"
 odht = { version = "0.3.1", features = ["nightly"] }
 snap = "1"
 tracing = "0.1"
-smallvec = { version = "1.8.1", features = ["union", "may_dangle"] }
-tempfile = "3.2"
+smallvec = { version = "1.10.0", features = ["union", "may_dangle"] }
+tempfile = "3.3"
 rustc_middle = { path = "../rustc_middle" }
 rustc_attr = { path = "../rustc_attr" }
 rustc_data_structures = { path = "../rustc_data_structures" }

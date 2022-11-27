@@ -15,13 +15,13 @@ rustc_feature = { path = "../rustc_feature" }
 rustc_hir = { path = "../rustc_hir" }
 rustc_index = { path = "../rustc_index" }
 rustc_macros = { path = "../rustc_macros" }
-rustc-rayon-core = { version = "0.4.0", optional = true }
+rustc-rayon-core = { version = "0.4.1", optional = true }
 rustc_serialize = { path = "../rustc_serialize" }
 rustc_session = { path = "../rustc_session" }
 rustc_span = { path = "../rustc_span" }
 rustc_target = { path = "../rustc_target" }
 rustc_type_ir = { path = "../rustc_type_ir" }
-smallvec = { version = "1.8.1", features = ["union", "may_dangle"] }
+smallvec = { version = "1.10.0", features = ["union", "may_dangle"] }
 thin-vec = "0.2.9"
 tracing = "0.1"
 

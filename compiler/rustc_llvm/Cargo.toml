@@ -8,7 +8,7 @@ static-libstdcpp = []
 emscripten = []
 
 [dependencies]
-libc = "0.2.73"
+libc = "0.2.137"
 
 [build-dependencies]
-cc = "1.0.69"
+cc = "1.0.77"

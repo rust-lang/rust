@@ -9,7 +9,7 @@ edition = "2021"
 arrayvec = { version = "0.7", default-features = false }
 rustc_serialize = { path = "../rustc_serialize", optional = true }
 rustc_macros = { path = "../rustc_macros", optional = true }
-smallvec = "1.8.1"
+smallvec = "1.10.0"
 
 [features]
 default = ["nightly"]

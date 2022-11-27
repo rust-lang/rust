@@ -6,7 +6,7 @@ edition = "2021"
 [lib]
 
 [dependencies]
-bitflags = "1.0"
+bitflags = "1.3"
 rustc_ast = { path = "../rustc_ast" }
 rustc_ast_pretty = { path = "../rustc_ast_pretty" }
 rustc_data_structures = { path = "../rustc_data_structures" }
@@ -16,7 +16,7 @@ rustc_lexer = { path = "../rustc_lexer" }
 rustc_macros = { path = "../rustc_macros" }
 rustc_session = { path = "../rustc_session" }
 rustc_span = { path = "../rustc_span" }
-thin-vec = "0.2.8"
+thin-vec = "0.2.9"
 tracing = "0.1"
-unicode-normalization = "0.1.11"
-unicode-width = "0.1.4"
+unicode-normalization = "0.1.22"
+unicode-width = "0.1.10"

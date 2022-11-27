@@ -6,8 +6,8 @@ edition = "2021"
 [lib]
 
 [dependencies]
-itertools = "0.10.1"
-smallvec = { version = "1.8.1", features = ["union", "may_dangle"] }
+itertools = "0.10.5"
+smallvec = { version = "1.10.0", features = ["union", "may_dangle"] }
 tracing = "0.1"
 either = "1"
 rustc_ast = { path = "../rustc_ast" }

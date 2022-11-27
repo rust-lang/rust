@@ -7,7 +7,7 @@ edition = "2021"
 [lib]
 
 [dependencies]
-libloading = "0.7.1"
+libloading = "0.7.4"
 rustc_errors = { path = "../rustc_errors" }
 rustc_lint = { path = "../rustc_lint" }
 rustc_macros = { path = "../rustc_macros" }

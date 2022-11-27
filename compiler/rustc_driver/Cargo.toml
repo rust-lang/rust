@@ -7,8 +7,8 @@ edition = "2021"
 crate-type = ["dylib"]
 
 [dependencies]
-tracing = { version = "0.1.35" }
-serde_json = "1.0.59"
+tracing = { version = "0.1.37" }
+serde_json = "1.0.89"
 rustc_log = { path = "../rustc_log" }
 rustc_middle = { path = "../rustc_middle" }
 rustc_ast_pretty = { path = "../rustc_ast_pretty" }

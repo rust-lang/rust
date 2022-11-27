@@ -17,7 +17,7 @@ rustc_span = { path = "../rustc_span" }
 rustc_fs_util = { path = "../rustc_fs_util" }
 rustc_ast = { path = "../rustc_ast" }
 rustc_lint_defs = { path = "../rustc_lint_defs" }
-smallvec = "1.8.1"
+smallvec = "1.10.0"
 
 [target.'cfg(unix)'.dependencies]
 libc = "0.2"

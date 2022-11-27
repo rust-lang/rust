@@ -26,4 +26,4 @@ rustc = [
 ]
 
 [dev-dependencies]
-itertools = "0.10.1"
+itertools = "0.10.5"

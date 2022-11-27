@@ -6,9 +6,9 @@ edition = "2021"
 [lib]
 
 [dependencies]
-bitflags = "1.2.1"
+bitflags = "1.3.2"
 tracing = "0.1"
-punycode = "0.4.0"
+punycode = "0.4.1"
 rustc-demangle = "0.1.21"
 
 rustc_span = { path = "../rustc_span" }

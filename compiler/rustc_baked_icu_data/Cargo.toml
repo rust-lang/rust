@@ -9,7 +9,7 @@ icu_locid = "1.0.0"
 icu_provider = "1.0.1"
 icu_provider_adapters = "1.0.0"
 litemap = "0.6.0"
-zerovec = "0.9.0"
+zerovec = "0.9.1"
 
 [features]
 rustc_use_parallel_compiler = ['icu_provider/sync']

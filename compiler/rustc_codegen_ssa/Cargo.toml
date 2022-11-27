@@ -7,19 +7,19 @@ edition = "2021"
 test = false
 
 [dependencies]
-bitflags = "1.2.1"
-cc = "1.0.69"
-itertools = "0.10.1"
+bitflags = "1.3.2"
+cc = "1.0.77"
+itertools = "0.10.5"
 tracing = "0.1"
-libc = "0.2.50"
-jobserver = "0.1.22"
-tempfile = "3.2"
+libc = "0.2.137"
+jobserver = "0.1.25"
+tempfile = "3.3"
 thorin-dwp = "0.3"
-pathdiff = "0.2.0"
-serde_json = "1.0.59"
+pathdiff = "0.2.1"
+serde_json = "1.0.89"
 snap = "1"
-smallvec = { version = "1.8.1", features = ["union", "may_dangle"] }
-regex = "1.4"
+smallvec = { version = "1.10.0", features = ["union", "may_dangle"] }
+regex = "1.7"
 
 rustc_serialize = { path = "../rustc_serialize" }
 rustc_arena = { path = "../rustc_arena" }
