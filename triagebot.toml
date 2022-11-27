@@ -15,7 +15,7 @@ allow-unauthenticated = [
     "llvm-main",
     "needs-fcp",
     "relnotes",
-    "requires-nightly",
+    "requires-*",
     "regression-*",
     "perf-*",
     "AsyncAwait-OnDeck",
