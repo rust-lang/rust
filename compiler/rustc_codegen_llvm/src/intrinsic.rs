@@ -8,9 +8,8 @@ use crate::va_arg::emit_va_arg;
 use crate::value::Value;
 
 use rustc_codegen_ssa::base::{compare_simd_types, wants_msvc_seh};
-use rustc_codegen_ssa::common::span_invalid_monomorphization_error;
 use rustc_codegen_ssa::common::{IntPredicate, TypeKind};
-use rustc_codegen_ssa::errors::InvalidMonomorphization;
+use rustc_codegen_ssa::errors::{ExpectedPointerMutability, InvalidMonomorphization};
 use rustc_codegen_ssa::mir::operand::OperandRef;
 use rustc_codegen_ssa::mir::place::PlaceRef;
 use rustc_codegen_ssa::traits::*;
@@ -835,40 +834,24 @@ fn generic_simd_intrinsic<'ll, 'tcx>(
     llret_ty: &'ll Type,
     span: Span,
 ) -> Result<&'ll Value, ()> {
-    // macros for error handling:
-    #[allow(unused_macro_rules)]
-    macro_rules! emit_error {
-        ($msg: tt) => {
-            emit_error!($msg, )
-        };
-        ($msg: tt, $($fmt: tt)*) => {
-            span_invalid_monomorphization_error(
-                bx.sess(), span,
-                &format!(concat!("invalid monomorphization of `{}` intrinsic: ", $msg),
-                         name, $($fmt)*));
-        }
-    }
-
     macro_rules! return_error {
-        ($($fmt: tt)*) => {
-            {
-                emit_error!($($fmt)*);
-                return Err(());
-            }
-        }
+        ($diag: expr) => {{
+            bx.sess().emit_err($diag);
+            return Err(());
+        }};
     }
 
     macro_rules! require {
-        ($cond: expr, $($fmt: tt)*) => {
+        ($cond: expr, $diag: expr) => {
             if !$cond {
-                return_error!($($fmt)*);
+                return_error!($diag);
             }
         };
     }
 
     macro_rules! require_simd {
-        ($ty: expr, $position: expr) => {
-            require!($ty.is_simd(), "expected SIMD {} type, found non-SIMD `{}`", $position, $ty)
+        ($ty: expr, $diag: expr) => {
+            require!($ty.is_simd(), $diag)
         };
     }
 
@@ -878,7 +861,11 @@ fn generic_simd_intrinsic<'ll, 'tcx>(
     let arg_tys = sig.inputs();
 
     if name == sym::simd_select_bitmask {
-        require_simd!(arg_tys[1], "argument");
+        require_simd!(
+            arg_tys[1],
+            InvalidMonomorphization::SimdArgument { span, name, ty: arg_tys[1] }
+        );
+
         let (len, _) = arg_tys[1].simd_size_and_type(bx.tcx());
 
         let expected_int_bits = (len.max(8) - 1).next_power_of_two();
@@ -899,12 +886,13 @@ fn generic_simd_intrinsic<'ll, 'tcx>(
                 let ptr = bx.pointercast(place.llval, bx.cx.type_ptr_to(int_ty));
                 bx.load(int_ty, ptr, Align::ONE)
             }
-            _ => return_error!(
-                "invalid bitmask `{}`, expected `u{}` or `[u8; {}]`",
+            _ => return_error!(InvalidMonomorphization::InvalidBitmask {
+                span,
+                name,
                 mask_ty,
                 expected_int_bits,
                 expected_bytes
-            ),
+            }),
         };
 
         let i1 = bx.type_i1();
@@ -916,7 +904,7 @@ fn generic_simd_intrinsic<'ll, 'tcx>(
     }
 
     // every intrinsic below takes a SIMD vector as its first argument
-    require_simd!(arg_tys[0], "input");
+    require_simd!(arg_tys[0], InvalidMonomorphization::SimdInput { span, name, ty: arg_tys[0] });
     let in_ty = arg_tys[0];
 
     let comparison = match name {
@@ -931,23 +919,24 @@ fn generic_simd_intrinsic<'ll, 'tcx>(
 
     let (in_len, in_elem) = arg_tys[0].simd_size_and_type(bx.tcx());
     if let Some(cmp_op) = comparison {
-        require_simd!(ret_ty, "return");
+        require_simd!(ret_ty, InvalidMonomorphization::SimdReturn { span, name, ty: ret_ty });
 
         let (out_len, out_ty) = ret_ty.simd_size_and_type(bx.tcx());
+
         require!(
             in_len == out_len,
-            "expected return type with length {} (same as input type `{}`), \
-             found `{}` with length {}",
-            in_len,
-            in_ty,
-            ret_ty,
-            out_len
+            InvalidMonomorphization::ReturnLengthInputType {
+                span,
+                name,
+                in_len,
+                in_ty,
+                ret_ty,
+                out_len
+            }
         );
         require!(
             bx.type_kind(bx.element_type(llret_ty)) == TypeKind::Integer,
-            "expected return type with integer elements, found `{}` with non-integer `{}`",
-            ret_ty,
-            out_ty
+            InvalidMonomorphization::ReturnIntegerType { span, name, ret_ty, out_ty }
         );
 
         return Ok(compare_simd_types(
@@ -972,10 +961,11 @@ fn generic_simd_intrinsic<'ll, 'tcx>(
                         span_bug!(span, "could not evaluate shuffle index array length")
                     })
                 }
-                _ => return_error!(
-                    "simd_shuffle index must be an array of `u32`, got `{}`",
-                    args[2].layout.ty
-                ),
+                _ => return_error!(InvalidMonomorphization::SimdShuffle {
+                    span,
+                    name,
+                    ty: args[2].layout.ty
+                }),
             }
         } else {
             stripped.parse().unwrap_or_else(|_| {
@@ -983,23 +973,15 @@ fn generic_simd_intrinsic<'ll, 'tcx>(
             })
         };
 
-        require_simd!(ret_ty, "return");
+        require_simd!(ret_ty, InvalidMonomorphization::SimdReturn { span, name, ty: ret_ty });
         let (out_len, out_ty) = ret_ty.simd_size_and_type(bx.tcx());
         require!(
             out_len == n,
-            "expected return type of length {}, found `{}` with length {}",
-            n,
-            ret_ty,
-            out_len
+            InvalidMonomorphization::ReturnLength { span, name, in_len: n, ret_ty, out_len }
         );
         require!(
             in_elem == out_ty,
-            "expected return element type `{}` (element of input `{}`), \
-             found `{}` with element type `{}`",
-            in_elem,
-            in_ty,
-            ret_ty,
-            out_ty
+            InvalidMonomorphization::ReturnElement { span, name, in_elem, in_ty, ret_ty, out_ty }
         );
 
         let total_len = u128::from(in_len) * 2;
@@ -1012,15 +994,20 @@ fn generic_simd_intrinsic<'ll, 'tcx>(
                 let val = bx.const_get_elt(vector, i as u64);
                 match bx.const_to_opt_u128(val, true) {
                     None => {
-                        emit_error!("shuffle index #{} is not a constant", arg_idx);
+                        bx.sess().emit_err(InvalidMonomorphization::ShuffleIndexNotConstant {
+                            span,
+                            name,
+                            arg_idx,
+                        });
                         None
                     }
                     Some(idx) if idx >= total_len => {
-                        emit_error!(
-                            "shuffle index #{} is out of bounds (limit {})",
+                        bx.sess().emit_err(InvalidMonomorphization::ShuffleIndexOutOfBounds {
+                            span,
+                            name,
                             arg_idx,
-                            total_len
-                        );
+                            total_len,
+                        });
                         None
                     }
                     Some(idx) => Some(bx.const_i32(idx as i32)),
@@ -1041,10 +1028,13 @@ fn generic_simd_intrinsic<'ll, 'tcx>(
     if name == sym::simd_insert {
         require!(
             in_elem == arg_tys[2],
-            "expected inserted type `{}` (element of input `{}`), found `{}`",
-            in_elem,
-            in_ty,
-            arg_tys[2]
+            InvalidMonomorphization::InsertedType {
+                span,
+                name,
+                in_elem,
+                in_ty,
+                out_ty: arg_tys[2]
+            }
         );
         return Ok(bx.insert_element(
             args[0].immediate(),
@@ -1055,10 +1045,7 @@ fn generic_simd_intrinsic<'ll, 'tcx>(
     if name == sym::simd_extract {
         require!(
             ret_ty == in_elem,
-            "expected return type `{}` (element of input `{}`), found `{}`",
-            in_elem,
-            in_ty,
-            ret_ty
+            InvalidMonomorphization::ReturnType { span, name, in_elem, in_ty, ret_ty }
         );
         return Ok(bx.extract_element(args[0].immediate(), args[1].immediate()));
     }
@@ -1066,17 +1053,18 @@ fn generic_simd_intrinsic<'ll, 'tcx>(
     if name == sym::simd_select {
         let m_elem_ty = in_elem;
         let m_len = in_len;
-        require_simd!(arg_tys[1], "argument");
+        require_simd!(
+            arg_tys[1],
+            InvalidMonomorphization::SimdArgument { span, name, ty: arg_tys[1] }
+        );
         let (v_len, _) = arg_tys[1].simd_size_and_type(bx.tcx());
         require!(
             m_len == v_len,
-            "mismatched lengths: mask length `{}` != other vector length `{}`",
-            m_len,
-            v_len
+            InvalidMonomorphization::MismatchedLengths { span, name, m_len, v_len }
         );
         match m_elem_ty.kind() {
             ty::Int(_) => {}
-            _ => return_error!("mask element type is `{}`, expected `i_`", m_elem_ty),
+            _ => return_error!(InvalidMonomorphization::MaskType { span, name, ty: m_elem_ty }),
         }
         // truncate the mask to a vector of i1s
         let i1 = bx.type_i1();
@@ -1108,11 +1096,12 @@ fn generic_simd_intrinsic<'ll, 'tcx>(
                 args[0].immediate(),
                 i.bit_width().unwrap_or_else(|| bx.data_layout().pointer_size.bits()),
             ),
-            _ => return_error!(
-                "vector argument `{}`'s element type `{}`, expected integer element type",
+            _ => return_error!(InvalidMonomorphization::VectorArgument {
+                span,
+                name,
                 in_ty,
                 in_elem
-            ),
+            }),
         };
 
         // Shift the MSB to the right by "in_elem_bitwidth - 1" into the first bit position.
@@ -1147,12 +1136,13 @@ fn generic_simd_intrinsic<'ll, 'tcx>(
                 let ptr = bx.pointercast(ptr, bx.cx.type_ptr_to(array_ty));
                 return Ok(bx.load(array_ty, ptr, Align::ONE));
             }
-            _ => return_error!(
-                "cannot return `{}`, expected `u{}` or `[u8; {}]`",
+            _ => return_error!(InvalidMonomorphization::CannotReturn {
+                span,
+                name,
                 ret_ty,
                 expected_int_bits,
                 expected_bytes
-            ),
+            }),
         }
     }
 
@@ -1165,24 +1155,27 @@ fn generic_simd_intrinsic<'ll, 'tcx>(
         span: Span,
         args: &[OperandRef<'tcx, &'ll Value>],
     ) -> Result<&'ll Value, ()> {
+        macro_rules! return_error {
+            ($diag: expr) => {{
+                bx.sess().emit_err($diag);
+                return Err(());
+            }};
+        }
+
         let (elem_ty_str, elem_ty) = if let ty::Float(f) = in_elem.kind() {
             let elem_ty = bx.cx.type_float_from_ty(*f);
             match f.bit_width() {
                 32 => ("f32", elem_ty),
                 64 => ("f64", elem_ty),
-                _ => {
-                    bx.sess().emit_err(InvalidMonomorphization::FloatingPointVector {
-                        span,
-                        name,
-                        f_ty: *f,
-                        in_ty,
-                    });
-                    return Err(());
-                }
+                _ => return_error!(InvalidMonomorphization::FloatingPointVector {
+                    span,
+                    name,
+                    f_ty: *f,
+                    in_ty,
+                }),
             }
         } else {
-            bx.sess().emit_err(InvalidMonomorphization::FloatingPointType { span, name, in_ty });
-            return Err(());
+            return_error!(InvalidMonomorphization::FloatingPointType { span, name, in_ty });
         };
 
         let vec_ty = bx.type_vector(elem_ty, in_len);
@@ -1204,10 +1197,7 @@ fn generic_simd_intrinsic<'ll, 'tcx>(
             sym::simd_fsqrt => ("sqrt", bx.type_func(&[vec_ty], vec_ty)),
             sym::simd_round => ("round", bx.type_func(&[vec_ty], vec_ty)),
             sym::simd_trunc => ("trunc", bx.type_func(&[vec_ty], vec_ty)),
-            _ => {
-                bx.sess().emit_err(InvalidMonomorphization::UnrecognizedIntrinsic { span, name });
-                return Err(());
-            }
+            _ => return_error!(InvalidMonomorphization::UnrecognizedIntrinsic { span, name }),
         };
         let llvm_name = &format!("llvm.{0}.v{1}{2}", intr_name, in_len, elem_ty_str);
         let f = bx.declare_cfn(llvm_name, llvm::UnnamedAddr::No, fn_ty);
@@ -1301,37 +1291,48 @@ fn generic_simd_intrinsic<'ll, 'tcx>(
         // * M: any integer width is supported, will be truncated to i1
 
         // All types must be simd vector types
-        require_simd!(in_ty, "first");
-        require_simd!(arg_tys[1], "second");
-        require_simd!(arg_tys[2], "third");
-        require_simd!(ret_ty, "return");
+        require_simd!(in_ty, InvalidMonomorphization::SimdFirst { span, name, ty: in_ty });
+        require_simd!(
+            arg_tys[1],
+            InvalidMonomorphization::SimdSecond { span, name, ty: arg_tys[1] }
+        );
+        require_simd!(
+            arg_tys[2],
+            InvalidMonomorphization::SimdThird { span, name, ty: arg_tys[2] }
+        );
+        require_simd!(ret_ty, InvalidMonomorphization::SimdReturn { span, name, ty: ret_ty });
 
         // Of the same length:
         let (out_len, _) = arg_tys[1].simd_size_and_type(bx.tcx());
         let (out_len2, _) = arg_tys[2].simd_size_and_type(bx.tcx());
         require!(
             in_len == out_len,
-            "expected {} argument with length {} (same as input type `{}`), \
-             found `{}` with length {}",
-            "second",
-            in_len,
-            in_ty,
-            arg_tys[1],
-            out_len
+            InvalidMonomorphization::SecondArgumentLength {
+                span,
+                name,
+                in_len,
+                in_ty,
+                arg_ty: arg_tys[1],
+                out_len
+            }
         );
         require!(
             in_len == out_len2,
-            "expected {} argument with length {} (same as input type `{}`), \
-             found `{}` with length {}",
-            "third",
-            in_len,
-            in_ty,
-            arg_tys[2],
-            out_len2
+            InvalidMonomorphization::ThirdArgumentLength {
+                span,
+                name,
+                in_len,
+                in_ty,
+                arg_ty: arg_tys[2],
+                out_len: out_len2
+            }
         );
 
         // The return type must match the first argument type
-        require!(ret_ty == in_ty, "expected return type `{}`, found `{}`", in_ty, ret_ty);
+        require!(
+            ret_ty == in_ty,
+            InvalidMonomorphization::ExpectedReturnType { span, name, in_ty, ret_ty }
+        );
 
         // This counts how many pointers
         fn ptr_count(t: Ty<'_>) -> usize {
@@ -1358,15 +1359,15 @@ fn generic_simd_intrinsic<'ll, 'tcx>(
             _ => {
                 require!(
                     false,
-                    "expected element type `{}` of second argument `{}` \
-                        to be a pointer to the element type `{}` of the first \
-                        argument `{}`, found `{}` != `*_ {}`",
-                    element_ty1,
-                    arg_tys[1],
-                    in_elem,
-                    in_ty,
-                    element_ty1,
-                    in_elem
+                    InvalidMonomorphization::ExpectedElementType {
+                        span,
+                        name,
+                        expected_element: element_ty1,
+                        second_arg: arg_tys[1],
+                        in_elem,
+                        in_ty,
+                        mutability: ExpectedPointerMutability::Not,
+                    }
                 );
                 unreachable!();
             }
@@ -1382,10 +1383,12 @@ fn generic_simd_intrinsic<'ll, 'tcx>(
             _ => {
                 require!(
                     false,
-                    "expected element type `{}` of third argument `{}` \
-                                 to be a signed integer type",
-                    element_ty2,
-                    arg_tys[2]
+                    InvalidMonomorphization::ThirdArgElementType {
+                        span,
+                        name,
+                        expected_element: element_ty2,
+                        third_arg: arg_tys[2]
+                    }
                 );
             }
         }
@@ -1434,32 +1437,40 @@ fn generic_simd_intrinsic<'ll, 'tcx>(
         // * M: any integer width is supported, will be truncated to i1
 
         // All types must be simd vector types
-        require_simd!(in_ty, "first");
-        require_simd!(arg_tys[1], "second");
-        require_simd!(arg_tys[2], "third");
+        require_simd!(in_ty, InvalidMonomorphization::SimdFirst { span, name, ty: in_ty });
+        require_simd!(
+            arg_tys[1],
+            InvalidMonomorphization::SimdSecond { span, name, ty: arg_tys[1] }
+        );
+        require_simd!(
+            arg_tys[2],
+            InvalidMonomorphization::SimdThird { span, name, ty: arg_tys[2] }
+        );
 
         // Of the same length:
         let (element_len1, _) = arg_tys[1].simd_size_and_type(bx.tcx());
         let (element_len2, _) = arg_tys[2].simd_size_and_type(bx.tcx());
         require!(
             in_len == element_len1,
-            "expected {} argument with length {} (same as input type `{}`), \
-            found `{}` with length {}",
-            "second",
-            in_len,
-            in_ty,
-            arg_tys[1],
-            element_len1
+            InvalidMonomorphization::SecondArgumentLength {
+                span,
+                name,
+                in_len,
+                in_ty,
+                arg_ty: arg_tys[1],
+                out_len: element_len1
+            }
         );
         require!(
             in_len == element_len2,
-            "expected {} argument with length {} (same as input type `{}`), \
-            found `{}` with length {}",
-            "third",
-            in_len,
-            in_ty,
-            arg_tys[2],
-            element_len2
+            InvalidMonomorphization::ThirdArgumentLength {
+                span,
+                name,
+                in_len,
+                in_ty,
+                arg_ty: arg_tys[2],
+                out_len: element_len2
+            }
         );
 
         // This counts how many pointers
@@ -1490,15 +1501,15 @@ fn generic_simd_intrinsic<'ll, 'tcx>(
             _ => {
                 require!(
                     false,
-                    "expected element type `{}` of second argument `{}` \
-                        to be a pointer to the element type `{}` of the first \
-                        argument `{}`, found `{}` != `*mut {}`",
-                    element_ty1,
-                    arg_tys[1],
-                    in_elem,
-                    in_ty,
-                    element_ty1,
-                    in_elem
+                    InvalidMonomorphization::ExpectedElementType {
+                        span,
+                        name,
+                        expected_element: element_ty1,
+                        second_arg: arg_tys[1],
+                        in_elem,
+                        in_ty,
+                        mutability: ExpectedPointerMutability::Mut,
+                    }
                 );
                 unreachable!();
             }
@@ -1513,10 +1524,12 @@ fn generic_simd_intrinsic<'ll, 'tcx>(
             _ => {
                 require!(
                     false,
-                    "expected element type `{}` of third argument `{}` \
-                         be a signed integer type",
-                    element_ty2,
-                    arg_tys[2]
+                    InvalidMonomorphization::ThirdArgElementType {
+                        span,
+                        name,
+                        expected_element: element_ty2,
+                        third_arg: arg_tys[2]
+                    }
                 );
             }
         }
@@ -1563,10 +1576,7 @@ fn generic_simd_intrinsic<'ll, 'tcx>(
             if name == sym::$name {
                 require!(
                     ret_ty == in_elem,
-                    "expected return type `{}` (element of input `{}`), found `{}`",
-                    in_elem,
-                    in_ty,
-                    ret_ty
+                    InvalidMonomorphization::ReturnType { span, name, in_elem, in_ty, ret_ty }
                 );
                 return match in_elem.kind() {
                     ty::Int(_) | ty::Uint(_) => {
@@ -1589,25 +1599,28 @@ fn generic_simd_intrinsic<'ll, 'tcx>(
                                 32 => bx.const_real(bx.type_f32(), $identity),
                                 64 => bx.const_real(bx.type_f64(), $identity),
                                 v => return_error!(
-                                    r#"
-unsupported {} from `{}` with element `{}` of size `{}` to `{}`"#,
-                                    sym::$name,
-                                    in_ty,
-                                    in_elem,
-                                    v,
-                                    ret_ty
+                                    InvalidMonomorphization::UnsupportedSymbolOfSize {
+                                        span,
+                                        name,
+                                        symbol: sym::$name,
+                                        in_ty,
+                                        in_elem,
+                                        size: v,
+                                        ret_ty
+                                    }
                                 ),
                             }
                         };
                         Ok(bx.$float_reduce(acc, args[0].immediate()))
                     }
-                    _ => return_error!(
-                        "unsupported {} from `{}` with element `{}` to `{}`",
-                        sym::$name,
+                    _ => return_error!(InvalidMonomorphization::UnsupportedSymbol {
+                        span,
+                        name,
+                        symbol: sym::$name,
                         in_ty,
                         in_elem,
                         ret_ty
-                    ),
+                    }),
                 };
             }
         };
@@ -1635,22 +1648,20 @@ unsupported {} from `{}` with element `{}` of size `{}` to `{}`"#,
             if name == sym::$name {
                 require!(
                     ret_ty == in_elem,
-                    "expected return type `{}` (element of input `{}`), found `{}`",
-                    in_elem,
-                    in_ty,
-                    ret_ty
+                    InvalidMonomorphization::ReturnType { span, name, in_elem, in_ty, ret_ty }
                 );
                 return match in_elem.kind() {
                     ty::Int(_i) => Ok(bx.$int_red(args[0].immediate(), true)),
                     ty::Uint(_u) => Ok(bx.$int_red(args[0].immediate(), false)),
                     ty::Float(_f) => Ok(bx.$float_red(args[0].immediate())),
-                    _ => return_error!(
-                        "unsupported {} from `{}` with element `{}` to `{}`",
-                        sym::$name,
+                    _ => return_error!(InvalidMonomorphization::UnsupportedSymbol {
+                        span,
+                        name,
+                        symbol: sym::$name,
                         in_ty,
                         in_elem,
                         ret_ty
-                    ),
+                    }),
                 };
             }
         };
@@ -1668,22 +1679,20 @@ unsupported {} from `{}` with element `{}` of size `{}` to `{}`"#,
                 let input = if !$boolean {
                     require!(
                         ret_ty == in_elem,
-                        "expected return type `{}` (element of input `{}`), found `{}`",
-                        in_elem,
-                        in_ty,
-                        ret_ty
+                        InvalidMonomorphization::ReturnType { span, name, in_elem, in_ty, ret_ty }
                     );
                     args[0].immediate()
                 } else {
                     match in_elem.kind() {
                         ty::Int(_) | ty::Uint(_) => {}
-                        _ => return_error!(
-                            "unsupported {} from `{}` with element `{}` to `{}`",
-                            sym::$name,
+                        _ => return_error!(InvalidMonomorphization::UnsupportedSymbol {
+                            span,
+                            name,
+                            symbol: sym::$name,
                             in_ty,
                             in_elem,
                             ret_ty
-                        ),
+                        }),
                     }
 
                     // boolean reductions operate on vectors of i1s:
@@ -1696,13 +1705,14 @@ unsupported {} from `{}` with element `{}` of size `{}` to `{}`"#,
                         let r = bx.$red(input);
                         Ok(if !$boolean { r } else { bx.zext(r, bx.type_bool()) })
                     }
-                    _ => return_error!(
-                        "unsupported {} from `{}` with element `{}` to `{}`",
-                        sym::$name,
+                    _ => return_error!(InvalidMonomorphization::UnsupportedSymbol {
+                        span,
+                        name,
+                        symbol: sym::$name,
                         in_ty,
                         in_elem,
                         ret_ty
-                    ),
+                    }),
                 };
             }
         };
@@ -1715,16 +1725,18 @@ unsupported {} from `{}` with element `{}` of size `{}` to `{}`"#,
     bitwise_red!(simd_reduce_any: vector_reduce_or, true);
 
     if name == sym::simd_cast_ptr {
-        require_simd!(ret_ty, "return");
+        require_simd!(ret_ty, InvalidMonomorphization::SimdReturn { span, name, ty: ret_ty });
         let (out_len, out_elem) = ret_ty.simd_size_and_type(bx.tcx());
         require!(
             in_len == out_len,
-            "expected return type with length {} (same as input type `{}`), \
-                  found `{}` with length {}",
-            in_len,
-            in_ty,
-            ret_ty,
-            out_len
+            InvalidMonomorphization::ReturnLengthInputType {
+                span,
+                name,
+                in_len,
+                in_ty,
+                ret_ty,
+                out_len
+            }
         );
 
         match in_elem.kind() {
@@ -1733,9 +1745,14 @@ unsupported {} from `{}` with element `{}` of size `{}` to `{}`"#,
                     bx.tcx.normalize_erasing_regions(ty::ParamEnv::reveal_all(), ty)
                 });
                 assert!(!check_sized); // we are in codegen, so we shouldn't see these types
-                require!(metadata.is_unit(), "cannot cast fat pointer `{}`", in_elem)
+                require!(
+                    metadata.is_unit(),
+                    InvalidMonomorphization::CastFatPointer { span, name, ty: in_elem }
+                );
             }
-            _ => return_error!("expected pointer, got `{}`", in_elem),
+            _ => {
+                return_error!(InvalidMonomorphization::ExpectedPointer { span, name, ty: in_elem })
+            }
         }
         match out_elem.kind() {
             ty::RawPtr(p) => {
@@ -1743,9 +1760,14 @@ unsupported {} from `{}` with element `{}` of size `{}` to `{}`"#,
                     bx.tcx.normalize_erasing_regions(ty::ParamEnv::reveal_all(), ty)
                 });
                 assert!(!check_sized); // we are in codegen, so we shouldn't see these types
-                require!(metadata.is_unit(), "cannot cast to fat pointer `{}`", out_elem)
+                require!(
+                    metadata.is_unit(),
+                    InvalidMonomorphization::CastFatPointer { span, name, ty: out_elem }
+                );
             }
-            _ => return_error!("expected pointer, got `{}`", out_elem),
+            _ => {
+                return_error!(InvalidMonomorphization::ExpectedPointer { span, name, ty: out_elem })
+            }
         }
 
         if in_elem == out_elem {
@@ -1756,66 +1778,76 @@ unsupported {} from `{}` with element `{}` of size `{}` to `{}`"#,
     }
 
     if name == sym::simd_expose_addr {
-        require_simd!(ret_ty, "return");
+        require_simd!(ret_ty, InvalidMonomorphization::SimdReturn { span, name, ty: ret_ty });
         let (out_len, out_elem) = ret_ty.simd_size_and_type(bx.tcx());
         require!(
             in_len == out_len,
-            "expected return type with length {} (same as input type `{}`), \
-                  found `{}` with length {}",
-            in_len,
-            in_ty,
-            ret_ty,
-            out_len
+            InvalidMonomorphization::ReturnLengthInputType {
+                span,
+                name,
+                in_len,
+                in_ty,
+                ret_ty,
+                out_len
+            }
         );
 
         match in_elem.kind() {
             ty::RawPtr(_) => {}
-            _ => return_error!("expected pointer, got `{}`", in_elem),
+            _ => {
+                return_error!(InvalidMonomorphization::ExpectedPointer { span, name, ty: in_elem })
+            }
         }
         match out_elem.kind() {
             ty::Uint(ty::UintTy::Usize) => {}
-            _ => return_error!("expected `usize`, got `{}`", out_elem),
+            _ => return_error!(InvalidMonomorphization::ExpectedUsize { span, name, ty: out_elem }),
         }
 
         return Ok(bx.ptrtoint(args[0].immediate(), llret_ty));
     }
 
     if name == sym::simd_from_exposed_addr {
-        require_simd!(ret_ty, "return");
+        require_simd!(ret_ty, InvalidMonomorphization::SimdReturn { span, name, ty: ret_ty });
         let (out_len, out_elem) = ret_ty.simd_size_and_type(bx.tcx());
         require!(
             in_len == out_len,
-            "expected return type with length {} (same as input type `{}`), \
-                  found `{}` with length {}",
-            in_len,
-            in_ty,
-            ret_ty,
-            out_len
+            InvalidMonomorphization::ReturnLengthInputType {
+                span,
+                name,
+                in_len,
+                in_ty,
+                ret_ty,
+                out_len
+            }
         );
 
         match in_elem.kind() {
             ty::Uint(ty::UintTy::Usize) => {}
-            _ => return_error!("expected `usize`, got `{}`", in_elem),
+            _ => return_error!(InvalidMonomorphization::ExpectedUsize { span, name, ty: in_elem }),
         }
         match out_elem.kind() {
             ty::RawPtr(_) => {}
-            _ => return_error!("expected pointer, got `{}`", out_elem),
+            _ => {
+                return_error!(InvalidMonomorphization::ExpectedPointer { span, name, ty: out_elem })
+            }
         }
 
         return Ok(bx.inttoptr(args[0].immediate(), llret_ty));
     }
 
     if name == sym::simd_cast || name == sym::simd_as {
-        require_simd!(ret_ty, "return");
+        require_simd!(ret_ty, InvalidMonomorphization::SimdReturn { span, name, ty: ret_ty });
         let (out_len, out_elem) = ret_ty.simd_size_and_type(bx.tcx());
         require!(
             in_len == out_len,
-            "expected return type with length {} (same as input type `{}`), \
-                  found `{}` with length {}",
-            in_len,
-            in_ty,
-            ret_ty,
-            out_len
+            InvalidMonomorphization::ReturnLengthInputType {
+                span,
+                name,
+                in_len,
+                in_ty,
+                ret_ty,
+                out_len
+            }
         );
         // casting cares about nominal type, not just structural type
         if in_elem == out_elem {
@@ -1894,11 +1926,14 @@ unsupported {} from `{}` with element `{}` of size `{}` to `{}`"#,
         }
         require!(
             false,
-            "unsupported cast from `{}` with element `{}` to `{}` with element `{}`",
-            in_ty,
-            in_elem,
-            ret_ty,
-            out_elem
+            InvalidMonomorphization::UnsupportedCast {
+                span,
+                name,
+                in_ty,
+                in_elem,
+                ret_ty,
+                out_elem
+            }
         );
     }
     macro_rules! arith_binary {
@@ -1910,10 +1945,10 @@ unsupported {} from `{}` with element `{}` of size `{}` to `{}`"#,
                     })*
                     _ => {},
                 }
-                require!(false,
-                         "unsupported operation on `{}` with element `{}`",
-                         in_ty,
-                         in_elem)
+                require!(
+                    false,
+                    InvalidMonomorphization::UnsupportedOperation { span, name, in_ty, in_elem }
+                );
             })*
         }
     }
@@ -1941,10 +1976,10 @@ unsupported {} from `{}` with element `{}` of size `{}` to `{}`"#,
                     })*
                     _ => {},
                 }
-                require!(false,
-                         "unsupported operation on `{}` with element `{}`",
-                         in_ty,
-                         in_elem)
+                require!(
+                    false,
+                    InvalidMonomorphization::UnsupportedOperation { span, name, in_ty, in_elem }
+                );
             })*
         }
     }
@@ -1982,12 +2017,12 @@ unsupported {} from `{}` with element `{}` of size `{}` to `{}`"#,
             ty::Int(i) => (true, i.bit_width().unwrap_or(ptr_bits), bx.cx.type_int_from_ty(i)),
             ty::Uint(i) => (false, i.bit_width().unwrap_or(ptr_bits), bx.cx.type_uint_from_ty(i)),
             _ => {
-                return_error!(
-                    "expected element type `{}` of vector type `{}` \
-                     to be a signed or unsigned integer type",
-                    arg_tys[0].simd_size_and_type(bx.tcx()).1,
-                    arg_tys[0]
-                );
+                return_error!(InvalidMonomorphization::ExpectedVectorElementType {
+                    span,
+                    name,
+                    expected_element: arg_tys[0].simd_size_and_type(bx.tcx()).1,
+                    vector_type: arg_tys[0]
+                });
             }
         };
         let llvm_intrinsic = &format!(

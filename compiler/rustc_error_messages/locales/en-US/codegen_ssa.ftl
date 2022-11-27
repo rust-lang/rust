@@ -226,4 +226,70 @@ codegen_ssa_invalid_monomorphization_floating_point_type = invalid monomorphizat
 
 codegen_ssa_invalid_monomorphization_unrecognized_intrinsic = invalid monomorphization of `{$name}` intrinsic: unrecognized intrinsic `{$name}`
 
+codegen_ssa_invalid_monomorphization_simd_argument = invalid monomorphization of `{$name}` intrinsic: expected SIMD argument type, found non-SIMD `{$ty}`
+
+codegen_ssa_invalid_monomorphization_simd_input = invalid monomorphization of `{$name}` intrinsic: expected SIMD input type, found non-SIMD `{$ty}`
+
+codegen_ssa_invalid_monomorphization_simd_first = invalid monomorphization of `{$name}` intrinsic: expected SIMD first type, found non-SIMD `{$ty}`
+
+codegen_ssa_invalid_monomorphization_simd_second = invalid monomorphization of `{$name}` intrinsic: expected SIMD second type, found non-SIMD `{$ty}`
+
+codegen_ssa_invalid_monomorphization_simd_third = invalid monomorphization of `{$name}` intrinsic: expected SIMD third type, found non-SIMD `{$ty}`
+
+codegen_ssa_invalid_monomorphization_simd_return = invalid monomorphization of `{$name}` intrinsic: expected SIMD return type, found non-SIMD `{$ty}`
+
+codegen_ssa_invalid_monomorphization_invalid_bitmask = invalid monomorphization of `{$name}` intrinsic: invalid bitmask `{$mask_ty}`, expected `u{$expected_int_bits}` or `[u8; {$expected_bytes}]`
+
 codegen_ssa_polymorphic_constant_too_generic = codegen encountered polymorphic constant: TooGeneric
+
+codegen_ssa_invalid_monomorphization_return_length_input_type = invalid monomorphization of `{$name}` intrinsic: expected return type with length {$in_len} (same as input type `{$in_ty}`), found `{$ret_ty}` with length {$out_len}
+
+codegen_ssa_invalid_monomorphization_second_argument_length = invalid monomorphization of `{$name}` intrinsic: expected second argument with length {$in_len} (same as input type `{$in_ty}`), found `{$arg_ty}` with length {$out_len}
+
+codegen_ssa_invalid_monomorphization_third_argument_length = invalid monomorphization of `{$name}` intrinsic: expected third argument with length {$in_len} (same as input type `{$in_ty}`), found `{$arg_ty}` with length {$out_len}
+
+codegen_ssa_invalid_monomorphization_return_integer_type = invalid monomorphization of `{$name}` intrinsic: expected return type with integer elements, found `{$ret_ty}` with non-integer `{$out_ty}`
+
+codegen_ssa_invalid_monomorphization_simd_shuffle = invalid monomorphization of `{$name}` intrinsic: simd_shuffle index must be an array of `u32`, got `{$ty}`
+
+codegen_ssa_invalid_monomorphization_return_length = invalid monomorphization of `{$name}` intrinsic: expected return type of length {$in_len}, found `{$ret_ty}` with length {$out_len}
+
+codegen_ssa_invalid_monomorphization_return_element = invalid monomorphization of `{$name}` intrinsic: expected return element type `{$in_elem}` (element of input `{$in_ty}`), found `{$ret_ty}` with element type `{$out_ty}`
+
+codegen_ssa_invalid_monomorphization_shuffle_index_not_constant = invalid monomorphization of `{$name}` intrinsic: shuffle index #{$arg_idx} is not a constant
+
+codegen_ssa_invalid_monomorphization_shuffle_index_out_of_bounds = invalid monomorphization of `{$name}` intrinsic: shuffle index #{$arg_idx} is out of bounds (limit {$total_len})
+
+codegen_ssa_invalid_monomorphization_inserted_type = invalid monomorphization of `{$name}` intrinsic: expected inserted type `{$in_elem}` (element of input `{$in_ty}`), found `{$out_ty}`
+
+codegen_ssa_invalid_monomorphization_return_type = invalid monomorphization of `{$name}` intrinsic: expected return type `{$in_elem}` (element of input `{$in_ty}`), found `{$ret_ty}`
+
+codegen_ssa_invalid_monomorphization_expected_return_type = invalid monomorphization of `{$name}` intrinsic: expected return type `{$in_ty}`, found `{$ret_ty}`
+
+codegen_ssa_invalid_monomorphization_mismatched_lengths = invalid monomorphization of `{$name}` intrinsic: mismatched lengths: mask length `{$m_len}` != other vector length `{$v_len}`
+
+codegen_ssa_invalid_monomorphization_mask_type = invalid monomorphization of `{$name}` intrinsic: mask element type is `{$ty}`, expected `i_`
+
+codegen_ssa_invalid_monomorphization_vector_argument = invalid monomorphization of `{$name}` intrinsic: vector argument `{$in_ty}`'s element type `{$in_elem}`, expected integer element type
+
+codegen_ssa_invalid_monomorphization_cannot_return = invalid monomorphization of `{$name}` intrinsic: cannot return `{$ret_ty}`, expected `u{$expected_int_bits}` or `[u8; {$expected_bytes}]`
+
+codegen_ssa_invalid_monomorphization_expected_element_type = invalid monomorphization of `{$name}` intrinsic: expected element type `{$expected_element}` of second argument `{$second_arg}` to be a pointer to the element type `{$in_elem}` of the first argument `{$in_ty}`, found `{$expected_element}` != `{$mutability} {$in_elem}`
+
+codegen_ssa_invalid_monomorphization_third_arg_element_type = invalid monomorphization of `{$name}` intrinsic: expected element type `{$expected_element}` of third argument `{$third_arg}` to be a signed integer type
+
+codegen_ssa_invalid_monomorphization_unsupported_symbol_of_size = invalid monomorphization of `{$name}` intrinsic: unsupported {$symbol} from `{$in_ty}` with element `{$in_elem}` of size `{$size}` to `{$ret_ty}`
+
+codegen_ssa_invalid_monomorphization_unsupported_symbol = invalid monomorphization of `{$name}` intrinsic: unsupported {$symbol} from `{$in_ty}` with element `{$in_elem}` to `{$ret_ty}`
+
+codegen_ssa_invalid_monomorphization_cast_fat_pointer = invalid monomorphization of `{$name}` intrinsic: cannot cast fat pointer `{$ty}`
+
+codegen_ssa_invalid_monomorphization_expected_pointer = invalid monomorphization of `{$name}` intrinsic: expected pointer, got `{$ty}`
+
+codegen_ssa_invalid_monomorphization_expected_usize = invalid monomorphization of `{$name}` intrinsic: expected `usize`, got `{$ty}`
+
+codegen_ssa_invalid_monomorphization_unsupported_cast = invalid monomorphization of `{$name}` intrinsic: unsupported cast from `{$in_ty}` with element `{$in_elem}` to `{$ret_ty}` with element `{$out_elem}`
+
+codegen_ssa_invalid_monomorphization_unsupported_operation = invalid monomorphization of `{$name}` intrinsic: unsupported operation on `{$in_ty}` with element `{$in_elem}`
+
+codegen_ssa_invalid_monomorphization_expected_vector_element_type = invalid monomorphization of `{$name}` intrinsic: expected element type `{$expected_element}` of vector type `{$vector_type}` to be a signed or unsigned integer type
