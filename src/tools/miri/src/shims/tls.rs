@@ -240,7 +240,7 @@ impl TlsDtorsState {
         match &mut self.0 {
             Init => {
                 match this.tcx.sess.target.os.as_ref() {
-                    "linux" => {
+                    "linux" | "freebsd" | "android" => {
                         // Run the pthread dtors.
                         self.0 = PthreadDtors(Default::default());
                     }
@@ -257,9 +257,15 @@ impl TlsDtorsState {
                         // And move to the final state.
                         self.0 = Done;
                     }
-                    _ => {
-                        // No TLS support for this platform, directly move to final state.
+                    "wasi" | "none" => {
+                        // No OS, no TLS dtors.
+                        // FIXME: should we do something on wasi?
                         self.0 = Done;
+                    }
+                    os => {
+                        throw_unsup_format!(
+                            "the TLS machinery does not know how to handle OS `{os}`"
+                        );
                     }
                 }
             }
