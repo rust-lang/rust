@@ -1,4 +1,5 @@
 // ignore-tidy-filelength
+
 use super::{DefIdOrName, Obligation, ObligationCause, ObligationCauseCode, PredicateObligation};
 
 use crate::autoderef::Autoderef;
