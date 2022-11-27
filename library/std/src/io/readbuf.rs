@@ -317,7 +317,6 @@ use libc::{c_void, iovec};
 /// It is semantically a wrapper around an &mut [MaybeUninit<u8>], but is guaranteed to be ABI
 /// compatible with the `iovec` type on Unix platforms and WSABUF on Windows.
 #[repr(transparent)]
-#[derive(Clone)]
 pub struct IoSliceMaybeUninit<'a> {
     vec: iovec,
     _p: PhantomData<&'a mut [MaybeUninit<u8>]>,
@@ -326,17 +325,6 @@ pub struct IoSliceMaybeUninit<'a> {
 impl Debug for IoSliceMaybeUninit<'_> {
     fn fmt(&self, f: &mut Formatter<'_>) -> fmt::Result {
         f.debug_struct("IoSliceMaybeUninit").field("len", &self.vec.iov_len).finish()
-    }
-}
-
-/// Create a new `IoSliceMaybeUninit` from a fully initialized slice.
-impl<'a> From<&'a mut [u8]> for IoSliceMaybeUninit<'a> {
-    #[inline]
-    fn from(slice: &'a mut [u8]) -> IoSliceMaybeUninit<'a> {
-        IoSliceMaybeUninit {
-            vec: iovec { iov_base: slice.as_mut_ptr() as *mut c_void, iov_len: slice.len() },
-            _p: PhantomData,
-        }
     }
 }
 
@@ -352,7 +340,19 @@ impl<'a> From<&'a mut [MaybeUninit<u8>]> for IoSliceMaybeUninit<'a> {
 }
 
 impl<'a> IoSliceMaybeUninit<'a> {
-    /// Advance the internal cursor of the slice.
+    /// Create a new IoSliceMaybeUninit from an existing mutable slice of `u8`s.
+    ///
+    /// SAFETY: all bytes in the slice must be initialized by the time the IoSliceMaybeUninit is
+    /// destroyed and thus access to the data is restored for `slice` or other views of the data.
+    #[inline]
+    pub unsafe fn from_slice(slice: &'a mut [u8]) -> IoSliceMaybeUninit<'a> {
+        IoSliceMaybeUninit {
+            vec: iovec { iov_base: slice.as_mut_ptr() as *mut c_void, iov_len: slice.len() },
+            _p: PhantomData,
+        }
+    }
+
+    /// Create a new IoSliceMaybeUninit with its internal cursor advanced.
     #[inline]
     pub fn advance(&self, n: usize) -> Self {
         if self.vec.iov_len < n {
@@ -641,10 +641,9 @@ impl<'a> BorrowedSliceCursor<'a> {
         let prev = if self.bufs.filled.1 == 0 {
             None
         } else {
-            let prev = Some(self.bufs.bufs[self.bufs.filled.0].clone());
-            self.bufs.bufs[self.bufs.filled.0] =
-                self.bufs.bufs[self.bufs.filled.0].advance(self.bufs.filled.1);
-            prev
+            let mut new = self.bufs.bufs[self.bufs.filled.0].advance(self.bufs.filled.1);
+            mem::swap(&mut self.bufs.bufs[self.bufs.filled.0], &mut new);
+            Some(new)
         };
 
         BorrowedSliceGuard { bufs: &mut self.bufs, prev }
@@ -953,8 +952,8 @@ pub struct BorrowedSliceGuard<'buf, 'data> {
 
 impl<'buf, 'data> Drop for BorrowedSliceGuard<'buf, 'data> {
     fn drop(&mut self) {
-        if let Some(prev) = &self.prev {
-            self.bufs.bufs[self.bufs.filled.0] = prev.clone();
+        if let Some(prev) = self.prev.take() {
+            self.bufs.bufs[self.bufs.filled.0] = prev;
         }
     }
 }

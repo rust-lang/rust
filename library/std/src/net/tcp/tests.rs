@@ -317,7 +317,13 @@ fn read_buf_vectored() {
         let a: &mut [u8] = &mut [];
         let b: &mut [u8] = &mut [0];
         let c: &mut [u8] = &mut [0; 3];
-        let mut bufs: [IoSliceMaybeUninit<'_>; 3] = [a.into(), b.into(), c.into()];
+        let mut bufs: [IoSliceMaybeUninit<'_>; 3] = unsafe {
+            [
+                IoSliceMaybeUninit::from_slice(a),
+                IoSliceMaybeUninit::from_slice(b),
+                IoSliceMaybeUninit::from_slice(c),
+            ]
+        };
         let mut bufs = BorrowedSliceBuf::new(&mut bufs);
         let mut cursor = bufs.unfilled();
         t!(s2.read_buf_vectored(cursor.reborrow()));
