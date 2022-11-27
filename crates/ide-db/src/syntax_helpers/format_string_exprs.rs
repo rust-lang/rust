@@ -262,8 +262,6 @@ mod tests {
                 .unwrap()
                 .1,
             vec![
-                Arg::Ident("_ident".to_owned()),
-                Arg::Ident("r#raw_ident".to_owned()),
                 Arg::Expr("expr.obj".to_owned()),
                 Arg::Expr("name {thing: 42}".to_owned()),
                 Arg::Placeholder
