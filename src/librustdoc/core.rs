@@ -13,7 +13,7 @@ use rustc_interface::interface;
 use rustc_middle::hir::nested_filter;
 use rustc_middle::ty::{ParamEnv, Ty, TyCtxt};
 use rustc_resolve as resolve;
-use rustc_session::config::{self, CrateType, ErrorOutputType};
+use rustc_session::config::{self, ErrorOutputType};
 use rustc_session::lint;
 use rustc_session::Session;
 use rustc_span::symbol::sym;
@@ -203,7 +203,7 @@ pub(crate) fn create_config(
     RustdocOptions {
         input,
         crate_name,
-        proc_macro_crate,
+        crate_types,
         error_format,
         diagnostic_width,
         libs,
@@ -247,8 +247,6 @@ pub(crate) fn create_config(
         Some((lint.name_lower(), lint::Allow))
     });
 
-    let crate_types =
-        if proc_macro_crate { vec![CrateType::ProcMacro] } else { vec![CrateType::Rlib] };
     let test = scrape_examples_options.map(|opts| opts.scrape_tests).unwrap_or(false);
     // plays with error output here!
     let sessopts = config::Options {

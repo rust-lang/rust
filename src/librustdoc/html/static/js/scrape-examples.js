@@ -4,17 +4,19 @@
 
 (function() {
     // Number of lines shown when code viewer is not expanded
-    const MAX_LINES = 10;
+    const DEFAULT_MAX_LINES = 5;
+    const HIDDEN_MAX_LINES = 10;
 
     // Scroll code block to the given code location
-    function scrollToLoc(elt, loc) {
+    function scrollToLoc(elt, loc, isHidden) {
         const lines = elt.querySelector(".src-line-numbers");
         let scrollOffset;
 
         // If the block is greater than the size of the viewer,
         // then scroll to the top of the block. Otherwise scroll
         // to the middle of the block.
-        if (loc[1] - loc[0] > MAX_LINES) {
+        let maxLines = isHidden ? HIDDEN_MAX_LINES : DEFAULT_MAX_LINES;
+        if (loc[1] - loc[0] > maxLines) {
             const line = Math.max(0, loc[0] - 1);
             scrollOffset = lines.children[line].offsetTop;
         } else {
@@ -29,7 +31,7 @@
         elt.querySelector(".rust").scrollTo(0, scrollOffset);
     }
 
-    function updateScrapedExample(example) {
+    function updateScrapedExample(example, isHidden) {
         const locs = JSON.parse(example.attributes.getNamedItem("data-locs").textContent);
         let locIndex = 0;
         const highlights = Array.prototype.slice.call(example.querySelectorAll(".highlight"));
@@ -40,7 +42,7 @@
             const onChangeLoc = changeIndex => {
                 removeClass(highlights[locIndex], "focus");
                 changeIndex();
-                scrollToLoc(example, locs[locIndex][0]);
+                scrollToLoc(example, locs[locIndex][0], isHidden);
                 addClass(highlights[locIndex], "focus");
 
                 const url = locs[locIndex][1];
@@ -70,7 +72,7 @@
             expandButton.addEventListener("click", () => {
                 if (hasClass(example, "expanded")) {
                     removeClass(example, "expanded");
-                    scrollToLoc(example, locs[0][0]);
+                    scrollToLoc(example, locs[0][0], isHidden);
                 } else {
                     addClass(example, "expanded");
                 }
@@ -78,11 +80,11 @@
         }
 
         // Start with the first example in view
-        scrollToLoc(example, locs[0][0]);
+        scrollToLoc(example, locs[0][0], isHidden);
     }
 
     const firstExamples = document.querySelectorAll(".scraped-example-list > .scraped-example");
-    onEachLazy(firstExamples, updateScrapedExample);
+    onEachLazy(firstExamples, el => updateScrapedExample(el, false));
     onEachLazy(document.querySelectorAll(".more-examples-toggle"), toggle => {
         // Allow users to click the left border of the <details> section to close it,
         // since the section can be large and finding the [+] button is annoying.
@@ -99,7 +101,7 @@
             // depends on offsetHeight, a property that requires an element to be visible to
             // compute correctly.
             setTimeout(() => {
-                onEachLazy(moreExamples, updateScrapedExample);
+                onEachLazy(moreExamples, el => updateScrapedExample(el, true));
             });
         }, {once: true});
     });

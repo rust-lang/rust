@@ -1901,6 +1901,10 @@ in storage.js
 	border-radius: 50px;
 }
 
+.scraped-example {
+	position: relative;
+}
+
 .scraped-example .code-wrapper {
 	position: relative;
 	display: flex;
@@ -1909,14 +1913,29 @@ in storage.js
 	width: 100%;
 }
 
+.scraped-example-title {
+	position: absolute;
+	z-index: 1000;
+	background: white;
+	bottom: 8px;
+	right: 5px;
+	padding: 2px 4px;
+	box-shadow: 0 0 4px white;
+}
+
 .scraped-example:not(.expanded) .code-wrapper {
-	max-height: 240px;
+	max-height: 120px;
 }
 
 .scraped-example:not(.expanded) .code-wrapper pre {
 	overflow-y: hidden;
-	max-height: 240px;
+	max-height: 120px;
 	padding-bottom: 0;
+}
+
+.more-scraped-examples .scraped-example:not(.expanded) .code-wrapper,
+.more-scraped-examples .scraped-example:not(.expanded) .code-wrapper pre {
+	max-height: 240px;
 }
 
 .scraped-example .code-wrapper .next,

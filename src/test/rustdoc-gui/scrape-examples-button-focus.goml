@@ -25,3 +25,12 @@ store-property: (fullOffsetHeight, ".scraped-example-list > .scraped-example pre
 assert-property: (".scraped-example-list > .scraped-example pre", {
 	"scrollHeight": |fullOffsetHeight|
 })
+
+assert-attribute-false: (".more-examples-toggle", {"open": ""})
+click: ".more-examples-toggle"
+assert-attribute: (".more-examples-toggle", {"open": ""})
+click: "#toggle-all-docs"
+assert-attribute-false: (".more-examples-toggle", {"open": ""})
+// After re-opening the docs, the additional examples should stay closed
+click: "#toggle-all-docs"
+assert-attribute-false: (".more-examples-toggle", {"open": ""})

@@ -69,8 +69,8 @@ pub(crate) struct Options {
     pub(crate) input: PathBuf,
     /// The name of the crate being documented.
     pub(crate) crate_name: Option<String>,
-    /// Whether or not this is a proc-macro crate
-    pub(crate) proc_macro_crate: bool,
+    /// The types of the crate being documented.
+    pub(crate) crate_types: Vec<CrateType>,
     /// How to format errors and warnings.
     pub(crate) error_format: ErrorOutputType,
     /// Width of output buffer to truncate errors appropriately.
@@ -176,7 +176,7 @@ impl fmt::Debug for Options {
         f.debug_struct("Options")
             .field("input", &self.input)
             .field("crate_name", &self.crate_name)
-            .field("proc_macro_crate", &self.proc_macro_crate)
+            .field("crate_types", &self.crate_types)
             .field("error_format", &self.error_format)
             .field("libs", &self.libs)
             .field("externs", &FmtExterns(&self.externs))
@@ -667,7 +667,6 @@ impl Options {
             None => OutputFormat::default(),
         };
         let crate_name = matches.opt_str("crate-name");
-        let proc_macro_crate = crate_types.contains(&CrateType::ProcMacro);
         let playground_url = matches.opt_str("playground-url");
         let maybe_sysroot = matches.opt_str("sysroot").map(PathBuf::from);
         let module_sorting = if matches.opt_present("sort-modules-by-appearance") {
@@ -718,7 +717,7 @@ impl Options {
             rustc_feature::UnstableFeatures::from_environment(crate_name.as_deref());
         let options = Options {
             input,
-            proc_macro_crate,
+            crate_types,
             error_format,
             diagnostic_width,
             libs,
