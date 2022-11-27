@@ -178,42 +178,6 @@ LL +     println!("{local_f64:.1}");
    |
 
 error: variables can be used directly in the `format!` string
-  --> $DIR/uninlined_format_args.rs:59:5
-   |
-LL |     println!("Hello {} is {:.*}", "x", local_i32, local_f64);
-   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
-   |
-help: change this to
-   |
-LL -     println!("Hello {} is {:.*}", "x", local_i32, local_f64);
-LL +     println!("Hello {} is {local_f64:.local_i32$}", "x");
-   |
-
-error: variables can be used directly in the `format!` string
-  --> $DIR/uninlined_format_args.rs:60:5
-   |
-LL |     println!("Hello {} is {:.*}", local_i32, 5, local_f64);
-   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
-   |
-help: change this to
-   |
-LL -     println!("Hello {} is {:.*}", local_i32, 5, local_f64);
-LL +     println!("Hello {local_i32} is {local_f64:.*}", 5);
-   |
-
-error: variables can be used directly in the `format!` string
-  --> $DIR/uninlined_format_args.rs:61:5
-   |
-LL |     println!("Hello {} is {2:.*}", local_i32, 5, local_f64);
-   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
-   |
-help: change this to
-   |
-LL -     println!("Hello {} is {2:.*}", local_i32, 5, local_f64);
-LL +     println!("Hello {local_i32} is {local_f64:.*}", 5);
-   |
-
-error: variables can be used directly in the `format!` string
   --> $DIR/uninlined_format_args.rs:62:5
    |
 LL |     println!("{} {}", local_i32, local_f64);
@@ -223,18 +187,6 @@ help: change this to
    |
 LL -     println!("{} {}", local_i32, local_f64);
 LL +     println!("{local_i32} {local_f64}");
-   |
-
-error: variables can be used directly in the `format!` string
-  --> $DIR/uninlined_format_args.rs:63:5
-   |
-LL |     println!("{}, {}", local_i32, local_opt.unwrap());
-   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
-   |
-help: change this to
-   |
-LL -     println!("{}, {}", local_i32, local_opt.unwrap());
-LL +     println!("{local_i32}, {}", local_opt.unwrap());
    |
 
 error: variables can be used directly in the `format!` string
@@ -904,5 +856,5 @@ LL -     println!("expand='{}'", local_i32);
 LL +     println!("expand='{local_i32}'");
    |
 
-error: aborting due to 76 previous errors
+error: aborting due to 72 previous errors
 

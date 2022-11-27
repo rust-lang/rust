@@ -321,13 +321,6 @@ fn check_uninlined_args(
                 Applicability::MachineApplicable,
                 if multiline_fix { CompletelyHidden } else { ShowCode },
             );
-            if ignore_mixed {
-                // Improve lint config discoverability
-                diag.note_once(
-                    "this lint can also fix mixed format arg inlining if \
-                    `allow-mixed-uninlined-format-args = false` is set in the `clippy.toml` file",
-                );
-            }
         },
     );
 }
