@@ -1,0 +1,37 @@
+error[E0277]: expected a `FnMut<(char,)>` closure, found `String`
+  --> $DIR/issue-104961.rs:4:19
+   |
+LL |     x.starts_with("hi".to_string() + " you")
+   |       ----------- ^^^^^^^^^^^^^^^^^^^^^^^^^ the trait `Pattern<'_>` is not implemented for `String`
+   |       |
+   |       required by a bound introduced by this call
+   |
+   = note: the trait bound `String: Pattern<'_>` is not satisfied
+   = note: required for `String` to implement `Pattern<'_>`
+note: required by a bound in `core::str::<impl str>::starts_with`
+  --> $SRC_DIR/core/src/str/mod.rs:LL:COL
+help: consider borrowing here
+   |
+LL |     x.starts_with(&("hi".to_string() + " you"))
+   |                   ++                         +
+
+error[E0277]: expected a `FnMut<(char,)>` closure, found `String`
+  --> $DIR/issue-104961.rs:9:19
+   |
+LL |     x.starts_with("hi".to_string())
+   |       ----------- ^^^^^^^^^^^^^^^^ the trait `Pattern<'_>` is not implemented for `String`
+   |       |
+   |       required by a bound introduced by this call
+   |
+   = note: the trait bound `String: Pattern<'_>` is not satisfied
+   = note: required for `String` to implement `Pattern<'_>`
+note: required by a bound in `core::str::<impl str>::starts_with`
+  --> $SRC_DIR/core/src/str/mod.rs:LL:COL
+help: consider borrowing here
+   |
+LL |     x.starts_with(&"hi".to_string())
+   |                   +
+
+error: aborting due to 2 previous errors
+
+For more information about this error, try `rustc --explain E0277`.
