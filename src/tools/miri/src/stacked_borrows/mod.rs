@@ -392,7 +392,7 @@ impl<'tcx> Stack {
 
         // Step 1: Find granting item.
         let granting_idx =
-            self.find_granting(access, tag, exposed_tags).map_err(|_| dcx.access_error(self))?;
+            self.find_granting(access, tag, exposed_tags).map_err(|()| dcx.access_error(self))?;
 
         // Step 2: Remove incompatible items above them.  Make sure we do not remove protected
         // items.  Behavior differs for reads and writes.
@@ -476,8 +476,7 @@ impl<'tcx> Stack {
     ) -> InterpResult<'tcx> {
         // Step 1: Make a write access.
         // As part of this we do regular protector checking, i.e. even weakly protected items cause UB when popped.
-        self.access(AccessKind::Write, tag, global, dcx, exposed_tags)
-            .map_err(|_| dcx.dealloc_error())?;
+        self.access(AccessKind::Write, tag, global, dcx, exposed_tags)?;
 
         // Step 2: Pretend we remove the remaining items, checking if any are strongly protected.
         for idx in (0..self.len()).rev() {
@@ -489,39 +488,42 @@ impl<'tcx> Stack {
     }
 
     /// Derive a new pointer from one with the given tag.
-    /// `weak` controls whether this operation is weak or strong: weak granting does not act as
-    /// an access, and they add the new item directly on top of the one it is derived
-    /// from instead of all the way at the top of the stack.
-    /// `range` refers the entire operation, and `offset` refers to the specific location in
-    /// `range` that we are currently checking.
+    ///
+    /// `access` indicates which kind of memory access this retag itself should correspond to.
     fn grant(
         &mut self,
         derived_from: ProvenanceExtra,
         new: Item,
+        access: Option<AccessKind>,
         global: &GlobalStateInner,
         dcx: &mut DiagnosticCx<'_, '_, '_, 'tcx>,
         exposed_tags: &FxHashSet<SbTag>,
     ) -> InterpResult<'tcx> {
         dcx.start_grant(new.perm());
 
-        // Figure out which access `perm` corresponds to.
-        let access =
-            if new.perm().grants(AccessKind::Write) { AccessKind::Write } else { AccessKind::Read };
-
-        // Now we figure out which item grants our parent (`derived_from`) this kind of access.
-        // We use that to determine where to put the new item.
-        let granting_idx = self
-            .find_granting(access, derived_from, exposed_tags)
-            .map_err(|_| dcx.grant_error(new.perm(), self))?;
-
         // Compute where to put the new item.
         // Either way, we ensure that we insert the new item in a way such that between
         // `derived_from` and the new one, there are only items *compatible with* `derived_from`.
-        let new_idx = if new.perm() == Permission::SharedReadWrite {
-            assert!(
-                access == AccessKind::Write,
-                "this case only makes sense for stack-like accesses"
-            );
+        let new_idx = if let Some(access) = access {
+            // Simple case: We are just a regular memory access, and then push our thing on top,
+            // like a regular stack.
+            // This ensures F2b for `Unique`, by removing offending `SharedReadOnly`.
+            self.access(access, derived_from, global, dcx, exposed_tags)?;
+
+            // We insert "as far up as possible": We know only compatible items are remaining
+            // on top of `derived_from`, and we want the new item at the top so that we
+            // get the strongest possible guarantees.
+            // This ensures U1 and F1.
+            self.len()
+        } else {
+            // The tricky case: creating a new SRW permission without actually being an access.
+            assert!(new.perm() == Permission::SharedReadWrite);
+
+            // First we figure out which item grants our parent (`derived_from`) this kind of access.
+            // We use that to determine where to put the new item.
+            let granting_idx = self
+                .find_granting(AccessKind::Write, derived_from, exposed_tags)
+                .map_err(|()| dcx.grant_error(self))?;
 
             let (Some(granting_idx), ProvenanceExtra::Concrete(_)) = (granting_idx, derived_from) else {
                 // The parent is a wildcard pointer or matched the unknown bottom.
@@ -538,17 +540,6 @@ impl<'tcx> Stack {
             // be popped to (i.e., we insert it above all the write-compatible items).
             // This ensures F2b by adding the new item below any potentially existing `SharedReadOnly`.
             self.find_first_write_incompatible(granting_idx)
-        } else {
-            // A "safe" reborrow for a pointer that actually expects some aliasing guarantees.
-            // Here, creating a reference actually counts as an access.
-            // This ensures F2b for `Unique`, by removing offending `SharedReadOnly`.
-            self.access(access, derived_from, global, dcx, exposed_tags)?;
-
-            // We insert "as far up as possible": We know only compatible items are remaining
-            // on top of `derived_from`, and we want the new item at the top so that we
-            // get the strongest possible guarantees.
-            // This ensures U1 and F1.
-            self.len()
         };
 
         // Put the new item there.
@@ -653,7 +644,6 @@ impl Stacks {
         alloc_id: AllocId,
         tag: ProvenanceExtra,
         range: AllocRange,
-        state: &GlobalState,
         machine: &'ecx MiriMachine<'mir, 'tcx>,
     ) -> InterpResult<'tcx>
     where
@@ -666,7 +656,7 @@ impl Stacks {
             range.size.bytes()
         );
         let dcx = DiagnosticCxBuilder::read(machine, tag, range);
-        let state = state.borrow();
+        let state = machine.stacked_borrows.as_ref().unwrap().borrow();
         self.for_each(range, dcx, |stack, dcx, exposed_tags| {
             stack.access(AccessKind::Read, tag, &state, dcx, exposed_tags)
         })
@@ -678,8 +668,7 @@ impl Stacks {
         alloc_id: AllocId,
         tag: ProvenanceExtra,
         range: AllocRange,
-        state: &GlobalState,
-        machine: &'ecx MiriMachine<'mir, 'tcx>,
+        machine: &'ecx mut MiriMachine<'mir, 'tcx>,
     ) -> InterpResult<'tcx> {
         trace!(
             "write access with tag {:?}: {:?}, size {}",
@@ -688,7 +677,7 @@ impl Stacks {
             range.size.bytes()
         );
         let dcx = DiagnosticCxBuilder::write(machine, tag, range);
-        let state = state.borrow();
+        let state = machine.stacked_borrows.as_ref().unwrap().borrow();
         self.for_each(range, dcx, |stack, dcx, exposed_tags| {
             stack.access(AccessKind::Write, tag, &state, dcx, exposed_tags)
         })
@@ -700,12 +689,11 @@ impl Stacks {
         alloc_id: AllocId,
         tag: ProvenanceExtra,
         range: AllocRange,
-        state: &GlobalState,
-        machine: &'ecx MiriMachine<'mir, 'tcx>,
+        machine: &'ecx mut MiriMachine<'mir, 'tcx>,
     ) -> InterpResult<'tcx> {
         trace!("deallocation with tag {:?}: {:?}, size {}", tag, alloc_id, range.size.bytes());
         let dcx = DiagnosticCxBuilder::dealloc(machine, tag);
-        let state = state.borrow();
+        let state = machine.stacked_borrows.as_ref().unwrap().borrow();
         self.for_each(range, dcx, |stack, dcx, exposed_tags| {
             stack.dealloc(tag, &state, dcx, exposed_tags)
         })?;
@@ -864,26 +852,30 @@ trait EvalContextPrivExt<'mir: 'ecx, 'tcx: 'mir, 'ecx>: crate::MiriInterpCxExt<'
         // Update the stacks.
         // Make sure that raw pointers and mutable shared references are reborrowed "weak":
         // There could be existing unique pointers reborrowed from them that should remain valid!
-        let perm = match kind {
-            RefKind::Unique { two_phase: false }
-                if place.layout.ty.is_unpin(*this.tcx, this.param_env()) =>
-            {
-                // Only if the type is unpin do we actually enforce uniqueness
-                Permission::Unique
+        let (perm, access) = match kind {
+            RefKind::Unique { two_phase } => {
+                // Permission is Unique only if the type is `Unpin` and this is not twophase
+                let perm = if !two_phase && place.layout.ty.is_unpin(*this.tcx, this.param_env()) {
+                    Permission::Unique
+                } else {
+                    Permission::SharedReadWrite
+                };
+                // We do an access for all full borrows, even if `!Unpin`.
+                let access = if !two_phase { Some(AccessKind::Write) } else { None };
+                (perm, access)
             }
-            RefKind::Unique { .. } => {
-                // Two-phase references and !Unpin references are treated as SharedReadWrite
-                Permission::SharedReadWrite
+            RefKind::Raw { mutable: true } => {
+                // Creating a raw ptr does not count as an access
+                (Permission::SharedReadWrite, None)
             }
-            RefKind::Raw { mutable: true } => Permission::SharedReadWrite,
             RefKind::Shared | RefKind::Raw { mutable: false } => {
                 // Shared references and *const are a whole different kind of game, the
                 // permission is not uniform across the entire range!
                 // We need a frozen-sensitive reborrow.
                 // We have to use shared references to alloc/memory_extra here since
                 // `visit_freeze_sensitive` needs to access the global state.
-                let extra = this.get_alloc_extra(alloc_id)?;
-                let mut stacked_borrows = extra
+                let alloc_extra = this.get_alloc_extra(alloc_id)?;
+                let mut stacked_borrows = alloc_extra
                     .stacked_borrows
                     .as_ref()
                     .expect("we should have Stacked Borrows data")
@@ -892,10 +884,13 @@ trait EvalContextPrivExt<'mir: 'ecx, 'tcx: 'mir, 'ecx>: crate::MiriInterpCxExt<'
                     // Adjust range.
                     range.start += base_offset;
                     // We are only ever `SharedReadOnly` inside the frozen bits.
-                    let perm = if frozen {
-                        Permission::SharedReadOnly
+                    let (perm, access) = if frozen {
+                        (Permission::SharedReadOnly, Some(AccessKind::Read))
                     } else {
-                        Permission::SharedReadWrite
+                        // Inside UnsafeCell, this does *not* count as an access, as there
+                        // might actually be mutable references further up the stack that
+                        // we have to keep alive.
+                        (Permission::SharedReadWrite, None)
                     };
                     let protected = if frozen {
                         protect.is_some()
@@ -914,8 +909,17 @@ trait EvalContextPrivExt<'mir: 'ecx, 'tcx: 'mir, 'ecx>: crate::MiriInterpCxExt<'
                         alloc_range(base_offset, size),
                     );
                     stacked_borrows.for_each(range, dcx, |stack, dcx, exposed_tags| {
-                        stack.grant(orig_tag, item, &global, dcx, exposed_tags)
-                    })
+                        stack.grant(orig_tag, item, access, &global, dcx, exposed_tags)
+                    })?;
+                    drop(global);
+                    if let Some(access) = access {
+                        assert_eq!(access, AccessKind::Read);
+                        // Make sure the data race model also knows about this.
+                        if let Some(data_race) = alloc_extra.data_race.as_ref() {
+                            data_race.read(alloc_id, range, &this.machine)?;
+                        }
+                    }
+                    Ok(())
                 })?;
                 return Ok(Some(alloc_id));
             }
@@ -941,8 +945,16 @@ trait EvalContextPrivExt<'mir: 'ecx, 'tcx: 'mir, 'ecx>: crate::MiriInterpCxExt<'
             alloc_range(base_offset, size),
         );
         stacked_borrows.for_each(range, dcx, |stack, dcx, exposed_tags| {
-            stack.grant(orig_tag, item, &global, dcx, exposed_tags)
+            stack.grant(orig_tag, item, access, &global, dcx, exposed_tags)
         })?;
+        drop(global);
+        if let Some(access) = access {
+            assert_eq!(access, AccessKind::Write);
+            // Make sure the data race model also knows about this.
+            if let Some(data_race) = alloc_extra.data_race.as_mut() {
+                data_race.write(alloc_id, range, machine)?;
+            }
+        }
 
         Ok(Some(alloc_id))
     }

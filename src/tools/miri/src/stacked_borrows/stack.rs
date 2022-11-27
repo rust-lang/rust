@@ -367,10 +367,10 @@ impl<'tcx> Stack {
 
     /// Find all `Unique` elements in this borrow stack above `granting_idx`, pass a copy of them
     /// to the `visitor`, then set their `Permission` to `Disabled`.
-    pub fn disable_uniques_starting_at<V: FnMut(Item) -> crate::InterpResult<'tcx>>(
+    pub fn disable_uniques_starting_at(
         &mut self,
         disable_start: usize,
-        mut visitor: V,
+        mut visitor: impl FnMut(Item) -> crate::InterpResult<'tcx>,
     ) -> crate::InterpResult<'tcx> {
         #[cfg(feature = "stack-cache")]
         let unique_range = self.unique_range.clone();

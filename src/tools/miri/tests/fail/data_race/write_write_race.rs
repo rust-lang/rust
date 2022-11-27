@@ -1,5 +1,5 @@
 // We want to control preemption here.
-//@compile-flags: -Zmiri-preemption-rate=0
+//@compile-flags: -Zmiri-preemption-rate=0 -Zmiri-disable-stacked-borrows
 
 use std::thread::spawn;
 

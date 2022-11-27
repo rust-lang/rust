@@ -353,10 +353,12 @@ impl<'history, 'ecx, 'mir, 'tcx> DiagnosticCx<'history, 'ecx, 'mir, 'tcx> {
 
     /// Report a descriptive error when `new` could not be granted from `derived_from`.
     #[inline(never)] // This is only called on fatal code paths
-    pub(super) fn grant_error(&self, perm: Permission, stack: &Stack) -> InterpError<'tcx> {
+    pub(super) fn grant_error(&self, stack: &Stack) -> InterpError<'tcx> {
         let Operation::Retag(op) = &self.operation else {
             unreachable!("grant_error should only be called during a retag")
         };
+        let perm =
+            op.permission.expect("`start_grant` must be called before calling `grant_error`");
         let action = format!(
             "trying to retag from {:?} for {:?} permission at {:?}[{:#x}]",
             op.orig_tag,
@@ -374,8 +376,11 @@ impl<'history, 'ecx, 'mir, 'tcx> DiagnosticCx<'history, 'ecx, 'mir, 'tcx> {
     /// Report a descriptive error when `access` is not permitted based on `tag`.
     #[inline(never)] // This is only called on fatal code paths
     pub(super) fn access_error(&self, stack: &Stack) -> InterpError<'tcx> {
-        let Operation::Access(op) = &self.operation  else {
-            unreachable!("access_error should only be called during an access")
+        // Deallocation and retagging also do an access as part of their thing, so handle that here, too.
+        let op = match &self.operation {
+            Operation::Access(op) => op,
+            Operation::Retag(_) => return self.grant_error(stack),
+            Operation::Dealloc(_) => return self.dealloc_error(stack),
         };
         let action = format!(
             "attempting a {access} using {tag:?} at {alloc_id:?}[{offset:#x}]",
@@ -428,14 +433,16 @@ impl<'history, 'ecx, 'mir, 'tcx> DiagnosticCx<'history, 'ecx, 'mir, 'tcx> {
     }
 
     #[inline(never)] // This is only called on fatal code paths
-    pub fn dealloc_error(&self) -> InterpError<'tcx> {
+    pub fn dealloc_error(&self, stack: &Stack) -> InterpError<'tcx> {
         let Operation::Dealloc(op) = &self.operation else {
             unreachable!("dealloc_error should only be called during a deallocation")
         };
         err_sb_ub(
             format!(
-                "no item granting write access for deallocation to tag {:?} at {:?} found in borrow stack",
-                op.tag, self.history.id,
+                "attempting deallocation using {tag:?} at {alloc_id:?}{cause}",
+                tag = op.tag,
+                alloc_id = self.history.id,
+                cause = error_cause(stack, op.tag),
             ),
             None,
             op.tag.and_then(|tag| self.get_logs_relevant_to(tag, None)),

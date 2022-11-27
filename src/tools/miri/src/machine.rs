@@ -1003,21 +1003,12 @@ impl<'mir, 'tcx> Machine<'mir, 'tcx> for MiriMachine<'mir, 'tcx> {
         range: AllocRange,
     ) -> InterpResult<'tcx> {
         if let Some(data_race) = &alloc_extra.data_race {
-            data_race.read(
-                alloc_id,
-                range,
-                machine.data_race.as_ref().unwrap(),
-                &machine.threads,
-            )?;
+            data_race.read(alloc_id, range, machine)?;
         }
         if let Some(stacked_borrows) = &alloc_extra.stacked_borrows {
-            stacked_borrows.borrow_mut().before_memory_read(
-                alloc_id,
-                prov_extra,
-                range,
-                machine.stacked_borrows.as_ref().unwrap(),
-                machine,
-            )?;
+            stacked_borrows
+                .borrow_mut()
+                .before_memory_read(alloc_id, prov_extra, range, machine)?;
         }
         if let Some(weak_memory) = &alloc_extra.weak_memory {
             weak_memory.memory_accessed(range, machine.data_race.as_ref().unwrap());
@@ -1034,21 +1025,10 @@ impl<'mir, 'tcx> Machine<'mir, 'tcx> for MiriMachine<'mir, 'tcx> {
         range: AllocRange,
     ) -> InterpResult<'tcx> {
         if let Some(data_race) = &mut alloc_extra.data_race {
-            data_race.write(
-                alloc_id,
-                range,
-                machine.data_race.as_mut().unwrap(),
-                &machine.threads,
-            )?;
+            data_race.write(alloc_id, range, machine)?;
         }
         if let Some(stacked_borrows) = &mut alloc_extra.stacked_borrows {
-            stacked_borrows.get_mut().before_memory_write(
-                alloc_id,
-                prov_extra,
-                range,
-                machine.stacked_borrows.as_ref().unwrap(),
-                machine,
-            )?;
+            stacked_borrows.get_mut().before_memory_write(alloc_id, prov_extra, range, machine)?;
         }
         if let Some(weak_memory) = &alloc_extra.weak_memory {
             weak_memory.memory_accessed(range, machine.data_race.as_ref().unwrap());
@@ -1068,19 +1048,13 @@ impl<'mir, 'tcx> Machine<'mir, 'tcx> for MiriMachine<'mir, 'tcx> {
             machine.emit_diagnostic(NonHaltingDiagnostic::FreedAlloc(alloc_id));
         }
         if let Some(data_race) = &mut alloc_extra.data_race {
-            data_race.deallocate(
-                alloc_id,
-                range,
-                machine.data_race.as_mut().unwrap(),
-                &machine.threads,
-            )?;
+            data_race.deallocate(alloc_id, range, machine)?;
         }
         if let Some(stacked_borrows) = &mut alloc_extra.stacked_borrows {
             stacked_borrows.get_mut().before_memory_deallocation(
                 alloc_id,
                 prove_extra,
                 range,
-                machine.stacked_borrows.as_ref().unwrap(),
                 machine,
             )
         } else {
