@@ -90,8 +90,7 @@ pub use crate::concurrency::{
     init_once::{EvalContextExt as _, InitOnceId},
     sync::{CondvarId, EvalContextExt as _, MutexId, RwLockId, SyncId},
     thread::{
-        EvalContextExt as _, SchedulingAction, StackEmptyCallback, ThreadId, ThreadManager,
-        ThreadState, Time,
+        EvalContextExt as _, SchedulingAction, StackEmptyCallback, ThreadId, ThreadManager, Time,
     },
 };
 pub use crate::diagnostics::{
@@ -110,7 +109,7 @@ pub use crate::mono_hash_map::MonoHashMap;
 pub use crate::operator::EvalContextExt as _;
 pub use crate::range_map::RangeMap;
 pub use crate::stacked_borrows::{
-    CallId, EvalContextExt as _, Item, Permission, RetagFields, SbTag, Stack, Stacks,
+    CallId, EvalContextExt as _, Item, Permission, RetagFields, SbTag,
 };
 pub use crate::tag_gc::{EvalContextExt as _, VisitTags};
 

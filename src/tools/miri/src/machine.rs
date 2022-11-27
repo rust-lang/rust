@@ -908,7 +908,13 @@ impl<'mir, 'tcx> Machine<'mir, 'tcx> for MiriMachine<'mir, 'tcx> {
 
         let alloc = alloc.into_owned();
         let stacks = ecx.machine.stacked_borrows.as_ref().map(|stacked_borrows| {
-            Stacks::new_allocation(id, alloc.size(), stacked_borrows, kind, &ecx.machine)
+            stacked_borrows::Stacks::new_allocation(
+                id,
+                alloc.size(),
+                stacked_borrows,
+                kind,
+                &ecx.machine,
+            )
         });
         let race_alloc = ecx.machine.data_race.as_ref().map(|data_race| {
             data_race::AllocExtra::new_allocation(
