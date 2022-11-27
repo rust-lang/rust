@@ -12,7 +12,7 @@ use rustc_middle::lint::in_external_macro;
 use rustc_middle::ty::subst::GenericArgKind;
 use rustc_session::{declare_lint_pass, declare_tool_lint};
 use rustc_span::source_map::Span;
-use rustc_span::BytePos;
+use rustc_span::{BytePos, Pos};
 
 declare_clippy_lint! {
     /// ### What it does
@@ -293,13 +293,12 @@ fn last_statement_borrows<'tcx>(cx: &LateContext<'tcx>, expr: &'tcx Expr<'tcx>) 
 }
 
 // Go backwards while encountering whitespace and extend the given Span to that point.
-#[expect(clippy::cast_possible_truncation)]
 fn extend_span_to_previous_non_ws(cx: &LateContext<'_>, sp: Span) -> Span {
     if let Ok(prev_source) = cx.sess().source_map().span_to_prev_source(sp) {
         let ws = [' ', '\t', '\n'];
         if let Some(non_ws_pos) = prev_source.rfind(|c| !ws.contains(&c)) {
             let len = prev_source.len() - non_ws_pos - 1;
-            return sp.with_lo(BytePos(sp.lo().0 - len as u32));
+            return sp.with_lo(sp.lo() - BytePos::from_usize(len));
         }
     }
 
