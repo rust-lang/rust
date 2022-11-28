@@ -148,11 +148,6 @@ impl<'tcx> Const<'tcx> {
         }
     }
 
-    pub fn from_scalar_int(tcx: TyCtxt<'tcx>, i: ScalarInt, ty: Ty<'tcx>) -> Self {
-        let valtree = ty::ValTree::from_scalar_int(i);
-        tcx.mk_const(valtree, ty)
-    }
-
     #[inline]
     /// Creates a constant with the given integer value and interns it.
     pub fn from_bits(tcx: TyCtxt<'tcx>, bits: u128, ty: ParamEnvAnd<'tcx, Ty<'tcx>>) -> Self {
@@ -160,7 +155,10 @@ impl<'tcx> Const<'tcx> {
             .layout_of(ty)
             .unwrap_or_else(|e| panic!("could not compute layout for {:?}: {:?}", ty, e))
             .size;
-        Self::from_scalar_int(tcx, ScalarInt::try_from_uint(bits, size).unwrap(), ty.value)
+        tcx.mk_const(
+            ty::ValTree::from_scalar_int(ScalarInt::try_from_uint(bits, size).unwrap()),
+            ty.value,
+        )
     }
 
     #[inline]
