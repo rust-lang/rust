@@ -27,7 +27,7 @@ use crate::*;
 /// When the main thread would exit, we will yield to any other thread that is ready to execute.
 /// But we must only do that a finite number of times, or a background thread running `loop {}`
 /// will hang the program.
-const MAIN_THREAD_YIELDS_AT_SHUTDOWN: u32 = 1_000;
+const MAIN_THREAD_YIELDS_AT_SHUTDOWN: u32 = 256;
 
 #[derive(Copy, Clone, Debug, PartialEq)]
 pub enum AlignmentCheck {
@@ -208,8 +208,12 @@ impl MainThreadState {
                         // Give background threads a chance to finish by yielding the main thread a
                         // couple of times -- but only if we would also preempt threads randomly.
                         if this.machine.preemption_rate > 0.0 {
+                            // There is a non-zero chance they will yield back to us often enough to
+                            // make Miri terminate eventually.
                             *self = Yield { remaining: MAIN_THREAD_YIELDS_AT_SHUTDOWN };
                         } else {
+                            // The other threads did not get preempted, so no need to yield back to
+                            // them.
                             *self = Done;
                         }
                     }
