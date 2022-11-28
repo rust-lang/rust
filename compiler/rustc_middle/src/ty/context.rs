@@ -2598,8 +2598,8 @@ impl<'tcx> TyCtxt<'tcx> {
     }
 
     #[inline]
-    pub fn mk_const(self, kind: ty::ConstKind<'tcx>, ty: Ty<'tcx>) -> Const<'tcx> {
-        self.mk_const_internal(ty::ConstS { kind, ty })
+    pub fn mk_const(self, kind: impl Into<ty::ConstKind<'tcx>>, ty: Ty<'tcx>) -> Const<'tcx> {
+        self.mk_const_internal(ty::ConstS { kind: kind.into(), ty })
     }
 
     #[inline]

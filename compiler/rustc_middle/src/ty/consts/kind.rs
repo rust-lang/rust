@@ -49,6 +49,7 @@ impl<'tcx> UnevaluatedConst<'tcx> {
 /// Represents a constant in Rust.
 #[derive(Copy, Clone, Debug, Eq, PartialEq, PartialOrd, Ord, TyEncodable, TyDecodable)]
 #[derive(Hash, HashStable, TypeFoldable, TypeVisitable)]
+#[derive(derive_more::From)]
 pub enum ConstKind<'tcx> {
     /// A const generic parameter.
     Param(ty::ParamConst),
@@ -71,10 +72,17 @@ pub enum ConstKind<'tcx> {
 
     /// A placeholder for a const which could not be computed; this is
     /// propagated to avoid useless error messages.
+    #[from(ignore)]
     Error(ErrorGuaranteed),
 
     /// Expr which contains an expression which has partially evaluated items.
     Expr(Expr<'tcx>),
+}
+
+impl<'tcx> From<ty::ConstVid<'tcx>> for ConstKind<'tcx> {
+    fn from(const_vid: ty::ConstVid<'tcx>) -> Self {
+        InferConst::Var(const_vid).into()
+    }
 }
 
 #[derive(Copy, Clone, Debug, Eq, PartialEq, PartialOrd, Ord, Hash)]
