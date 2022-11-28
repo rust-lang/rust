@@ -49,13 +49,14 @@ pub fn main() {
     env::set_var("CG_CLIF_DISPLAY_CG_TIME", "1");
     env::set_var("CG_CLIF_DISABLE_INCR_CACHE", "1");
 
+    std::fs::create_dir_all("build").unwrap();
+
     {
         // Make sure we always explicitly specify the target dir
         let target = "build/target_dir_should_be_set_explicitly";
         env::set_var("CARGO_TARGET_DIR", target);
-        std::fs::create_dir_all("build").unwrap();
         let _ = std::fs::remove_file(target);
-        let file = std::fs::File::create(target).unwrap();
+        std::fs::File::create(target).unwrap();
     }
 
     if is_ci() {

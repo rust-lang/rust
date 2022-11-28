@@ -1,5 +1,5 @@
 use std::fs;
-use std::path::{Path, PathBuf};
+use std::path::Path;
 use std::process::{self, Command};
 
 use super::rustc_info::{get_file_name, get_rustc_version, get_wrapper_file_name};
@@ -40,7 +40,7 @@ pub(crate) fn build_sysroot(
 
         let mut build_cargo_wrapper_cmd = Command::new("rustc");
         build_cargo_wrapper_cmd
-            .arg(PathBuf::from("scripts").join(format!("{wrapper}.rs")))
+            .arg(Path::new("scripts").join(format!("{wrapper}.rs")))
             .arg("-o")
             .arg(dist_dir.join(wrapper_name))
             .arg("-g");
@@ -149,7 +149,7 @@ pub(crate) fn build_sysroot(
     }
 }
 
-static STANDARD_LIBRARY: CargoProject = CargoProject::local("build_sysroot");
+static STANDARD_LIBRARY: CargoProject = CargoProject::local("build_sysroot", "build_sysroot");
 
 fn build_clif_sysroot_for_triple(
     channel: &str,
@@ -176,7 +176,7 @@ fn build_clif_sysroot_for_triple(
         }
     }
 
-    let build_dir = Path::new("build_sysroot").join("target").join(triple).join(channel);
+    let build_dir = STANDARD_LIBRARY.target_dir().join(triple).join(channel);
 
     if !super::config::get_bool("keep_sysroot") {
         // Cleanup the deps dir, but keep build scripts and the incremental cache for faster
@@ -207,10 +207,7 @@ fn build_clif_sysroot_for_triple(
     spawn_and_wait(build_cmd);
 
     // Copy all relevant files to the sysroot
-    for entry in
-        fs::read_dir(Path::new("build_sysroot/target").join(triple).join(channel).join("deps"))
-            .unwrap()
-    {
+    for entry in fs::read_dir(build_dir.join("deps")).unwrap() {
         let entry = entry.unwrap();
         if let Some(ext) = entry.path().extension() {
             if ext == "rmeta" || ext == "d" || ext == "dSYM" || ext == "clif" {

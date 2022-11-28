@@ -223,12 +223,12 @@ const BASE_SYSROOT_SUITE: &[TestCase] = &[
 pub(crate) static RAND_REPO: GitRepo =
     GitRepo::github("rust-random", "rand", "0f933f9c7176e53b2a3c7952ded484e1783f0bf1", "rand");
 
-static RAND: CargoProject = CargoProject::git(&RAND_REPO, ".");
+static RAND: CargoProject = CargoProject::git(&RAND_REPO, ".", "rand");
 
 pub(crate) static REGEX_REPO: GitRepo =
     GitRepo::github("rust-lang", "regex", "341f207c1071f7290e3f228c710817c280c8dca1", "regex");
 
-static REGEX: CargoProject = CargoProject::git(&REGEX_REPO, ".");
+static REGEX: CargoProject = CargoProject::git(&REGEX_REPO, ".", "regex");
 
 pub(crate) static PORTABLE_SIMD_REPO: GitRepo = GitRepo::github(
     "rust-lang",
@@ -237,7 +237,7 @@ pub(crate) static PORTABLE_SIMD_REPO: GitRepo = GitRepo::github(
     "portable-simd",
 );
 
-static PORTABLE_SIMD: CargoProject = CargoProject::git(&PORTABLE_SIMD_REPO, ".");
+static PORTABLE_SIMD: CargoProject = CargoProject::git(&PORTABLE_SIMD_REPO, ".", "portable_simd");
 
 pub(crate) static SIMPLE_RAYTRACER_REPO: GitRepo = GitRepo::github(
     "ebobby",
@@ -246,10 +246,11 @@ pub(crate) static SIMPLE_RAYTRACER_REPO: GitRepo = GitRepo::github(
     "<none>",
 );
 
-pub(crate) static SIMPLE_RAYTRACER: CargoProject = CargoProject::git(&SIMPLE_RAYTRACER_REPO, ".");
+pub(crate) static SIMPLE_RAYTRACER: CargoProject =
+    CargoProject::git(&SIMPLE_RAYTRACER_REPO, ".", "simple_raytracer");
 
 static LIBCORE_TESTS: CargoProject =
-    CargoProject::local("build_sysroot/sysroot_src/library/core/tests");
+    CargoProject::local("build_sysroot/sysroot_src/library/core/tests", "core_tests");
 
 const EXTENDED_SYSROOT_SUITE: &[TestCase] = &[
     TestCase::new("test.rust-random/rand", &|runner| {
@@ -276,7 +277,6 @@ const EXTENDED_SYSROOT_SUITE: &[TestCase] = &[
                 .unwrap()
                 .join("dist")
                 .join(get_wrapper_file_name("cargo-clif", "bin"));
-            let source_dir = SIMPLE_RAYTRACER.source_dir();
             let manifest_path = SIMPLE_RAYTRACER.manifest_path();
             let target_dir = SIMPLE_RAYTRACER.target_dir();
 
@@ -303,17 +303,15 @@ const EXTENDED_SYSROOT_SUITE: &[TestCase] = &[
             spawn_and_wait(bench_compile);
 
             eprintln!("[BENCH RUN] ebobby/simple-raytracer");
-            fs::copy(target_dir.join("debug").join("main"), source_dir.join("raytracer_cg_clif"))
-                .unwrap();
+            fs::copy(
+                target_dir.join("debug").join("main"),
+                Path::new("build").join("raytracer_cg_clif"),
+            )
+            .unwrap();
 
-            let mut bench_run = hyperfine_command(
-                0,
-                run_runs,
-                None,
-                &source_dir.join("raytracer_cg_llvm").display().to_string(),
-                &source_dir.join("raytracer_cg_clif").display().to_string(),
-            );
-            bench_run.current_dir(SIMPLE_RAYTRACER.source_dir());
+            let mut bench_run =
+                hyperfine_command(0, run_runs, None, "./raytracer_cg_llvm", "./raytracer_cg_clif");
+            bench_run.current_dir(Path::new("build"));
             spawn_and_wait(bench_run);
         } else {
             spawn_and_wait(SIMPLE_RAYTRACER.clean(&runner.target_compiler.cargo));
@@ -449,7 +447,7 @@ pub(crate) fn run_tests(
             &target_triple,
         );
 
-        let _ = fs::remove_dir_all(Path::new("target").join("out"));
+        let _ = fs::remove_dir_all(Path::new("build").join("example"));
         runner.run_testsuite(NO_SYSROOT_SUITE);
     } else {
         eprintln!("[SKIP] no_sysroot tests");
@@ -495,8 +493,8 @@ impl TestRunner {
         let root_dir = env::current_dir().unwrap();
 
         let mut out_dir = root_dir.clone();
-        out_dir.push("target");
-        out_dir.push("out");
+        out_dir.push("build");
+        out_dir.push("example");
 
         let is_native = host_triple == target_triple;
         let jit_supported =

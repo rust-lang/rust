@@ -51,15 +51,20 @@ enum CargoProjectSource {
 pub(crate) struct CargoProject {
     source: CargoProjectSource,
     path: &'static str,
+    target: &'static str,
 }
 
 impl CargoProject {
-    pub(crate) const fn local(path: &'static str) -> CargoProject {
-        CargoProject { source: CargoProjectSource::Local, path }
+    pub(crate) const fn local(path: &'static str, target: &'static str) -> CargoProject {
+        CargoProject { source: CargoProjectSource::Local, path, target }
     }
 
-    pub(crate) const fn git(git_repo: &'static GitRepo, path: &'static str) -> CargoProject {
-        CargoProject { source: CargoProjectSource::GitRepo(git_repo), path }
+    pub(crate) const fn git(
+        git_repo: &'static GitRepo,
+        path: &'static str,
+        target: &'static str,
+    ) -> CargoProject {
+        CargoProject { source: CargoProjectSource::GitRepo(git_repo), path, target }
     }
 
     pub(crate) fn source_dir(&self) -> PathBuf {
@@ -75,12 +80,7 @@ impl CargoProject {
     }
 
     pub(crate) fn target_dir(&self) -> PathBuf {
-        match self.source {
-            CargoProjectSource::Local => std::env::current_dir().unwrap(),
-            CargoProjectSource::GitRepo(git_repo) => git_repo.source_dir(),
-        }
-        .join(self.path)
-        .join("target")
+        std::env::current_dir().unwrap().join("build").join(self.target)
     }
 
     fn base_cmd(&self, command: &str, cargo: &Path) -> Command {

@@ -4,7 +4,7 @@ use std::path::PathBuf;
 use super::rustc_info::get_file_name;
 use super::utils::{is_ci, CargoProject, Compiler};
 
-static CG_CLIF: CargoProject = CargoProject::local(".");
+static CG_CLIF: CargoProject = CargoProject::local(".", "cg_clif");
 
 pub(crate) fn build_backend(
     channel: &str,
@@ -43,8 +43,7 @@ pub(crate) fn build_backend(
     super::utils::spawn_and_wait(cmd);
 
     CG_CLIF
-        .source_dir()
-        .join("target")
+        .target_dir()
         .join(host_triple)
         .join(channel)
         .join(get_file_name("rustc_codegen_cranelift", "dylib"))

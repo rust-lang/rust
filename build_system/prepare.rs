@@ -35,9 +35,7 @@ pub(crate) fn prepare() {
             .join(&host_compiler.triple)
             .join("debug")
             .join(get_file_name("main", "bin")),
-        super::tests::SIMPLE_RAYTRACER_REPO
-            .source_dir()
-            .join(get_file_name("raytracer_cg_llvm", "bin")),
+        Path::new("build").join(get_file_name("raytracer_cg_llvm", "bin")),
     )
     .unwrap();
 }
