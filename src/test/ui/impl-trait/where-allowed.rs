@@ -185,17 +185,15 @@ fn in_fn_where_clause()
 {
 }
 
-// Disallowed in where clauses
+// Allowed
 fn in_adt_in_fn_where_clause()
     where Vec<impl Debug>: Debug
-//~^ ERROR `impl Trait` only allowed in function and inherent method return types
 {
 }
 
-// Disallowed
+// Allowed
 fn in_trait_parameter_in_fn_where_clause<T>()
     where T: PartialEq<impl Debug>
-//~^ ERROR `impl Trait` only allowed in function and inherent method return types
 {
 }
 
