@@ -203,65 +203,32 @@ for more information about configuring VS Code and `rust-analyzer`.
 
 [rdg-r-a]: https://rustc-dev-guide.rust-lang.org/building/suggested.html#configuring-rust-analyzer-for-rustc
 
-## Advanced topic: other build environments
+## Advanced topic: Working on Miri in the rustc tree
 
 We described above the simplest way to get a working build environment for Miri,
 which is to use the version of rustc indicated by `rustc-version`. But
 sometimes, that is not enough.
 
-### Building Miri with a locally built rustc
+A big part of the Miri driver is shared with rustc, so working on Miri will
+sometimes require also working on rustc itself. In this case, you should *not*
+work in a clone of the Miri repository, but in a clone of the
+[main Rust repository](https://github.com/rust-lang/rust/). There is a copy of
+Miri located at `src/tools/miri` that you can work on directly. A maintainer
+will eventually sync those changes back into this repository.
 
-[building Miri with a locally built rustc]: #building-miri-with-a-locally-built-rustc
+When working on Miri in the rustc tree, here's how you can run tests:
 
-A big part of the Miri driver lives in rustc, so working on Miri will sometimes
-require using a locally built rustc. The bug you want to fix may actually be on
-the rustc side, or you just need to get more detailed trace of the execution
-than what is possible with release builds -- in both cases, you should develop
-Miri against a rustc you compiled yourself, with debug assertions (and hence
-tracing) enabled.
-
-The setup for a local rustc works as follows:
-```sh
-# Clone the rust-lang/rust repo.
-git clone https://github.com/rust-lang/rust rustc
-cd rustc
-# Create a config.toml with defaults for working on Miri.
-./x.py setup compiler
- # Now edit `config.toml` and under `[rust]` set `debug-assertions = true`.
-
-# Build a stage 2 rustc, and build the rustc libraries with that rustc.
-# This step can take 30 minutes or more.
-./x.py build --stage 2 compiler/rustc
-# If you change something, you can get a faster rebuild by doing
-./x.py build --keep-stage 0 --stage 2 compiler/rustc
-# You may have to change the architecture in the next command
-rustup toolchain link stage2 build/x86_64-unknown-linux-gnu/stage2
-# Now cd to your Miri directory, then configure rustup
-rustup override set stage2
+```
+./x.py test miri --stage 0
 ```
 
-Note: When you are working with a locally built rustc or any other toolchain that
-is not the same as the one in `rust-version`, you should not have `.auto-everything` or
-`.auto-toolchain` as that will keep resetting your toolchain.
+`--bless` will work, too.
 
-```sh
-rm -f .auto-everything .auto-toolchain
+You can also directly run Miri on a Rust source file:
+
 ```
-
-Important: You need to delete the Miri cache when you change the stdlib; otherwise the
-old, chached version will be used. On Linux, the cache is located at `~/.cache/miri`,
-and on Windows, it is located at `%LOCALAPPDATA%\rust-lang\miri\cache`; the exact
-location is printed after the library build: "A libstd for Miri is now available in ...".
-
-Note: `./x.py --stage 2 compiler/rustc` currently errors with `thread 'main'
-panicked at 'fs::read(stamp) failed with No such file or directory (os error 2)`,
-you can simply ignore that error; Miri will build anyway.
-
-For more information about building and configuring a local compiler,
-see <https://rustc-dev-guide.rust-lang.org/building/how-to-build-and-run.html>.
-
-With this, you should now have a working development setup! See
-[above](#building-and-testing-miri) for how to proceed working on Miri.
+./x.py run miri --stage 0 --args src/tools/miri/tests/pass/hello.rs
+```
 
 ## Advanced topic: Syncing with the rustc repo
 
