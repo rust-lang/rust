@@ -216,7 +216,7 @@ impl<'tcx> Queries<'tcx> {
             let crate_name = self.crate_name()?.peek().clone();
             let outputs = self.prepare_outputs()?.peek().clone();
             let dep_graph = self.dep_graph()?.peek().clone();
-            let (krate, resolver, lint_store) = self.expansion()?.take();
+            let (krate, resolver, lint_store) = self.expansion()?.peek().clone();
             Ok(passes::create_global_ctxt(
                 self.compiler,
                 lint_store,

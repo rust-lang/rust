@@ -1,0 +1,10 @@
+warning: function `dead_code` is never used
+  --> $DIR/no-borrowck-dead-code.rs:4:4
+   |
+LL | fn dead_code(s: &str) -> &'static str {
+   |    ^^^^^^^^^
+   |
+   = note: `#[warn(dead_code)]` on by default
+
+warning: 1 warning emitted
+

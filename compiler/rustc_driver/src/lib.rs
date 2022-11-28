@@ -371,6 +371,12 @@ fn run_compiler(
             // FIXME: is that true? maybe we can ignore unresolved locals in dead code and that sort of thing
             // That might require making name-resolution incremental, though.
             if !sess.opts.unstable_opts.borrowck_unreachable {
+                // Make sure the user sees dead code warnings, so they know which items aren't checked.
+                // Normally that's done by `tcx.analysis()`, but we bypass that here.
+                queries.global_ctxt()?.peek_mut().enter(|tcx| {
+                    tcx.hir()
+                        .par_for_each_module(|module| tcx.ensure().check_mod_deathness(module));
+                });
                 return queries.linker().map(Some);
             }
 

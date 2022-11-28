@@ -1,8 +1,8 @@
 // compile-flags: -Z borrowck-unreachable=no
 // run-pass
 
-fn dead_code(s: &str) -> &'static str {  //~ WARNING dead_code
-    s
+fn dead_code(s: &str) -> bool { //~ WARNING never used
+    true
 }
 
 fn main() {
