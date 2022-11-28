@@ -1186,16 +1186,6 @@ struct RootCollector<'a, 'tcx> {
 
 impl<'v> RootCollector<'_, 'v> {
     fn process_item(&mut self, id: hir::ItemId) {
-        let def_id = id.owner_id.def_id;
-        let (live_symbols, _) = self.tcx.live_symbols_and_ignored_derived_traits(());
-        if !live_symbols.contains(&def_id) {
-            // This is dead code; ignore it.
-            return;
-        }
-        // We need this for `-Zborrowck-unreachable=no`, since we don't borrowck the whole crate at once, only on-demand.
-        if self.tcx.hir().maybe_body_owned_by(def_id).is_some() {
-            self.tcx.ensure().mir_borrowck(def_id);
-        }
         match self.tcx.def_kind(id.owner_id) {
             DefKind::Enum | DefKind::Struct | DefKind::Union => {
                 let item = self.tcx.hir().item(id);

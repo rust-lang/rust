@@ -175,6 +175,13 @@ impl<'tcx> MonoItem<'tcx> {
             MonoItem::GlobalAsm(..) => return true,
         };
 
+        // We need this for `-Zborrowck-unreachable=no`, since we don't borrowck the whole crate at once, only on-demand.
+        if let Some(local) = def_id.as_local() {
+            if tcx.hir().maybe_body_owned_by(local).is_some() {
+                tcx.ensure().mir_borrowck(local);
+            }
+        }
+
         !tcx.subst_and_check_impossible_predicates((def_id, &substs))
     }
 
