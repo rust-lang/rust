@@ -47,7 +47,7 @@ declare_clippy_lint! {
     /// ```
     #[clippy::version = "1.59.0"]
     pub INDEX_REFUTABLE_SLICE,
-    nursery,
+    pedantic,
     "avoid indexing on slices which could be destructed"
 }
 
