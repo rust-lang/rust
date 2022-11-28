@@ -60,6 +60,8 @@ impl<'a> Validator<'a> {
 
     fn check_item(&mut self, id: &'a Id) {
         if let Some(item) = &self.krate.index.get(id) {
+            item.links.values().for_each(|id| self.add_any_id(id));
+
             match &item.inner {
                 ItemEnum::Import(x) => self.check_import(x),
                 ItemEnum::Union(x) => self.check_union(x),
@@ -376,6 +378,10 @@ impl<'a> Validator<'a> {
         }
     }
 
+    fn add_any_id(&mut self, id: &'a Id) {
+        self.add_id_checked(id, |_| true, "any kind of item");
+    }
+
     fn add_field_id(&mut self, id: &'a Id) {
         self.add_id_checked(id, Kind::is_struct_field, "StructField");
     }
@@ -446,3 +452,6 @@ fn set_remove<T: Hash + Eq + Clone>(set: &mut HashSet<T>) -> Option<T> {
         None
     }
 }
+
+#[cfg(test)]
+mod tests;
