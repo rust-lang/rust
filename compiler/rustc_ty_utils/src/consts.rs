@@ -125,11 +125,11 @@ fn recurse_build<'tcx>(
         }
         &ExprKind::NonHirLiteral { lit, user_ty: _ } => {
             let val = ty::ValTree::from_scalar_int(lit);
-            ty::Const::from_value(tcx, val, node.ty)
+            tcx.mk_const(val, node.ty)
         }
         &ExprKind::ZstLiteral { user_ty: _ } => {
             let val = ty::ValTree::zst();
-            ty::Const::from_value(tcx, val, node.ty)
+            tcx.mk_const(val, node.ty)
         }
         &ExprKind::NamedConst { def_id, substs, user_ty: _ } => {
             let uneval = ty::UnevaluatedConst::new(ty::WithOptConstParam::unknown(def_id), substs);

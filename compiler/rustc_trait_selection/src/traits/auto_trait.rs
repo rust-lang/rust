@@ -799,9 +799,7 @@ impl<'tcx> AutoTraitFinder<'tcx> {
                                 unevaluated,
                                 Some(obligation.cause.span),
                             ) {
-                                Ok(Some(valtree)) => {
-                                    Ok(ty::Const::from_value(selcx.tcx(), valtree, c.ty()))
-                                }
+                                Ok(Some(valtree)) => Ok(selcx.tcx().mk_const(valtree, c.ty())),
                                 Ok(None) => {
                                     let tcx = self.tcx;
                                     let def_id = unevaluated.def.did;

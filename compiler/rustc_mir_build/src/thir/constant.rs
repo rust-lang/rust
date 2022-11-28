@@ -61,5 +61,5 @@ pub(crate) fn lit_to_const<'tcx>(
         _ => return Err(LitToConstError::TypeError),
     };
 
-    Ok(ty::Const::from_value(tcx, valtree, ty))
+    Ok(tcx.mk_const(valtree, ty))
 }

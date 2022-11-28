@@ -1468,8 +1468,7 @@ pub trait PrettyPrinter<'tcx>:
             }
             // Aggregates, printed as array/tuple/struct/variant construction syntax.
             (ty::ValTree::Branch(_), ty::Array(..) | ty::Tuple(..) | ty::Adt(..)) => {
-                let contents =
-                    self.tcx().destructure_const(ty::Const::from_value(self.tcx(), valtree, ty));
+                let contents = self.tcx().destructure_const(self.tcx().mk_const(valtree, ty));
                 let fields = contents.fields.iter().copied();
                 match *ty.kind() {
                     ty::Array(..) => {

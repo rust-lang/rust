@@ -1580,7 +1580,7 @@ impl<'tcx> InferCtxt<'tcx> {
         span: Option<Span>,
     ) -> Result<ty::Const<'tcx>, ErrorHandled> {
         match self.const_eval_resolve(param_env, unevaluated, span) {
-            Ok(Some(val)) => Ok(ty::Const::from_value(self.tcx, val, ty)),
+            Ok(Some(val)) => Ok(self.tcx.mk_const(val, ty)),
             Ok(None) => {
                 let tcx = self.tcx;
                 let def_id = unevaluated.def.did;
