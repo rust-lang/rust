@@ -70,7 +70,6 @@ pub enum TypeError<'tcx> {
     CyclicConst(ty::Const<'tcx>),
     ProjectionMismatched(ExpectedFound<DefId>),
     ExistentialMismatch(ExpectedFound<&'tcx ty::List<ty::PolyExistentialPredicate<'tcx>>>),
-    ObjectUnsafeCoercion(DefId),
     ConstMismatch(ExpectedFound<ty::Const<'tcx>>),
 
     IntrinsicCast,
@@ -222,7 +221,6 @@ impl<'tcx> fmt::Display for TypeError<'tcx> {
                 f,
                 "cannot coerce functions with `#[target_feature]` to safe function pointers"
             ),
-            ObjectUnsafeCoercion(_) => write!(f, "coercion to object-unsafe trait object"),
         }
     }
 }
@@ -249,8 +247,7 @@ impl<'tcx> TypeError<'tcx> {
             | ProjectionMismatched(_)
             | ExistentialMismatch(_)
             | ConstMismatch(_)
-            | IntrinsicCast
-            | ObjectUnsafeCoercion(_) => true,
+            | IntrinsicCast => true,
         }
     }
 }

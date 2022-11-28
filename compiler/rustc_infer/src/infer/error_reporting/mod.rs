@@ -1672,40 +1672,34 @@ impl<'tcx> TypeErrCtxt<'_, 'tcx> {
             }
         };
 
-        match terr {
-            // Ignore msg for object safe coercion
-            // since E0038 message will be printed
-            TypeError::ObjectUnsafeCoercion(_) => {}
-            _ => {
-                let mut label_or_note = |span: Span, msg: &str| {
-                    if (prefer_label && is_simple_error) || &[span] == diag.span.primary_spans() {
-                        diag.span_label(span, msg);
-                    } else {
-                        diag.span_note(span, msg);
-                    }
-                };
-                if let Some((sp, msg)) = secondary_span {
-                    if swap_secondary_and_primary {
-                        let terr = if let Some(infer::ValuePairs::Terms(infer::ExpectedFound {
-                            expected,
-                            ..
-                        })) = values
-                        {
-                            format!("expected this to be `{}`", expected)
-                        } else {
-                            terr.to_string()
-                        };
-                        label_or_note(sp, &terr);
-                        label_or_note(span, &msg);
-                    } else {
-                        label_or_note(span, &terr.to_string());
-                        label_or_note(sp, &msg);
-                    }
-                } else {
-                    label_or_note(span, &terr.to_string());
-                }
+        let mut label_or_note = |span: Span, msg: &str| {
+            if (prefer_label && is_simple_error) || &[span] == diag.span.primary_spans() {
+                diag.span_label(span, msg);
+            } else {
+                diag.span_note(span, msg);
             }
         };
+        if let Some((sp, msg)) = secondary_span {
+            if swap_secondary_and_primary {
+                let terr = if let Some(infer::ValuePairs::Terms(infer::ExpectedFound {
+                    expected,
+                    ..
+                })) = values
+                {
+                    format!("expected this to be `{}`", expected)
+                } else {
+                    terr.to_string()
+                };
+                label_or_note(sp, &terr);
+                label_or_note(span, &msg);
+            } else {
+                label_or_note(span, &terr.to_string());
+                label_or_note(sp, &msg);
+            }
+        } else {
+            label_or_note(span, &terr.to_string());
+        }
+
         if let Some((expected, found)) = expected_found {
             let (expected_label, found_label, exp_found) = match exp_found {
                 Mismatch::Variable(ef) => (
@@ -1874,9 +1868,6 @@ impl<'tcx> TypeErrCtxt<'_, 'tcx> {
                             &sort_string(values.found),
                         );
                     }
-                }
-                TypeError::ObjectUnsafeCoercion(_) => {
-                    diag.note_unsuccessful_coercion(found, expected);
                 }
                 _ => {
                     debug!(
@@ -3122,7 +3113,6 @@ impl<'tcx> ObligationCauseExt<'tcx> for ObligationCause<'tcx> {
                 TypeError::IntrinsicCast => {
                     Error0308("cannot coerce intrinsics to function pointers")
                 }
-                TypeError::ObjectUnsafeCoercion(did) => Error0038(did),
                 _ => Error0308("mismatched types"),
             },
         }
