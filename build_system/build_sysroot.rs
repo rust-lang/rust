@@ -9,21 +9,21 @@ use super::SysrootKind;
 pub(crate) fn build_sysroot(
     channel: &str,
     sysroot_kind: SysrootKind,
-    target_dir: &Path,
+    dist_dir: &Path,
     cg_clif_dylib_src: &Path,
     host_triple: &str,
     target_triple: &str,
 ) {
     eprintln!("[BUILD] sysroot {:?}", sysroot_kind);
 
-    if target_dir.exists() {
-        fs::remove_dir_all(target_dir).unwrap();
+    if dist_dir.exists() {
+        fs::remove_dir_all(dist_dir).unwrap();
     }
-    fs::create_dir_all(target_dir.join("bin")).unwrap();
-    fs::create_dir_all(target_dir.join("lib")).unwrap();
+    fs::create_dir_all(dist_dir.join("bin")).unwrap();
+    fs::create_dir_all(dist_dir.join("lib")).unwrap();
 
     // Copy the backend
-    let cg_clif_dylib_path = target_dir
+    let cg_clif_dylib_path = dist_dir
         .join(if cfg!(windows) {
             // Windows doesn't have rpath support, so the cg_clif dylib needs to be next to the
             // binaries.
@@ -42,14 +42,14 @@ pub(crate) fn build_sysroot(
         build_cargo_wrapper_cmd
             .arg(PathBuf::from("scripts").join(format!("{wrapper}.rs")))
             .arg("-o")
-            .arg(target_dir.join(wrapper_name))
+            .arg(dist_dir.join(wrapper_name))
             .arg("-g");
         spawn_and_wait(build_cargo_wrapper_cmd);
     }
 
     let default_sysroot = super::rustc_info::get_default_sysroot();
 
-    let rustlib = target_dir.join("lib").join("rustlib");
+    let rustlib = dist_dir.join("lib").join("rustlib");
     let host_rustlib_lib = rustlib.join(host_triple).join("lib");
     let target_rustlib_lib = rustlib.join(target_triple).join("lib");
     fs::create_dir_all(&host_rustlib_lib).unwrap();
@@ -114,7 +114,7 @@ pub(crate) fn build_sysroot(
         SysrootKind::Clif => {
             build_clif_sysroot_for_triple(
                 channel,
-                target_dir,
+                dist_dir,
                 host_triple,
                 &cg_clif_dylib_path,
                 None,
@@ -129,7 +129,7 @@ pub(crate) fn build_sysroot(
                 };
                 build_clif_sysroot_for_triple(
                     channel,
-                    target_dir,
+                    dist_dir,
                     target_triple,
                     &cg_clif_dylib_path,
                     linker,
@@ -142,7 +142,7 @@ pub(crate) fn build_sysroot(
                 let file = file.unwrap().path();
                 let filename = file.file_name().unwrap().to_str().unwrap();
                 if filename.contains("std-") && !filename.contains(".rlib") {
-                    try_hard_link(&file, target_dir.join("lib").join(file.file_name().unwrap()));
+                    try_hard_link(&file, dist_dir.join("lib").join(file.file_name().unwrap()));
                 }
             }
         }
@@ -153,7 +153,7 @@ static STANDARD_LIBRARY: CargoProject = CargoProject::local("build_sysroot");
 
 fn build_clif_sysroot_for_triple(
     channel: &str,
-    target_dir: &Path,
+    dist_dir: &Path,
     triple: &str,
     cg_clif_dylib_path: &Path,
     linker: Option<&str>,
@@ -189,7 +189,7 @@ fn build_clif_sysroot_for_triple(
     // Build sysroot
     let mut rustflags = "-Zforce-unstable-if-unmarked -Cpanic=abort".to_string();
     rustflags.push_str(&format!(" -Zcodegen-backend={}", cg_clif_dylib_path.to_str().unwrap()));
-    rustflags.push_str(&format!(" --sysroot={}", target_dir.to_str().unwrap()));
+    rustflags.push_str(&format!(" --sysroot={}", dist_dir.to_str().unwrap()));
     if channel == "release" {
         rustflags.push_str(" -Zmir-opt-level=3");
     }
@@ -221,7 +221,7 @@ fn build_clif_sysroot_for_triple(
         };
         try_hard_link(
             entry.path(),
-            target_dir.join("lib").join("rustlib").join(triple).join("lib").join(entry.file_name()),
+            dist_dir.join("lib").join("rustlib").join(triple).join("lib").join(entry.file_name()),
         );
     }
 }

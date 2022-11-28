@@ -432,7 +432,7 @@ const EXTENDED_SYSROOT_SUITE: &[TestCase] = &[
 pub(crate) fn run_tests(
     channel: &str,
     sysroot_kind: SysrootKind,
-    target_dir: &Path,
+    dist_dir: &Path,
     cg_clif_dylib: &Path,
     host_triple: &str,
     target_triple: &str,
@@ -443,7 +443,7 @@ pub(crate) fn run_tests(
         build_sysroot::build_sysroot(
             channel,
             SysrootKind::None,
-            &target_dir,
+            &dist_dir,
             cg_clif_dylib,
             &host_triple,
             &target_triple,
@@ -462,7 +462,7 @@ pub(crate) fn run_tests(
         build_sysroot::build_sysroot(
             channel,
             sysroot_kind,
-            &target_dir,
+            &dist_dir,
             cg_clif_dylib,
             &host_triple,
             &target_triple,
