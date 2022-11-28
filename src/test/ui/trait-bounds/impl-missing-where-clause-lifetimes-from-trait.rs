@@ -25,6 +25,14 @@ where
     }
 }
 
+trait Bar {
+    fn foo<'a>(&'a self) {}
+}
+
+impl Bar for () {
+    fn foo<'a: 'a>(&'a self) {} //~ ERROR E0195
+}
+
 fn main() {
     ().foo((), ());
 }

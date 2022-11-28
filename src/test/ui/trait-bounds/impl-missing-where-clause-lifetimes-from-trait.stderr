@@ -22,6 +22,15 @@ LL |         T: 'a;
 LL |     fn foo<'a>(&self, state: &'a State) -> &'a T {
    |           ^^^^ lifetimes do not match method in trait
 
-error: aborting due to 2 previous errors
+error[E0195]: lifetime parameters or bounds on method `foo` do not match the trait declaration
+  --> $DIR/impl-missing-where-clause-lifetimes-from-trait.rs:33:11
+   |
+LL |     fn foo<'a>(&'a self) {}
+   |           ---- lifetimes in impl do not match this method in trait
+...
+LL |     fn foo<'a: 'a>(&'a self) {}
+   |           ^^^^^^^^ lifetimes do not match method in trait
+
+error: aborting due to 3 previous errors
 
 For more information about this error, try `rustc --explain E0195`.
