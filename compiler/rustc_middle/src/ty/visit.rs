@@ -72,12 +72,18 @@ pub trait TypeVisitable<'tcx>: fmt::Debug + Clone {
         self.visit_with(&mut HasEscapingVarsVisitor { outer_index: binder }).is_break()
     }
 
-    /// Returns `true` if this `self` has any regions that escape `binder` (and
+    /// Returns `true` if this type has any regions that escape `binder` (and
     /// hence are not bound by it).
     fn has_vars_bound_above(&self, binder: ty::DebruijnIndex) -> bool {
         self.has_vars_bound_at_or_above(binder.shifted_in(1))
     }
 
+    /// Return `true` if this type has regions that are not a part of the type.
+    /// For example, `for<'a> fn(&'a i32)` return `false`, while `fn(&'a i32)`
+    /// would return `true`. The latter can occur when traversing through the
+    /// former.
+    ///
+    /// See [`HasEscapingVarsVisitor`] for more information.
     fn has_escaping_bound_vars(&self) -> bool {
         self.has_vars_bound_at_or_above(ty::INNERMOST)
     }
