@@ -300,12 +300,12 @@ struct TypeParameter {
     ty: P<ast::Ty>,
 }
 
-// The code snippets built up for derived code are sometimes used as blocks
-// (e.g. in a function body) and sometimes used as expressions (e.g. in a match
-// arm). This structure avoids committing to either form until necessary,
-// avoiding the insertion of any unnecessary blocks.
-//
-// The statements come before the expression.
+/// The code snippets built up for derived code are sometimes used as blocks
+/// (e.g. in a function body) and sometimes used as expressions (e.g. in a match
+/// arm). This structure avoids committing to either form until necessary,
+/// avoiding the insertion of any unnecessary blocks.
+///
+/// The statements come before the expression.
 pub struct BlockOrExpr(Vec<ast::Stmt>, Option<P<Expr>>);
 
 impl BlockOrExpr {

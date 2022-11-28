@@ -206,8 +206,8 @@ where
         }
     }
 
-    // Iterates over all fields of an array. Much more efficient than doing the
-    // same by repeatedly calling `operand_index`.
+    /// Iterates over all fields of an array. Much more efficient than doing the
+    /// same by repeatedly calling `operand_index`.
     pub fn operand_array_fields<'a>(
         &self,
         base: &'a OpTy<'tcx, Prov>,

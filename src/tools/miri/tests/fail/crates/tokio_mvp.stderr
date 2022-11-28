@@ -1,8 +1,8 @@
 error: unsupported operation: can't call foreign function: epoll_create1
   --> CARGO_REGISTRY/.../epoll.rs:LL:CC
    |
-LL |         syscall!(epoll_create1(flag)).map(|ep| Selector {
-   |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ can't call foreign function: epoll_create1
+LL |         let res = syscall!(epoll_create1(libc::EPOLL_CLOEXEC));
+   |                   ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ can't call foreign function: epoll_create1
    |
    = help: this is likely not a bug in the program; it indicates that the program performed an operation that the interpreter does not support
    = note: BACKTRACE:

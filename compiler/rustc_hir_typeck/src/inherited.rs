@@ -38,19 +38,19 @@ pub struct Inherited<'tcx> {
 
     pub(super) fulfillment_cx: RefCell<Box<dyn TraitEngine<'tcx>>>,
 
-    // Some additional `Sized` obligations badly affect type inference.
-    // These obligations are added in a later stage of typeck.
-    // Removing these may also cause additional complications, see #101066.
+    /// Some additional `Sized` obligations badly affect type inference.
+    /// These obligations are added in a later stage of typeck.
+    /// Removing these may also cause additional complications, see #101066.
     pub(super) deferred_sized_obligations:
         RefCell<Vec<(Ty<'tcx>, Span, traits::ObligationCauseCode<'tcx>)>>,
 
-    // When we process a call like `c()` where `c` is a closure type,
-    // we may not have decided yet whether `c` is a `Fn`, `FnMut`, or
-    // `FnOnce` closure. In that case, we defer full resolution of the
-    // call until upvar inference can kick in and make the
-    // decision. We keep these deferred resolutions grouped by the
-    // def-id of the closure, so that once we decide, we can easily go
-    // back and process them.
+    /// When we process a call like `c()` where `c` is a closure type,
+    /// we may not have decided yet whether `c` is a `Fn`, `FnMut`, or
+    /// `FnOnce` closure. In that case, we defer full resolution of the
+    /// call until upvar inference can kick in and make the
+    /// decision. We keep these deferred resolutions grouped by the
+    /// def-id of the closure, so that once we decide, we can easily go
+    /// back and process them.
     pub(super) deferred_call_resolutions: RefCell<LocalDefIdMap<Vec<DeferredCallResolution<'tcx>>>>,
 
     pub(super) deferred_cast_checks: RefCell<Vec<super::cast::CastCheck<'tcx>>>,

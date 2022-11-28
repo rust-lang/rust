@@ -40,10 +40,10 @@ pub enum OperandValue<V> {
 /// instead.
 #[derive(Copy, Clone)]
 pub struct OperandRef<'tcx, V> {
-    // The value.
+    /// The value.
     pub val: OperandValue<V>,
 
-    // The layout of value, based on its Rust type.
+    /// The layout of value, based on its Rust type.
     pub layout: TyAndLayout<'tcx>,
 }
 

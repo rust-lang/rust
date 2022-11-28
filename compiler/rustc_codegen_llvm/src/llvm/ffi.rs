@@ -35,7 +35,7 @@ pub enum LLVMRustResult {
 pub struct LLVMRustCOFFShortExport {
     pub name: *const c_char,
     pub ordinal_present: bool,
-    // value of `ordinal` only important when `ordinal_present` is true
+    /// value of `ordinal` only important when `ordinal_present` is true
     pub ordinal: u16,
 }
 

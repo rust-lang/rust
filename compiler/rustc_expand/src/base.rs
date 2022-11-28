@@ -242,8 +242,8 @@ pub enum ExpandResult<T, U> {
     Retry(U),
 }
 
-// `meta_item` is the attribute, and `item` is the item being modified.
 pub trait MultiItemModifier {
+    /// `meta_item` is the attribute, and `item` is the item being modified.
     fn expand(
         &self,
         ecx: &mut ExtCtxt<'_>,

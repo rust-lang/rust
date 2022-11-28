@@ -155,19 +155,19 @@ impl Encoder for MemEncoder {
 
 pub type FileEncodeResult = Result<usize, io::Error>;
 
-// `FileEncoder` encodes data to file via fixed-size buffer.
-//
-// When encoding large amounts of data to a file, using `FileEncoder` may be
-// preferred over using `MemEncoder` to encode to a `Vec`, and then writing the
-// `Vec` to file, as the latter uses as much memory as there is encoded data,
-// while the former uses the fixed amount of memory allocated to the buffer.
-// `FileEncoder` also has the advantage of not needing to reallocate as data
-// is appended to it, but the disadvantage of requiring more error handling,
-// which has some runtime overhead.
+/// `FileEncoder` encodes data to file via fixed-size buffer.
+///
+/// When encoding large amounts of data to a file, using `FileEncoder` may be
+/// preferred over using `MemEncoder` to encode to a `Vec`, and then writing the
+/// `Vec` to file, as the latter uses as much memory as there is encoded data,
+/// while the former uses the fixed amount of memory allocated to the buffer.
+/// `FileEncoder` also has the advantage of not needing to reallocate as data
+/// is appended to it, but the disadvantage of requiring more error handling,
+/// which has some runtime overhead.
 pub struct FileEncoder {
-    // The input buffer. For adequate performance, we need more control over
-    // buffering than `BufWriter` offers. If `BufWriter` ever offers a raw
-    // buffer access API, we can use it, and remove `buf` and `buffered`.
+    /// The input buffer. For adequate performance, we need more control over
+    /// buffering than `BufWriter` offers. If `BufWriter` ever offers a raw
+    /// buffer access API, we can use it, and remove `buf` and `buffered`.
     buf: Box<[MaybeUninit<u8>]>,
     buffered: usize,
     flushed: usize,
@@ -711,7 +711,7 @@ impl<'a> Decodable<MemDecoder<'a>> for Vec<u8> {
     }
 }
 
-// An integer that will always encode to 8 bytes.
+/// An integer that will always encode to 8 bytes.
 pub struct IntEncodedWithFixedSize(pub u64);
 
 impl IntEncodedWithFixedSize {

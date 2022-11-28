@@ -1,4 +1,4 @@
-//@compile-flags: -Zmiri-disable-weak-memory-emulation -Zmiri-preemption-rate=0
+//@compile-flags: -Zmiri-disable-weak-memory-emulation -Zmiri-preemption-rate=0 -Zmiri-disable-stacked-borrows
 
 use std::sync::atomic::{AtomicUsize, Ordering};
 use std::thread::spawn;

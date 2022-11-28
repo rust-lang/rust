@@ -401,7 +401,7 @@ impl<'a, 'b> MacroExpander<'a, 'b> {
         krate
     }
 
-    // Recursively expand all macro invocations in this AST fragment.
+    /// Recursively expand all macro invocations in this AST fragment.
     pub fn fully_expand_fragment(&mut self, input_fragment: AstFragment) -> AstFragment {
         let orig_expansion_data = self.cx.current_expansion.clone();
         let orig_force_mode = self.cx.force_mode;
@@ -1931,9 +1931,12 @@ pub struct ExpansionConfig<'feat> {
     pub features: Option<&'feat Features>,
     pub recursion_limit: Limit,
     pub trace_mac: bool,
-    pub should_test: bool,          // If false, strip `#[test]` nodes
-    pub span_debug: bool,           // If true, use verbose debugging for `proc_macro::Span`
-    pub proc_macro_backtrace: bool, // If true, show backtraces for proc-macro panics
+    /// If false, strip `#[test]` nodes
+    pub should_test: bool,
+    /// If true, use verbose debugging for `proc_macro::Span`
+    pub span_debug: bool,
+    /// If true, show backtraces for proc-macro panics
+    pub proc_macro_backtrace: bool,
 }
 
 impl<'feat> ExpansionConfig<'feat> {

@@ -779,26 +779,26 @@ impl<K: DepKind> DepGraph<K> {
         }
     }
 
-    // Returns true if the given node has been marked as red during the
-    // current compilation session. Used in various assertions
+    /// Returns true if the given node has been marked as red during the
+    /// current compilation session. Used in various assertions
     pub fn is_red(&self, dep_node: &DepNode<K>) -> bool {
         self.node_color(dep_node) == Some(DepNodeColor::Red)
     }
 
-    // Returns true if the given node has been marked as green during the
-    // current compilation session. Used in various assertions
+    /// Returns true if the given node has been marked as green during the
+    /// current compilation session. Used in various assertions
     pub fn is_green(&self, dep_node: &DepNode<K>) -> bool {
         self.node_color(dep_node).map_or(false, |c| c.is_green())
     }
 
-    // This method loads all on-disk cacheable query results into memory, so
-    // they can be written out to the new cache file again. Most query results
-    // will already be in memory but in the case where we marked something as
-    // green but then did not need the value, that value will never have been
-    // loaded from disk.
-    //
-    // This method will only load queries that will end up in the disk cache.
-    // Other queries will not be executed.
+    /// This method loads all on-disk cacheable query results into memory, so
+    /// they can be written out to the new cache file again. Most query results
+    /// will already be in memory but in the case where we marked something as
+    /// green but then did not need the value, that value will never have been
+    /// loaded from disk.
+    ///
+    /// This method will only load queries that will end up in the disk cache.
+    /// Other queries will not be executed.
     pub fn exec_cache_promotions<Tcx: DepContext<DepKind = K>>(&self, tcx: Tcx) {
         let _prof_timer = tcx.profiler().generic_activity("incr_comp_query_cache_promotion");
 

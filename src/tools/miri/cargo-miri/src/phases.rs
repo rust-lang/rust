@@ -281,9 +281,10 @@ pub fn phase_rustc(mut args: impl Iterator<Item = String>, phase: RustcPhase) {
             eprintln!("[cargo-miri rustc] writing run info to `{}`", filename.display());
         }
         info.store(&filename);
-        // For Windows, do the same thing again with `.exe` appended to the filename.
+        // For Windows and WASM, do the same thing again with `.exe`/`.wasm` appended to the filename.
         // (Need to do this here as cargo moves that "binary" to a different place before running it.)
         info.store(&out_filename("", ".exe"));
+        info.store(&out_filename("", ".wasm"));
     };
 
     let runnable_crate = !info_query && is_runnable_crate();

@@ -6,15 +6,15 @@ use rustc_span::edition::Edition;
 use rustc_span::symbol::sym;
 use rustc_span::Span;
 
-// This expands to either
-// - `$crate::panic::panic_2015!(...)` or
-// - `$crate::panic::panic_2021!(...)`
-// depending on the edition.
-//
-// This is used for both std::panic!() and core::panic!().
-//
-// `$crate` will refer to either the `std` or `core` crate depending on which
-// one we're expanding from.
+/// This expands to either
+/// - `$crate::panic::panic_2015!(...)` or
+/// - `$crate::panic::panic_2021!(...)`
+/// depending on the edition.
+///
+/// This is used for both std::panic!() and core::panic!().
+///
+/// `$crate` will refer to either the `std` or `core` crate depending on which
+/// one we're expanding from.
 pub fn expand_panic<'cx>(
     cx: &'cx mut ExtCtxt<'_>,
     sp: Span,
@@ -24,10 +24,10 @@ pub fn expand_panic<'cx>(
     expand(mac, cx, sp, tts)
 }
 
-// This expands to either
-// - `$crate::panic::unreachable_2015!(...)` or
-// - `$crate::panic::unreachable_2021!(...)`
-// depending on the edition.
+/// This expands to either
+/// - `$crate::panic::unreachable_2015!(...)` or
+/// - `$crate::panic::unreachable_2021!(...)`
+/// depending on the edition.
 pub fn expand_unreachable<'cx>(
     cx: &'cx mut ExtCtxt<'_>,
     sp: Span,

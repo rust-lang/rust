@@ -861,7 +861,7 @@ impl<'tcx> AutoTraitFinder<'tcx> {
     }
 }
 
-// Replaces all ReVars in a type with ty::Region's, using the provided map
+/// Replaces all ReVars in a type with ty::Region's, using the provided map
 pub struct RegionReplacer<'a, 'tcx> {
     vid_to_region: &'a FxHashMap<ty::RegionVid, ty::Region<'tcx>>,
     tcx: TyCtxt<'tcx>,

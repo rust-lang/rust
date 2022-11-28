@@ -713,22 +713,24 @@ impl<'tcx> TypeckResults<'tcx> {
         self.node_substs.get(&id.local_id).cloned()
     }
 
-    // Returns the type of a pattern as a monotype. Like @expr_ty, this function
-    // doesn't provide type parameter substitutions.
+    /// Returns the type of a pattern as a monotype. Like [`expr_ty`], this function
+    /// doesn't provide type parameter substitutions.
+    ///
+    /// [`expr_ty`]: TypeckResults::expr_ty
     pub fn pat_ty(&self, pat: &hir::Pat<'_>) -> Ty<'tcx> {
         self.node_type(pat.hir_id)
     }
 
-    // Returns the type of an expression as a monotype.
-    //
-    // NB (1): This is the PRE-ADJUSTMENT TYPE for the expression.  That is, in
-    // some cases, we insert `Adjustment` annotations such as auto-deref or
-    // auto-ref.  The type returned by this function does not consider such
-    // adjustments.  See `expr_ty_adjusted()` instead.
-    //
-    // NB (2): This type doesn't provide type parameter substitutions; e.g., if you
-    // ask for the type of "id" in "id(3)", it will return "fn(&isize) -> isize"
-    // instead of "fn(ty) -> T with T = isize".
+    /// Returns the type of an expression as a monotype.
+    ///
+    /// NB (1): This is the PRE-ADJUSTMENT TYPE for the expression.  That is, in
+    /// some cases, we insert `Adjustment` annotations such as auto-deref or
+    /// auto-ref.  The type returned by this function does not consider such
+    /// adjustments.  See `expr_ty_adjusted()` instead.
+    ///
+    /// NB (2): This type doesn't provide type parameter substitutions; e.g., if you
+    /// ask for the type of `id` in `id(3)`, it will return `fn(&isize) -> isize`
+    /// instead of `fn(ty) -> T with T = isize`.
     pub fn expr_ty(&self, expr: &hir::Expr<'_>) -> Ty<'tcx> {
         self.node_type(expr.hir_id)
     }
@@ -995,15 +997,15 @@ impl<'tcx> CommonConsts<'tcx> {
     }
 }
 
-// This struct contains information regarding the `ReFree(FreeRegion)` corresponding to a lifetime
-// conflict.
+/// This struct contains information regarding the `ReFree(FreeRegion)` corresponding to a lifetime
+/// conflict.
 #[derive(Debug)]
 pub struct FreeRegionInfo {
-    // `LocalDefId` corresponding to FreeRegion
+    /// `LocalDefId` corresponding to FreeRegion
     pub def_id: LocalDefId,
-    // the bound region corresponding to FreeRegion
+    /// the bound region corresponding to FreeRegion
     pub boundregion: ty::BoundRegionKind,
-    // checks if bound region is in Impl Item
+    /// checks if bound region is in Impl Item
     pub is_impl_item: bool,
 }
 
@@ -1660,7 +1662,7 @@ impl<'tcx> TyCtxt<'tcx> {
         }
     }
 
-    // Checks if the bound region is in Impl Item.
+    /// Checks if the bound region is in Impl Item.
     pub fn is_bound_region_in_impl_item(self, suitable_region_binding_scope: LocalDefId) -> bool {
         let container_id = self.parent(suitable_region_binding_scope.to_def_id());
         if self.impl_trait_ref(container_id).is_some() {

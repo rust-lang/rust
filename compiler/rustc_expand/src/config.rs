@@ -200,7 +200,7 @@ fn get_features(
     features
 }
 
-// `cfg_attr`-process the crate's attributes and compute the crate's features.
+/// `cfg_attr`-process the crate's attributes and compute the crate's features.
 pub fn features(
     sess: &Session,
     mut krate: ast::Crate,

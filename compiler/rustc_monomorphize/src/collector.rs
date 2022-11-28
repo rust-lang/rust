@@ -295,8 +295,8 @@ impl<'tcx> InliningMap<'tcx> {
         assert!(self.index.insert(source, start_index..end_index).is_none());
     }
 
-    // Internally iterate over all items referenced by `source` which will be
-    // made available for inlining.
+    /// Internally iterate over all items referenced by `source` which will be
+    /// made available for inlining.
     pub fn with_inlining_candidates<F>(&self, source: MonoItem<'tcx>, mut f: F)
     where
         F: FnMut(MonoItem<'tcx>),
@@ -310,7 +310,7 @@ impl<'tcx> InliningMap<'tcx> {
         }
     }
 
-    // Internally iterate over all items and the things each accesses.
+    /// Internally iterate over all items and the things each accesses.
     pub fn iter_accesses<F>(&self, mut f: F)
     where
         F: FnMut(MonoItem<'tcx>, &[MonoItem<'tcx>]),

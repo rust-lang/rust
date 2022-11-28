@@ -414,7 +414,7 @@ impl Visibility<DefId> {
         self.map_id(|id| id.expect_local())
     }
 
-    // Returns `true` if this item is visible anywhere in the local crate.
+    /// Returns `true` if this item is visible anywhere in the local crate.
     pub fn is_visible_locally(self) -> bool {
         match self {
             Visibility::Public => true,
@@ -926,9 +926,10 @@ impl<'tcx> PolyTraitPredicate<'tcx> {
     }
 }
 
+/// `A: B`
 #[derive(Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash, Debug, TyEncodable, TyDecodable)]
 #[derive(HashStable, TypeFoldable, TypeVisitable, Lift)]
-pub struct OutlivesPredicate<A, B>(pub A, pub B); // `A: B`
+pub struct OutlivesPredicate<A, B>(pub A, pub B);
 pub type RegionOutlivesPredicate<'tcx> = OutlivesPredicate<ty::Region<'tcx>, ty::Region<'tcx>>;
 pub type TypeOutlivesPredicate<'tcx> = OutlivesPredicate<Ty<'tcx>, ty::Region<'tcx>>;
 pub type PolyRegionOutlivesPredicate<'tcx> = ty::Binder<'tcx, RegionOutlivesPredicate<'tcx>>;

@@ -224,9 +224,9 @@ impl MultiSugg {
     }
 }
 
-// SnapshotParser is used to create a snapshot of the parser
-// without causing duplicate errors being emitted when the `Parser`
-// is dropped.
+/// SnapshotParser is used to create a snapshot of the parser
+/// without causing duplicate errors being emitted when the `Parser`
+/// is dropped.
 pub struct SnapshotParser<'a> {
     parser: Parser<'a>,
     unclosed_delims: Vec<UnmatchedBrace>,

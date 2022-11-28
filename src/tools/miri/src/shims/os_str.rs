@@ -18,12 +18,12 @@ pub enum PathConversion {
 }
 
 #[cfg(unix)]
-pub fn os_str_to_bytes<'a, 'tcx>(os_str: &'a OsStr) -> InterpResult<'tcx, &'a [u8]> {
+pub fn os_str_to_bytes<'tcx>(os_str: &OsStr) -> InterpResult<'tcx, &[u8]> {
     Ok(os_str.as_bytes())
 }
 
 #[cfg(not(unix))]
-pub fn os_str_to_bytes<'a, 'tcx>(os_str: &'a OsStr) -> InterpResult<'tcx, &'a [u8]> {
+pub fn os_str_to_bytes<'tcx>(os_str: &OsStr) -> InterpResult<'tcx, &[u8]> {
     // On non-unix platforms the best we can do to transform bytes from/to OS strings is to do the
     // intermediate transformation into strings. Which invalidates non-utf8 paths that are actually
     // valid.
@@ -34,11 +34,11 @@ pub fn os_str_to_bytes<'a, 'tcx>(os_str: &'a OsStr) -> InterpResult<'tcx, &'a [u
 }
 
 #[cfg(unix)]
-pub fn bytes_to_os_str<'a, 'tcx>(bytes: &'a [u8]) -> InterpResult<'tcx, &'a OsStr> {
+pub fn bytes_to_os_str<'tcx>(bytes: &[u8]) -> InterpResult<'tcx, &OsStr> {
     Ok(OsStr::from_bytes(bytes))
 }
 #[cfg(not(unix))]
-pub fn bytes_to_os_str<'a, 'tcx>(bytes: &'a [u8]) -> InterpResult<'tcx, &'a OsStr> {
+pub fn bytes_to_os_str<'tcx>(bytes: &[u8]) -> InterpResult<'tcx, &OsStr> {
     let s = std::str::from_utf8(bytes)
         .map_err(|_| err_unsup_format!("{:?} is not a valid utf-8 string", bytes))?;
     Ok(OsStr::new(s))

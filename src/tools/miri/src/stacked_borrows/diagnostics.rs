@@ -5,8 +5,7 @@ use rustc_middle::mir::interpret::{alloc_range, AllocId, AllocRange};
 use rustc_span::{Span, SpanData};
 use rustc_target::abi::Size;
 
-use crate::helpers::CurrentSpan;
-use crate::stacked_borrows::{err_sb_ub, AccessKind, GlobalStateInner, Permission};
+use crate::stacked_borrows::{err_sb_ub, AccessKind, GlobalStateInner, Permission, ProtectorKind};
 use crate::*;
 
 use rustc_middle::mir::interpret::InterpError;
@@ -110,42 +109,29 @@ pub struct TagHistory {
     pub protected: Option<(String, SpanData)>,
 }
 
-pub struct DiagnosticCxBuilder<'span, 'ecx, 'mir, 'tcx> {
+pub struct DiagnosticCxBuilder<'ecx, 'mir, 'tcx> {
     operation: Operation,
-    // 'span cannot be merged with any other lifetime since they appear invariantly, under the
-    // mutable ref.
-    current_span: &'span mut CurrentSpan<'ecx, 'mir, 'tcx>,
-    threads: &'ecx ThreadManager<'mir, 'tcx>,
+    machine: &'ecx MiriMachine<'mir, 'tcx>,
 }
 
-pub struct DiagnosticCx<'span, 'history, 'ecx, 'mir, 'tcx> {
+pub struct DiagnosticCx<'history, 'ecx, 'mir, 'tcx> {
     operation: Operation,
-    // 'span and 'history cannot be merged, since when we call `unbuild` we need
-    // to return the exact 'span that was used when calling `build`.
-    current_span: &'span mut CurrentSpan<'ecx, 'mir, 'tcx>,
-    threads: &'ecx ThreadManager<'mir, 'tcx>,
+    machine: &'ecx MiriMachine<'mir, 'tcx>,
     history: &'history mut AllocHistory,
     offset: Size,
 }
 
-impl<'span, 'ecx, 'mir, 'tcx> DiagnosticCxBuilder<'span, 'ecx, 'mir, 'tcx> {
+impl<'ecx, 'mir, 'tcx> DiagnosticCxBuilder<'ecx, 'mir, 'tcx> {
     pub fn build<'history>(
         self,
         history: &'history mut AllocHistory,
         offset: Size,
-    ) -> DiagnosticCx<'span, 'history, 'ecx, 'mir, 'tcx> {
-        DiagnosticCx {
-            operation: self.operation,
-            current_span: self.current_span,
-            threads: self.threads,
-            history,
-            offset,
-        }
+    ) -> DiagnosticCx<'history, 'ecx, 'mir, 'tcx> {
+        DiagnosticCx { operation: self.operation, machine: self.machine, history, offset }
     }
 
     pub fn retag(
-        current_span: &'span mut CurrentSpan<'ecx, 'mir, 'tcx>,
-        threads: &'ecx ThreadManager<'mir, 'tcx>,
+        machine: &'ecx MiriMachine<'mir, 'tcx>,
         cause: RetagCause,
         new_tag: SbTag,
         orig_tag: ProvenanceExtra,
@@ -154,46 +140,36 @@ impl<'span, 'ecx, 'mir, 'tcx> DiagnosticCxBuilder<'span, 'ecx, 'mir, 'tcx> {
         let operation =
             Operation::Retag(RetagOp { cause, new_tag, orig_tag, range, permission: None });
 
-        DiagnosticCxBuilder { current_span, threads, operation }
+        DiagnosticCxBuilder { machine, operation }
     }
 
     pub fn read(
-        current_span: &'span mut CurrentSpan<'ecx, 'mir, 'tcx>,
-        threads: &'ecx ThreadManager<'mir, 'tcx>,
+        machine: &'ecx MiriMachine<'mir, 'tcx>,
         tag: ProvenanceExtra,
         range: AllocRange,
     ) -> Self {
         let operation = Operation::Access(AccessOp { kind: AccessKind::Read, tag, range });
-        DiagnosticCxBuilder { current_span, threads, operation }
+        DiagnosticCxBuilder { machine, operation }
     }
 
     pub fn write(
-        current_span: &'span mut CurrentSpan<'ecx, 'mir, 'tcx>,
-        threads: &'ecx ThreadManager<'mir, 'tcx>,
+        machine: &'ecx MiriMachine<'mir, 'tcx>,
         tag: ProvenanceExtra,
         range: AllocRange,
     ) -> Self {
         let operation = Operation::Access(AccessOp { kind: AccessKind::Write, tag, range });
-        DiagnosticCxBuilder { current_span, threads, operation }
+        DiagnosticCxBuilder { machine, operation }
     }
 
-    pub fn dealloc(
-        current_span: &'span mut CurrentSpan<'ecx, 'mir, 'tcx>,
-        threads: &'ecx ThreadManager<'mir, 'tcx>,
-        tag: ProvenanceExtra,
-    ) -> Self {
+    pub fn dealloc(machine: &'ecx MiriMachine<'mir, 'tcx>, tag: ProvenanceExtra) -> Self {
         let operation = Operation::Dealloc(DeallocOp { tag });
-        DiagnosticCxBuilder { current_span, threads, operation }
+        DiagnosticCxBuilder { machine, operation }
     }
 }
 
-impl<'span, 'history, 'ecx, 'mir, 'tcx> DiagnosticCx<'span, 'history, 'ecx, 'mir, 'tcx> {
-    pub fn unbuild(self) -> DiagnosticCxBuilder<'span, 'ecx, 'mir, 'tcx> {
-        DiagnosticCxBuilder {
-            operation: self.operation,
-            current_span: self.current_span,
-            threads: self.threads,
-        }
+impl<'history, 'ecx, 'mir, 'tcx> DiagnosticCx<'history, 'ecx, 'mir, 'tcx> {
+    pub fn unbuild(self) -> DiagnosticCxBuilder<'ecx, 'mir, 'tcx> {
+        DiagnosticCxBuilder { machine: self.machine, operation: self.operation }
     }
 }
 
@@ -234,10 +210,10 @@ struct DeallocOp {
 }
 
 impl AllocHistory {
-    pub fn new(id: AllocId, item: Item, current_span: &mut CurrentSpan<'_, '_, '_>) -> Self {
+    pub fn new(id: AllocId, item: Item, machine: &MiriMachine<'_, '_>) -> Self {
         Self {
             id,
-            base: (item, current_span.get()),
+            base: (item, machine.current_span()),
             creations: SmallVec::new(),
             invalidations: SmallVec::new(),
             protectors: SmallVec::new(),
@@ -245,7 +221,7 @@ impl AllocHistory {
     }
 }
 
-impl<'span, 'history, 'ecx, 'mir, 'tcx> DiagnosticCx<'span, 'history, 'ecx, 'mir, 'tcx> {
+impl<'history, 'ecx, 'mir, 'tcx> DiagnosticCx<'history, 'ecx, 'mir, 'tcx> {
     pub fn start_grant(&mut self, perm: Permission) {
         let Operation::Retag(op) = &mut self.operation else {
             unreachable!("start_grant must only be called during a retag, this is: {:?}", self.operation)
@@ -274,21 +250,27 @@ impl<'span, 'history, 'ecx, 'mir, 'tcx> DiagnosticCx<'span, 'history, 'ecx, 'mir
         let Operation::Retag(op) = &self.operation else {
             unreachable!("log_creation must only be called during a retag")
         };
-        self.history.creations.push(Creation { retag: op.clone(), span: self.current_span.get() });
+        self.history
+            .creations
+            .push(Creation { retag: op.clone(), span: self.machine.current_span() });
     }
 
     pub fn log_invalidation(&mut self, tag: SbTag) {
-        let mut span = self.current_span.get();
+        let mut span = self.machine.current_span();
         let (range, cause) = match &self.operation {
             Operation::Retag(RetagOp { cause, range, permission, .. }) => {
                 if *cause == RetagCause::FnEntry {
-                    span = self.current_span.get_caller();
+                    span = self.machine.caller_span();
                 }
                 (*range, InvalidationCause::Retag(permission.unwrap(), *cause))
             }
             Operation::Access(AccessOp { kind, range, .. }) =>
                 (*range, InvalidationCause::Access(*kind)),
-            _ => unreachable!("Tags can only be invalidated during a retag or access"),
+            Operation::Dealloc(_) => {
+                // This can be reached, but never be relevant later since the entire allocation is
+                // gone now.
+                return;
+            }
         };
         self.history.invalidations.push(Invalidation { tag, range, span, cause });
     }
@@ -297,7 +279,9 @@ impl<'span, 'history, 'ecx, 'mir, 'tcx> DiagnosticCx<'span, 'history, 'ecx, 'mir
         let Operation::Retag(op) = &self.operation else {
             unreachable!("Protectors can only be created during a retag")
         };
-        self.history.protectors.push(Protection { tag: op.new_tag, span: self.current_span.get() });
+        self.history
+            .protectors
+            .push(Protection { tag: op.new_tag, span: self.machine.current_span() });
     }
 
     pub fn get_logs_relevant_to(
@@ -369,10 +353,12 @@ impl<'span, 'history, 'ecx, 'mir, 'tcx> DiagnosticCx<'span, 'history, 'ecx, 'mir
 
     /// Report a descriptive error when `new` could not be granted from `derived_from`.
     #[inline(never)] // This is only called on fatal code paths
-    pub fn grant_error(&self, perm: Permission, stack: &Stack) -> InterpError<'tcx> {
+    pub(super) fn grant_error(&self, stack: &Stack) -> InterpError<'tcx> {
         let Operation::Retag(op) = &self.operation else {
             unreachable!("grant_error should only be called during a retag")
         };
+        let perm =
+            op.permission.expect("`start_grant` must be called before calling `grant_error`");
         let action = format!(
             "trying to retag from {:?} for {:?} permission at {:?}[{:#x}]",
             op.orig_tag,
@@ -389,9 +375,12 @@ impl<'span, 'history, 'ecx, 'mir, 'tcx> DiagnosticCx<'span, 'history, 'ecx, 'mir
 
     /// Report a descriptive error when `access` is not permitted based on `tag`.
     #[inline(never)] // This is only called on fatal code paths
-    pub fn access_error(&self, stack: &Stack) -> InterpError<'tcx> {
-        let Operation::Access(op) = &self.operation  else {
-            unreachable!("access_error should only be called during an access")
+    pub(super) fn access_error(&self, stack: &Stack) -> InterpError<'tcx> {
+        // Deallocation and retagging also do an access as part of their thing, so handle that here, too.
+        let op = match &self.operation {
+            Operation::Access(op) => op,
+            Operation::Retag(_) => return self.grant_error(stack),
+            Operation::Dealloc(_) => return self.dealloc_error(stack),
         };
         let action = format!(
             "attempting a {access} using {tag:?} at {alloc_id:?}[{offset:#x}]",
@@ -408,8 +397,13 @@ impl<'span, 'history, 'ecx, 'mir, 'tcx> DiagnosticCx<'span, 'history, 'ecx, 'mir
     }
 
     #[inline(never)] // This is only called on fatal code paths
-    pub fn protector_error(&self, item: &Item) -> InterpError<'tcx> {
+    pub(super) fn protector_error(&self, item: &Item, kind: ProtectorKind) -> InterpError<'tcx> {
+        let protected = match kind {
+            ProtectorKind::WeakProtector => "weakly protected",
+            ProtectorKind::StrongProtector => "strongly protected",
+        };
         let call_id = self
+            .machine
             .threads
             .all_stacks()
             .flatten()
@@ -422,10 +416,7 @@ impl<'span, 'history, 'ecx, 'mir, 'tcx> DiagnosticCx<'span, 'history, 'ecx, 'mir
         match self.operation {
             Operation::Dealloc(_) =>
                 err_sb_ub(
-                    format!(
-                        "deallocating while item {:?} is protected by call {:?}",
-                        item, call_id
-                    ),
+                    format!("deallocating while item {item:?} is {protected} by call {call_id:?}",),
                     None,
                     None,
                 ),
@@ -433,8 +424,7 @@ impl<'span, 'history, 'ecx, 'mir, 'tcx> DiagnosticCx<'span, 'history, 'ecx, 'mir
             | Operation::Access(AccessOp { tag, .. }) =>
                 err_sb_ub(
                     format!(
-                        "not granting access to tag {:?} because that would remove {:?} which is protected because it is an argument of call {:?}",
-                        tag, item, call_id
+                        "not granting access to tag {tag:?} because that would remove {item:?} which is {protected} because it is an argument of call {call_id:?}",
                     ),
                     None,
                     tag.and_then(|tag| self.get_logs_relevant_to(tag, Some(item.tag()))),
@@ -443,14 +433,16 @@ impl<'span, 'history, 'ecx, 'mir, 'tcx> DiagnosticCx<'span, 'history, 'ecx, 'mir
     }
 
     #[inline(never)] // This is only called on fatal code paths
-    pub fn dealloc_error(&self) -> InterpError<'tcx> {
+    pub fn dealloc_error(&self, stack: &Stack) -> InterpError<'tcx> {
         let Operation::Dealloc(op) = &self.operation else {
             unreachable!("dealloc_error should only be called during a deallocation")
         };
         err_sb_ub(
             format!(
-                "no item granting write access for deallocation to tag {:?} at {:?} found in borrow stack",
-                op.tag, self.history.id,
+                "attempting deallocation using {tag:?} at {alloc_id:?}{cause}",
+                tag = op.tag,
+                alloc_id = self.history.id,
+                cause = error_cause(stack, op.tag),
             ),
             None,
             op.tag.and_then(|tag| self.get_logs_relevant_to(tag, None)),
@@ -478,9 +470,7 @@ impl<'span, 'history, 'ecx, 'mir, 'tcx> DiagnosticCx<'span, 'history, 'ecx, 'mir
                 Some((orig_tag, kind))
             }
         };
-        self.current_span
-            .machine()
-            .emit_diagnostic(NonHaltingDiagnostic::PoppedPointerTag(*item, summary));
+        self.machine.emit_diagnostic(NonHaltingDiagnostic::PoppedPointerTag(*item, summary));
     }
 }
 

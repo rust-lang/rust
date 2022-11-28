@@ -164,7 +164,7 @@ pub fn expand_include<'cx>(
     Box::new(ExpandResult { p, node_id: cx.current_expansion.lint_node_id })
 }
 
-// include_str! : read the given file, insert it as a literal string expr
+/// `include_str!`: read the given file, insert it as a literal string expr
 pub fn expand_include_str(
     cx: &mut ExtCtxt<'_>,
     sp: Span,

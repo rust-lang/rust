@@ -302,9 +302,9 @@ impl TokenKind {
         Literal(Lit::new(kind, symbol, suffix))
     }
 
-    // An approximation to proc-macro-style single-character operators used by rustc parser.
-    // If the operator token can be broken into two tokens, the first of which is single-character,
-    // then this function performs that operation, otherwise it returns `None`.
+    /// An approximation to proc-macro-style single-character operators used by rustc parser.
+    /// If the operator token can be broken into two tokens, the first of which is single-character,
+    /// then this function performs that operation, otherwise it returns `None`.
     pub fn break_two_token_op(&self) -> Option<(TokenKind, TokenKind)> {
         Some(match *self {
             Le => (Lt, Eq),
@@ -538,10 +538,10 @@ impl Token {
         }
     }
 
-    // A convenience function for matching on identifiers during parsing.
-    // Turns interpolated identifier (`$i: ident`) or lifetime (`$l: lifetime`) token
-    // into the regular identifier or lifetime token it refers to,
-    // otherwise returns the original token.
+    /// A convenience function for matching on identifiers during parsing.
+    /// Turns interpolated identifier (`$i: ident`) or lifetime (`$l: lifetime`) token
+    /// into the regular identifier or lifetime token it refers to,
+    /// otherwise returns the original token.
     pub fn uninterpolate(&self) -> Cow<'_, Token> {
         match &self.kind {
             Interpolated(nt) => match **nt {
@@ -621,7 +621,7 @@ impl Token {
         false
     }
 
-    // Is the token an interpolated block (`$b:block`)?
+    /// Is the token an interpolated block (`$b:block`)?
     pub fn is_whole_block(&self) -> bool {
         if let Interpolated(nt) = &self.kind && let NtBlock(..) = **nt {
             return true;
@@ -665,8 +665,8 @@ impl Token {
         self.is_non_raw_ident_where(Ident::is_path_segment_keyword)
     }
 
-    // Returns true for reserved identifiers used internally for elided lifetimes,
-    // unnamed method parameters, crate root module, error recovery etc.
+    /// Returns true for reserved identifiers used internally for elided lifetimes,
+    /// unnamed method parameters, crate root module, error recovery etc.
     pub fn is_special_ident(&self) -> bool {
         self.is_non_raw_ident_where(Ident::is_special)
     }
