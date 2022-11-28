@@ -1495,6 +1495,14 @@ pub trait Iterator {
     /// assert_eq!(merged, "alphabetagamma");
     /// ```
     ///
+    /// Flattening also works on other types like Option and Result:
+    ///
+    /// ```
+    /// let values = vec![Some(123), Some(321), None, Some(231)];
+    /// let flattened_values: Vec<_> = values.into_iter().flatten().collect();
+    /// assert_eq!(flattened_values, vec![123, 321, 231]);
+    /// ```
+    ///
     /// You can also rewrite this in terms of [`flat_map()`], which is preferable
     /// in this case since it conveys intent more clearly:
     ///
