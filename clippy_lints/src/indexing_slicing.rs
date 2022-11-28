@@ -166,7 +166,7 @@ impl<'tcx> LateLintPass<'tcx> for IndexingSlicing {
                 // Catchall non-range index, i.e., [n] or [n << m]
                 if let ty::Array(..) = ty.kind() {
                     // Index is a const block.
-                    if self.suppress_restriction_lint_in_const && let ExprKind::ConstBlock(..) = index.kind {
+                    if let ExprKind::ConstBlock(..) = index.kind {
                         return;
                     }
                     // Index is a constant uint.
