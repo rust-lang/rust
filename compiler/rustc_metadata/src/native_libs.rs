@@ -29,11 +29,11 @@ use std::path::PathBuf;
 
 pub fn find_native_static_library(
     name: &str,
-    verbatim: Option<bool>,
+    verbatim: bool,
     search_paths: &[PathBuf],
     sess: &Session,
 ) -> PathBuf {
-    let formats = if verbatim.unwrap_or(false) {
+    let formats = if verbatim {
         vec![("".into(), "".into())]
     } else {
         let os = (sess.target.staticlib_prefix.clone(), sess.target.staticlib_suffix.clone());
@@ -52,7 +52,7 @@ pub fn find_native_static_library(
         }
     }
 
-    sess.emit_fatal(MissingNativeLibrary::new(name, verbatim.unwrap_or(false)));
+    sess.emit_fatal(MissingNativeLibrary::new(name, verbatim));
 }
 
 fn find_bundled_library(
@@ -66,7 +66,7 @@ fn find_bundled_library(
             let NativeLibKind::Static { bundle: Some(true) | None, .. } = kind {
         find_native_static_library(
             name.unwrap().as_str(),
-            verbatim,
+            verbatim.unwrap_or(false),
             &sess.target_filesearch(PathKind::Native).search_path_dirs(),
             sess,
         ).file_name().and_then(|s| s.to_str()).map(Symbol::intern)
@@ -311,10 +311,7 @@ impl<'tcx> Collector<'tcx> {
                             sess.emit_err(BundleNeedsStatic { span });
                         }
 
-                        ("verbatim", _) => {
-                            report_unstable_modifier!(native_link_modifiers_verbatim);
-                            assign_modifier(&mut verbatim)
-                        }
+                        ("verbatim", _) => assign_modifier(&mut verbatim),
 
                         ("whole-archive", Some(NativeLibKind::Static { whole_archive, .. })) => {
                             assign_modifier(whole_archive)

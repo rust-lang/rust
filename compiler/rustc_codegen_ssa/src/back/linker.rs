@@ -515,7 +515,7 @@ impl<'a> Linker for GccLinker<'a> {
             // -force_load is the macOS equivalent of --whole-archive, but it
             // involves passing the full path to the library to link.
             self.linker_arg("-force_load");
-            let lib = find_native_static_library(lib, Some(verbatim), search_path, &self.sess);
+            let lib = find_native_static_library(lib, verbatim, search_path, &self.sess);
             self.linker_arg(&lib);
         }
     }
