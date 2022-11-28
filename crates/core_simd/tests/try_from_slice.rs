@@ -6,7 +6,7 @@ use wasm_bindgen_test::*;
 #[cfg(target_arch = "wasm32")]
 wasm_bindgen_test_configure!(run_in_browser);
 
-use core_simd::i32x4;
+use core_simd::simd::i32x4;
 
 #[test]
 #[cfg_attr(target_arch = "wasm32", wasm_bindgen_test)]

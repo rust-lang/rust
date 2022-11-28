@@ -401,7 +401,7 @@ macro_rules! test_lanes {
 
                 fn implementation<const $lanes: usize>()
                 where
-                    core_simd::LaneCount<$lanes>: core_simd::SupportedLaneCount,
+                    core_simd::simd::LaneCount<$lanes>: core_simd::simd::SupportedLaneCount,
                 $body
 
                 #[cfg(target_arch = "wasm32")]
@@ -508,7 +508,7 @@ macro_rules! test_lanes_panic {
 
                 fn implementation<const $lanes: usize>()
                 where
-                    core_simd::LaneCount<$lanes>: core_simd::SupportedLaneCount,
+                    core_simd::simd::LaneCount<$lanes>: core_simd::simd::SupportedLaneCount,
                 $body
 
                 $crate::test_lanes_helper!(

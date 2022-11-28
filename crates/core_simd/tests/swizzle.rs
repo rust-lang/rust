@@ -1,5 +1,5 @@
 #![feature(portable_simd)]
-use core_simd::{Simd, Swizzle};
+use core_simd::simd::{Simd, Swizzle};
 
 #[cfg(target_arch = "wasm32")]
 use wasm_bindgen_test::*;
