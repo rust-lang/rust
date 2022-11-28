@@ -1,7 +1,7 @@
 use crate::cfg_eval::cfg_eval;
 
 use rustc_ast as ast;
-use rustc_ast::{attr, token, GenericParamKind, ItemKind, MetaItemKind, NestedMetaItem, StmtKind};
+use rustc_ast::{token, GenericParamKind, ItemKind, MetaItemKind, NestedMetaItem, StmtKind};
 use rustc_errors::{struct_span_err, Applicability};
 use rustc_expand::base::{Annotatable, ExpandResult, ExtCtxt, Indeterminate, MultiItemModifier};
 use rustc_feature::AttributeTemplate;
@@ -40,28 +40,29 @@ impl MultiItemModifier for Expander {
                     sym::derive,
                     template,
                 );
-                let attr =
-                    attr::mk_attr_outer(&sess.parse_sess.attr_id_generator, meta_item.clone());
 
-                let mut resolutions: Vec<_> = attr
-                    .meta_item_list()
-                    .unwrap_or_default()
-                    .into_iter()
-                    .filter_map(|nested_meta| match nested_meta {
-                        NestedMetaItem::MetaItem(meta) => Some(meta),
-                        NestedMetaItem::Lit(lit) => {
-                            // Reject `#[derive("Debug")]`.
-                            report_unexpected_meta_item_lit(sess, &lit);
-                            None
-                        }
-                    })
-                    .map(|meta| {
-                        // Reject `#[derive(Debug = "value", Debug(abc))]`, but recover the paths.
-                        report_path_args(sess, &meta);
-                        meta.path
-                    })
-                    .map(|path| (path, dummy_annotatable(), None, self.0))
-                    .collect();
+                let mut resolutions = match &meta_item.kind {
+                    MetaItemKind::List(list) => {
+                        list.iter()
+                            .filter_map(|nested_meta| match nested_meta {
+                                NestedMetaItem::MetaItem(meta) => Some(meta),
+                                NestedMetaItem::Lit(lit) => {
+                                    // Reject `#[derive("Debug")]`.
+                                    report_unexpected_meta_item_lit(sess, &lit);
+                                    None
+                                }
+                            })
+                            .map(|meta| {
+                                // Reject `#[derive(Debug = "value", Debug(abc))]`, but recover the
+                                // paths.
+                                report_path_args(sess, &meta);
+                                meta.path.clone()
+                            })
+                            .map(|path| (path, dummy_annotatable(), None, self.0))
+                            .collect()
+                    }
+                    _ => vec![],
+                };
 
                 // Do not configure or clone items unless necessary.
                 match &mut resolutions[..] {
