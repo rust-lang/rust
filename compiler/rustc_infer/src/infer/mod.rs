@@ -2049,10 +2049,10 @@ fn replace_param_and_infer_substs_with_placeholder<'tcx>(
                     bug!("const `{ct}`'s type should not reference params or types");
                 }
                 tcx.mk_const(
-                    ty::ConstKind::Placeholder(ty::PlaceholderConst {
+                    ty::PlaceholderConst {
                         universe: ty::UniverseIndex::ROOT,
                         name: ty::BoundVar::from_usize(idx),
-                    }),
+                    },
                     ty,
                 )
                 .into()

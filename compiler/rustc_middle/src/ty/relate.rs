@@ -663,10 +663,7 @@ pub fn super_relate_consts<'tcx, R: TypeRelation<'tcx>>(
                 au.substs,
                 bu.substs,
             )?;
-            return Ok(tcx.mk_const(
-                ty::ConstKind::Unevaluated(ty::UnevaluatedConst { def: au.def, substs }),
-                a.ty(),
-            ));
+            return Ok(tcx.mk_const(ty::UnevaluatedConst { def: au.def, substs }, a.ty()));
         }
         // Before calling relate on exprs, it is necessary to ensure that the nested consts
         // have identical types.

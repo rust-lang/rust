@@ -76,10 +76,10 @@ impl<'tcx> Const<'tcx> {
         match Self::try_eval_lit_or_param(tcx, ty, expr) {
             Some(v) => v,
             None => tcx.mk_const(
-                ty::ConstKind::Unevaluated(ty::UnevaluatedConst {
+                ty::UnevaluatedConst {
                     def: def.to_global(),
                     substs: InternalSubsts::identity_for_item(tcx, def.did.to_def_id()),
-                }),
+                },
                 ty,
             ),
         }
@@ -134,7 +134,7 @@ impl<'tcx> Const<'tcx> {
                 let generics = tcx.generics_of(item_def_id);
                 let index = generics.param_def_id_to_index[&def_id];
                 let name = tcx.item_name(def_id);
-                Some(tcx.mk_const(ty::ConstKind::Param(ty::ParamConst::new(index, name)), ty))
+                Some(tcx.mk_const(ty::ParamConst::new(index, name), ty))
             }
             _ => None,
         }
@@ -143,7 +143,7 @@ impl<'tcx> Const<'tcx> {
     /// Interns the given value as a constant.
     #[inline]
     pub fn from_value(tcx: TyCtxt<'tcx>, val: ty::ValTree<'tcx>, ty: Ty<'tcx>) -> Self {
-        tcx.mk_const(ConstKind::Value(val), ty)
+        tcx.mk_const(val, ty)
     }
 
     /// Panics if self.kind != ty::ConstKind::Value

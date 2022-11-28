@@ -765,10 +765,7 @@ impl<'tcx> TypeRelation<'tcx> for Generalizer<'_, 'tcx> {
                     substs,
                     substs,
                 )?;
-                Ok(self.tcx().mk_const(
-                    ty::ConstKind::Unevaluated(ty::UnevaluatedConst { def, substs }),
-                    c.ty(),
-                ))
+                Ok(self.tcx().mk_const(ty::UnevaluatedConst { def, substs }, c.ty()))
             }
             _ => relate::super_relate_consts(self, c, c),
         }
@@ -988,10 +985,7 @@ impl<'tcx> TypeRelation<'tcx> for ConstInferUnifier<'_, 'tcx> {
                     substs,
                 )?;
 
-                Ok(self.tcx().mk_const(
-                    ty::ConstKind::Unevaluated(ty::UnevaluatedConst { def, substs }),
-                    c.ty(),
-                ))
+                Ok(self.tcx().mk_const(ty::UnevaluatedConst { def, substs }, c.ty()))
             }
             _ => relate::super_relate_consts(self, c, c),
         }

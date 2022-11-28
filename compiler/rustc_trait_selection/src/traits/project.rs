@@ -818,7 +818,7 @@ impl<'tcx> TypeFolder<'tcx> for BoundVarReplacer<'_, 'tcx> {
                 let universe = self.universe_for(debruijn);
                 let p = ty::PlaceholderConst { universe, name: bound_const };
                 self.mapped_consts.insert(p, bound_const);
-                self.infcx.tcx.mk_const(ty::ConstKind::Placeholder(p), ct.ty())
+                self.infcx.tcx.mk_const(p, ct.ty())
             }
             _ => ct.super_fold_with(self),
         }
