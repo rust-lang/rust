@@ -1080,3 +1080,15 @@ fn my_fn(#[cfg(feature = "feature")] u8: u8, u32: u32) {}
 "#,
     );
 }
+
+#[test]
+fn var_args() {
+    check_types(
+        r#"
+#[lang = "va_list"]
+pub struct VaListImpl<'f>;
+fn my_fn(foo: ...) {}
+       //^^^ VaListImpl
+"#,
+    );
+}
