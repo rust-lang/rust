@@ -135,21 +135,23 @@ pub(super) fn sanity_check_layout<'tcx>(
                 }
             }
             Abi::ScalarPair(scalar1, scalar2) => {
-                // Sanity-check scalar pairs. These are a bit more flexible and support
-                // padding, but we can at least ensure both fields actually fit into the layout
-                // and the alignment requirement has not been weakened.
+                // Sanity-check scalar pairs. Computing the expected size and alignment is a bit of work.
                 let size1 = scalar1.size(cx);
                 let align1 = scalar1.align(cx).abi;
                 let size2 = scalar2.size(cx);
                 let align2 = scalar2.align(cx).abi;
-                assert!(
-                    layout.layout.align().abi >= cmp::max(align1, align2),
-                    "alignment mismatch between ABI and layout in {layout:#?}",
-                );
+                let align = cmp::max(align1, align2);
                 let field2_offset = size1.align_to(align2);
-                assert!(
-                    layout.layout.size() >= field2_offset + size2,
+                let size = (field2_offset + size2).align_to(align);
+                assert_eq!(
+                    layout.layout.size(),
+                    size,
                     "size mismatch between ABI and layout in {layout:#?}"
+                );
+                assert_eq!(
+                    layout.layout.align().abi,
+                    align,
+                    "alignment mismatch between ABI and layout in {layout:#?}",
                 );
                 // Check that the underlying pair of fields matches.
                 let inner = skip_newtypes(cx, layout);
@@ -233,17 +235,22 @@ pub(super) fn sanity_check_layout<'tcx>(
                 );
             }
             Abi::Vector { count, element } => {
-                // No padding in vectors. Alignment can be strengthened, though.
-                assert!(
-                    layout.layout.align().abi >= element.align(cx).abi,
-                    "alignment mismatch between ABI and layout in {layout:#?}"
-                );
+                // No padding in vectors, except possibly for trailing padding to make the size a multiple of align.
                 let size = element.size(cx) * count;
+                let align = cx.data_layout().vector_align(size).abi;
+                let size = size.align_to(align); // needed e.g. for vectors of size 3
+                assert!(align >= element.align(cx).abi); // just sanity-checking `vector_align`.
                 assert_eq!(
                     layout.layout.size(),
-                    size.align_to(cx.data_layout().vector_align(size).abi),
+                    size,
                     "size mismatch between ABI and layout in {layout:#?}"
                 );
+                assert_eq!(
+                    layout.layout.align().abi,
+                    align,
+                    "alignment mismatch between ABI and layout in {layout:#?}"
+                );
+                // FIXME: Do some kind of check of the inner type, like for Scalar and ScalarPair.
             }
             Abi::Uninhabited | Abi::Aggregate { .. } => {} // Nothing to check.
         }
