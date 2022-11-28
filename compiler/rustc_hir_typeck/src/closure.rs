@@ -178,7 +178,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                 });
                 let kind = object_type
                     .principal_def_id()
-                    .and_then(|did| self.tcx.fn_trait_kind_from_lang_item(did));
+                    .and_then(|did| self.tcx.fn_trait_kind_from_def_id(did));
                 (sig, kind)
             }
             ty::Infer(ty::TyVar(vid)) => self.deduce_signature_from_predicates(
@@ -235,7 +235,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                 _ => None,
             };
             if let Some(closure_kind) =
-                trait_def_id.and_then(|def_id| self.tcx.fn_trait_kind_from_lang_item(def_id))
+                trait_def_id.and_then(|def_id| self.tcx.fn_trait_kind_from_def_id(def_id))
             {
                 expected_kind = Some(
                     expected_kind
@@ -263,7 +263,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
 
         let trait_def_id = projection.trait_def_id(tcx);
 
-        let is_fn = tcx.fn_trait_kind_from_lang_item(trait_def_id).is_some();
+        let is_fn = tcx.is_fn_trait(trait_def_id);
         let gen_trait = tcx.require_lang_item(LangItem::Generator, cause_span);
         let is_gen = gen_trait == trait_def_id;
         if !is_fn && !is_gen {

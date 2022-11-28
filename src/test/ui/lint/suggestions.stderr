@@ -41,12 +41,12 @@ warning: variable does not need to be mutable
   --> $DIR/suggestions.rs:54:13
    |
 LL |            let mut
-   |   _____________^
-   |  |_____________|
+   |  ______________^
+   | | _____________|
    | ||
 LL | ||             b = 1;
    | ||____________-^
-   |  |____________|
+   | |_____________|
    |               help: remove this `mut`
 
 error: const items should never be `#[no_mangle]`

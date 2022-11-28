@@ -106,7 +106,7 @@ fn external_generic_args<'tcx>(
 ) -> GenericArgs {
     let args = substs_to_args(cx, substs, has_self);
 
-    if cx.tcx.fn_trait_kind_from_lang_item(did).is_some() {
+    if cx.tcx.fn_trait_kind_from_def_id(did).is_some() {
         let inputs =
             // The trait's first substitution is the one after self, if there is one.
             match substs.iter().nth(if has_self { 1 } else { 0 }).unwrap().expect_ty().kind() {

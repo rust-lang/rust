@@ -2282,7 +2282,7 @@ impl FileWithAnnotatedLines {
         }
 
         // Find overlapping multiline annotations, put them at different depths
-        multiline_annotations.sort_by_key(|&(_, ref ml)| (ml.line_start, ml.line_end));
+        multiline_annotations.sort_by_key(|&(_, ref ml)| (ml.line_start, usize::MAX - ml.line_end));
         for (_, ann) in multiline_annotations.clone() {
             for (_, a) in multiline_annotations.iter_mut() {
                 // Move all other multiline annotations overlapping with this one
@@ -2300,8 +2300,14 @@ impl FileWithAnnotatedLines {
         }
 
         let mut max_depth = 0; // max overlapping multiline spans
-        for (file, ann) in multiline_annotations {
+        for (_, ann) in &multiline_annotations {
             max_depth = max(max_depth, ann.depth);
+        }
+        // Change order of multispan depth to minimize the number of overlaps in the ASCII art.
+        for (_, a) in multiline_annotations.iter_mut() {
+            a.depth = max_depth - a.depth + 1;
+        }
+        for (file, ann) in multiline_annotations {
             let mut end_ann = ann.as_end();
             if !ann.overlaps_exactly {
                 // avoid output like
