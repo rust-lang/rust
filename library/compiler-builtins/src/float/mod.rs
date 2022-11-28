@@ -26,10 +26,10 @@ pub(crate) trait Float:
     + ops::Div<Output = Self>
     + ops::Rem<Output = Self>
 {
-    /// A uint of the same with as the float
+    /// A uint of the same width as the float
     type Int: Int;
 
-    /// A int of the same with as the float
+    /// A int of the same width as the float
     type SignedInt: Int;
 
     /// An int capable of containing the exponent bits plus a sign bit. This is signed.
