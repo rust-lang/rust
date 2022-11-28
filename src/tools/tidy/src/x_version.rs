@@ -1,9 +1,7 @@
 use std::process::Command;
 
 pub fn check(_bad: &mut bool) {
-    let result = Command::new("x")
-        .arg("--version")
-        .output();
+    let result = Command::new("x").arg("--version").output();
     let output = match result {
         Ok(output) => output,
         Err(_e) => todo!(),

@@ -53,34 +53,18 @@ fn main() {
             VecDeque::with_capacity(concurrency.get());
 
         macro_rules! check {
-            ($p:ident) => {
-                while handles.len() >= concurrency.get() {
-                    handles.pop_front().unwrap().join().unwrap();
-                }
-
-                let handle = s.spawn(|| {
-                    let mut flag = false;
-                    $p::check(&mut flag);
-                    if (flag) {
-                        bad.store(true, Ordering::Relaxed);
-                    }
-                });
-                handles.push_back(handle);
-            };
-
             ($p:ident $(, $args:expr)* ) => {
                 drain_handles(&mut handles);
 
                 let handle = s.spawn(|| {
                     let mut flag = false;
-                    $p::check($($args),* , &mut flag);
+                    $p::check($($args, )* &mut flag);
                     if (flag) {
                         bad.store(true, Ordering::Relaxed);
                     }
                 });
                 handles.push_back(handle);
-            };
-
+            }
         }
 
         check!(target_specific_tests, &src_path);
@@ -123,7 +107,7 @@ fn main() {
         check!(alphabetical, &compiler_path);
         check!(alphabetical, &library_path);
 
-        check!(x);
+        check!(x_version);
 
         let collected = {
             drain_handles(&mut handles);
