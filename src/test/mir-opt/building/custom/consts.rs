@@ -1,0 +1,23 @@
+#![feature(custom_mir, core_intrinsics, inline_const)]
+
+extern crate core;
+use core::intrinsics::mir::*;
+
+const D: i32 = 5;
+
+// EMIT_MIR consts.consts.built.after.mir
+#[custom_mir(dialect = "built")]
+fn consts<const C: u32>() {
+    mir!({
+        let _a = 5_u8;
+        let _b = const { 5_i8 };
+        let _c = C;
+        let _d = D;
+        let _e = consts::<10>;
+        Return()
+    })
+}
+
+fn main() {
+    consts::<5>();
+}

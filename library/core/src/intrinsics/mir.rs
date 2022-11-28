@@ -151,6 +151,13 @@ pub macro __internal_extract_let {
         let $var $(: $ty)?;
         ::core::intrinsics::mir::__internal_extract_let!($($rest)*);
     },
+    // Due to #86730, we have to handle const blocks separately
+    (
+        let $var:ident $(: $ty:ty)? = const $block:block; $($rest:tt)*
+    ) => {
+        let $var $(: $ty)?;
+        ::core::intrinsics::mir::__internal_extract_let!($($rest)*);
+    },
     // Otherwise, output nothing
     (
         $stmt:stmt; $($rest:tt)*
@@ -212,6 +219,28 @@ pub macro __internal_remove_let {
             {
                 $($already_parsed)*
                 $var = $expr;
+            }
+            {
+                $($rest)*
+            }
+        }
+    )},
+    // Due to #86730 , we have to handle const blocks separately
+    (
+        {
+            {
+                $($already_parsed:tt)*
+            }
+            {
+                let $var:ident $(: $ty:ty)? = const $block:block;
+                $($rest:tt)*
+            }
+        }
+    ) => { ::core::intrinsics::mir::__internal_remove_let!(
+        {
+            {
+                $($already_parsed)*
+                $var = const $block;
             }
             {
                 $($rest)*
