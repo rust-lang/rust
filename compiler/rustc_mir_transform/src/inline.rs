@@ -8,7 +8,6 @@ use rustc_middle::mir::visit::*;
 use rustc_middle::mir::*;
 use rustc_middle::ty::{self, Instance, InstanceDef, ParamEnv, Ty, TyCtxt};
 use rustc_session::config::OptLevel;
-use rustc_span::def_id::DefId;
 use rustc_span::{hygiene::ExpnKind, ExpnData, LocalExpnId, Span};
 use rustc_target::abi::VariantIdx;
 use rustc_target::spec::abi::Abi;
@@ -87,13 +86,8 @@ fn inline<'tcx>(tcx: TyCtxt<'tcx>, body: &mut Body<'tcx>) -> bool {
 
     let param_env = tcx.param_env_reveal_all_normalized(def_id);
 
-    let mut this = Inliner {
-        tcx,
-        param_env,
-        codegen_fn_attrs: tcx.codegen_fn_attrs(def_id),
-        history: Vec::new(),
-        changed: false,
-    };
+    let mut this =
+        Inliner { tcx, param_env, codegen_fn_attrs: tcx.codegen_fn_attrs(def_id), changed: false };
     let blocks = BasicBlock::new(0)..body.basic_blocks.next_index();
     this.process_blocks(body, blocks);
     this.changed
@@ -104,12 +98,6 @@ struct Inliner<'tcx> {
     param_env: ParamEnv<'tcx>,
     /// Caller codegen attributes.
     codegen_fn_attrs: &'tcx CodegenFnAttrs,
-    /// Stack of inlined instances.
-    /// We only check the `DefId` and not the substs because we want to
-    /// avoid inlining cases of polymorphic recursion.
-    /// The number of `DefId`s is finite, so checking history is enough
-    /// to ensure that we do not loop endlessly while inlining.
-    history: Vec<DefId>,
     /// Indicates that the caller body has been modified.
     changed: bool,
 }
@@ -134,12 +122,12 @@ impl<'tcx> Inliner<'tcx> {
                     debug!("not-inlined {} [{}]", callsite.callee, reason);
                     continue;
                 }
-                Ok(new_blocks) => {
+                Ok(_) => {
                     debug!("inlined {}", callsite.callee);
                     self.changed = true;
-                    self.history.push(callsite.callee.def_id());
-                    self.process_blocks(caller_body, new_blocks);
-                    self.history.pop();
+                    // We could process the blocks returned by `try_inlining` here. However, that
+                    // leads to exponential compile times due to the top-down nature of this kind
+                    // of inlining.
                 }
             }
         }
@@ -310,10 +298,6 @@ impl<'tcx> Inliner<'tcx> {
                     Instance::resolve(self.tcx, self.param_env, def_id, substs).ok().flatten()?;
 
                 if let InstanceDef::Virtual(..) | InstanceDef::Intrinsic(_) = callee.def {
-                    return None;
-                }
-
-                if self.history.contains(&callee.def_id()) {
                     return None;
                 }
 
