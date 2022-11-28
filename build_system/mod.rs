@@ -75,7 +75,7 @@ pub fn main() {
         }
     };
 
-    let mut target_dir = PathBuf::from("build");
+    let mut target_dir = PathBuf::from("dist");
     let mut channel = "release";
     let mut sysroot_kind = SysrootKind::Clif;
     let mut use_unstable_features = true;
