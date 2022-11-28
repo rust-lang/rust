@@ -1578,8 +1578,7 @@ pub struct PlaceRef<'tcx> {
 impl<'tcx> !PartialOrd for PlaceRef<'tcx> {}
 
 impl<'tcx> Place<'tcx> {
-    // FIXME change this to a const fn by also making List::empty a const fn.
-    pub fn return_place() -> Place<'tcx> {
+    pub const fn return_place() -> Place<'tcx> {
         Place { local: RETURN_PLACE, projection: List::empty() }
     }
 

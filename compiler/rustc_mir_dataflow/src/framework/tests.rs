@@ -5,7 +5,6 @@ use std::marker::PhantomData;
 use rustc_index::bit_set::BitSet;
 use rustc_index::vec::IndexVec;
 use rustc_middle::mir::{self, BasicBlock, Location};
-use rustc_middle::ty;
 use rustc_span::DUMMY_SP;
 
 use super::*;
@@ -28,7 +27,7 @@ fn mock_body<'tcx>() -> mir::Body<'tcx> {
         })
     };
 
-    let dummy_place = mir::Place { local: mir::RETURN_PLACE, projection: ty::List::empty() };
+    let dummy_place = mir::Place::return_place();
 
     block(4, mir::TerminatorKind::Return);
     block(1, mir::TerminatorKind::Return);

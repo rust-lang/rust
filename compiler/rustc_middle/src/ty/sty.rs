@@ -1214,7 +1214,7 @@ impl<'tcx> FnSig<'tcx> {
 
     // Creates a minimal `FnSig` to be used when encountering a `TyKind::Error` in a fallible
     // method.
-    fn fake() -> FnSig<'tcx> {
+    const fn fake() -> FnSig<'tcx> {
         FnSig {
             inputs_and_output: List::empty(),
             c_variadic: false,

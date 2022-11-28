@@ -46,7 +46,7 @@ extern "C" {
 impl<T> List<T> {
     /// Returns a reference to the (unique, static) empty list.
     #[inline(always)]
-    pub fn empty<'a>() -> &'a List<T> {
+    pub const fn empty<'a>() -> &'a List<T> {
         #[repr(align(64))]
         struct MaxAlign;
 
@@ -58,8 +58,8 @@ impl<T> List<T> {
         // The empty slice is static and contains a single `0` usize (for the
         // length) that is 64-byte aligned, thus featuring the necessary
         // trailing padding for elements with up to 64-byte alignment.
-        static EMPTY_SLICE: InOrder<usize, MaxAlign> = InOrder(0, MaxAlign);
-        unsafe { &*(&EMPTY_SLICE as *const _ as *const List<T>) }
+        const EMPTY_SLICE: &'static InOrder<usize, MaxAlign> = &InOrder(0, MaxAlign);
+        unsafe { &*(EMPTY_SLICE as *const _ as *const List<T>) }
     }
 
     pub fn len(&self) -> usize {
