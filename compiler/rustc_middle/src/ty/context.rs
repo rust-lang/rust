@@ -17,8 +17,8 @@ use crate::traits;
 use crate::ty::query::{self, TyCtxtAt};
 use crate::ty::{
     self, AdtDef, AdtDefData, AdtKind, Binder, BindingMode, BoundVar, CanonicalPolyFnSig,
-    ClosureSizeProfileData, Const, ConstS, ConstVid, DefIdTree, FloatTy, FloatVar, FloatVid,
-    GenericParamDefKind, InferConst, InferTy, IntTy, IntVar, IntVid, List, ParamConst, ParamTy,
+    ClosureSizeProfileData, Const, ConstS, DefIdTree, FloatTy, FloatVar, FloatVid,
+    GenericParamDefKind, InferTy, IntTy, IntVar, IntVid, List, ParamConst, ParamTy,
     PolyExistentialPredicate, PolyFnSig, Predicate, PredicateKind, PredicateS, ProjectionTy,
     Region, RegionKind, ReprOptions, TraitObjectVisitor, Ty, TyKind, TyS, TyVar, TyVid, TypeAndMut,
     UintTy, Visibility,
@@ -2603,11 +2603,6 @@ impl<'tcx> TyCtxt<'tcx> {
     }
 
     #[inline]
-    pub fn mk_const_var(self, v: ConstVid<'tcx>, ty: Ty<'tcx>) -> Const<'tcx> {
-        self.mk_const(ty::ConstKind::Infer(InferConst::Var(v)), ty)
-    }
-
-    #[inline]
     pub fn mk_int_var(self, v: IntVid) -> Ty<'tcx> {
         self.mk_ty_infer(IntVar(v))
     }
@@ -2623,18 +2618,8 @@ impl<'tcx> TyCtxt<'tcx> {
     }
 
     #[inline]
-    pub fn mk_const_infer(self, ic: InferConst<'tcx>, ty: Ty<'tcx>) -> ty::Const<'tcx> {
-        self.mk_const(ty::ConstKind::Infer(ic), ty)
-    }
-
-    #[inline]
     pub fn mk_ty_param(self, index: u32, name: Symbol) -> Ty<'tcx> {
         self.mk_ty(Param(ParamTy { index, name }))
-    }
-
-    #[inline]
-    pub fn mk_const_param(self, index: u32, name: Symbol, ty: Ty<'tcx>) -> Const<'tcx> {
-        self.mk_const(ty::ConstKind::Param(ParamConst { index, name }), ty)
     }
 
     pub fn mk_param_from_def(self, param: &ty::GenericParamDef) -> GenericArg<'tcx> {
@@ -2643,9 +2628,12 @@ impl<'tcx> TyCtxt<'tcx> {
                 self.mk_region(ty::ReEarlyBound(param.to_early_bound_region_data())).into()
             }
             GenericParamDefKind::Type { .. } => self.mk_ty_param(param.index, param.name).into(),
-            GenericParamDefKind::Const { .. } => {
-                self.mk_const_param(param.index, param.name, self.type_of(param.def_id)).into()
-            }
+            GenericParamDefKind::Const { .. } => self
+                .mk_const(
+                    ParamConst { index: param.index, name: param.name },
+                    self.type_of(param.def_id),
+                )
+                .into(),
         }
     }
 
