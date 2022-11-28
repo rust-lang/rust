@@ -1,3 +1,4 @@
+use rustc_middle::mir::interpret::{ConstValue, Scalar};
 use rustc_middle::{mir::*, thir::*, ty};
 
 use super::{parse_by_kind, PResult, ParseCtxt};
@@ -45,6 +46,8 @@ impl<'tcx, 'body> ParseCtxt<'tcx, 'body> {
     fn parse_operand(&self, expr_id: ExprId) -> PResult<Operand<'tcx>> {
         parse_by_kind!(self, expr_id, expr, "operand",
             @call("mir_move", args) => self.parse_place(args[0]).map(Operand::Move),
+            @call("mir_static", args) => self.parse_static(args[0]),
+            @call("mir_static_mut", args) => self.parse_static(args[0]),
             ExprKind::Literal { .. }
             | ExprKind::NamedConst { .. }
             | ExprKind::NonHirLiteral { .. }
@@ -77,6 +80,26 @@ impl<'tcx, 'body> ParseCtxt<'tcx, 'body> {
     fn parse_block(&self, expr_id: ExprId) -> PResult<BasicBlock> {
         parse_by_kind!(self, expr_id, _, "basic block",
             ExprKind::VarRef { id } => Ok(self.block_map[id]),
+        )
+    }
+
+    fn parse_static(&self, expr_id: ExprId) -> PResult<Operand<'tcx>> {
+        let expr_id = parse_by_kind!(self, expr_id, _, "static",
+            ExprKind::Deref { arg } => *arg,
+        );
+
+        parse_by_kind!(self, expr_id, expr, "static",
+            ExprKind::StaticRef { alloc_id, ty, .. } => {
+                let const_val =
+                    ConstValue::Scalar(Scalar::from_pointer((*alloc_id).into(), &self.tcx));
+                let literal = ConstantKind::Val(const_val, *ty);
+
+                Ok(Operand::Constant(Box::new(Constant {
+                    span: expr.span,
+                    user_ty: None,
+                    literal
+                })))
+            },
         )
     }
 }

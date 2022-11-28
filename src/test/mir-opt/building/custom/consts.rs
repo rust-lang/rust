@@ -18,6 +18,19 @@ fn consts<const C: u32>() {
     })
 }
 
+static S: i32 = 5;
+static mut T: i32 = 10;
+// EMIT_MIR consts.statics.built.after.mir
+#[custom_mir(dialect = "built")]
+fn statics() {
+    mir!({
+        let _a: &i32 = Static(S);
+        let _b: *mut i32 = StaticMut(T);
+        Return()
+    })
+}
+
 fn main() {
     consts::<5>();
+    statics();
 }

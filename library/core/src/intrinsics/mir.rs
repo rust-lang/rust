@@ -80,6 +80,8 @@ define!("mir_goto", fn Goto(destination: BasicBlock) -> BasicBlock);
 define!("mir_retag", fn Retag<T>(place: T));
 define!("mir_retag_raw", fn RetagRaw<T>(place: T));
 define!("mir_move", fn Move<T>(place: T) -> T);
+define!("mir_static", fn Static<T>(s: T) -> &'static T);
+define!("mir_static_mut", fn StaticMut<T>(s: T) -> *mut T);
 
 /// Convenience macro for generating custom MIR.
 ///
