@@ -13,11 +13,13 @@ macro_rules! test_mask_api {
             #[cfg(target_arch = "wasm32")]
             use wasm_bindgen_test::*;
 
+            use core_simd::simd::Mask;
+
             #[test]
             #[cfg_attr(target_arch = "wasm32", wasm_bindgen_test)]
             fn set_and_test() {
                 let values = [true, false, false, true, false, false, true, false];
-                let mut mask = core_simd::Mask::<$type, 8>::splat(false);
+                let mut mask = Mask::<$type, 8>::splat(false);
                 for (lane, value) in values.iter().copied().enumerate() {
                     mask.set(lane, value);
                 }
@@ -29,7 +31,7 @@ macro_rules! test_mask_api {
             #[test]
             #[should_panic]
             fn set_invalid_lane() {
-                let mut mask = core_simd::Mask::<$type, 8>::splat(false);
+                let mut mask = Mask::<$type, 8>::splat(false);
                 mask.set(8, true);
                 let _ = mask;
             }
@@ -37,24 +39,24 @@ macro_rules! test_mask_api {
             #[test]
             #[should_panic]
             fn test_invalid_lane() {
-                let mask = core_simd::Mask::<$type, 8>::splat(false);
+                let mask = Mask::<$type, 8>::splat(false);
                 let _ = mask.test(8);
             }
 
             #[test]
             fn any() {
-                assert!(!core_simd::Mask::<$type, 8>::splat(false).any());
-                assert!(core_simd::Mask::<$type, 8>::splat(true).any());
-                let mut v = core_simd::Mask::<$type, 8>::splat(false);
+                assert!(!Mask::<$type, 8>::splat(false).any());
+                assert!(Mask::<$type, 8>::splat(true).any());
+                let mut v = Mask::<$type, 8>::splat(false);
                 v.set(2, true);
                 assert!(v.any());
             }
 
             #[test]
             fn all() {
-                assert!(!core_simd::Mask::<$type, 8>::splat(false).all());
-                assert!(core_simd::Mask::<$type, 8>::splat(true).all());
-                let mut v = core_simd::Mask::<$type, 8>::splat(false);
+                assert!(!Mask::<$type, 8>::splat(false).all());
+                assert!(Mask::<$type, 8>::splat(true).all());
+                let mut v = Mask::<$type, 8>::splat(false);
                 v.set(2, true);
                 assert!(!v.all());
             }
@@ -62,57 +64,57 @@ macro_rules! test_mask_api {
             #[test]
             fn roundtrip_int_conversion() {
                 let values = [true, false, false, true, false, false, true, false];
-                let mask = core_simd::Mask::<$type, 8>::from_array(values);
+                let mask = Mask::<$type, 8>::from_array(values);
                 let int = mask.to_int();
                 assert_eq!(int.to_array(), [-1, 0, 0, -1, 0, 0, -1, 0]);
-                assert_eq!(core_simd::Mask::<$type, 8>::from_int(int), mask);
+                assert_eq!(Mask::<$type, 8>::from_int(int), mask);
             }
 
             #[test]
             fn roundtrip_bitmask_conversion() {
-                use core_simd::ToBitMask;
+                use core_simd::simd::ToBitMask;
                 let values = [
                     true, false, false, true, false, false, true, false,
                     true, true, false, false, false, false, false, true,
                 ];
-                let mask = core_simd::Mask::<$type, 16>::from_array(values);
+                let mask = Mask::<$type, 16>::from_array(values);
                 let bitmask = mask.to_bitmask();
                 assert_eq!(bitmask, 0b1000001101001001);
-                assert_eq!(core_simd::Mask::<$type, 16>::from_bitmask(bitmask), mask);
+                assert_eq!(Mask::<$type, 16>::from_bitmask(bitmask), mask);
             }
 
             #[test]
             fn roundtrip_bitmask_conversion_short() {
-                use core_simd::ToBitMask;
+                use core_simd::simd::ToBitMask;
 
                 let values = [
                     false, false, false, true,
                 ];
-                let mask = core_simd::Mask::<$type, 4>::from_array(values);
+                let mask = Mask::<$type, 4>::from_array(values);
                 let bitmask = mask.to_bitmask();
                 assert_eq!(bitmask, 0b1000);
-                assert_eq!(core_simd::Mask::<$type, 4>::from_bitmask(bitmask), mask);
+                assert_eq!(Mask::<$type, 4>::from_bitmask(bitmask), mask);
 
                 let values = [true, false];
-                let mask = core_simd::Mask::<$type, 2>::from_array(values);
+                let mask = Mask::<$type, 2>::from_array(values);
                 let bitmask = mask.to_bitmask();
                 assert_eq!(bitmask, 0b01);
-                assert_eq!(core_simd::Mask::<$type, 2>::from_bitmask(bitmask), mask);
+                assert_eq!(Mask::<$type, 2>::from_bitmask(bitmask), mask);
             }
 
             #[test]
             fn cast() {
-                fn cast_impl<T: core_simd::MaskElement>()
+                fn cast_impl<T: core_simd::simd::MaskElement>()
                 where
-                    core_simd::Mask<$type, 8>: Into<core_simd::Mask<T, 8>>,
+                    Mask<$type, 8>: Into<Mask<T, 8>>,
                 {
                     let values = [true, false, false, true, false, false, true, false];
-                    let mask = core_simd::Mask::<$type, 8>::from_array(values);
+                    let mask = Mask::<$type, 8>::from_array(values);
 
                     let cast_mask = mask.cast::<T>();
                     assert_eq!(values, cast_mask.to_array());
 
-                    let into_mask: core_simd::Mask<T, 8> = mask.into();
+                    let into_mask: Mask<T, 8> = mask.into();
                     assert_eq!(values, into_mask.to_array());
                 }
 
@@ -126,15 +128,15 @@ macro_rules! test_mask_api {
             #[cfg(feature = "generic_const_exprs")]
             #[test]
             fn roundtrip_bitmask_array_conversion() {
-                use core_simd::ToBitMaskArray;
+                use core_simd::simd::ToBitMaskArray;
                 let values = [
                     true, false, false, true, false, false, true, false,
                     true, true, false, false, false, false, false, true,
                 ];
-                let mask = core_simd::Mask::<$type, 16>::from_array(values);
+                let mask = Mask::<$type, 16>::from_array(values);
                 let bitmask = mask.to_bitmask_array();
                 assert_eq!(bitmask, [0b01001001, 0b10000011]);
-                assert_eq!(core_simd::Mask::<$type, 16>::from_bitmask_array(bitmask), mask);
+                assert_eq!(Mask::<$type, 16>::from_bitmask_array(bitmask), mask);
             }
         }
     }
@@ -150,9 +152,10 @@ mod mask_api {
 
 #[test]
 fn convert() {
+    use core_simd::simd::Mask;
     let values = [true, false, false, true, false, false, true, false];
     assert_eq!(
-        core_simd::Mask::<i8, 8>::from_array(values),
-        core_simd::Mask::<i32, 8>::from_array(values).into()
+        Mask::<i8, 8>::from_array(values),
+        Mask::<i32, 8>::from_array(values).into()
     );
 }
