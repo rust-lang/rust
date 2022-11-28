@@ -1766,12 +1766,12 @@ function initSearch(rawSearchIndex) {
      * @param {boolean} [forced]
      */
     function search(e, forced) {
-        const params = searchState.getQueryStringParams();
-        const query = parseQuery(searchState.input.value.trim());
-
         if (e) {
             e.preventDefault();
         }
+
+        const query = parseQuery(searchState.input.value.trim());
+        let filterCrates = getFilterCrates();
 
         if (!forced && query.userQuery === currentResults) {
             if (query.userQuery.length > 0) {
@@ -1780,7 +1780,9 @@ function initSearch(rawSearchIndex) {
             return;
         }
 
-        let filterCrates = getFilterCrates();
+        searchState.setLoadingSearch();
+
+        const params = searchState.getQueryStringParams();
 
         // In case we have no information about the saved crate and there is a URL query parameter,
         // we override it with the URL query parameter.
