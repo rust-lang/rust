@@ -104,8 +104,8 @@ impl Thread {
         #[cfg(any(target_os = "linux", target_os = "horizon"))]
         {
             if let Some(priority) = native_options.priority {
-                let sched_param = libc::sched_param { sched_priority: priority.0 };
-                // NOTE: needs to be added to libc, for now this doesn't compile
+                let _sched_param = libc::sched_param { sched_priority: priority.0 };
+                todo!("needs libc support for pthread_attr_setschedparam")
                 // assert_eq!(libc::pthread_attr_setschedparam(&mut attr, &sched_param), 0);
             }
 

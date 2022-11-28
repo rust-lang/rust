@@ -380,12 +380,18 @@ impl Builder {
         self
     }
 
+    /// Sets the priority of the new thread in a platform-specific way.
+    ///
+    /// See [`Priority`] for more details.
     #[unstable(feature = "thread_scheduling", issue = "none")]
     pub fn priority(mut self, priority: Priority) -> Builder {
         self.native_options.priority = Some(priority.into());
         self
     }
 
+    /// Sets the CPU affinity of the new thread in a platform-specific way.
+    ///
+    /// See [`Affinity`] for more details.
     #[unstable(feature = "thread_scheduling", issue = "none")]
     pub fn affinity(mut self, affinity: Affinity) -> Builder {
         self.native_options.affinity = Some(affinity.into());
