@@ -233,15 +233,23 @@ impl<'tcx, 'body> ParseCtxt<'tcx, 'body> {
         let mut data = BasicBlockData::new(None);
         for stmt_id in &*block.stmts {
             let stmt = self.statement_as_expr(*stmt_id)?;
+            let span = self.thir[stmt].span;
             let statement = self.parse_statement(stmt)?;
-            data.statements.push(Statement { source_info: self.source_info, kind: statement });
+            data.statements.push(Statement {
+                source_info: SourceInfo { span, scope: self.source_scope },
+                kind: statement,
+            });
         }
 
         let Some(trailing) = block.expr else {
             return Err(self.expr_error(expr_id, "terminator"))
         };
+        let span = self.thir[trailing].span;
         let terminator = self.parse_terminator(trailing)?;
-        data.terminator = Some(Terminator { source_info: self.source_info, kind: terminator });
+        data.terminator = Some(Terminator {
+            source_info: SourceInfo { span, scope: self.source_scope },
+            kind: terminator,
+        });
 
         Ok(data)
     }

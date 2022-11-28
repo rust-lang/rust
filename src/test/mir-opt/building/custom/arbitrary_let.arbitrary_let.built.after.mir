@@ -6,17 +6,17 @@ fn arbitrary_let(_1: i32) -> i32 {
     let mut _3: i32;                     // in scope 0 at $SRC_DIR/core/src/intrinsics/mir.rs:LL:COL
 
     bb0: {
-        _2 = _1;                         // scope 0 at $DIR/arbitrary_let.rs:+0:1: +0:32
-        goto -> bb2;                     // scope 0 at $DIR/arbitrary_let.rs:+0:1: +0:32
+        _2 = _1;                         // scope 0 at $SRC_DIR/core/src/intrinsics/mir.rs:LL:COL
+        goto -> bb2;                     // scope 0 at $DIR/arbitrary_let.rs:+4:13: +4:25
     }
 
     bb1: {
-        _0 = _3;                         // scope 0 at $DIR/arbitrary_let.rs:+0:1: +0:32
-        return;                          // scope 0 at $DIR/arbitrary_let.rs:+0:1: +0:32
+        _0 = _3;                         // scope 0 at $DIR/arbitrary_let.rs:+7:13: +7:20
+        return;                          // scope 0 at $DIR/arbitrary_let.rs:+8:13: +8:21
     }
 
     bb2: {
-        _3 = _2;                         // scope 0 at $DIR/arbitrary_let.rs:+0:1: +0:32
-        goto -> bb1;                     // scope 0 at $DIR/arbitrary_let.rs:+0:1: +0:32
+        _3 = _2;                         // scope 0 at $SRC_DIR/core/src/intrinsics/mir.rs:LL:COL
+        goto -> bb1;                     // scope 0 at $DIR/arbitrary_let.rs:+12:13: +12:24
     }
 }
