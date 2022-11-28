@@ -174,13 +174,10 @@ where
             slice.len() >= LANES,
             "slice length must be at least the number of lanes"
         );
-        let mut array = [slice[0]; LANES];
-        let mut i = 0;
-        while i < LANES {
-            array[i] = slice[i];
-            i += 1;
-        }
-        Self(array)
+        // Safety:
+        // - We've checked the length is sufficient.
+        // - `T` and `Simd<T, N>` are Copy types.
+        unsafe { slice.as_ptr().cast::<Self>().read_unaligned() }
     }
 
     /// Performs lanewise conversion of a SIMD vector's elements to another SIMD-valid type.
