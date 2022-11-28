@@ -30,7 +30,7 @@ define-function: (
         ("assert-css", (".item-decl .primitive", {"color": |primitive_color|}, ALL)),
         ("goto", "file://" + |DOC_PATH| + "/test_docs/trait.TraitWithoutGenerics.html"),
         ("assert-css", (".item-decl .constant", {"color": |constant_color|}, ALL)),
-        ("assert-css", (".item-decl .fnname", {"color": |fn_color|}, ALL)),
+        ("assert-css", (".item-decl .fn", {"color": |fn_color|}, ALL)),
         ("assert-css", (".item-decl .associatedtype", {"color": |assoc_type_color|}, ALL)),
     ],
 )
