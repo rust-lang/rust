@@ -1305,7 +1305,7 @@ impl Attributes {
         for attr in self.other_attrs.lists(sym::doc).filter(|a| a.has_name(sym::alias)) {
             if let Some(values) = attr.meta_item_list() {
                 for l in values {
-                    match l.literal().unwrap().kind {
+                    match l.lit().unwrap().kind {
                         ast::LitKind::Str(s, _) => {
                             aliases.insert(s);
                         }

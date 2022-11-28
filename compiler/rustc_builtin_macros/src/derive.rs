@@ -48,9 +48,9 @@ impl MultiItemModifier for Expander {
                     .into_iter()
                     .filter_map(|nested_meta| match nested_meta {
                         NestedMetaItem::MetaItem(meta) => Some(meta),
-                        NestedMetaItem::Literal(lit) => {
+                        NestedMetaItem::Lit(lit) => {
                             // Reject `#[derive("Debug")]`.
-                            report_unexpected_literal(sess, &lit);
+                            report_unexpected_meta_item_lit(sess, &lit);
                             None
                         }
                     })
@@ -127,7 +127,7 @@ fn report_bad_target(sess: &Session, item: &Annotatable, span: Span) -> bool {
     bad_target
 }
 
-fn report_unexpected_literal(sess: &Session, lit: &ast::Lit) {
+fn report_unexpected_meta_item_lit(sess: &Session, lit: &ast::MetaItemLit) {
     let help_msg = match lit.token_lit.kind {
         token::Str if rustc_lexer::is_ident(lit.token_lit.symbol.as_str()) => {
             format!("try using `#[derive({})]`", lit.token_lit.symbol)

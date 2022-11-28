@@ -8,7 +8,7 @@ use crate::errors::{
     self, AttrApplication, DebugVisualizerUnreadable, InvalidAttrAtCrateLevel, ObjectLifetimeErr,
     OnlyHasEffectOn, TransparentIncompatible, UnrecognizedReprHint,
 };
-use rustc_ast::{ast, AttrStyle, Attribute, Lit, LitKind, MetaItemKind, NestedMetaItem};
+use rustc_ast::{ast, AttrStyle, Attribute, LitKind, MetaItemKind, MetaItemLit, NestedMetaItem};
 use rustc_data_structures::fx::FxHashMap;
 use rustc_errors::{fluent, Applicability, MultiSpan};
 use rustc_expand::base::resolve_path;
@@ -715,7 +715,7 @@ impl CheckAttrVisitor<'_> {
         if let Some(values) = meta.meta_item_list() {
             let mut errors = 0;
             for v in values {
-                match v.literal() {
+                match v.lit() {
                     Some(l) => match l.kind {
                         LitKind::Str(s, _) => {
                             if !self.check_doc_alias_value(v, s, hir_id, target, true, aliases) {
@@ -1355,7 +1355,7 @@ impl CheckAttrVisitor<'_> {
             return false;
         };
 
-        if matches!(&list[..], &[NestedMetaItem::Literal(Lit { kind: LitKind::Int(..), .. })]) {
+        if matches!(&list[..], &[NestedMetaItem::Lit(MetaItemLit { kind: LitKind::Int(..), .. })]) {
             true
         } else {
             self.tcx.sess.emit_err(errors::RustcLayoutScalarValidRangeArg { attr_span: attr.span });
@@ -1418,7 +1418,7 @@ impl CheckAttrVisitor<'_> {
         let arg_count = decl.inputs.len() as u128 + generics.params.len() as u128;
         let mut invalid_args = vec![];
         for meta in list {
-            if let Some(LitKind::Int(val, _)) = meta.literal().map(|lit| &lit.kind) {
+            if let Some(LitKind::Int(val, _)) = meta.lit().map(|lit| &lit.kind) {
                 if *val >= arg_count {
                     let span = meta.span();
                     self.tcx.sess.emit_err(errors::RustcLegacyConstGenericsIndexExceed {
