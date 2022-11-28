@@ -158,7 +158,7 @@ impl ThreadClockSet {
 
 /// Error returned by finding a data race
 /// should be elaborated upon.
-#[derive(Copy, Clone, PartialEq, Eq, PartialOrd, Ord, Hash, Debug)]
+#[derive(Copy, Clone, PartialEq, Eq, Hash, Debug)]
 pub struct DataRace;
 
 /// Externally stored memory cell clocks

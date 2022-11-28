@@ -10,7 +10,7 @@ use super::{alloc_range, AllocError, AllocId, AllocRange, AllocResult, Provenanc
 use rustc_serialize::{Decodable, Decoder, Encodable, Encoder};
 
 /// Stores the provenance information of pointers stored in memory.
-#[derive(Clone, PartialEq, Eq, PartialOrd, Ord, Hash, Debug)]
+#[derive(Clone, PartialEq, Eq, Hash, Debug)]
 #[derive(HashStable)]
 pub struct ProvenanceMap<Prov = AllocId> {
     /// Provenance in this map applies from the given offset for an entire pointer-size worth of
