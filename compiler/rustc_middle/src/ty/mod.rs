@@ -448,7 +448,7 @@ pub struct CReaderCacheKey {
     pub pos: usize,
 }
 
-/// Use this rather than `TyS`, whenever possible.
+/// Use this rather than `TyKind`, whenever possible.
 #[derive(Copy, Clone, PartialEq, Eq, PartialOrd, Ord, Hash, HashStable)]
 #[rustc_diagnostic_item = "Ty"]
 #[rustc_pass_by_value]
@@ -476,13 +476,13 @@ impl ty::EarlyBoundRegion {
 
 /// Represents a predicate.
 ///
-/// See comments on `TyS`, which apply here too (albeit for
-/// `PredicateS`/`Predicate` rather than `TyS`/`Ty`).
+/// See comments on `WithCachedTypeInfo`, which apply here too (albeit for
+/// `PredicateS`/`Predicate` rather than `TyKind`/`Ty`).
 #[derive(Debug)]
 pub(crate) struct PredicateS<'tcx> {
     kind: Binder<'tcx, PredicateKind<'tcx>>,
     flags: TypeFlags,
-    /// See the comment for the corresponding field of [TyS].
+    /// See the comment for the corresponding field of [WithCachedTypeInfo].
     outer_exclusive_binder: ty::DebruijnIndex,
 }
 

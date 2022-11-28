@@ -103,7 +103,7 @@ impl hash::Hash for Allocation {
 /// Interned types generally have an `Outer` type and an `Inner` type, where
 /// `Outer` is a newtype around `Interned<Inner>`, and all the operations are
 /// done on `Outer`, because all occurrences are interned. E.g. `Ty` is an
-/// outer type and `TyS` is its inner type.
+/// outer type and `TyKind` is its inner type.
 ///
 /// Here things are different because only const allocations are interned. This
 /// means that both the inner type (`Allocation`) and the outer type
