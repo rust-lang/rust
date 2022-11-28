@@ -1225,6 +1225,8 @@ options! {
     binary_dep_depinfo: bool = (false, parse_bool, [TRACKED],
         "include artifacts (sysroot, crate dependencies) used during compilation in dep-info \
         (default: no)"),
+    borrowck_unreachable: bool = (true, parse_bool, [TRACKED],
+        "force borrowck to run even on functions that are never used"),
     box_noalias: Option<bool> = (None, parse_opt_bool, [TRACKED],
         "emit noalias metadata for box (default: yes)"),
     branch_protection: Option<BranchProtection> = (None, parse_branch_protection, [TRACKED],
@@ -1311,8 +1313,6 @@ options! {
         (default: no)"),
     force_unstable_if_unmarked: bool = (false, parse_bool, [TRACKED],
         "force all crates to be `rustc_private` unstable (default: no)"),
-    borrowck_unreachable: bool = (true, parse_bool, [TRACKED],
-        "force borrowck to run even on functions that are never used"),
     fuel: Option<(String, u64)> = (None, parse_optimization_fuel, [TRACKED],
         "set the optimization fuel quota for a crate"),
     function_sections: Option<bool> = (None, parse_opt_bool, [TRACKED],
