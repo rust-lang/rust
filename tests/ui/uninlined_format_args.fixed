@@ -54,11 +54,11 @@ fn tester(fn_arg: i32) {
     println!("{local_i32:<3}");
     println!("{local_i32:#010x}");
     println!("{local_f64:.1}");
-    println!("Hello {} is {local_f64:.local_i32$}", "x");
-    println!("Hello {local_i32} is {local_f64:.*}", 5);
-    println!("Hello {local_i32} is {local_f64:.*}", 5);
+    println!("Hello {} is {:.*}", "x", local_i32, local_f64);
+    println!("Hello {} is {:.*}", local_i32, 5, local_f64);
+    println!("Hello {} is {2:.*}", local_i32, 5, local_f64);
     println!("{local_i32} {local_f64}");
-    println!("{local_i32}, {}", local_opt.unwrap());
+    println!("{}, {}", local_i32, local_opt.unwrap());
     println!("{val}");
     println!("{val}");
     println!("{} {1}", local_i32, 42);

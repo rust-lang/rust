@@ -1,6 +1,6 @@
 use clippy_utils::diagnostics::{span_lint_and_sugg, span_lint_and_then};
 use clippy_utils::is_diag_trait_item;
-use clippy_utils::macros::FormatParamKind::{Implicit, Named, Numbered, Starred};
+use clippy_utils::macros::FormatParamKind::{Implicit, Named, NamedInline, Numbered, Starred};
 use clippy_utils::macros::{
     is_format_macro, is_panic, root_macro_call, Count, FormatArg, FormatArgsExpn, FormatParam, FormatParamUsage,
 };
@@ -106,19 +106,25 @@ declare_clippy_lint! {
     /// format!("{var:.prec$}");
     /// ```
     ///
-    /// ### Known Problems
-    ///
-    /// There may be a false positive if the format string is expanded from certain proc macros:
-    ///
-    /// ```ignore
-    /// println!(indoc!("{}"), var);
+    /// If allow-mixed-uninlined-format-args is set to false in clippy.toml,
+    /// the following code will also trigger the lint:
+    /// ```rust
+    /// # let var = 42;
+    /// format!("{} {}", var, 1+2);
     /// ```
+    /// Use instead:
+    /// ```rust
+    /// # let var = 42;
+    /// format!("{var} {}", 1+2);
+    /// ```
+    ///
+    /// ### Known Problems
     ///
     /// If a format string contains a numbered argument that cannot be inlined
     /// nothing will be suggested, e.g. `println!("{0}={1}", var, 1+2)`.
     #[clippy::version = "1.65.0"]
     pub UNINLINED_FORMAT_ARGS,
-    pedantic,
+    style,
     "using non-inlined variables in `format!` calls"
 }
 
@@ -162,12 +168,16 @@ impl_lint_pass!(FormatArgs => [
 
 pub struct FormatArgs {
     msrv: Msrv,
+    ignore_mixed: bool,
 }
 
 impl FormatArgs {
     #[must_use]
-    pub fn new(msrv: Msrv) -> Self {
-        Self { msrv }
+    pub fn new(msrv: Msrv, allow_mixed_uninlined_format_args: bool) -> Self {
+        Self {
+            msrv,
+            ignore_mixed: allow_mixed_uninlined_format_args,
+        }
     }
 }
 
@@ -192,7 +202,7 @@ impl<'tcx> LateLintPass<'tcx> for FormatArgs {
                 check_to_string_in_format_args(cx, name, arg.param.value);
             }
             if self.msrv.meets(msrvs::FORMAT_ARGS_CAPTURE) {
-                check_uninlined_args(cx, &format_args, outermost_expn_data.call_site, macro_def_id);
+                check_uninlined_args(cx, &format_args, outermost_expn_data.call_site, macro_def_id, self.ignore_mixed);
             }
         }
     }
@@ -270,7 +280,13 @@ fn check_unused_format_specifier(cx: &LateContext<'_>, arg: &FormatArg<'_>) {
     }
 }
 
-fn check_uninlined_args(cx: &LateContext<'_>, args: &FormatArgsExpn<'_>, call_site: Span, def_id: DefId) {
+fn check_uninlined_args(
+    cx: &LateContext<'_>,
+    args: &FormatArgsExpn<'_>,
+    call_site: Span,
+    def_id: DefId,
+    ignore_mixed: bool,
+) {
     if args.format_string.span.from_expansion() {
         return;
     }
@@ -285,7 +301,7 @@ fn check_uninlined_args(cx: &LateContext<'_>, args: &FormatArgsExpn<'_>, call_si
     // we cannot remove any other arguments in the format string,
     // because the index numbers might be wrong after inlining.
     // Example of an un-inlinable format:  print!("{}{1}", foo, 2)
-    if !args.params().all(|p| check_one_arg(args, &p, &mut fixes)) || fixes.is_empty() {
+    if !args.params().all(|p| check_one_arg(args, &p, &mut fixes, ignore_mixed)) || fixes.is_empty() {
         return;
     }
 
@@ -309,7 +325,12 @@ fn check_uninlined_args(cx: &LateContext<'_>, args: &FormatArgsExpn<'_>, call_si
     );
 }
 
-fn check_one_arg(args: &FormatArgsExpn<'_>, param: &FormatParam<'_>, fixes: &mut Vec<(Span, String)>) -> bool {
+fn check_one_arg(
+    args: &FormatArgsExpn<'_>,
+    param: &FormatParam<'_>,
+    fixes: &mut Vec<(Span, String)>,
+    ignore_mixed: bool,
+) -> bool {
     if matches!(param.kind, Implicit | Starred | Named(_) | Numbered)
         && let ExprKind::Path(QPath::Resolved(None, path)) = param.value.kind
         && let [segment] = path.segments
@@ -324,8 +345,10 @@ fn check_one_arg(args: &FormatArgsExpn<'_>, param: &FormatParam<'_>, fixes: &mut
         fixes.push((arg_span, String::new()));
         true  // successful inlining, continue checking
     } else {
-        // if we can't inline a numbered argument, we can't continue
-        param.kind != Numbered
+        // Do not continue inlining (return false) in case
+        // * if we can't inline a numbered argument, e.g. `print!("{0} ...", foo.bar, ...)`
+        // * if allow_mixed_uninlined_format_args is false and this arg hasn't been inlined already
+        param.kind != Numbered && (!ignore_mixed || matches!(param.kind, NamedInline(_)))
     }
 }
 
