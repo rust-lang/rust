@@ -162,7 +162,7 @@ extern "unadjusted" {
 
     #[link_name = "llvm.aarch64.neon.smaxv.i8.v8i8"]
     fn vmaxv_s8_(a: int8x8_t) -> i8;
-    #[link_name = "llvm.aarch64.neon.smaxv.i8.6i8"]
+    #[link_name = "llvm.aarch64.neon.smaxv.i8.v16i8"]
     fn vmaxvq_s8_(a: int8x16_t) -> i8;
     #[link_name = "llvm.aarch64.neon.smaxv.i16.v4i16"]
     fn vmaxv_s16_(a: int16x4_t) -> i16;
@@ -175,7 +175,7 @@ extern "unadjusted" {
 
     #[link_name = "llvm.aarch64.neon.umaxv.i8.v8i8"]
     fn vmaxv_u8_(a: uint8x8_t) -> u8;
-    #[link_name = "llvm.aarch64.neon.umaxv.i8.6i8"]
+    #[link_name = "llvm.aarch64.neon.umaxv.i8.v16i8"]
     fn vmaxvq_u8_(a: uint8x16_t) -> u8;
     #[link_name = "llvm.aarch64.neon.umaxv.i16.v4i16"]
     fn vmaxv_u16_(a: uint16x4_t) -> u16;
@@ -195,7 +195,7 @@ extern "unadjusted" {
 
     #[link_name = "llvm.aarch64.neon.sminv.i8.v8i8"]
     fn vminv_s8_(a: int8x8_t) -> i8;
-    #[link_name = "llvm.aarch64.neon.sminv.i8.6i8"]
+    #[link_name = "llvm.aarch64.neon.sminv.i8.v16i8"]
     fn vminvq_s8_(a: int8x16_t) -> i8;
     #[link_name = "llvm.aarch64.neon.sminv.i16.v4i16"]
     fn vminv_s16_(a: int16x4_t) -> i16;
@@ -208,7 +208,7 @@ extern "unadjusted" {
 
     #[link_name = "llvm.aarch64.neon.uminv.i8.v8i8"]
     fn vminv_u8_(a: uint8x8_t) -> u8;
-    #[link_name = "llvm.aarch64.neon.uminv.i8.6i8"]
+    #[link_name = "llvm.aarch64.neon.uminv.i8.v16i8"]
     fn vminvq_u8_(a: uint8x16_t) -> u8;
     #[link_name = "llvm.aarch64.neon.uminv.i16.v4i16"]
     fn vminv_u16_(a: uint16x4_t) -> u16;
