@@ -702,6 +702,7 @@ impl<'a> Builder<'a> {
                 doc::RustdocBook,
                 doc::RustByExample,
                 doc::RustcBook,
+                doc::Cargo,
                 doc::CargoBook,
                 doc::Clippy,
                 doc::ClippyBook,
