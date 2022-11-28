@@ -1,9 +1,9 @@
 use crate::iter::{InPlaceIterable, Iterator};
 use crate::ops::{ChangeOutputType, ControlFlow, FromResidual, Residual, Try};
 
-mod array_chunks;
 mod by_ref_sized;
 mod chain;
+mod chunks;
 mod cloned;
 mod copied;
 mod cycle;
@@ -34,7 +34,7 @@ pub use self::{
 };
 
 #[unstable(feature = "iter_array_chunks", reason = "recently added", issue = "100450")]
-pub use self::array_chunks::ArrayChunks;
+pub use self::chunks::Chunks;
 
 #[unstable(feature = "std_internals", issue = "none")]
 pub use self::by_ref_sized::ByRefSized;

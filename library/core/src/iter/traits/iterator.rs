@@ -5,7 +5,7 @@ use crate::ops::{ChangeOutputType, ControlFlow, FromResidual, Residual, Try};
 use super::super::try_process;
 use super::super::ByRefSized;
 use super::super::TrustedRandomAccessNoCoerce;
-use super::super::{ArrayChunks, Chain, Cloned, Copied, Cycle, Enumerate, Filter, FilterMap, Fuse};
+use super::super::{Chain, Chunks, Cloned, Copied, Cycle, Enumerate, Filter, FilterMap, Fuse};
 use super::super::{FlatMap, Flatten};
 use super::super::{FromIterator, Intersperse, IntersperseWith, Product, Sum, Zip};
 use super::super::{
@@ -3311,7 +3311,7 @@ pub trait Iterator {
     ///
     /// The chunks do not overlap. If `N` does not divide the length of the
     /// iterator, then the last up to `N-1` elements will be omitted and can be
-    /// retrieved from the [`.into_remainder()`][ArrayChunks::into_remainder]
+    /// retrieved from the [`.into_remainder()`][Chunks::into_remainder]
     /// function of the iterator.
     ///
     /// # Panics
@@ -3325,7 +3325,7 @@ pub trait Iterator {
     /// ```
     /// #![feature(iter_array_chunks)]
     ///
-    /// let mut iter = "lorem".chars().array_chunks();
+    /// let mut iter = "lorem".chars().chunks();
     /// assert_eq!(iter.next(), Some(['l', 'o']));
     /// assert_eq!(iter.next(), Some(['r', 'e']));
     /// assert_eq!(iter.next(), None);
@@ -3337,17 +3337,17 @@ pub trait Iterator {
     ///
     /// let data = [1, 1, 2, -2, 6, 0, 3, 1];
     /// //          ^-----^  ^------^
-    /// for [x, y, z] in data.iter().array_chunks() {
+    /// for [x, y, z] in data.iter().chunks() {
     ///     assert_eq!(x + y + z, 4);
     /// }
     /// ```
     #[track_caller]
     #[unstable(feature = "iter_array_chunks", reason = "recently added", issue = "100450")]
-    fn array_chunks<const N: usize>(self) -> ArrayChunks<Self, N>
+    fn chunks<const N: usize>(self) -> Chunks<Self, N>
     where
         Self: Sized,
     {
-        ArrayChunks::new(self)
+        Chunks::new(self)
     }
 
     /// Sums the elements of an iterator.

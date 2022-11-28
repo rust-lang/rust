@@ -1,6 +1,6 @@
-mod array_chunks;
 mod by_ref_sized;
 mod chain;
+mod chunks;
 mod cloned;
 mod copied;
 mod cycle;

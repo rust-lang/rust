@@ -676,7 +676,7 @@ fn test_paste_blocks() {
 
 /// Produces an iterator that yields `n` elements at a time.
 trait Chunks: Iterator + Sized {
-    fn chunks(self, n: usize) -> ChunksIter<Self> {
+    fn vec_chunks(self, n: usize) -> ChunksIter<Self> {
         assert!(n > 0);
         ChunksIter {
             it: self,
@@ -716,7 +716,7 @@ where It: Iterator {
 
 fn test_chunks() {
     let r = &[1, 2, 3, 4, 5, 6, 7];
-    let c = r.iter().cloned().chunks(3).collect::<Vec<_>>();
+    let c = r.iter().cloned().vec_chunks(3).collect::<Vec<_>>();
     assert_eq!(&*c, &[vec![1, 2, 3], vec![4, 5, 6], vec![7]]);
 }
 
@@ -731,7 +731,7 @@ fn format_year(year: i32, months_per_row: usize) -> String {
         .__(by_month).map(|(_, days)| days)
 
         // Group the months into horizontal rows.
-        .chunks(months_per_row)
+        .vec_chunks(months_per_row)
 
         // Format each row...
         .map(|r| r.into_iter()

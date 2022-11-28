@@ -9,17 +9,17 @@ use crate::ops::{ControlFlow, NeverShortCircuit, Try};
 /// The chunks do not overlap. If `N` does not divide the length of the
 /// iterator, then the last up to `N-1` elements will be omitted.
 ///
-/// This `struct` is created by the [`array_chunks`][Iterator::array_chunks]
-/// method on [`Iterator`]. See its documentation for more.
+/// This `struct` is created by the [`chunks`][Iterator::chunks] method on
+/// [`Iterator`]. See its documentation for more.
 #[derive(Debug, Clone)]
 #[must_use = "iterators are lazy and do nothing unless consumed"]
 #[unstable(feature = "iter_array_chunks", reason = "recently added", issue = "100450")]
-pub struct ArrayChunks<I: Iterator, const N: usize> {
+pub struct Chunks<I: Iterator, const N: usize> {
     iter: I,
     remainder: Option<array::IntoIter<I::Item, N>>,
 }
 
-impl<I, const N: usize> ArrayChunks<I, N>
+impl<I, const N: usize> Chunks<I, N>
 where
     I: Iterator,
 {
@@ -40,7 +40,7 @@ where
 }
 
 #[unstable(feature = "iter_array_chunks", reason = "recently added", issue = "100450")]
-impl<I, const N: usize> Iterator for ArrayChunks<I, N>
+impl<I, const N: usize> Iterator for Chunks<I, N>
 where
     I: Iterator,
 {
@@ -75,7 +75,7 @@ where
                 Ok(chunk) => acc = f(acc, chunk)?,
                 Err(remainder) => {
                     // Make sure to not override `self.remainder` with an empty array
-                    // when `next` is called after `ArrayChunks` exhaustion.
+                    // when `next` is called after `Chunks` exhaustion.
                     self.remainder.get_or_insert(remainder);
 
                     break try { acc };
@@ -94,7 +94,7 @@ where
 }
 
 #[unstable(feature = "iter_array_chunks", reason = "recently added", issue = "100450")]
-impl<I, const N: usize> DoubleEndedIterator for ArrayChunks<I, N>
+impl<I, const N: usize> DoubleEndedIterator for Chunks<I, N>
 where
     I: DoubleEndedIterator + ExactSizeIterator,
 {
@@ -131,14 +131,14 @@ where
     impl_fold_via_try_fold! { rfold -> try_rfold }
 }
 
-impl<I, const N: usize> ArrayChunks<I, N>
+impl<I, const N: usize> Chunks<I, N>
 where
     I: DoubleEndedIterator + ExactSizeIterator,
 {
     /// Updates `self.remainder` such that `self.iter.len` is divisible by `N`.
     fn next_back_remainder(&mut self) {
         // Make sure to not override `self.remainder` with an empty array
-        // when `next_back` is called after `ArrayChunks` exhaustion.
+        // when `next_back` is called after `Chunks` exhaustion.
         if self.remainder.is_some() {
             return;
         }
@@ -159,10 +159,10 @@ where
 }
 
 #[unstable(feature = "iter_array_chunks", reason = "recently added", issue = "100450")]
-impl<I, const N: usize> FusedIterator for ArrayChunks<I, N> where I: FusedIterator {}
+impl<I, const N: usize> FusedIterator for Chunks<I, N> where I: FusedIterator {}
 
 #[unstable(feature = "iter_array_chunks", reason = "recently added", issue = "100450")]
-impl<I, const N: usize> ExactSizeIterator for ArrayChunks<I, N>
+impl<I, const N: usize> ExactSizeIterator for Chunks<I, N>
 where
     I: ExactSizeIterator,
 {
@@ -184,7 +184,7 @@ trait SpecFold: Iterator {
         F: FnMut(B, Self::Item) -> B;
 }
 
-impl<I, const N: usize> SpecFold for ArrayChunks<I, N>
+impl<I, const N: usize> SpecFold for Chunks<I, N>
 where
     I: Iterator,
 {
@@ -199,7 +199,7 @@ where
     }
 }
 
-impl<I, const N: usize> SpecFold for ArrayChunks<I, N>
+impl<I, const N: usize> SpecFold for Chunks<I, N>
 where
     I: Iterator + TrustedRandomAccessNoCoerce,
 {

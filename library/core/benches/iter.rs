@@ -419,7 +419,7 @@ fn bench_copied_chunks(b: &mut Bencher) {
     })
 }
 
-/// Exercises the TrustedRandomAccess specialization in ArrayChunks
+/// Exercises the TrustedRandomAccess specialization in Chunks
 #[bench]
 fn bench_trusted_random_access_chunks(b: &mut Bencher) {
     let v = vec![1u8; 1024];
@@ -429,7 +429,7 @@ fn bench_trusted_random_access_chunks(b: &mut Bencher) {
             .iter()
             // this shows that we're not relying on the slice::Iter specialization in Copied
             .map(|b| *b.borrow())
-            .array_chunks::<{ mem::size_of::<u64>() }>()
+            .chunks::<{ mem::size_of::<u64>() }>()
             .map(|ary| {
                 let d = u64::from_ne_bytes(ary);
                 Wrapping(d.rotate_left(7).wrapping_add(1))
