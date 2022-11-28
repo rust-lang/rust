@@ -5,12 +5,12 @@ LL |        Unit,
    |        ---- enum variant `Alias::Unit` defined here
 ...
 LL |        Alias::
-   |   _____^
-   |  |_____|
+   |  ______^
+   | | _____|
    | ||
 LL | ||     Unit();
    | ||________^_- call expression requires function
-   | |_________|
+   |  |________|
    | 
    |
 help: `Alias::Unit` is a unit enum variant, and does not take parentheses to be constructed
