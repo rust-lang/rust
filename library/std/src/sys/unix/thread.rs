@@ -20,6 +20,19 @@ pub const DEFAULT_MIN_STACK_SIZE: usize = 256 * 1024;
 #[cfg(target_os = "espidf")]
 pub const DEFAULT_MIN_STACK_SIZE: usize = 0; // 0 indicates that the stack size configured in the ESP-IDF menuconfig system should be used
 
+cfg_if::cfg_if! {
+    if #[cfg(target_os = "horizon")] {
+        pub type Priority = crate::os::horizon::thread::Priority;
+        pub type Affinity = crate::os::horizon::thread::Affinity;
+    } else if #[cfg(target_os = "linux")] {
+        pub type Priority = crate::os::linux::thread::Priority;
+        pub type Affinity = crate::os::linux::thread::Affinity;
+    } else {
+        pub type Priority = ();
+        pub type Affinity = ();
+    }
+}
+
 #[cfg(target_os = "fuchsia")]
 mod zircon {
     type zx_handle_t = u32;
@@ -48,7 +61,11 @@ unsafe impl Sync for Thread {}
 
 impl Thread {
     // unsafe: see thread::Builder::spawn_unchecked for safety requirements
-    pub unsafe fn new(stack: usize, p: Box<dyn FnOnce()>) -> io::Result<Thread> {
+    pub(crate) unsafe fn new(
+        stack: usize,
+        p: Box<dyn FnOnce()>,
+        #[allow(unused)] native_options: crate::thread::NativeOptions,
+    ) -> io::Result<Thread> {
         let p = Box::into_raw(box p);
         let mut native: libc::pthread_t = mem::zeroed();
         let mut attr: libc::pthread_attr_t = mem::zeroed();
@@ -82,6 +99,30 @@ impl Thread {
                     assert_eq!(libc::pthread_attr_setstacksize(&mut attr, stack_size), 0);
                 }
             };
+        }
+
+        #[cfg(any(target_os = "linux", target_os = "horizon"))]
+        {
+            if let Some(priority) = native_options.priority {
+                let sched_param = libc::sched_param { sched_priority: priority.0 };
+                // NOTE: needs to be added to libc, for now this doesn't compile
+                // assert_eq!(libc::pthread_attr_setschedparam(&mut attr, &sched_param), 0);
+            }
+
+            if let Some(affinity) = native_options.affinity {
+                #[cfg(target_os = "linux")]
+                assert_eq!(
+                    libc::pthread_attr_setaffinity_np(
+                        &mut attr,
+                        mem::size_of::<libc::cpu_set_t>(),
+                        &affinity.0,
+                    ),
+                    0
+                );
+
+                #[cfg(target_os = "horizon")]
+                assert_eq!(libc::pthread_attr_setprocessorid_np(&mut attr, affinity.0), 0);
+            }
         }
 
         let ret = libc::pthread_create(&mut native, &attr, thread_start, p as *mut _);
@@ -213,7 +254,8 @@ impl Thread {
         target_os = "l4re",
         target_os = "emscripten",
         target_os = "redox",
-        target_os = "vxworks"
+        target_os = "vxworks",
+        target_os = "horizon"
     ))]
     pub fn set_name(_name: &CStr) {
         // Newlib, Emscripten, and VxWorks have no way to set a thread name.

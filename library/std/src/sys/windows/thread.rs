@@ -7,6 +7,7 @@ use crate::sys::c;
 use crate::sys::handle::Handle;
 use crate::sys::stack_overflow;
 use crate::sys_common::FromInner;
+use crate::thread::NativeOptions;
 use crate::time::Duration;
 
 use libc::c_void;
@@ -15,13 +16,20 @@ use super::to_u16s;
 
 pub const DEFAULT_MIN_STACK_SIZE: usize = 2 * 1024 * 1024;
 
+pub type Priority = ();
+pub type Affinity = ();
+
 pub struct Thread {
     handle: Handle,
 }
 
 impl Thread {
     // unsafe: see thread::Builder::spawn_unchecked for safety requirements
-    pub unsafe fn new(stack: usize, p: Box<dyn FnOnce()>) -> io::Result<Thread> {
+    pub unsafe fn new(
+        stack: usize,
+        p: Box<dyn FnOnce()>,
+        _native_options: NativeOptions,
+    ) -> io::Result<Thread> {
         let p = Box::into_raw(box p);
 
         // FIXME On UNIX, we guard against stack sizes that are too small but
@@ -97,6 +105,9 @@ impl Thread {
         self.handle
     }
 }
+
+pub type Priority = ();
+pub type Affinity = ();
 
 pub fn available_parallelism() -> io::Result<NonZeroUsize> {
     let res = unsafe {

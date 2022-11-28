@@ -2,6 +2,7 @@ use super::unsupported;
 use crate::ffi::CStr;
 use crate::io;
 use crate::num::NonZeroUsize;
+use crate::thread::NativeOptions;
 use crate::time::Duration;
 
 pub struct Thread(!);
@@ -10,7 +11,11 @@ pub const DEFAULT_MIN_STACK_SIZE: usize = 4096;
 
 impl Thread {
     // unsafe: see thread::Builder::spawn_unchecked for safety requirements
-    pub unsafe fn new(_stack: usize, _p: Box<dyn FnOnce()>) -> io::Result<Thread> {
+    pub unsafe fn new(
+        _stack: usize,
+        _p: Box<dyn FnOnce()>,
+        _native_options: NativeOptions,
+    ) -> io::Result<Thread> {
         unsupported()
     }
 
@@ -30,6 +35,9 @@ impl Thread {
         self.0
     }
 }
+
+pub type Priority = ();
+pub type Affinity = ();
 
 pub fn available_parallelism() -> io::Result<NonZeroUsize> {
     unsupported()

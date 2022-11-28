@@ -3,6 +3,7 @@ use super::unsupported;
 use crate::ffi::CStr;
 use crate::io;
 use crate::num::NonZeroUsize;
+use crate::thread::NativeOptions;
 use crate::time::Duration;
 
 use super::abi::usercalls;
@@ -104,7 +105,11 @@ pub mod wait_notify {
 
 impl Thread {
     // unsafe: see thread::Builder::spawn_unchecked for safety requirements
-    pub unsafe fn new(_stack: usize, p: Box<dyn FnOnce()>) -> io::Result<Thread> {
+    pub unsafe fn new(
+        _stack: usize,
+        p: Box<dyn FnOnce()>,
+        _native_options: NativeOptions,
+    ) -> io::Result<Thread> {
         let mut queue_lock = task_queue::lock();
         unsafe { usercalls::launch_thread()? };
         let (task, handle) = task_queue::Task::new(p);
@@ -136,6 +141,9 @@ impl Thread {
         self.0.wait();
     }
 }
+
+pub type Priority = ();
+pub type Affinity = ();
 
 pub fn available_parallelism() -> io::Result<NonZeroUsize> {
     unsupported()
