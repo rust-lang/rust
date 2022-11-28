@@ -1,8 +1,7 @@
 //! Code related to parsing literals.
 
-use crate::ast::{self, Lit, LitKind};
+use crate::ast::{self, LitKind, MetaItemLit};
 use crate::token::{self, Token};
-use rustc_data_structures::sync::Lrc;
 use rustc_lexer::unescape::{byte_from_char, unescape_byte, unescape_char, unescape_literal, Mode};
 use rustc_span::symbol::{kw, sym, Symbol};
 use rustc_span::Span;
@@ -196,33 +195,26 @@ impl LitKind {
     }
 }
 
-impl Lit {
-    /// Converts literal token into an AST literal.
-    pub fn from_token_lit(token_lit: token::Lit, span: Span) -> Result<Lit, LitError> {
-        Ok(Lit { token_lit, kind: LitKind::from_token_lit(token_lit)?, span })
+impl MetaItemLit {
+    /// Converts token literal into a meta item literal.
+    pub fn from_token_lit(token_lit: token::Lit, span: Span) -> Result<MetaItemLit, LitError> {
+        Ok(MetaItemLit { token_lit, kind: LitKind::from_token_lit(token_lit)?, span })
     }
 
-    /// Converts an arbitrary token into an AST literal.
-    pub fn from_token(token: &Token) -> Option<Lit> {
+    /// Converts an arbitrary token into meta item literal.
+    pub fn from_token(token: &Token) -> Option<MetaItemLit> {
         token::Lit::from_token(token)
-            .and_then(|token_lit| Lit::from_token_lit(token_lit, token.span).ok())
+            .and_then(|token_lit| MetaItemLit::from_token_lit(token_lit, token.span).ok())
     }
 
-    /// Attempts to recover an AST literal from semantic literal.
+    /// Attempts to create a meta item literal from a `LitKind`.
     /// This function is used when the original token doesn't exist (e.g. the literal is created
     /// by an AST-based macro) or unavailable (e.g. from HIR pretty-printing).
-    pub fn from_lit_kind(kind: LitKind, span: Span) -> Lit {
-        Lit { token_lit: kind.to_token_lit(), kind, span }
+    pub fn from_lit_kind(kind: LitKind, span: Span) -> MetaItemLit {
+        MetaItemLit { token_lit: kind.to_token_lit(), kind, span }
     }
 
-    /// Recovers an AST literal from a string of bytes produced by `include_bytes!`.
-    /// This requires ASCII-escaping the string, which can result in poor performance
-    /// for very large strings of bytes.
-    pub fn from_included_bytes(bytes: &Lrc<[u8]>, span: Span) -> Lit {
-        Self::from_lit_kind(LitKind::ByteStr(bytes.clone()), span)
-    }
-
-    /// Losslessly convert an AST literal into a token.
+    /// Losslessly convert a meta item literal into a token.
     pub fn to_token(&self) -> Token {
         let kind = match self.token_lit.kind {
             token::Bool => token::Ident(self.token_lit.symbol, false),

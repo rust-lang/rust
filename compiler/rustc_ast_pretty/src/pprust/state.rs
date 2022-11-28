@@ -371,7 +371,7 @@ pub trait PrintState<'a>: std::ops::Deref<Target = pp::Printer> + std::ops::Dere
         }
     }
 
-    fn print_literal(&mut self, lit: &ast::Lit) {
+    fn print_meta_item_lit(&mut self, lit: &ast::MetaItemLit) {
         self.print_token_literal(lit.token_lit, lit.span)
     }
 
@@ -488,7 +488,7 @@ pub trait PrintState<'a>: std::ops::Deref<Target = pp::Printer> + std::ops::Dere
                 self.print_path(&item.path, false, 0);
                 self.space();
                 self.word_space("=");
-                let token_str = self.literal_to_string(lit);
+                let token_str = self.meta_item_lit_to_string(lit);
                 self.word(token_str);
             }
         }
@@ -498,7 +498,7 @@ pub trait PrintState<'a>: std::ops::Deref<Target = pp::Printer> + std::ops::Dere
     fn print_meta_list_item(&mut self, item: &ast::NestedMetaItem) {
         match item {
             ast::NestedMetaItem::MetaItem(ref mi) => self.print_meta_item(mi),
-            ast::NestedMetaItem::Literal(ref lit) => self.print_literal(lit),
+            ast::NestedMetaItem::Lit(ref lit) => self.print_meta_item_lit(lit),
         }
     }
 
@@ -510,7 +510,7 @@ pub trait PrintState<'a>: std::ops::Deref<Target = pp::Printer> + std::ops::Dere
                 self.print_path(&item.path, false, 0);
                 self.space();
                 self.word_space("=");
-                self.print_literal(value);
+                self.print_meta_item_lit(value);
             }
             ast::MetaItemKind::List(ref items) => {
                 self.print_path(&item.path, false, 0);
@@ -825,8 +825,8 @@ pub trait PrintState<'a>: std::ops::Deref<Target = pp::Printer> + std::ops::Dere
         Self::to_string(|s| s.print_expr(e))
     }
 
-    fn literal_to_string(&self, lit: &ast::Lit) -> String {
-        Self::to_string(|s| s.print_literal(lit))
+    fn meta_item_lit_to_string(&self, lit: &ast::MetaItemLit) -> String {
+        Self::to_string(|s| s.print_meta_item_lit(lit))
     }
 
     fn tt_to_string(&self, tt: &TokenTree) -> String {

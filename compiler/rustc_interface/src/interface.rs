@@ -194,7 +194,7 @@ pub fn parse_check_cfg(specs: Vec<String>) -> CheckCfg {
 
                                         for val in values {
                                             if let Some(LitKind::Str(s, _)) =
-                                                val.literal().map(|lit| &lit.kind)
+                                                val.lit().map(|lit| &lit.kind)
                                             {
                                                 ident_values.insert(s.to_string());
                                             } else {

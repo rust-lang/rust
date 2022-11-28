@@ -36,7 +36,7 @@ pub use init_mask::{InitChunk, InitChunkIter};
 /// module provides higher-level access.
 // Note: for performance reasons when interning, some of the `Allocation` fields can be partially
 // hashed. (see the `Hash` impl below for more details), so the impl is not derived.
-#[derive(Clone, Eq, PartialEq, PartialOrd, Ord, TyEncodable, TyDecodable)]
+#[derive(Clone, Eq, PartialEq, TyEncodable, TyDecodable)]
 #[derive(HashStable)]
 pub struct Allocation<Prov: Provenance = AllocId, Extra = ()> {
     /// The actual bytes of the allocation.
@@ -108,7 +108,7 @@ impl hash::Hash for Allocation {
 /// Here things are different because only const allocations are interned. This
 /// means that both the inner type (`Allocation`) and the outer type
 /// (`ConstAllocation`) are used quite a bit.
-#[derive(Copy, Clone, PartialEq, Eq, PartialOrd, Ord, Hash, HashStable)]
+#[derive(Copy, Clone, PartialEq, Eq, Hash, HashStable)]
 #[rustc_pass_by_value]
 pub struct ConstAllocation<'tcx>(pub Interned<'tcx, Allocation>);
 
