@@ -1875,16 +1875,20 @@ impl<'a, 'tcx> ProbeContext<'a, 'tcx> {
         self.tcx.erase_late_bound_regions(value)
     }
 
+    /// Determine if the given associated item type is relevant in the current context.
+    fn is_relevant_kind_for_mode(&self, kind: ty::AssocKind) -> bool {
+        match (self.mode, kind) {
+            (Mode::MethodCall, ty::AssocKind::Fn) => true,
+            (Mode::Path, ty::AssocKind::Const | ty::AssocKind::Fn) => true,
+            _ => false,
+        }
+    }
+
     /// Finds the method with the appropriate name (or return type, as the case may be). If
     /// `allow_similar_names` is set, find methods with close-matching names.
     // The length of the returned iterator is nearly always 0 or 1 and this
     // method is fairly hot.
     fn impl_or_trait_item(&self, def_id: DefId) -> SmallVec<[ty::AssocItem; 1]> {
-        let relevant_kind_for_mode = |kind| match (self.mode, kind) {
-            (Mode::MethodCall, ty::AssocKind::Fn) => true,
-            (Mode::Path, ty::AssocKind::Const | ty::AssocKind::Fn) => true,
-            _ => false,
-        };
         if let Some(name) = self.method_name {
             if self.allow_similar_names {
                 let max_dist = max(name.as_str().len(), 3) / 3;
@@ -1892,7 +1896,7 @@ impl<'a, 'tcx> ProbeContext<'a, 'tcx> {
                     .associated_items(def_id)
                     .in_definition_order()
                     .filter(|x| {
-                        if !relevant_kind_for_mode(x.kind) {
+                        if !self.is_relevant_kind_for_mode(x.kind) {
                             return false;
                         }
                         match lev_distance_with_substrings(name.as_str(), x.name.as_str(), max_dist)
@@ -1906,14 +1910,14 @@ impl<'a, 'tcx> ProbeContext<'a, 'tcx> {
             } else {
                 self.fcx
                     .associated_value(def_id, name)
-                    .filter(|x| relevant_kind_for_mode(x.kind))
+                    .filter(|x| self.is_relevant_kind_for_mode(x.kind))
                     .map_or_else(SmallVec::new, |x| SmallVec::from_buf([x]))
             }
         } else {
             self.tcx
                 .associated_items(def_id)
                 .in_definition_order()
-                .filter(|x| relevant_kind_for_mode(x.kind))
+                .filter(|x| self.is_relevant_kind_for_mode(x.kind))
                 .copied()
                 .collect()
         }
