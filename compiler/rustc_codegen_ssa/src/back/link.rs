@@ -672,7 +672,8 @@ fn link_dwarf_object<'a>(
             thorin::MissingReferencedObjectBehaviour::Skip,
         )?;
 
-        let output_stream = BufWriter::new(
+        let output = package.finish()?.write()?;
+        let mut output_stream = BufWriter::new(
             OpenOptions::new()
                 .read(true)
                 .write(true)
@@ -680,10 +681,8 @@ fn link_dwarf_object<'a>(
                 .truncate(true)
                 .open(dwp_out_filename)?,
         );
-        let mut output_stream = object::write::StreamingBuffer::new(output_stream);
-        package.finish()?.emit(&mut output_stream)?;
-        output_stream.result()?;
-        output_stream.into_inner().flush()?;
+        output_stream.write_all(&output)?;
+        output_stream.flush()?;
 
         Ok(())
     }) {
