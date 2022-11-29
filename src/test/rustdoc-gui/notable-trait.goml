@@ -226,7 +226,7 @@ assert: "#method\.create_an_iterator_from_read .notable-traits:focus"
 // Now we check that the focus isn't given back to the wrong item when opening
 // another popover.
 store-window-property: (scroll, "scrollY")
-click: "#method\.create_an_iterator_from_read .fnname"
+click: "#method\.create_an_iterator_from_read .fn"
 // We ensure that the scroll position changed.
 assert-window-property-false: {"scrollY": |scroll|}
 // Store the new position.
@@ -240,7 +240,7 @@ assert-window-property-false: {"scrollY": |scroll|}
 
 // Same but with Escape handling.
 store-window-property: (scroll, "scrollY")
-click: "#method\.create_an_iterator_from_read .fnname"
+click: "#method\.create_an_iterator_from_read .fn"
 // We ensure that the scroll position changed.
 assert-window-property-false: {"scrollY": |scroll|}
 // Store the new position.

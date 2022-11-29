@@ -847,10 +847,10 @@ fn assoc_method(
         render_attributes_in_code(w, meth);
         (0, "", Ending::Newline)
     };
-    w.reserve(header_len + "<a href=\"\" class=\"fnname\">{".len() + "</a>".len());
+    w.reserve(header_len + "<a href=\"\" class=\"fn\">{".len() + "</a>".len());
     write!(
         w,
-        "{indent}{vis}{constness}{asyncness}{unsafety}{defaultness}{abi}fn <a{href} class=\"fnname\">{name}</a>\
+        "{indent}{vis}{constness}{asyncness}{unsafety}{defaultness}{abi}fn <a{href} class=\"fn\">{name}</a>\
          {generics}{decl}{notable_traits}{where_clause}",
         indent = indent_str,
         vis = vis,
