@@ -2,6 +2,7 @@ use rustc_ast as ast;
 use rustc_ast::{ptr::P, tokenstream::TokenStream};
 use rustc_errors::Applicability;
 use rustc_expand::base::{self, DummyResult};
+use rustc_session::errors::report_lit_error;
 use rustc_span::Span;
 
 /// Emits errors for literal expressions that are invalid inside and outside of an array.
@@ -68,7 +69,10 @@ fn invalid_type_err(
         Ok(ast::LitKind::Int(_, _)) => {
             cx.span_err(span, "numeric literal is not a `u8`");
         }
-        _ => unreachable!(),
+        Ok(ast::LitKind::ByteStr(_) | ast::LitKind::Byte(_)) => unreachable!(),
+        Err(err) => {
+            report_lit_error(&cx.sess.parse_sess, err, token_lit, span);
+        }
     }
 }
 
