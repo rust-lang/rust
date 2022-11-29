@@ -2140,6 +2140,13 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
         match self.match_impl(impl_def_id, impl_trait_ref, obligation) {
             Ok(substs) => substs,
             Err(()) => {
+                // FIXME: A rematch may fail when a candidate cache hit occurs
+                // on thefreshened form of the trait predicate, but the match
+                // fails for some reason that is not captured in the freshened
+                // cache key. For example, equating an impl trait ref against
+                // the placeholder trait ref may fail due the Generalizer relation
+                // raising a CyclicalTy error due to a sub_root_var relation
+                // for a variable being generalized...
                 self.infcx.tcx.sess.delay_span_bug(
                     obligation.cause.span,
                     &format!(
