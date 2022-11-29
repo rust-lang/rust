@@ -206,15 +206,6 @@ impl MetaItemLit {
         token::Lit::from_token(token)
             .and_then(|token_lit| MetaItemLit::from_token_lit(token_lit, token.span).ok())
     }
-
-    /// Losslessly convert a meta item literal into a token.
-    pub fn to_token(&self) -> Token {
-        let kind = match self.token_lit.kind {
-            token::Bool => token::Ident(self.token_lit.symbol, false),
-            _ => token::Literal(self.token_lit),
-        };
-        Token::new(kind, self.span)
-    }
 }
 
 fn strip_underscores(symbol: Symbol) -> Symbol {

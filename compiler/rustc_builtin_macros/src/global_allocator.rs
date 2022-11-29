@@ -115,9 +115,7 @@ impl AllocFnFactory<'_, '_> {
     }
 
     fn attrs(&self) -> AttrVec {
-        let special = sym::rustc_std_internal_symbol;
-        let special = self.cx.meta_word(self.span, special);
-        thin_vec![self.cx.attribute(special)]
+        thin_vec![self.cx.attr_word(sym::rustc_std_internal_symbol, self.span)]
     }
 
     fn arg_ty(

@@ -20,8 +20,7 @@ pub fn expand_deriving_default(
 ) {
     item.visit_with(&mut DetectNonVariantDefaultAttr { cx });
 
-    let inline = cx.meta_word(span, sym::inline);
-    let attrs = thin_vec![cx.attribute(inline)];
+    let attrs = thin_vec![cx.attr_word(sym::inline, span)];
     let trait_def = TraitDef {
         span,
         path: Path::new(vec![kw::Default, sym::Default]),

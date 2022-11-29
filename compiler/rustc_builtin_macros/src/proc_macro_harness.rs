@@ -1,6 +1,3 @@
-use std::mem;
-
-use rustc_ast::attr;
 use rustc_ast::ptr::P;
 use rustc_ast::visit::{self, Visitor};
 use rustc_ast::{self as ast, NodeId};
@@ -13,6 +10,7 @@ use rustc_span::source_map::SourceMap;
 use rustc_span::symbol::{kw, sym, Ident, Symbol};
 use rustc_span::{Span, DUMMY_SP};
 use smallvec::smallvec;
+use std::mem;
 
 struct ProcMacroDerive {
     id: NodeId,
@@ -365,14 +363,8 @@ fn mk_decls(cx: &mut ExtCtxt<'_>, macros: &[ProcMacro]) -> P<ast::Item> {
             cx.expr_array_ref(span, decls),
         )
         .map(|mut i| {
-            let attr = cx.meta_word(span, sym::rustc_proc_macro_decls);
-            i.attrs.push(cx.attribute(attr));
-
-            let deprecated_attr = attr::mk_nested_word_item(Ident::new(sym::deprecated, span));
-            let allow_deprecated_attr =
-                attr::mk_list_item(Ident::new(sym::allow, span), vec![deprecated_attr]);
-            i.attrs.push(cx.attribute(allow_deprecated_attr));
-
+            i.attrs.push(cx.attr_word(sym::rustc_proc_macro_decls, span));
+            i.attrs.push(cx.attr_nested_word(sym::allow, sym::deprecated, span));
             i
         });
 

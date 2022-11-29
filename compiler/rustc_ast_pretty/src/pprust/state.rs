@@ -19,7 +19,7 @@ use rustc_ast::{InlineAsmOptions, InlineAsmTemplatePiece};
 use rustc_span::edition::Edition;
 use rustc_span::source_map::{SourceMap, Spanned};
 use rustc_span::symbol::{kw, sym, Ident, IdentPrinter, Symbol};
-use rustc_span::{BytePos, FileName, Span};
+use rustc_span::{BytePos, FileName, Span, DUMMY_SP};
 
 use rustc_ast::attr::AttrIdGenerator;
 use std::borrow::Cow;
@@ -119,17 +119,20 @@ pub fn print_crate<'a>(
         // of the feature gate, so we fake them up here.
 
         // `#![feature(prelude_import)]`
-        let pi_nested = attr::mk_nested_word_item(Ident::with_dummy_span(sym::prelude_import));
-        let list = attr::mk_list_item(Ident::with_dummy_span(sym::feature), vec![pi_nested]);
-        let fake_attr = attr::mk_attr_inner(g, list);
+        let fake_attr = attr::mk_attr_nested_word(
+            g,
+            ast::AttrStyle::Inner,
+            sym::feature,
+            sym::prelude_import,
+            DUMMY_SP,
+        );
         s.print_attribute(&fake_attr);
 
         // Currently, in Rust 2018 we don't have `extern crate std;` at the crate
         // root, so this is not needed, and actually breaks things.
         if edition == Edition::Edition2015 {
             // `#![no_std]`
-            let no_std_meta = attr::mk_word_item(Ident::with_dummy_span(sym::no_std));
-            let fake_attr = attr::mk_attr_inner(g, no_std_meta);
+            let fake_attr = attr::mk_attr_word(g, ast::AttrStyle::Inner, sym::no_std, DUMMY_SP);
             s.print_attribute(&fake_attr);
         }
     }
@@ -1712,9 +1715,9 @@ impl<'a> State<'a> {
             where_clause: ast::WhereClause {
                 has_where_token: false,
                 predicates: Vec::new(),
-                span: rustc_span::DUMMY_SP,
+                span: DUMMY_SP,
             },
-            span: rustc_span::DUMMY_SP,
+            span: DUMMY_SP,
         };
         let header = ast::FnHeader { unsafety, ext, ..ast::FnHeader::default() };
         self.print_fn(decl, header, name, &generics);

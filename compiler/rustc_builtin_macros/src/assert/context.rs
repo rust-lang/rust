@@ -1,5 +1,4 @@
 use rustc_ast::{
-    attr,
     ptr::P,
     token,
     tokenstream::{DelimSpan, TokenStream, TokenTree},
@@ -118,10 +117,7 @@ impl<'cx, 'a> Context<'cx, 'a> {
             self.cx.item(
                 self.span,
                 Ident::empty(),
-                thin_vec![self.cx.attribute(attr::mk_list_item(
-                    Ident::new(sym::allow, self.span),
-                    vec![attr::mk_nested_word_item(Ident::new(sym::unused_imports, self.span))],
-                ))],
+                thin_vec![self.cx.attr_nested_word(sym::allow, sym::unused_imports, self.span)],
                 ItemKind::Use(UseTree {
                     prefix: self.cx.path(self.span, self.cx.std_path(&[sym::asserting])),
                     kind: UseTreeKind::Nested(vec![
