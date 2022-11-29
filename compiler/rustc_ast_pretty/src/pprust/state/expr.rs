@@ -8,9 +8,9 @@ use rustc_ast::{self as ast, BlockCheckMode};
 impl<'a> State<'a> {
     fn print_else(&mut self, els: Option<&ast::Expr>) {
         if let Some(_else) = els {
-            match _else.kind {
+            match &_else.kind {
                 // Another `else if` block.
-                ast::ExprKind::If(ref i, ref then, ref e) => {
+                ast::ExprKind::If(i, then, e) => {
                     self.cbox(INDENT_UNIT - 1);
                     self.ibox(0);
                     self.word(" else if ");
@@ -20,7 +20,7 @@ impl<'a> State<'a> {
                     self.print_else(e.as_deref())
                 }
                 // Final `else` block.
-                ast::ExprKind::Block(ref b, _) => {
+                ast::ExprKind::Block(b, _) => {
                     self.cbox(INDENT_UNIT - 1);
                     self.ibox(0);
                     self.word(" else ");
@@ -202,7 +202,7 @@ impl<'a> State<'a> {
         self.print_expr_maybe_paren(receiver, parser::PREC_POSTFIX);
         self.word(".");
         self.print_ident(segment.ident);
-        if let Some(ref args) = segment.args {
+        if let Some(args) = &segment.args {
             self.print_generic_args(args, true);
         }
         self.print_call_post(base_args)
@@ -284,73 +284,66 @@ impl<'a> State<'a> {
 
         self.ibox(INDENT_UNIT);
         self.ann.pre(self, AnnNode::Expr(expr));
-        match expr.kind {
-            ast::ExprKind::Box(ref expr) => {
+        match &expr.kind {
+            ast::ExprKind::Box(expr) => {
                 self.word_space("box");
                 self.print_expr_maybe_paren(expr, parser::PREC_PREFIX);
             }
-            ast::ExprKind::Array(ref exprs) => {
+            ast::ExprKind::Array(exprs) => {
                 self.print_expr_vec(exprs);
             }
-            ast::ExprKind::ConstBlock(ref anon_const) => {
+            ast::ExprKind::ConstBlock(anon_const) => {
                 self.print_expr_anon_const(anon_const, attrs);
             }
-            ast::ExprKind::Repeat(ref element, ref count) => {
+            ast::ExprKind::Repeat(element, count) => {
                 self.print_expr_repeat(element, count);
             }
-            ast::ExprKind::Struct(ref se) => {
+            ast::ExprKind::Struct(se) => {
                 self.print_expr_struct(&se.qself, &se.path, &se.fields, &se.rest);
             }
-            ast::ExprKind::Tup(ref exprs) => {
+            ast::ExprKind::Tup(exprs) => {
                 self.print_expr_tup(exprs);
             }
-            ast::ExprKind::Call(ref func, ref args) => {
+            ast::ExprKind::Call(func, args) => {
                 self.print_expr_call(func, &args);
             }
-            ast::ExprKind::MethodCall(box ast::MethodCall {
-                ref seg,
-                ref receiver,
-                ref args,
-                ..
-            }) => {
+            ast::ExprKind::MethodCall(box ast::MethodCall { seg, receiver, args, .. }) => {
                 self.print_expr_method_call(seg, &receiver, &args);
             }
-            ast::ExprKind::Binary(op, ref lhs, ref rhs) => {
-                self.print_expr_binary(op, lhs, rhs);
+            ast::ExprKind::Binary(op, lhs, rhs) => {
+                self.print_expr_binary(*op, lhs, rhs);
             }
-            ast::ExprKind::Unary(op, ref expr) => {
-                self.print_expr_unary(op, expr);
+            ast::ExprKind::Unary(op, expr) => {
+                self.print_expr_unary(*op, expr);
             }
-            ast::ExprKind::AddrOf(k, m, ref expr) => {
-                self.print_expr_addr_of(k, m, expr);
+            ast::ExprKind::AddrOf(k, m, expr) => {
+                self.print_expr_addr_of(*k, *m, expr);
             }
             ast::ExprKind::Lit(token_lit) => {
-                self.print_token_literal(token_lit, expr.span);
+                self.print_token_literal(*token_lit, expr.span);
             }
-            ast::ExprKind::IncludedBytes(ref bytes) => {
+            ast::ExprKind::IncludedBytes(bytes) => {
                 let lit = ast::LitKind::ByteStr(bytes.clone()).to_token_lit();
                 self.print_token_literal(lit, expr.span)
             }
-            ast::ExprKind::Cast(ref expr, ref ty) => {
+            ast::ExprKind::Cast(expr, ty) => {
                 let prec = AssocOp::As.precedence() as i8;
                 self.print_expr_maybe_paren(expr, prec);
                 self.space();
                 self.word_space("as");
                 self.print_type(ty);
             }
-            ast::ExprKind::Type(ref expr, ref ty) => {
+            ast::ExprKind::Type(expr, ty) => {
                 let prec = AssocOp::Colon.precedence() as i8;
                 self.print_expr_maybe_paren(expr, prec);
                 self.word_space(":");
                 self.print_type(ty);
             }
-            ast::ExprKind::Let(ref pat, ref scrutinee, _) => {
+            ast::ExprKind::Let(pat, scrutinee, _) => {
                 self.print_let(pat, scrutinee);
             }
-            ast::ExprKind::If(ref test, ref blk, ref elseopt) => {
-                self.print_if(test, blk, elseopt.as_deref())
-            }
-            ast::ExprKind::While(ref test, ref blk, opt_label) => {
+            ast::ExprKind::If(test, blk, elseopt) => self.print_if(test, blk, elseopt.as_deref()),
+            ast::ExprKind::While(test, blk, opt_label) => {
                 if let Some(label) = opt_label {
                     self.print_ident(label.ident);
                     self.word_space(":");
@@ -362,7 +355,7 @@ impl<'a> State<'a> {
                 self.space();
                 self.print_block_with_attrs(blk, attrs);
             }
-            ast::ExprKind::ForLoop(ref pat, ref iter, ref blk, opt_label) => {
+            ast::ExprKind::ForLoop(pat, iter, blk, opt_label) => {
                 if let Some(label) = opt_label {
                     self.print_ident(label.ident);
                     self.word_space(":");
@@ -377,7 +370,7 @@ impl<'a> State<'a> {
                 self.space();
                 self.print_block_with_attrs(blk, attrs);
             }
-            ast::ExprKind::Loop(ref blk, opt_label, _) => {
+            ast::ExprKind::Loop(blk, opt_label, _) => {
                 if let Some(label) = opt_label {
                     self.print_ident(label.ident);
                     self.word_space(":");
@@ -387,7 +380,7 @@ impl<'a> State<'a> {
                 self.word_nbsp("loop");
                 self.print_block_with_attrs(blk, attrs);
             }
-            ast::ExprKind::Match(ref expr, ref arms) => {
+            ast::ExprKind::Match(expr, arms) => {
                 self.cbox(0);
                 self.ibox(0);
                 self.word_nbsp("match");
@@ -402,18 +395,18 @@ impl<'a> State<'a> {
                 self.bclose(expr.span, empty);
             }
             ast::ExprKind::Closure(box ast::Closure {
-                ref binder,
+                binder,
                 capture_clause,
                 asyncness,
                 movability,
-                ref fn_decl,
-                ref body,
+                fn_decl,
+                body,
                 fn_decl_span: _,
             }) => {
                 self.print_closure_binder(binder);
-                self.print_movability(movability);
-                self.print_asyncness(asyncness);
-                self.print_capture_clause(capture_clause);
+                self.print_movability(*movability);
+                self.print_asyncness(*asyncness);
+                self.print_capture_clause(*capture_clause);
 
                 self.print_fn_params_and_ret(fn_decl, true);
                 self.space();
@@ -425,7 +418,7 @@ impl<'a> State<'a> {
                 // empty box to satisfy the close.
                 self.ibox(0);
             }
-            ast::ExprKind::Block(ref blk, opt_label) => {
+            ast::ExprKind::Block(blk, opt_label) => {
                 if let Some(label) = opt_label {
                     self.print_ident(label.ident);
                     self.word_space(":");
@@ -436,26 +429,26 @@ impl<'a> State<'a> {
                 self.ibox(0);
                 self.print_block_with_attrs(blk, attrs);
             }
-            ast::ExprKind::Async(capture_clause, _, ref blk) => {
+            ast::ExprKind::Async(capture_clause, _, blk) => {
                 self.word_nbsp("async");
-                self.print_capture_clause(capture_clause);
+                self.print_capture_clause(*capture_clause);
                 // cbox/ibox in analogy to the `ExprKind::Block` arm above
                 self.cbox(0);
                 self.ibox(0);
                 self.print_block_with_attrs(blk, attrs);
             }
-            ast::ExprKind::Await(ref expr) => {
+            ast::ExprKind::Await(expr) => {
                 self.print_expr_maybe_paren(expr, parser::PREC_POSTFIX);
                 self.word(".await");
             }
-            ast::ExprKind::Assign(ref lhs, ref rhs, _) => {
+            ast::ExprKind::Assign(lhs, rhs, _) => {
                 let prec = AssocOp::Assign.precedence() as i8;
                 self.print_expr_maybe_paren(lhs, prec + 1);
                 self.space();
                 self.word_space("=");
                 self.print_expr_maybe_paren(rhs, prec);
             }
-            ast::ExprKind::AssignOp(op, ref lhs, ref rhs) => {
+            ast::ExprKind::AssignOp(op, lhs, rhs) => {
                 let prec = AssocOp::Assign.precedence() as i8;
                 self.print_expr_maybe_paren(lhs, prec + 1);
                 self.space();
@@ -463,45 +456,44 @@ impl<'a> State<'a> {
                 self.word_space("=");
                 self.print_expr_maybe_paren(rhs, prec);
             }
-            ast::ExprKind::Field(ref expr, ident) => {
+            ast::ExprKind::Field(expr, ident) => {
                 self.print_expr_maybe_paren(expr, parser::PREC_POSTFIX);
                 self.word(".");
-                self.print_ident(ident);
+                self.print_ident(*ident);
             }
-            ast::ExprKind::Index(ref expr, ref index) => {
+            ast::ExprKind::Index(expr, index) => {
                 self.print_expr_maybe_paren(expr, parser::PREC_POSTFIX);
                 self.word("[");
                 self.print_expr(index);
                 self.word("]");
             }
-            ast::ExprKind::Range(ref start, ref end, limits) => {
+            ast::ExprKind::Range(start, end, limits) => {
                 // Special case for `Range`.  `AssocOp` claims that `Range` has higher precedence
                 // than `Assign`, but `x .. x = x` gives a parse error instead of `x .. (x = x)`.
                 // Here we use a fake precedence value so that any child with lower precedence than
                 // a "normal" binop gets parenthesized.  (`LOr` is the lowest-precedence binop.)
                 let fake_prec = AssocOp::LOr.precedence() as i8;
-                if let Some(ref e) = *start {
+                if let Some(e) = start {
                     self.print_expr_maybe_paren(e, fake_prec);
                 }
-                if limits == ast::RangeLimits::HalfOpen {
-                    self.word("..");
-                } else {
-                    self.word("..=");
+                match limits {
+                    ast::RangeLimits::HalfOpen => self.word(".."),
+                    ast::RangeLimits::Closed => self.word("..="),
                 }
-                if let Some(ref e) = *end {
+                if let Some(e) = end {
                     self.print_expr_maybe_paren(e, fake_prec);
                 }
             }
             ast::ExprKind::Underscore => self.word("_"),
-            ast::ExprKind::Path(None, ref path) => self.print_path(path, true, 0),
-            ast::ExprKind::Path(Some(ref qself), ref path) => self.print_qpath(path, qself, true),
-            ast::ExprKind::Break(opt_label, ref opt_expr) => {
+            ast::ExprKind::Path(None, path) => self.print_path(path, true, 0),
+            ast::ExprKind::Path(Some(qself), path) => self.print_qpath(path, qself, true),
+            ast::ExprKind::Break(opt_label, opt_expr) => {
                 self.word("break");
                 if let Some(label) = opt_label {
                     self.space();
                     self.print_ident(label.ident);
                 }
-                if let Some(ref expr) = *opt_expr {
+                if let Some(expr) = opt_expr {
                     self.space();
                     self.print_expr_maybe_paren(expr, parser::PREC_JUMP);
                 }
@@ -513,45 +505,45 @@ impl<'a> State<'a> {
                     self.print_ident(label.ident);
                 }
             }
-            ast::ExprKind::Ret(ref result) => {
+            ast::ExprKind::Ret(result) => {
                 self.word("return");
-                if let Some(ref expr) = *result {
+                if let Some(expr) = result {
                     self.word(" ");
                     self.print_expr_maybe_paren(expr, parser::PREC_JUMP);
                 }
             }
-            ast::ExprKind::Yeet(ref result) => {
+            ast::ExprKind::Yeet(result) => {
                 self.word("do");
                 self.word(" ");
                 self.word("yeet");
-                if let Some(ref expr) = *result {
+                if let Some(expr) = result {
                     self.word(" ");
                     self.print_expr_maybe_paren(expr, parser::PREC_JUMP);
                 }
             }
-            ast::ExprKind::InlineAsm(ref a) => {
+            ast::ExprKind::InlineAsm(a) => {
                 self.word("asm!");
                 self.print_inline_asm(a);
             }
-            ast::ExprKind::MacCall(ref m) => self.print_mac(m),
-            ast::ExprKind::Paren(ref e) => {
+            ast::ExprKind::MacCall(m) => self.print_mac(m),
+            ast::ExprKind::Paren(e) => {
                 self.popen();
                 self.print_expr(e);
                 self.pclose();
             }
-            ast::ExprKind::Yield(ref e) => {
+            ast::ExprKind::Yield(e) => {
                 self.word("yield");
 
-                if let Some(ref expr) = *e {
+                if let Some(expr) = e {
                     self.space();
                     self.print_expr_maybe_paren(expr, parser::PREC_JUMP);
                 }
             }
-            ast::ExprKind::Try(ref e) => {
+            ast::ExprKind::Try(e) => {
                 self.print_expr_maybe_paren(e, parser::PREC_POSTFIX);
                 self.word("?")
             }
-            ast::ExprKind::TryBlock(ref blk) => {
+            ast::ExprKind::TryBlock(blk) => {
                 self.cbox(0);
                 self.ibox(0);
                 self.word_nbsp("try");
@@ -578,15 +570,15 @@ impl<'a> State<'a> {
         self.print_outer_attributes(&arm.attrs);
         self.print_pat(&arm.pat);
         self.space();
-        if let Some(ref e) = arm.guard {
+        if let Some(e) = &arm.guard {
             self.word_space("if");
             self.print_expr(e);
             self.space();
         }
         self.word_space("=>");
 
-        match arm.body.kind {
-            ast::ExprKind::Block(ref blk, opt_label) => {
+        match &arm.body.kind {
+            ast::ExprKind::Block(blk, opt_label) => {
                 if let Some(label) = opt_label {
                     self.print_ident(label.ident);
                     self.word_space(":");
