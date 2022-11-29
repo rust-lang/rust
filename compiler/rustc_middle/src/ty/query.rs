@@ -334,7 +334,7 @@ macro_rules! define_feedable {
             $($(#[$attr])*
             #[inline(always)]
             pub fn $name(self, value: $V) -> query_stored::$name<'tcx> {
-                let key = self.def_id.into_query_param();
+                let key = self.def_id().into_query_param();
                 opt_remap_env_constness!([$($modifiers)*][key]);
 
                 let tcx = self.tcx;

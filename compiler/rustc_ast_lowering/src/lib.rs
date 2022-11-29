@@ -497,7 +497,7 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
             self.tcx.hir().def_key(self.local_def_id(node_id)),
         );
 
-        let def_id = self.tcx.create_def(parent, data).def_id;
+        let def_id = self.tcx.create_def(parent, data).def_id();
 
         debug!("create_def: def_id_to_node_id[{:?}] <-> {:?}", def_id, node_id);
         self.resolver.node_id_to_def_id.insert(node_id, def_id);

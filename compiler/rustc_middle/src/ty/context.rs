@@ -1010,12 +1010,19 @@ pub struct FreeRegionInfo {
     pub is_impl_item: bool,
 }
 
+/// This struct should only be created by `create_def`.
 #[derive(Copy, Clone)]
 pub struct TyCtxtFeed<'tcx> {
     pub tcx: TyCtxt<'tcx>,
-    pub def_id: LocalDefId,
-    /// This struct should only be created by `create_def`.
-    _priv: (),
+    // Do not allow direct access, as downstream code must not mutate this field.
+    def_id: LocalDefId,
+}
+
+impl<'tcx> TyCtxtFeed<'tcx> {
+    #[inline(always)]
+    pub fn def_id(&self) -> LocalDefId {
+        self.def_id
+    }
 }
 
 /// The central data structure of the compiler. It stores references
@@ -1507,7 +1514,7 @@ impl<'tcx> TyCtxt<'tcx> {
         // - this write will have happened before these queries are called.
         let def_id = self.definitions.write().create_def(parent, data);
 
-        TyCtxtFeed { tcx: self, def_id, _priv: () }
+        TyCtxtFeed { tcx: self, def_id }
     }
 
     pub fn iter_local_def_id(self) -> impl Iterator<Item = LocalDefId> + 'tcx {
