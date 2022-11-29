@@ -526,7 +526,8 @@ impl server::TokenStream for Rustc<'_, '_> {
                 Ok(tokenstream::TokenStream::token_alone(token::Literal(*token_lit), expr.span))
             }
             ast::ExprKind::IncludedBytes(bytes) => {
-                let lit = ast::LitKind::ByteStr(bytes.clone()).synthesize_token_lit();
+                let lit = ast::LitKind::ByteStr(bytes.clone(), ast::StrStyle::Cooked)
+                    .synthesize_token_lit();
                 Ok(tokenstream::TokenStream::token_alone(token::TokenKind::Literal(lit), expr.span))
             }
             ast::ExprKind::Unary(ast::UnOp::Neg, e) => match &e.kind {

@@ -1796,8 +1796,9 @@ pub enum LitKind {
     /// A string literal (`"foo"`). The symbol is unescaped, and so may differ
     /// from the original token's symbol.
     Str(Symbol, StrStyle),
-    /// A byte string (`b"foo"`).
-    ByteStr(Lrc<[u8]>),
+    /// A byte string (`b"foo"`). Not stored as a symbol because it might be
+    /// non-utf8, and symbols only allow utf8 strings.
+    ByteStr(Lrc<[u8]>, StrStyle),
     /// A byte char (`b'f'`).
     Byte(u8),
     /// A character literal (`'a'`).
@@ -1822,7 +1823,7 @@ impl LitKind {
 
     /// Returns `true` if this literal is byte literal string.
     pub fn is_bytestr(&self) -> bool {
-        matches!(self, LitKind::ByteStr(_))
+        matches!(self, LitKind::ByteStr(..))
     }
 
     /// Returns `true` if this is a numeric literal.

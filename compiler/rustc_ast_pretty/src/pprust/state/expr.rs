@@ -323,7 +323,8 @@ impl<'a> State<'a> {
                 self.print_token_literal(*token_lit, expr.span);
             }
             ast::ExprKind::IncludedBytes(bytes) => {
-                let lit = ast::LitKind::ByteStr(bytes.clone()).synthesize_token_lit();
+                let lit = ast::LitKind::ByteStr(bytes.clone(), ast::StrStyle::Cooked)
+                    .synthesize_token_lit();
                 self.print_token_literal(lit, expr.span)
             }
             ast::ExprKind::Cast(expr, ty) => {

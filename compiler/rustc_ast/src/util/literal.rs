@@ -1,11 +1,12 @@
 //! Code related to parsing literals.
 
-use crate::ast::{self, LitKind, MetaItemLit};
+use crate::ast::{self, LitKind, MetaItemLit, StrStyle};
 use crate::token::{self, Token};
 use rustc_lexer::unescape::{byte_from_char, unescape_byte, unescape_char, unescape_literal, Mode};
 use rustc_span::symbol::{kw, sym, Symbol};
 use rustc_span::Span;
 use std::ascii;
+use std::str;
 
 #[derive(Debug)]
 pub enum LitError {
@@ -115,9 +116,9 @@ impl LitKind {
                     }
                 });
                 error?;
-                LitKind::ByteStr(buf.into())
+                LitKind::ByteStr(buf.into(), StrStyle::Cooked)
             }
-            token::ByteStrRaw(_) => {
+            token::ByteStrRaw(n) => {
                 let s = symbol.as_str();
                 let bytes = if s.contains('\r') {
                     let mut buf = Vec::with_capacity(s.len());
@@ -136,7 +137,7 @@ impl LitKind {
                     symbol.to_string().into_bytes()
                 };
 
-                LitKind::ByteStr(bytes.into())
+                LitKind::ByteStr(bytes.into(), StrStyle::Raw(n))
             }
             token::Err => LitKind::Err,
         })
@@ -155,9 +156,14 @@ impl LitKind {
                 (token::Str, symbol, None)
             }
             LitKind::Str(symbol, ast::StrStyle::Raw(n)) => (token::StrRaw(n), symbol, None),
-            LitKind::ByteStr(ref bytes) => {
+            LitKind::ByteStr(ref bytes, ast::StrStyle::Cooked) => {
                 let string = bytes.escape_ascii().to_string();
                 (token::ByteStr, Symbol::intern(&string), None)
+            }
+            LitKind::ByteStr(ref bytes, ast::StrStyle::Raw(n)) => {
+                // Unwrap because raw byte string literals can only contain ASCII.
+                let string = str::from_utf8(bytes).unwrap();
+                (token::ByteStrRaw(n), Symbol::intern(&string), None)
             }
             LitKind::Byte(byte) => {
                 let string: String = ascii::escape_default(byte).map(Into::<char>::into).collect();
