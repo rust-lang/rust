@@ -734,7 +734,7 @@ pub struct CratePredicatesMap<'tcx> {
     /// For each struct with outlive bounds, maps to a vector of the
     /// predicate of its outlive bounds. If an item has no outlives
     /// bounds, it will have no entry.
-    pub predicates: FxHashMap<DefId, &'tcx [(Predicate<'tcx>, Span)]>,
+    pub predicates: FxHashMap<DefId, &'tcx [(Clause<'tcx>, Span)]>,
 }
 
 impl<'tcx> Predicate<'tcx> {
@@ -1164,6 +1164,13 @@ impl<'tcx> ToPredicate<'tcx, Predicate<'tcx>> for Binder<'tcx, PredicateKind<'tc
     #[inline(always)]
     fn to_predicate(self, tcx: TyCtxt<'tcx>) -> Predicate<'tcx> {
         tcx.mk_predicate(self)
+    }
+}
+
+impl<'tcx> ToPredicate<'tcx, Predicate<'tcx>> for Clause<'tcx> {
+    #[inline(always)]
+    fn to_predicate(self, tcx: TyCtxt<'tcx>) -> Predicate<'tcx> {
+        tcx.mk_predicate(ty::Binder::dummy(ty::PredicateKind::Clause(self)))
     }
 }
 
