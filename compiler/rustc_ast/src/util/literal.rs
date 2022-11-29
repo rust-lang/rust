@@ -52,14 +52,14 @@ impl LitKind {
                 // new symbol because the string in the LitKind is different to the
                 // string in the token.
                 let s = symbol.as_str();
-                let symbol = if s.contains(&['\\', '\r']) {
+                let symbol = if s.contains(['\\', '\r']) {
                     let mut buf = String::with_capacity(s.len());
                     let mut error = Ok(());
                     // Force-inlining here is aggressive but the closure is
                     // called on every char in the string, so it can be
                     // hot in programs with many long strings.
                     unescape_literal(
-                        &s,
+                        s,
                         Mode::Str,
                         &mut #[inline(always)]
                         |_, unescaped_char| match unescaped_char {
@@ -85,7 +85,7 @@ impl LitKind {
                     if s.contains('\r') {
                         let mut buf = String::with_capacity(s.len());
                         let mut error = Ok(());
-                        unescape_literal(&s, Mode::RawStr, &mut |_, unescaped_char| {
+                        unescape_literal(s, Mode::RawStr, &mut |_, unescaped_char| {
                             match unescaped_char {
                                 Ok(c) => buf.push(c),
                                 Err(err) => {
@@ -106,7 +106,7 @@ impl LitKind {
                 let s = symbol.as_str();
                 let mut buf = Vec::with_capacity(s.len());
                 let mut error = Ok(());
-                unescape_literal(&s, Mode::ByteStr, &mut |_, c| match c {
+                unescape_literal(s, Mode::ByteStr, &mut |_, c| match c {
                     Ok(c) => buf.push(byte_from_char(c)),
                     Err(err) => {
                         if err.is_fatal() {
@@ -122,7 +122,7 @@ impl LitKind {
                 let bytes = if s.contains('\r') {
                     let mut buf = Vec::with_capacity(s.len());
                     let mut error = Ok(());
-                    unescape_literal(&s, Mode::RawByteStr, &mut |_, c| match c {
+                    unescape_literal(s, Mode::RawByteStr, &mut |_, c| match c {
                         Ok(c) => buf.push(byte_from_char(c)),
                         Err(err) => {
                             if err.is_fatal() {
