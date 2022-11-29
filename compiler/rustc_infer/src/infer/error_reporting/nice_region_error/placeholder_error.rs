@@ -405,8 +405,7 @@ impl<'tcx> NiceRegionError<'_, 'tcx> {
             let mut self_ty = expected_trait_ref.map(|tr| tr.self_ty());
             self_ty.highlight.maybe_highlighting_region(vid, actual_has_vid);
 
-            if self_ty.value.is_closure()
-                && self.tcx().is_fn_trait(expected_trait_ref.value.def_id)
+            if self_ty.value.is_closure() && self.tcx().is_fn_trait(expected_trait_ref.value.def_id)
             {
                 let closure_sig = self_ty.map(|closure| {
                     if let ty::Closure(_, substs) = closure.kind() {
