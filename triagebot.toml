@@ -9,6 +9,9 @@ allow-unauthenticated = [
 # See https://github.com/rust-lang/triagebot/wiki/Shortcuts
 [shortcut]
 
+[autolabel."S-waiting-on-review"]
+new_pr = true
+
 [assign]
 contributing_url = "https://github.com/rust-lang/rust-clippy/blob/master/CONTRIBUTING.md"
 
