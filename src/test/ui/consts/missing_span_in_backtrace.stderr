@@ -1,16 +1,18 @@
 error[E0080]: evaluation of constant value failed
-/rustc/xyz/library/core/src/ptr/mod.rs:1135:9: unable to copy parts of a pointer from memory at alloc10
+  --> /rustc/xyz/library/core/src/ptr/mod.rs:1135:9
+   |
+   = note: unable to copy parts of a pointer from memory at alloc10
    |
    = help: this code performed an operation that depends on the underlying bytes representing a pointer
    = help: the absolute address of a pointer is not known at compile-time, so such operations are not supported
 note: inside `std::ptr::read::<MaybeUninit<MaybeUninit<u8>>>`
-/rustc/xyz/library/core/src/ptr/mod.rs:1135:9
+  --> /rustc/xyz/library/core/src/ptr/mod.rs:1135:9
 note: inside `mem::swap_simple::<MaybeUninit<MaybeUninit<u8>>>`
-/rustc/xyz/library/core/src/mem/mod.rs:773:17
+  --> /rustc/xyz/library/core/src/mem/mod.rs:773:17
 note: inside `ptr::swap_nonoverlapping_simple_untyped::<MaybeUninit<u8>>`
-/rustc/xyz/library/core/src/ptr/mod.rs:944:9
+  --> /rustc/xyz/library/core/src/ptr/mod.rs:944:9
 note: inside `swap_nonoverlapping::<MaybeUninit<u8>>`
-/rustc/xyz/library/core/src/ptr/mod.rs:925:14
+  --> /rustc/xyz/library/core/src/ptr/mod.rs:925:14
 note: inside `X`
   --> $DIR/missing_span_in_backtrace.rs:16:9
    |

@@ -1408,7 +1408,7 @@ impl EmitterWriter {
             if !sm.ensure_source_file_source_present(annotated_file.file.clone()) {
                 if !self.short_message {
                     // We'll just print an unannotated message.
-                    for line in annotated_file.lines {
+                    for (annotation_id, line) in annotated_file.lines.into_iter().enumerate() {
                         let mut annotations = line.annotations.clone();
                         annotations.sort_by_key(|a| Reverse(a.start_col));
                         let mut line_idx = buffer.num_lines();
@@ -1422,12 +1422,12 @@ impl EmitterWriter {
                             ),
                             Style::LineAndColumn,
                         );
-                        let prefix = if annotations.len() > 1 {
+                        if annotation_id == 0 {
                             buffer.prepend(line_idx, "--> ", Style::LineNumber);
+                            for _ in 0..max_line_num_len {
+                                buffer.prepend(line_idx, " ", Style::NoStyle);
+                            }
                             line_idx += 1;
-                            "note: "
-                        } else {
-                            ": "
                         };
                         for (i, annotation) in annotations.into_iter().enumerate() {
                             if let Some(label) = &annotation.label {
@@ -1436,7 +1436,19 @@ impl EmitterWriter {
                                 } else {
                                     Style::LabelSecondary
                                 };
-                                buffer.append(line_idx + i, prefix, style);
+                                if annotation_id == 0 {
+                                    buffer.prepend(line_idx, " |", Style::LineNumber);
+                                    for _ in 0..max_line_num_len {
+                                        buffer.prepend(line_idx, " ", Style::NoStyle);
+                                    }
+                                    line_idx += 1;
+                                    buffer.append(line_idx + i, " = note: ", style);
+                                    for _ in 0..max_line_num_len {
+                                        buffer.prepend(line_idx, " ", Style::NoStyle);
+                                    }
+                                } else {
+                                    buffer.append(line_idx + i, ": ", style);
+                                }
                                 buffer.append(line_idx + i, label, style);
                             }
                         }
