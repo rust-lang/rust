@@ -218,7 +218,7 @@ fn to_upvars_resolved_place_builder<'tcx>(
     let upvar_resolved_place_builder = PlaceBuilder::construct_local_place_builder(
         cx,
         upvar_resolved_local,
-        local_projection.to_vec(),
+        local_projection.as_slice(),
         upvar_projection,
     );
 
@@ -266,7 +266,7 @@ fn strip_prefix<'a, 'tcx>(
     mut base_ty: Ty<'tcx>,
     projections: &'a [UpvarProjectionElem<'tcx>],
     prefix_projections: &[HirProjection<'tcx>],
-) -> Vec<UpvarProjectionElem<'tcx>> {
+) -> impl Iterator<Item = UpvarProjectionElem<'tcx>> + 'a {
     let mut iter = projections
         .iter()
         // Filter out opaque casts, they are unnecessary in the prefix.
@@ -293,7 +293,7 @@ fn strip_prefix<'a, 'tcx>(
         base_ty = projection.ty;
     }
 
-    iter.collect::<Vec<_>>()
+    iter
 }
 
 impl<'tcx> PlaceBuilder<'tcx> {
@@ -342,10 +342,14 @@ impl<'tcx> PlaceBuilder<'tcx> {
 
     #[instrument(skip(cx), level = "debug")]
     pub(crate) fn field(self, cx: &Builder<'_, 'tcx>, f: Field) -> Self {
-        let field_ty = match self {
-            PlaceBuilder::Local(..) => {
-                let base_place = self.clone();
-                PlaceBuilder::compute_field_ty(cx, f, base_place)
+        let field_ty = match self.clone() {
+            PlaceBuilder::Local(local, projection) => {
+                let base_place = PlaceBuilder::Local(local, projection);
+                let PlaceTy { ty, variant_index } =
+                    base_place.to_place(cx).ty(&cx.local_decls, cx.tcx);
+                let base_ty = cx.tcx.normalize_erasing_regions(cx.param_env, ty);
+
+                PlaceBuilder::compute_field_ty(cx, f, base_ty, variant_index)
             }
             PlaceBuilder::UpVar(..) => {
                 let dummy_ty = cx.tcx.mk_ty_infer(ty::FreshTy(0));
@@ -410,13 +414,10 @@ impl<'tcx> PlaceBuilder<'tcx> {
     fn compute_field_ty(
         cx: &Builder<'_, 'tcx>,
         field: Field,
-        base_place: PlaceBuilder<'tcx>,
+        base_ty: Ty<'tcx>,
+        variant_index: Option<VariantIdx>,
     ) -> Ty<'tcx> {
         let field_idx = field.as_usize();
-        let PlaceTy { ty, variant_index } = base_place.to_place(cx).ty(&cx.local_decls, cx.tcx);
-        let base_ty = cx.tcx.normalize_erasing_regions(cx.param_env, ty);
-        debug!(?base_ty);
-
         let field_ty = match base_ty.kind() {
             ty::Adt(adt_def, substs) if adt_def.is_enum() => {
                 let variant_idx = variant_index.unwrap();
@@ -479,41 +480,38 @@ impl<'tcx> PlaceBuilder<'tcx> {
     /// contains the projections of the captured upvar and `upvar_projection` the
     /// projections that are applied to the captured upvar. The main purpose of this
     /// function is to figure out the `Ty`s of the field projections in `upvar_projection`.
-    #[instrument(skip(cx, local))]
+    #[instrument(skip(cx, local, upvar_projection))]
     fn construct_local_place_builder(
         cx: &Builder<'_, 'tcx>,
         local: Local,
-        mut local_projection: Vec<PlaceElem<'tcx>>,
-        upvar_projection: Vec<UpvarProjectionElem<'tcx>>,
+        local_projection: &[PlaceElem<'tcx>],
+        upvar_projection: impl Iterator<Item = UpvarProjectionElem<'tcx>>,
     ) -> Self {
-        // We iterate through `upvar_projection` and whenever we find a `ProjectionElem::Field` we use
-        // the ancestor projections, i.e. those projection elements that come before the field projection,
-        // to get the `Ty` for the field.
+        // We maintain a `Ty` to which we apply a projection in each iteration over `upvar_projection`.
+        // This `ancestor_ty` let's us infer the field type whenever we encounter a
+        // `ProjectionElem::Field`.
+        let (mut ancestor_ty, mut opt_variant_idx) =
+            local_projections_to_ty(cx, local, local_projection);
 
-        for proj in upvar_projection.iter() {
-            debug!("proj: {:?}, local_projection: {:?}", proj, local_projection);
-            match *proj {
+        // We add all projection elements we encounter to this `Vec`.
+        let mut local_projection = local_projection.to_vec();
+
+        for (i, proj) in upvar_projection.enumerate() {
+            debug!("i: {:?}, proj: {:?}, local_projection: {:?}", i, proj, local_projection);
+            match proj {
                 ProjectionElem::Field(field, _) => {
-                    let ancestor_proj = local_projection.to_vec();
-                    let base_place = PlaceBuilder::Local(local, ancestor_proj);
-                    let field_ty = PlaceBuilder::compute_field_ty(cx, field, base_place);
+                    let field_ty =
+                        PlaceBuilder::compute_field_ty(cx, field, ancestor_ty, opt_variant_idx);
                     debug!(?field_ty);
 
                     local_projection.push(ProjectionElem::Field(field, field_ty));
-                    debug!(?local_projection);
+                    ancestor_ty = field_ty;
+                    opt_variant_idx = None;
                 }
-                ProjectionElem::Deref => local_projection.push(ProjectionElem::Deref),
-                ProjectionElem::Index(idx) => local_projection.push(ProjectionElem::Index(idx)),
-                ProjectionElem::ConstantIndex { offset, min_length, from_end } => local_projection
-                    .push(ProjectionElem::ConstantIndex { offset, min_length, from_end }),
-                ProjectionElem::Subslice { from, to, from_end } => {
-                    local_projection.push(ProjectionElem::Subslice { from, to, from_end })
-                }
-                ProjectionElem::Downcast(sym, variant_idx) => {
-                    local_projection.push(ProjectionElem::Downcast(sym, variant_idx))
-                }
-                ProjectionElem::OpaqueCast(ty) => {
-                    local_projection.push(ProjectionElem::OpaqueCast(ty))
+                _ => {
+                    let proj = upvar_proj_to_place_elem_no_field_proj(proj);
+                    (ancestor_ty, opt_variant_idx) = project_ty(cx.tcx, ancestor_ty, proj);
+                    local_projection.push(proj);
                 }
             }
         }
@@ -531,6 +529,81 @@ impl<'tcx> From<Local> for PlaceBuilder<'tcx> {
 impl<'tcx> From<Place<'tcx>> for PlaceBuilder<'tcx> {
     fn from(p: Place<'tcx>) -> Self {
         Self::Local(p.local, p.projection.to_vec())
+    }
+}
+
+fn project_ty<'tcx>(
+    tcx: TyCtxt<'tcx>,
+    ty: Ty<'tcx>,
+    elem: PlaceElem<'tcx>,
+) -> (Ty<'tcx>, Option<VariantIdx>) {
+    match elem {
+        ProjectionElem::Deref => {
+            let updated_ty = ty
+                .builtin_deref(true)
+                .unwrap_or_else(|| bug!("deref projection of non-dereferenceable ty {:?}", ty))
+                .ty;
+
+            (updated_ty, None)
+        }
+        ProjectionElem::Index(_) | ProjectionElem::ConstantIndex { .. } => {
+            (ty.builtin_index().unwrap(), None)
+        }
+        ProjectionElem::Subslice { from, to, from_end } => {
+            let ty = match ty.kind() {
+                ty::Slice(..) => ty,
+                ty::Array(inner, _) if !from_end => tcx.mk_array(*inner, (to - from) as u64),
+                ty::Array(inner, size) if from_end => {
+                    let size = size.eval_usize(tcx, ty::ParamEnv::empty());
+                    let len = size - (from as u64) - (to as u64);
+                    tcx.mk_array(*inner, len)
+                }
+                _ => bug!("cannot subslice non-array type: `{:?}`", ty),
+            };
+
+            (ty, None)
+        }
+        ProjectionElem::Downcast(_, variant_idx) => (ty, Some(variant_idx)),
+        ProjectionElem::Field(_, ty) => {
+            if matches!(ty.kind(), ty::Infer(..)) {
+                bug!("Field ty should have been resolved");
+            }
+
+            (ty, None)
+        }
+        ProjectionElem::OpaqueCast(..) => bug!("didn't expect OpaqueCast"),
+    }
+}
+
+fn local_projections_to_ty<'a, 'tcx>(
+    cx: &'a Builder<'a, 'tcx>,
+    local: Local,
+    projection: &'a [PlaceElem<'tcx>],
+) -> (Ty<'tcx>, Option<VariantIdx>) {
+    let local_ty = cx.local_decls.local_decls()[local].ty;
+    projection.iter().fold((local_ty, None), |ty_variant_idx, elem| {
+        let ty = ty_variant_idx.0;
+        project_ty(cx.tcx, ty, *elem)
+    })
+}
+
+// Converts an `UpvarProjectionElem` to `PlaceElem`, ICE'ing when being passed a
+// field projection.
+fn upvar_proj_to_place_elem_no_field_proj<'tcx>(
+    upvar_proj: UpvarProjectionElem<'tcx>,
+) -> PlaceElem<'tcx> {
+    match upvar_proj {
+        ProjectionElem::Deref => ProjectionElem::Deref,
+        ProjectionElem::Index(i) => ProjectionElem::Index(i),
+        ProjectionElem::ConstantIndex { offset, min_length, from_end } => {
+            ProjectionElem::ConstantIndex { offset, min_length, from_end }
+        }
+        ProjectionElem::Subslice { from, to, from_end } => {
+            ProjectionElem::Subslice { from, to, from_end }
+        }
+        ProjectionElem::Downcast(ty, variant_idx) => ProjectionElem::Downcast(ty, variant_idx),
+        ProjectionElem::OpaqueCast(ty) => ProjectionElem::OpaqueCast(ty),
+        ProjectionElem::Field(..) => bug!("should not be called with `ProjectionElem::Field`"),
     }
 }
 
