@@ -537,8 +537,20 @@ impl<'a> InferenceContext<'a> {
         let data = self.db.function_data(func);
         let ctx = crate::lower::TyLoweringContext::new(self.db, &self.resolver)
             .with_impl_trait_mode(ImplTraitLoweringMode::Param);
-        let param_tys =
+        let mut param_tys =
             data.params.iter().map(|(_, type_ref)| ctx.lower_ty(type_ref)).collect::<Vec<_>>();
+        // Check if function contains a va_list, if it does then we append it to the parameter types
+        // that are collected from the function data
+        if data.is_varargs() {
+            let va_list_ty = match self.resolve_va_list() {
+                Some(va_list) => TyBuilder::adt(self.db, va_list)
+                    .fill_with_defaults(self.db, || self.table.new_type_var())
+                    .build(),
+                None => self.err_ty(),
+            };
+
+            param_tys.push(va_list_ty)
+        }
         for (ty, pat) in param_tys.into_iter().zip(self.body.params.iter()) {
             let ty = self.insert_type_vars(ty);
             let ty = self.normalize_associated_types_in(ty);
@@ -982,6 +994,11 @@ impl<'a> InferenceContext<'a> {
     fn resolve_ops_index_output(&self) -> Option<TypeAliasId> {
         let trait_ = self.resolve_ops_index()?;
         self.db.trait_data(trait_).associated_type_by_name(&name![Output])
+    }
+
+    fn resolve_va_list(&self) -> Option<AdtId> {
+        let struct_ = self.resolve_lang_item(name![va_list])?.as_struct()?;
+        Some(struct_.into())
     }
 }
 
