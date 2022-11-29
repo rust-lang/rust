@@ -46,7 +46,6 @@ use rustc_middle::lint::in_external_macro;
 use rustc_middle::ty::layout::{LayoutError, LayoutOf};
 use rustc_middle::ty::print::with_no_trimmed_paths;
 use rustc_middle::ty::subst::GenericArgKind;
-use rustc_middle::ty::List;
 use rustc_middle::ty::{self, Instance, Ty, TyCtxt, VariantDef};
 use rustc_session::lint::{BuiltinLintDiagnostics, FutureIncompatibilityReason};
 use rustc_span::edition::Edition;
@@ -769,12 +768,8 @@ impl<'tcx> LateLintPass<'tcx> for MissingCopyImplementations {
         // We shouldn't recommend implementing `Copy` on stateful things,
         // such as iterators.
         if let Some(iter_trait) = cx.tcx.get_diagnostic_item(sym::Iterator) {
-            if cx.tcx.infer_ctxt().build().type_implements_trait(
-                iter_trait,
-                ty,
-                List::empty(),
-                param_env,
-            ) == EvaluationResult::EvaluatedToOk
+            if cx.tcx.infer_ctxt().build().type_implements_trait(iter_trait, [ty], param_env)
+                == EvaluationResult::EvaluatedToOk
             {
                 return;
             }
