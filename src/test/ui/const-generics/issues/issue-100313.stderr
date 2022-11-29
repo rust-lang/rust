@@ -2,13 +2,18 @@ error[E0080]: evaluation of constant value failed
   --> $DIR/issue-100313.rs:10:13
    |
 LL |             *(B as *const bool as *mut bool) = false;
+   |             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ writing to alloc7 which is read-only
+   |
+note: inside `T::<&true>::set_false`
+  --> $DIR/issue-100313.rs:10:13
+   |
+LL |             *(B as *const bool as *mut bool) = false;
    |             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
-   |             |
-   |             writing to alloc7 which is read-only
-   |             inside `T::<&true>::set_false`
-...
+note: inside `_`
+  --> $DIR/issue-100313.rs:18:5
+   |
 LL |     x.set_false();
-   |     ------------- inside `_`
+   |     ^^^^^^^^^^^^^
 
 error: aborting due to previous error
 

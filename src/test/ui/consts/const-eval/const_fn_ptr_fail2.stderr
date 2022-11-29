@@ -2,25 +2,35 @@ error[E0080]: evaluation of constant value failed
   --> $DIR/const_fn_ptr_fail2.rs:9:5
    |
 LL |     x(y)
+   |     ^^^^ calling non-const function `double`
+   |
+note: inside `bar`
+  --> $DIR/const_fn_ptr_fail2.rs:9:5
+   |
+LL |     x(y)
    |     ^^^^
-   |     |
-   |     calling non-const function `double`
-   |     inside `bar`
-...
+note: inside `Y`
+  --> $DIR/const_fn_ptr_fail2.rs:14:18
+   |
 LL | const Y: usize = bar(X, 2); // FIXME: should fail to typeck someday
-   |                  --------- inside `Y`
+   |                  ^^^^^^^^^
 
 error[E0080]: evaluation of constant value failed
   --> $DIR/const_fn_ptr_fail2.rs:9:5
    |
 LL |     x(y)
+   |     ^^^^ calling non-const function `double`
+   |
+note: inside `bar`
+  --> $DIR/const_fn_ptr_fail2.rs:9:5
+   |
+LL |     x(y)
    |     ^^^^
-   |     |
-   |     calling non-const function `double`
-   |     inside `bar`
-...
+note: inside `Z`
+  --> $DIR/const_fn_ptr_fail2.rs:15:18
+   |
 LL | const Z: usize = bar(double, 2); // FIXME: should fail to typeck someday
-   |                  -------------- inside `Z`
+   |                  ^^^^^^^^^^^^^^
 
 warning: skipping const checks
    |

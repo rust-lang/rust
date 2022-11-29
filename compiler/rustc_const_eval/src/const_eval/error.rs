@@ -123,14 +123,14 @@ impl<'tcx> ConstEvalErr<'tcx> {
                 // Helper closure to print duplicated lines.
                 let mut flush_last_line = |last_frame, times| {
                     if let Some((line, span)) = last_frame {
-                        err.span_label(span, &line);
+                        err.span_note(span, &line);
                         // Don't print [... additional calls ...] if the number of lines is small
                         if times < 3 {
                             for _ in 0..times {
-                                err.span_label(span, &line);
+                                err.span_note(span, &line);
                             }
                         } else {
-                            err.span_label(
+                            err.span_note(
                                 span,
                                 format!("[... {} additional calls {} ...]", times, &line),
                             );

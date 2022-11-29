@@ -2,15 +2,18 @@ error[E0080]: evaluation of `Inline::<dyn std::fmt::Debug>::{constant#0}` failed
   --> $SRC_DIR/core/src/mem/mod.rs:LL:COL
    |
 LL |     intrinsics::size_of::<T>()
-   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^
-   |     |
-   |     size_of called on unsized type `dyn Debug`
-   |     inside `std::mem::size_of::<dyn Debug>`
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^ size_of called on unsized type `dyn Debug`
    |
-  ::: $DIR/issue-80742.rs:22:10
+note: inside `std::mem::size_of::<dyn Debug>`
+  --> $SRC_DIR/core/src/mem/mod.rs:LL:COL
+   |
+LL |     intrinsics::size_of::<T>()
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^
+note: inside `Inline::<dyn Debug>::{constant#0}`
+  --> $DIR/issue-80742.rs:22:10
    |
 LL |     [u8; size_of::<T>() + 1]: ,
-   |          -------------- inside `Inline::<dyn Debug>::{constant#0}`
+   |          ^^^^^^^^^^^^^^
 
 error[E0599]: the function or associated item `new` exists for struct `Inline<dyn Debug>`, but its trait bounds were not satisfied
   --> $DIR/issue-80742.rs:30:36
@@ -33,15 +36,18 @@ error[E0080]: evaluation of `Inline::<dyn std::fmt::Debug>::{constant#0}` failed
   --> $SRC_DIR/core/src/mem/mod.rs:LL:COL
    |
 LL |     intrinsics::size_of::<T>()
-   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^
-   |     |
-   |     size_of called on unsized type `dyn Debug`
-   |     inside `std::mem::size_of::<dyn Debug>`
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^ size_of called on unsized type `dyn Debug`
    |
-  ::: $DIR/issue-80742.rs:14:10
+note: inside `std::mem::size_of::<dyn Debug>`
+  --> $SRC_DIR/core/src/mem/mod.rs:LL:COL
+   |
+LL |     intrinsics::size_of::<T>()
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^
+note: inside `Inline::<dyn Debug>::{constant#0}`
+  --> $DIR/issue-80742.rs:14:10
    |
 LL |     [u8; size_of::<T>() + 1]: ,
-   |          -------------- inside `Inline::<dyn Debug>::{constant#0}`
+   |          ^^^^^^^^^^^^^^
 
 error[E0277]: the size for values of type `dyn Debug` cannot be known at compilation time
   --> $DIR/issue-80742.rs:30:15

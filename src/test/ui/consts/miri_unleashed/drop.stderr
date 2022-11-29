@@ -2,15 +2,18 @@ error[E0080]: could not evaluate static initializer
   --> $SRC_DIR/core/src/ptr/mod.rs:LL:COL
    |
 LL | pub unsafe fn drop_in_place<T: ?Sized>(to_drop: *mut T) {
-   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
-   | |
-   | calling non-const function `<Vec<i32> as Drop>::drop`
-   | inside `std::ptr::drop_in_place::<Vec<i32>> - shim(Some(Vec<i32>))`
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ calling non-const function `<Vec<i32> as Drop>::drop`
    |
-  ::: $DIR/drop.rs:17:1
+note: inside `std::ptr::drop_in_place::<Vec<i32>> - shim(Some(Vec<i32>))`
+  --> $SRC_DIR/core/src/ptr/mod.rs:LL:COL
+   |
+LL | pub unsafe fn drop_in_place<T: ?Sized>(to_drop: *mut T) {
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+note: inside `TEST_BAD`
+  --> $DIR/drop.rs:17:1
    |
 LL | };
-   | - inside `TEST_BAD`
+   | ^
 
 warning: skipping const checks
    |

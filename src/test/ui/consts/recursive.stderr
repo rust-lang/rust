@@ -13,14 +13,23 @@ error[E0080]: evaluation of constant value failed
   --> $DIR/recursive.rs:4:5
    |
 LL |     f(x);
+   |     ^^^^ reached the configured maximum number of stack frames
+   |
+note: inside `f::<i32>`
+  --> $DIR/recursive.rs:4:5
+   |
+LL |     f(x);
    |     ^^^^
-   |     |
-   |     reached the configured maximum number of stack frames
-   |     inside `f::<i32>`
-   |     [... 126 additional calls inside `f::<i32>` ...]
-...
+note: [... 126 additional calls inside `f::<i32>` ...]
+  --> $DIR/recursive.rs:4:5
+   |
+LL |     f(x);
+   |     ^^^^
+note: inside `X`
+  --> $DIR/recursive.rs:8:15
+   |
 LL | const X: () = f(1);
-   |               ---- inside `X`
+   |               ^^^^
 
 error: aborting due to previous error; 1 warning emitted
 

@@ -1,15 +1,19 @@
 error[E0080]: evaluation of constant value failed
   --> $DIR/issue-88434-removal-index-should-be-less.rs:10:5
    |
-LL | const _CONST: &[u8] = &f(&[], |_| {});
-   |                        -------------- inside `_CONST`
-...
+LL |     panic!()
+   |     ^^^^^^^^ the evaluated program panicked at 'explicit panic', $DIR/issue-88434-removal-index-should-be-less.rs:10:5
+   |
+note: inside `f::<[closure@$DIR/issue-88434-removal-index-should-be-less.rs:3:31: 3:34]>`
+  --> $DIR/issue-88434-removal-index-should-be-less.rs:10:5
+   |
 LL |     panic!()
    |     ^^^^^^^^
-   |     |
-   |     the evaluated program panicked at 'explicit panic', $DIR/issue-88434-removal-index-should-be-less.rs:10:5
-   |     inside `f::<[closure@$DIR/issue-88434-removal-index-should-be-less.rs:3:31: 3:34]>`
+note: inside `_CONST`
+  --> $DIR/issue-88434-removal-index-should-be-less.rs:3:24
    |
+LL | const _CONST: &[u8] = &f(&[], |_| {});
+   |                        ^^^^^^^^^^^^^^
    = note: this error originates in the macro `$crate::panic::panic_2015` which comes from the expansion of the macro `panic` (in Nightly builds, run with -Z macro-backtrace for more info)
 
 note: erroneous constant used

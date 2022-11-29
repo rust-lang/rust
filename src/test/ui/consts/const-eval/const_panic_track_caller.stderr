@@ -2,13 +2,18 @@ error[E0080]: evaluation of constant value failed
   --> $DIR/const_panic_track_caller.rs:15:5
    |
 LL |     b()
+   |     ^^^ the evaluated program panicked at 'hey', $DIR/const_panic_track_caller.rs:15:5
+   |
+note: inside `c`
+  --> $DIR/const_panic_track_caller.rs:15:5
+   |
+LL |     b()
    |     ^^^
-   |     |
-   |     the evaluated program panicked at 'hey', $DIR/const_panic_track_caller.rs:15:5
-   |     inside `c`
-...
+note: inside `X`
+  --> $DIR/const_panic_track_caller.rs:21:16
+   |
 LL | const X: u32 = c();
-   |                --- inside `X`
+   |                ^^^
 
 error: aborting due to previous error
 
