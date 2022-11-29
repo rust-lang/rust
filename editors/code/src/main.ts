@@ -79,7 +79,7 @@ async function activateServer(ctx: Ctx): Promise<RustAnalyzerExtensionApi> {
     );
     vscode.workspace.onDidChangeConfiguration(
         async (_) => {
-            await ctx.client?.sendNotification("workspace/didChangeConfiguration", {
+            await ctx.client?.sendNotification(lc.DidChangeConfigurationNotification.type, {
                 settings: "",
             });
         },
