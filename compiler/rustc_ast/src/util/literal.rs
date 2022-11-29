@@ -142,10 +142,10 @@ impl LitKind {
         })
     }
 
-    /// Attempts to recover a token from semantic literal.
+    /// Synthesizes a token from a semantic literal.
     /// This function is used when the original token doesn't exist (e.g. the literal is created
     /// by an AST-based macro) or unavailable (e.g. from HIR pretty-printing).
-    pub fn to_token_lit(&self) -> token::Lit {
+    pub fn synthesize_token_lit(&self) -> token::Lit {
         let (kind, symbol, suffix) = match *self {
             LitKind::Str(symbol, ast::StrStyle::Cooked) => {
                 // Don't re-intern unless the escaped string is different.

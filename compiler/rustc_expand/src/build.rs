@@ -333,7 +333,7 @@ impl<'a> ExtCtxt<'a> {
     }
 
     fn expr_lit(&self, span: Span, lit_kind: ast::LitKind) -> P<ast::Expr> {
-        let token_lit = lit_kind.to_token_lit();
+        let token_lit = lit_kind.synthesize_token_lit();
         self.expr(span, ast::ExprKind::Lit(token_lit))
     }
 

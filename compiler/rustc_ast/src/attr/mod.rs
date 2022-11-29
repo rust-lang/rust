@@ -328,7 +328,7 @@ pub fn mk_name_value_item_str(ident: Ident, str: Symbol, str_span: Span) -> Meta
 }
 
 pub fn mk_name_value_item(ident: Ident, kind: LitKind, lit_span: Span) -> MetaItem {
-    let lit = MetaItemLit { token_lit: kind.to_token_lit(), kind, span: lit_span };
+    let lit = MetaItemLit { token_lit: kind.synthesize_token_lit(), kind, span: lit_span };
     let span = ident.span.to(lit_span);
     MetaItem { path: Path::from_ident(ident), kind: MetaItemKind::NameValue(lit), span }
 }
@@ -408,7 +408,7 @@ pub fn mk_attr_name_value_str(
     val: Symbol,
     span: Span,
 ) -> Attribute {
-    let lit = LitKind::Str(val, StrStyle::Cooked).to_token_lit();
+    let lit = LitKind::Str(val, StrStyle::Cooked).synthesize_token_lit();
     let expr = P(Expr {
         id: DUMMY_NODE_ID,
         kind: ExprKind::Lit(lit),
