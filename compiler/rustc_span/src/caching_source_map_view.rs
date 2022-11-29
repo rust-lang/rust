@@ -165,7 +165,7 @@ impl<'sm> CachingSourceMapView<'sm> {
             Some(new_file_and_idx)
         } else {
             let file = &self.line_cache[oldest].file;
-            if !file_contains(&file, span_data.hi) {
+            if !file_contains(file, span_data.hi) {
                 return None;
             }
 

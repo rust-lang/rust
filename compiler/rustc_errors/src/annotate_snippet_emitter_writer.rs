@@ -39,7 +39,7 @@ impl Translate for AnnotateSnippetEmitterWriter {
     }
 
     fn fallback_fluent_bundle(&self) -> &FluentBundle {
-        &**self.fallback_bundle
+        &self.fallback_bundle
     }
 }
 
@@ -49,7 +49,7 @@ impl Emitter for AnnotateSnippetEmitterWriter {
         let fluent_args = to_fluent_args(diag.args());
 
         let mut children = diag.children.clone();
-        let (mut primary_span, suggestions) = self.primary_span_formatted(&diag, &fluent_args);
+        let (mut primary_span, suggestions) = self.primary_span_formatted(diag, &fluent_args);
 
         self.fix_multispans_in_extern_macros_and_render_macro_backtrace(
             &mut primary_span,
@@ -65,7 +65,7 @@ impl Emitter for AnnotateSnippetEmitterWriter {
             &diag.code,
             &primary_span,
             &children,
-            &suggestions,
+            suggestions,
         );
     }
 

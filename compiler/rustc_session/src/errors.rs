@@ -321,7 +321,7 @@ pub fn report_lit_error(sess: &ParseSess, err: LitError, lit: token::Lit, span: 
         LitError::InvalidIntSuffix => {
             let suf = suffix.expect("suffix error with no suffix");
             let suf = suf.as_str();
-            if looks_like_width_suffix(&['i', 'u'], &suf) {
+            if looks_like_width_suffix(&['i', 'u'], suf) {
                 // If it looks like a width, try to be helpful.
                 sess.emit_err(InvalidIntLiteralWidth { span, width: suf[1..].into() });
             } else if let Some(fixed) = fix_base_capitalisation(suf) {

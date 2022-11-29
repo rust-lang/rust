@@ -1175,7 +1175,7 @@ impl Expr {
     pub fn peel_parens(&self) -> &Expr {
         let mut expr = self;
         while let ExprKind::Paren(inner) = &expr.kind {
-            expr = &inner;
+            expr = inner;
         }
         expr
     }
@@ -2023,7 +2023,7 @@ impl Ty {
     pub fn peel_refs(&self) -> &Self {
         let mut final_ty = self;
         while let TyKind::Rptr(_, MutTy { ty, .. }) = &final_ty.kind {
-            final_ty = &ty;
+            final_ty = ty;
         }
         final_ty
     }

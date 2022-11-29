@@ -305,7 +305,7 @@ impl<'a> State<'a> {
                 self.print_expr_tup(exprs);
             }
             ast::ExprKind::Call(ref func, ref args) => {
-                self.print_expr_call(func, &args);
+                self.print_expr_call(func, args);
             }
             ast::ExprKind::MethodCall(box ast::MethodCall {
                 ref seg,
@@ -313,7 +313,7 @@ impl<'a> State<'a> {
                 ref args,
                 ..
             }) => {
-                self.print_expr_method_call(seg, &receiver, &args);
+                self.print_expr_method_call(seg, receiver, args);
             }
             ast::ExprKind::Binary(op, ref lhs, ref rhs) => {
                 self.print_expr_binary(op, lhs, rhs);
@@ -613,7 +613,7 @@ impl<'a> State<'a> {
         match binder {
             ast::ClosureBinder::NotPresent => {}
             ast::ClosureBinder::For { generic_params, .. } => {
-                self.print_formal_generic_params(&generic_params)
+                self.print_formal_generic_params(generic_params)
             }
         }
     }

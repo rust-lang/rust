@@ -515,7 +515,7 @@ pub trait PrintState<'a>: std::ops::Deref<Target = pp::Printer> + std::ops::Dere
             ast::MetaItemKind::List(ref items) => {
                 self.print_path(&item.path, false, 0);
                 self.popen();
-                self.commasep(Consistent, &items, |s, i| s.print_meta_list_item(i));
+                self.commasep(Consistent, items, |s, i| s.print_meta_list_item(i));
                 self.pclose();
             }
         }
@@ -532,7 +532,7 @@ pub trait PrintState<'a>: std::ops::Deref<Target = pp::Printer> + std::ops::Dere
     fn print_tt(&mut self, tt: &TokenTree, convert_dollar_crate: bool) {
         match tt {
             TokenTree::Token(token, _) => {
-                let token_str = self.token_to_string_ext(&token, convert_dollar_crate);
+                let token_str = self.token_to_string_ext(token, convert_dollar_crate);
                 self.word(token_str);
                 if let token::DocComment(..) = token.kind {
                     self.hardbreak()
@@ -994,7 +994,7 @@ impl<'a> State<'a> {
             ast::AssocConstraintKind::Bound { bounds } => {
                 if !bounds.is_empty() {
                     self.word_nbsp(":");
-                    self.print_type_bounds(&bounds);
+                    self.print_type_bounds(bounds);
                 }
             }
         }
@@ -1031,7 +1031,7 @@ impl<'a> State<'a> {
             }
             ast::TyKind::Tup(ref elts) => {
                 self.popen();
-                self.commasep(Inconsistent, &elts, |s, ty| s.print_type(ty));
+                self.commasep(Inconsistent, elts, |s, ty| s.print_type(ty));
                 if elts.len() == 1 {
                     self.word(",");
                 }
@@ -1250,7 +1250,7 @@ impl<'a> State<'a> {
 
         self.popen();
         self.commasep(Consistent, &args, |s, arg| match arg {
-            AsmArg::Template(template) => s.print_string(&template, ast::StrStyle::Cooked),
+            AsmArg::Template(template) => s.print_string(template, ast::StrStyle::Cooked),
             AsmArg::Operand(op) => {
                 let print_reg_or_class = |s: &mut Self, r: &InlineAsmRegOrRegClass| match r {
                     InlineAsmRegOrRegClass::Reg(r) => s.print_symbol(*r, ast::StrStyle::Cooked),
@@ -1420,11 +1420,11 @@ impl<'a> State<'a> {
                     self.print_path(path, true, 0);
                 }
                 self.popen();
-                self.commasep(Inconsistent, &elts, |s, p| s.print_pat(p));
+                self.commasep(Inconsistent, elts, |s, p| s.print_pat(p));
                 self.pclose();
             }
             PatKind::Or(ref pats) => {
-                self.strsep("|", true, Inconsistent, &pats, |s, p| s.print_pat(p));
+                self.strsep("|", true, Inconsistent, pats, |s, p| s.print_pat(p));
             }
             PatKind::Path(None, ref path) => {
                 self.print_path(path, true, 0);
@@ -1446,7 +1446,7 @@ impl<'a> State<'a> {
                 }
                 self.commasep_cmnt(
                     Consistent,
-                    &fields,
+                    fields,
                     |s, f| {
                         s.cbox(INDENT_UNIT);
                         if !f.is_shorthand {
@@ -1471,7 +1471,7 @@ impl<'a> State<'a> {
             }
             PatKind::Tuple(ref elts) => {
                 self.popen();
-                self.commasep(Inconsistent, &elts, |s, p| s.print_pat(p));
+                self.commasep(Inconsistent, elts, |s, p| s.print_pat(p));
                 if elts.len() == 1 {
                     self.word(",");
                 }
@@ -1494,7 +1494,7 @@ impl<'a> State<'a> {
                     self.print_pat(inner);
                 }
             }
-            PatKind::Lit(ref e) => self.print_expr(&**e),
+            PatKind::Lit(ref e) => self.print_expr(e),
             PatKind::Range(ref begin, ref end, Spanned { node: ref end_kind, .. }) => {
                 if let Some(e) = begin {
                     self.print_expr(e);
@@ -1510,7 +1510,7 @@ impl<'a> State<'a> {
             }
             PatKind::Slice(ref elts) => {
                 self.word("[");
-                self.commasep(Inconsistent, &elts, |s, p| s.print_pat(p));
+                self.commasep(Inconsistent, elts, |s, p| s.print_pat(p));
                 self.word("]");
             }
             PatKind::Rest => self.word(".."),
@@ -1596,7 +1596,7 @@ impl<'a> State<'a> {
 
         self.word("<");
 
-        self.commasep(Inconsistent, &generic_params, |s, param| {
+        self.commasep(Inconsistent, generic_params, |s, param| {
             s.print_outer_attributes_inline(&param.attrs);
 
             match param.kind {
