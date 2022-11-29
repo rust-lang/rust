@@ -579,8 +579,6 @@ impl<'a> ExtCtxt<'a> {
         attrs: ast::AttrVec,
         kind: ast::ItemKind,
     ) -> P<ast::Item> {
-        // FIXME: Would be nice if our generated code didn't violate
-        // Rust coding conventions
         P(ast::Item {
             ident: name,
             attrs,
