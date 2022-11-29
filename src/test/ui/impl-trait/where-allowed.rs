@@ -14,47 +14,47 @@ fn in_adt_in_parameters(_: Vec<impl Debug>) { panic!() }
 
 // Disallowed
 fn in_fn_parameter_in_parameters(_: fn(impl Debug)) { panic!() }
-//~^ ERROR `impl Trait` only allowed in function and inherent method return types
+//~^ ERROR `impl Trait` not allowed within `fn` pointer param [E0562]
 
 // Disallowed
 fn in_fn_return_in_parameters(_: fn() -> impl Debug) { panic!() }
-//~^ ERROR `impl Trait` only allowed in function and inherent method return types
+//~^ ERROR `impl Trait` not allowed within `fn` pointer return [E0562]
 
 // Disallowed
 fn in_fn_parameter_in_return() -> fn(impl Debug) { panic!() }
-//~^ ERROR `impl Trait` only allowed in function and inherent method return types
+//~^ ERROR `impl Trait` not allowed within `fn` pointer param [E0562]
 
 // Disallowed
 fn in_fn_return_in_return() -> fn() -> impl Debug { panic!() }
-//~^ ERROR `impl Trait` only allowed in function and inherent method return types
+//~^ ERROR `impl Trait` not allowed within `fn` pointer return [E0562]
 
 // Disallowed
 fn in_dyn_Fn_parameter_in_parameters(_: &dyn Fn(impl Debug)) { panic!() }
-//~^ ERROR `impl Trait` only allowed in function and inherent method return types
+//~^ ERROR `impl Trait` not allowed within `Fn` trait param [E0562]
 
 // Disallowed
 fn in_dyn_Fn_return_in_parameters(_: &dyn Fn() -> impl Debug) { panic!() }
-//~^ ERROR `impl Trait` only allowed in function and inherent method return types
+//~^ ERROR `impl Trait` not allowed within `Fn` trait return [E0562]
 
 // Disallowed
 fn in_dyn_Fn_parameter_in_return() -> &'static dyn Fn(impl Debug) { panic!() }
-//~^ ERROR `impl Trait` only allowed in function and inherent method return types
+//~^ ERROR `impl Trait` not allowed within `Fn` trait param [E0562]
 
 // Allowed
 fn in_dyn_Fn_return_in_return() -> &'static dyn Fn() -> impl Debug { panic!() }
 
 // Disallowed
 fn in_impl_Fn_parameter_in_parameters(_: &impl Fn(impl Debug)) { panic!() }
-//~^ ERROR `impl Trait` only allowed in function and inherent method return types
+//~^ ERROR `impl Trait` not allowed within `Fn` trait param [E0562]
 //~^^ ERROR nested `impl Trait` is not allowed
 
 // Disallowed
 fn in_impl_Fn_return_in_parameters(_: &impl Fn() -> impl Debug) { panic!() }
-//~^ ERROR `impl Trait` only allowed in function and inherent method return types
+//~^ ERROR `impl Trait` not allowed within `Fn` trait return [E0562]
 
 // Disallowed
 fn in_impl_Fn_parameter_in_return() -> &'static impl Fn(impl Debug) { panic!() }
-//~^ ERROR `impl Trait` only allowed in function and inherent method return types
+//~^ ERROR `impl Trait` not allowed within `Fn` trait param [E0562]
 //~| ERROR nested `impl Trait` is not allowed
 
 // Allowed
@@ -62,11 +62,11 @@ fn in_impl_Fn_return_in_return() -> &'static impl Fn() -> impl Debug { panic!() 
 
 // Disallowed
 fn in_Fn_parameter_in_generics<F: Fn(impl Debug)> (_: F) { panic!() }
-//~^ ERROR `impl Trait` only allowed in function and inherent method return types
+//~^ ERROR `impl Trait` not allowed within `Fn` trait param [E0562]
 
 // Disallowed
 fn in_Fn_return_in_generics<F: Fn() -> impl Debug> (_: F) { panic!() }
-//~^ ERROR `impl Trait` only allowed in function and inherent method return types
+//~^ ERROR `impl Trait` not allowed within `Fn` trait return [E0562]
 
 
 // Allowed
@@ -79,22 +79,22 @@ fn in_impl_Trait_in_return() -> impl IntoIterator<Item = impl IntoIterator> {
 
 // Disallowed
 struct InBraceStructField { x: impl Debug }
-//~^ ERROR `impl Trait` only allowed in function and inherent method return types
+//~^ ERROR `impl Trait` not allowed within type [E0562]
 
 // Disallowed
 struct InAdtInBraceStructField { x: Vec<impl Debug> }
-//~^ ERROR `impl Trait` only allowed in function and inherent method return types
+//~^ ERROR `impl Trait` not allowed within path [E0562]
 
 // Disallowed
 struct InTupleStructField(impl Debug);
-//~^ ERROR `impl Trait` only allowed in function and inherent method return types
+//~^ ERROR `impl Trait` not allowed within type [E0562]
 
 // Disallowed
 enum InEnum {
     InBraceVariant { x: impl Debug },
-    //~^ ERROR `impl Trait` only allowed in function and inherent method return types
+    //~^ ERROR `impl Trait` not allowed within type [E0562]
     InTupleVariant(impl Debug),
-    //~^ ERROR `impl Trait` only allowed in function and inherent method return types
+    //~^ ERROR `impl Trait` not allowed within type [E0562]
 }
 
 // Allowed
@@ -105,7 +105,7 @@ trait InTraitDefnParameters {
 // Disallowed
 trait InTraitDefnReturn {
     fn in_return() -> impl Debug;
-    //~^ ERROR `impl Trait` only allowed in function and inherent method return types
+    //~^ ERROR `impl Trait` not allowed within trait method return [E0562]
 }
 
 // Allowed and disallowed in trait impls
@@ -122,7 +122,7 @@ impl DummyTrait for () {
     // Allowed
 
     fn in_trait_impl_return() -> impl Debug { () }
-    //~^ ERROR `impl Trait` only allowed in function and inherent method return types
+    //~^ ERROR `impl Trait` not allowed within `impl` method return [E0562]
 }
 
 // Allowed
@@ -135,10 +135,10 @@ impl DummyType {
 // Disallowed
 extern "C" {
     fn in_foreign_parameters(_: impl Debug);
-    //~^ ERROR `impl Trait` only allowed in function and inherent method return types
+    //~^ ERROR `impl Trait` not allowed within `extern fn` param [E0562]
 
     fn in_foreign_return() -> impl Debug;
-    //~^ ERROR `impl Trait` only allowed in function and inherent method return types
+    //~^ ERROR `impl Trait` not allowed within `extern fn` return [E0562]
 }
 
 // Allowed
@@ -154,34 +154,33 @@ type InTypeAlias<R> = impl Debug;
 //~^ ERROR `impl Trait` in type aliases is unstable
 
 type InReturnInTypeAlias<R> = fn() -> impl Debug;
-//~^ ERROR `impl Trait` only allowed in function and inherent method return types
+//~^ ERROR `impl Trait` not allowed within `fn` pointer return [E0562]
 //~| ERROR `impl Trait` in type aliases is unstable
 
 // Disallowed in impl headers
 impl PartialEq<impl Debug> for () {
-    //~^ ERROR `impl Trait` only allowed in function and inherent method return types
+    //~^ ERROR `impl Trait` not allowed within trait [E0562]
 }
 
 // Disallowed in impl headers
 impl PartialEq<()> for impl Debug {
-    //~^ ERROR `impl Trait` only allowed in function and inherent method return types
+    //~^ ERROR `impl Trait` not allowed within type [E0562]
 }
 
 // Disallowed in inherent impls
 impl impl Debug {
-    //~^ ERROR `impl Trait` only allowed in function and inherent method return types
+    //~^ ERROR `impl Trait` not allowed within type [E0562]
 }
 
 // Disallowed in inherent impls
 struct InInherentImplAdt<T> { t: T }
 impl InInherentImplAdt<impl Debug> {
-    //~^ ERROR `impl Trait` only allowed in function and inherent method return types
+    //~^ ERROR `impl Trait` not allowed within type [E0562]
 }
 
-// Disallowed in where clauses
+// Allowed in where clauses
 fn in_fn_where_clause()
     where impl Debug: Debug
-//~^ ERROR `impl Trait` only allowed in function and inherent method return types
 {
 }
 
@@ -200,49 +199,49 @@ fn in_trait_parameter_in_fn_where_clause<T>()
 // Disallowed
 fn in_Fn_parameter_in_fn_where_clause<T>()
     where T: Fn(impl Debug)
-//~^ ERROR `impl Trait` only allowed in function and inherent method return types
+//~^ ERROR `impl Trait` not allowed within `Fn` trait param [E0562]
 {
 }
 
 // Disallowed
 fn in_Fn_return_in_fn_where_clause<T>()
     where T: Fn() -> impl Debug
-//~^ ERROR `impl Trait` only allowed in function and inherent method return types
+//~^ ERROR `impl Trait` not allowed within `Fn` trait return [E0562]
 {
 }
 
 // Disallowed
 struct InStructGenericParamDefault<T = impl Debug>(T);
-//~^ ERROR `impl Trait` only allowed in function and inherent method return types
+//~^ ERROR `impl Trait` not allowed within type [E0562]
 
 // Disallowed
 enum InEnumGenericParamDefault<T = impl Debug> { Variant(T) }
-//~^ ERROR `impl Trait` only allowed in function and inherent method return types
+//~^ ERROR `impl Trait` not allowed within type [E0562]
 
 // Disallowed
 trait InTraitGenericParamDefault<T = impl Debug> {}
-//~^ ERROR `impl Trait` only allowed in function and inherent method return types
+//~^ ERROR `impl Trait` not allowed within type [E0562]
 
 // Disallowed
 type InTypeAliasGenericParamDefault<T = impl Debug> = T;
-//~^ ERROR `impl Trait` only allowed in function and inherent method return types
+//~^ ERROR `impl Trait` not allowed within type [E0562]
 
 // Disallowed
 impl <T = impl Debug> T {}
 //~^ ERROR defaults for type parameters are only allowed in `struct`, `enum`, `type`, or `trait` definitions
 //~| WARNING this was previously accepted by the compiler but is being phased out
-//~| ERROR `impl Trait` only allowed in function and inherent method return types
+//~| ERROR `impl Trait` not allowed within type [E0562]
 //~| ERROR no nominal type found
 
 // Disallowed
 fn in_method_generic_param_default<T = impl Debug>(_: T) {}
 //~^ ERROR defaults for type parameters are only allowed in `struct`, `enum`, `type`, or `trait` definitions
 //~| WARNING this was previously accepted by the compiler but is being phased out
-//~| ERROR `impl Trait` only allowed in function and inherent method return types
+//~| ERROR `impl Trait` not allowed within type [E0562]
 
 fn main() {
     let _in_local_variable: impl Fn() = || {};
-    //~^ ERROR `impl Trait` only allowed in function and inherent method return types
+    //~^ ERROR `impl Trait` not allowed within variable binding [E0562]
     let _in_return_in_local_variable = || -> impl Fn() { || {} };
-    //~^ ERROR `impl Trait` only allowed in function and inherent method return types
+    //~^ ERROR `impl Trait` not allowed within closure return [E0562]
 }
