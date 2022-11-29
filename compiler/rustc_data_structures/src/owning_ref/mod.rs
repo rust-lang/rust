@@ -899,25 +899,25 @@ unsafe impl<O, T: ?Sized> StableAddress for OwningRef<O, T> {}
 
 impl<O, T: ?Sized> AsRef<T> for OwningRef<O, T> {
     fn as_ref(&self) -> &T {
-        &*self
+        self
     }
 }
 
 impl<O, T: ?Sized> AsRef<T> for OwningRefMut<O, T> {
     fn as_ref(&self) -> &T {
-        &*self
+        self
     }
 }
 
 impl<O, T: ?Sized> AsMut<T> for OwningRefMut<O, T> {
     fn as_mut(&mut self) -> &mut T {
-        &mut *self
+        self
     }
 }
 
 impl<O, T: ?Sized> Borrow<T> for OwningRef<O, T> {
     fn borrow(&self) -> &T {
-        &*self
+        self
     }
 }
 
@@ -1021,7 +1021,7 @@ where
     T: PartialEq,
 {
     fn eq(&self, other: &Self) -> bool {
-        (&*self as &T).eq(&*other as &T)
+        self.deref().eq(other.deref())
     }
 }
 
@@ -1032,7 +1032,7 @@ where
     T: PartialOrd,
 {
     fn partial_cmp(&self, other: &Self) -> Option<Ordering> {
-        (&*self as &T).partial_cmp(&*other as &T)
+        self.deref().partial_cmp(other.deref())
     }
 }
 
@@ -1041,7 +1041,7 @@ where
     T: Ord,
 {
     fn cmp(&self, other: &Self) -> Ordering {
-        (&*self as &T).cmp(&*other as &T)
+        self.deref().cmp(other.deref())
     }
 }
 
@@ -1050,7 +1050,7 @@ where
     T: Hash,
 {
     fn hash<H: Hasher>(&self, state: &mut H) {
-        (&*self as &T).hash(state);
+        self.deref().hash(state);
     }
 }
 
@@ -1059,7 +1059,7 @@ where
     T: PartialEq,
 {
     fn eq(&self, other: &Self) -> bool {
-        (&*self as &T).eq(&*other as &T)
+        self.deref().eq(other.deref())
     }
 }
 
@@ -1070,7 +1070,7 @@ where
     T: PartialOrd,
 {
     fn partial_cmp(&self, other: &Self) -> Option<Ordering> {
-        (&*self as &T).partial_cmp(&*other as &T)
+        self.deref().partial_cmp(other.deref())
     }
 }
 
@@ -1079,7 +1079,7 @@ where
     T: Ord,
 {
     fn cmp(&self, other: &Self) -> Ordering {
-        (&*self as &T).cmp(&*other as &T)
+        self.deref().cmp(other.deref())
     }
 }
 
@@ -1088,7 +1088,7 @@ where
     T: Hash,
 {
     fn hash<H: Hasher>(&self, state: &mut H) {
-        (&*self as &T).hash(state);
+        self.deref().hash(state);
     }
 }
 
