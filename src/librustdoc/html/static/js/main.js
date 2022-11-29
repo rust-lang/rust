@@ -302,12 +302,14 @@ function loadCss(cssUrl) {
 
             const params = searchState.getQueryStringParams();
             if (params.search !== undefined) {
-                const search = searchState.outputElement();
-                search.innerHTML = "<h3 class=\"search-loading\">" +
-                    searchState.loadingText + "</h3>";
-                searchState.showResults(search);
+                searchState.setLoadingSearch();
                 loadSearch();
             }
+        },
+        setLoadingSearch: () => {
+            const search = searchState.outputElement();
+            search.innerHTML = "<h3 class=\"search-loading\">" + searchState.loadingText + "</h3>";
+            searchState.showResults(search);
         },
     };
 

@@ -1336,8 +1336,9 @@ impl<'tcx> TypeErrCtxtExt<'tcx> for TypeErrCtxt<'_, 'tcx> {
                     obligation.param_env,
                     trait_pred_and_suggested_ty,
                 );
-                let suggested_ty_would_satisfy_obligation =
-                    self.predicate_must_hold_modulo_regions(&new_obligation);
+                let suggested_ty_would_satisfy_obligation = self
+                    .evaluate_obligation_no_overflow(&new_obligation)
+                    .must_apply_modulo_regions();
                 if suggested_ty_would_satisfy_obligation {
                     let sp = self
                         .tcx
@@ -1988,11 +1989,6 @@ impl<'tcx> TypeErrCtxtExt<'tcx> for TypeErrCtxt<'_, 'tcx> {
             .as_local()
             .and_then(|def_id| hir.maybe_body_owned_by(def_id))
             .map(|body_id| hir.body(body_id));
-        let is_async = self
-            .tcx
-            .generator_kind(generator_did)
-            .map(|generator_kind| matches!(generator_kind, hir::GeneratorKind::Async(..)))
-            .unwrap_or(false);
         let mut visitor = AwaitsVisitor::default();
         if let Some(body) = generator_body {
             visitor.visit_body(body);
@@ -2069,6 +2065,7 @@ impl<'tcx> TypeErrCtxtExt<'tcx> for TypeErrCtxt<'_, 'tcx> {
 
         debug!(?interior_or_upvar_span);
         if let Some(interior_or_upvar_span) = interior_or_upvar_span {
+            let is_async = self.tcx.generator_is_async(generator_did);
             let typeck_results = match generator_data {
                 GeneratorData::Local(typeck_results) => Some(typeck_results),
                 GeneratorData::Foreign(_) => None,
@@ -2641,10 +2638,7 @@ impl<'tcx> TypeErrCtxtExt<'tcx> for TypeErrCtxt<'_, 'tcx> {
                                 if is_future
                                     && obligated_types.last().map_or(false, |ty| match ty.kind() {
                                         ty::Generator(last_def_id, ..) => {
-                                            matches!(
-                                                tcx.generator_kind(last_def_id),
-                                                Some(GeneratorKind::Async(..))
-                                            )
+                                            tcx.generator_is_async(*last_def_id)
                                         }
                                         _ => false,
                                     })
