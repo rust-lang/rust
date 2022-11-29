@@ -41,6 +41,17 @@ fn main() {
     // do not lint cast to alias type
     1 as I32Alias;
     &1 as &I32Alias;
+
+    // issue #9960
+    macro_rules! bind_var {
+        ($id:ident, $e:expr) => {{
+            let $id = 0usize;
+            let _ = $e != 0usize;
+            let $id = 0isize;
+            let _ = $e != 0usize;
+        }}
+    }
+    bind_var!(x, (x as usize) + 1);
 }
 
 type I32Alias = i32;
