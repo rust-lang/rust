@@ -192,7 +192,7 @@ impl SelfProfilerRef {
             F: for<'a> FnOnce(&'a SelfProfiler) -> TimingGuard<'a>,
         {
             let profiler = profiler_ref.profiler.as_ref().unwrap();
-            f(&**profiler)
+            f(profiler)
         }
 
         if self.event_filter_mask.contains(event_filter) {
@@ -466,7 +466,7 @@ impl SelfProfilerRef {
 
     pub fn with_profiler(&self, f: impl FnOnce(&SelfProfiler)) {
         if let Some(profiler) = &self.profiler {
-            f(&profiler)
+            f(profiler)
         }
     }
 
@@ -733,7 +733,7 @@ impl Drop for VerboseTimingGuard<'_> {
         if let Some((start_time, start_rss, ref message)) = self.start_and_message {
             let end_rss = get_resident_set_size();
             let dur = start_time.elapsed();
-            print_time_passes_entry(&message, dur, start_rss, end_rss);
+            print_time_passes_entry(message, dur, start_rss, end_rss);
         }
     }
 }

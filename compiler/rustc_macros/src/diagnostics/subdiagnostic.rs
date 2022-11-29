@@ -409,7 +409,7 @@ impl<'parent, 'a> SubdiagnosticDeriveVariantBuilder<'parent, 'a> {
                 let mut code = None;
                 for nested_attr in list.nested.iter() {
                     let NestedMeta::Meta(ref meta) = nested_attr else {
-                        throw_invalid_nested_attr!(attr, &nested_attr);
+                        throw_invalid_nested_attr!(attr, nested_attr);
                     };
 
                     let span = meta.span().unwrap();
@@ -427,7 +427,7 @@ impl<'parent, 'a> SubdiagnosticDeriveVariantBuilder<'parent, 'a> {
                             );
                             code.set_once((code_field, formatting_init), span);
                         }
-                        _ => throw_invalid_nested_attr!(attr, &nested_attr, |diag| {
+                        _ => throw_invalid_nested_attr!(attr, nested_attr, |diag| {
                             diag.help("`code` is the only valid nested attribute")
                         }),
                     }

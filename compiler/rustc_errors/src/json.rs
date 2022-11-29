@@ -136,7 +136,7 @@ impl Translate for JsonEmitter {
     }
 
     fn fallback_fluent_bundle(&self) -> &FluentBundle {
-        &**self.fallback_bundle
+        &self.fallback_bundle
     }
 }
 

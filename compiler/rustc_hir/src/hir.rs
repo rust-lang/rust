@@ -2431,7 +2431,7 @@ impl<'hir> Ty<'hir> {
     pub fn peel_refs(&self) -> &Self {
         let mut final_ty = self;
         while let TyKind::Rptr(_, MutTy { ty, .. }) = &final_ty.kind {
-            final_ty = &ty;
+            final_ty = ty;
         }
         final_ty
     }
