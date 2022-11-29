@@ -2700,12 +2700,18 @@ impl<T, A: Allocator> IndexMut<usize> for VecDeque<T, A> {
 
 #[stable(feature = "rust1", since = "1.0.0")]
 impl<T> FromIterator<T> for VecDeque<T> {
+    #[inline]
     fn from_iter<I: IntoIterator<Item = T>>(iter: I) -> VecDeque<T> {
-        let iterator = iter.into_iter();
-        let (lower, _) = iterator.size_hint();
-        let mut deq = VecDeque::with_capacity(lower);
-        deq.extend(iterator);
-        deq
+        // Since converting is O(1) now, might as well re-use that logic
+        // (including things like the `vec::IntoIter`→`Vec` specialization)
+        // especially as that could save us some monomorphiziation work
+        // if one uses the same iterators (like slice ones) with both.
+        return from_iter_via_vec(iter.into_iter());
+
+        #[inline]
+        fn from_iter_via_vec<U>(iter: impl Iterator<Item = U>) -> VecDeque<U> {
+            Vec::from_iter(iter).into()
+        }
     }
 }
 
@@ -2792,6 +2798,7 @@ impl<T, A: Allocator> From<Vec<T, A>> for VecDeque<T, A> {
     /// In its current implementation, this is a very cheap
     /// conversion. This isn't yet a guarantee though, and
     /// shouldn't be relied on.
+    #[inline]
     fn from(other: Vec<T, A>) -> Self {
         let (ptr, len, cap, alloc) = other.into_raw_parts_with_alloc();
         Self { head: 0, len, buf: unsafe { RawVec::from_raw_parts_in(ptr, cap, alloc) } }
