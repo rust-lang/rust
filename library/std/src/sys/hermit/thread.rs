@@ -5,6 +5,7 @@ use crate::ffi::CStr;
 use crate::io;
 use crate::mem;
 use crate::num::NonZeroUsize;
+use crate::ptr;
 use crate::sys::hermit::abi;
 use crate::sys::hermit::thread_local_dtor::run_dtors;
 use crate::time::Duration;
@@ -47,7 +48,7 @@ impl Thread {
         extern "C" fn thread_start(main: usize) {
             unsafe {
                 // Finally, let's run some code.
-                Box::from_raw(main as *mut Box<dyn FnOnce()>)();
+                Box::from_raw(ptr::from_exposed_addr::<Box<dyn FnOnce()>>(main).cast_mut())();
 
                 // run all destructors
                 run_dtors();
