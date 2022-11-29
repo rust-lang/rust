@@ -8,7 +8,7 @@ LL |         *p = 5;
    = help: see https://doc.rust-lang.org/nightly/reference/behavior-considered-undefined.html for further information
    = note: BACKTRACE:
    = note: inside `thread_2` at $DIR/retag_data_race_write.rs:LL:CC
-note: inside closure at $DIR/retag_data_race_write.rs:LL:CC
+note: inside closure
   --> $DIR/retag_data_race_write.rs:LL:CC
    |
 LL |     let t2 = std::thread::spawn(move || thread_2(p));
