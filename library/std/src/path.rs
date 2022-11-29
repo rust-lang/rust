@@ -1463,6 +1463,30 @@ impl PathBuf {
         true
     }
 
+    /// Yields a mutable reference to the underlying [`OsString`] instance.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// #![feature(path_as_mut_os_str)]
+    /// use std::path::{Path, PathBuf};
+    ///
+    /// let mut path = PathBuf::from("/foo");
+    ///
+    /// path.push("bar");
+    /// assert_eq!(path, Path::new("/foo/bar"));
+    ///
+    /// // OsString's `push` does not add a separator.
+    /// path.as_mut_os_string().push("baz");
+    /// assert_eq!(path, Path::new("/foo/barbaz"));
+    /// ```
+    #[unstable(feature = "path_as_mut_os_str", issue = "105021")]
+    #[must_use]
+    #[inline]
+    pub fn as_mut_os_string(&mut self) -> &mut OsString {
+        &mut self.inner
+    }
+
     /// Consumes the `PathBuf`, yielding its internal [`OsString`] storage.
     ///
     /// # Examples
@@ -1991,6 +2015,28 @@ impl Path {
     #[inline]
     pub fn as_os_str(&self) -> &OsStr {
         &self.inner
+    }
+
+    /// Yields a mutable reference to the underlying [`OsStr`] slice.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// #![feature(path_as_mut_os_str)]
+    /// use std::path::{Path, PathBuf};
+    ///
+    /// let mut path = PathBuf::from("/Foo.TXT").into_boxed_path();
+    ///
+    /// assert_ne!(&*path, Path::new("/foo.txt"));
+    ///
+    /// path.as_mut_os_str().make_ascii_lowercase();
+    /// assert_eq!(&*path, Path::new("/foo.txt"));
+    /// ```
+    #[unstable(feature = "path_as_mut_os_str", issue = "105021")]
+    #[must_use]
+    #[inline]
+    pub fn as_mut_os_str(&mut self) -> &mut OsStr {
+        &mut self.inner
     }
 
     /// Yields a [`&str`] slice if the `Path` is valid unicode.
