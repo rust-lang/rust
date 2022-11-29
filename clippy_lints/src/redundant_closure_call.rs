@@ -81,8 +81,8 @@ impl EarlyLintPass for RedundantClosureCall {
                         "try not to call a closure in the expression where it is declared",
                         |diag| {
                             if fn_decl.inputs.is_empty() {
-                                let app = Applicability::MachineApplicable;
-                                let mut hint = Sugg::ast(cx, body, "..");
+                                let mut app = Applicability::MachineApplicable;
+                                let mut hint = Sugg::ast(cx, body, "..", closure.span.ctxt(), &mut app);
 
                                 if asyncness.is_async() {
                                     // `async x` is a syntax error, so it becomes `async { x }`
