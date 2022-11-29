@@ -1065,7 +1065,7 @@ impl<'tcx> InferCtxt<'tcx> {
     }
 
     pub fn next_const_var(&self, ty: Ty<'tcx>, origin: ConstVariableOrigin) -> ty::Const<'tcx> {
-        self.tcx.mk_const_var(self.next_const_var_id(origin), ty)
+        self.tcx.mk_const(self.next_const_var_id(origin), ty)
     }
 
     pub fn next_const_var_in_universe(
@@ -1079,7 +1079,7 @@ impl<'tcx> InferCtxt<'tcx> {
             .borrow_mut()
             .const_unification_table()
             .new_key(ConstVarValue { origin, val: ConstVariableValue::Unknown { universe } });
-        self.tcx.mk_const_var(vid, ty)
+        self.tcx.mk_const(vid, ty)
     }
 
     pub fn next_const_var_id(&self, origin: ConstVariableOrigin) -> ConstVid<'tcx> {
@@ -1195,7 +1195,7 @@ impl<'tcx> InferCtxt<'tcx> {
                         origin,
                         val: ConstVariableValue::Unknown { universe: self.universe() },
                     });
-                self.tcx.mk_const_var(const_var_id, self.tcx.type_of(param.def_id)).into()
+                self.tcx.mk_const(const_var_id, self.tcx.type_of(param.def_id)).into()
             }
         }
     }
@@ -1580,7 +1580,7 @@ impl<'tcx> InferCtxt<'tcx> {
         span: Option<Span>,
     ) -> Result<ty::Const<'tcx>, ErrorHandled> {
         match self.const_eval_resolve(param_env, unevaluated, span) {
-            Ok(Some(val)) => Ok(ty::Const::from_value(self.tcx, val, ty)),
+            Ok(Some(val)) => Ok(self.tcx.mk_const(val, ty)),
             Ok(None) => {
                 let tcx = self.tcx;
                 let def_id = unevaluated.def.did;
@@ -2049,10 +2049,10 @@ fn replace_param_and_infer_substs_with_placeholder<'tcx>(
                     bug!("const `{ct}`'s type should not reference params or types");
                 }
                 tcx.mk_const(
-                    ty::ConstKind::Placeholder(ty::PlaceholderConst {
+                    ty::PlaceholderConst {
                         universe: ty::UniverseIndex::ROOT,
                         name: ty::BoundVar::from_usize(idx),
-                    }),
+                    },
                     ty,
                 )
                 .into()

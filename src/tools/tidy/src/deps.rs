@@ -98,6 +98,7 @@ const PERMITTED_RUSTC_DEPENDENCIES: &[&str] = &[
     "chalk-ir",
     "chalk-solve",
     "chrono",
+    "convert_case", // dependency of derive_more
     "compiler_builtins",
     "cpufeatures",
     "crc32fast",
@@ -108,6 +109,7 @@ const PERMITTED_RUSTC_DEPENDENCIES: &[&str] = &[
     "crypto-common",
     "cstr",
     "datafrog",
+    "derive_more",
     "difference",
     "digest",
     "displaydoc",
