@@ -133,13 +133,8 @@ pub fn provide(providers: &mut Providers) {
         // Accessing the local_parent is ok since its value is hashed as part of `id`'s DefPathHash.
         tcx.opt_local_parent(id.def_id).map_or(CRATE_HIR_ID, |parent| {
             let mut parent_hir_id = tcx.hir().local_def_id_to_hir_id(parent);
-            if let Some(local_id) = tcx.hir_crate(()).owners[parent_hir_id.owner.def_id]
-                .unwrap()
-                .parenting
-                .get(&id.def_id)
-            {
-                parent_hir_id.local_id = *local_id;
-            }
+            parent_hir_id.local_id =
+                tcx.hir_crate(()).owners[parent_hir_id.owner.def_id].unwrap().parenting[&id.def_id];
             parent_hir_id
         })
     };
