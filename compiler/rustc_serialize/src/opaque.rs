@@ -1,4 +1,4 @@
-use crate::leb128::{self, max_max_leb128_len};
+use crate::leb128::{self, largest_max_leb128_len};
 use crate::serialize::{Decodable, Decoder, Encodable, Encoder};
 use std::convert::TryInto;
 use std::fs::File;
@@ -186,12 +186,12 @@ impl FileEncoder {
     pub fn with_capacity<P: AsRef<Path>>(path: P, capacity: usize) -> io::Result<Self> {
         // Require capacity at least as large as the largest LEB128 encoding
         // here, so that we don't have to check or handle this on every write.
-        assert!(capacity >= max_max_leb128_len());
+        assert!(capacity >= largest_max_leb128_len());
 
         // Require capacity small enough such that some capacity checks can be
         // done using guaranteed non-overflowing add rather than sub, which
         // shaves an instruction off those code paths (on x86 at least).
-        assert!(capacity <= usize::MAX - max_max_leb128_len());
+        assert!(capacity <= usize::MAX - largest_max_leb128_len());
 
         // Create the file for reading and writing, because some encoders do both
         // (e.g. the metadata encoder when -Zmeta-stats is enabled)

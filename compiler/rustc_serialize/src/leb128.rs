@@ -1,11 +1,11 @@
-/// Returns the longest LEB128 encoding for `T`, assuming `T` is an integer type
+/// Returns the length of the longest LEB128 encoding for `T`, assuming `T` is an integer type
 pub const fn max_leb128_len<T>() -> usize {
     // The longest LEB128 encoding for an integer uses 7 bits per byte.
     (std::mem::size_of::<T>() * 8 + 6) / 7
 }
 
-/// Returns the longest LEB128 encoding of all supported integer types.
-pub const fn max_max_leb128_len() -> usize {
+/// Returns the length of the longest LEB128 encoding of all supported integer types.
+pub const fn largest_max_leb128_len() -> usize {
     max_leb128_len::<u128>()
 }
 
