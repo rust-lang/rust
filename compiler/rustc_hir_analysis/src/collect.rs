@@ -33,7 +33,7 @@ use rustc_middle::middle::codegen_fn_attrs::{CodegenFnAttrFlags, CodegenFnAttrs}
 use rustc_middle::mir::mono::Linkage;
 use rustc_middle::ty::query::Providers;
 use rustc_middle::ty::util::{Discr, IntTypeExt};
-use rustc_middle::ty::{self, AdtKind, Const, DefIdTree, IsSuggestable, Ty, TyCtxt};
+use rustc_middle::ty::{self, AdtKind, Const, DefIdTree, IsSuggestable, ToPredicate, Ty, TyCtxt};
 use rustc_session::lint;
 use rustc_session::parse::feature_err;
 use rustc_span::symbol::{kw, sym, Ident, Symbol};
@@ -1366,12 +1366,14 @@ fn predicates_defined_on(tcx: TyCtxt<'_>, def_id: DefId) -> ty::GenericPredicate
             "predicates_defined_on: inferred_outlives_of({:?}) = {:?}",
             def_id, inferred_outlives,
         );
+        let inferred_outlives_iter =
+            inferred_outlives.iter().map(|(clause, span)| ((*clause).to_predicate(tcx), *span));
         if result.predicates.is_empty() {
-            result.predicates = inferred_outlives;
+            result.predicates = tcx.arena.alloc_from_iter(inferred_outlives_iter);
         } else {
-            result.predicates = tcx
-                .arena
-                .alloc_from_iter(result.predicates.iter().chain(inferred_outlives).copied());
+            result.predicates = tcx.arena.alloc_from_iter(
+                result.predicates.into_iter().copied().chain(inferred_outlives_iter),
+            );
         }
     }
 
