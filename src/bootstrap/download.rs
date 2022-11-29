@@ -360,6 +360,7 @@ impl Config {
 
             self.fix_bin_or_dylib(&bin_root.join("bin").join("rustc"));
             self.fix_bin_or_dylib(&bin_root.join("bin").join("rustdoc"));
+            self.fix_bin_or_dylib(&bin_root.join("libexec").join("rust-analyzer-proc-macro-srv"));
             let lib_dir = bin_root.join("lib");
             for lib in t!(fs::read_dir(&lib_dir), lib_dir.display().to_string()) {
                 let lib = t!(lib);
