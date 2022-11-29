@@ -1098,7 +1098,6 @@ impl HirDisplay for LifetimeData {
                 write!(f, "{}", param_data.name)
             }
             LifetimeData::Static => write!(f, "'static"),
-            LifetimeData::Empty(_) => Ok(()),
             LifetimeData::Erased => Ok(()),
             LifetimeData::Phantom(_, _) => Ok(()),
         }
