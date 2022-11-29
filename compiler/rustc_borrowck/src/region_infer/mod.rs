@@ -1705,6 +1705,7 @@ impl<'tcx> RegionInferenceContext<'tcx> {
         });
     }
 
+    #[instrument(level = "debug", skip(self, infcx, errors_buffer))]
     fn check_member_constraints(
         &self,
         infcx: &InferCtxt<'tcx>,
@@ -1712,22 +1713,21 @@ impl<'tcx> RegionInferenceContext<'tcx> {
     ) {
         let member_constraints = self.member_constraints.clone();
         for m_c_i in member_constraints.all_indices() {
-            debug!("check_member_constraint(m_c_i={:?})", m_c_i);
+            debug!(?m_c_i);
             let m_c = &member_constraints[m_c_i];
             let member_region_vid = m_c.member_region_vid;
             debug!(
-                "check_member_constraint: member_region_vid={:?} with value {}",
-                member_region_vid,
-                self.region_value_str(member_region_vid),
+                ?member_region_vid,
+                value = ?self.region_value_str(member_region_vid),
             );
             let choice_regions = member_constraints.choice_regions(m_c_i);
-            debug!("check_member_constraint: choice_regions={:?}", choice_regions);
+            debug!(?choice_regions);
 
             // Did the member region wind up equal to any of the option regions?
             if let Some(o) =
                 choice_regions.iter().find(|&&o_r| self.eval_equal(o_r, m_c.member_region_vid))
             {
-                debug!("check_member_constraint: evaluated as equal to {:?}", o);
+                debug!("evaluated as equal to {:?}", o);
                 continue;
             }
 
