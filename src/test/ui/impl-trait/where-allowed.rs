@@ -2,6 +2,7 @@
 //! impl Trait
 #![feature(impl_trait_in_fn_trait_return)]
 use std::fmt::Debug;
+use std::ops::Add;
 
 // Allowed
 fn in_parameters(_: impl Debug) { panic!() }
@@ -244,4 +245,21 @@ fn main() {
     //~^ ERROR `impl Trait` not allowed within variable binding [E0562]
     let _in_return_in_local_variable = || -> impl Fn() { || {} };
     //~^ ERROR `impl Trait` not allowed within closure return [E0562]
+}
+
+// Add tests for issue-104526
+
+fn foo<T: Add<Output = impl Default>>(t: T) {}
+fn bar<T: AsRef<impl Default>>(t: T) {}
+
+
+fn another_foo<T>(t: T)
+where
+    T: Add<Output = impl Default>,
+{
+}
+fn another_bar<T>(t: T)
+where
+    T: AsRef<impl Default>,
+{
 }
