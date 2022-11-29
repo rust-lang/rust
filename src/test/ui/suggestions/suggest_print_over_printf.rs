@@ -1,5 +1,4 @@
-// Suggest to a user to use the print macros
-// instead to use the printf.
+// Suggest print macro when user erroneously uses printf
 
 fn main() {
     let x = 4;
