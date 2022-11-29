@@ -1424,7 +1424,7 @@ pub fn link(original: &Path, link: &Path) -> io::Result<()> {
         run_path_with_cstr(link, |link| {
             cfg_if::cfg_if! {
                 if #[cfg(any(target_os = "vxworks", target_os = "redox", target_os = "android", target_os = "espidf", target_os = "horizon", target_os = "solaris"))] {
-                    // VxWorks, Redox and ESP-IDF lack `linkat`, so use `link` instead. POSIX leaves
+                    // VxWorks, Redox, ESP-IDF and Solaris lack `linkat`, so use `link` instead. POSIX leaves
                     // it implementation-defined whether `link` follows symlinks, so rely on the
                     // `symlink_hard_link` test in library/std/src/fs/tests.rs to check the behavior.
                     // Android has `linkat` on newer versions, but we happen to know `link`
