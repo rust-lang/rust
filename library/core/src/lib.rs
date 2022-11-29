@@ -381,6 +381,7 @@ pub mod alloc;
 
 // note: does not need to be public
 mod bool;
+mod escape;
 mod tuple;
 mod unit;
 
