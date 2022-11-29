@@ -16,6 +16,10 @@ pub(crate) fn codegen_aarch64_llvm_intrinsic_call<'tcx>(
     // llvm.aarch64.neon.sqshl.v*i*
 
     match intrinsic {
+        "llvm.aarch64.isb" => {
+            fx.bcx.ins().fence();
+        }
+
         _ if intrinsic.starts_with("llvm.aarch64.neon.abs.v") => {
             intrinsic_args!(fx, args => (a); intrinsic);
 

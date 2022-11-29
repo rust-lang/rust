@@ -111,7 +111,7 @@ jobs:
         ./y.rs test
 
     - name: Package prebuilt cg_clif
-      run: tar cvfJ cg_clif.tar.xz build
+      run: tar cvfJ cg_clif.tar.xz dist
 
     - name: Upload prebuilt cg_clif
       if: matrix.env.TARGET_TRIPLE != 'x86_64-pc-windows-gnu'
@@ -213,7 +213,7 @@ jobs:
 
     - name: Package prebuilt cg_clif
       # don't use compression as xzip isn't supported by tar on windows and bzip2 hangs
-      run: tar cvf cg_clif.tar build
+      run: tar cvf cg_clif.tar dist
 
     - name: Upload prebuilt cg_clif
       uses: actions/upload-artifact@v3

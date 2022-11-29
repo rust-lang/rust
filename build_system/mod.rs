@@ -17,10 +17,10 @@ fn usage() {
     eprintln!("Usage:");
     eprintln!("  ./y.rs prepare");
     eprintln!(
-        "  ./y.rs build [--debug] [--sysroot none|clif|llvm] [--target-dir DIR] [--no-unstable-features]"
+        "  ./y.rs build [--debug] [--sysroot none|clif|llvm] [--dist-dir DIR] [--no-unstable-features]"
     );
     eprintln!(
-        "  ./y.rs test [--debug] [--sysroot none|clif|llvm] [--target-dir DIR] [--no-unstable-features]"
+        "  ./y.rs test [--debug] [--sysroot none|clif|llvm] [--dist-dir DIR] [--no-unstable-features]"
     );
 }
 
@@ -75,15 +75,15 @@ pub fn main() {
         }
     };
 
-    let mut target_dir = PathBuf::from("build");
+    let mut dist_dir = PathBuf::from("dist");
     let mut channel = "release";
     let mut sysroot_kind = SysrootKind::Clif;
     let mut use_unstable_features = true;
     while let Some(arg) = args.next().as_deref() {
         match arg {
-            "--target-dir" => {
-                target_dir = PathBuf::from(args.next().unwrap_or_else(|| {
-                    arg_error!("--target-dir requires argument");
+            "--dist-dir" => {
+                dist_dir = PathBuf::from(args.next().unwrap_or_else(|| {
+                    arg_error!("--dist-dir requires argument");
                 }))
             }
             "--debug" => channel = "debug",
@@ -101,7 +101,7 @@ pub fn main() {
             arg => arg_error!("Unexpected argument {}", arg),
         }
     }
-    target_dir = std::env::current_dir().unwrap().join(target_dir);
+    dist_dir = std::env::current_dir().unwrap().join(dist_dir);
 
     let host_triple = if let Ok(host_triple) = std::env::var("HOST_TRIPLE") {
         host_triple
@@ -128,7 +128,7 @@ pub fn main() {
             tests::run_tests(
                 channel,
                 sysroot_kind,
-                &target_dir,
+                &dist_dir,
                 &cg_clif_dylib,
                 &host_triple,
                 &target_triple,
@@ -137,7 +137,7 @@ pub fn main() {
             abi_cafe::run(
                 channel,
                 sysroot_kind,
-                &target_dir,
+                &dist_dir,
                 &cg_clif_dylib,
                 &host_triple,
                 &target_triple,
@@ -147,7 +147,7 @@ pub fn main() {
             build_sysroot::build_sysroot(
                 channel,
                 sysroot_kind,
-                &target_dir,
+                &dist_dir,
                 &cg_clif_dylib,
                 &host_triple,
                 &target_triple,

@@ -89,7 +89,7 @@ rm src/test/ui/consts/issue-33537.rs # same
 # doesn't work due to the way the rustc test suite is invoked.
 # should work when using ./x.py test the way it is intended
 # ============================================================
-rm -r src/test/run-make/emit-shared-files # requires the rustdoc executable in build/bin/
+rm -r src/test/run-make/emit-shared-files # requires the rustdoc executable in dist/bin/
 rm -r src/test/run-make/unstable-flag-required # same
 rm -r src/test/run-make/rustdoc-* # same
 rm -r src/test/run-make/issue-88756-default-output # same

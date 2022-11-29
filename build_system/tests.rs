@@ -274,7 +274,7 @@ const EXTENDED_SYSROOT_SUITE: &[TestCase] = &[
             eprintln!("[BENCH COMPILE] ebobby/simple-raytracer");
             let cargo_clif = env::current_dir()
                 .unwrap()
-                .join("build")
+                .join("dist")
                 .join(get_wrapper_file_name("cargo-clif", "bin"));
             let source_dir = SIMPLE_RAYTRACER.source_dir();
             let manifest_path = SIMPLE_RAYTRACER.manifest_path();
@@ -432,7 +432,7 @@ const EXTENDED_SYSROOT_SUITE: &[TestCase] = &[
 pub(crate) fn run_tests(
     channel: &str,
     sysroot_kind: SysrootKind,
-    target_dir: &Path,
+    dist_dir: &Path,
     cg_clif_dylib: &Path,
     host_triple: &str,
     target_triple: &str,
@@ -443,7 +443,7 @@ pub(crate) fn run_tests(
         build_sysroot::build_sysroot(
             channel,
             SysrootKind::None,
-            &target_dir,
+            &dist_dir,
             cg_clif_dylib,
             &host_triple,
             &target_triple,
@@ -462,7 +462,7 @@ pub(crate) fn run_tests(
         build_sysroot::build_sysroot(
             channel,
             sysroot_kind,
-            &target_dir,
+            &dist_dir,
             cg_clif_dylib,
             &host_triple,
             &target_triple,
@@ -503,11 +503,11 @@ impl TestRunner {
             target_triple.contains("x86_64") && is_native && !host_triple.contains("windows");
 
         let mut rustc_clif = root_dir.clone();
-        rustc_clif.push("build");
+        rustc_clif.push("dist");
         rustc_clif.push(get_wrapper_file_name("rustc-clif", "bin"));
 
         let mut rustdoc_clif = root_dir.clone();
-        rustdoc_clif.push("build");
+        rustdoc_clif.push("dist");
         rustdoc_clif.push(get_wrapper_file_name("rustdoc-clif", "bin"));
 
         let mut rustflags = env::var("RUSTFLAGS").ok().unwrap_or("".to_string());

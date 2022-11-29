@@ -14,7 +14,7 @@ static ABI_CAFE: CargoProject = CargoProject::git(&ABI_CAFE_REPO, ".");
 pub(crate) fn run(
     channel: &str,
     sysroot_kind: SysrootKind,
-    target_dir: &Path,
+    dist_dir: &Path,
     cg_clif_dylib: &Path,
     host_triple: &str,
     target_triple: &str,
@@ -33,7 +33,7 @@ pub(crate) fn run(
     build_sysroot::build_sysroot(
         channel,
         sysroot_kind,
-        target_dir,
+        dist_dir,
         cg_clif_dylib,
         host_triple,
         target_triple,
