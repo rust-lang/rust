@@ -291,8 +291,13 @@ mod inner {
         pub fn now() -> Instant {
             #[cfg(target_os = "macos")]
             const clock_id: libc::clockid_t = libc::CLOCK_UPTIME_RAW;
-            #[cfg(not(target_os = "macos"))]
+
+            #[cfg(target_os = "linux")]
+            const clock_id: libc::clockid_t = libc::CLOCK_BOOTTIME;
+
+            #[cfg(not(any(target_os = "macos", target_os = "linux")))]
             const clock_id: libc::clockid_t = libc::CLOCK_MONOTONIC;
+
             Instant { t: Timespec::now(clock_id) }
         }
 
