@@ -568,6 +568,7 @@ fn well_known_trait_from_lang_attr(name: &str) -> Option<WellKnownTrait> {
         "sized" => WellKnownTrait::Sized,
         "unpin" => WellKnownTrait::Unpin,
         "unsize" => WellKnownTrait::Unsize,
+        "tuple_trait" => WellKnownTrait::Tuple,
         _ => return None,
     })
 }
@@ -585,6 +586,7 @@ fn lang_attr_from_well_known_trait(attr: WellKnownTrait) -> &'static str {
         WellKnownTrait::FnOnce => "fn_once",
         WellKnownTrait::Generator => "generator",
         WellKnownTrait::Sized => "sized",
+        WellKnownTrait::Tuple => "tuple_trait",
         WellKnownTrait::Unpin => "unpin",
         WellKnownTrait::Unsize => "unsize",
     }
