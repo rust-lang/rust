@@ -1733,8 +1733,10 @@ pub enum StrStyle {
 /// A literal in a meta item.
 #[derive(Clone, Encodable, Decodable, Debug, HashStable_Generic)]
 pub struct MetaItemLit {
-    /// The original literal token as written in source code.
-    pub token_lit: token::Lit,
+    /// The original literal as written in the source code.
+    pub symbol: Symbol,
+    /// The original suffix as written in the source code.
+    pub suffix: Option<Symbol>,
     /// The "semantic" representation of the literal lowered from the original tokens.
     /// Strings are unescaped, hexadecimal forms are eliminated, etc.
     pub kind: LitKind,
@@ -3103,7 +3105,7 @@ mod size_asserts {
     static_assert_size!(ItemKind, 112);
     static_assert_size!(LitKind, 24);
     static_assert_size!(Local, 72);
-    static_assert_size!(MetaItemLit, 48);
+    static_assert_size!(MetaItemLit, 40);
     static_assert_size!(Param, 40);
     static_assert_size!(Pat, 88);
     static_assert_size!(Path, 24);

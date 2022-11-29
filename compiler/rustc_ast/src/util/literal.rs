@@ -202,9 +202,32 @@ impl LitKind {
 }
 
 impl MetaItemLit {
-    /// Converts token literal into a meta item literal.
+    /// Converts a token literal into a meta item literal.
     pub fn from_token_lit(token_lit: token::Lit, span: Span) -> Result<MetaItemLit, LitError> {
-        Ok(MetaItemLit { token_lit, kind: LitKind::from_token_lit(token_lit)?, span })
+        Ok(MetaItemLit {
+            symbol: token_lit.symbol,
+            suffix: token_lit.suffix,
+            kind: LitKind::from_token_lit(token_lit)?,
+            span,
+        })
+    }
+
+    /// Cheaply converts a meta item literal into a token literal.
+    pub fn as_token_lit(&self) -> token::Lit {
+        let kind = match self.kind {
+            LitKind::Bool(_) => token::Bool,
+            LitKind::Str(_, ast::StrStyle::Cooked) => token::Str,
+            LitKind::Str(_, ast::StrStyle::Raw(n)) => token::StrRaw(n),
+            LitKind::ByteStr(_, ast::StrStyle::Cooked) => token::ByteStr,
+            LitKind::ByteStr(_, ast::StrStyle::Raw(n)) => token::ByteStrRaw(n),
+            LitKind::Byte(_) => token::Byte,
+            LitKind::Char(_) => token::Char,
+            LitKind::Int(..) => token::Integer,
+            LitKind::Float(..) => token::Float,
+            LitKind::Err => token::Err,
+        };
+
+        token::Lit::new(kind, self.symbol, self.suffix)
     }
 
     /// Converts an arbitrary token into meta item literal.

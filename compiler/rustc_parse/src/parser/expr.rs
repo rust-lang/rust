@@ -1551,7 +1551,7 @@ impl<'a> Parser<'a> {
                 })
             });
             consume_colon = false;
-            Ok(self.mk_expr(lo, ExprKind::Lit(lit.token_lit)))
+            Ok(self.mk_expr(lo, ExprKind::Lit(lit.as_token_lit())))
         } else if !ate_colon
             && (self.check_noexpect(&TokenKind::Comma) || self.check_noexpect(&TokenKind::Gt))
         {
@@ -1654,7 +1654,8 @@ impl<'a> Parser<'a> {
         }
         let name = lifetime.without_first_quote().name;
         ast::MetaItemLit {
-            token_lit: token::Lit::new(token::LitKind::Char, name, None),
+            symbol: name,
+            suffix: None,
             kind: ast::LitKind::Char(name.as_str().chars().next().unwrap_or('_')),
             span: lifetime.span,
         }
@@ -1773,8 +1774,8 @@ impl<'a> Parser<'a> {
             Some(lit) => match lit.kind {
                 ast::LitKind::Str(symbol_unescaped, style) => Ok(ast::StrLit {
                     style,
-                    symbol: lit.token_lit.symbol,
-                    suffix: lit.token_lit.suffix,
+                    symbol: lit.symbol,
+                    suffix: lit.suffix,
                     span: lit.span,
                     symbol_unescaped,
                 }),
@@ -1817,7 +1818,7 @@ impl<'a> Parser<'a> {
     pub(super) fn parse_token_lit(&mut self) -> PResult<'a, (token::Lit, Span)> {
         self.parse_opt_token_lit()
             .ok_or(())
-            .or_else(|()| self.handle_missing_lit().map(|lit| (lit.token_lit, lit.span)))
+            .or_else(|()| self.handle_missing_lit().map(|lit| (lit.as_token_lit(), lit.span)))
     }
 
     pub(super) fn parse_meta_item_lit(&mut self) -> PResult<'a, MetaItemLit> {

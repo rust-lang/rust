@@ -420,7 +420,7 @@ impl<'a> Parser<'a> {
                 err.span_label(self_.token.span, format!("expected {}", expected));
                 err
             });
-            PatKind::Lit(self.mk_expr(lo, ExprKind::Lit(lit.token_lit)))
+            PatKind::Lit(self.mk_expr(lo, ExprKind::Lit(lit.as_token_lit())))
         } else {
             // Try to parse everything else as literal with optional minus
             match self.parse_literal_maybe_minus() {
