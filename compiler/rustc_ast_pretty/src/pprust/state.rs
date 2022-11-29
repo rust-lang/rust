@@ -64,7 +64,7 @@ impl<'a> Comments<'a> {
         Comments { sm, comments, current: 0 }
     }
 
-    // This shouldn't probably clone lmao
+    // FIXME: This shouldn't probably clone lmao
     pub fn next(&self) -> Option<Comment> {
         self.comments.get(self.current).cloned()
     }
