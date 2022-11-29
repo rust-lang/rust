@@ -1,5 +1,5 @@
 error[E0425]: cannot find function `printf` in this scope
-  --> $DIR/seggest_print_over_printf.rs:6:5
+  --> $DIR/suggest_print_over_printf.rs:5:5
    |
 LL |     printf("%d", x);
    |     ^^^^^^ not found in this scope
