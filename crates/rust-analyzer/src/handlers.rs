@@ -29,6 +29,7 @@ use project_model::{ManifestPath, ProjectWorkspace, TargetKind};
 use serde_json::json;
 use stdx::{format_to, never};
 use syntax::{algo, ast, AstNode, TextRange, TextSize};
+use tracing::error;
 use vfs::AbsPathBuf;
 
 use crate::{
@@ -1372,9 +1373,26 @@ pub(crate) fn handle_inlay_hints_resolve(
 
     let resolve_data: lsp_ext::InlayHintResolveData = serde_json::from_value(data)?;
 
-    let file_range = from_proto::file_range(
+    match snap.url_file_version(&resolve_data.text_document.uri) {
+        Some(version) if version == resolve_data.text_document.version => {}
+        Some(version) => {
+            error!(
+                "attempted inlayHints/resolve of '{}' at version {} while server version is {}",
+                resolve_data.text_document.uri, resolve_data.text_document.version, version,
+            );
+            return Ok(hint);
+        }
+        None => {
+            error!(
+                "attempted inlayHints/resolve of unknown file '{}' at version {}",
+                resolve_data.text_document.uri, resolve_data.text_document.version,
+            );
+            return Ok(hint);
+        }
+    }
+    let file_range = from_proto::file_range_uri(
         &snap,
-        resolve_data.text_document,
+        &resolve_data.text_document.uri,
         match resolve_data.position {
             PositionOrRange::Position(pos) => Range::new(pos, pos),
             PositionOrRange::Range(range) => range,

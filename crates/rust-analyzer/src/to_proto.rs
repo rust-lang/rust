@@ -492,7 +492,10 @@ pub(crate) fn inlay_hint(
                 let uri = url(snap, file_id);
                 let line_index = snap.file_line_index(file_id).ok()?;
 
-                let text_document = lsp_types::TextDocumentIdentifier { uri };
+                let text_document = lsp_types::VersionedTextDocumentIdentifier {
+                    version: snap.url_file_version(&uri)?,
+                    uri,
+                };
                 to_value(lsp_ext::InlayHintResolveData {
                     text_document,
                     position: lsp_ext::PositionOrRange::Position(position(&line_index, offset)),
@@ -501,7 +504,10 @@ pub(crate) fn inlay_hint(
             }
             Some(ide::InlayTooltip::HoverRanged(file_id, text_range)) => {
                 let uri = url(snap, file_id);
-                let text_document = lsp_types::TextDocumentIdentifier { uri };
+                let text_document = lsp_types::VersionedTextDocumentIdentifier {
+                    version: snap.url_file_version(&uri)?,
+                    uri,
+                };
                 let line_index = snap.file_line_index(file_id).ok()?;
                 to_value(lsp_ext::InlayHintResolveData {
                     text_document,

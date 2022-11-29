@@ -3,11 +3,11 @@
 use std::{collections::HashMap, path::PathBuf};
 
 use lsp_types::request::Request;
-use lsp_types::PositionEncodingKind;
 use lsp_types::{
     notification::Notification, CodeActionKind, DocumentOnTypeFormattingParams,
     PartialResultParams, Position, Range, TextDocumentIdentifier, WorkDoneProgressParams,
 };
+use lsp_types::{PositionEncodingKind, VersionedTextDocumentIdentifier};
 use serde::{Deserialize, Serialize};
 
 pub enum AnalyzerStatus {}
@@ -550,7 +550,7 @@ pub struct CompletionResolveData {
 
 #[derive(Debug, Serialize, Deserialize)]
 pub struct InlayHintResolveData {
-    pub text_document: TextDocumentIdentifier,
+    pub text_document: VersionedTextDocumentIdentifier,
     pub position: PositionOrRange,
 }
 
