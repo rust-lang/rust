@@ -1746,13 +1746,14 @@ pub struct MetaItemLit {
 /// Similar to `MetaItemLit`, but restricted to string literals.
 #[derive(Clone, Copy, Encodable, Decodable, Debug)]
 pub struct StrLit {
-    /// The original literal token as written in source code.
-    pub style: StrStyle,
+    /// The original literal as written in source code.
     pub symbol: Symbol,
+    /// The original suffix as written in source code.
     pub suffix: Option<Symbol>,
-    pub span: Span,
-    /// The unescaped "semantic" representation of the literal lowered from the original token.
+    /// The semantic (unescaped) representation of the literal.
     pub symbol_unescaped: Symbol,
+    pub style: StrStyle,
+    pub span: Span,
 }
 
 impl StrLit {
