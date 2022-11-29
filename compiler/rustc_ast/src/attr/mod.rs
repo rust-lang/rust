@@ -333,8 +333,8 @@ pub fn mk_name_value_item_str(ident: Ident, str: Symbol, str_span: Span) -> Meta
     mk_name_value_item(ident, lit_kind, str_span)
 }
 
-pub fn mk_name_value_item(ident: Ident, lit_kind: LitKind, lit_span: Span) -> MetaItem {
-    let lit = MetaItemLit::from_lit_kind(lit_kind, lit_span);
+pub fn mk_name_value_item(ident: Ident, kind: LitKind, lit_span: Span) -> MetaItem {
+    let lit = MetaItemLit { token_lit: kind.to_token_lit(), kind, span: lit_span };
     let span = ident.span.to(lit_span);
     MetaItem { path: Path::from_ident(ident), span, kind: MetaItemKind::NameValue(lit) }
 }
