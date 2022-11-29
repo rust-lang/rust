@@ -689,7 +689,7 @@ fn run_renderer<'tcx, T: formats::FormatRenderer<'tcx>>(
     tcx: TyCtxt<'tcx>,
 ) -> MainResult {
     match formats::run_format::<T>(krate, renderopts, cache, tcx) {
-        Ok(_) => Ok(()),
+        Ok(_) => tcx.sess.has_errors().map_or(Ok(()), Err),
         Err(e) => {
             let mut msg =
                 tcx.sess.struct_err(&format!("couldn't generate documentation: {}", e.error));
