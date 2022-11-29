@@ -355,6 +355,12 @@ pub fn suggest_constraining_type_params<'a>(
         ));
     }
 
+    // FIXME: remove the suggestions that are from derive, as the span is not correct
+    suggestions = suggestions
+        .into_iter()
+        .filter(|(span, _, _)| !span.in_derive_expansion())
+        .collect::<Vec<_>>();
+
     if suggestions.len() == 1 {
         let (span, suggestion, msg) = suggestions.pop().unwrap();
 
