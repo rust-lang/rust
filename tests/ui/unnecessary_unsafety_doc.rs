@@ -1,6 +1,7 @@
 // aux-build:doc_unsafe_macros.rs
 
 #![allow(clippy::let_unit_value)]
+#![warn(clippy::unnecessary_safety_doc)]
 
 #[macro_use]
 extern crate doc_unsafe_macros;
