@@ -234,4 +234,18 @@ fn not_fire() {
     // If a type annotation is present, don't lint as
     // expressing the type might be too hard
     let v: () = if let Some(v_some) = g() { v_some } else { panic!() };
+
+    // Issue 9940
+    // Suggestion should not expand macros
+    macro_rules! macro_call {
+        () => {
+            return ()
+        };
+    }
+
+    let ff = Some(1);
+    let _ = match ff {
+        Some(value) => value,
+        _ => macro_call!(),
+    };
 }
