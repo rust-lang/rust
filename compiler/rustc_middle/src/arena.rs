@@ -91,7 +91,7 @@ macro_rules! arena_types {
 
             // Interned types
             [] tys: rustc_type_ir::WithCachedTypeInfo<rustc_middle::ty::TyKind<'tcx>>,
-            [] predicates: rustc_type_ir::WithCachedTypeInfo<rustc_middle::ty::PredicateS<'tcx>>,
+            [] predicates: rustc_type_ir::WithCachedTypeInfo<rustc_middle::ty::PredicateKind<'tcx>>,
             [] consts: rustc_middle::ty::ConstS<'tcx>,
 
             // Note that this deliberately duplicates items in the `rustc_hir::arena`,

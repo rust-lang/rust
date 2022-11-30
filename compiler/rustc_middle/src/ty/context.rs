@@ -21,9 +21,9 @@ use crate::ty::{
     self, AdtDef, AdtDefData, AdtKind, Binder, BindingMode, BoundVar, CanonicalPolyFnSig,
     ClosureSizeProfileData, Const, ConstS, DefIdTree, FloatTy, FloatVar, FloatVid,
     GenericParamDefKind, InferTy, IntTy, IntVar, IntVid, List, ParamConst, ParamTy,
-    PolyExistentialPredicate, PolyFnSig, Predicate, PredicateKind, PredicateS, ProjectionTy,
-    Region, RegionKind, ReprOptions, TraitObjectVisitor, Ty, TyKind, TyVar, TyVid, TypeAndMut,
-    UintTy, Visibility,
+    PolyExistentialPredicate, PolyFnSig, Predicate, PredicateKind, ProjectionTy, Region,
+    RegionKind, ReprOptions, TraitObjectVisitor, Ty, TyKind, TyVar, TyVid, TypeAndMut, UintTy,
+    Visibility,
 };
 use crate::ty::{GenericArg, GenericArgKind, InternalSubsts, SubstsRef, UserSubsts};
 use rustc_ast as ast;
@@ -145,7 +145,7 @@ pub struct CtxtInterners<'tcx> {
     canonical_var_infos: InternedSet<'tcx, List<CanonicalVarInfo<'tcx>>>,
     region: InternedSet<'tcx, RegionKind<'tcx>>,
     poly_existential_predicates: InternedSet<'tcx, List<PolyExistentialPredicate<'tcx>>>,
-    predicate: InternedSet<'tcx, WithCachedTypeInfo<PredicateS<'tcx>>>,
+    predicate: InternedSet<'tcx, WithCachedTypeInfo<ty::Binder<'tcx, PredicateKind<'tcx>>>>,
     predicates: InternedSet<'tcx, List<Predicate<'tcx>>>,
     projs: InternedSet<'tcx, List<ProjectionKind>>,
     place_elems: InternedSet<'tcx, List<PlaceElem<'tcx>>>,
@@ -245,16 +245,12 @@ impl<'tcx> CtxtInterners<'tcx> {
                     let stable_hash =
                         self.stable_hash(&flags, sess, definitions, cstore, source_span, &kind);
 
-                    let predicate_struct = PredicateS {
-                        kind,
+                    InternedInSet(self.arena.alloc(WithCachedTypeInfo {
+                        internee: kind,
+                        stable_hash,
                         flags: flags.flags,
                         outer_exclusive_binder: flags.outer_exclusive_binder,
-                    };
-
-                    InternedInSet(
-                        self.arena
-                            .alloc(WithCachedTypeInfo { internee: predicate_struct, stable_hash }),
-                    )
+                    }))
                 })
                 .0,
         ))
@@ -2191,27 +2187,32 @@ impl<'tcx> Hash for InternedInSet<'tcx, WithCachedTypeInfo<TyKind<'tcx>>> {
 }
 
 impl<'tcx> Borrow<Binder<'tcx, PredicateKind<'tcx>>>
-    for InternedInSet<'tcx, WithCachedTypeInfo<PredicateS<'tcx>>>
+    for InternedInSet<'tcx, WithCachedTypeInfo<ty::Binder<'tcx, PredicateKind<'tcx>>>>
 {
     fn borrow<'a>(&'a self) -> &'a Binder<'tcx, PredicateKind<'tcx>> {
-        &self.0.kind
+        &self.0.internee
     }
 }
 
-impl<'tcx> PartialEq for InternedInSet<'tcx, WithCachedTypeInfo<PredicateS<'tcx>>> {
-    fn eq(&self, other: &InternedInSet<'tcx, WithCachedTypeInfo<PredicateS<'tcx>>>) -> bool {
+impl<'tcx> PartialEq
+    for InternedInSet<'tcx, WithCachedTypeInfo<ty::Binder<'tcx, PredicateKind<'tcx>>>>
+{
+    fn eq(
+        &self,
+        other: &InternedInSet<'tcx, WithCachedTypeInfo<ty::Binder<'tcx, PredicateKind<'tcx>>>>,
+    ) -> bool {
         // The `Borrow` trait requires that `x.borrow() == y.borrow()` equals
         // `x == y`.
-        self.0.kind == other.0.kind
+        self.0.internee == other.0.internee
     }
 }
 
-impl<'tcx> Eq for InternedInSet<'tcx, WithCachedTypeInfo<PredicateS<'tcx>>> {}
+impl<'tcx> Eq for InternedInSet<'tcx, WithCachedTypeInfo<ty::Binder<'tcx, PredicateKind<'tcx>>>> {}
 
-impl<'tcx> Hash for InternedInSet<'tcx, WithCachedTypeInfo<PredicateS<'tcx>>> {
+impl<'tcx> Hash for InternedInSet<'tcx, WithCachedTypeInfo<ty::Binder<'tcx, PredicateKind<'tcx>>>> {
     fn hash<H: Hasher>(&self, s: &mut H) {
         // The `Borrow` trait requires that `x.borrow().hash(s) == x.hash(s)`.
-        self.0.kind.hash(s)
+        self.0.internee.hash(s)
     }
 }
 

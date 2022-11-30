@@ -474,28 +474,18 @@ impl ty::EarlyBoundRegion {
     }
 }
 
-/// Represents a predicate.
-///
-/// See comments on `WithCachedTypeInfo`, which apply here too (albeit for
-/// `PredicateS`/`Predicate` rather than `TyKind`/`Ty`).
-#[derive(Debug)]
-pub(crate) struct PredicateS<'tcx> {
-    kind: Binder<'tcx, PredicateKind<'tcx>>,
-    flags: TypeFlags,
-    /// See the comment for the corresponding field of [WithCachedTypeInfo].
-    outer_exclusive_binder: ty::DebruijnIndex,
-}
-
-/// Use this rather than `PredicateS`, whenever possible.
+/// Use this rather than `PredicateKind`, whenever possible.
 #[derive(Clone, Copy, PartialEq, Eq, Hash, HashStable)]
 #[rustc_pass_by_value]
-pub struct Predicate<'tcx>(Interned<'tcx, WithCachedTypeInfo<PredicateS<'tcx>>>);
+pub struct Predicate<'tcx>(
+    Interned<'tcx, WithCachedTypeInfo<ty::Binder<'tcx, PredicateKind<'tcx>>>>,
+);
 
 impl<'tcx> Predicate<'tcx> {
     /// Gets the inner `Binder<'tcx, PredicateKind<'tcx>>`.
     #[inline]
     pub fn kind(self) -> Binder<'tcx, PredicateKind<'tcx>> {
-        self.0.kind
+        self.0.internee
     }
 
     #[inline(always)]
@@ -567,21 +557,6 @@ impl<'tcx> Predicate<'tcx> {
             | PredicateKind::Ambiguous
             | PredicateKind::TypeWellFormedFromEnv(_) => true,
         }
-    }
-}
-
-impl<'a, 'tcx> HashStable<StableHashingContext<'a>> for PredicateS<'tcx> {
-    fn hash_stable(&self, hcx: &mut StableHashingContext<'a>, hasher: &mut StableHasher) {
-        let PredicateS {
-            ref kind,
-
-            // The other fields just provide fast access to information that is
-            // also contained in `kind`, so no need to hash them.
-            flags: _,
-            outer_exclusive_binder: _,
-        } = self;
-
-        kind.hash_stable(hcx, hasher);
     }
 }
 
@@ -2631,7 +2606,7 @@ mod size_asserts {
     use super::*;
     use rustc_data_structures::static_assert_size;
     // tidy-alphabetical-start
-    static_assert_size!(PredicateS<'_>, 48);
+    static_assert_size!(PredicateKind<'_>, 32);
     static_assert_size!(WithCachedTypeInfo<TyKind<'_>>, 56);
     // tidy-alphabetical-end
 }
