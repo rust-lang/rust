@@ -45,6 +45,9 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriInterpCxExt<'mir, 'tcx> {
                 relative_clocks = vec![
                     this.eval_libc_i32("CLOCK_MONOTONIC")?,
                     this.eval_libc_i32("CLOCK_MONOTONIC_COARSE")?,
+                    // This is the equivalent to `CLOCK_UPTIME_RAW` in the macos section
+                    // We support it, because std relies on it
+                    this.eval_libc_i32("CLOCK_BOOTTIME")?,
                 ];
             }
             "macos" => {
