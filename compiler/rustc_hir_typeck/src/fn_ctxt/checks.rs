@@ -93,11 +93,8 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         tuple_arguments: TupleArgumentsFlag,
         expected: Expectation<'tcx>,
     ) -> Ty<'tcx> {
-        let has_error = match method {
-            Ok(method) => method.substs.references_error() || method.sig.references_error(),
-            Err(_) => true,
-        };
-        if has_error {
+        let method = method.ok().filter(|method| !method.references_error());
+        let Some(method) = method else  {
             let err_inputs = self.err_args(args_no_rcvr.len());
 
             let err_inputs = match tuple_arguments {
@@ -113,12 +110,11 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                 args_no_rcvr,
                 false,
                 tuple_arguments,
-                method.ok().map(|method| method.def_id),
+                method.map(|method| method.def_id),
             );
             return self.tcx.ty_error_misc();
-        }
+        };
 
-        let method = method.unwrap();
         // HACK(eddyb) ignore self in the definition (see above).
         let expected_input_tys = self.expected_inputs_for_expected_output(
             sp,
