@@ -6,7 +6,9 @@ use rustc_data_structures::vec_map::VecMap;
 use rustc_hir::def_id::LocalDefId;
 use rustc_index::vec::IndexVec;
 use rustc_infer::infer::InferCtxt;
-use rustc_middle::mir::{create_dump_file, dump_enabled, dump_mir, PassWhere};
+use rustc_middle::mir::{
+    create_dump_file, dump_mir, maybe_dump_mir, pass_name_matches_dump_filters, PassWhere,
+};
 use rustc_middle::mir::{
     BasicBlock, Body, ClosureOutlivesSubject, ClosureRegionRequirements, LocalKind, Location,
     Promoted,
@@ -73,7 +75,7 @@ pub(crate) fn replace_regions_in_mir<'tcx>(
     // Replace all remaining regions with fresh inference variables.
     renumber::renumber_mir(infcx, body, promoted);
 
-    dump_mir(infcx.tcx, None, "renumber", &0, body, |_, _| Ok(()));
+    maybe_dump_mir(infcx.tcx, None, "renumber", &0, body, |_, _| Ok(()));
 
     universal_regions
 }
@@ -327,11 +329,16 @@ pub(super) fn dump_mir_results<'tcx>(
     regioncx: &RegionInferenceContext<'tcx>,
     closure_region_requirements: &Option<ClosureRegionRequirements<'_>>,
 ) {
-    if !dump_enabled(infcx.tcx, "nll", body.source.def_id()) {
+    let pass_name = "nll";
+    if let Some(filters) = &infcx.tcx.sess.opts.unstable_opts.dump_mir
+        && pass_name_matches_dump_filters(infcx.tcx, filters, pass_name, body.source.def_id())
+    {
+        // continue
+    } else {
         return;
-    }
+    };
 
-    dump_mir(infcx.tcx, None, "nll", &0, body, |pass_where, out| {
+    dump_mir(infcx.tcx, None, pass_name, &0, body, |pass_where, out| {
         match pass_where {
             // Before the CFG, dump out the values for each region variable.
             PassWhere::BeforeCFG => {

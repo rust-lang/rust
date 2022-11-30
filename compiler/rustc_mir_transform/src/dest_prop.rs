@@ -132,7 +132,7 @@ use std::collections::hash_map::{Entry, OccupiedEntry};
 use crate::MirPass;
 use rustc_data_structures::fx::FxHashMap;
 use rustc_index::bit_set::BitSet;
-use rustc_middle::mir::{dump_mir, PassWhere};
+use rustc_middle::mir::{maybe_dump_mir, PassWhere};
 use rustc_middle::mir::{
     traversal, BasicBlock, Body, InlineAsmOperand, Local, LocalKind, Location, Operand, Place,
     Rvalue, Statement, StatementKind, TerminatorKind,
@@ -787,7 +787,7 @@ fn dest_prop_mir_dump<'body, 'tcx>(
     round: usize,
 ) {
     let mut reachable = None;
-    dump_mir(tcx, None, "DestinationPropagation-dataflow", &round, body, |pass_where, w| {
+    maybe_dump_mir(tcx, None, "DestinationPropagation-dataflow", &round, body, |pass_where, w| {
         let reachable = reachable.get_or_insert_with(|| traversal::reachable_as_bitset(body));
 
         match pass_where {

@@ -1,6 +1,6 @@
 use std::borrow::Cow;
 
-use rustc_middle::mir::{self, Body, MirPhase, RuntimePhase};
+use rustc_middle::mir::{self, pass_name_matches_dump_filters, Body, MirPhase, RuntimePhase};
 use rustc_middle::ty::TyCtxt;
 use rustc_session::Session;
 
@@ -166,27 +166,32 @@ pub fn dump_mir_for_pass<'tcx>(
     pass_name: &str,
     is_after: bool,
 ) {
-    let phase_index = body.phase.phase_index();
-
-    mir::dump_mir(
-        tcx,
-        Some(&format_args!("{:03}-{:03}", phase_index, body.pass_count)),
-        pass_name,
-        if is_after { &"after" } else { &"before" },
-        body,
-        |_, _| Ok(()),
-    );
+    if let Some(filters) = &tcx.sess.opts.unstable_opts.dump_mir {
+        if pass_name_matches_dump_filters(tcx, filters, pass_name, body.source.def_id()) {
+            mir::dump_mir(
+                tcx,
+                Some(&format_args!("{:03}-{:03}", body.phase.phase_index(), body.pass_count)),
+                pass_name,
+                if is_after { &"after" } else { &"before" },
+                body,
+                |_, _| Ok(()),
+            );
+        }
+    }
 }
 
 pub fn dump_mir_for_phase_change<'tcx>(tcx: TyCtxt<'tcx>, body: &Body<'tcx>) {
-    let phase_index = body.phase.phase_index();
-
-    mir::dump_mir(
-        tcx,
-        Some(&format_args!("{:03}-000", phase_index)),
-        &format!("{}", body.phase),
-        &"after",
-        body,
-        |_, _| Ok(()),
-    )
+    if let Some(filters) = &tcx.sess.opts.unstable_opts.dump_mir {
+        let pass_name = &format!("{}", body.phase);
+        if pass_name_matches_dump_filters(tcx, filters, pass_name, body.source.def_id()) {
+            mir::dump_mir(
+                tcx,
+                Some(&format_args!("{:03}-000", body.phase.phase_index())),
+                pass_name,
+                &"after",
+                body,
+                |_, _| Ok(()),
+            )
+        }
+    }
 }

@@ -72,6 +72,23 @@ pub enum PassWhere {
 /// - `foo & nll | bar & typeck` == match if `foo` and `nll` both appear in the name
 ///   or `typeck` and `bar` both appear in the name.
 #[inline]
+pub fn maybe_dump_mir<'tcx, F>(
+    tcx: TyCtxt<'tcx>,
+    pass_num: Option<&dyn Display>,
+    pass_name: &str,
+    disambiguator: &dyn Display,
+    body: &Body<'tcx>,
+    extra_data: F,
+) where
+    F: FnMut(PassWhere, &mut dyn Write) -> io::Result<()>,
+{
+    if let Some(filters) = &tcx.sess.opts.unstable_opts.dump_mir {
+        if pass_name_matches_dump_filters(tcx, filters, pass_name, body.source.def_id()) {
+            dump_mir(tcx, pass_num, pass_name, disambiguator, body, extra_data);
+        }
+    }
+}
+
 pub fn dump_mir<'tcx, F>(
     tcx: TyCtxt<'tcx>,
     pass_num: Option<&dyn Display>,
@@ -82,17 +99,16 @@ pub fn dump_mir<'tcx, F>(
 ) where
     F: FnMut(PassWhere, &mut dyn Write) -> io::Result<()>,
 {
-    if !dump_enabled(tcx, pass_name, body.source.def_id()) {
-        return;
-    }
-
+    // njn: inline this
     dump_matched_mir_node(tcx, pass_num, pass_name, disambiguator, body, extra_data);
 }
 
-pub fn dump_enabled<'tcx>(tcx: TyCtxt<'tcx>, pass_name: &str, def_id: DefId) -> bool {
-    let Some(ref filters) = tcx.sess.opts.unstable_opts.dump_mir else {
-        return false;
-    };
+pub fn pass_name_matches_dump_filters<'tcx>(
+    tcx: TyCtxt<'tcx>,
+    filters: &str,
+    pass_name: &str,
+    def_id: DefId,
+) -> bool {
     // see notes on #41697 below
     let node_path = ty::print::with_forced_impl_filename_line!(tcx.def_path_str(def_id));
     filters.split('|').any(|or_filter| {

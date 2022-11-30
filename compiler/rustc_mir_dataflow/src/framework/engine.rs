@@ -15,7 +15,7 @@ use rustc_hir::def_id::DefId;
 use rustc_index::bit_set::BitSet;
 use rustc_index::vec::{Idx, IndexVec};
 use rustc_middle::mir::{self, traversal, BasicBlock};
-use rustc_middle::mir::{create_dump_file, dump_enabled};
+use rustc_middle::mir::{create_dump_file, pass_name_matches_dump_filters};
 use rustc_middle::ty::TyCtxt;
 use rustc_span::symbol::{sym, Symbol};
 
@@ -292,7 +292,8 @@ where
         }
 
         None if tcx.sess.opts.unstable_opts.dump_mir_dataflow
-            && dump_enabled(tcx, A::NAME, def_id) =>
+            && let Some(filters) = &tcx.sess.opts.unstable_opts.dump_mir
+            && pass_name_matches_dump_filters(tcx, filters, A::NAME, def_id) =>
         {
             create_dump_file(
                 tcx,

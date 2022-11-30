@@ -72,7 +72,8 @@ pub mod visit;
 pub use self::generic_graph::graphviz_safe_def_name;
 pub use self::graphviz::write_mir_graphviz;
 pub use self::pretty::{
-    create_dump_file, display_allocation, dump_enabled, dump_mir, write_mir_pretty, PassWhere,
+    create_dump_file, display_allocation, dump_mir, maybe_dump_mir, pass_name_matches_dump_filters,
+    write_mir_pretty, PassWhere,
 };
 
 /// Types for locals
