@@ -119,8 +119,14 @@ impl TcpStream {
         unsupported()
     }
 
-    pub fn shutdown(&self, _: Shutdown) -> io::Result<()> {
-        unsupported()
+    pub fn shutdown(&self, how: Shutdown) -> io::Result<()> {
+        let wasi_how = match how {
+            Shutdown::Read => wasi::SDFLAGS_RD,
+            Shutdown::Write => wasi::SDFLAGS_WR,
+            Shutdown::Both => wasi::SDFLAGS_RD | wasi::SDFLAGS_WR,
+        };
+
+        unsafe { wasi::sock_shutdown(self.socket().as_raw_fd() as _, wasi_how).map_err(err2io) }
     }
 
     pub fn duplicate(&self) -> io::Result<TcpStream> {

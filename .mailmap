@@ -73,6 +73,8 @@ Björn Steinbrink <bsteinbr@gmail.com> <B.Steinbrink@gmx.de>
 blake2-ppc <ulrik.sverdrup@gmail.com> <blake2-ppc>
 boolean_coercion <booleancoercion@gmail.com>
 Boris Egorov <jightuse@gmail.com> <egorov@linux.com>
+bors <bors@rust-lang.org> bors[bot] <26634292+bors[bot]@users.noreply.github.com>
+bors <bors@rust-lang.org> bors[bot] <bors[bot]@users.noreply.github.com>
 Braden Nelson <moonheart08@users.noreply.github.com>
 Brandon Sanderson <singingboyo@gmail.com> Brandon Sanderson <singingboyo@hotmail.com>
 Brett Cannon <brett@python.org> Brett Cannon <brettcannon@users.noreply.github.com>
@@ -139,6 +141,10 @@ David Ross <daboross@daboross.net>
 David Wood <david@davidtw.co> <david.wood@huawei.com>
 Deadbeef <ent3rm4n@gmail.com>
 Deadbeef <ent3rm4n@gmail.com> <fee1-dead-beef@protonmail.com>
+dependabot[bot] <dependabot[bot]@users.noreply.github.com> <27856297+dependabot-preview[bot]@users.noreply.github.com>
+dependabot[bot] <dependabot[bot]@users.noreply.github.com> <49699333+dependabot[bot]@users.noreply.github.com>
+dependabot[bot] <dependabot[bot]@users.noreply.github.com> <dependabot-preview[bot]@users.noreply.github.com>
+dependabot[bot] <dependabot[bot]@users.noreply.github.com> <support@dependabot.com>
 Derek Chiang <derekchiang93@gmail.com> Derek Chiang (Enchi Jiang) <derekchiang93@gmail.com>
 DeveloperC <DeveloperC@protonmail.com>
 Devin Ragotzy <devin.ragotzy@gmail.com>
@@ -396,6 +402,8 @@ Nathaniel Herman <nherman@post.harvard.edu> Nathaniel Herman <nherman@college.ha
 Neil Pankey <npankey@gmail.com> <neil@wire.im>
 Ngo Iok Ui (Wu Yu Wei) <wusyong9104@gmail.com>
 Nicholas Baron <nicholas.baron.ten@gmail.com>
+Nicholas Nethercote <n.nethercote@gmail.com> <nnethercote@apple.com>
+Nicholas Nethercote <n.nethercote@gmail.com> <nnethercote@mozilla.com>
 Nick Platt <platt.nicholas@gmail.com>
 Niclas Schwarzlose <15schnic@gmail.com>
 Nicolas Abram <abramlujan@gmail.com>
