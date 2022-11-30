@@ -95,10 +95,10 @@ impl fmt::Display for AllocError {
 /// # Safety
 ///
 /// * Memory blocks returned from an allocator must point to valid memory and retain their validity
-///   until the instance and all of its clones are dropped,
+///   until the instance and all of its copies and clones are dropped,
 ///
-/// * cloning or moving the allocator must not invalidate memory blocks returned from this
-///   allocator. A cloned allocator must behave like the same allocator, and
+/// * copying, cloning, or moving the allocator must not invalidate memory blocks returned from this
+///   allocator. A copied or cloned allocator must behave like the same allocator, and
 ///
 /// * any pointer to a memory block which is [*currently allocated*] may be passed to any other
 ///   method of the allocator.
