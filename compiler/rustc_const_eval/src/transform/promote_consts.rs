@@ -216,12 +216,6 @@ impl<'tcx> Validator<'_, 'tcx> {
                     return Err(Unpromotable);
                 }
 
-                // We cannot promote things that need dropping, since the promoted value
-                // would not get dropped.
-                if self.qualif_local::<qualifs::NeedsDrop>(place.local) {
-                    return Err(Unpromotable);
-                }
-
                 Ok(())
             }
             _ => bug!(),
@@ -262,13 +256,17 @@ impl<'tcx> Validator<'_, 'tcx> {
                 }
             }
         } else {
-            let span = self.body.local_decls[local].source_info.span;
-            span_bug!(span, "{:?} not promotable, qualif_local shouldn't have been called", local);
+            false
         }
     }
 
     fn validate_local(&mut self, local: Local) -> Result<(), Unpromotable> {
         if let TempState::Defined { location: loc, uses, valid } = self.temps[local] {
+            // We cannot promote things that need dropping, since the promoted value
+            // would not get dropped.
+            if self.qualif_local::<qualifs::NeedsDrop>(local) {
+                return Err(Unpromotable);
+            }
             valid.or_else(|_| {
                 let ok = {
                     let block = &self.body[loc.block];
