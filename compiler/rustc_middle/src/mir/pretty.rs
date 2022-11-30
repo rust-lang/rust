@@ -95,46 +95,14 @@ pub fn dump_mir<'tcx, F>(
     pass_name: &str,
     disambiguator: &dyn Display,
     body: &Body<'tcx>,
-    extra_data: F,
-) where
-    F: FnMut(PassWhere, &mut dyn Write) -> io::Result<()>,
-{
-    // njn: inline this
-    dump_matched_mir_node(tcx, pass_num, pass_name, disambiguator, body, extra_data);
-}
-
-pub fn pass_name_matches_dump_filters<'tcx>(
-    tcx: TyCtxt<'tcx>,
-    filters: &str,
-    pass_name: &str,
-    def_id: DefId,
-) -> bool {
-    // see notes on #41697 below
-    let node_path = ty::print::with_forced_impl_filename_line!(tcx.def_path_str(def_id));
-    filters.split('|').any(|or_filter| {
-        or_filter.split('&').all(|and_filter| {
-            let and_filter_trimmed = and_filter.trim();
-            and_filter_trimmed == "all"
-                || pass_name.contains(and_filter_trimmed)
-                || node_path.contains(and_filter_trimmed)
-        })
-    })
-}
-
-// #41697 -- we use `with_forced_impl_filename_line()` because
-// `def_path_str()` would otherwise trigger `type_of`, and this can
-// run while we are already attempting to evaluate `type_of`.
-
-fn dump_matched_mir_node<'tcx, F>(
-    tcx: TyCtxt<'tcx>,
-    pass_num: Option<&dyn Display>,
-    pass_name: &str,
-    disambiguator: &dyn Display,
-    body: &Body<'tcx>,
     mut extra_data: F,
 ) where
     F: FnMut(PassWhere, &mut dyn Write) -> io::Result<()>,
 {
+    // #41697 -- we use `with_forced_impl_filename_line()` because
+    // `def_path_str()` would otherwise trigger `type_of`, and this can
+    // run while we are already attempting to evaluate `type_of`.
+
     let _: io::Result<()> = try {
         let mut file =
             create_dump_file(tcx, "mir", pass_num, pass_name, disambiguator, body.source)?;
@@ -175,6 +143,24 @@ fn dump_matched_mir_node<'tcx, F>(
             }
         };
     }
+}
+
+pub fn pass_name_matches_dump_filters<'tcx>(
+    tcx: TyCtxt<'tcx>,
+    filters: &str,
+    pass_name: &str,
+    def_id: DefId,
+) -> bool {
+    // see notes on #41697 below
+    let node_path = ty::print::with_forced_impl_filename_line!(tcx.def_path_str(def_id));
+    filters.split('|').any(|or_filter| {
+        or_filter.split('&').all(|and_filter| {
+            let and_filter_trimmed = and_filter.trim();
+            and_filter_trimmed == "all"
+                || pass_name.contains(and_filter_trimmed)
+                || node_path.contains(and_filter_trimmed)
+        })
+    })
 }
 
 /// Returns the file basename portion (without extension) of a filename path
