@@ -146,7 +146,7 @@ fn extract_default_variant<'a>(
                 let suggestion = default_variants
                     .iter()
                     .filter_map(|v| {
-                        if v.ident == variant.ident {
+                        if v.span == variant.span {
                             None
                         } else {
                             Some((cx.sess.find_by_name(&v.attrs, kw::Default)?.span, String::new()))
