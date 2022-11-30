@@ -96,6 +96,9 @@ mod fixable {
 
         let _ = 1 as I32Alias;
         let _ = &1 as &I32Alias;
+
+        let x = 1i32;
+        let _ = &(x as i32);
     }
 
     type I32Alias = i32;

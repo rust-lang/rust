@@ -90,7 +90,11 @@ pub(super) fn check<'tcx>(
             expr.span,
             &format!("casting to the same type is unnecessary (`{cast_from}` -> `{cast_to}`)"),
             "try",
-            cast_str,
+            if get_parent_expr(cx, expr).map_or(false, |e| matches!(e.kind, ExprKind::AddrOf(..))) {
+                format!("{{ {cast_str} }}")
+            } else {
+                cast_str
+            },
             Applicability::MachineApplicable,
         );
         return true;
