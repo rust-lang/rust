@@ -105,6 +105,10 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
                     let clone_conditions = self.copy_clone_conditions(obligation);
                     self.assemble_builtin_bound_candidates(clone_conditions, &mut candidates);
                 }
+                if lang_items.callable_trait() == Some(def_id) {
+                    // `Callable` is automatically implemented for all fn items and closures
+                    self.assemble_builtin_callable_candidates(obligation, &mut candidates);
+                }
 
                 if lang_items.gen_trait() == Some(def_id) {
                     self.assemble_generator_candidates(obligation, &mut candidates);
@@ -325,6 +329,33 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
                 }
             }
             _ => {}
+        }
+    }
+
+    /// Implements one of the `Fn()` family for a fn pointer.
+    #[instrument(skip(self, candidates), level = "debug")]
+    fn assemble_builtin_callable_candidates(
+        &mut self,
+        obligation: &TraitObligation<'tcx>,
+        candidates: &mut SelectionCandidateSet<'tcx>,
+    ) {
+        trace!(substs = ?obligation.predicate.skip_binder().trait_ref.substs);
+        match obligation.predicate.skip_binder().trait_ref.substs.len() {
+            // without effects enabled, this always holds
+            2 => return candidates.vec.push(BuiltinCandidate { has_nested: false }),
+            3 => {}
+            _ => span_bug!(obligation.cause.span, "invalid number of substs: {obligation:#?}"),
+        }
+        // Okay to skip binder because what we are inspecting doesn't involve bound regions.
+        let self_ty = obligation.self_ty().skip_binder();
+        trace!(?self_ty);
+        trace!(ty = ?self_ty.kind());
+        match *self_ty.kind() {
+            ty::Infer(ty::TyVar(_)) => {
+                debug!("assemble_builtin_callable_candidates: ambiguous self-type");
+                candidates.ambiguous = true; // Could wind up being a fn() type.
+            }
+            _ => candidates.vec.push(BuiltinCandidate { has_nested: true }),
         }
     }
 

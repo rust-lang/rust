@@ -79,11 +79,15 @@ trait FnMut<Args: Tuple>: ~const FnOnce<Args> {
 #[const_trait]
 #[lang = "fn_once"]
 #[rustc_paren_sugar]
-trait FnOnce<Args: Tuple> {
+trait FnOnce<Args: Tuple>: Callable<Args> {
     type Output;
 
     extern "rust-call" fn call_once(self, args: Args) -> Self::Output;
 }
+
+#[const_trait]
+#[lang = "callable"]
+trait Callable<Args: Tuple> {}
 
 struct ConstFnMutClosure<CapturedData, Function> {
     data: CapturedData,

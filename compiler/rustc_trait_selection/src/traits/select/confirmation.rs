@@ -50,7 +50,7 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
     ) -> Result<Selection<'tcx>, SelectionError<'tcx>> {
         let mut impl_src = match candidate {
             BuiltinCandidate { has_nested } => {
-                let data = self.confirm_builtin_candidate(obligation, has_nested);
+                let data = self.confirm_builtin_candidate(obligation, has_nested)?;
                 ImplSource::Builtin(data)
             }
 
@@ -252,7 +252,7 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
         &mut self,
         obligation: &TraitObligation<'tcx>,
         has_nested: bool,
-    ) -> ImplSourceBuiltinData<PredicateObligation<'tcx>> {
+    ) -> Result<ImplSourceBuiltinData<PredicateObligation<'tcx>>, SelectionError<'tcx>> {
         debug!(?obligation, ?has_nested, "confirm_builtin_candidate");
 
         let lang_items = self.tcx().lang_items();
@@ -271,6 +271,9 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
                     &[]
                 };
                 (self.copy_clone_conditions(obligation), rest)
+            } else if Some(trait_def) == lang_items.callable_trait() {
+                self.callable_predicates(obligation)?;
+                return Ok(ImplSourceBuiltinData { nested: vec![] });
             } else {
                 bug!("unexpected builtin trait {:?}", trait_def)
             };
@@ -295,7 +298,7 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
 
         debug!(?obligations);
 
-        ImplSourceBuiltinData { nested: obligations }
+        Ok(ImplSourceBuiltinData { nested: obligations })
     }
 
     fn confirm_transmutability_candidate(

@@ -226,13 +226,14 @@ impl<'tcx> ConstToPat<'tcx> {
         // using `PartialEq::eq` in this scenario in the past.)
         let partial_eq_trait_id =
             self.tcx().require_lang_item(hir::LangItem::PartialEq, Some(self.span));
+        let arg = ty::GenericArg::from(ty);
         let obligation: PredicateObligation<'_> = predicate_for_trait_def(
             self.tcx(),
             self.param_env,
             ObligationCause::misc(self.span, self.id),
             partial_eq_trait_id,
             0,
-            [ty, ty],
+            [arg, arg].into_iter().chain(self.tcx().host_effect()),
         );
         // FIXME: should this call a `predicate_must_hold` variant instead?
 

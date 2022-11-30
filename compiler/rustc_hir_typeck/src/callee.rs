@@ -4,11 +4,13 @@ use super::{Expectation, FnCtxt, TupleArgumentsFlag};
 
 use crate::type_error_struct;
 use hir::def::DefKind;
+use hir::LangItem;
 use rustc_ast::util::parser::PREC_POSTFIX;
 use rustc_errors::{struct_span_err, Applicability, Diagnostic, ErrorGuaranteed, StashKey};
 use rustc_hir as hir;
 use rustc_hir::def::{self, CtorKind, Namespace, Res};
 use rustc_hir::def_id::DefId;
+use rustc_infer::traits::ObligationCauseCode;
 use rustc_infer::{
     infer,
     traits::{self, Obligation},
@@ -769,6 +771,32 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         // has logic to just not call them and run special logic instead.
         if self.tcx.has_attr(did, sym::rustc_do_not_const_check) {
             trace!("skip call to rustc_do_not_const_check function");
+            return;
+        }
+
+        // If libcore had effects enabled, FnOnce has 3 generic params (Self, Args, HostEffect).
+        // Once we remove the effect feature and just enable it by default, remove the condition
+        // and everything after the `return`.
+        if self.tcx.generics_of(self.tcx.require_lang_item(LangItem::Callable, Some(span))).count()
+            == 3
+        {
+            let effects =
+                [self.tcx.effect_from_context(context.to_def_id(), ty::EffectKind::Host, || {
+                    ty::EffectValue::Rigid { on: !require_const }
+                })];
+
+            for effect in effects {
+                let cause = self.cause(span, ObligationCauseCode::MiscObligation);
+                let any_type = self.infcx.next_ty_var(TypeVariableOrigin {
+                    span,
+                    kind: TypeVariableOriginKind::MiscVariable,
+                });
+                let pred = ty::Binder::dummy(self.tcx.at(span).mk_trait_ref(
+                    LangItem::Callable,
+                    [ty::GenericArg::from(value), any_type.into(), effect.into()],
+                ));
+                self.register_predicate(Obligation::new(self.tcx, cause, self.param_env, pred));
+            }
             return;
         }
 

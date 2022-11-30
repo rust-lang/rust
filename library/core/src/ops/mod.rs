@@ -209,3 +209,7 @@ pub use self::unsize::DispatchFromDyn;
 
 #[unstable(feature = "control_flow_enum", reason = "new API", issue = "75744")]
 pub use self::control_flow::ControlFlow;
+
+#[unstable(feature = "fn_traits", issue = "29625")]
+#[cfg(not(bootstrap))]
+pub use self::function::Callable;

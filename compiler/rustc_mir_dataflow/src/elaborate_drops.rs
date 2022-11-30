@@ -962,6 +962,13 @@ where
         let tcx = self.tcx();
         let unit_temp = Place::from(self.new_temp(tcx.mk_unit()));
         let free_func = tcx.require_lang_item(LangItem::BoxFree, Some(self.source_info.span));
+
+        let substs = if tcx.effects() {
+            tcx.mk_substs(substs.iter().chain(tcx.host_effect()))
+        } else {
+            substs
+        };
+
         let args = adt
             .variant(VariantIdx::new(0))
             .fields

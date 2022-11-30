@@ -38,13 +38,16 @@ use rustc_errors::Diagnostic;
 use rustc_hir as hir;
 use rustc_hir::def_id::DefId;
 use rustc_infer::infer::LateBoundRegionConversionTime;
+use rustc_infer::traits::PredicateObligations;
 use rustc_middle::dep_graph::{DepKind, DepNodeIndex};
 use rustc_middle::mir::interpret::ErrorHandled;
 use rustc_middle::ty::abstract_const::NotConstEvaluatable;
+use rustc_middle::ty::error::TypeError;
 use rustc_middle::ty::fast_reject::{DeepRejectCtxt, TreatParams};
 use rustc_middle::ty::fold::BottomUpFolder;
 use rustc_middle::ty::relate::TypeRelation;
 use rustc_middle::ty::SubstsRef;
+use rustc_middle::ty::TypeVisitor;
 use rustc_middle::ty::{self, EarlyBinder, PolyProjectionPredicate, ToPolyTraitRef, ToPredicate};
 use rustc_middle::ty::{Ty, TyCtxt, TypeFoldable, TypeVisitable};
 use rustc_span::symbol::sym;
@@ -2130,6 +2133,90 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
                 bug!("asked to assemble builtin bounds of unexpected type: {:?}", self_ty);
             }
         }
+    }
+
+    fn callable_predicates(
+        &mut self,
+        obligation: &TraitObligation<'tcx>,
+    ) -> Result<PredicateObligations<'tcx>, SelectionError<'tcx>> {
+        // NOTE: binder moved to (*)
+        let self_ty = self.infcx.shallow_resolve(obligation.predicate.skip_binder().self_ty());
+        let substs = obligation.predicate.skip_binder().trait_ref.substs;
+        // Increase this number when adding more effects (like async)
+        assert_eq!(substs.len(), 3, "{substs:?}");
+        // This is just a way to ensure that when you add a new effect kind, you get an error here
+        // and adjust the logic to handle the new effect.
+        match ty::EffectKind::Host {
+            ty::EffectKind::Host => {}
+        }
+        let mut obligations = vec![];
+        for effect in &substs[2..] {
+            let effect = self.infcx.shallow_resolve(effect.expect_effect());
+            match *self_ty.kind() {
+                ty::FnDef(_, substs) => {
+                    if let ty::EffectValue::Rigid { on: true } = effect.val {
+                        // The function is always callable if the requested effect is on.
+                        // e.g. all functions are callable in a host (non-const) context
+                        continue;
+                    }
+                    struct Visitor<'a, 'tcx> {
+                        infcx: &'a InferCtxt<'tcx>,
+                        effect: ty::Effect<'tcx>,
+                        cause: &'a ObligationCause<'tcx>,
+                        param_env: ty::ParamEnv<'tcx>,
+                    }
+                    impl<'a, 'tcx> TypeVisitor<'tcx> for Visitor<'a, 'tcx> {
+                        type BreakTy = TypeError<'tcx>;
+                        fn visit_effect(
+                            &mut self,
+                            e: ty::Effect<'tcx>,
+                        ) -> std::ops::ControlFlow<Self::BreakTy> {
+                            if e.kind == self.effect.kind {
+                                let res =
+                                    self.infcx.at(self.cause, self.param_env).eq(e, self.effect);
+                                match res {
+                                    Ok(InferOk { value: (), obligations }) => {
+                                        assert_eq!(obligations.len(), 0, "{obligations:?}")
+                                    }
+                                    Err(err) => return std::ops::ControlFlow::Break(err),
+                                }
+                            }
+                            std::ops::ControlFlow::CONTINUE
+                        }
+                    }
+                    match substs.visit_with(&mut Visitor {
+                        effect,
+                        infcx: self.infcx,
+                        cause: &obligation.cause,
+                        param_env: obligation.param_env,
+                    }) {
+                        std::ops::ControlFlow::Continue(()) => {}
+                        std::ops::ControlFlow::Break(_) => {
+                            return Err(SelectionError::Unimplemented);
+                        }
+                    }
+                }
+                ty::FnPtr(..) | ty::Closure(..) => {
+                    if let ty::EffectValue::Rigid { on: true } = effect.val {
+                        continue;
+                    }
+                    return Err(SelectionError::Unimplemented);
+                }
+                _ => obligations.push(Obligation::new(
+                    self.tcx(),
+                    obligation.cause.clone(),
+                    obligation.param_env,
+                    obligation.predicate.map_bound(|mut pred| {
+                        pred.trait_ref.def_id = self.tcx().require_lang_item(
+                            rustc_hir::LangItem::FnOnce,
+                            Some(obligation.cause.span),
+                        );
+                        pred
+                    }),
+                )),
+            }
+        }
+        Ok(obligations)
     }
 
     fn copy_clone_conditions(
