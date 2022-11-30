@@ -33,6 +33,7 @@ LL |     fn foo() {}
    |
    = help: unlike in C++, Java, and C#, functions are declared in `impl` blocks
    = help: see https://doc.rust-lang.org/book/ch05-03-method-syntax.html for more information
+   = help: enum variants can be `Variant`, `Variant = <integer>`, `Variant(Type, ..., TypeN)` or `Variant { fields: Types }`
 
 error: aborting due to 3 previous errors
 

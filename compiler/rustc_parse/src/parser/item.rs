@@ -1414,7 +1414,10 @@ impl<'a> Parser<'a> {
 
                 Ok((Some(vr), TrailingToken::MaybeComma))
             },
-        )
+        ).map_err(|mut err|{
+            err.help("enum variants can be `Variant`, `Variant = <integer>`, `Variant(Type, ..., TypeN)` or `Variant { fields: Types }`");
+            err
+        })
     }
 
     /// Parses `struct Foo { ... }`.
