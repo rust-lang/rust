@@ -615,6 +615,10 @@ pub struct FunctionPointer {
 
 #[derive(Clone, Debug, PartialEq, Eq, Hash, Serialize, Deserialize)]
 pub struct FnDecl {
+    /// List of argument names and their type.
+    ///
+    /// Note that not all names will be valid identifiers, as some of
+    /// them may be patterns.
     pub inputs: Vec<(String, Type)>,
     pub output: Option<Type>,
     pub c_variadic: bool,
