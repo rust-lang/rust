@@ -216,7 +216,7 @@ void mlir::enzyme::MGradientUtils::forceAugmentedReturns() {
   // getContext(cast<BasicBlock>(getNewFromOriginal(&oBB)), loopContext);
 
   oldFunc.walk([&](Block *blk) {
-    if (blk == &oldFunc.getBody().getBlocks().front())
+    if (blk == &oldFunc.getFunctionBody().getBlocks().front())
       return;
     auto nblk = getNewFromOriginal(blk);
     for (auto val : llvm::reverse(blk->getArguments())) {
@@ -510,7 +510,7 @@ FunctionOpInterface CloneFunctionWithReturns(
     DIFFE_TYPE returnType, Twine name, BlockAndValueMapping &VMap,
     std::map<Operation *, Operation *> &OpMap, bool diffeReturnArg,
     mlir::Type additionalArg) {
-  assert(!F.getBody().empty());
+  assert(!F.getFunctionBody().empty());
   // F = preprocessForClone(F, mode);
   // llvm::ValueToValueMapTy VMap;
   auto FTy = getFunctionTypeForClone(
@@ -518,7 +518,7 @@ FunctionOpInterface CloneFunctionWithReturns(
       additionalArg, constant_args, diffeReturnArg, returnValue, returnType);
 
   /*
-  for (Block &BB : F.getBody().getBlocks()) {
+  for (Block &BB : F.getFunctionBody().getBlocks()) {
     if (auto ri = dyn_cast<ReturnInst>(BB.getTerminator())) {
       if (auto rv = ri->getReturnValue()) {
         returnvals.insert(rv);
@@ -538,12 +538,12 @@ FunctionOpInterface CloneFunctionWithReturns(
   table.insert(NewF);
   SymbolTable::setSymbolVisibility(NewF, SymbolTable::Visibility::Private);
 
-  cloneInto(&F.getBody(), &NewF.getBody(), VMap, OpMap);
+  cloneInto(&F.getFunctionBody(), &NewF.getFunctionBody(), VMap, OpMap);
 
   {
-    auto &blk = NewF.getBody().front();
+    auto &blk = NewF.getFunctionBody().front();
     for (ssize_t i = constant_args.size() - 1; i >= 0; i--) {
-      mlir::Value oval = F.getBody().front().getArgument(i);
+      mlir::Value oval = F.getFunctionBody().front().getArgument(i);
       if (constant_args[i] == DIFFE_TYPE::CONSTANT)
         constants.insert(oval);
       else
@@ -771,7 +771,7 @@ FunctionOpInterface mlir::enzyme::MEnzymeLogic::CreateForwardDiff(
     std::vector<DIFFE_TYPE> constants, MTypeAnalysis &TA, bool returnUsed,
     DerivativeMode mode, bool freeMemory, size_t width, mlir::Type addedType,
     MFnTypeInfo type_args, std::vector<bool> volatile_args, void *augmented) {
-  if (fn.getBody().empty()) {
+  if (fn.getFunctionBody().empty()) {
     llvm::errs() << fn << "\n";
     llvm_unreachable("Differentiating empty function");
   }
@@ -829,7 +829,7 @@ FunctionOpInterface mlir::enzyme::MEnzymeLogic::CreateForwardDiff(
                                   unnecessaryInstructions, gutils, TLI);
                                   */
 
-  for (Block &oBB : gutils->oldFunc.getBody().getBlocks()) {
+  for (Block &oBB : gutils->oldFunc.getFunctionBody().getBlocks()) {
     // Don't create derivatives for code that results in termination
     if (guaranteedUnreachable.find(&oBB) != guaranteedUnreachable.end()) {
       auto newBB = gutils->getNewFromOriginal(&oBB);
@@ -865,7 +865,7 @@ FunctionOpInterface mlir::enzyme::MEnzymeLogic::CreateForwardDiff(
 
   // gutils->eraseFictiousPHIs();
 
-  mlir::Block *entry = &gutils->newFunc.getBody().front();
+  mlir::Block *entry = &gutils->newFunc.getFunctionBody().front();
 
   // cleanupInversionAllocs(gutils, entry);
   // clearFunctionAttributes(gutils->newFunc);

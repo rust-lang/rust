@@ -36,7 +36,7 @@ def ActivityArrayAttr : TypedArrayAttrBase<
     ActivityAttr, "Array of argument activity states">;
 
 def PlaceholderOp : Enzyme_Op<"placeholder",
-    [NoSideEffect]> {
+    [Pure]> {
   let results = (outs AnyType:$output);
 }
 

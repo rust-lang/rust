@@ -73,7 +73,7 @@ struct DifferentiatePass : public DifferentiatePassBase<DifferentiatePass> {
     size_t width = 1;
 
     std::vector<bool> volatile_args;
-    for (auto &a : fn.getBody().getArguments()) {
+    for (auto &a : fn.getFunctionBody().getArguments()) {
       volatile_args.push_back(!(mode == DerivativeMode::ReverseModeCombined));
     }
 
