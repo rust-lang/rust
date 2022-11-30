@@ -353,7 +353,7 @@ define_tables! {
     explicit_predicates_of: Table<DefIndex, LazyValue<ty::GenericPredicates<'static>>>,
     generics_of: Table<DefIndex, LazyValue<ty::Generics>>,
     // As an optimization, a missing entry indicates an empty `&[]`.
-    inferred_outlives_of: Table<DefIndex, LazyArray<(ty::Predicate<'static>, Span)>>,
+    inferred_outlives_of: Table<DefIndex, LazyArray<(ty::Clause<'static>, Span)>>,
     super_predicates_of: Table<DefIndex, LazyValue<ty::GenericPredicates<'static>>>,
     type_of: Table<DefIndex, LazyValue<Ty<'static>>>,
     variances_of: Table<DefIndex, LazyArray<ty::Variance>>,

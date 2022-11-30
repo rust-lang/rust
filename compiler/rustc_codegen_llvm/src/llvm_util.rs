@@ -292,30 +292,33 @@ fn llvm_target_features(tm: &llvm::TargetMachine) -> Vec<(&str, &str)> {
 }
 
 fn print_target_features(sess: &Session, tm: &llvm::TargetMachine) {
-    let mut target_features = llvm_target_features(tm);
+    let mut llvm_target_features = llvm_target_features(tm);
+    let mut known_llvm_target_features = FxHashSet::<&'static str>::default();
     let mut rustc_target_features = supported_target_features(sess)
         .iter()
-        .filter_map(|(feature, _gate)| {
-            for llvm_feature in to_llvm_features(sess, *feature) {
+        .map(|(feature, _gate)| {
+            let desc = if let Some(llvm_feature) = to_llvm_features(sess, *feature).first() {
                 // LLVM asserts that these are sorted. LLVM and Rust both use byte comparison for these strings.
-                match target_features.binary_search_by_key(&llvm_feature, |(f, _d)| f).ok().map(
-                    |index| {
-                        let (_f, desc) = target_features.remove(index);
-                        (*feature, desc)
-                    },
-                ) {
-                    Some(v) => return Some(v),
-                    None => {}
+                match llvm_target_features.binary_search_by_key(&llvm_feature, |(f, _d)| f).ok() {
+                    Some(index) => {
+                        known_llvm_target_features.insert(llvm_feature);
+                        llvm_target_features[index].1
+                    }
+                    None => "",
                 }
-            }
-            None
+            } else {
+                ""
+            };
+            (*feature, desc)
         })
         .collect::<Vec<_>>();
     rustc_target_features.extend_from_slice(&[(
         "crt-static",
         "Enables C Run-time Libraries to be statically linked",
     )]);
-    let max_feature_len = target_features
+    llvm_target_features.retain(|(f, _d)| !known_llvm_target_features.contains(f));
+
+    let max_feature_len = llvm_target_features
         .iter()
         .chain(rustc_target_features.iter())
         .map(|(feature, _desc)| feature.len())
@@ -327,10 +330,10 @@ fn print_target_features(sess: &Session, tm: &llvm::TargetMachine) {
         println!("    {1:0$} - {2}.", max_feature_len, feature, desc);
     }
     println!("\nCode-generation features supported by LLVM for this target:");
-    for (feature, desc) in &target_features {
+    for (feature, desc) in &llvm_target_features {
         println!("    {1:0$} - {2}.", max_feature_len, feature, desc);
     }
-    if target_features.is_empty() {
+    if llvm_target_features.is_empty() {
         println!("    Target features listing is not supported by this LLVM version.");
     }
     println!("\nUse +feature to enable a feature, or -feature to disable it.");

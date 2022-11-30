@@ -5,7 +5,7 @@ use rustc_index::vec::{Idx, IndexVec};
 use crate::middle::exported_symbols::ExportedSymbol;
 use crate::mir::Body;
 use crate::ty::{
-    self, Const, FnSig, GeneratorDiagnosticData, GenericPredicates, Predicate, TraitRef, Ty,
+    self, Clause, Const, FnSig, GeneratorDiagnosticData, GenericPredicates, Predicate, TraitRef, Ty,
 };
 
 pub trait ParameterizedOverTcx: 'static {
@@ -121,6 +121,7 @@ parameterized_over_tcx! {
     TraitRef,
     Const,
     Predicate,
+    Clause,
     GeneratorDiagnosticData,
     Body,
     ExportedSymbol,
