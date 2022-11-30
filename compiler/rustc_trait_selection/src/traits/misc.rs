@@ -1,9 +1,9 @@
 //! Miscellaneous type-system utilities that are too small to deserve their own modules.
 
-use crate::infer::InferCtxtExt as _;
 use crate::traits::{self, ObligationCause};
 
 use rustc_hir as hir;
+use rustc_infer::infer::outlives::env::OutlivesEnvironment;
 use rustc_infer::infer::TyCtxtInferExt;
 use rustc_middle::ty::{self, Ty, TyCtxt, TypeVisitable};
 
@@ -16,14 +16,16 @@ pub enum CopyImplementationError<'tcx> {
     HasDestructor,
 }
 
-pub fn can_type_implement_copy<'tcx>(
+/// Checks that the fields of the type (an ADT) all implement copy.
+///
+/// If fields don't implement copy, return an error containing a list of
+/// those violating fields. If it's not an ADT, returns `Err(NotAnAdt)`.
+pub fn type_allowed_to_implement_copy<'tcx>(
     tcx: TyCtxt<'tcx>,
     param_env: ty::ParamEnv<'tcx>,
     self_type: Ty<'tcx>,
     parent_cause: ObligationCause<'tcx>,
 ) -> Result<(), CopyImplementationError<'tcx>> {
-    // FIXME: (@jroesch) float this code up
-    let infcx = tcx.infer_ctxt().build();
     let (adt, substs) = match self_type.kind() {
         // These types used to have a builtin impl.
         // Now libcore provides that impl.
@@ -42,9 +44,14 @@ pub fn can_type_implement_copy<'tcx>(
         _ => return Err(CopyImplementationError::NotAnAdt),
     };
 
+    let copy_def_id = tcx.require_lang_item(hir::LangItem::Copy, Some(parent_cause.span));
     let mut infringing = Vec::new();
     for variant in adt.variants() {
         for field in &variant.fields {
+            // Do this per-field to get better error messages.
+            let infcx = tcx.infer_ctxt().build();
+            let ocx = traits::ObligationCtxt::new(&infcx);
+
             let ty = field.ty(tcx, substs);
             if ty.references_error() {
                 continue;
@@ -63,21 +70,36 @@ pub fn can_type_implement_copy<'tcx>(
             } else {
                 ObligationCause::dummy_with_span(span)
             };
-            match traits::fully_normalize(&infcx, cause, param_env, ty) {
-                Ok(ty) => {
-                    if !infcx.type_is_copy_modulo_regions(param_env, ty, span) {
-                        infringing.push((field, ty));
-                    }
-                }
-                Err(errors) => {
-                    infcx.err_ctxt().report_fulfillment_errors(&errors, None);
-                }
-            };
+
+            let ty = ocx.normalize(&cause, param_env, ty);
+            let normalization_errors = ocx.select_where_possible();
+            if !normalization_errors.is_empty() {
+                // Don't report this as a field that doesn't implement Copy,
+                // but instead just implement this as a field that isn't WF.
+                infcx.err_ctxt().report_fulfillment_errors(&normalization_errors, None);
+                continue;
+            }
+
+            ocx.register_bound(cause, param_env, ty, copy_def_id);
+            if !ocx.select_all_or_error().is_empty() {
+                infringing.push((field, ty));
+            }
+
+            let outlives_env = OutlivesEnvironment::new(param_env);
+            infcx.process_registered_region_obligations(
+                outlives_env.region_bound_pairs(),
+                param_env,
+            );
+            if !infcx.resolve_regions(&outlives_env).is_empty() {
+                infringing.push((field, ty));
+            }
         }
     }
+
     if !infringing.is_empty() {
         return Err(CopyImplementationError::InfrigingFields(infringing));
     }
+
     if adt.has_dtor(tcx) {
         return Err(CopyImplementationError::HasDestructor);
     }

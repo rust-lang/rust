@@ -13,7 +13,9 @@ use rustc_infer::infer::TyCtxtInferExt;
 use rustc_middle::ty::adjustment::CoerceUnsizedInfo;
 use rustc_middle::ty::{self, suggest_constraining_type_params, Ty, TyCtxt, TypeVisitable};
 use rustc_trait_selection::traits::error_reporting::TypeErrCtxtExt;
-use rustc_trait_selection::traits::misc::{can_type_implement_copy, CopyImplementationError};
+use rustc_trait_selection::traits::misc::{
+    type_allowed_to_implement_copy, CopyImplementationError,
+};
 use rustc_trait_selection::traits::predicate_for_trait_def;
 use rustc_trait_selection::traits::{self, ObligationCause};
 use std::collections::BTreeMap;
@@ -82,7 +84,7 @@ fn visit_implementation_of_copy(tcx: TyCtxt<'_>, impl_did: LocalDefId) {
     };
 
     let cause = traits::ObligationCause::misc(span, impl_hir_id);
-    match can_type_implement_copy(tcx, param_env, self_type, cause) {
+    match type_allowed_to_implement_copy(tcx, param_env, self_type, cause) {
         Ok(()) => {}
         Err(CopyImplementationError::InfrigingFields(fields)) => {
             let mut err = struct_span_err!(
