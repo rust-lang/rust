@@ -289,23 +289,24 @@ impl<'tcx> LateLintPass<'tcx> for Dereferencing<'tcx> {
                 let (position, adjustments) = walk_parents(cx, &mut self.possible_borrowers, expr, &self.msrv);
                 match kind {
                     RefOp::Deref => {
+                        let sub_ty = typeck.expr_ty(sub_expr);
                         if let Position::FieldAccess {
                             name,
                             of_union: false,
                         } = position
-                            && !ty_contains_field(typeck.expr_ty(sub_expr), name)
+                            && !ty_contains_field(sub_ty, name)
                         {
                             self.state = Some((
                                 State::ExplicitDerefField { name },
                                 StateData { span: expr.span, hir_id: expr.hir_id, position },
                             ));
-                        } else if position.is_deref_stable() {
+                        } else if position.is_deref_stable() && sub_ty.is_ref() {
                             self.state = Some((
                                 State::ExplicitDeref { mutability: None },
                                 StateData { span: expr.span, hir_id: expr.hir_id, position },
                             ));
                         }
-                    }
+                    },
                     RefOp::Method(target_mut)
                         if !is_lint_allowed(cx, EXPLICIT_DEREF_METHODS, expr.hir_id)
                             && position.lint_explicit_deref() =>
@@ -320,7 +321,7 @@ impl<'tcx> LateLintPass<'tcx> for Dereferencing<'tcx> {
                             StateData {
                                 span: expr.span,
                                 hir_id: expr.hir_id,
-                                position
+                                position,
                             },
                         ));
                     },
@@ -394,7 +395,11 @@ impl<'tcx> LateLintPass<'tcx> for Dereferencing<'tcx> {
                                     msg,
                                     snip_expr,
                                 }),
-                                StateData { span: expr.span, hir_id: expr.hir_id, position },
+                                StateData {
+                                    span: expr.span,
+                                    hir_id: expr.hir_id,
+                                    position,
+                                },
                             ));
                         } else if position.is_deref_stable()
                             // Auto-deref doesn't combine with other adjustments
@@ -406,7 +411,7 @@ impl<'tcx> LateLintPass<'tcx> for Dereferencing<'tcx> {
                                 StateData {
                                     span: expr.span,
                                     hir_id: expr.hir_id,
-                                    position
+                                    position,
                                 },
                             ));
                         }
