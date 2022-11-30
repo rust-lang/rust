@@ -3,6 +3,7 @@
 //! manage the caches, and so forth.
 
 use crate::dep_graph::{DepContext, DepNode, DepNodeIndex, DepNodeParams};
+use crate::ich::StableHashingContext;
 use crate::query::caches::QueryCache;
 use crate::query::config::QueryVTable;
 use crate::query::job::{report_cycle, QueryInfo, QueryJob, QueryJobId, QueryJobInfo};
@@ -19,6 +20,7 @@ use rustc_data_structures::sync::Lock;
 use rustc_errors::{DiagnosticBuilder, ErrorGuaranteed, FatalError};
 use rustc_session::Session;
 use rustc_span::{Span, DUMMY_SP};
+use std::borrow::Borrow;
 use std::cell::Cell;
 use std::collections::hash_map::Entry;
 use std::fmt::Debug;
@@ -369,11 +371,26 @@ where
     C: QueryCache,
     C::Key: Clone + DepNodeParams<Qcx::DepContext>,
     C::Value: Value<Qcx::DepContext>,
+    C::Stored: Debug + std::borrow::Borrow<C::Value>,
     Qcx: QueryContext,
 {
     match JobOwner::<'_, C::Key>::try_start(&qcx, state, span, key.clone()) {
         TryGetJob::NotYetStarted(job) => {
-            let (result, dep_node_index) = execute_job(qcx, key, dep_node, query, job.id);
+            let (result, dep_node_index) = execute_job(qcx, key.clone(), dep_node, query, job.id);
+            if query.feedable {
+                // We may have put a value inside the cache from inside the execution.
+                // Verify that it has the same hash as what we have now, to ensure consistency.
+                let _ = cache.lookup(&key, |cached_result, _| {
+                    let hasher = query.hash_result.expect("feedable forbids no_hash");
+                    let old_hash = qcx.dep_context().with_stable_hashing_context(|mut hcx| hasher(&mut hcx, cached_result.borrow()));
+                    let new_hash = qcx.dep_context().with_stable_hashing_context(|mut hcx| hasher(&mut hcx, &result));
+                    debug_assert_eq!(
+                        old_hash, new_hash,
+                        "Computed query value for {:?}({:?}) is inconsistent with fed value,\ncomputed={:#?}\nfed={:#?}",
+                        query.dep_kind, key, result, cached_result,
+                    );
+                });
+            }
             let result = job.complete(cache, result, dep_node_index);
             (result, Some(dep_node_index))
         }
@@ -525,7 +542,7 @@ where
             if std::intrinsics::unlikely(
                 try_verify || qcx.dep_context().sess().opts.unstable_opts.incremental_verify_ich,
             ) {
-                incremental_verify_ich(*qcx.dep_context(), &result, dep_node, query);
+                incremental_verify_ich(*qcx.dep_context(), &result, dep_node, query.hash_result);
             }
 
             return Some((result, dep_node_index));
@@ -558,39 +575,42 @@ where
     //
     // See issue #82920 for an example of a miscompilation that would get turned into
     // an ICE by this check
-    incremental_verify_ich(*qcx.dep_context(), &result, dep_node, query);
+    incremental_verify_ich(*qcx.dep_context(), &result, dep_node, query.hash_result);
 
     Some((result, dep_node_index))
 }
 
-#[instrument(skip(qcx, result, query), level = "debug")]
-fn incremental_verify_ich<Qcx, K, V: Debug>(
-    qcx: Qcx::DepContext,
+#[instrument(skip(tcx, result, hash_result), level = "debug")]
+pub(crate) fn incremental_verify_ich<Tcx, V: Debug>(
+    tcx: Tcx,
     result: &V,
-    dep_node: &DepNode<Qcx::DepKind>,
-    query: &QueryVTable<Qcx, K, V>,
-) where
-    Qcx: QueryContext,
+    dep_node: &DepNode<Tcx::DepKind>,
+    hash_result: Option<fn(&mut StableHashingContext<'_>, &V) -> Fingerprint>,
+) -> Fingerprint
+where
+    Tcx: DepContext,
 {
     assert!(
-        qcx.dep_graph().is_green(dep_node),
+        tcx.dep_graph().is_green(dep_node),
         "fingerprint for green query instance not loaded from cache: {:?}",
         dep_node,
     );
 
-    let new_hash = query.hash_result.map_or(Fingerprint::ZERO, |f| {
-        qcx.with_stable_hashing_context(|mut hcx| f(&mut hcx, result))
+    let new_hash = hash_result.map_or(Fingerprint::ZERO, |f| {
+        tcx.with_stable_hashing_context(|mut hcx| f(&mut hcx, result))
     });
 
-    let old_hash = qcx.dep_graph().prev_fingerprint_of(dep_node);
+    let old_hash = tcx.dep_graph().prev_fingerprint_of(dep_node);
 
     if Some(new_hash) != old_hash {
         incremental_verify_ich_failed(
-            qcx.sess(),
+            tcx.sess(),
             DebugArg::from(&dep_node),
             DebugArg::from(&result),
         );
     }
+
+    new_hash
 }
 
 // This DebugArg business is largely a mirror of std::fmt::ArgumentV1, which is
