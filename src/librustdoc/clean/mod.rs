@@ -159,6 +159,7 @@ pub(crate) fn clean_trait_ref_with_bindings<'tcx>(
     trait_ref: Binder<'tcx, ty::TraitRef<'tcx>>,
     bindings: ThinVec<TypeBinding>,
 ) -> Path {
+    let trait_ref = trait_ref.skip_binder();
     let kind = cx.tcx.def_kind(trait_ref.def_id).into();
     if !matches!(kind, ItemType::Trait | ItemType::TraitAlias) {
         span_bug!(cx.tcx.def_span(trait_ref.def_id), "`TraitRef` had unexpected kind {:?}", kind);
@@ -187,7 +188,7 @@ fn clean_poly_trait_ref_with_bindings<'tcx>(
         })
         .collect();
 
-    let trait_ = clean_trait_ref_with_bindings(cx, poly_trait_ref.skip_binder(), bindings);
+    let trait_ = clean_trait_ref_with_bindings(cx, poly_trait_ref, bindings);
     GenericBound::TraitBound(
         PolyTrait { trait_, generic_params: late_bound_regions },
         hir::TraitBoundModifier::None,
@@ -422,7 +423,7 @@ fn clean_projection<'tcx>(
         return clean_middle_opaque_bounds(cx, bounds);
     }
 
-    let trait_ = clean_trait_ref_with_bindings(cx, ty.trait_ref(cx.tcx), ThinVec::new());
+    let trait_ = clean_trait_ref_with_bindings(cx, ty::Binder::dummy(ty.trait_ref(cx.tcx)), ThinVec::new());
     let self_type = clean_middle_ty(ty.self_ty(), cx, None);
     let self_def_id = if let Some(def_id) = def_id {
         cx.tcx.opt_parent(def_id).or(Some(def_id))

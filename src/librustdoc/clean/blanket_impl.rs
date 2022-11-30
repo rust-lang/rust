@@ -105,7 +105,7 @@ impl<'a, 'tcx> BlanketImplFinder<'a, 'tcx> {
                         // the post-inference `trait_ref`, as it's more accurate.
                         trait_: Some(clean_trait_ref_with_bindings(
                             cx,
-                            trait_ref.0,
+                            ty::Binder::dummy(trait_ref.0),
                             ThinVec::new(),
                         )),
                         for_: clean_middle_ty(ty.0, cx, None),
