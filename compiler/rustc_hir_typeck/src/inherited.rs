@@ -7,12 +7,10 @@ use rustc_hir::def_id::LocalDefId;
 use rustc_hir::HirIdMap;
 use rustc_infer::infer;
 use rustc_infer::infer::{DefiningAnchor, InferCtxt, InferOk, TyCtxtInferExt};
-use rustc_middle::ty::fold::TypeFoldable;
 use rustc_middle::ty::visit::TypeVisitable;
 use rustc_middle::ty::{self, Ty, TyCtxt};
 use rustc_span::def_id::LocalDefIdMap;
 use rustc_span::{self, Span};
-use rustc_trait_selection::infer::InferCtxtExt as _;
 use rustc_trait_selection::traits::{
     self, ObligationCause, ObligationCtxt, TraitEngine, TraitEngineExt as _,
 };
@@ -102,7 +100,7 @@ impl<'tcx> Inherited<'tcx> {
                     infcx.probe(|_| {
                         let ocx = ObligationCtxt::new_in_snapshot(infcx);
                         let normalized_fn_sig = ocx.normalize(
-                            ObligationCause::dummy(),
+                            &ObligationCause::dummy(),
                             // FIXME(compiler-errors): This is probably not the right param-env...
                             infcx.tcx.param_env(def_id),
                             fn_sig,
@@ -178,36 +176,5 @@ impl<'tcx> Inherited<'tcx> {
     pub(super) fn register_infer_ok_obligations<T>(&self, infer_ok: InferOk<'tcx, T>) -> T {
         self.register_predicates(infer_ok.obligations);
         infer_ok.value
-    }
-
-    pub(super) fn normalize_associated_types_in<T>(
-        &self,
-        span: Span,
-        body_id: hir::HirId,
-        param_env: ty::ParamEnv<'tcx>,
-        value: T,
-    ) -> T
-    where
-        T: TypeFoldable<'tcx>,
-    {
-        self.normalize_associated_types_in_with_cause(
-            ObligationCause::misc(span, body_id),
-            param_env,
-            value,
-        )
-    }
-
-    pub(super) fn normalize_associated_types_in_with_cause<T>(
-        &self,
-        cause: ObligationCause<'tcx>,
-        param_env: ty::ParamEnv<'tcx>,
-        value: T,
-    ) -> T
-    where
-        T: TypeFoldable<'tcx>,
-    {
-        let ok = self.partially_normalize_associated_types_in(cause, param_env, value);
-        debug!(?ok);
-        self.register_infer_ok_obligations(ok)
     }
 }

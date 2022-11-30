@@ -109,6 +109,9 @@ pub trait AstConv<'tcx> {
     ) -> Ty<'tcx>;
 
     /// Normalize an associated type coming from the user.
+    ///
+    /// This should only be used by astconv. Use `FnCtxt::normalize`
+    /// or `ObligationCtxt::normalize` in downstream crates.
     fn normalize_ty(&self, span: Span, ty: Ty<'tcx>) -> Ty<'tcx>;
 
     /// Invoked when we encounter an error from some prior pass

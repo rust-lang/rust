@@ -1,6 +1,6 @@
 use crate::errors::AutoDerefReachedRecursionLimit;
-use crate::infer::InferCtxtExt as _;
 use crate::traits::query::evaluate_obligation::InferCtxtExt;
+use crate::traits::NormalizeExt;
 use crate::traits::{self, TraitEngine, TraitEngineExt};
 use rustc_hir as hir;
 use rustc_infer::infer::InferCtxt;
@@ -138,11 +138,10 @@ impl<'a, 'tcx> Autoderef<'a, 'tcx> {
             return None;
         }
 
-        let normalized_ty = self.infcx.partially_normalize_associated_types_in(
-            cause,
-            self.param_env,
-            tcx.mk_projection(tcx.lang_items().deref_target()?, trait_ref.substs),
-        );
+        let normalized_ty = self
+            .infcx
+            .at(&cause, self.param_env)
+            .normalize(tcx.mk_projection(tcx.lang_items().deref_target()?, trait_ref.substs));
         let mut fulfillcx = <dyn TraitEngine<'tcx>>::new_in_snapshot(tcx);
         let normalized_ty =
             normalized_ty.into_value_registering_obligations(self.infcx, &mut *fulfillcx);

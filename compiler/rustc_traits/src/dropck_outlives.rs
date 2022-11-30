@@ -11,7 +11,7 @@ use rustc_trait_selection::traits::query::dropck_outlives::trivial_dropck_outliv
 use rustc_trait_selection::traits::query::dropck_outlives::{
     DropckConstraint, DropckOutlivesResult,
 };
-use rustc_trait_selection::traits::query::normalize::AtExt;
+use rustc_trait_selection::traits::query::normalize::QueryNormalizeExt;
 use rustc_trait_selection::traits::query::{CanonicalTyGoal, NoSolution};
 use rustc_trait_selection::traits::{Normalized, ObligationCause};
 
@@ -100,7 +100,7 @@ fn dropck_outlives<'tcx>(
             // to push them onto the stack to be expanded.
             for ty in constraints.dtorck_types.drain(..) {
                 let Normalized { value: ty, obligations } =
-                    ocx.infcx.at(&cause, param_env).normalize(ty)?;
+                    ocx.infcx.at(&cause, param_env).query_normalize(ty)?;
                 ocx.register_obligations(obligations);
 
                 debug!("dropck_outlives: ty from dtorck_types = {:?}", ty);

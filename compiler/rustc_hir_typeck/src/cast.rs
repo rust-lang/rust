@@ -752,10 +752,7 @@ impl<'a, 'tcx> CastCheck<'tcx> {
                 match *self.expr_ty.kind() {
                     ty::FnDef(..) => {
                         // Attempt a coercion to a fn pointer type.
-                        let f = fcx.normalize_associated_types_in(
-                            self.expr_span,
-                            self.expr_ty.fn_sig(fcx.tcx),
-                        );
+                        let f = fcx.normalize(self.expr_span, self.expr_ty.fn_sig(fcx.tcx));
                         let res = fcx.try_coerce(
                             self.expr,
                             self.expr_ty,

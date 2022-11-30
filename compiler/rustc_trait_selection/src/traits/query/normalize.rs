@@ -22,13 +22,13 @@ use super::NoSolution;
 
 pub use rustc_middle::traits::query::NormalizationResult;
 
-pub trait AtExt<'tcx> {
-    fn normalize<T>(&self, value: T) -> Result<Normalized<'tcx, T>, NoSolution>
+pub trait QueryNormalizeExt<'tcx> {
+    fn query_normalize<T>(&self, value: T) -> Result<Normalized<'tcx, T>, NoSolution>
     where
         T: TypeFoldable<'tcx>;
 }
 
-impl<'cx, 'tcx> AtExt<'tcx> for At<'cx, 'tcx> {
+impl<'cx, 'tcx> QueryNormalizeExt<'tcx> for At<'cx, 'tcx> {
     /// Normalize `value` in the context of the inference context,
     /// yielding a resulting type, or an error if `value` cannot be
     /// normalized. If you don't care about regions, you should prefer
@@ -42,7 +42,7 @@ impl<'cx, 'tcx> AtExt<'tcx> for At<'cx, 'tcx> {
     /// normalizing, but for now should be used only when we actually
     /// know that normalization will succeed, since error reporting
     /// and other details are still "under development".
-    fn normalize<T>(&self, value: T) -> Result<Normalized<'tcx, T>, NoSolution>
+    fn query_normalize<T>(&self, value: T) -> Result<Normalized<'tcx, T>, NoSolution>
     where
         T: TypeFoldable<'tcx>,
     {

@@ -27,6 +27,7 @@ use rustc_errors::ErrorGuaranteed;
 use rustc_hir::def::DefKind;
 use rustc_hir::def_id::DefId;
 use rustc_hir::lang_items::LangItem;
+use rustc_infer::infer::at::At;
 use rustc_infer::infer::resolve::OpportunisticRegionResolver;
 use rustc_infer::traits::ImplSourceBuiltinData;
 use rustc_middle::traits::select::OverflowError;
@@ -47,6 +48,19 @@ pub type ProjectionObligation<'tcx> = Obligation<'tcx, ty::ProjectionPredicate<'
 pub type ProjectionTyObligation<'tcx> = Obligation<'tcx, ty::ProjectionTy<'tcx>>;
 
 pub(super) struct InProgress;
+
+pub trait NormalizeExt<'tcx> {
+    fn normalize<T: TypeFoldable<'tcx>>(&self, t: T) -> InferOk<'tcx, T>;
+}
+
+impl<'tcx> NormalizeExt<'tcx> for At<'_, 'tcx> {
+    fn normalize<T: TypeFoldable<'tcx>>(&self, value: T) -> InferOk<'tcx, T> {
+        let mut selcx = SelectionContext::new(self.infcx);
+        let Normalized { value, obligations } =
+            normalize(&mut selcx, self.param_env, self.cause.clone(), value);
+        InferOk { value, obligations }
+    }
+}
 
 /// When attempting to resolve `<T as TraitRef>::Name` ...
 #[derive(Debug)]
@@ -293,7 +307,7 @@ fn project_and_unify_type<'cx, 'tcx>(
 /// them with a fully resolved type where possible. The return value
 /// combines the normalized result and any additional obligations that
 /// were incurred as result.
-pub fn normalize<'a, 'b, 'tcx, T>(
+pub(crate) fn normalize<'a, 'b, 'tcx, T>(
     selcx: &'a mut SelectionContext<'b, 'tcx>,
     param_env: ty::ParamEnv<'tcx>,
     cause: ObligationCause<'tcx>,
@@ -307,7 +321,7 @@ where
     Normalized { value, obligations }
 }
 
-pub fn normalize_to<'a, 'b, 'tcx, T>(
+pub(crate) fn normalize_to<'a, 'b, 'tcx, T>(
     selcx: &'a mut SelectionContext<'b, 'tcx>,
     param_env: ty::ParamEnv<'tcx>,
     cause: ObligationCause<'tcx>,
@@ -321,7 +335,7 @@ where
 }
 
 /// As `normalize`, but with a custom depth.
-pub fn normalize_with_depth<'a, 'b, 'tcx, T>(
+pub(crate) fn normalize_with_depth<'a, 'b, 'tcx, T>(
     selcx: &'a mut SelectionContext<'b, 'tcx>,
     param_env: ty::ParamEnv<'tcx>,
     cause: ObligationCause<'tcx>,
@@ -337,7 +351,7 @@ where
 }
 
 #[instrument(level = "info", skip(selcx, param_env, cause, obligations))]
-pub fn normalize_with_depth_to<'a, 'b, 'tcx, T>(
+pub(crate) fn normalize_with_depth_to<'a, 'b, 'tcx, T>(
     selcx: &'a mut SelectionContext<'b, 'tcx>,
     param_env: ty::ParamEnv<'tcx>,
     cause: ObligationCause<'tcx>,
@@ -357,7 +371,7 @@ where
 }
 
 #[instrument(level = "info", skip(selcx, param_env, cause, obligations))]
-pub fn try_normalize_with_depth_to<'a, 'b, 'tcx, T>(
+pub(crate) fn try_normalize_with_depth_to<'a, 'b, 'tcx, T>(
     selcx: &'a mut SelectionContext<'b, 'tcx>,
     param_env: ty::ParamEnv<'tcx>,
     cause: ObligationCause<'tcx>,

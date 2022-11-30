@@ -235,7 +235,7 @@ pub fn resolve_interior<'a, 'tcx>(
                 counter += 1;
                 ty::BoundRegion { var, kind }
             };
-            let ty = fcx.normalize_associated_types_in(cause.span, cause.ty);
+            let ty = fcx.normalize(cause.span, cause.ty);
             let ty = fcx.tcx.fold_regions(ty, |region, current_depth| {
                 let br = match region.kind() {
                     ty::ReVar(vid) => {
