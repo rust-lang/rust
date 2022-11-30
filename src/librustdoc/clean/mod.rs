@@ -22,7 +22,7 @@ use rustc_infer::infer::region_constraints::{Constraint, RegionConstraintData};
 use rustc_middle::middle::resolve_lifetime as rl;
 use rustc_middle::ty::fold::TypeFolder;
 use rustc_middle::ty::InternalSubsts;
-use rustc_middle::ty::{self, AdtKind, DefIdTree, EarlyBinder, Ty, TyCtxt};
+use rustc_middle::ty::{self, AdtKind,Binder, DefIdTree, EarlyBinder, Ty, TyCtxt};
 use rustc_middle::{bug, span_bug};
 use rustc_span::hygiene::{AstPass, MacroKind};
 use rustc_span::symbol::{kw, sym, Ident, Symbol};
@@ -127,7 +127,7 @@ fn clean_generic_bound<'tcx>(
         hir::GenericBound::LangItemTrait(lang_item, span, _, generic_args) => {
             let def_id = cx.tcx.require_lang_item(lang_item, Some(span));
 
-            let trait_ref = ty::TraitRef::identity(cx.tcx, def_id).skip_binder();
+            let trait_ref = ty::TraitRef::identity(cx.tcx, def_id);
 
             let generic_args = clean_generic_args(generic_args, cx);
             let GenericArgs::AngleBracketed { bindings, .. } = generic_args
@@ -156,7 +156,7 @@ fn clean_generic_bound<'tcx>(
 
 pub(crate) fn clean_trait_ref_with_bindings<'tcx>(
     cx: &mut DocContext<'tcx>,
-    trait_ref: ty::TraitRef<'tcx>,
+    trait_ref: Binder<'tcx, ty::TraitRef<'tcx>>,
     bindings: ThinVec<TypeBinding>,
 ) -> Path {
     let kind = cx.tcx.def_kind(trait_ref.def_id).into();
