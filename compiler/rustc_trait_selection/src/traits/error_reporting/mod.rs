@@ -1576,18 +1576,15 @@ impl<'tcx> InferCtxtPrivExt<'tcx> for TypeErrCtxt<'_, 'tcx> {
             return;
         }
 
-        let mut values = None;
-
         self.probe(|_| {
             let ocx = ObligationCtxt::new_in_snapshot(self);
-            let mut err = error.err;
 
             // try to find the mismatched types to report the error with.
             //
             // this can fail if the problem was higher-ranked, in which
             // cause I have no idea for a good error message.
             let bound_predicate = predicate.kind();
-            if let ty::PredicateKind::Clause(ty::Clause::Projection(data)) =
+            let (values, err) = if let ty::PredicateKind::Clause(ty::Clause::Projection(data)) =
                 bound_predicate.skip_binder()
             {
                 let data = self.replace_bound_vars_with_fresh_vars(
@@ -1628,10 +1625,13 @@ impl<'tcx> InferCtxtPrivExt<'tcx> for TypeErrCtxt<'_, 'tcx> {
                     normalized_ty,
                     expected_ty,
                 ) {
-                    values = Some((data, is_normalized_ty_expected, normalized_ty, expected_ty));
-                    err = new_err;
+                    (Some((data, is_normalized_ty_expected, normalized_ty, expected_ty)), new_err)
+                } else {
+                    (None, error.err)
                 }
-            }
+            } else {
+                (None, error.err)
+            };
 
             let msg = values
                 .and_then(|(predicate, _, normalized_ty, expected_ty)| {
