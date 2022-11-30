@@ -150,35 +150,41 @@ error: casting float literal to `f32` is unnecessary
 LL |         let _ = -1.0 as f32;
    |                 ^^^^^^^^^^^ help: try: `-1.0_f32`
 
+error: casting to the same type is unnecessary (`i32` -> `i32`)
+  --> $DIR/unnecessary_cast.rs:101:18
+   |
+LL |         let _ = &(x as i32);
+   |                  ^^^^^^^^^^ help: try: `{ x }`
+
 error: casting integer literal to `i32` is unnecessary
-  --> $DIR/unnecessary_cast.rs:104:22
+  --> $DIR/unnecessary_cast.rs:107:22
    |
 LL |         let _: i32 = -(1) as i32;
    |                      ^^^^^^^^^^^ help: try: `-1_i32`
 
 error: casting integer literal to `i64` is unnecessary
-  --> $DIR/unnecessary_cast.rs:106:22
+  --> $DIR/unnecessary_cast.rs:109:22
    |
 LL |         let _: i64 = -(1) as i64;
    |                      ^^^^^^^^^^^ help: try: `-1_i64`
 
 error: casting float literal to `f64` is unnecessary
-  --> $DIR/unnecessary_cast.rs:113:22
+  --> $DIR/unnecessary_cast.rs:116:22
    |
 LL |         let _: f64 = (-8.0 as f64).exp();
    |                      ^^^^^^^^^^^^^ help: try: `(-8.0_f64)`
 
 error: casting float literal to `f64` is unnecessary
-  --> $DIR/unnecessary_cast.rs:115:23
+  --> $DIR/unnecessary_cast.rs:118:23
    |
 LL |         let _: f64 = -(8.0 as f64).exp(); // should suggest `-8.0_f64.exp()` here not to change code behavior
    |                       ^^^^^^^^^^^^ help: try: `8.0_f64`
 
 error: casting to the same type is unnecessary (`f32` -> `f32`)
-  --> $DIR/unnecessary_cast.rs:123:20
+  --> $DIR/unnecessary_cast.rs:126:20
    |
 LL |         let _num = foo() as f32;
    |                    ^^^^^^^^^^^^ help: try: `foo()`
 
-error: aborting due to 30 previous errors
+error: aborting due to 31 previous errors
 
