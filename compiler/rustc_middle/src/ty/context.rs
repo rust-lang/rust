@@ -2163,53 +2163,23 @@ impl<'tcx, T: 'tcx + ?Sized> IntoPointer for InternedInSet<'tcx, T> {
 }
 
 #[allow(rustc::usage_of_ty_tykind)]
-impl<'tcx> Borrow<TyKind<'tcx>> for InternedInSet<'tcx, WithCachedTypeInfo<TyKind<'tcx>>> {
-    fn borrow<'a>(&'a self) -> &'a TyKind<'tcx> {
+impl<'tcx, T> Borrow<T> for InternedInSet<'tcx, WithCachedTypeInfo<T>> {
+    fn borrow<'a>(&'a self) -> &'a T {
         &self.0.internee
     }
 }
 
-impl<'tcx> PartialEq for InternedInSet<'tcx, WithCachedTypeInfo<TyKind<'tcx>>> {
-    fn eq(&self, other: &InternedInSet<'tcx, WithCachedTypeInfo<TyKind<'tcx>>>) -> bool {
+impl<'tcx, T: PartialEq> PartialEq for InternedInSet<'tcx, WithCachedTypeInfo<T>> {
+    fn eq(&self, other: &InternedInSet<'tcx, WithCachedTypeInfo<T>>) -> bool {
         // The `Borrow` trait requires that `x.borrow() == y.borrow()` equals
         // `x == y`.
         self.0.internee == other.0.internee
     }
 }
 
-impl<'tcx> Eq for InternedInSet<'tcx, WithCachedTypeInfo<TyKind<'tcx>>> {}
+impl<'tcx, T: Eq> Eq for InternedInSet<'tcx, WithCachedTypeInfo<T>> {}
 
-impl<'tcx> Hash for InternedInSet<'tcx, WithCachedTypeInfo<TyKind<'tcx>>> {
-    fn hash<H: Hasher>(&self, s: &mut H) {
-        // The `Borrow` trait requires that `x.borrow().hash(s) == x.hash(s)`.
-        self.0.internee.hash(s)
-    }
-}
-
-impl<'tcx> Borrow<Binder<'tcx, PredicateKind<'tcx>>>
-    for InternedInSet<'tcx, WithCachedTypeInfo<ty::Binder<'tcx, PredicateKind<'tcx>>>>
-{
-    fn borrow<'a>(&'a self) -> &'a Binder<'tcx, PredicateKind<'tcx>> {
-        &self.0.internee
-    }
-}
-
-impl<'tcx> PartialEq
-    for InternedInSet<'tcx, WithCachedTypeInfo<ty::Binder<'tcx, PredicateKind<'tcx>>>>
-{
-    fn eq(
-        &self,
-        other: &InternedInSet<'tcx, WithCachedTypeInfo<ty::Binder<'tcx, PredicateKind<'tcx>>>>,
-    ) -> bool {
-        // The `Borrow` trait requires that `x.borrow() == y.borrow()` equals
-        // `x == y`.
-        self.0.internee == other.0.internee
-    }
-}
-
-impl<'tcx> Eq for InternedInSet<'tcx, WithCachedTypeInfo<ty::Binder<'tcx, PredicateKind<'tcx>>>> {}
-
-impl<'tcx> Hash for InternedInSet<'tcx, WithCachedTypeInfo<ty::Binder<'tcx, PredicateKind<'tcx>>>> {
+impl<'tcx, T: Hash> Hash for InternedInSet<'tcx, WithCachedTypeInfo<T>> {
     fn hash<H: Hasher>(&self, s: &mut H) {
         // The `Borrow` trait requires that `x.borrow().hash(s) == x.hash(s)`.
         self.0.internee.hash(s)
