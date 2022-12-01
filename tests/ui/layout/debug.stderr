@@ -461,6 +461,33 @@ error: layout_of(P4) = Layout {
 LL | union P4 { x: E }
    | ^^^^^^^^
 
+error: layout_of(P5) = Layout {
+           size: Size(1 bytes),
+           align: AbiAndPrefAlign {
+               abi: Align(1 bytes),
+               pref: $PREF_ALIGN,
+           },
+           abi: Scalar(
+               Union {
+                   value: Int(
+                       I8,
+                       false,
+                   ),
+               },
+           ),
+           fields: Union(
+               2,
+           ),
+           largest_niche: None,
+           variants: Single {
+               index: 0,
+           },
+       }
+  --> $DIR/debug.rs:61:1
+   |
+LL | union P5 { zst: [u16; 0], byte: u8 }
+   | ^^^^^^^^
+
 error: layout_of(std::mem::MaybeUninit<u8>) = Layout {
            size: Size(1 bytes),
            align: AbiAndPrefAlign {
@@ -483,10 +510,10 @@ error: layout_of(std::mem::MaybeUninit<u8>) = Layout {
                index: 0,
            },
        }
-  --> $DIR/debug.rs:60:1
+  --> $DIR/debug.rs:64:1
    |
 LL | type X = std::mem::MaybeUninit<u8>;
    | ^^^^^^
 
-error: aborting due to 13 previous errors
+error: aborting due to 14 previous errors
 

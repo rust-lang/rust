@@ -57,6 +57,10 @@ union P3 { x: F32x4 } //~ ERROR: layout_of
 union P4 { x: E } //~ ERROR: layout_of
 
 #[rustc_layout(debug)]
+#[repr(packed(1))]
+union P5 { zst: [u16; 0], byte: u8 } //~ ERROR: layout_of
+
+#[rustc_layout(debug)]
 type X = std::mem::MaybeUninit<u8>; //~ ERROR: layout_of
 
 fn f() -> T {
