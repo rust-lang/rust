@@ -9,4 +9,8 @@ pub const C: () = {
     //~| ERROR: temporary value dropped while borrowed
 };
 
-fn main() {}
+fn main() {
+    let _: &'static _ = &id(&Panic);
+    //~^ ERROR: temporary value dropped while borrowed
+    //~| ERROR: temporary value dropped while borrowed
+}

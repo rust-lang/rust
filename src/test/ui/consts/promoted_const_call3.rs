@@ -13,4 +13,14 @@ pub const C: () = {
     //~^ ERROR: temporary value dropped while borrowed
 };
 
-fn main() {}
+fn main() {
+    let _: &'static _ = &String::new();
+    //~^ ERROR: temporary value dropped while borrowed
+
+    let _: &'static _ = &id(&String::new());
+    //~^ ERROR: temporary value dropped while borrowed
+    //~| ERROR: temporary value dropped while borrowed
+
+    let _: &'static _ = &std::mem::ManuallyDrop::new(String::new());
+    //~^ ERROR: temporary value dropped while borrowed
+}
