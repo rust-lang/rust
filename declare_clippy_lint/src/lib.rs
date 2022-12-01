@@ -1,5 +1,7 @@
 #![feature(let_chains)]
 #![cfg_attr(feature = "deny-warnings", deny(warnings))]
+// warn on lints, that are included in `rust-lang/rust`s bootstrap
+#![warn(rust_2018_idioms, unused_lifetimes)]
 
 use proc_macro::TokenStream;
 use quote::{format_ident, quote};
@@ -29,7 +31,7 @@ struct ClippyLint {
 }
 
 impl Parse for ClippyLint {
-    fn parse(input: ParseStream) -> Result<Self> {
+    fn parse(input: ParseStream<'_>) -> Result<Self> {
         let attrs = input.call(Attribute::parse_outer)?;
 
         let mut in_code = false;

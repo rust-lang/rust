@@ -4,7 +4,7 @@ use rustc_hir::intravisit::FnKind;
 use rustc_hir::{Body, FnDecl, HirId};
 use rustc_infer::infer::TyCtxtInferExt;
 use rustc_lint::{LateContext, LateLintPass};
-use rustc_middle::ty::{EarlyBinder, Opaque, PredicateKind::Trait};
+use rustc_middle::ty::{Clause, EarlyBinder, Opaque, PredicateKind};
 use rustc_session::{declare_lint_pass, declare_tool_lint};
 use rustc_span::{sym, Span};
 use rustc_trait_selection::traits::error_reporting::suggestions::TypeErrCtxtExt;
@@ -91,7 +91,9 @@ impl<'tcx> LateLintPass<'tcx> for FutureNotSend {
                                 infcx
                                     .err_ctxt()
                                     .maybe_note_obligation_cause_for_async_await(db, &obligation);
-                                if let Trait(trait_pred) = obligation.predicate.kind().skip_binder() {
+                                if let PredicateKind::Clause(Clause::Trait(trait_pred)) =
+                                    obligation.predicate.kind().skip_binder()
+                                {
                                     db.note(&format!(
                                         "`{}` doesn't implement `{}`",
                                         trait_pred.self_ty(),

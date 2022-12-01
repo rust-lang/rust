@@ -11,3 +11,6 @@ proc-macro = true
 itertools = "0.10.1"
 quote = "1.0.21"
 syn = "1.0.100"
+
+[features]
+deny-warnings = []

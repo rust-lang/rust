@@ -5,7 +5,7 @@ use clippy_utils::macros::{is_panic, macro_backtrace};
 use clippy_utils::msrvs::{self, Msrv};
 use clippy_utils::source::{first_line_of_span, is_present_in_source, snippet_opt, without_block_comments};
 use if_chain::if_chain;
-use rustc_ast::{AttrKind, AttrStyle, Attribute, Lit, LitKind, MetaItemKind, NestedMetaItem};
+use rustc_ast::{AttrKind, AttrStyle, Attribute, LitKind, MetaItemKind, MetaItemLit, NestedMetaItem};
 use rustc_errors::Applicability;
 use rustc_hir::{
     Block, Expr, ExprKind, ImplItem, ImplItemKind, Item, ItemKind, StmtKind, TraitFn, TraitItem, TraitItemKind,
@@ -574,7 +574,7 @@ fn check_attrs(cx: &LateContext<'_>, span: Span, name: Symbol, attrs: &[Attribut
     }
 }
 
-fn check_semver(cx: &LateContext<'_>, span: Span, lit: &Lit) {
+fn check_semver(cx: &LateContext<'_>, span: Span, lit: &MetaItemLit) {
     if let LitKind::Str(is, _) = lit.kind {
         if Version::parse(is.as_str()).is_ok() {
             return;

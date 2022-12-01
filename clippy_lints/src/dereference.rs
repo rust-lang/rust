@@ -26,7 +26,7 @@ use rustc_lint::{LateContext, LateLintPass};
 use rustc_middle::mir::{Rvalue, StatementKind};
 use rustc_middle::ty::adjustment::{Adjust, Adjustment, AutoBorrow, AutoBorrowMutability};
 use rustc_middle::ty::{
-    self, Binder, BoundVariableKind, EarlyBinder, FnSig, GenericArgKind, List, ParamTy, PredicateKind,
+    self, Binder, BoundVariableKind, Clause, EarlyBinder, FnSig, GenericArgKind, List, ParamTy, PredicateKind,
     ProjectionPredicate, Ty, TyCtxt, TypeVisitable, TypeckResults,
 };
 use rustc_session::{declare_tool_lint, impl_lint_pass};
@@ -855,14 +855,10 @@ fn walk_parents<'tcx>(
                         } else if let Some(trait_id) = cx.tcx.trait_of_item(id)
                             && let arg_ty = cx.tcx.erase_regions(cx.typeck_results().expr_ty_adjusted(e))
                             && let ty::Ref(_, sub_ty, _) = *arg_ty.kind()
-                            && let subs = match cx
+                            && let subs = cx
                                 .typeck_results()
-                                .node_substs_opt(parent.hir_id)
-                                .and_then(|subs| subs.get(1..))
-                            {
-                                Some(subs) => cx.tcx.mk_substs(subs.iter().copied()),
-                                None => cx.tcx.mk_substs(std::iter::empty::<ty::subst::GenericArg<'_>>()),
-                            } && let impl_ty = if cx.tcx.fn_sig(id).skip_binder().inputs()[0].is_ref() {
+                                .node_substs_opt(parent.hir_id).map(|subs| &subs[1..]).unwrap_or_default()
+                            && let impl_ty = if cx.tcx.fn_sig(id).skip_binder().inputs()[0].is_ref() {
                                 // Trait methods taking `&self`
                                 sub_ty
                             } else {
@@ -871,7 +867,11 @@ fn walk_parents<'tcx>(
                             } && impl_ty.is_ref()
                             && let infcx = cx.tcx.infer_ctxt().build()
                             && infcx
-                                .type_implements_trait(trait_id, impl_ty, subs, cx.param_env)
+                                .type_implements_trait(
+                                    trait_id,
+                                    [impl_ty.into()].into_iter().chain(subs.iter().copied()),
+                                    cx.param_env,
+                                )
                                 .must_apply_modulo_regions()
                         {
                             return Some(Position::MethodReceiverRefImpl)
@@ -1106,7 +1106,7 @@ fn needless_borrow_impl_arg_position<'tcx>(
     let projection_predicates = predicates
         .iter()
         .filter_map(|predicate| {
-            if let PredicateKind::Projection(projection_predicate) = predicate.kind().skip_binder() {
+            if let PredicateKind::Clause(Clause::Projection(projection_predicate)) = predicate.kind().skip_binder() {
                 Some(projection_predicate)
             } else {
                 None
@@ -1120,7 +1120,7 @@ fn needless_borrow_impl_arg_position<'tcx>(
     if predicates
         .iter()
         .filter_map(|predicate| {
-            if let PredicateKind::Trait(trait_predicate) = predicate.kind().skip_binder()
+            if let PredicateKind::Clause(Clause::Trait(trait_predicate)) = predicate.kind().skip_binder()
                 && trait_predicate.trait_ref.self_ty() == param_ty.to_ty(cx.tcx)
             {
                 Some(trait_predicate.trait_ref.def_id)
@@ -1182,7 +1182,7 @@ fn needless_borrow_impl_arg_position<'tcx>(
         }
 
         predicates.iter().all(|predicate| {
-            if let PredicateKind::Trait(trait_predicate) = predicate.kind().skip_binder()
+            if let PredicateKind::Clause(Clause::Trait(trait_predicate)) = predicate.kind().skip_binder()
                 && cx.tcx.is_diagnostic_item(sym::IntoIterator, trait_predicate.trait_ref.def_id)
                 && let ty::Param(param_ty) = trait_predicate.self_ty().kind()
                 && let GenericArgKind::Type(ty) = substs_with_referent_ty[param_ty.index as usize].unpack()
@@ -1333,7 +1333,7 @@ fn replace_types<'tcx>(
                     let item_def_id = projection_predicate.projection_ty.item_def_id;
                     let assoc_item = cx.tcx.associated_item(item_def_id);
                     let projection = cx.tcx
-                        .mk_projection(assoc_item.def_id, cx.tcx.mk_substs_trait(new_ty, &[]));
+                        .mk_projection(assoc_item.def_id, cx.tcx.mk_substs_trait(new_ty, []));
 
                     if let Ok(projected_ty) = cx.tcx.try_normalize_erasing_regions(cx.param_env, projection)
                         && substs[term_param_ty.index as usize] != ty::GenericArg::from(projected_ty)

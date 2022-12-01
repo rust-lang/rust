@@ -74,7 +74,6 @@ pub const PEEKABLE: [&str; 5] = ["core", "iter", "adapters", "peekable", "Peekab
 pub const PERMISSIONS: [&str; 3] = ["std", "fs", "Permissions"];
 #[cfg_attr(not(unix), allow(clippy::invalid_paths))]
 pub const PERMISSIONS_FROM_MODE: [&str; 6] = ["std", "os", "unix", "fs", "PermissionsExt", "from_mode"];
-pub const POLL: [&str; 4] = ["core", "task", "poll", "Poll"];
 pub const PTR_COPY: [&str; 3] = ["core", "intrinsics", "copy"];
 pub const PTR_COPY_NONOVERLAPPING: [&str; 3] = ["core", "intrinsics", "copy_nonoverlapping"];
 pub const PTR_EQ: [&str; 3] = ["core", "ptr", "eq"];

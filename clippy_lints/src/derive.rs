@@ -14,8 +14,8 @@ use rustc_lint::{LateContext, LateLintPass};
 use rustc_middle::hir::nested_filter;
 use rustc_middle::traits::Reveal;
 use rustc_middle::ty::{
-    self, Binder, BoundConstness, GenericParamDefKind, ImplPolarity, ParamEnv, PredicateKind, TraitPredicate, TraitRef,
-    Ty, TyCtxt,
+    self, Binder, BoundConstness, Clause, GenericParamDefKind, ImplPolarity, ParamEnv, PredicateKind, TraitPredicate,
+    TraitRef, Ty, TyCtxt,
 };
 use rustc_session::{declare_lint_pass, declare_tool_lint};
 use rustc_span::source_map::Span;
@@ -466,12 +466,12 @@ fn check_partial_eq_without_eq<'tcx>(cx: &LateContext<'tcx>, span: Span, trait_r
         if let Some(def_id) = trait_ref.trait_def_id();
         if cx.tcx.is_diagnostic_item(sym::PartialEq, def_id);
         let param_env = param_env_for_derived_eq(cx.tcx, adt.did(), eq_trait_def_id);
-        if !implements_trait_with_env(cx.tcx, param_env, ty, eq_trait_def_id, &[]);
+        if !implements_trait_with_env(cx.tcx, param_env, ty, eq_trait_def_id, []);
         // If all of our fields implement `Eq`, we can implement `Eq` too
         if adt
             .all_fields()
             .map(|f| f.ty(cx.tcx, substs))
-            .all(|ty| implements_trait_with_env(cx.tcx, param_env, ty, eq_trait_def_id, &[]));
+            .all(|ty| implements_trait_with_env(cx.tcx, param_env, ty, eq_trait_def_id, []));
         then {
             span_lint_and_sugg(
                 cx,
@@ -499,7 +499,7 @@ fn param_env_for_derived_eq(tcx: TyCtxt<'_>, did: DefId, eq_trait_id: DefId) -> 
 
     let ty_predicates = tcx.predicates_of(did).predicates;
     for (p, _) in ty_predicates {
-        if let PredicateKind::Trait(p) = p.kind().skip_binder()
+        if let PredicateKind::Clause(Clause::Trait(p)) = p.kind().skip_binder()
             && p.trait_ref.def_id == eq_trait_id
             && let ty::Param(self_ty) = p.trait_ref.self_ty().kind()
             && p.constness == BoundConstness::NotConst
@@ -512,14 +512,14 @@ fn param_env_for_derived_eq(tcx: TyCtxt<'_>, did: DefId, eq_trait_id: DefId) -> 
     ParamEnv::new(
         tcx.mk_predicates(ty_predicates.iter().map(|&(p, _)| p).chain(
             params.iter().filter(|&&(_, needs_eq)| needs_eq).map(|&(param, _)| {
-                tcx.mk_predicate(Binder::dummy(PredicateKind::Trait(TraitPredicate {
+                tcx.mk_predicate(Binder::dummy(PredicateKind::Clause(Clause::Trait(TraitPredicate {
                     trait_ref: TraitRef::new(
                         eq_trait_id,
                         tcx.mk_substs(std::iter::once(tcx.mk_param_from_def(param))),
                     ),
                     constness: BoundConstness::NotConst,
                     polarity: ImplPolarity::Positive,
-                })))
+                }))))
             }),
         )),
         Reveal::UserFacing,
