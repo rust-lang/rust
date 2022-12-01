@@ -388,11 +388,9 @@ fn codegen_fn_body(fx: &mut FunctionCx<'_, '_, '_>, start_block: Block) {
                         _ => unreachable!("{:?}", targets),
                     };
 
-                    let discr = crate::optimize::peephole::maybe_unwrap_bint(&mut fx.bcx, discr);
                     let (discr, is_inverted) =
                         crate::optimize::peephole::maybe_unwrap_bool_not(&mut fx.bcx, discr);
                     let test_zero = if is_inverted { !test_zero } else { test_zero };
-                    let discr = crate::optimize::peephole::maybe_unwrap_bint(&mut fx.bcx, discr);
                     if let Some(taken) = crate::optimize::peephole::maybe_known_branch_taken(
                         &fx.bcx, discr, test_zero,
                     ) {
@@ -569,7 +567,7 @@ fn codegen_stmt<'tcx>(
                         UnOp::Not => match layout.ty.kind() {
                             ty::Bool => {
                                 let res = fx.bcx.ins().icmp_imm(IntCC::Equal, val, 0);
-                                CValue::by_val(fx.bcx.ins().bint(types::I8, res), layout)
+                                CValue::by_val(res, layout)
                             }
                             ty::Uint(_) | ty::Int(_) => {
                                 CValue::by_val(fx.bcx.ins().bnot(val), layout)
@@ -577,12 +575,6 @@ fn codegen_stmt<'tcx>(
                             _ => unreachable!("un op Not for {:?}", layout.ty),
                         },
                         UnOp::Neg => match layout.ty.kind() {
-                            ty::Int(IntTy::I128) => {
-                                // FIXME remove this case once ineg.i128 works
-                                let zero =
-                                    CValue::const_val(fx, layout, ty::ScalarInt::null(layout.size));
-                                crate::num::codegen_int_binop(fx, BinOp::Sub, zero, operand)
-                            }
                             ty::Int(_) => CValue::by_val(fx.bcx.ins().ineg(val), layout),
                             ty::Float(_) => CValue::by_val(fx.bcx.ins().fneg(val), layout),
                             _ => unreachable!("un op Neg for {:?}", layout.ty),

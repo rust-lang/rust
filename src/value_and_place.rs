@@ -515,9 +515,7 @@ impl<'tcx> CPlace<'tcx> {
                 | (types::F32, types::I32)
                 | (types::I64, types::F64)
                 | (types::F64, types::I64) => fx.bcx.ins().bitcast(dst_ty, data),
-                _ if src_ty.is_vector() && dst_ty.is_vector() => {
-                    fx.bcx.ins().raw_bitcast(dst_ty, data)
-                }
+                _ if src_ty.is_vector() && dst_ty.is_vector() => fx.bcx.ins().bitcast(dst_ty, data),
                 _ if src_ty.is_vector() || dst_ty.is_vector() => {
                     // FIXME do something more efficient for transmutes between vectors and integers.
                     let stack_slot = fx.bcx.create_sized_stack_slot(StackSlotData {

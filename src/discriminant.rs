@@ -278,8 +278,14 @@ pub(crate) fn codegen_get_discriminant<'tcx>(
                 fx.bcx.ins().iadd(tagged_discr, delta)
             };
 
-            let untagged_variant =
-                fx.bcx.ins().iconst(cast_to, i64::from(untagged_variant.as_u32()));
+            let untagged_variant = if cast_to == types::I128 {
+                let zero = fx.bcx.ins().iconst(types::I64, 0);
+                let untagged_variant =
+                    fx.bcx.ins().iconst(types::I64, i64::from(untagged_variant.as_u32()));
+                fx.bcx.ins().iconcat(untagged_variant, zero)
+            } else {
+                fx.bcx.ins().iconst(cast_to, i64::from(untagged_variant.as_u32()))
+            };
             let discr = fx.bcx.ins().select(is_niche, tagged_discr, untagged_variant);
             let res = CValue::by_val(discr, dest_layout);
             dest.write_cvalue(fx, res);
