@@ -224,7 +224,11 @@ pub struct MainDefinition {
 
 impl MainDefinition {
     pub fn opt_fn_def_id(self) -> Option<DefId> {
-        if let Res::Def(DefKind::Fn, def_id) = self.res { Some(def_id) } else { None }
+        if let Res::Def(DefKind::Fn, def_id) = self.res {
+            Some(def_id)
+        } else {
+            None
+        }
     }
 }
 
@@ -953,11 +957,19 @@ impl<'tcx> Term<'tcx> {
     }
 
     pub fn ty(&self) -> Option<Ty<'tcx>> {
-        if let TermKind::Ty(ty) = self.unpack() { Some(ty) } else { None }
+        if let TermKind::Ty(ty) = self.unpack() {
+            Some(ty)
+        } else {
+            None
+        }
     }
 
     pub fn ct(&self) -> Option<Const<'tcx>> {
-        if let TermKind::Const(c) = self.unpack() { Some(c) } else { None }
+        if let TermKind::Const(c) = self.unpack() {
+            Some(c)
+        } else {
+            None
+        }
     }
 
     pub fn into_arg(self) -> GenericArg<'tcx> {
@@ -990,8 +1002,8 @@ impl<'tcx> TermKind<'tcx> {
             }
             TermKind::Const(ct) => {
                 // Ensure we can use the tag bits.
-                assert_eq!(mem::align_of_val(&*ct.0.0) & TAG_MASK, 0);
-                (CONST_TAG, ct.0.0 as *const ty::ConstS<'tcx> as usize)
+                assert_eq!(mem::align_of_val(&*ct.0 .0) & TAG_MASK, 0);
+                (CONST_TAG, ct.0 .0 as *const ty::ConstS<'tcx> as usize)
             }
         };
 
@@ -1459,7 +1471,11 @@ impl WithOptConstParam<LocalDefId> {
     }
 
     pub fn def_id_for_type_of(self) -> DefId {
-        if let Some(did) = self.const_param_did { did } else { self.did.to_def_id() }
+        if let Some(did) = self.const_param_did {
+            did
+        } else {
+            self.did.to_def_id()
+        }
     }
 }
 
@@ -2030,7 +2046,11 @@ impl<'tcx> TyCtxt<'tcx> {
         // path hash with the user defined seed, this will allowing determinism while
         // still allowing users to further randomize layout generation for e.g. fuzzing
         if let Some(user_seed) = self.sess.opts.unstable_opts.layout_seed {
-            field_shuffle_seed ^= user_seed;
+            // Order-sensitive hash combination
+            field_shuffle_seed ^= user_seed
+                .wrapping_add(0x9e3779b9)
+                .wrapping_add(field_shuffle_seed << 6)
+                .wrapping_add(field_shuffle_seed >> 2);
         }
 
         for attr in self.get_attrs(did, sym::repr) {
