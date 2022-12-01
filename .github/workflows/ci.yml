@@ -44,6 +44,16 @@ jobs:
     strategy:
       matrix:
         include:
+          - name: x86_64-msvc-1
+            env:
+              RUST_CONFIGURE_ARGS: "--build=x86_64-pc-windows-msvc --enable-profiler"
+              SCRIPT: make ci-subset-1
+            os: windows-latest-xl
+          - name: x86_64-msvc-2
+            env:
+              RUST_CONFIGURE_ARGS: "--build=x86_64-pc-windows-msvc --enable-profiler"
+              SCRIPT: make ci-subset-2
+            os: windows-latest-xl
           - name: mingw-check
             os: ubuntu-20.04-xl
             env: {}
