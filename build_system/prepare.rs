@@ -1,17 +1,18 @@
-use std::env;
 use std::ffi::OsStr;
 use std::fs;
 use std::path::{Path, PathBuf};
 use std::process::Command;
 
+use super::build_sysroot::{SYSROOT_RUSTC_VERSION, SYSROOT_SRC};
+use super::path::RelPath;
 use super::rustc_info::{get_file_name, get_rustc_path, get_rustc_version};
 use super::utils::{copy_dir_recursively, spawn_and_wait, Compiler};
 
 pub(crate) fn prepare() {
-    if Path::new("download").exists() {
-        std::fs::remove_dir_all(Path::new("download")).unwrap();
+    if RelPath::DOWNLOAD.to_path().exists() {
+        std::fs::remove_dir_all(RelPath::DOWNLOAD.to_path()).unwrap();
     }
-    std::fs::create_dir_all(Path::new("download")).unwrap();
+    std::fs::create_dir_all(RelPath::DOWNLOAD.to_path()).unwrap();
 
     prepare_sysroot();
 
@@ -35,7 +36,7 @@ pub(crate) fn prepare() {
             .join(&host_compiler.triple)
             .join("debug")
             .join(get_file_name("main", "bin")),
-        Path::new("build").join(get_file_name("raytracer_cg_llvm", "bin")),
+        RelPath::BUILD.to_path().join(get_file_name("raytracer_cg_llvm", "bin")),
     )
     .unwrap();
 }
@@ -43,28 +44,26 @@ pub(crate) fn prepare() {
 fn prepare_sysroot() {
     let rustc_path = get_rustc_path();
     let sysroot_src_orig = rustc_path.parent().unwrap().join("../lib/rustlib/src/rust");
-    let sysroot_src = env::current_dir().unwrap().join("build_sysroot").join("sysroot_src");
+    let sysroot_src = SYSROOT_SRC;
 
     assert!(sysroot_src_orig.exists());
 
-    if sysroot_src.exists() {
-        fs::remove_dir_all(&sysroot_src).unwrap();
-    }
-    fs::create_dir_all(sysroot_src.join("library")).unwrap();
+    sysroot_src.ensure_fresh();
+    fs::create_dir_all(sysroot_src.to_path().join("library")).unwrap();
     eprintln!("[COPY] sysroot src");
-    copy_dir_recursively(&sysroot_src_orig.join("library"), &sysroot_src.join("library"));
+    copy_dir_recursively(&sysroot_src_orig.join("library"), &sysroot_src.to_path().join("library"));
 
     let rustc_version = get_rustc_version();
-    fs::write(Path::new("build_sysroot").join("rustc_version"), &rustc_version).unwrap();
+    fs::write(SYSROOT_RUSTC_VERSION.to_path(), &rustc_version).unwrap();
 
     eprintln!("[GIT] init");
     let mut git_init_cmd = Command::new("git");
-    git_init_cmd.arg("init").arg("-q").current_dir(&sysroot_src);
+    git_init_cmd.arg("init").arg("-q").current_dir(sysroot_src.to_path());
     spawn_and_wait(git_init_cmd);
 
-    init_git_repo(&sysroot_src);
+    init_git_repo(&sysroot_src.to_path());
 
-    apply_patches("sysroot", &sysroot_src);
+    apply_patches("sysroot", &sysroot_src.to_path());
 }
 
 pub(crate) struct GitRepo {
@@ -87,21 +86,19 @@ impl GitRepo {
         GitRepo { url: GitRepoUrl::Github { user, repo }, rev, patch_name }
     }
 
-    pub(crate) fn source_dir(&self) -> PathBuf {
+    pub(crate) const fn source_dir(&self) -> RelPath {
         match self.url {
-            GitRepoUrl::Github { user: _, repo } => {
-                std::env::current_dir().unwrap().join("download").join(repo)
-            }
+            GitRepoUrl::Github { user: _, repo } => RelPath::DOWNLOAD.join(repo),
         }
     }
 
     fn fetch(&self) {
         match self.url {
             GitRepoUrl::Github { user, repo } => {
-                clone_repo_shallow_github(&self.source_dir(), user, repo, self.rev);
+                clone_repo_shallow_github(&self.source_dir().to_path(), user, repo, self.rev);
             }
         }
-        apply_patches(self.patch_name, &self.source_dir());
+        apply_patches(self.patch_name, &self.source_dir().to_path());
     }
 }
 
@@ -127,11 +124,9 @@ fn clone_repo_shallow_github(download_dir: &Path, user: &str, repo: &str, rev: &
         return;
     }
 
-    let downloads_dir = std::env::current_dir().unwrap().join("download");
-
     let archive_url = format!("https://github.com/{}/{}/archive/{}.tar.gz", user, repo, rev);
-    let archive_file = downloads_dir.join(format!("{}.tar.gz", rev));
-    let archive_dir = downloads_dir.join(format!("{}-{}", repo, rev));
+    let archive_file = RelPath::DOWNLOAD.to_path().join(format!("{}.tar.gz", rev));
+    let archive_dir = RelPath::DOWNLOAD.to_path().join(format!("{}-{}", repo, rev));
 
     eprintln!("[DOWNLOAD] {}/{} from {}", user, repo, archive_url);
 
@@ -147,7 +142,7 @@ fn clone_repo_shallow_github(download_dir: &Path, user: &str, repo: &str, rev: &
 
     // Unpack tar archive
     let mut unpack_cmd = Command::new("tar");
-    unpack_cmd.arg("xf").arg(&archive_file).current_dir(downloads_dir);
+    unpack_cmd.arg("xf").arg(&archive_file).current_dir(RelPath::DOWNLOAD.to_path());
     spawn_and_wait(unpack_cmd);
 
     // Rename unpacked dir to the expected name
@@ -173,8 +168,8 @@ fn init_git_repo(repo_dir: &Path) {
     spawn_and_wait(git_commit_cmd);
 }
 
-fn get_patches(source_dir: &Path, crate_name: &str) -> Vec<PathBuf> {
-    let mut patches: Vec<_> = fs::read_dir(source_dir.join("patches"))
+fn get_patches(crate_name: &str) -> Vec<PathBuf> {
+    let mut patches: Vec<_> = fs::read_dir(RelPath::PATCHES.to_path())
         .unwrap()
         .map(|entry| entry.unwrap().path())
         .filter(|path| path.extension() == Some(OsStr::new("patch")))
@@ -198,7 +193,7 @@ fn apply_patches(crate_name: &str, target_dir: &Path) {
         return;
     }
 
-    for patch in get_patches(&std::env::current_dir().unwrap(), crate_name) {
+    for patch in get_patches(crate_name) {
         eprintln!(
             "[PATCH] {:?} <- {:?}",
             target_dir.file_name().unwrap(),

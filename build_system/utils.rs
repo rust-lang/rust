@@ -4,7 +4,7 @@ use std::io::Write;
 use std::path::{Path, PathBuf};
 use std::process::{self, Command, Stdio};
 
-use super::prepare::GitRepo;
+use super::path::RelPath;
 use super::rustc_info::{get_cargo_path, get_host_triple, get_rustc_path, get_rustdoc_path};
 
 pub(crate) struct Compiler {
@@ -43,36 +43,18 @@ impl Compiler {
     }
 }
 
-enum CargoProjectSource {
-    Local,
-    GitRepo(&'static GitRepo),
-}
-
 pub(crate) struct CargoProject {
-    source: CargoProjectSource,
-    path: &'static str,
+    source: &'static RelPath,
     target: &'static str,
 }
 
 impl CargoProject {
-    pub(crate) const fn local(path: &'static str, target: &'static str) -> CargoProject {
-        CargoProject { source: CargoProjectSource::Local, path, target }
-    }
-
-    pub(crate) const fn git(
-        git_repo: &'static GitRepo,
-        path: &'static str,
-        target: &'static str,
-    ) -> CargoProject {
-        CargoProject { source: CargoProjectSource::GitRepo(git_repo), path, target }
+    pub(crate) const fn new(path: &'static RelPath, target: &'static str) -> CargoProject {
+        CargoProject { source: path, target }
     }
 
     pub(crate) fn source_dir(&self) -> PathBuf {
-        match self.source {
-            CargoProjectSource::Local => std::env::current_dir().unwrap(),
-            CargoProjectSource::GitRepo(git_repo) => git_repo.source_dir(),
-        }
-        .join(self.path)
+        self.source.to_path()
     }
 
     pub(crate) fn manifest_path(&self) -> PathBuf {
@@ -80,7 +62,7 @@ impl CargoProject {
     }
 
     pub(crate) fn target_dir(&self) -> PathBuf {
-        std::env::current_dir().unwrap().join("build").join(self.target)
+        RelPath::BUILD.join(self.target).to_path()
     }
 
     fn base_cmd(&self, command: &str, cargo: &Path) -> Command {

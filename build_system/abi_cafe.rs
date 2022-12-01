@@ -9,12 +9,11 @@ use super::SysrootKind;
 pub(crate) static ABI_CAFE_REPO: GitRepo =
     GitRepo::github("Gankra", "abi-cafe", "4c6dc8c9c687e2b3a760ff2176ce236872b37212", "abi-cafe");
 
-static ABI_CAFE: CargoProject = CargoProject::git(&ABI_CAFE_REPO, ".", "abi_cafe");
+static ABI_CAFE: CargoProject = CargoProject::new(&ABI_CAFE_REPO.source_dir(), "abi_cafe");
 
 pub(crate) fn run(
     channel: &str,
     sysroot_kind: SysrootKind,
-    dist_dir: &Path,
     cg_clif_dylib: &Path,
     host_triple: &str,
     target_triple: &str,
@@ -30,14 +29,7 @@ pub(crate) fn run(
     }
 
     eprintln!("Building sysroot for abi-cafe");
-    build_sysroot::build_sysroot(
-        channel,
-        sysroot_kind,
-        dist_dir,
-        cg_clif_dylib,
-        host_triple,
-        target_triple,
-    );
+    build_sysroot::build_sysroot(channel, sysroot_kind, cg_clif_dylib, host_triple, target_triple);
 
     eprintln!("Running abi-cafe");
 

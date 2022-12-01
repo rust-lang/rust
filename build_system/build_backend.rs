@@ -1,10 +1,11 @@
 use std::env;
 use std::path::PathBuf;
 
+use super::path::RelPath;
 use super::rustc_info::get_file_name;
 use super::utils::{is_ci, CargoProject, Compiler};
 
-static CG_CLIF: CargoProject = CargoProject::local(".", "cg_clif");
+static CG_CLIF: CargoProject = CargoProject::new(&RelPath::SOURCE, "cg_clif");
 
 pub(crate) fn build_backend(
     channel: &str,

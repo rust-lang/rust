@@ -1,9 +1,8 @@
-use crate::build_system::rustc_info::get_cargo_path;
-
 use super::build_sysroot;
 use super::config;
+use super::path::RelPath;
 use super::prepare::GitRepo;
-use super::rustc_info::get_wrapper_file_name;
+use super::rustc_info::{get_cargo_path, get_wrapper_file_name};
 use super::utils::{
     hyperfine_command, spawn_and_wait, spawn_and_wait_with_input, CargoProject, Compiler,
 };
@@ -11,8 +10,10 @@ use super::SysrootKind;
 use std::env;
 use std::ffi::OsStr;
 use std::fs;
-use std::path::{Path, PathBuf};
+use std::path::Path;
 use std::process::Command;
+
+static BUILD_EXAMPLE_OUT_DIR: RelPath = RelPath::BUILD.join("example");
 
 struct TestCase {
     config: &'static str,
@@ -223,12 +224,12 @@ const BASE_SYSROOT_SUITE: &[TestCase] = &[
 pub(crate) static RAND_REPO: GitRepo =
     GitRepo::github("rust-random", "rand", "0f933f9c7176e53b2a3c7952ded484e1783f0bf1", "rand");
 
-static RAND: CargoProject = CargoProject::git(&RAND_REPO, ".", "rand");
+static RAND: CargoProject = CargoProject::new(&RAND_REPO.source_dir(), "rand");
 
 pub(crate) static REGEX_REPO: GitRepo =
     GitRepo::github("rust-lang", "regex", "341f207c1071f7290e3f228c710817c280c8dca1", "regex");
 
-static REGEX: CargoProject = CargoProject::git(&REGEX_REPO, ".", "regex");
+static REGEX: CargoProject = CargoProject::new(&REGEX_REPO.source_dir(), "regex");
 
 pub(crate) static PORTABLE_SIMD_REPO: GitRepo = GitRepo::github(
     "rust-lang",
@@ -237,7 +238,8 @@ pub(crate) static PORTABLE_SIMD_REPO: GitRepo = GitRepo::github(
     "portable-simd",
 );
 
-static PORTABLE_SIMD: CargoProject = CargoProject::git(&PORTABLE_SIMD_REPO, ".", "portable_simd");
+static PORTABLE_SIMD: CargoProject =
+    CargoProject::new(&PORTABLE_SIMD_REPO.source_dir(), "portable_simd");
 
 pub(crate) static SIMPLE_RAYTRACER_REPO: GitRepo = GitRepo::github(
     "ebobby",
@@ -247,10 +249,10 @@ pub(crate) static SIMPLE_RAYTRACER_REPO: GitRepo = GitRepo::github(
 );
 
 pub(crate) static SIMPLE_RAYTRACER: CargoProject =
-    CargoProject::git(&SIMPLE_RAYTRACER_REPO, ".", "simple_raytracer");
+    CargoProject::new(&SIMPLE_RAYTRACER_REPO.source_dir(), "simple_raytracer");
 
 static LIBCORE_TESTS: CargoProject =
-    CargoProject::local("build_sysroot/sysroot_src/library/core/tests", "core_tests");
+    CargoProject::new(&RelPath::BUILD_SYSROOT.join("sysroot_src/library/core/tests"), "core_tests");
 
 const EXTENDED_SYSROOT_SUITE: &[TestCase] = &[
     TestCase::new("test.rust-random/rand", &|runner| {
@@ -273,10 +275,8 @@ const EXTENDED_SYSROOT_SUITE: &[TestCase] = &[
 
         if runner.is_native {
             eprintln!("[BENCH COMPILE] ebobby/simple-raytracer");
-            let cargo_clif = env::current_dir()
-                .unwrap()
-                .join("dist")
-                .join(get_wrapper_file_name("cargo-clif", "bin"));
+            let cargo_clif =
+                RelPath::DIST.to_path().join(get_wrapper_file_name("cargo-clif", "bin"));
             let manifest_path = SIMPLE_RAYTRACER.manifest_path();
             let target_dir = SIMPLE_RAYTRACER.target_dir();
 
@@ -305,13 +305,13 @@ const EXTENDED_SYSROOT_SUITE: &[TestCase] = &[
             eprintln!("[BENCH RUN] ebobby/simple-raytracer");
             fs::copy(
                 target_dir.join("debug").join("main"),
-                Path::new("build").join("raytracer_cg_clif"),
+                RelPath::BUILD.to_path().join("raytracer_cg_clif"),
             )
             .unwrap();
 
             let mut bench_run =
                 hyperfine_command(0, run_runs, None, "./raytracer_cg_llvm", "./raytracer_cg_clif");
-            bench_run.current_dir(Path::new("build"));
+            bench_run.current_dir(RelPath::BUILD.to_path());
             spawn_and_wait(bench_run);
         } else {
             spawn_and_wait(SIMPLE_RAYTRACER.clean(&runner.target_compiler.cargo));
@@ -430,7 +430,6 @@ const EXTENDED_SYSROOT_SUITE: &[TestCase] = &[
 pub(crate) fn run_tests(
     channel: &str,
     sysroot_kind: SysrootKind,
-    dist_dir: &Path,
     cg_clif_dylib: &Path,
     host_triple: &str,
     target_triple: &str,
@@ -441,13 +440,12 @@ pub(crate) fn run_tests(
         build_sysroot::build_sysroot(
             channel,
             SysrootKind::None,
-            &dist_dir,
             cg_clif_dylib,
             &host_triple,
             &target_triple,
         );
 
-        let _ = fs::remove_dir_all(Path::new("build").join("example"));
+        BUILD_EXAMPLE_OUT_DIR.ensure_fresh();
         runner.run_testsuite(NO_SYSROOT_SUITE);
     } else {
         eprintln!("[SKIP] no_sysroot tests");
@@ -460,7 +458,6 @@ pub(crate) fn run_tests(
         build_sysroot::build_sysroot(
             channel,
             sysroot_kind,
-            &dist_dir,
             cg_clif_dylib,
             &host_triple,
             &target_triple,
@@ -481,7 +478,6 @@ pub(crate) fn run_tests(
 }
 
 struct TestRunner {
-    out_dir: PathBuf,
     is_native: bool,
     jit_supported: bool,
     host_compiler: Compiler,
@@ -490,23 +486,13 @@ struct TestRunner {
 
 impl TestRunner {
     pub fn new(host_triple: String, target_triple: String) -> Self {
-        let root_dir = env::current_dir().unwrap();
-
-        let mut out_dir = root_dir.clone();
-        out_dir.push("build");
-        out_dir.push("example");
-
         let is_native = host_triple == target_triple;
         let jit_supported =
             target_triple.contains("x86_64") && is_native && !host_triple.contains("windows");
 
-        let mut rustc_clif = root_dir.clone();
-        rustc_clif.push("dist");
-        rustc_clif.push(get_wrapper_file_name("rustc-clif", "bin"));
-
-        let mut rustdoc_clif = root_dir.clone();
-        rustdoc_clif.push("dist");
-        rustdoc_clif.push(get_wrapper_file_name("rustdoc-clif", "bin"));
+        let rustc_clif = RelPath::DIST.to_path().join(get_wrapper_file_name("rustc-clif", "bin"));
+        let rustdoc_clif =
+            RelPath::DIST.to_path().join(get_wrapper_file_name("rustdoc-clif", "bin"));
 
         let mut rustflags = env::var("RUSTFLAGS").ok().unwrap_or("".to_string());
         let mut runner = vec![];
@@ -549,15 +535,15 @@ impl TestRunner {
 
         let target_compiler = Compiler {
             cargo: get_cargo_path(),
-            rustc: rustc_clif.clone(),
-            rustdoc: rustdoc_clif.clone(),
+            rustc: rustc_clif,
+            rustdoc: rustdoc_clif,
             rustflags: rustflags.clone(),
             rustdocflags: rustflags,
             triple: target_triple,
             runner,
         };
 
-        Self { out_dir, is_native, jit_supported, host_compiler, target_compiler }
+        Self { is_native, jit_supported, host_compiler, target_compiler }
     }
 
     pub fn run_testsuite(&self, tests: &[TestCase]) {
@@ -586,9 +572,9 @@ impl TestRunner {
         let mut cmd = Command::new(&self.target_compiler.rustc);
         cmd.args(self.target_compiler.rustflags.split_whitespace());
         cmd.arg("-L");
-        cmd.arg(format!("crate={}", self.out_dir.display()));
+        cmd.arg(format!("crate={}", BUILD_EXAMPLE_OUT_DIR.to_path().display()));
         cmd.arg("--out-dir");
-        cmd.arg(format!("{}", self.out_dir.display()));
+        cmd.arg(format!("{}", BUILD_EXAMPLE_OUT_DIR.to_path().display()));
         cmd.arg("-Cdebuginfo=2");
         cmd.args(args);
         cmd
@@ -613,11 +599,7 @@ impl TestRunner {
             full_cmd.extend(self.target_compiler.runner.iter().cloned());
         }
 
-        full_cmd.push({
-            let mut out_path = self.out_dir.clone();
-            out_path.push(name);
-            out_path.to_str().unwrap().to_string()
-        });
+        full_cmd.push(BUILD_EXAMPLE_OUT_DIR.to_path().join(name).to_str().unwrap().to_string());
 
         for arg in args.into_iter() {
             full_cmd.push(arg.to_string());

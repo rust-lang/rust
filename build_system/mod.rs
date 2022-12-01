@@ -8,6 +8,7 @@ mod abi_cafe;
 mod build_backend;
 mod build_sysroot;
 mod config;
+mod path;
 mod prepare;
 mod rustc_info;
 mod tests;
@@ -133,29 +134,14 @@ pub fn main() {
     let cg_clif_dylib = build_backend::build_backend(channel, &host_triple, use_unstable_features);
     match command {
         Command::Test => {
-            tests::run_tests(
-                channel,
-                sysroot_kind,
-                &dist_dir,
-                &cg_clif_dylib,
-                &host_triple,
-                &target_triple,
-            );
+            tests::run_tests(channel, sysroot_kind, &cg_clif_dylib, &host_triple, &target_triple);
 
-            abi_cafe::run(
-                channel,
-                sysroot_kind,
-                &dist_dir,
-                &cg_clif_dylib,
-                &host_triple,
-                &target_triple,
-            );
+            abi_cafe::run(channel, sysroot_kind, &cg_clif_dylib, &host_triple, &target_triple);
         }
         Command::Build => {
             build_sysroot::build_sysroot(
                 channel,
                 sysroot_kind,
-                &dist_dir,
                 &cg_clif_dylib,
                 &host_triple,
                 &target_triple,
