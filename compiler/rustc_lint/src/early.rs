@@ -363,30 +363,6 @@ impl<'a> EarlyCheckNode<'a> for (ast::NodeId, &'a [ast::Attribute], &'a [P<ast::
     }
 }
 
-fn early_lint_node<'a>(
-    sess: &Session,
-    warn_about_weird_lints: bool,
-    lint_store: &LintStore,
-    registered_tools: &RegisteredTools,
-    buffered: LintBuffer,
-    pass: impl EarlyLintPass,
-    check_node: impl EarlyCheckNode<'a>,
-) -> LintBuffer {
-    let mut cx = EarlyContextAndPass {
-        context: EarlyContext::new(
-            sess,
-            warn_about_weird_lints,
-            lint_store,
-            registered_tools,
-            buffered,
-        ),
-        pass,
-    };
-
-    cx.with_lint_attrs(check_node.id(), check_node.attrs(), |cx| check_node.check(cx));
-    cx.context.buffered
-}
-
 pub fn check_ast_node<'a>(
     sess: &Session,
     pre_expansion: bool,
@@ -401,21 +377,22 @@ pub fn check_ast_node<'a>(
     let mut passes: Vec<_> = passes.iter().map(|p| (p)()).collect();
     passes.push(Box::new(builtin_lints));
 
-    let mut buffered = lint_buffer.unwrap_or_default();
-    buffered = early_lint_node(
-        sess,
-        !pre_expansion,
-        lint_store,
-        registered_tools,
-        buffered,
-        EarlyLintPassObjects { lints: &mut passes[..] },
-        check_node,
-    );
+    let mut cx = EarlyContextAndPass {
+        context: EarlyContext::new(
+            sess,
+            !pre_expansion,
+            lint_store,
+            registered_tools,
+            lint_buffer.unwrap_or_default(),
+        ),
+        pass: EarlyLintPassObjects { lints: &mut passes[..] },
+    };
+    cx.with_lint_attrs(check_node.id(), check_node.attrs(), |cx| check_node.check(cx));
 
     // All of the buffered lints should have been emitted at this point.
     // If not, that means that we somehow buffered a lint for a node id
     // that was not lint-checked (perhaps it doesn't exist?). This is a bug.
-    for (id, lints) in buffered.map {
+    for (id, lints) in cx.context.buffered.map {
         for early_lint in lints {
             sess.delay_span_bug(
                 early_lint.span,
