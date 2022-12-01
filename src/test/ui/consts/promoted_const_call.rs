@@ -13,4 +13,7 @@ fn main() {
     let _: &'static _ = &id(&Panic);
     //~^ ERROR: temporary value dropped while borrowed
     //~| ERROR: temporary value dropped while borrowed
+    let _: &'static _ = &&(Panic, 0).1;
+    //~^ ERROR: temporary value dropped while borrowed
+    //~| ERROR: temporary value dropped while borrowed
 }
