@@ -159,15 +159,14 @@ pub(crate) fn clean_trait_ref_with_bindings<'tcx>(
     trait_ref: Binder<'tcx, ty::TraitRef<'tcx>>,
     bindings: ThinVec<TypeBinding>,
 ) -> Path {
-    let trait_ref = trait_ref.skip_binder();
-    let kind = cx.tcx.def_kind(trait_ref.def_id).into();
+    let kind = cx.tcx.def_kind(trait_ref.def_id()).into();
     if !matches!(kind, ItemType::Trait | ItemType::TraitAlias) {
-        span_bug!(cx.tcx.def_span(trait_ref.def_id), "`TraitRef` had unexpected kind {:?}", kind);
+        span_bug!(cx.tcx.def_span(trait_ref.def_id()), "`TraitRef` had unexpected kind {:?}", kind);
     }
-    inline::record_extern_fqn(cx, trait_ref.def_id, kind);
-    let path = external_path(cx, trait_ref.def_id, true, bindings, trait_ref.substs);
+    inline::record_extern_fqn(cx, trait_ref.def_id(), kind);
+    let path = external_path(cx, trait_ref.def_id(), true, bindings, trait_ref.skip_binder().substs);
 
-    debug!("ty::TraitRef\n  subst: {:?}\n", trait_ref.substs);
+    debug!("ty::TraitRef\n  subst: {:?}\n", trait_ref.skip_binder().substs);
 
     path
 }
