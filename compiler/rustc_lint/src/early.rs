@@ -393,35 +393,24 @@ pub fn check_ast_node<'a>(
     lint_store: &LintStore,
     registered_tools: &RegisteredTools,
     lint_buffer: Option<LintBuffer>,
-    builtin_lints: impl EarlyLintPass,
+    builtin_lints: impl EarlyLintPass + 'static,
     check_node: impl EarlyCheckNode<'a>,
 ) {
     let passes =
         if pre_expansion { &lint_store.pre_expansion_passes } else { &lint_store.early_passes };
     let mut passes: Vec<_> = passes.iter().map(|p| (p)()).collect();
-    let mut buffered = lint_buffer.unwrap_or_default();
+    passes.push(Box::new(builtin_lints));
 
+    let mut buffered = lint_buffer.unwrap_or_default();
     buffered = early_lint_node(
         sess,
         !pre_expansion,
         lint_store,
         registered_tools,
         buffered,
-        builtin_lints,
+        EarlyLintPassObjects { lints: &mut passes[..] },
         check_node,
     );
-
-    if !passes.is_empty() {
-        buffered = early_lint_node(
-            sess,
-            false,
-            lint_store,
-            registered_tools,
-            buffered,
-            EarlyLintPassObjects { lints: &mut passes[..] },
-            check_node,
-        );
-    }
 
     // All of the buffered lints should have been emitted at this point.
     // If not, that means that we somehow buffered a lint for a node id
