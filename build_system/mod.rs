@@ -1,4 +1,5 @@
 use std::env;
+use std::path::PathBuf;
 use std::process;
 
 use self::utils::is_ci;
@@ -13,11 +14,31 @@ mod rustc_info;
 mod tests;
 mod utils;
 
+const USAGE: &str = r#"The build system of cg_clif.
+
+USAGE:
+    ./y.rs prepare [--out-dir DIR]
+    ./y.rs build [--debug] [--sysroot none|clif|llvm] [--out-dir DIR] [--no-unstable-features]
+    ./y.rs test [--debug] [--sysroot none|clif|llvm] [--out-dir DIR] [--no-unstable-features]
+
+OPTIONS:
+    --sysroot none|clif|llvm
+            Which sysroot libraries to use:
+            `none` will not include any standard library in the sysroot.
+            `clif` will build the standard library using Cranelift.
+            `llvm` will use the pre-compiled standard library of rustc which is compiled with LLVM.
+
+    --out-dir DIR
+            Specify the directory in which the download, build and dist directories are stored.
+            By default this is the working directory.
+
+    --no-unstable-features
+            fSome features are not yet ready for production usage. This option will disable these
+            features. This includes the JIT mode and inline assembly support.
+"#;
+
 fn usage() {
-    eprintln!("Usage:");
-    eprintln!("  ./y.rs prepare");
-    eprintln!("  ./y.rs build [--debug] [--sysroot none|clif|llvm] [--no-unstable-features]");
-    eprintln!("  ./y.rs test [--debug] [--sysroot none|clif|llvm] [--no-unstable-features]");
+    eprintln!("{USAGE}");
 }
 
 macro_rules! arg_error {
@@ -30,6 +51,7 @@ macro_rules! arg_error {
 
 #[derive(PartialEq, Debug)]
 enum Command {
+    Prepare,
     Build,
     Test,
 }
@@ -45,25 +67,6 @@ pub fn main() {
     env::set_var("CG_CLIF_DISPLAY_CG_TIME", "1");
     env::set_var("CG_CLIF_DISABLE_INCR_CACHE", "1");
 
-    let current_dir = std::env::current_dir().unwrap();
-    let dirs = path::Dirs {
-        source_dir: current_dir.clone(),
-        download_dir: current_dir.join("download"),
-        build_dir: current_dir.join("build"),
-        dist_dir: current_dir.join("dist"),
-    };
-
-    path::RelPath::BUILD.ensure_exists(&dirs);
-
-    {
-        // Make sure we always explicitly specify the target dir
-        let target =
-            path::RelPath::BUILD.join("target_dir_should_be_set_explicitly").to_path(&dirs);
-        env::set_var("CARGO_TARGET_DIR", &target);
-        let _ = std::fs::remove_file(&target);
-        std::fs::File::create(target).unwrap();
-    }
-
     if is_ci() {
         // Disabling incr comp reduces cache size and incr comp doesn't save as much on CI anyway
         env::set_var("CARGO_BUILD_INCREMENTAL", "false");
@@ -71,13 +74,7 @@ pub fn main() {
 
     let mut args = env::args().skip(1);
     let command = match args.next().as_deref() {
-        Some("prepare") => {
-            if args.next().is_some() {
-                arg_error!("./y.rs prepare doesn't expect arguments");
-            }
-            prepare::prepare(&dirs);
-            process::exit(0);
-        }
+        Some("prepare") => Command::Prepare,
         Some("build") => Command::Build,
         Some("test") => Command::Test,
         Some(flag) if flag.starts_with('-') => arg_error!("Expected command found flag {}", flag),
@@ -88,11 +85,17 @@ pub fn main() {
         }
     };
 
+    let mut out_dir = PathBuf::from(".");
     let mut channel = "release";
     let mut sysroot_kind = SysrootKind::Clif;
     let mut use_unstable_features = true;
     while let Some(arg) = args.next().as_deref() {
         match arg {
+            "--out-dir" => {
+                out_dir = PathBuf::from(args.next().unwrap_or_else(|| {
+                    arg_error!("--out-dir requires argument");
+                }))
+            }
             "--debug" => channel = "debug",
             "--sysroot" => {
                 sysroot_kind = match args.next().as_deref() {
@@ -128,9 +131,38 @@ pub fn main() {
         host_triple.clone()
     };
 
+    // FIXME allow changing the location of these dirs using cli arguments
+    let current_dir = std::env::current_dir().unwrap();
+    out_dir = current_dir.join(out_dir);
+    let dirs = path::Dirs {
+        source_dir: current_dir.clone(),
+        download_dir: out_dir.join("download"),
+        build_dir: out_dir.join("build"),
+        dist_dir: out_dir.join("dist"),
+    };
+
+    path::RelPath::BUILD.ensure_exists(&dirs);
+
+    {
+        // Make sure we always explicitly specify the target dir
+        let target =
+            path::RelPath::BUILD.join("target_dir_should_be_set_explicitly").to_path(&dirs);
+        env::set_var("CARGO_TARGET_DIR", &target);
+        let _ = std::fs::remove_file(&target);
+        std::fs::File::create(target).unwrap();
+    }
+
+    if command == Command::Prepare {
+        prepare::prepare(&dirs);
+        process::exit(0);
+    }
+
     let cg_clif_dylib =
         build_backend::build_backend(&dirs, channel, &host_triple, use_unstable_features);
     match command {
+        Command::Prepare => {
+            // Handled above
+        }
         Command::Test => {
             tests::run_tests(
                 &dirs,
