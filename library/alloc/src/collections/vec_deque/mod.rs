@@ -2151,7 +2151,7 @@ impl<T, A: Allocator> VecDeque<T, A> {
 
             self.head = tail;
         } else {
-            // ´free` is smaller than both `head_len` and `tail_len`.
+            // `free` is smaller than both `head_len` and `tail_len`.
             // the general algorithm for this first moves the slices
             // right next to each other and then uses `slice::rotate`
             // to rotate them into place:
