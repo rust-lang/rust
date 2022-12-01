@@ -1,6 +1,7 @@
 #![feature(rustc_private)]
 #![feature(let_chains)]
 #![feature(once_cell)]
+#![feature(lint_reasons)]
 #![cfg_attr(feature = "deny-warnings", deny(warnings))]
 // warn on lints, that are included in `rust-lang/rust`s bootstrap
 #![warn(rust_2018_idioms, unused_lifetimes)]
@@ -90,6 +91,10 @@ fn track_files(parse_sess: &mut ParseSess, conf_path_string: Option<String>) {
 
     // During development track the `clippy-driver` executable so that cargo will re-run clippy whenever
     // it is rebuilt
+    #[expect(
+        clippy::collapsible_if,
+        reason = "Due to a bug in let_chains this if statement can't be collapsed"
+    )]
     if cfg!(debug_assertions) {
         if let Ok(current_exe) = env::current_exe()
             && let Some(current_exe) = current_exe.to_str()

@@ -1,8 +1,9 @@
 use clippy_utils::consts::{constant, Constant};
 use clippy_utils::diagnostics::span_lint_and_then;
 use clippy_utils::higher::IfLet;
+use clippy_utils::msrvs::{self, Msrv};
 use clippy_utils::ty::is_copy;
-use clippy_utils::{is_expn_of, is_lint_allowed, meets_msrv, msrvs, path_to_local};
+use clippy_utils::{is_expn_of, is_lint_allowed, path_to_local};
 use if_chain::if_chain;
 use rustc_data_structures::fx::{FxHashSet, FxIndexMap};
 use rustc_errors::Applicability;
@@ -11,7 +12,6 @@ use rustc_hir::intravisit::{self, Visitor};
 use rustc_lint::{LateContext, LateLintPass};
 use rustc_middle::hir::nested_filter;
 use rustc_middle::ty;
-use rustc_semver::RustcVersion;
 use rustc_session::{declare_tool_lint, impl_lint_pass};
 use rustc_span::{symbol::Ident, Span};
 
@@ -47,18 +47,17 @@ declare_clippy_lint! {
     /// ```
     #[clippy::version = "1.59.0"]
     pub INDEX_REFUTABLE_SLICE,
-    nursery,
+    pedantic,
     "avoid indexing on slices which could be destructed"
 }
 
-#[derive(Copy, Clone)]
 pub struct IndexRefutableSlice {
     max_suggested_slice: u64,
-    msrv: Option<RustcVersion>,
+    msrv: Msrv,
 }
 
 impl IndexRefutableSlice {
-    pub fn new(max_suggested_slice_pattern_length: u64, msrv: Option<RustcVersion>) -> Self {
+    pub fn new(max_suggested_slice_pattern_length: u64, msrv: Msrv) -> Self {
         Self {
             max_suggested_slice: max_suggested_slice_pattern_length,
             msrv,
@@ -74,7 +73,7 @@ impl<'tcx> LateLintPass<'tcx> for IndexRefutableSlice {
             if !expr.span.from_expansion() || is_expn_of(expr.span, "if_chain").is_some();
             if let Some(IfLet {let_pat, if_then, ..}) = IfLet::hir(cx, expr);
             if !is_lint_allowed(cx, INDEX_REFUTABLE_SLICE, expr.hir_id);
-            if meets_msrv(self.msrv, msrvs::SLICE_PATTERNS);
+            if self.msrv.meets(msrvs::SLICE_PATTERNS);
 
             let found_slices = find_slice_values(cx, let_pat);
             if !found_slices.is_empty();

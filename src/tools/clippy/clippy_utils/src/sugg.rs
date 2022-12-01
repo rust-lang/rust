@@ -176,25 +176,28 @@ impl<'a> Sugg<'a> {
     }
 
     /// Prepare a suggestion from an expression.
-    pub fn ast(cx: &EarlyContext<'_>, expr: &ast::Expr, default: &'a str) -> Self {
+    pub fn ast(
+        cx: &EarlyContext<'_>,
+        expr: &ast::Expr,
+        default: &'a str,
+        ctxt: SyntaxContext,
+        app: &mut Applicability,
+    ) -> Self {
         use rustc_ast::ast::RangeLimits;
 
-        let snippet_without_expansion = |cx, span: Span, default| {
-            if span.from_expansion() {
-                snippet_with_macro_callsite(cx, span, default)
-            } else {
-                snippet(cx, span, default)
-            }
-        };
-
+        #[expect(clippy::match_wildcard_for_single_variants)]
         match expr.kind {
+            _ if expr.span.ctxt() != ctxt => Sugg::NonParen(snippet_with_context(cx, expr.span, ctxt, default, app).0),
             ast::ExprKind::AddrOf(..)
             | ast::ExprKind::Box(..)
             | ast::ExprKind::Closure { .. }
             | ast::ExprKind::If(..)
             | ast::ExprKind::Let(..)
             | ast::ExprKind::Unary(..)
-            | ast::ExprKind::Match(..) => Sugg::MaybeParen(snippet_without_expansion(cx, expr.span, default)),
+            | ast::ExprKind::Match(..) => match snippet_with_context(cx, expr.span, ctxt, default, app) {
+                (snip, false) => Sugg::MaybeParen(snip),
+                (snip, true) => Sugg::NonParen(snip),
+            },
             ast::ExprKind::Async(..)
             | ast::ExprKind::Block(..)
             | ast::ExprKind::Break(..)
@@ -224,45 +227,49 @@ impl<'a> Sugg<'a> {
             | ast::ExprKind::Array(..)
             | ast::ExprKind::While(..)
             | ast::ExprKind::Await(..)
-            | ast::ExprKind::Err => Sugg::NonParen(snippet_without_expansion(cx, expr.span, default)),
+            | ast::ExprKind::Err => Sugg::NonParen(snippet_with_context(cx, expr.span, ctxt, default, app).0),
             ast::ExprKind::Range(ref lhs, ref rhs, RangeLimits::HalfOpen) => Sugg::BinOp(
                 AssocOp::DotDot,
-                lhs.as_ref()
-                    .map_or("".into(), |lhs| snippet_without_expansion(cx, lhs.span, default)),
-                rhs.as_ref()
-                    .map_or("".into(), |rhs| snippet_without_expansion(cx, rhs.span, default)),
+                lhs.as_ref().map_or("".into(), |lhs| {
+                    snippet_with_context(cx, lhs.span, ctxt, default, app).0
+                }),
+                rhs.as_ref().map_or("".into(), |rhs| {
+                    snippet_with_context(cx, rhs.span, ctxt, default, app).0
+                }),
             ),
             ast::ExprKind::Range(ref lhs, ref rhs, RangeLimits::Closed) => Sugg::BinOp(
                 AssocOp::DotDotEq,
-                lhs.as_ref()
-                    .map_or("".into(), |lhs| snippet_without_expansion(cx, lhs.span, default)),
-                rhs.as_ref()
-                    .map_or("".into(), |rhs| snippet_without_expansion(cx, rhs.span, default)),
+                lhs.as_ref().map_or("".into(), |lhs| {
+                    snippet_with_context(cx, lhs.span, ctxt, default, app).0
+                }),
+                rhs.as_ref().map_or("".into(), |rhs| {
+                    snippet_with_context(cx, rhs.span, ctxt, default, app).0
+                }),
             ),
             ast::ExprKind::Assign(ref lhs, ref rhs, _) => Sugg::BinOp(
                 AssocOp::Assign,
-                snippet_without_expansion(cx, lhs.span, default),
-                snippet_without_expansion(cx, rhs.span, default),
+                snippet_with_context(cx, lhs.span, ctxt, default, app).0,
+                snippet_with_context(cx, rhs.span, ctxt, default, app).0,
             ),
             ast::ExprKind::AssignOp(op, ref lhs, ref rhs) => Sugg::BinOp(
                 astbinop2assignop(op),
-                snippet_without_expansion(cx, lhs.span, default),
-                snippet_without_expansion(cx, rhs.span, default),
+                snippet_with_context(cx, lhs.span, ctxt, default, app).0,
+                snippet_with_context(cx, rhs.span, ctxt, default, app).0,
             ),
             ast::ExprKind::Binary(op, ref lhs, ref rhs) => Sugg::BinOp(
                 AssocOp::from_ast_binop(op.node),
-                snippet_without_expansion(cx, lhs.span, default),
-                snippet_without_expansion(cx, rhs.span, default),
+                snippet_with_context(cx, lhs.span, ctxt, default, app).0,
+                snippet_with_context(cx, rhs.span, ctxt, default, app).0,
             ),
             ast::ExprKind::Cast(ref lhs, ref ty) => Sugg::BinOp(
                 AssocOp::As,
-                snippet_without_expansion(cx, lhs.span, default),
-                snippet_without_expansion(cx, ty.span, default),
+                snippet_with_context(cx, lhs.span, ctxt, default, app).0,
+                snippet_with_context(cx, ty.span, ctxt, default, app).0,
             ),
             ast::ExprKind::Type(ref lhs, ref ty) => Sugg::BinOp(
                 AssocOp::Colon,
-                snippet_without_expansion(cx, lhs.span, default),
-                snippet_without_expansion(cx, ty.span, default),
+                snippet_with_context(cx, lhs.span, ctxt, default, app).0,
+                snippet_with_context(cx, ty.span, ctxt, default, app).0,
             ),
         }
     }

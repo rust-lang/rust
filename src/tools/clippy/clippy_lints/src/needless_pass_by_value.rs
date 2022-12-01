@@ -1,7 +1,9 @@
 use clippy_utils::diagnostics::{multispan_sugg, span_lint_and_then};
 use clippy_utils::ptr::get_spans;
 use clippy_utils::source::{snippet, snippet_opt};
-use clippy_utils::ty::{implements_trait, implements_trait_with_env, is_copy, is_type_diagnostic_item, is_type_lang_item};
+use clippy_utils::ty::{
+    implements_trait, implements_trait_with_env, is_copy, is_type_diagnostic_item, is_type_lang_item,
+};
 use clippy_utils::{get_trait_def_id, is_self, paths};
 use if_chain::if_chain;
 use rustc_ast::ast::Attribute;
@@ -124,7 +126,9 @@ impl<'tcx> LateLintPass<'tcx> for NeedlessPassByValue {
             .filter_map(|obligation| {
                 // Note that we do not want to deal with qualified predicates here.
                 match obligation.predicate.kind().no_bound_vars() {
-                    Some(ty::PredicateKind::Clause(ty::Clause::Trait(pred))) if pred.def_id() != sized_trait => Some(pred),
+                    Some(ty::PredicateKind::Clause(ty::Clause::Trait(pred))) if pred.def_id() != sized_trait => {
+                        Some(pred)
+                    },
                     _ => None,
                 }
             })

@@ -1,9 +1,10 @@
 use clippy_utils::consts::{constant, Constant};
 use clippy_utils::diagnostics::{span_lint_and_sugg, span_lint_and_then};
+use clippy_utils::msrvs::{self, Msrv};
 use clippy_utils::source::snippet_with_context;
 use clippy_utils::usage::local_used_after_expr;
 use clippy_utils::visitors::{for_each_expr_with_closures, Descend};
-use clippy_utils::{is_diag_item_method, match_def_path, meets_msrv, msrvs, path_to_local_id, paths};
+use clippy_utils::{is_diag_item_method, match_def_path, path_to_local_id, paths};
 use core::ops::ControlFlow;
 use if_chain::if_chain;
 use rustc_errors::Applicability;
@@ -12,7 +13,6 @@ use rustc_hir::{
 };
 use rustc_lint::LateContext;
 use rustc_middle::ty;
-use rustc_semver::RustcVersion;
 use rustc_span::{sym, Span, Symbol, SyntaxContext};
 
 use super::{MANUAL_SPLIT_ONCE, NEEDLESS_SPLITN};
@@ -24,7 +24,7 @@ pub(super) fn check(
     self_arg: &Expr<'_>,
     pat_arg: &Expr<'_>,
     count: u128,
-    msrv: Option<RustcVersion>,
+    msrv: &Msrv,
 ) {
     if count < 2 || !cx.typeck_results().expr_ty_adjusted(self_arg).peel_refs().is_str() {
         return;
@@ -34,7 +34,7 @@ pub(super) fn check(
         IterUsageKind::Nth(n) => count > n + 1,
         IterUsageKind::NextTuple => count > 2,
     };
-    let manual = count == 2 && meets_msrv(msrv, msrvs::STR_SPLIT_ONCE);
+    let manual = count == 2 && msrv.meets(msrvs::STR_SPLIT_ONCE);
 
     match parse_iter_usage(cx, expr.span.ctxt(), cx.tcx.hir().parent_iter(expr.hir_id)) {
         Some(usage) if needless(usage.kind) => lint_needless(cx, method_name, expr, self_arg, pat_arg),
