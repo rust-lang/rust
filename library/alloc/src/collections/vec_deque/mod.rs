@@ -2794,9 +2794,9 @@ impl<T, A: Allocator> From<Vec<T, A>> for VecDeque<T, A> {
     /// [`Vec<T>`]: crate::vec::Vec
     /// [`VecDeque<T>`]: crate::collections::VecDeque
     ///
-    /// In its current implementation, this is a very cheap
-    /// conversion. This isn't yet a guarantee though, and
-    /// shouldn't be relied on.
+    /// This conversion is guaranteed to run in *O*(1) time
+    /// and to not re-allocate the `Vec`'s buffer or allocate
+    /// any additional memory.
     #[inline]
     fn from(other: Vec<T, A>) -> Self {
         let (ptr, len, cap, alloc) = other.into_raw_parts_with_alloc();
