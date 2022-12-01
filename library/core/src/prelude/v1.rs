@@ -104,4 +104,5 @@ pub use crate::macros::builtin::cfg_eval;
     issue = "23416",
     reason = "placeholder syntax for type ascription"
 )]
+#[cfg(not(bootstrap))]
 pub use crate::macros::builtin::type_ascribe;

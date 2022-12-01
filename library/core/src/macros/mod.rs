@@ -1558,17 +1558,6 @@ pub(crate) mod builtin {
         /* compiler built-in */
     }
 
-    /// Unstable placeholder for type ascription.
-    #[unstable(
-        feature = "type_ascription",
-        issue = "23416",
-        reason = "placeholder syntax for type ascription"
-    )]
-    #[cfg(bootstrap)]
-    pub macro type_ascribe($expr:expr, $ty:ty) {
-        $expr: $ty
-    }
-
     /// Unstable implementation detail of the `rustc` compiler, do not use.
     #[rustc_builtin_macro]
     #[stable(feature = "rust1", since = "1.0.0")]

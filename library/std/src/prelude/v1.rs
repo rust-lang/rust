@@ -91,6 +91,7 @@ pub use core::prelude::v1::cfg_eval;
     issue = "23416",
     reason = "placeholder syntax for type ascription"
 )]
+#[cfg(not(bootstrap))]
 pub use core::prelude::v1::type_ascribe;
 
 // The file so far is equivalent to src/libcore/prelude/v1.rs,
