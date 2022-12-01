@@ -32,13 +32,13 @@ pub struct TypeLengthLimit {
     pub type_length: usize,
 }
 
-pub struct UnusedGenericParams {
+pub struct UnusedGenericParamsHint {
     pub span: Span,
     pub param_spans: Vec<Span>,
     pub param_names: Vec<String>,
 }
 
-impl IntoDiagnostic<'_> for UnusedGenericParams {
+impl IntoDiagnostic<'_> for UnusedGenericParamsHint {
     #[track_caller]
     fn into_diagnostic(
         self,
