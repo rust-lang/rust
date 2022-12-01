@@ -72,16 +72,6 @@ impl Arch {
             Arm64_sim => "apple-a12",
         }
     }
-
-    fn link_env_remove(self) -> StaticCow<[StaticCow<str>]> {
-        match self {
-            Armv7 | Armv7k | Armv7s | Arm64 | Arm64_32 | I386 | I686 | X86_64 | X86_64_sim
-            | Arm64_sim => {
-                cvs!["MACOSX_DEPLOYMENT_TARGET"]
-            }
-            X86_64_macabi | Arm64_macabi => cvs!["IPHONEOS_DEPLOYMENT_TARGET"],
-        }
-    }
 }
 
 fn pre_link_args(os: &'static str, arch: Arch, abi: &'static str) -> LinkArgs {
@@ -140,7 +130,7 @@ pub fn opts(os: &'static str, arch: Arch) -> TargetOptions {
         abi: abi.into(),
         os: os.into(),
         cpu: arch.target_cpu().into(),
-        link_env_remove: arch.link_env_remove(),
+        link_env_remove: link_env_remove(arch, os),
         vendor: "apple".into(),
         linker_flavor: LinkerFlavor::Darwin(Cc::Yes, Lld::No),
         // macOS has -dead_strip, which doesn't rely on function_sections
@@ -211,20 +201,38 @@ pub fn macos_llvm_target(arch: Arch) -> String {
     format!("{}-apple-macosx{}.{}.0", arch.target_name(), major, minor)
 }
 
-pub fn macos_link_env_remove() -> Vec<StaticCow<str>> {
-    let mut env_remove = Vec::with_capacity(2);
-    // Remove the `SDKROOT` environment variable if it's clearly set for the wrong platform, which
-    // may occur when we're linking a custom build script while targeting iOS for example.
-    if let Ok(sdkroot) = env::var("SDKROOT") {
-        if sdkroot.contains("iPhoneOS.platform") || sdkroot.contains("iPhoneSimulator.platform") {
-            env_remove.push("SDKROOT".into())
+fn link_env_remove(arch: Arch, os: &'static str) -> StaticCow<[StaticCow<str>]> {
+    // Apple platforms only officially support macOS as a host for any compilation.
+    //
+    // If building for macOS, we go ahead and remove any erronous environment state
+    // that's only applicable to cross-OS compilation. Always leave anything for the
+    // host OS alone though.
+    if os == "macos" {
+        let mut env_remove = Vec::with_capacity(2);
+        // Remove the `SDKROOT` environment variable if it's clearly set for the wrong platform, which
+        // may occur when we're linking a custom build script while targeting iOS for example.
+        if let Ok(sdkroot) = env::var("SDKROOT") {
+            if sdkroot.contains("iPhoneOS.platform") || sdkroot.contains("iPhoneSimulator.platform")
+            {
+                env_remove.push("SDKROOT".into())
+            }
+        }
+        // Additionally, `IPHONEOS_DEPLOYMENT_TARGET` must not be set when using the Xcode linker at
+        // "/Applications/Xcode.app/Contents/Developer/Toolchains/XcodeDefault.xctoolchain/usr/bin/ld",
+        // although this is apparently ignored when using the linker at "/usr/bin/ld".
+        env_remove.push("IPHONEOS_DEPLOYMENT_TARGET".into());
+        env_remove.into()
+    } else {
+        // Otherwise if cross-compiling for a different OS/SDK, remove any part
+        // of the linking environment that's wrong and reversed.
+        match arch {
+            Armv7 | Armv7k | Armv7s | Arm64 | Arm64_32 | I386 | I686 | X86_64 | X86_64_sim
+            | Arm64_sim => {
+                cvs!["MACOSX_DEPLOYMENT_TARGET"]
+            }
+            X86_64_macabi | Arm64_macabi => cvs!["IPHONEOS_DEPLOYMENT_TARGET"],
         }
     }
-    // Additionally, `IPHONEOS_DEPLOYMENT_TARGET` must not be set when using the Xcode linker at
-    // "/Applications/Xcode.app/Contents/Developer/Toolchains/XcodeDefault.xctoolchain/usr/bin/ld",
-    // although this is apparently ignored when using the linker at "/usr/bin/ld".
-    env_remove.push("IPHONEOS_DEPLOYMENT_TARGET".into());
-    env_remove
 }
 
 fn ios_deployment_target() -> (u32, u32) {

@@ -1,4 +1,4 @@
-use super::apple_base::{macos_link_env_remove, macos_llvm_target, opts, Arch};
+use super::apple_base::{macos_llvm_target, opts, Arch};
 use crate::spec::{Cc, FramePointer, LinkerFlavor, Lld, StackProbeType, Target, TargetOptions};
 
 pub fn target() -> Target {
@@ -7,7 +7,6 @@ pub fn target() -> Target {
     let mut base = opts("macos", arch);
     base.max_atomic_width = Some(64);
     base.add_pre_link_args(LinkerFlavor::Darwin(Cc::Yes, Lld::No), &["-m32"]);
-    base.link_env_remove.to_mut().extend(macos_link_env_remove());
     base.stack_probes = StackProbeType::X86;
     base.frame_pointer = FramePointer::Always;
 
