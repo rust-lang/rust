@@ -160,11 +160,9 @@ pub fn dump_mir_for_pass<'tcx>(
     pass_name: &str,
     is_after: bool,
 ) {
-    let phase_index = body.phase.phase_index();
-
     mir::dump_mir(
         tcx,
-        Some(&format_args!("{:03}-{:03}", phase_index, body.pass_count)),
+        true,
         pass_name,
         if is_after { &"after" } else { &"before" },
         body,
@@ -173,14 +171,5 @@ pub fn dump_mir_for_pass<'tcx>(
 }
 
 pub fn dump_mir_for_phase_change<'tcx>(tcx: TyCtxt<'tcx>, body: &Body<'tcx>) {
-    let phase_index = body.phase.phase_index();
-
-    mir::dump_mir(
-        tcx,
-        Some(&format_args!("{:03}-000", phase_index)),
-        body.phase.name(),
-        &"after",
-        body,
-        |_, _| Ok(()),
-    )
+    mir::dump_mir(tcx, true, body.phase.name(), &"after", body, |_, _| Ok(()))
 }
