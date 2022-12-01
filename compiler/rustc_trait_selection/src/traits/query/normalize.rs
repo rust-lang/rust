@@ -23,6 +23,13 @@ use super::NoSolution;
 pub use rustc_middle::traits::query::NormalizationResult;
 
 pub trait QueryNormalizeExt<'tcx> {
+    /// Normalize a value using the `QueryNormalizer`.
+    ///
+    /// This normalization should *only* be used when the projection does not
+    /// have possible ambiguity or may not be well-formed.
+    ///
+    /// After codegen, when lifetimes do not matter, it is preferable to instead
+    /// use [`TyCtxt::normalize_erasing_regions`], which wraps this procedure.
     fn query_normalize<T>(&self, value: T) -> Result<Normalized<'tcx, T>, NoSolution>
     where
         T: TypeFoldable<'tcx>;
