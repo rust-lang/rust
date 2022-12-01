@@ -492,7 +492,7 @@ fn construct_fn<'tcx>(
             arguments,
             return_ty,
             return_ty_span,
-            span,
+            span_with_body,
             custom_mir_attr,
         );
     }
