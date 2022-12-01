@@ -1,7 +1,6 @@
 // run-rustfix
 // aux-build:proc_macro_derive.rs
 
-#![feature(custom_inner_attributes)]
 #![warn(clippy::use_self)]
 #![allow(dead_code, unreachable_code)]
 #![allow(
@@ -619,9 +618,8 @@ mod issue6902 {
     }
 }
 
+#[clippy::msrv = "1.36"]
 fn msrv_1_36() {
-    #![clippy::msrv = "1.36"]
-
     enum E {
         A,
     }
@@ -635,9 +633,8 @@ fn msrv_1_36() {
     }
 }
 
+#[clippy::msrv = "1.37"]
 fn msrv_1_37() {
-    #![clippy::msrv = "1.37"]
-
     enum E {
         A,
     }

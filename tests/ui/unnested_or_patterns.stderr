@@ -176,7 +176,7 @@ LL |     if let S { x: 0 | 1, y } = (S { x: 0, y: 1 }) {}
    |            ~~~~~~~~~~~~~~~~~
 
 error: unnested or-patterns
-  --> $DIR/unnested_or_patterns.rs:46:12
+  --> $DIR/unnested_or_patterns.rs:44:12
    |
 LL |     if let [1] | [53] = [0] {}
    |            ^^^^^^^^^^

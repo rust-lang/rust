@@ -120,8 +120,8 @@ impl ClippyWarning {
             format!("$CARGO_HOME/{}", stripped.display())
         } else {
             format!(
-                "target/lintcheck/sources/{}-{}/{}",
-                crate_name, crate_version, span.file_name
+                "target/lintcheck/sources/{crate_name}-{crate_version}/{}",
+                span.file_name
             )
         };
 
@@ -322,13 +322,13 @@ impl Crate {
 
         if config.max_jobs == 1 {
             println!(
-                "{}/{} {}% Linting {} {}",
-                index, total_crates_to_lint, perc, &self.name, &self.version
+                "{index}/{total_crates_to_lint} {perc}% Linting {} {}",
+                &self.name, &self.version
             );
         } else {
             println!(
-                "{}/{} {}% Linting {} {} in target dir {:?}",
-                index, total_crates_to_lint, perc, &self.name, &self.version, thread_index
+                "{index}/{total_crates_to_lint} {perc}% Linting {} {} in target dir {thread_index:?}",
+                &self.name, &self.version
             );
         }
 
@@ -398,8 +398,7 @@ impl Crate {
             .output()
             .unwrap_or_else(|error| {
                 panic!(
-                    "Encountered error:\n{:?}\ncargo_clippy_path: {}\ncrate path:{}\n",
-                    error,
+                    "Encountered error:\n{error:?}\ncargo_clippy_path: {}\ncrate path:{}\n",
                     &cargo_clippy_path.display(),
                     &self.path.display()
                 );

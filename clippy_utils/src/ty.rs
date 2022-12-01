@@ -9,7 +9,10 @@ use rustc_hir as hir;
 use rustc_hir::def::{CtorKind, CtorOf, DefKind, Res};
 use rustc_hir::def_id::DefId;
 use rustc_hir::{Expr, FnDecl, LangItem, TyKind, Unsafety};
-use rustc_infer::infer::{TyCtxtInferExt, type_variable::{TypeVariableOrigin, TypeVariableOriginKind}};
+use rustc_infer::infer::{
+    type_variable::{TypeVariableOrigin, TypeVariableOriginKind},
+    TyCtxtInferExt,
+};
 use rustc_lint::LateContext;
 use rustc_middle::mir::interpret::{ConstValue, Scalar};
 use rustc_middle::ty::{
@@ -189,7 +192,13 @@ pub fn implements_trait<'tcx>(
     trait_id: DefId,
     ty_params: &[GenericArg<'tcx>],
 ) -> bool {
-    implements_trait_with_env(cx.tcx, cx.param_env, ty, trait_id, ty_params.iter().map(|&arg| Some(arg)))
+    implements_trait_with_env(
+        cx.tcx,
+        cx.param_env,
+        ty,
+        trait_id,
+        ty_params.iter().map(|&arg| Some(arg)),
+    )
 }
 
 /// Same as `implements_trait` but allows using a `ParamEnv` different from the lint context.
@@ -212,7 +221,11 @@ pub fn implements_trait_with_env<'tcx>(
         kind: TypeVariableOriginKind::MiscVariable,
         span: DUMMY_SP,
     };
-    let ty_params = tcx.mk_substs(ty_params.into_iter().map(|arg| arg.unwrap_or_else(|| infcx.next_ty_var(orig).into())));
+    let ty_params = tcx.mk_substs(
+        ty_params
+            .into_iter()
+            .map(|arg| arg.unwrap_or_else(|| infcx.next_ty_var(orig).into())),
+    );
     infcx
         .type_implements_trait(trait_id, [ty.into()].into_iter().chain(ty_params), param_env)
         .must_apply_modulo_regions()
@@ -712,7 +725,9 @@ fn sig_for_projection<'tcx>(cx: &LateContext<'tcx>, ty: ProjectionTy<'tcx>) -> O
                 }
                 inputs = Some(i);
             },
-            PredicateKind::Clause(ty::Clause::Projection(p)) if Some(p.projection_ty.item_def_id) == lang_items.fn_once_output() => {
+            PredicateKind::Clause(ty::Clause::Projection(p))
+                if Some(p.projection_ty.item_def_id) == lang_items.fn_once_output() =>
+            {
                 if output.is_some() {
                     // Multiple different fn trait impls. Is this even allowed?
                     return None;
@@ -992,14 +1007,12 @@ pub fn make_projection<'tcx>(
 
             debug_assert!(
                 generic_count == substs.len(),
-                "wrong number of substs for `{:?}`: found `{}` expected `{}`.\n\
+                "wrong number of substs for `{:?}`: found `{}` expected `{generic_count}`.\n\
                     note: the expected parameters are: {:#?}\n\
-                    the given arguments are: `{:#?}`",
+                    the given arguments are: `{substs:#?}`",
                 assoc_item.def_id,
                 substs.len(),
-                generic_count,
                 params.map(ty::GenericParamDefKind::descr).collect::<Vec<_>>(),
-                substs,
             );
 
             if let Some((idx, (param, arg))) = params
@@ -1017,14 +1030,11 @@ pub fn make_projection<'tcx>(
             {
                 debug_assert!(
                     false,
-                    "mismatched subst type at index {}: expected a {}, found `{:?}`\n\
+                    "mismatched subst type at index {idx}: expected a {}, found `{arg:?}`\n\
                         note: the expected parameters are {:#?}\n\
-                        the given arguments are {:#?}",
-                    idx,
+                        the given arguments are {substs:#?}",
                     param.descr(),
-                    arg,
-                    params.map(ty::GenericParamDefKind::descr).collect::<Vec<_>>(),
-                    substs,
+                    params.map(ty::GenericParamDefKind::descr).collect::<Vec<_>>()
                 );
             }
         }

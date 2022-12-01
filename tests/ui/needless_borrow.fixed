@@ -1,13 +1,13 @@
 // run-rustfix
-#![feature(custom_inner_attributes, lint_reasons)]
-
-#[warn(clippy::all, clippy::needless_borrow)]
-#[allow(unused_variables)]
-#[allow(
+#![feature(lint_reasons)]
+#![allow(
+    unused,
     clippy::uninlined_format_args,
     clippy::unnecessary_mut_passed,
     clippy::unnecessary_to_owned
 )]
+#![warn(clippy::needless_borrow)]
+
 fn main() {
     let a = 5;
     let ref_a = &a;
@@ -171,14 +171,12 @@ impl<'a> Trait for &'a str {}
 
 fn h(_: &dyn Trait) {}
 
-#[allow(dead_code)]
 fn check_expect_suppression() {
     let a = 5;
     #[expect(clippy::needless_borrow)]
     let _ = x(&&a);
 }
 
-#[allow(dead_code)]
 mod issue9160 {
     pub struct S<F> {
         f: F,
@@ -267,7 +265,6 @@ where
 }
 
 // https://github.com/rust-lang/rust-clippy/pull/9136#pullrequestreview-1037379321
-#[allow(dead_code)]
 mod copyable_iterator {
     #[derive(Clone, Copy)]
     struct Iter;
@@ -287,25 +284,20 @@ mod copyable_iterator {
     }
 }
 
+#[clippy::msrv = "1.52.0"]
 mod under_msrv {
-    #![allow(dead_code)]
-    #![clippy::msrv = "1.52.0"]
-
     fn foo() {
         let _ = std::process::Command::new("ls").args(&["-a", "-l"]).status().unwrap();
     }
 }
 
+#[clippy::msrv = "1.53.0"]
 mod meets_msrv {
-    #![allow(dead_code)]
-    #![clippy::msrv = "1.53.0"]
-
     fn foo() {
         let _ = std::process::Command::new("ls").args(["-a", "-l"]).status().unwrap();
     }
 }
 
-#[allow(unused)]
 fn issue9383() {
     // Should not lint because unions need explicit deref when accessing field
     use std::mem::ManuallyDrop;
@@ -334,7 +326,6 @@ fn issue9383() {
     }
 }
 
-#[allow(dead_code)]
 fn closure_test() {
     let env = "env".to_owned();
     let arg = "arg".to_owned();
@@ -348,7 +339,6 @@ fn closure_test() {
     f(arg);
 }
 
-#[allow(dead_code)]
 mod significant_drop {
     #[derive(Debug)]
     struct X;
@@ -368,7 +358,6 @@ mod significant_drop {
     fn debug(_: impl std::fmt::Debug) {}
 }
 
-#[allow(dead_code)]
 mod used_exactly_once {
     fn foo(x: String) {
         use_x(x);
@@ -376,7 +365,6 @@ mod used_exactly_once {
     fn use_x(_: impl AsRef<str>) {}
 }
 
-#[allow(dead_code)]
 mod used_more_than_once {
     fn foo(x: String) {
         use_x(&x);
@@ -387,7 +375,6 @@ mod used_more_than_once {
 }
 
 // https://github.com/rust-lang/rust-clippy/issues/9111#issuecomment-1277114280
-#[allow(dead_code)]
 mod issue_9111 {
     struct A;
 
@@ -409,7 +396,6 @@ mod issue_9111 {
     }
 }
 
-#[allow(dead_code)]
 mod issue_9710 {
     fn main() {
         let string = String::new();
@@ -421,7 +407,6 @@ mod issue_9710 {
     fn f<T: AsRef<str>>(_: T) {}
 }
 
-#[allow(dead_code)]
 mod issue_9739 {
     fn foo<D: std::fmt::Display>(_it: impl IntoIterator<Item = D>) {}
 
@@ -434,7 +419,6 @@ mod issue_9739 {
     }
 }
 
-#[allow(dead_code)]
 mod issue_9739_method_variant {
     struct S;
 
@@ -451,7 +435,6 @@ mod issue_9739_method_variant {
     }
 }
 
-#[allow(dead_code)]
 mod issue_9782 {
     fn foo<T: AsRef<[u8]>>(t: T) {
         println!("{}", std::mem::size_of::<T>());
@@ -475,7 +458,6 @@ mod issue_9782 {
     }
 }
 
-#[allow(dead_code)]
 mod issue_9782_type_relative_variant {
     struct S;
 
@@ -493,7 +475,6 @@ mod issue_9782_type_relative_variant {
     }
 }
 
-#[allow(dead_code)]
 mod issue_9782_method_variant {
     struct S;
 

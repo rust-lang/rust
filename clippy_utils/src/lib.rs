@@ -105,8 +105,6 @@ use rustc_middle::ty::{
     layout::IntegerExt, BorrowKind, ClosureKind, DefIdTree, Ty, TyCtxt, TypeAndMut, TypeVisitable, UpvarCapture,
 };
 use rustc_middle::ty::{FloatTy, IntTy, UintTy};
-use rustc_semver::RustcVersion;
-use rustc_session::Session;
 use rustc_span::hygiene::{ExpnKind, MacroKind};
 use rustc_span::source_map::SourceMap;
 use rustc_span::sym;
@@ -118,36 +116,17 @@ use crate::consts::{constant, Constant};
 use crate::ty::{can_partially_move_ty, expr_sig, is_copy, is_recursively_primitive_type, ty_is_fn_once_param};
 use crate::visitors::for_each_expr;
 
-pub fn parse_msrv(msrv: &str, sess: Option<&Session>, span: Option<Span>) -> Option<RustcVersion> {
-    if let Ok(version) = RustcVersion::parse(msrv) {
-        return Some(version);
-    } else if let Some(sess) = sess {
-        if let Some(span) = span {
-            sess.span_err(span, format!("`{msrv}` is not a valid Rust version"));
-        }
-    }
-    None
-}
-
-pub fn meets_msrv(msrv: Option<RustcVersion>, lint_msrv: RustcVersion) -> bool {
-    msrv.map_or(true, |msrv| msrv.meets(lint_msrv))
-}
-
 #[macro_export]
 macro_rules! extract_msrv_attr {
     ($context:ident) => {
         fn enter_lint_attrs(&mut self, cx: &rustc_lint::$context<'_>, attrs: &[rustc_ast::ast::Attribute]) {
             let sess = rustc_lint::LintContext::sess(cx);
-            match $crate::get_unique_inner_attr(sess, attrs, "msrv") {
-                Some(msrv_attr) => {
-                    if let Some(msrv) = msrv_attr.value_str() {
-                        self.msrv = $crate::parse_msrv(&msrv.to_string(), Some(sess), Some(msrv_attr.span));
-                    } else {
-                        sess.span_err(msrv_attr.span, "bad clippy attribute");
-                    }
-                },
-                _ => (),
-            }
+            self.msrv.enter_lint_attrs(sess, attrs);
+        }
+
+        fn exit_lint_attrs(&mut self, cx: &rustc_lint::$context<'_>, attrs: &[rustc_ast::ast::Attribute]) {
+            let sess = rustc_lint::LintContext::sess(cx);
+            self.msrv.exit_lint_attrs(sess, attrs);
         }
     };
 }

@@ -277,4 +277,8 @@ fn main() {
         unimplemented!()
     }
     let _: String = takes_assoc(&*String::new());
+
+    // Issue #9901
+    fn takes_ref(_: &i32) {}
+    takes_ref(*Box::new(&0i32));
 }

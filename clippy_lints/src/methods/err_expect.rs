@@ -1,27 +1,27 @@
 use super::ERR_EXPECT;
 use clippy_utils::diagnostics::span_lint_and_sugg;
+use clippy_utils::msrvs::{self, Msrv};
 use clippy_utils::ty::has_debug_impl;
-use clippy_utils::{meets_msrv, msrvs, ty::is_type_diagnostic_item};
+use clippy_utils::ty::is_type_diagnostic_item;
 use rustc_errors::Applicability;
 use rustc_lint::LateContext;
 use rustc_middle::ty;
 use rustc_middle::ty::Ty;
-use rustc_semver::RustcVersion;
 use rustc_span::{sym, Span};
 
 pub(super) fn check(
     cx: &LateContext<'_>,
     _expr: &rustc_hir::Expr<'_>,
     recv: &rustc_hir::Expr<'_>,
-    msrv: Option<RustcVersion>,
     expect_span: Span,
     err_span: Span,
+    msrv: &Msrv,
 ) {
     if_chain! {
         if is_type_diagnostic_item(cx, cx.typeck_results().expr_ty(recv), sym::Result);
         // Test the version to make sure the lint can be showed (expect_err has been
         // introduced in rust 1.17.0 : https://github.com/rust-lang/rust/pull/38982)
-        if meets_msrv(msrv, msrvs::EXPECT_ERR);
+        if msrv.meets(msrvs::EXPECT_ERR);
 
         // Grabs the `Result<T, E>` type
         let result_type = cx.typeck_results().expr_ty(recv);

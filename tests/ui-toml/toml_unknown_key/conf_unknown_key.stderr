@@ -1,6 +1,7 @@
 error: error reading Clippy's configuration file `$DIR/clippy.toml`: unknown field `foobar`, expected one of
            allow-dbg-in-tests
            allow-expect-in-tests
+           allow-mixed-uninlined-format-args
            allow-print-in-tests
            allow-unwrap-in-tests
            allowed-scripts

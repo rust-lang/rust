@@ -118,12 +118,7 @@ pub(super) fn check(cx: &LateContext<'_>, expr: &Expr<'_>, cast_expr: &Expr<'_>,
             };
             let to_nbits = utils::int_ty_to_nbits(cast_to, cx.tcx);
 
-            let cast_from_ptr_size = def.repr().int.map_or(true, |ty| {
-                matches!(
-                    ty,
-                    IntegerType::Pointer(_),
-                )
-            });
+            let cast_from_ptr_size = def.repr().int.map_or(true, |ty| matches!(ty, IntegerType::Pointer(_),));
             let suffix = match (cast_from_ptr_size, is_isize_or_usize(cast_to)) {
                 (false, false) if from_nbits > to_nbits => "",
                 (true, false) if from_nbits > to_nbits => "",
