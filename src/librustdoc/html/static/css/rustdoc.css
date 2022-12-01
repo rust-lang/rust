@@ -894,7 +894,6 @@ so that we can apply CSS-filters to change the arrow color in themes */
 	white-space: nowrap;
 	text-overflow: ellipsis;
 	overflow: hidden;
-	display: block;
 }
 
 .search-results a:hover,
