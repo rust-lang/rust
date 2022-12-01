@@ -196,7 +196,7 @@ pub fn in_constant(cx: &LateContext<'_>, id: HirId) -> bool {
     let parent_id = cx.tcx.hir().get_parent_item(id).def_id;
     match cx.tcx.hir().get_by_def_id(parent_id) {
         Node::Item(&Item {
-            kind: ItemKind::Const(..) | ItemKind::Static(..),
+            kind: ItemKind::Const(..) | ItemKind::Static(..) | ItemKind::Enum(..),
             ..
         })
         | Node::TraitItem(&TraitItem {
