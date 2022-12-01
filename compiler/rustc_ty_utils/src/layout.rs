@@ -9,8 +9,8 @@ use rustc_middle::ty::{
     self, subst::SubstsRef, EarlyBinder, ReprOptions, Ty, TyCtxt, TypeVisitable,
 };
 use rustc_session::{DataTypeKind, FieldInfo, SizeKind, VariantInfo};
-use rustc_span::symbol::Symbol;
 use rustc_span::DUMMY_SP;
+use rustc_span::{sym, symbol::Symbol};
 use rustc_target::abi::*;
 
 use std::fmt::Debug;
@@ -88,7 +88,8 @@ fn univariant_uninterned<'tcx>(
         return Err(LayoutError::Unknown(ty));
     }
 
-    cx.univariant(dl, fields, repr, kind).ok_or(LayoutError::SizeOverflow(ty))
+    cx.univariant(dl, fields, repr, kind, |tcx| option_niche_guaranteed(tcx.tcx, ty))
+        .ok_or(LayoutError::SizeOverflow(ty))
 }
 
 fn layout_of_uncached<'tcx>(
@@ -437,6 +438,7 @@ fn layout_of_uncached<'tcx>(
                                 None => false,
                             }
                     },
+                    |tcx| option_niche_guaranteed(tcx.tcx, ty),
                 )
                 .ok_or(LayoutError::SizeOverflow(ty))?,
             )
@@ -456,6 +458,90 @@ fn layout_of_uncached<'tcx>(
         ty::Bound(..) | ty::Param(_) | ty::Error(_) => {
             return Err(LayoutError::Unknown(ty));
         }
+    })
+}
+
+/// Returns `true` if nullable pointer optimizations apply to the given type,
+/// e.g. `Option<NonNull<_>>` as well as `Option<T>`s where `T` is a transparent
+/// newtype around another niche-able type.
+///
+/// Currently supports function pointers (`fn(...) -> ..`), `Box<_>`, references, `NonNull<_>`,
+/// `NonZero*`, `bool` and `#[repr(transparent)]` newtypes around them
+fn option_niche_guaranteed<'tcx>(tcx: TyCtxt<'tcx>, ty: Ty<'tcx>) -> bool {
+    // This filters out types that match the following criteria (enums that look like `Option`):
+    // - The type is an adt
+    // - The type is an enum with two variants
+    // - One enum variant is empty, one carries a single data member
+    if let ty::Adt(ty_def, substs) = ty.kind()
+        && let [var_one, var_two] =  &*ty_def.variants().raw
+        && let ([], [field]) | ([field], []) = (&*var_one.fields, &*var_two.fields)
+    {
+        let mut required_niches = 1;
+        let mut field_ty = field.ty(tcx, substs);
+
+        // We apply these criteria recursively until we've peeled our way back to center of the type
+        // before checking if that type is non-null
+        // FIXME(Kixiron): This also accepts enums that just *look* like `Option`, any arbitrary
+        // `enum Maybe<T> { Just(T), Nothing }` also fits these criteria even though they don't have guaranteed
+        // niche optimization. I'm fairly sure that the only workaround for this is to make `Option` a lang item
+        // or otherwise well-known to the compiler, which is a little unfortunate
+        while let ty::Adt(ty_def, substs) = field_ty.kind()
+            && let [var_one, var_two] =  &*ty_def.variants().raw
+            && let ([], [field]) | ([field], []) = (&*var_one.fields, &*var_two.fields)
+        {
+            required_niches += 1;
+            field_ty = field.ty(tcx, substs);
+        }
+
+        // Now that we know the type is an option-shaped enum, we can check its contents to see if
+        // they're nullable
+        return type_is_nicheable(tcx, field_ty, required_niches);
+    }
+
+    false
+}
+
+/// Is the given type known to be non-null?
+fn type_is_nicheable<'tcx>(tcx: TyCtxt<'tcx>, ty: Ty<'tcx>, required_niches: usize) -> bool {
+    match ty.kind() {
+        // `bool` has 254 niches available (2⁸ - 2)
+        ty::Bool => true, // required_niches <= 254,
+
+        // Pointers only have one niche available
+        ty::FnPtr(_) | ty::Ref(..) => true, //  required_niches <= 1,
+
+        // If the type is `Box` or has `#[rustc_nonnull_optimization_guaranteed]`
+        ty::Adt(def, _)
+            if def.is_box()
+                || tcx.has_attr(def.did(), sym::rustc_nonnull_optimization_guaranteed) =>
+        {
+            true // required_niches <= 1
+        }
+
+        // `UnsafeCell` and unions have their niches hidden
+        ty::Adt(def, _) if def.is_unsafe_cell() || def.is_union() => false,
+
+        ty::Adt(def, substs) if def.repr().transparent() => def
+            .variants()
+            .iter()
+            .filter_map(|variant| transparent_newtype_field(tcx, variant))
+            .any(|field| type_is_nicheable(tcx, field.ty(tcx, substs), required_niches)),
+
+        _ => false,
+    }
+}
+
+/// `repr(transparent)` structs can have a single non-ZST field, this function returns that
+/// field.
+fn transparent_newtype_field<'tcx, 'a>(
+    tcx: TyCtxt<'tcx>,
+    variant: &'a ty::VariantDef,
+) -> Option<&'a ty::FieldDef> {
+    let param_env = tcx.param_env(variant.def_id);
+    variant.fields.iter().find(|field| {
+        let field_ty = tcx.type_of(field.did);
+        let is_zst = tcx.layout_of(param_env.and(field_ty)).map_or(false, |layout| layout.is_zst());
+        !is_zst
     })
 }
 

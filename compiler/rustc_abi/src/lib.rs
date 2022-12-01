@@ -83,6 +83,7 @@ pub struct ReprOptions {
     /// Everything's a tradeoff, a `u64` seed should be sufficient for our
     /// purposes (primarily `-Z randomize-layout`)
     pub field_shuffle_seed: u64,
+    pub random_padding_max_factor: u8,
 }
 
 impl ReprOptions {
@@ -139,8 +140,10 @@ impl ReprOptions {
     /// Returns `true` if this type is valid for reordering and `-Z randomize-layout`
     /// was enabled for its declaration crate
     pub fn can_randomize_type_layout(&self) -> bool {
-        !self.inhibit_struct_field_reordering_opt()
-            && self.flags.contains(ReprFlags::RANDOMIZE_LAYOUT)
+        self.flags.contains(ReprFlags::RANDOMIZE_LAYOUT)
+            && !self.flags.contains(ReprFlags::IS_TRANSPARENT)
+            && !self.inhibit_struct_field_reordering_opt()
+            && !self.inhibit_enum_layout_opt()
     }
 
     /// Returns `true` if this `#[repr()]` should inhibit union ABI optimisations.

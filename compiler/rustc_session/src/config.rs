@@ -2826,6 +2826,7 @@ pub(crate) mod dep_tracking {
         lint::Level,
         WasiExecModel,
         u32,
+        u8,
         RelocModel,
         CodeModel,
         TlsModel,

@@ -8,7 +8,7 @@ use std::{
 };
 
 #[cfg(feature = "randomize")]
-use rand::{seq::SliceRandom, SeedableRng};
+use rand::{seq::SliceRandom, Rng, SeedableRng};
 #[cfg(feature = "randomize")]
 use rand_xoshiro::Xoshiro128StarStar;
 
@@ -61,18 +61,30 @@ pub trait LayoutCalculator {
         }
     }
 
-    fn univariant<'a, V: Idx, F: Deref<Target = &'a LayoutS<V>> + Debug>(
+    fn univariant<'a, V, F, N>(
         &self,
         dl: &TargetDataLayout,
         fields: &[F],
         repr: &ReprOptions,
         kind: StructKind,
-    ) -> Option<LayoutS<V>> {
+        option_niche_guaranteed: N,
+    ) -> Option<LayoutS<V>>
+    where
+        V: Idx,
+        F: Deref<Target = &'a LayoutS<V>> + Debug,
+        N: Fn(&Self) -> bool + Copy,
+    {
         let pack = repr.pack;
         let mut align = if pack.is_some() { dl.i8_align } else { dl.aggregate_align };
         let mut inverse_memory_index: Vec<u32> = (0..fields.len() as u32).collect();
-        let optimize = !repr.inhibit_struct_field_reordering_opt();
-        if optimize {
+
+        // `ReprOptions.layout_seed` is a deterministic seed that we can use to
+        // randomize field ordering with
+        #[cfg(feature = "randomize")]
+        let mut rng = Xoshiro128StarStar::seed_from_u64(repr.field_shuffle_seed);
+
+        let can_optimize = !repr.inhibit_struct_field_reordering_opt();
+        if can_optimize {
             let end =
                 if let StructKind::MaybeUnsized = kind { fields.len() - 1 } else { fields.len() };
             let optimizing = &mut inverse_memory_index[..end];
@@ -94,16 +106,11 @@ pub trait LayoutCalculator {
             // the field ordering to try and catch some code making assumptions about layouts
             // we don't guarantee
             if repr.can_randomize_type_layout() && cfg!(feature = "randomize") {
+                // Shuffle the ordering of the fields
                 #[cfg(feature = "randomize")]
-                {
-                    // `ReprOptions.layout_seed` is a deterministic seed that we can use to
-                    // randomize field ordering with
-                    let mut rng = Xoshiro128StarStar::seed_from_u64(repr.field_shuffle_seed);
+                optimizing.shuffle(&mut rng);
 
-                    // Shuffle the ordering of the fields
-                    optimizing.shuffle(&mut rng);
-                }
-                // Otherwise we just leave things alone and actually optimize the type's fields
+            // Otherwise we just leave things alone and actually optimize the type's fields
             } else {
                 match kind {
                     StructKind::AlwaysSized | StructKind::MaybeUnsized => {
@@ -173,6 +180,32 @@ pub trait LayoutCalculator {
             offset = offset.align_to(field_align.abi);
             align = align.max(field_align);
 
+            // If `-Z randomize-layout` is enabled, we pad each field by a multiple of its alignment
+            // If layout randomization is disabled, we don't pad it by anything and if it is
+            // we multiply the field's alignment by anything from zero to the user provided
+            // maximum multiple (defaults to three)
+            //
+            // When `-Z randomize-layout` is enabled that doesn't necessarily mean we can
+            // go ham on every type that at first glance looks valid for layout optimization.
+            // `Option` specifically has layout guarantees when it has specific `T` substitutions,
+            // such as `Option<NonNull<_>>` or `Option<NonZeroUsize>` both being exactly one `usize`
+            // large. As such, we have to ensure that the type doesn't guarantee niche optimization
+            // with the current payload
+            #[cfg(feature = "randomize")]
+            if repr.can_randomize_type_layout() && !option_niche_guaranteed(self) {
+                let align_bytes = field_align.abi.bytes();
+                let random_padding = align_bytes
+                    .checked_mul(rng.gen_range(0..=repr.random_padding_max_factor as u64))
+                    .unwrap_or(align_bytes);
+
+                // Attempt to add our extra padding, defaulting to the type's alignment
+                if let Some(randomized_offset) =
+                    offset.checked_add(Size::from_bytes(random_padding), dl)
+                {
+                    offset = randomized_offset;
+                }
+            }
+
             debug!("univariant offset: {:?} field: {:#?}", offset, field);
             offsets[i as usize] = offset;
 
@@ -199,7 +232,7 @@ pub trait LayoutCalculator {
         // Field 5 would be the first element, so memory_index is i:
         // Note: if we didn't optimize, it's already right.
         let memory_index =
-            if optimize { invert_mapping(&inverse_memory_index) } else { inverse_memory_index };
+            if can_optimize { invert_mapping(&inverse_memory_index) } else { inverse_memory_index };
         let size = min_size.align_to(align.abi);
         let mut abi = Abi::Aggregate { sized };
         // Unpack newtype ABIs and find scalar pairs.
@@ -216,7 +249,7 @@ pub trait LayoutCalculator {
                         match field.abi {
                             // For plain scalars, or vectors of them, we can't unpack
                             // newtypes for `#[repr(C)]`, as that affects C ABIs.
-                            Abi::Scalar(_) | Abi::Vector { .. } if optimize => {
+                            Abi::Scalar(_) | Abi::Vector { .. } if can_optimize => {
                                 abi = field.abi;
                             }
                             // But scalar pairs are Rust-specific and get
@@ -290,7 +323,7 @@ pub trait LayoutCalculator {
         }
     }
 
-    fn layout_of_struct_or_enum<'a, V: Idx, F: Deref<Target = &'a LayoutS<V>> + Debug>(
+    fn layout_of_struct_or_enum<'a, V, F, N>(
         &self,
         repr: &ReprOptions,
         variants: &IndexVec<V, Vec<F>>,
@@ -301,7 +334,13 @@ pub trait LayoutCalculator {
         discriminants: impl Iterator<Item = (V, i128)>,
         niche_optimize_enum: bool,
         always_sized: bool,
-    ) -> Option<LayoutS<V>> {
+        option_niche_guaranteed: N,
+    ) -> Option<LayoutS<V>>
+    where
+        V: Idx,
+        F: Deref<Target = &'a LayoutS<V>> + Debug,
+        N: Fn(&Self) -> bool + Copy,
+    {
         let dl = self.current_data_layout();
         let dl = dl.borrow();
 
@@ -354,7 +393,7 @@ pub trait LayoutCalculator {
                 if !always_sized { StructKind::MaybeUnsized } else { StructKind::AlwaysSized }
             };
 
-            let mut st = self.univariant(dl, &variants[v], repr, kind)?;
+            let mut st = self.univariant(dl, &variants[v], repr, kind, option_niche_guaranteed)?;
             st.variants = Variants::Single { index: v };
 
             if is_unsafe_cell {
@@ -457,7 +496,13 @@ pub trait LayoutCalculator {
             let mut variant_layouts = variants
                 .iter_enumerated()
                 .map(|(j, v)| {
-                    let mut st = self.univariant(dl, v, repr, StructKind::AlwaysSized)?;
+                    let mut st = self.univariant(
+                        dl,
+                        v,
+                        repr,
+                        StructKind::AlwaysSized,
+                        option_niche_guaranteed,
+                    )?;
                     st.variants = Variants::Single { index: j };
 
                     align = align.max(st.align);
@@ -650,6 +695,7 @@ pub trait LayoutCalculator {
                     field_layouts,
                     repr,
                     StructKind::Prefixed(min_ity.size(), prefix_align),
+                    option_niche_guaranteed,
                 )?;
                 st.variants = Variants::Single { index: i };
                 // Find the first field we can't move later
