@@ -326,24 +326,27 @@ macro_rules! late_lint_pass_impl {
 
 crate::late_lint_methods!(late_lint_pass_impl, [], ['tcx]);
 
-fn late_lint_mod_pass<'tcx, T: LateLintPass<'tcx>>(
+pub fn late_lint_mod<'tcx, T: LateLintPass<'tcx> + 'tcx>(
     tcx: TyCtxt<'tcx>,
     module_def_id: LocalDefId,
-    pass: T,
+    builtin_lints: T,
 ) {
-    let effective_visibilities = &tcx.effective_visibilities(());
-
     let context = LateContext {
         tcx,
         enclosing_body: None,
         cached_typeck_results: Cell::new(None),
         param_env: ty::ParamEnv::empty(),
-        effective_visibilities,
+        effective_visibilities: &tcx.effective_visibilities(()),
         lint_store: unerased_lint_store(tcx),
         last_node_with_lint_attrs: tcx.hir().local_def_id_to_hir_id(module_def_id),
         generics: None,
         only_module: true,
     };
+
+    let mut passes: Vec<_> =
+        unerased_lint_store(tcx).late_module_passes.iter().map(|pass| (pass)(tcx)).collect();
+    passes.push(Box::new(builtin_lints));
+    let pass = LateLintPassObjects { lints: &mut passes[..] };
 
     let mut cx = LateContextAndPass { context, pass };
 
@@ -356,18 +359,6 @@ fn late_lint_mod_pass<'tcx, T: LateLintPass<'tcx>>(
             cx.visit_attribute(attr)
         }
     }
-}
-
-pub fn late_lint_mod<'tcx, T: LateLintPass<'tcx> + 'tcx>(
-    tcx: TyCtxt<'tcx>,
-    module_def_id: LocalDefId,
-    builtin_lints: T,
-) {
-    let mut passes: Vec<_> =
-        unerased_lint_store(tcx).late_module_passes.iter().map(|pass| (pass)(tcx)).collect();
-    passes.push(Box::new(builtin_lints));
-
-    late_lint_mod_pass(tcx, module_def_id, LateLintPassObjects { lints: &mut passes[..] });
 }
 
 fn late_lint_pass_crate<'tcx, T: LateLintPass<'tcx>>(tcx: TyCtxt<'tcx>, pass: T) {
