@@ -15,16 +15,7 @@ all:  \
 	different_source_dirs_bin \
 	extern_flags
 
-<<<<<<< HEAD
 # This test appears to not be working on either Linux or Windows
-=======
-# TODO: Builds of `bin` crate types are not deterministic with debuginfo=2 on
-# Windows.
-# See: https://github.com/rust-lang/rust/pull/87320#issuecomment-920105533
-# Issue: https://github.com/rust-lang/rust/issues/88982
-
-# NOTE - not working on Linux either
->>>>>>> 925c2b13e42 (wip)
 #
 #	remap_cwd_bin \
 
