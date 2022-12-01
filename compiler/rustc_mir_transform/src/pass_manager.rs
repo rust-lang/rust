@@ -184,7 +184,7 @@ pub fn dump_mir_for_phase_change<'tcx>(tcx: TyCtxt<'tcx>, body: &Body<'tcx>) {
     mir::dump_mir(
         tcx,
         Some(&format_args!("{:03}-000", phase_index)),
-        &format!("{}", body.phase),
+        body.phase.name(),
         &"after",
         body,
         |_, _| Ok(()),

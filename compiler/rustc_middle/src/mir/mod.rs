@@ -184,30 +184,7 @@ impl RuntimePhase {
 
 impl Display for MirPhase {
     fn fmt(&self, f: &mut Formatter<'_>) -> fmt::Result {
-        match self {
-            MirPhase::Built => write!(f, "built"),
-            MirPhase::Analysis(p) => write!(f, "analysis-{}", p),
-            MirPhase::Runtime(p) => write!(f, "runtime-{}", p),
-        }
-    }
-}
-
-impl Display for AnalysisPhase {
-    fn fmt(&self, f: &mut Formatter<'_>) -> fmt::Result {
-        match self {
-            AnalysisPhase::Initial => write!(f, "initial"),
-            AnalysisPhase::PostCleanup => write!(f, "post_cleanup"),
-        }
-    }
-}
-
-impl Display for RuntimePhase {
-    fn fmt(&self, f: &mut Formatter<'_>) -> fmt::Result {
-        match self {
-            RuntimePhase::Initial => write!(f, "initial"),
-            RuntimePhase::PostCleanup => write!(f, "post_cleanup"),
-            RuntimePhase::Optimized => write!(f, "optimized"),
-        }
+        f.write_str(self.name())
     }
 }
 
