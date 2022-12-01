@@ -27,7 +27,7 @@ jobs:
     - name: Cache cargo target dir
       uses: actions/cache@v3
       with:
-        path: target
+        path: build/cg_clif
         key: ${{ runner.os }}-cargo-build-target-${{ hashFiles('rust-toolchain', '**/Cargo.lock') }}
 
     - name: Prepare dependencies
@@ -65,7 +65,7 @@ jobs:
     - name: Cache cargo target dir
       uses: actions/cache@v3
       with:
-        path: target
+        path: build/cg_clif
         key: ${{ runner.os }}-cargo-build-target-${{ hashFiles('rust-toolchain', '**/Cargo.lock') }}
 
     - name: Prepare dependencies
