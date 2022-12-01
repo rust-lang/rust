@@ -1,12 +1,13 @@
 use std::fs;
 use std::path::PathBuf;
 
-/*pub(crate) struct Paths {
-    source_dir: PathBuf,
-    download_dir: PathBuf,
-    build_dir: PathBuf,
-    dist_dir: PathBuf,
-}*/
+#[derive(Debug, Clone)]
+pub(crate) struct Dirs {
+    pub(crate) source_dir: PathBuf,
+    pub(crate) download_dir: PathBuf,
+    pub(crate) build_dir: PathBuf,
+    pub(crate) dist_dir: PathBuf,
+}
 
 #[doc(hidden)]
 #[derive(Debug, Copy, Clone)]
@@ -18,14 +19,12 @@ pub(crate) enum PathBase {
 }
 
 impl PathBase {
-    fn to_path(self) -> PathBuf {
-        // FIXME pass in all paths instead
-        let current_dir = std::env::current_dir().unwrap();
+    fn to_path(self, dirs: &Dirs) -> PathBuf {
         match self {
-            PathBase::Source => current_dir,
-            PathBase::Download => current_dir.join("download"),
-            PathBase::Build => current_dir.join("build"),
-            PathBase::Dist => current_dir.join("dist"),
+            PathBase::Source => dirs.source_dir.clone(),
+            PathBase::Download => dirs.download_dir.clone(),
+            PathBase::Build => dirs.build_dir.clone(),
+            PathBase::Dist => dirs.dist_dir.clone(),
         }
     }
 }
@@ -50,19 +49,19 @@ impl RelPath {
         RelPath::Join(self, suffix)
     }
 
-    pub(crate) fn to_path(&self) -> PathBuf {
+    pub(crate) fn to_path(&self, dirs: &Dirs) -> PathBuf {
         match self {
-            RelPath::Base(base) => base.to_path(),
-            RelPath::Join(base, suffix) => base.to_path().join(suffix),
+            RelPath::Base(base) => base.to_path(dirs),
+            RelPath::Join(base, suffix) => base.to_path(dirs).join(suffix),
         }
     }
 
-    pub(crate) fn ensure_exists(&self) {
-        fs::create_dir_all(self.to_path()).unwrap();
+    pub(crate) fn ensure_exists(&self, dirs: &Dirs) {
+        fs::create_dir_all(self.to_path(dirs)).unwrap();
     }
 
-    pub(crate) fn ensure_fresh(&self) {
-        let path = self.to_path();
+    pub(crate) fn ensure_fresh(&self, dirs: &Dirs) {
+        let path = self.to_path(dirs);
         if path.exists() {
             fs::remove_dir_all(&path).unwrap();
         }

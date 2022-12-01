@@ -2,6 +2,7 @@ use std::path::Path;
 
 use super::build_sysroot;
 use super::config;
+use super::path::Dirs;
 use super::prepare::GitRepo;
 use super::utils::{spawn_and_wait, CargoProject, Compiler};
 use super::SysrootKind;
@@ -14,6 +15,7 @@ static ABI_CAFE: CargoProject = CargoProject::new(&ABI_CAFE_REPO.source_dir(), "
 pub(crate) fn run(
     channel: &str,
     sysroot_kind: SysrootKind,
+    dirs: &Dirs,
     cg_clif_dylib: &Path,
     host_triple: &str,
     target_triple: &str,
@@ -29,19 +31,26 @@ pub(crate) fn run(
     }
 
     eprintln!("Building sysroot for abi-cafe");
-    build_sysroot::build_sysroot(channel, sysroot_kind, cg_clif_dylib, host_triple, target_triple);
+    build_sysroot::build_sysroot(
+        dirs,
+        channel,
+        sysroot_kind,
+        cg_clif_dylib,
+        host_triple,
+        target_triple,
+    );
 
     eprintln!("Running abi-cafe");
 
     let pairs = ["rustc_calls_cgclif", "cgclif_calls_rustc", "cgclif_calls_cc", "cc_calls_cgclif"];
 
-    let mut cmd = ABI_CAFE.run(&Compiler::host());
+    let mut cmd = ABI_CAFE.run(&Compiler::host(), dirs);
     cmd.arg("--");
     cmd.arg("--pairs");
     cmd.args(pairs);
     cmd.arg("--add-rustc-codegen-backend");
     cmd.arg(format!("cgclif:{}", cg_clif_dylib.display()));
-    cmd.current_dir(ABI_CAFE.source_dir());
+    cmd.current_dir(ABI_CAFE.source_dir(dirs));
 
     spawn_and_wait(cmd);
 }

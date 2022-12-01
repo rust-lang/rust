@@ -1,5 +1,4 @@
 use std::env;
-use std::path::PathBuf;
 use std::process;
 
 use self::utils::is_ci;
@@ -17,12 +16,8 @@ mod utils;
 fn usage() {
     eprintln!("Usage:");
     eprintln!("  ./y.rs prepare");
-    eprintln!(
-        "  ./y.rs build [--debug] [--sysroot none|clif|llvm] [--dist-dir DIR] [--no-unstable-features]"
-    );
-    eprintln!(
-        "  ./y.rs test [--debug] [--sysroot none|clif|llvm] [--dist-dir DIR] [--no-unstable-features]"
-    );
+    eprintln!("  ./y.rs build [--debug] [--sysroot none|clif|llvm] [--no-unstable-features]");
+    eprintln!("  ./y.rs test [--debug] [--sysroot none|clif|llvm] [--no-unstable-features]");
 }
 
 macro_rules! arg_error {
@@ -50,13 +45,22 @@ pub fn main() {
     env::set_var("CG_CLIF_DISPLAY_CG_TIME", "1");
     env::set_var("CG_CLIF_DISABLE_INCR_CACHE", "1");
 
-    std::fs::create_dir_all("build").unwrap();
+    let current_dir = std::env::current_dir().unwrap();
+    let dirs = path::Dirs {
+        source_dir: current_dir.clone(),
+        download_dir: current_dir.join("download"),
+        build_dir: current_dir.join("build"),
+        dist_dir: current_dir.join("dist"),
+    };
+
+    path::RelPath::BUILD.ensure_exists(&dirs);
 
     {
         // Make sure we always explicitly specify the target dir
-        let target = "build/target_dir_should_be_set_explicitly";
-        env::set_var("CARGO_TARGET_DIR", target);
-        let _ = std::fs::remove_file(target);
+        let target =
+            path::RelPath::BUILD.join("target_dir_should_be_set_explicitly").to_path(&dirs);
+        env::set_var("CARGO_TARGET_DIR", &target);
+        let _ = std::fs::remove_file(&target);
         std::fs::File::create(target).unwrap();
     }
 
@@ -71,7 +75,7 @@ pub fn main() {
             if args.next().is_some() {
                 arg_error!("./y.rs prepare doesn't expect arguments");
             }
-            prepare::prepare();
+            prepare::prepare(&dirs);
             process::exit(0);
         }
         Some("build") => Command::Build,
@@ -84,17 +88,11 @@ pub fn main() {
         }
     };
 
-    let mut dist_dir = PathBuf::from("dist");
     let mut channel = "release";
     let mut sysroot_kind = SysrootKind::Clif;
     let mut use_unstable_features = true;
     while let Some(arg) = args.next().as_deref() {
         match arg {
-            "--dist-dir" => {
-                dist_dir = PathBuf::from(args.next().unwrap_or_else(|| {
-                    arg_error!("--dist-dir requires argument");
-                }))
-            }
             "--debug" => channel = "debug",
             "--sysroot" => {
                 sysroot_kind = match args.next().as_deref() {
@@ -110,7 +108,6 @@ pub fn main() {
             arg => arg_error!("Unexpected argument {}", arg),
         }
     }
-    dist_dir = std::env::current_dir().unwrap().join(dist_dir);
 
     let host_triple = if let Ok(host_triple) = std::env::var("HOST_TRIPLE") {
         host_triple
@@ -131,15 +128,31 @@ pub fn main() {
         host_triple.clone()
     };
 
-    let cg_clif_dylib = build_backend::build_backend(channel, &host_triple, use_unstable_features);
+    let cg_clif_dylib =
+        build_backend::build_backend(&dirs, channel, &host_triple, use_unstable_features);
     match command {
         Command::Test => {
-            tests::run_tests(channel, sysroot_kind, &cg_clif_dylib, &host_triple, &target_triple);
+            tests::run_tests(
+                &dirs,
+                channel,
+                sysroot_kind,
+                &cg_clif_dylib,
+                &host_triple,
+                &target_triple,
+            );
 
-            abi_cafe::run(channel, sysroot_kind, &cg_clif_dylib, &host_triple, &target_triple);
+            abi_cafe::run(
+                channel,
+                sysroot_kind,
+                &dirs,
+                &cg_clif_dylib,
+                &host_triple,
+                &target_triple,
+            );
         }
         Command::Build => {
             build_sysroot::build_sysroot(
+                &dirs,
                 channel,
                 sysroot_kind,
                 &cg_clif_dylib,
