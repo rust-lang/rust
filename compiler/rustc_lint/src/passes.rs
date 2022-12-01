@@ -1,7 +1,6 @@
 use crate::context::{EarlyContext, LateContext};
 
 use rustc_ast as ast;
-use rustc_data_structures::sync;
 use rustc_hir as hir;
 use rustc_session::lint::builtin::HardwiredLints;
 use rustc_session::lint::LintPass;
@@ -231,5 +230,5 @@ macro_rules! declare_combined_early_lint_pass {
 }
 
 /// A lint pass boxed up as a trait object.
-pub type EarlyLintPassObject = Box<dyn EarlyLintPass + sync::Send + 'static>;
-pub type LateLintPassObject<'tcx> = Box<dyn LateLintPass<'tcx> + sync::Send + 'tcx>;
+pub type EarlyLintPassObject = Box<dyn EarlyLintPass + 'static>;
+pub type LateLintPassObject<'tcx> = Box<dyn LateLintPass<'tcx> + 'tcx>;
