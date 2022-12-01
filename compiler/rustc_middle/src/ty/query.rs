@@ -344,12 +344,10 @@ macro_rules! define_feedable {
 
                 match cached {
                     Ok(old) => {
-                        assert_eq!(
-                            value, old,
-                            "Trying to feed an already recorded value for query {} key={key:?}",
+                        bug!(
+                            "Trying to feed an already recorded value for query {} key={key:?}:\nold value: {old:?}\nnew value: {value:?}",
                             stringify!($name),
                         );
-                        return old;
                     }
                     Err(()) => (),
                 }
