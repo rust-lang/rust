@@ -627,9 +627,6 @@ pub fn check_unsafety<'tcx>(tcx: TyCtxt<'tcx>, def: ty::WithOptConstParam<LocalD
 
     // Closures and inline consts are handled by their owner, if it has a body
     if tcx.is_typeck_child(def.did.to_def_id()) {
-        let hir = tcx.hir();
-        let owner = hir.enclosing_body_owner(hir.local_def_id_to_hir_id(def.did));
-        tcx.ensure().thir_check_unsafety(owner);
         return;
     }
 
