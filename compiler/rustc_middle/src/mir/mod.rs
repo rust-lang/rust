@@ -100,13 +100,9 @@ impl<'tcx> HasLocalDecls<'tcx> for Body<'tcx> {
 /// pass will be named after the type, and it will consist of a main
 /// loop that goes over each available MIR and applies `run_pass`.
 pub trait MirPass<'tcx> {
-    fn name(&self) -> Cow<'_, str> {
+    fn name(&self) -> &str {
         let name = std::any::type_name::<Self>();
-        if let Some(tail) = name.rfind(':') {
-            Cow::from(&name[tail + 1..])
-        } else {
-            Cow::from(name)
-        }
+        if let Some((_, tail)) = name.rsplit_once(':') { tail } else { name }
     }
 
     /// Returns `true` if this pass is enabled with the current combination of compiler flags.

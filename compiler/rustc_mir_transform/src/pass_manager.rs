@@ -1,5 +1,3 @@
-use std::borrow::Cow;
-
 use rustc_middle::mir::{self, Body, MirPhase, RuntimePhase};
 use rustc_middle::ty::TyCtxt;
 use rustc_session::Session;
@@ -8,13 +6,9 @@ use crate::{validate, MirPass};
 
 /// Just like `MirPass`, except it cannot mutate `Body`.
 pub trait MirLint<'tcx> {
-    fn name(&self) -> Cow<'_, str> {
+    fn name(&self) -> &str {
         let name = std::any::type_name::<Self>();
-        if let Some(tail) = name.rfind(':') {
-            Cow::from(&name[tail + 1..])
-        } else {
-            Cow::from(name)
-        }
+        if let Some((_, tail)) = name.rsplit_once(':') { tail } else { name }
     }
 
     fn is_enabled(&self, _sess: &Session) -> bool {
@@ -32,7 +26,7 @@ impl<'tcx, T> MirPass<'tcx> for Lint<T>
 where
     T: MirLint<'tcx>,
 {
-    fn name(&self) -> Cow<'_, str> {
+    fn name(&self) -> &str {
         self.0.name()
     }
 
@@ -55,7 +49,7 @@ impl<'tcx, T> MirPass<'tcx> for WithMinOptLevel<T>
 where
     T: MirPass<'tcx>,
 {
-    fn name(&self) -> Cow<'_, str> {
+    fn name(&self) -> &str {
         self.1.name()
     }
 
