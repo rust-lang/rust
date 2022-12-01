@@ -340,53 +340,8 @@ impl<'a, 'tcx> TypeVisitor<'tcx> for MarkUsedGenericParams<'a, 'tcx> {
             }
             ty::Param(param) => {
                 debug!(?param);
-                self.unused_parameters.clear(param.index);
+                self.unused_parameters.mark_used(param.index);
                 ControlFlow::CONTINUE
-            }
-            _ => ty.super_visit_with(self),
-        }
-    }
-}
-
-/// Visitor used to check if a generic parameter is used.
-struct HasUsedGenericParams<'a> {
-    unused_parameters: &'a FiniteBitSet<u32>,
-}
-
-impl<'a, 'tcx> TypeVisitor<'tcx> for HasUsedGenericParams<'a> {
-    type BreakTy = ();
-
-    #[instrument(level = "debug", skip(self))]
-    fn visit_const(&mut self, c: Const<'tcx>) -> ControlFlow<Self::BreakTy> {
-        if !c.has_non_region_param() {
-            return ControlFlow::CONTINUE;
-        }
-
-        match c.kind() {
-            ty::ConstKind::Param(param) => {
-                if self.unused_parameters.contains(param.index).unwrap_or(false) {
-                    ControlFlow::CONTINUE
-                } else {
-                    ControlFlow::BREAK
-                }
-            }
-            _ => c.super_visit_with(self),
-        }
-    }
-
-    #[instrument(level = "debug", skip(self))]
-    fn visit_ty(&mut self, ty: Ty<'tcx>) -> ControlFlow<Self::BreakTy> {
-        if !ty.has_non_region_param() {
-            return ControlFlow::CONTINUE;
-        }
-
-        match ty.kind() {
-            ty::Param(param) => {
-                if self.unused_parameters.contains(param.index).unwrap_or(false) {
-                    ControlFlow::CONTINUE
-                } else {
-                    ControlFlow::BREAK
-                }
             }
             _ => ty.super_visit_with(self),
         }
