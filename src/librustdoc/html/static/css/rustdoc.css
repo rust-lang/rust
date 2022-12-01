@@ -314,7 +314,7 @@ main {
 	position: relative;
 	flex-grow: 1;
 	padding: 10px 15px 40px 45px;
-	min-width: 0;
+	min-width: 0; /* avoid growing beyond the size limit */
 }
 
 .source main {
@@ -480,15 +480,11 @@ ul.block, .block li {
 	list-style: none;
 }
 
-.block a,
-.sidebar h2 a,
-.sidebar h3 a {
+.sidebar-elems a,
+.sidebar > h2 a {
 	display: block;
-	padding: 0.25rem;
+	padding: 0.25rem; /* 4px */
 	margin-left: -0.25rem;
-
-	text-overflow: ellipsis;
-	overflow: hidden;
 }
 
 .sidebar h2 {
@@ -522,6 +518,8 @@ ul.block, .block li {
 
 .sidebar-elems .block li a {
 	white-space: nowrap;
+	text-overflow: ellipsis;
+	overflow: hidden;
 }
 
 .mobile-topbar {
