@@ -1,12 +1,12 @@
 use clippy_utils::diagnostics::span_lint_and_sugg;
+use clippy_utils::msrvs::{self, Msrv};
 use clippy_utils::source::snippet_with_applicability;
-use clippy_utils::{match_def_path, meets_msrv, msrvs, paths};
+use clippy_utils::{match_def_path, paths};
 use if_chain::if_chain;
 use rustc_errors::Applicability;
 use rustc_hir::{def_id::DefId, Expr, ExprKind};
 use rustc_lint::LateContext;
 use rustc_middle::ty::{self, Ty};
-use rustc_semver::RustcVersion;
 
 use super::CAST_SLICE_FROM_RAW_PARTS;
 
@@ -25,15 +25,9 @@ fn raw_parts_kind(cx: &LateContext<'_>, did: DefId) -> Option<RawPartsKind> {
     }
 }
 
-pub(super) fn check(
-    cx: &LateContext<'_>,
-    expr: &Expr<'_>,
-    cast_expr: &Expr<'_>,
-    cast_to: Ty<'_>,
-    msrv: Option<RustcVersion>,
-) {
+pub(super) fn check(cx: &LateContext<'_>, expr: &Expr<'_>, cast_expr: &Expr<'_>, cast_to: Ty<'_>, msrv: &Msrv) {
     if_chain! {
-        if meets_msrv(msrv, msrvs::PTR_SLICE_RAW_PARTS);
+        if msrv.meets(msrvs::PTR_SLICE_RAW_PARTS);
         if let ty::RawPtr(ptrty) = cast_to.kind();
         if let ty::Slice(_) = ptrty.ty.kind();
         if let ExprKind::Call(fun, [ptr_arg, len_arg]) = cast_expr.peel_blocks().kind;

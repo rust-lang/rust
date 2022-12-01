@@ -1,5 +1,5 @@
 error: manual `Range::contains` implementation
-  --> $DIR/range_contains.rs:14:5
+  --> $DIR/range_contains.rs:13:5
    |
 LL |     x >= 8 && x < 12;
    |     ^^^^^^^^^^^^^^^^ help: use: `(8..12).contains(&x)`
@@ -7,121 +7,121 @@ LL |     x >= 8 && x < 12;
    = note: `-D clippy::manual-range-contains` implied by `-D warnings`
 
 error: manual `Range::contains` implementation
-  --> $DIR/range_contains.rs:15:5
+  --> $DIR/range_contains.rs:14:5
    |
 LL |     x < 42 && x >= 21;
    |     ^^^^^^^^^^^^^^^^^ help: use: `(21..42).contains(&x)`
 
 error: manual `Range::contains` implementation
-  --> $DIR/range_contains.rs:16:5
+  --> $DIR/range_contains.rs:15:5
    |
 LL |     100 > x && 1 <= x;
    |     ^^^^^^^^^^^^^^^^^ help: use: `(1..100).contains(&x)`
 
 error: manual `RangeInclusive::contains` implementation
-  --> $DIR/range_contains.rs:19:5
+  --> $DIR/range_contains.rs:18:5
    |
 LL |     x >= 9 && x <= 99;
    |     ^^^^^^^^^^^^^^^^^ help: use: `(9..=99).contains(&x)`
 
 error: manual `RangeInclusive::contains` implementation
-  --> $DIR/range_contains.rs:20:5
+  --> $DIR/range_contains.rs:19:5
    |
 LL |     x <= 33 && x >= 1;
    |     ^^^^^^^^^^^^^^^^^ help: use: `(1..=33).contains(&x)`
 
 error: manual `RangeInclusive::contains` implementation
-  --> $DIR/range_contains.rs:21:5
+  --> $DIR/range_contains.rs:20:5
    |
 LL |     999 >= x && 1 <= x;
    |     ^^^^^^^^^^^^^^^^^^ help: use: `(1..=999).contains(&x)`
 
 error: manual `!Range::contains` implementation
-  --> $DIR/range_contains.rs:24:5
+  --> $DIR/range_contains.rs:23:5
    |
 LL |     x < 8 || x >= 12;
    |     ^^^^^^^^^^^^^^^^ help: use: `!(8..12).contains(&x)`
 
 error: manual `!Range::contains` implementation
-  --> $DIR/range_contains.rs:25:5
+  --> $DIR/range_contains.rs:24:5
    |
 LL |     x >= 42 || x < 21;
    |     ^^^^^^^^^^^^^^^^^ help: use: `!(21..42).contains(&x)`
 
 error: manual `!Range::contains` implementation
-  --> $DIR/range_contains.rs:26:5
+  --> $DIR/range_contains.rs:25:5
    |
 LL |     100 <= x || 1 > x;
    |     ^^^^^^^^^^^^^^^^^ help: use: `!(1..100).contains(&x)`
 
 error: manual `!RangeInclusive::contains` implementation
-  --> $DIR/range_contains.rs:29:5
+  --> $DIR/range_contains.rs:28:5
    |
 LL |     x < 9 || x > 99;
    |     ^^^^^^^^^^^^^^^ help: use: `!(9..=99).contains(&x)`
 
 error: manual `!RangeInclusive::contains` implementation
-  --> $DIR/range_contains.rs:30:5
+  --> $DIR/range_contains.rs:29:5
    |
 LL |     x > 33 || x < 1;
    |     ^^^^^^^^^^^^^^^ help: use: `!(1..=33).contains(&x)`
 
 error: manual `!RangeInclusive::contains` implementation
-  --> $DIR/range_contains.rs:31:5
+  --> $DIR/range_contains.rs:30:5
    |
 LL |     999 < x || 1 > x;
    |     ^^^^^^^^^^^^^^^^ help: use: `!(1..=999).contains(&x)`
 
 error: manual `Range::contains` implementation
-  --> $DIR/range_contains.rs:46:5
+  --> $DIR/range_contains.rs:45:5
    |
 LL |     y >= 0. && y < 1.;
    |     ^^^^^^^^^^^^^^^^^ help: use: `(0. ..1.).contains(&y)`
 
 error: manual `!RangeInclusive::contains` implementation
-  --> $DIR/range_contains.rs:47:5
+  --> $DIR/range_contains.rs:46:5
    |
 LL |     y < 0. || y > 1.;
    |     ^^^^^^^^^^^^^^^^ help: use: `!(0. ..=1.).contains(&y)`
 
 error: manual `RangeInclusive::contains` implementation
-  --> $DIR/range_contains.rs:50:5
+  --> $DIR/range_contains.rs:49:5
    |
 LL |     x >= -10 && x <= 10;
    |     ^^^^^^^^^^^^^^^^^^^ help: use: `(-10..=10).contains(&x)`
 
 error: manual `RangeInclusive::contains` implementation
-  --> $DIR/range_contains.rs:52:5
+  --> $DIR/range_contains.rs:51:5
    |
 LL |     y >= -3. && y <= 3.;
    |     ^^^^^^^^^^^^^^^^^^^ help: use: `(-3. ..=3.).contains(&y)`
 
 error: manual `RangeInclusive::contains` implementation
-  --> $DIR/range_contains.rs:57:30
+  --> $DIR/range_contains.rs:56:30
    |
 LL |     (x >= 0) && (x <= 10) && (z >= 0) && (z <= 10);
    |                              ^^^^^^^^^^^^^^^^^^^^^ help: use: `(0..=10).contains(&z)`
 
 error: manual `RangeInclusive::contains` implementation
-  --> $DIR/range_contains.rs:57:5
+  --> $DIR/range_contains.rs:56:5
    |
 LL |     (x >= 0) && (x <= 10) && (z >= 0) && (z <= 10);
    |     ^^^^^^^^^^^^^^^^^^^^^ help: use: `(0..=10).contains(&x)`
 
 error: manual `!Range::contains` implementation
-  --> $DIR/range_contains.rs:58:29
+  --> $DIR/range_contains.rs:57:29
    |
 LL |     (x < 0) || (x >= 10) || (z < 0) || (z >= 10);
    |                             ^^^^^^^^^^^^^^^^^^^^ help: use: `!(0..10).contains(&z)`
 
 error: manual `!Range::contains` implementation
-  --> $DIR/range_contains.rs:58:5
+  --> $DIR/range_contains.rs:57:5
    |
 LL |     (x < 0) || (x >= 10) || (z < 0) || (z >= 10);
    |     ^^^^^^^^^^^^^^^^^^^^ help: use: `!(0..10).contains(&x)`
 
 error: manual `Range::contains` implementation
-  --> $DIR/range_contains.rs:79:5
+  --> $DIR/range_contains.rs:76:5
    |
 LL |     x >= 8 && x < 35;
    |     ^^^^^^^^^^^^^^^^ help: use: `(8..35).contains(&x)`

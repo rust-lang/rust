@@ -1,7 +1,7 @@
 use clippy_utils::diagnostics::span_lint_and_sugg;
-use clippy_utils::get_parent_expr;
 use clippy_utils::numeric_literal::NumericLiteral;
 use clippy_utils::source::snippet_opt;
+use clippy_utils::{get_parent_expr, path_to_local};
 use if_chain::if_chain;
 use rustc_ast::{LitFloatType, LitIntType, LitKind};
 use rustc_errors::Applicability;
@@ -75,13 +75,26 @@ pub(super) fn check<'tcx>(
     }
 
     if cast_from.kind() == cast_to.kind() && !in_external_macro(cx.sess(), expr.span) {
+        if let Some(id) = path_to_local(cast_expr)
+            && let Some(span) = cx.tcx.hir().opt_span(id)
+            && span.ctxt() != cast_expr.span.ctxt()
+        {
+            // Binding context is different than the identifiers context.
+            // Weird macro wizardry could be involved here.
+            return false;
+        }
+
         span_lint_and_sugg(
             cx,
             UNNECESSARY_CAST,
             expr.span,
             &format!("casting to the same type is unnecessary (`{cast_from}` -> `{cast_to}`)"),
             "try",
-            cast_str,
+            if get_parent_expr(cx, expr).map_or(false, |e| matches!(e.kind, ExprKind::AddrOf(..))) {
+                format!("{{ {cast_str} }}")
+            } else {
+                cast_str
+            },
             Applicability::MachineApplicable,
         );
         return true;

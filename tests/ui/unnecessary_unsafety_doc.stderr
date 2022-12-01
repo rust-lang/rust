@@ -1,5 +1,5 @@
 error: safe function's docs have unnecessary `# Safety` section
-  --> $DIR/doc_unnecessary_unsafe.rs:18:1
+  --> $DIR/unnecessary_unsafety_doc.rs:19:1
    |
 LL | pub fn apocalypse(universe: &mut ()) {
    | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
@@ -7,31 +7,31 @@ LL | pub fn apocalypse(universe: &mut ()) {
    = note: `-D clippy::unnecessary-safety-doc` implied by `-D warnings`
 
 error: safe function's docs have unnecessary `# Safety` section
-  --> $DIR/doc_unnecessary_unsafe.rs:44:5
+  --> $DIR/unnecessary_unsafety_doc.rs:45:5
    |
 LL |     pub fn republished() {
    |     ^^^^^^^^^^^^^^^^^^^^
 
 error: safe function's docs have unnecessary `# Safety` section
-  --> $DIR/doc_unnecessary_unsafe.rs:57:5
+  --> $DIR/unnecessary_unsafety_doc.rs:58:5
    |
 LL |     fn documented(self);
    |     ^^^^^^^^^^^^^^^^^^^^
 
 error: docs for safe trait have unnecessary `# Safety` section
-  --> $DIR/doc_unnecessary_unsafe.rs:67:1
+  --> $DIR/unnecessary_unsafety_doc.rs:68:1
    |
 LL | pub trait DocumentedSafeTrait {
    | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
 error: safe function's docs have unnecessary `# Safety` section
-  --> $DIR/doc_unnecessary_unsafe.rs:95:5
+  --> $DIR/unnecessary_unsafety_doc.rs:96:5
    |
 LL |     pub fn documented() -> Self {
    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
 error: safe function's docs have unnecessary `# Safety` section
-  --> $DIR/doc_unnecessary_unsafe.rs:122:9
+  --> $DIR/unnecessary_unsafety_doc.rs:123:9
    |
 LL |         pub fn drive() {
    |         ^^^^^^^^^^^^^^
@@ -42,7 +42,7 @@ LL | very_safe!();
    = note: this error originates in the macro `very_safe` (in Nightly builds, run with -Z macro-backtrace for more info)
 
 error: docs for safe trait have unnecessary `# Safety` section
-  --> $DIR/doc_unnecessary_unsafe.rs:146:1
+  --> $DIR/unnecessary_unsafety_doc.rs:147:1
    |
 LL | pub trait DocumentedSafeTraitWithImplementationHeader {
    | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^

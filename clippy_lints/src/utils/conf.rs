@@ -402,6 +402,10 @@ define_Conf! {
     /// A list of paths to types that should be treated like `Arc`, i.e. ignored but
     /// for the generic parameters for determining interior mutability
     (ignore_interior_mutability: Vec<String> = Vec::from(["bytes::Bytes".into()])),
+    /// Lint: UNINLINED_FORMAT_ARGS.
+    ///
+    /// Whether to allow mixed uninlined format args, e.g. `format!("{} {}", a, foo.bar)`
+    (allow_mixed_uninlined_format_args: bool = true),
 }
 
 /// Search for the configuration file.

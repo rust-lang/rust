@@ -2,7 +2,6 @@
 // aux-build:macro_rules.rs
 
 #![warn(clippy::ptr_as_ptr)]
-#![feature(custom_inner_attributes)]
 
 extern crate macro_rules;
 
@@ -45,8 +44,8 @@ fn main() {
     let _ = macro_rules::ptr_as_ptr_cast!(ptr);
 }
 
+#[clippy::msrv = "1.37"]
 fn _msrv_1_37() {
-    #![clippy::msrv = "1.37"]
     let ptr: *const u32 = &42_u32;
     let mut_ptr: *mut u32 = &mut 42_u32;
 
@@ -55,8 +54,8 @@ fn _msrv_1_37() {
     let _ = mut_ptr as *mut i32;
 }
 
+#[clippy::msrv = "1.38"]
 fn _msrv_1_38() {
-    #![clippy::msrv = "1.38"]
     let ptr: *const u32 = &42_u32;
     let mut_ptr: *mut u32 = &mut 42_u32;
 

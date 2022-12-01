@@ -1,12 +1,13 @@
 use clippy_utils::diagnostics::{span_lint_and_sugg, span_lint_hir_and_then};
 use clippy_utils::mir::{enclosing_mir, expr_local, local_assignments, used_exactly_once, PossibleBorrowerMap};
+use clippy_utils::msrvs::{self, Msrv};
 use clippy_utils::source::{snippet_with_applicability, snippet_with_context};
 use clippy_utils::sugg::has_enclosing_paren;
 use clippy_utils::ty::{expr_sig, is_copy, peel_mid_ty_refs, ty_sig, variant_of_res};
 use clippy_utils::{
-    fn_def_id, get_parent_expr, get_parent_expr_for_hir, is_lint_allowed, meets_msrv, msrvs, path_to_local,
-    walk_to_expr_usage,
+    fn_def_id, get_parent_expr, get_parent_expr_for_hir, is_lint_allowed, path_to_local, walk_to_expr_usage,
 };
+
 use rustc_ast::util::parser::{PREC_POSTFIX, PREC_PREFIX};
 use rustc_data_structures::fx::FxIndexMap;
 use rustc_data_structures::graph::iterate::{CycleDetector, TriColorDepthFirstSearch};
@@ -28,7 +29,6 @@ use rustc_middle::ty::{
     self, Binder, BoundVariableKind, Clause, EarlyBinder, FnSig, GenericArgKind, List, ParamTy, PredicateKind,
     ProjectionPredicate, Ty, TyCtxt, TypeVisitable, TypeckResults,
 };
-use rustc_semver::RustcVersion;
 use rustc_session::{declare_tool_lint, impl_lint_pass};
 use rustc_span::{symbol::sym, Span, Symbol};
 use rustc_trait_selection::infer::InferCtxtExt as _;
@@ -181,12 +181,12 @@ pub struct Dereferencing<'tcx> {
     possible_borrowers: Vec<(LocalDefId, PossibleBorrowerMap<'tcx, 'tcx>)>,
 
     // `IntoIterator` for arrays requires Rust 1.53.
-    msrv: Option<RustcVersion>,
+    msrv: Msrv,
 }
 
 impl<'tcx> Dereferencing<'tcx> {
     #[must_use]
-    pub fn new(msrv: Option<RustcVersion>) -> Self {
+    pub fn new(msrv: Msrv) -> Self {
         Self {
             msrv,
             ..Dereferencing::default()
@@ -286,26 +286,27 @@ impl<'tcx> LateLintPass<'tcx> for Dereferencing<'tcx> {
         match (self.state.take(), kind) {
             (None, kind) => {
                 let expr_ty = typeck.expr_ty(expr);
-                let (position, adjustments) = walk_parents(cx, &mut self.possible_borrowers, expr, self.msrv);
+                let (position, adjustments) = walk_parents(cx, &mut self.possible_borrowers, expr, &self.msrv);
                 match kind {
                     RefOp::Deref => {
+                        let sub_ty = typeck.expr_ty(sub_expr);
                         if let Position::FieldAccess {
                             name,
                             of_union: false,
                         } = position
-                            && !ty_contains_field(typeck.expr_ty(sub_expr), name)
+                            && !ty_contains_field(sub_ty, name)
                         {
                             self.state = Some((
                                 State::ExplicitDerefField { name },
                                 StateData { span: expr.span, hir_id: expr.hir_id, position },
                             ));
-                        } else if position.is_deref_stable() {
+                        } else if position.is_deref_stable() && sub_ty.is_ref() {
                             self.state = Some((
                                 State::ExplicitDeref { mutability: None },
                                 StateData { span: expr.span, hir_id: expr.hir_id, position },
                             ));
                         }
-                    }
+                    },
                     RefOp::Method(target_mut)
                         if !is_lint_allowed(cx, EXPLICIT_DEREF_METHODS, expr.hir_id)
                             && position.lint_explicit_deref() =>
@@ -320,7 +321,7 @@ impl<'tcx> LateLintPass<'tcx> for Dereferencing<'tcx> {
                             StateData {
                                 span: expr.span,
                                 hir_id: expr.hir_id,
-                                position
+                                position,
                             },
                         ));
                     },
@@ -394,7 +395,11 @@ impl<'tcx> LateLintPass<'tcx> for Dereferencing<'tcx> {
                                     msg,
                                     snip_expr,
                                 }),
-                                StateData { span: expr.span, hir_id: expr.hir_id, position },
+                                StateData {
+                                    span: expr.span,
+                                    hir_id: expr.hir_id,
+                                    position,
+                                },
                             ));
                         } else if position.is_deref_stable()
                             // Auto-deref doesn't combine with other adjustments
@@ -406,7 +411,7 @@ impl<'tcx> LateLintPass<'tcx> for Dereferencing<'tcx> {
                                 StateData {
                                     span: expr.span,
                                     hir_id: expr.hir_id,
-                                    position
+                                    position,
                                 },
                             ));
                         }
@@ -698,7 +703,7 @@ fn walk_parents<'tcx>(
     cx: &LateContext<'tcx>,
     possible_borrowers: &mut Vec<(LocalDefId, PossibleBorrowerMap<'tcx, 'tcx>)>,
     e: &'tcx Expr<'_>,
-    msrv: Option<RustcVersion>,
+    msrv: &Msrv,
 ) -> (Position, &'tcx [Adjustment<'tcx>]) {
     let mut adjustments = [].as_slice();
     let mut precedence = 0i8;
@@ -862,7 +867,11 @@ fn walk_parents<'tcx>(
                             } && impl_ty.is_ref()
                             && let infcx = cx.tcx.infer_ctxt().build()
                             && infcx
-                                .type_implements_trait(trait_id, [impl_ty.into()].into_iter().chain(subs.iter().copied()), cx.param_env)
+                                .type_implements_trait(
+                                    trait_id,
+                                    [impl_ty.into()].into_iter().chain(subs.iter().copied()),
+                                    cx.param_env,
+                                )
                                 .must_apply_modulo_regions()
                         {
                             return Some(Position::MethodReceiverRefImpl)
@@ -1078,7 +1087,7 @@ fn needless_borrow_impl_arg_position<'tcx>(
     param_ty: ParamTy,
     mut expr: &Expr<'tcx>,
     precedence: i8,
-    msrv: Option<RustcVersion>,
+    msrv: &Msrv,
 ) -> Position {
     let destruct_trait_def_id = cx.tcx.lang_items().destruct_trait();
     let sized_trait_def_id = cx.tcx.lang_items().sized_trait();
@@ -1178,7 +1187,7 @@ fn needless_borrow_impl_arg_position<'tcx>(
                 && let ty::Param(param_ty) = trait_predicate.self_ty().kind()
                 && let GenericArgKind::Type(ty) = substs_with_referent_ty[param_ty.index as usize].unpack()
                 && ty.is_array()
-                && !meets_msrv(msrv, msrvs::ARRAY_INTO_ITERATOR)
+                && !msrv.meets(msrvs::ARRAY_INTO_ITERATOR)
             {
                 return false;
             }

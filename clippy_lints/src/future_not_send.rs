@@ -91,7 +91,9 @@ impl<'tcx> LateLintPass<'tcx> for FutureNotSend {
                                 infcx
                                     .err_ctxt()
                                     .maybe_note_obligation_cause_for_async_await(db, &obligation);
-                                if let PredicateKind::Clause(Clause::Trait(trait_pred)) = obligation.predicate.kind().skip_binder() {
+                                if let PredicateKind::Clause(Clause::Trait(trait_pred)) =
+                                    obligation.predicate.kind().skip_binder()
+                                {
                                     db.note(&format!(
                                         "`{}` doesn't implement `{}`",
                                         trait_pred.self_ty(),

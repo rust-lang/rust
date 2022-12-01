@@ -1,27 +1,24 @@
+use clippy_utils::diagnostics::{span_lint_and_then, span_lint_hir_and_then};
+use clippy_utils::higher::If;
+use clippy_utils::msrvs::{self, Msrv};
+use clippy_utils::sugg::Sugg;
+use clippy_utils::ty::implements_trait;
+use clippy_utils::visitors::is_const_evaluatable;
+use clippy_utils::MaybePath;
+use clippy_utils::{
+    eq_expr_value, is_diag_trait_item, is_trait_method, path_res, path_to_local_id, peel_blocks, peel_blocks_with_stmt,
+};
 use itertools::Itertools;
+use rustc_errors::Applicability;
 use rustc_errors::Diagnostic;
 use rustc_hir::{
     def::Res, Arm, BinOpKind, Block, Expr, ExprKind, Guard, HirId, PatKind, PathSegment, PrimTy, QPath, StmtKind,
 };
 use rustc_lint::{LateContext, LateLintPass};
 use rustc_middle::ty::Ty;
-use rustc_semver::RustcVersion;
 use rustc_session::{declare_tool_lint, impl_lint_pass};
 use rustc_span::{symbol::sym, Span};
 use std::ops::Deref;
-
-use clippy_utils::{
-    diagnostics::{span_lint_and_then, span_lint_hir_and_then},
-    eq_expr_value,
-    higher::If,
-    is_diag_trait_item, is_trait_method, meets_msrv, msrvs, path_res, path_to_local_id, peel_blocks,
-    peel_blocks_with_stmt,
-    sugg::Sugg,
-    ty::implements_trait,
-    visitors::is_const_evaluatable,
-    MaybePath,
-};
-use rustc_errors::Applicability;
 
 declare_clippy_lint! {
     /// ### What it does
@@ -87,11 +84,11 @@ declare_clippy_lint! {
 impl_lint_pass!(ManualClamp => [MANUAL_CLAMP]);
 
 pub struct ManualClamp {
-    msrv: Option<RustcVersion>,
+    msrv: Msrv,
 }
 
 impl ManualClamp {
-    pub fn new(msrv: Option<RustcVersion>) -> Self {
+    pub fn new(msrv: Msrv) -> Self {
         Self { msrv }
     }
 }
@@ -114,7 +111,7 @@ struct InputMinMax<'tcx> {
 
 impl<'tcx> LateLintPass<'tcx> for ManualClamp {
     fn check_expr(&mut self, cx: &LateContext<'tcx>, expr: &'tcx Expr<'tcx>) {
-        if !meets_msrv(self.msrv, msrvs::CLAMP) {
+        if !self.msrv.meets(msrvs::CLAMP) {
             return;
         }
         if !expr.span.from_expansion() {
@@ -130,7 +127,7 @@ impl<'tcx> LateLintPass<'tcx> for ManualClamp {
     }
 
     fn check_block(&mut self, cx: &LateContext<'tcx>, block: &'tcx Block<'tcx>) {
-        if !meets_msrv(self.msrv, msrvs::CLAMP) {
+        if !self.msrv.meets(msrvs::CLAMP) {
             return;
         }
         for suggestion in is_two_if_pattern(cx, block) {

@@ -1,6 +1,7 @@
 use clippy_utils::diagnostics::span_lint_and_sugg;
+use clippy_utils::is_from_proc_macro;
+use clippy_utils::msrvs::{self, Msrv};
 use clippy_utils::ty::same_type_and_consts;
-use clippy_utils::{is_from_proc_macro, meets_msrv, msrvs};
 use if_chain::if_chain;
 use rustc_data_structures::fx::FxHashSet;
 use rustc_errors::Applicability;
@@ -14,7 +15,6 @@ use rustc_hir::{
 };
 use rustc_hir_analysis::hir_ty_to_ty;
 use rustc_lint::{LateContext, LateLintPass};
-use rustc_semver::RustcVersion;
 use rustc_session::{declare_tool_lint, impl_lint_pass};
 use rustc_span::Span;
 
@@ -57,13 +57,13 @@ declare_clippy_lint! {
 
 #[derive(Default)]
 pub struct UseSelf {
-    msrv: Option<RustcVersion>,
+    msrv: Msrv,
     stack: Vec<StackItem>,
 }
 
 impl UseSelf {
     #[must_use]
-    pub fn new(msrv: Option<RustcVersion>) -> Self {
+    pub fn new(msrv: Msrv) -> Self {
         Self {
             msrv,
             ..Self::default()
@@ -199,7 +199,7 @@ impl<'tcx> LateLintPass<'tcx> for UseSelf {
     fn check_ty(&mut self, cx: &LateContext<'_>, hir_ty: &hir::Ty<'_>) {
         if_chain! {
             if !hir_ty.span.from_expansion();
-            if meets_msrv(self.msrv, msrvs::TYPE_ALIAS_ENUM_VARIANTS);
+            if self.msrv.meets(msrvs::TYPE_ALIAS_ENUM_VARIANTS);
             if let Some(&StackItem::Check {
                 impl_id,
                 in_body,
@@ -228,7 +228,7 @@ impl<'tcx> LateLintPass<'tcx> for UseSelf {
     fn check_expr(&mut self, cx: &LateContext<'_>, expr: &Expr<'_>) {
         if_chain! {
             if !expr.span.from_expansion();
-            if meets_msrv(self.msrv, msrvs::TYPE_ALIAS_ENUM_VARIANTS);
+            if self.msrv.meets(msrvs::TYPE_ALIAS_ENUM_VARIANTS);
             if let Some(&StackItem::Check { impl_id, .. }) = self.stack.last();
             if cx.typeck_results().expr_ty(expr) == cx.tcx.type_of(impl_id);
             then {} else { return; }
@@ -248,7 +248,7 @@ impl<'tcx> LateLintPass<'tcx> for UseSelf {
     fn check_pat(&mut self, cx: &LateContext<'_>, pat: &Pat<'_>) {
         if_chain! {
             if !pat.span.from_expansion();
-            if meets_msrv(self.msrv, msrvs::TYPE_ALIAS_ENUM_VARIANTS);
+            if self.msrv.meets(msrvs::TYPE_ALIAS_ENUM_VARIANTS);
             if let Some(&StackItem::Check { impl_id, .. }) = self.stack.last();
             // get the path from the pattern
             if let PatKind::Path(QPath::Resolved(_, path))
