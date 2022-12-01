@@ -1,17 +1,19 @@
 use std::env;
 use std::path::PathBuf;
 
+use super::path::{Dirs, RelPath};
 use super::rustc_info::get_file_name;
 use super::utils::{is_ci, CargoProject, Compiler};
 
-static CG_CLIF: CargoProject = CargoProject::local(".");
+static CG_CLIF: CargoProject = CargoProject::new(&RelPath::SOURCE, "cg_clif");
 
 pub(crate) fn build_backend(
+    dirs: &Dirs,
     channel: &str,
     host_triple: &str,
     use_unstable_features: bool,
 ) -> PathBuf {
-    let mut cmd = CG_CLIF.build(&Compiler::host());
+    let mut cmd = CG_CLIF.build(&Compiler::host(), dirs);
 
     cmd.env("CARGO_BUILD_INCREMENTAL", "true"); // Force incr comp even in release mode
 
@@ -43,8 +45,7 @@ pub(crate) fn build_backend(
     super::utils::spawn_and_wait(cmd);
 
     CG_CLIF
-        .source_dir()
-        .join("target")
+        .target_dir(dirs)
         .join(host_triple)
         .join(channel)
         .join(get_file_name("rustc_codegen_cranelift", "dylib"))

@@ -4,7 +4,7 @@ use std::io::Write;
 use std::path::{Path, PathBuf};
 use std::process::{self, Command, Stdio};
 
-use super::prepare::GitRepo;
+use super::path::{Dirs, RelPath};
 use super::rustc_info::{get_cargo_path, get_host_triple, get_rustc_path, get_rustdoc_path};
 
 pub(crate) struct Compiler {
@@ -43,60 +43,42 @@ impl Compiler {
     }
 }
 
-enum CargoProjectSource {
-    Local,
-    GitRepo(&'static GitRepo),
-}
-
 pub(crate) struct CargoProject {
-    source: CargoProjectSource,
-    path: &'static str,
+    source: &'static RelPath,
+    target: &'static str,
 }
 
 impl CargoProject {
-    pub(crate) const fn local(path: &'static str) -> CargoProject {
-        CargoProject { source: CargoProjectSource::Local, path }
+    pub(crate) const fn new(path: &'static RelPath, target: &'static str) -> CargoProject {
+        CargoProject { source: path, target }
     }
 
-    pub(crate) const fn git(git_repo: &'static GitRepo, path: &'static str) -> CargoProject {
-        CargoProject { source: CargoProjectSource::GitRepo(git_repo), path }
+    pub(crate) fn source_dir(&self, dirs: &Dirs) -> PathBuf {
+        self.source.to_path(dirs)
     }
 
-    pub(crate) fn source_dir(&self) -> PathBuf {
-        match self.source {
-            CargoProjectSource::Local => std::env::current_dir().unwrap(),
-            CargoProjectSource::GitRepo(git_repo) => git_repo.source_dir(),
-        }
-        .join(self.path)
+    pub(crate) fn manifest_path(&self, dirs: &Dirs) -> PathBuf {
+        self.source_dir(dirs).join("Cargo.toml")
     }
 
-    pub(crate) fn manifest_path(&self) -> PathBuf {
-        self.source_dir().join("Cargo.toml")
+    pub(crate) fn target_dir(&self, dirs: &Dirs) -> PathBuf {
+        RelPath::BUILD.join(self.target).to_path(dirs)
     }
 
-    pub(crate) fn target_dir(&self) -> PathBuf {
-        match self.source {
-            CargoProjectSource::Local => std::env::current_dir().unwrap(),
-            CargoProjectSource::GitRepo(git_repo) => git_repo.source_dir(),
-        }
-        .join(self.path)
-        .join("target")
-    }
-
-    fn base_cmd(&self, command: &str, cargo: &Path) -> Command {
+    fn base_cmd(&self, command: &str, cargo: &Path, dirs: &Dirs) -> Command {
         let mut cmd = Command::new(cargo);
 
         cmd.arg(command)
             .arg("--manifest-path")
-            .arg(self.manifest_path())
+            .arg(self.manifest_path(dirs))
             .arg("--target-dir")
-            .arg(self.target_dir());
+            .arg(self.target_dir(dirs));
 
         cmd
     }
 
-    fn build_cmd(&self, command: &str, compiler: &Compiler) -> Command {
-        let mut cmd = self.base_cmd(command, &compiler.cargo);
+    fn build_cmd(&self, command: &str, compiler: &Compiler, dirs: &Dirs) -> Command {
+        let mut cmd = self.base_cmd(command, &compiler.cargo, dirs);
 
         cmd.arg("--target").arg(&compiler.triple);
 
@@ -115,32 +97,32 @@ impl CargoProject {
     }
 
     #[must_use]
-    pub(crate) fn fetch(&self, cargo: impl AsRef<Path>) -> Command {
+    pub(crate) fn fetch(&self, cargo: impl AsRef<Path>, dirs: &Dirs) -> Command {
         let mut cmd = Command::new(cargo.as_ref());
 
-        cmd.arg("fetch").arg("--manifest-path").arg(self.manifest_path());
+        cmd.arg("fetch").arg("--manifest-path").arg(self.manifest_path(dirs));
 
         cmd
     }
 
     #[must_use]
-    pub(crate) fn clean(&self, cargo: &Path) -> Command {
-        self.base_cmd("clean", cargo)
+    pub(crate) fn clean(&self, cargo: &Path, dirs: &Dirs) -> Command {
+        self.base_cmd("clean", cargo, dirs)
     }
 
     #[must_use]
-    pub(crate) fn build(&self, compiler: &Compiler) -> Command {
-        self.build_cmd("build", compiler)
+    pub(crate) fn build(&self, compiler: &Compiler, dirs: &Dirs) -> Command {
+        self.build_cmd("build", compiler, dirs)
     }
 
     #[must_use]
-    pub(crate) fn test(&self, compiler: &Compiler) -> Command {
-        self.build_cmd("test", compiler)
+    pub(crate) fn test(&self, compiler: &Compiler, dirs: &Dirs) -> Command {
+        self.build_cmd("test", compiler, dirs)
     }
 
     #[must_use]
-    pub(crate) fn run(&self, compiler: &Compiler) -> Command {
-        self.build_cmd("run", compiler)
+    pub(crate) fn run(&self, compiler: &Compiler, dirs: &Dirs) -> Command {
+        self.build_cmd("run", compiler, dirs)
     }
 }
 
