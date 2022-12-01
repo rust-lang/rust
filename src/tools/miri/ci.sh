@@ -40,10 +40,15 @@ function run_tests {
   ./miri test
   if [ -z "${MIRI_TEST_TARGET+exists}" ]; then
     # Only for host architecture: tests with optimizations (`-O` is what cargo passes, but crank MIR
-    # optimizations up all the way).
-    # Optimizations change diagnostics (mostly backtraces), so we don't check them
-    #FIXME(#2155): we want to only run the pass and panic tests here, not the fail tests.
+    # optimizations up all the way, too).
+    # Optimizations change diagnostics (mostly backtraces), so we don't check
+    # them. Also error locations change so we don't run the failing tests.
     MIRIFLAGS="${MIRIFLAGS:-} -O -Zmir-opt-level=4" MIRI_SKIP_UI_CHECKS=1 ./miri test -- tests/{pass,panic}
+
+    # Also run some many-seeds tests. 64 seeds means this takes around a minute per test.
+    for FILE in tests/many-seeds/*.rs; do
+      MIRI_SEEDS=64 CARGO_EXTRA_FLAGS="$CARGO_EXTRA_FLAGS -q" ./miri many-seeds ./miri run "$FILE"
+    done
   fi
 
   ## test-cargo-miri

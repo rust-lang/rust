@@ -19,7 +19,7 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriInterpCxExt<'mir, 'tcx> {
 
         let func_arg = this.read_immediate(arg)?;
 
-        this.start_thread(
+        this.start_regular_thread(
             Some(thread_info_place),
             start_routine,
             Abi::C { unwind: false },

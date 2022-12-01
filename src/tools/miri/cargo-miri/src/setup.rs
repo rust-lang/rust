@@ -99,12 +99,10 @@ pub fn setup(subcommand: &MiriCommand, target: &str, rustc_version: &VersionMeta
         // `config.toml`.
         command.env("RUSTC_WRAPPER", "");
 
-        if only_setup {
-            if print_sysroot {
-                // Be extra sure there is no noise on stdout.
-                command.stdout(process::Stdio::null());
-            }
+        if only_setup && !print_sysroot {
+            // Forward output.
         } else {
+            // Supress output.
             command.stdout(process::Stdio::null());
             command.stderr(process::Stdio::null());
         }
@@ -120,7 +118,9 @@ pub fn setup(subcommand: &MiriCommand, target: &str, rustc_version: &VersionMeta
     std::env::set_var("MIRI_SYSROOT", &sysroot_dir);
 
     // Do the build.
-    if only_setup {
+    if print_sysroot {
+        // Be silent.
+    } else if only_setup {
         // We want to be explicit.
         eprintln!("Preparing a sysroot for Miri (target: {target})...");
     } else {
@@ -143,7 +143,9 @@ pub fn setup(subcommand: &MiriCommand, target: &str, rustc_version: &VersionMeta
                 )
             }
         });
-    if only_setup {
+    if print_sysroot {
+        // Be silent.
+    } else if only_setup {
         eprintln!("A sysroot for Miri is now available in `{}`.", sysroot_dir.display());
     } else {
         eprintln!("done");

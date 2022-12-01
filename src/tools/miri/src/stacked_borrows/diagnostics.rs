@@ -5,7 +5,9 @@ use rustc_middle::mir::interpret::{alloc_range, AllocId, AllocRange};
 use rustc_span::{Span, SpanData};
 use rustc_target::abi::Size;
 
-use crate::stacked_borrows::{err_sb_ub, AccessKind, GlobalStateInner, Permission, ProtectorKind};
+use crate::stacked_borrows::{
+    err_sb_ub, AccessKind, GlobalStateInner, Permission, ProtectorKind, Stack,
+};
 use crate::*;
 
 use rustc_middle::mir::interpret::InterpError;
