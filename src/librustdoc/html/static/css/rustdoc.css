@@ -1521,6 +1521,7 @@ details.rustdoc-toggle > summary::before {
 	display: inline-block;
 	vertical-align: middle;
 	opacity: .5;
+	filter: var(--toggle-filter);
 }
 
 details.rustdoc-toggle > summary.hideme > span,

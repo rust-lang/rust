@@ -16,6 +16,7 @@
 	--right-side-color: grey;
 	--code-attribute-color: #999;
 	--toggles-color: #999;
+	--toggle-filter: none;
 	--search-input-focused-border-color: #66afe9;
 	--copy-path-button-color: #999;
 	--copy-path-img-filter: invert(50%);
