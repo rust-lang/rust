@@ -188,7 +188,7 @@ fn inject_impl_of_structural_trait(
             .cloned(),
     );
     // Mark as `automatically_derived` to avoid some silly lints.
-    attrs.push(cx.attribute(cx.meta_word(span, sym::automatically_derived)));
+    attrs.push(cx.attr_word(sym::automatically_derived, span));
 
     let newitem = cx.item(
         span,

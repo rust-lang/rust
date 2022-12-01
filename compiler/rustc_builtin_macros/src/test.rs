@@ -2,7 +2,6 @@
 /// Ideally, this code would be in libtest but for efficiency and error messages it lives here.
 use crate::util::{check_builtin_macro_attribute, warn_on_duplicate_attribute};
 use rustc_ast as ast;
-use rustc_ast::attr;
 use rustc_ast::ptr::P;
 use rustc_ast_pretty::pprust;
 use rustc_errors::Applicability;
@@ -47,11 +46,7 @@ pub fn expand_test_case(
             tokens: None,
         };
         item.ident.span = item.ident.span.with_ctxt(sp.ctxt());
-        item.attrs.push(ecx.attribute(attr::mk_name_value_item_str(
-            Ident::new(sym::rustc_test_marker, sp),
-            test_path_symbol,
-            sp,
-        )));
+        item.attrs.push(ecx.attr_name_value_str(sym::rustc_test_marker, test_path_symbol, sp));
         item
     });
 
@@ -241,16 +236,9 @@ pub fn expand_test_or_bench(
         Ident::new(item.ident.name, sp),
         thin_vec![
             // #[cfg(test)]
-            cx.attribute(attr::mk_list_item(
-                Ident::new(sym::cfg, attr_sp),
-                vec![attr::mk_nested_word_item(Ident::new(sym::test, attr_sp))],
-            )),
+            cx.attr_nested_word(sym::cfg, sym::test, attr_sp),
             // #[rustc_test_marker = "test_case_sort_key"]
-            cx.attribute(attr::mk_name_value_item_str(
-                Ident::new(sym::rustc_test_marker, attr_sp),
-                test_path_symbol,
-                attr_sp,
-            )),
+            cx.attr_name_value_str(sym::rustc_test_marker, test_path_symbol, attr_sp),
         ]
         .into(),
         // const $ident: test::TestDescAndFn =

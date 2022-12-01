@@ -206,22 +206,6 @@ impl MetaItemLit {
         token::Lit::from_token(token)
             .and_then(|token_lit| MetaItemLit::from_token_lit(token_lit, token.span).ok())
     }
-
-    /// Attempts to create a meta item literal from a `LitKind`.
-    /// This function is used when the original token doesn't exist (e.g. the literal is created
-    /// by an AST-based macro) or unavailable (e.g. from HIR pretty-printing).
-    pub fn from_lit_kind(kind: LitKind, span: Span) -> MetaItemLit {
-        MetaItemLit { token_lit: kind.to_token_lit(), kind, span }
-    }
-
-    /// Losslessly convert a meta item literal into a token.
-    pub fn to_token(&self) -> Token {
-        let kind = match self.token_lit.kind {
-            token::Bool => token::Ident(self.token_lit.symbol, false),
-            _ => token::Literal(self.token_lit),
-        };
-        Token::new(kind, self.span)
-    }
 }
 
 fn strip_underscores(symbol: Symbol) -> Symbol {

@@ -718,7 +718,7 @@ impl<'a> TraitDef<'a> {
         let path = cx.path_all(self.span, false, vec![type_ident], self_params);
         let self_type = cx.ty_path(path);
 
-        let attr = cx.attribute(cx.meta_word(self.span, sym::automatically_derived));
+        let attr = cx.attr_word(sym::automatically_derived, self.span);
         let attrs = thin_vec![attr];
         let opt_trait_ref = Some(trait_ref);
 

@@ -15,8 +15,7 @@ pub fn expand_deriving_ord(
     push: &mut dyn FnMut(Annotatable),
     is_const: bool,
 ) {
-    let inline = cx.meta_word(span, sym::inline);
-    let attrs = thin_vec![cx.attribute(inline)];
+    let attrs = thin_vec![cx.attr_word(sym::inline, span)];
     let trait_def = TraitDef {
         span,
         path: path_std!(cmp::Ord),
