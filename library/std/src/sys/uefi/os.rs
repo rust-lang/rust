@@ -2,13 +2,14 @@ use super::{
     common::{self, status_to_io_error},
     unsupported,
 };
+use crate::error::Error as StdError;
 use crate::ffi::{OsStr, OsString};
 use crate::fmt;
 use crate::io;
 use crate::marker::PhantomData;
 use crate::os::uefi;
+use crate::os::uefi::ffi::{OsStrExt, OsStringExt};
 use crate::path::{self, PathBuf};
-use crate::{error::Error as StdError, os::uefi::ffi::OsStringExt};
 
 // Return EFI_SUCCESS as Status
 pub fn errno() -> i32 {
@@ -47,24 +48,46 @@ impl<'a> Iterator for SplitPaths<'a> {
 #[derive(Debug)]
 pub struct JoinPathsError;
 
-pub fn join_paths<I, T>(_paths: I) -> Result<OsString, JoinPathsError>
+// This is based on windows implementation since the path variable mentioned in Section 3.6.1
+// [UEFI Shell Specification](https://uefi.org/sites/default/files/resources/UEFI_Shell_Spec_2_0.pdf).
+pub fn join_paths<I, T>(paths: I) -> Result<OsString, JoinPathsError>
 where
     I: Iterator<Item = T>,
     T: AsRef<OsStr>,
 {
-    Err(JoinPathsError)
+    let mut joined = Vec::new();
+    let sep = b';' as u16;
+
+    for (i, path) in paths.enumerate() {
+        let path = path.as_ref();
+        if i > 0 {
+            joined.push(sep)
+        }
+        let v = path.encode_wide().collect::<Vec<u16>>();
+        if v.contains(&(b'"' as u16)) {
+            return Err(JoinPathsError);
+        } else if v.contains(&sep) {
+            joined.push(b'"' as u16);
+            joined.extend_from_slice(&v[..]);
+            joined.push(b'"' as u16);
+        } else {
+            joined.extend_from_slice(&v[..]);
+        }
+    }
+
+    Ok(OsStringExt::from_wide(&joined[..]))
 }
 
 impl fmt::Display for JoinPathsError {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        "not supported on this platform yet".fmt(f)
+        "path segment contains `\"`".fmt(f)
     }
 }
 
 impl StdError for JoinPathsError {
     #[allow(deprecated)]
     fn description(&self) -> &str {
-        "not supported on this platform yet"
+        "failed to join paths"
     }
 }
 

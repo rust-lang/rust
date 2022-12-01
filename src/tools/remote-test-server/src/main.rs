@@ -268,7 +268,8 @@ fn handle_run(socket: TcpStream, work: &Path, tmp: &Path, lock: &Mutex<()>, conf
     // On windows, libraries are just searched in the executable directory,
     // system directories, PWD, and PATH, in that order. PATH is the only one
     // we can change for this.
-    let library_path = if cfg!(windows) { "PATH" } else { "LD_LIBRARY_PATH" };
+    let library_path =
+        if cfg!(any(windows, target_os = "uefi")) { "PATH" } else { "LD_LIBRARY_PATH" };
 
     // Support libraries were uploaded to `work` earlier, so make sure that's
     // in `LD_LIBRARY_PATH`. Also include our own current dir which may have
