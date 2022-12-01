@@ -87,7 +87,7 @@ fn find_arms(
     let mut extracting = None;
     let mut diverging = None;
     for arm in arms {
-        if ctx.sema.type_of_expr(&arm.expr().unwrap()).unwrap().original().is_never() {
+        if ctx.sema.type_of_expr(&arm.expr()?)?.original().is_never() {
             diverging = Some(arm);
         } else {
             extracting = Some(arm);
