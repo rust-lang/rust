@@ -1434,6 +1434,7 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
     /// Given a function definition like:
     ///
     /// ```rust
+    /// use std::fmt::Debug;
     /// fn test<'a, T: Debug>(x: &'a T) -> impl Debug + 'a {
     ///     x
     /// }
@@ -1441,13 +1442,13 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
     ///
     /// we will create a TAIT definition in the HIR like
     ///
-    /// ```
+    /// ```ignore (type alias is not used)
     /// type TestReturn<'a, T, 'x> = impl Debug + 'x
     /// ```
     ///
     /// and return a type like `TestReturn<'static, T, 'a>`, so that the function looks like:
     ///
-    /// ```rust
+    /// ```ignore (cannot compile TAIT example with 'static lifetime)
     /// fn test<'a, T: Debug>(x: &'a T) -> TestReturn<'static, T, 'a>
     /// ```
     ///
