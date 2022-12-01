@@ -729,39 +729,34 @@ pub trait LayoutCalculator {
             align = align.max(AbiAndPrefAlign::new(repr_align));
         }
 
-        let optimize = !repr.inhibit_union_abi_opt();
+        let mut optimize = !repr.inhibit_union_abi_opt();
         let mut size = Size::ZERO;
-        let mut abi = None;
-        let mut biggest_zst_align = align;
-        let mut biggest_non_zst_align = align;
+        let mut common_non_zst_abi_and_align: Option<(Abi, AbiAndPrefAlign)> = None;
         let only_variant = &variants[FIRST_VARIANT];
         for field in only_variant {
-            assert!(!field.0.is_unsized());
+            assert!(field.0.is_sized());
 
-            if optimize {
-                // If all non-ZST fields have the same ABI, forward this ABI
-                if field.0.is_zst() {
-                    biggest_zst_align = biggest_zst_align.max(field.align());
-                } else {
-                    biggest_non_zst_align = biggest_non_zst_align.max(field.align());
-                    // Discard valid range information and allow undef
-                    let field_abi = match field.abi() {
-                        Abi::Scalar(x) => Abi::Scalar(x.to_union()),
-                        Abi::ScalarPair(x, y) => Abi::ScalarPair(x.to_union(), y.to_union()),
-                        Abi::Vector { element: x, count } => {
-                            Abi::Vector { element: x.to_union(), count }
-                        }
-                        Abi::Uninhabited | Abi::Aggregate { .. } => Abi::Aggregate { sized: true },
-                    };
+            if !field.0.is_zst() && optimize {
+                // Discard valid range information and allow undef
+                let field_abi = field.abi().to_union();
 
-                    if let Some(abi) = &mut abi {
-                        if *abi != field_abi {
-                            // different fields have different ABI: reset to Aggregate
-                            *abi = Abi::Aggregate { sized: true };
-                        }
+                if let Some((abi, align)) = &mut common_non_zst_abi_and_align {
+                    if *abi != field_abi {
+                        // Different fields have different ABI: disable opt
+                        optimize = false;
                     } else {
-                        abi = Some(field_abi);
+                        // Fields with the same non-Aggregate ABI should also
+                        // have the same alignment
+                        if !matches!(abi, Abi::Aggregate { .. }) {
+                            assert_eq!(
+                                align.abi,
+                                field.align().abi,
+                                "non-Aggregate field with matching ABI but differing alignment"
+                            );
+                        }
                     }
+                } else {
+                    common_non_zst_abi_and_align = Some((field_abi, field.align()));
                 }
             }
 
@@ -769,23 +764,23 @@ pub trait LayoutCalculator {
             size = cmp::max(size, field.size());
         }
 
-        let abi = match abi {
-            None => Abi::Aggregate { sized: true },
-            Some(non_zst_abi) => {
-                if biggest_zst_align.abi > biggest_non_zst_align.abi {
-                    // If a zst has a bigger alignment than the non-zst fields,
-                    // we cannot use scalar layout, because scalar(pair)s can't be
-                    // more aligned than their primitive.
-                    Abi::Aggregate { sized: true }
-                } else {
-                    non_zst_abi
-                }
-            }
-        };
-
         if let Some(pack) = repr.pack {
             align = align.min(AbiAndPrefAlign::new(pack));
         }
+
+        // If all non-ZST fields have the same ABI, we may forward that ABI
+        // for the union as a whole, unless otherwise inhibited.
+        let abi = match (optimize, common_non_zst_abi_and_align) {
+            (false, _) | (_, None) => Abi::Aggregate { sized: true },
+            (true, Some((abi, _))) => {
+                if abi.inherent_align(dl).map(|a| a.abi) != Some(align.abi) {
+                    // Mismatched alignment: disable opt
+                    Abi::Aggregate { sized: true }
+                } else {
+                    abi
+                }
+            }
+        };
 
         Some(LayoutS {
             variants: Variants::Single { index: FIRST_VARIANT },
