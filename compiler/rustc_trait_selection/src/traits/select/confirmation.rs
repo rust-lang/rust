@@ -625,7 +625,7 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
             self,
             obligation.param_env,
             cause.clone(),
-            obligation.recursion_depth,
+            obligation.recursion_depth + 1,
             output_ty,
             &mut nested,
         );
@@ -650,7 +650,7 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
 
         let trait_obligations = self.impl_or_trait_obligations(
             &obligation.cause,
-            obligation.recursion_depth,
+            obligation.recursion_depth + 1,
             obligation.param_env,
             trait_def_id,
             &substs,
