@@ -72,6 +72,5 @@ mod half_public_import {
 
 #[rustc_effective_visibility]
 pub use half_public_import::HalfPublicImport; //~ ERROR Direct: pub, Reexported: pub, Reachable: pub, ReachableThroughImplTrait: pub
-                                              //~^ ERROR Direct: pub, Reexported: pub, Reachable: pub, ReachableThroughImplTrait: pub
 
 fn main() {}

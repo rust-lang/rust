@@ -158,14 +158,6 @@ impl<'a, 'b> visit::Visitor<'a> for DefCollector<'a, 'b> {
 
     fn visit_use_tree(&mut self, use_tree: &'a UseTree, id: NodeId, _nested: bool) {
         self.create_def(id, DefPathData::Use, use_tree.span);
-        match use_tree.kind {
-            UseTreeKind::Simple(_, id1, id2) => {
-                self.create_def(id1, DefPathData::Use, use_tree.prefix.span);
-                self.create_def(id2, DefPathData::Use, use_tree.prefix.span);
-            }
-            UseTreeKind::Glob => (),
-            UseTreeKind::Nested(..) => {}
-        }
         visit::walk_use_tree(self, use_tree, id);
     }
 

@@ -106,7 +106,7 @@ impl<'cx, 'a> Context<'cx, 'a> {
             (
                 UseTree {
                     prefix: this.cx.path(this.span, vec![Ident::with_dummy_span(sym)]),
-                    kind: UseTreeKind::Simple(None, DUMMY_NODE_ID, DUMMY_NODE_ID),
+                    kind: UseTreeKind::Simple(None),
                     span: this.span,
                 },
                 DUMMY_NODE_ID,

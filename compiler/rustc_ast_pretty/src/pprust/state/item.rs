@@ -663,7 +663,7 @@ impl<'a> State<'a> {
 
     fn print_use_tree(&mut self, tree: &ast::UseTree) {
         match &tree.kind {
-            ast::UseTreeKind::Simple(rename, ..) => {
+            ast::UseTreeKind::Simple(rename) => {
                 self.print_path(&tree.prefix, false, 0);
                 if let &Some(rename) = rename {
                     self.nbsp();

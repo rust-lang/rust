@@ -149,7 +149,7 @@ impl SingleComponentPathImports {
 
                 // keep track of `use some_module;` usages
                 if segments.len() == 1 {
-                    if let UseTreeKind::Simple(None, _, _) = use_tree.kind {
+                    if let UseTreeKind::Simple(None) = use_tree.kind {
                         let name = segments[0].ident.name;
                         if !macros.contains(&name) {
                             single_use_usages.push(SingleUse {
@@ -169,7 +169,7 @@ impl SingleComponentPathImports {
                         for tree in trees {
                             let segments = &tree.0.prefix.segments;
                             if segments.len() == 1 {
-                                if let UseTreeKind::Simple(None, _, _) = tree.0.kind {
+                                if let UseTreeKind::Simple(None) = tree.0.kind {
                                     let name = segments[0].ident.name;
                                     if !macros.contains(&name) {
                                         single_use_usages.push(SingleUse {

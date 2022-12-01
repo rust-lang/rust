@@ -1012,7 +1012,7 @@ impl<'a> Parser<'a> {
                     prefix.span = lo.to(self.prev_token.span);
                 }
 
-                UseTreeKind::Simple(self.parse_rename()?, DUMMY_NODE_ID, DUMMY_NODE_ID)
+                UseTreeKind::Simple(self.parse_rename()?)
             }
         };
 
