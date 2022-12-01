@@ -371,12 +371,11 @@ unsafe impl<T> const SliceIndex<[T]> for ops::Range<usize> {
 
     #[inline]
     unsafe fn get_unchecked(self, slice: *const [T]) -> *const [T] {
-        let this = ops::Range { start: self.start, end: self.end };
+        let this = ops::Range { ..self };
         // SAFETY: the caller guarantees that `slice` is not dangling, so it
         // cannot be longer than `isize::MAX`. They also guarantee that
         // `self` is in bounds of `slice` so `self` cannot overflow an `isize`,
         // so the call to `add` is safe.
-
         unsafe {
             assert_unsafe_precondition!(
                 "slice::get_unchecked requires that the range is within the slice",
@@ -389,7 +388,7 @@ unsafe impl<T> const SliceIndex<[T]> for ops::Range<usize> {
 
     #[inline]
     unsafe fn get_unchecked_mut(self, slice: *mut [T]) -> *mut [T] {
-        let this = ops::Range { start: self.start, end: self.end };
+        let this = ops::Range { ..self };
         // SAFETY: see comments for `get_unchecked` above.
         unsafe {
             assert_unsafe_precondition!(
