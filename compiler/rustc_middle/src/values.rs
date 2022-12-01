@@ -12,6 +12,8 @@ use rustc_span::Span;
 
 use std::fmt::Write;
 
+use crate::ty::UnusedGenericParams;
+
 impl<'tcx> Value<TyCtxt<'tcx>, DepKind> for Ty<'_> {
     fn from_cycle_error(tcx: TyCtxt<'tcx>, _: &[QueryInfo<DepKind>]) -> Self {
         // SAFETY: This is never called when `Self` is not `Ty<'tcx>`.
@@ -29,6 +31,14 @@ impl<'tcx> Value<TyCtxt<'tcx>, DepKind> for ty::SymbolName<'_> {
                 tcx, "<error>",
             ))
         }
+    }
+}
+
+impl<'tcx> Value<TyCtxt<'tcx>, DepKind> for UnusedGenericParams {
+    fn from_cycle_error(_: TyCtxt<'tcx>, _: &[QueryInfo<DepKind>]) -> Self {
+        // Cycles can happen with recursive functions. We just conservatively assume
+        // that all parameters are used in recursive functions.
+        Self::new_all_used()
     }
 }
 

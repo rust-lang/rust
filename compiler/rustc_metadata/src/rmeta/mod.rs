@@ -13,7 +13,7 @@ use rustc_hir::def::{CtorKind, DefKind};
 use rustc_hir::def_id::{CrateNum, DefId, DefIndex, DefPathHash, StableCrateId};
 use rustc_hir::definitions::DefKey;
 use rustc_hir::lang_items::LangItem;
-use rustc_index::bit_set::{BitSet, FiniteBitSet};
+use rustc_index::bit_set::BitSet;
 use rustc_index::vec::IndexVec;
 use rustc_middle::metadata::ModChild;
 use rustc_middle::middle::codegen_fn_attrs::CodegenFnAttrs;
@@ -22,7 +22,7 @@ use rustc_middle::middle::resolve_lifetime::ObjectLifetimeDefault;
 use rustc_middle::mir;
 use rustc_middle::ty::fast_reject::SimplifiedType;
 use rustc_middle::ty::query::Providers;
-use rustc_middle::ty::{self, ReprOptions, Ty};
+use rustc_middle::ty::{self, ReprOptions, Ty, UnusedGenericParams};
 use rustc_middle::ty::{DeducedParamAttrs, GeneratorDiagnosticData, ParameterizedOverTcx, TyCtxt};
 use rustc_serialize::opaque::FileEncoder;
 use rustc_session::config::SymbolManglingVersion;
@@ -384,7 +384,7 @@ define_tables! {
     trait_item_def_id: Table<DefIndex, RawDefId>,
     inherent_impls: Table<DefIndex, LazyArray<DefIndex>>,
     expn_that_defined: Table<DefIndex, LazyValue<ExpnId>>,
-    unused_generic_params: Table<DefIndex, LazyValue<FiniteBitSet<u32>>>,
+    unused_generic_params: Table<DefIndex, LazyValue<UnusedGenericParams>>,
     params_in_repr: Table<DefIndex, LazyValue<BitSet<u32>>>,
     repr_options: Table<DefIndex, LazyValue<ReprOptions>>,
     // `def_keys` and `def_path_hashes` represent a lazy version of a
