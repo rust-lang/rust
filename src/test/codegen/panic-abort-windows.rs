@@ -1,4 +1,4 @@
-// This test is for *-windows-msvc only.
+// This test is for *-windows only.
 // only-windows
 
 // compile-flags: -C no-prepopulate-passes -C panic=abort -O

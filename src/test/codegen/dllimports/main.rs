@@ -1,5 +1,6 @@
 // This test is for *-windows-msvc only.
 // only-windows
+// ignore-gnu
 
 // aux-build:dummy.rs
 // aux-build:wrapper.rs
