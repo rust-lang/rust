@@ -286,6 +286,12 @@ jobs:
     strategy:
       matrix:
         include:
+          - name: x86_64-msvc-1
+            <<: *job-windows-xl 
+
+          - name: x86_64-msvc-2
+            <<: *job-windows-xl 
+
           - name: mingw-check
             <<: *job-linux-xl
 
