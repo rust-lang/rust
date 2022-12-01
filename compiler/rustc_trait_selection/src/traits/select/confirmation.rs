@@ -606,7 +606,15 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
             .infcx
             .shallow_resolve(obligation.self_ty().no_bound_vars())
             .expect("fn pointer should not capture bound vars from predicate");
-        let sig = self_ty.fn_sig(self.tcx());
+        // FnDef signatures are not necessarily normalized
+        let Normalized { value: sig, obligations: mut nested } = normalize_with_depth(
+            self,
+            obligation.param_env,
+            obligation.cause.clone(),
+            obligation.recursion_depth + 1,
+            self_ty.fn_sig(self.tcx()),
+        );
+
         let trait_ref = closure_trait_ref_and_return_type(
             self.tcx(),
             obligation.predicate.def_id(),
@@ -616,22 +624,14 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
         )
         .map_bound(|(trait_ref, _)| trait_ref);
 
-        let mut nested = self.confirm_poly_trait_refs(obligation, trait_ref)?;
+        nested.extend(self.confirm_poly_trait_refs(obligation, trait_ref)?);
 
         // Confirm the `type Output: Sized;` bound that is present on `FnOnce`
         let cause = obligation.derived_cause(BuiltinDerivedObligation);
-        let output_ty = self.infcx.replace_bound_vars_with_placeholders(sig.output());
-        let output_ty = normalize_with_depth_to(
-            self,
-            obligation.param_env,
-            cause.clone(),
-            obligation.recursion_depth + 1,
-            output_ty,
-            &mut nested,
-        );
-        let tr =
-            ty::Binder::dummy(self.tcx().at(cause.span).mk_trait_ref(LangItem::Sized, [output_ty]));
-        nested.push(Obligation::new(self.infcx.tcx, cause, obligation.param_env, tr));
+        let predicate = sig
+            .output()
+            .map_bound(|ty| self.tcx().at(cause.span).mk_trait_ref(LangItem::Sized, [ty]));
+        nested.push(Obligation::new(self.infcx.tcx, cause, obligation.param_env, predicate));
 
         Ok(ImplSourceFnPointerData { fn_ty: self_ty, nested })
     }
@@ -799,25 +799,10 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
         expected_trait_ref: ty::PolyTraitRef<'tcx>,
     ) -> Result<Vec<PredicateObligation<'tcx>>, SelectionError<'tcx>> {
         let obligation_trait_ref = obligation.predicate.to_poly_trait_ref();
-        // Normalize the obligation and expected trait refs together, because why not
-        let Normalized { obligations: nested, value: (obligation_trait_ref, expected_trait_ref) } =
-            ensure_sufficient_stack(|| {
-                normalize_with_depth(
-                    self,
-                    obligation.param_env,
-                    obligation.cause.clone(),
-                    obligation.recursion_depth + 1,
-                    (obligation_trait_ref, expected_trait_ref),
-                )
-            });
-
         self.infcx
             .at(&obligation.cause, obligation.param_env)
             .sup(obligation_trait_ref, expected_trait_ref)
-            .map(|InferOk { mut obligations, .. }| {
-                obligations.extend(nested);
-                obligations
-            })
+            .map(|InferOk { value: (), obligations }| obligations)
             .map_err(|e| OutputTypeParameterMismatch(expected_trait_ref, obligation_trait_ref, e))
     }
 
