@@ -1,11 +1,11 @@
 #![cfg_attr(feature = "nightly", feature(step_trait, rustc_attrs, min_specialization))]
 
-use std::fmt;
 #[cfg(feature = "nightly")]
 use std::iter::Step;
 use std::num::{NonZeroUsize, ParseIntError};
 use std::ops::{Add, AddAssign, Mul, RangeInclusive, Sub};
 use std::str::FromStr;
+use std::{cmp, fmt};
 
 use bitflags::bitflags;
 use rustc_data_structures::intern::Interned;
@@ -1271,6 +1271,31 @@ impl Abi {
     #[inline]
     pub fn is_scalar(&self) -> bool {
         matches!(*self, Abi::Scalar(_))
+    }
+
+    /// Returns the fixed alignment of this ABI, if any
+    pub fn inherent_align<C: HasDataLayout>(&self, cx: &C) -> Option<AbiAndPrefAlign> {
+        Some(match *self {
+            Abi::Scalar(s) => s.align(cx),
+            Abi::ScalarPair(s1, s2) => {
+                AbiAndPrefAlign::new(cmp::max(s1.align(cx).abi, s2.align(cx).abi))
+            }
+            Abi::Vector { element, count } => {
+                cx.data_layout().vector_align(element.size(cx) * count)
+            }
+            Abi::Uninhabited | Abi::Aggregate { .. } => return None,
+        })
+    }
+
+    /// Discard valid range information and allow undef
+    pub fn to_union(&self) -> Self {
+        assert!(self.is_sized());
+        match *self {
+            Abi::Scalar(s) => Abi::Scalar(s.to_union()),
+            Abi::ScalarPair(s1, s2) => Abi::ScalarPair(s1.to_union(), s2.to_union()),
+            Abi::Vector { element, count } => Abi::Vector { element: element.to_union(), count },
+            Abi::Uninhabited | Abi::Aggregate { .. } => Abi::Aggregate { sized: true },
+        }
     }
 }
 
