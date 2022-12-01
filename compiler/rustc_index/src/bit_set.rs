@@ -2089,10 +2089,38 @@ impl<T: FiniteBitSetTy> FiniteBitSet<T> {
         self.within_domain(index)
             .then(|| ((self.0.checked_shr(index).unwrap_or(T::ONE)) & T::ONE) == T::ONE)
     }
+
+    /// Returns an iterator over the bitset, yielding every bit.
+    pub fn iter(&self) -> FullFiniteBitSetIter<T> {
+        FullFiniteBitSetIter::new(*self)
+    }
 }
 
 impl<T: FiniteBitSetTy> Default for FiniteBitSet<T> {
     fn default() -> Self {
         Self::new_empty()
+    }
+}
+
+/// An iterator that iterates over a finite bitset and yields every bit.
+pub struct FullFiniteBitSetIter<T: FiniteBitSetTy> {
+    bitset: FiniteBitSet<T>,
+    position: u32,
+}
+
+impl<T: FiniteBitSetTy> FullFiniteBitSetIter<T> {
+    fn new(bitset: FiniteBitSet<T>) -> Self {
+        Self { bitset, position: 0 }
+    }
+}
+
+impl<T: FiniteBitSetTy> Iterator for FullFiniteBitSetIter<T> {
+    type Item = bool;
+
+    fn next(&mut self) -> Option<Self::Item> {
+        self.bitset.contains(self.position).map(|bit| {
+            self.position += 1;
+            bit
+        })
     }
 }

@@ -6,11 +6,6 @@
 //! for their size, offset of a field, etc.).
 
 use rustc_hir::{def::DefKind, def_id::DefId, ConstContext};
-use rustc_middle::mir::{
-    self,
-    visit::{TyContext, Visitor},
-    Constant, ConstantKind, Local, LocalDecl, Location,
-};
 use rustc_middle::ty::{
     self,
     query::Providers,
@@ -18,8 +13,17 @@ use rustc_middle::ty::{
     visit::{TypeSuperVisitable, TypeVisitable, TypeVisitor},
     Const, Ty, TyCtxt, UnusedGenericParams,
 };
+use rustc_middle::{
+    mir::{
+        self,
+        visit::{TyContext, Visitor},
+        Constant, ConstantKind, Local, LocalDecl, Location,
+    },
+    ty::Instance,
+};
 use rustc_span::symbol::sym;
 use std::ops::ControlFlow;
+use std::{convert::TryInto, iter};
 
 use crate::errors::UnusedGenericParamsHint;
 
@@ -32,6 +36,7 @@ pub fn provide(providers: &mut Providers) {
 ///
 /// Returns a bitset where bits representing unused parameters are set (`is_empty` indicates all
 /// parameters are used).
+#[instrument(skip(tcx), level = "debug")]
 fn unused_generic_params<'tcx>(
     tcx: TyCtxt<'tcx>,
     instance: ty::InstanceDef<'tcx>,
@@ -44,6 +49,7 @@ fn unused_generic_params<'tcx>(
     let def_id = instance.def_id();
     // Exit early if this instance should not be polymorphized.
     if !should_polymorphize(tcx, def_id, instance) {
+        debug!("Should not polymorphize instance");
         return UnusedGenericParams::new_all_used();
     }
 
@@ -52,6 +58,7 @@ fn unused_generic_params<'tcx>(
 
     // Exit early when there are no parameters to be unused.
     if generics.count() == 0 {
+        debug!("No generics");
         return UnusedGenericParams::new_all_used();
     }
 
@@ -248,6 +255,29 @@ impl<'a, 'tcx> MarkUsedGenericParams<'a, 'tcx> {
         }
         debug!(?self.unused_parameters);
     }
+
+    fn maybe_ignore_unused_fn_def_const(&mut self, ty: Ty<'tcx>) {
+        if let ty::FnDef(def_id, substs) = *ty.kind()
+            && let param_env = self.tcx.param_env(def_id)
+            && let Ok(substs) = self.tcx.try_normalize_erasing_regions(param_env, substs)
+            && let Ok(Some(instance)) = Instance::resolve(self.tcx, param_env, def_id, substs)
+            && let unused_params = self.tcx.unused_generic_params(instance.def)
+            && !unused_params.all_used()
+        {
+            debug!(?unused_params, "Referencing a function that has unused generic params, not marking them all as used");
+
+            for (subst, is_unused) in iter::zip(substs, unused_params.iter_over_eager()) {
+                if let ty::GenericArgKind::Type(subst_ty) = subst.unpack()
+                    && let ty::Param(param) = subst_ty.kind()
+                    && !is_unused
+                {
+                    self.unused_parameters.mark_used(param.index);
+                }
+            }
+        } else {
+            ty.visit_with(self);
+        }
+    }
 }
 
 impl<'a, 'tcx> Visitor<'tcx> for MarkUsedGenericParams<'a, 'tcx> {
@@ -268,7 +298,8 @@ impl<'a, 'tcx> Visitor<'tcx> for MarkUsedGenericParams<'a, 'tcx> {
         self.super_local_decl(local, local_decl);
     }
 
-    fn visit_constant(&mut self, ct: &Constant<'tcx>, location: Location) {
+    #[instrument(level = "debug", skip(self))]
+    fn visit_constant(&mut self, ct: &Constant<'tcx>, _: Location) {
         match ct.literal {
             ConstantKind::Ty(c) => {
                 c.visit_with(self);
@@ -285,9 +316,11 @@ impl<'a, 'tcx> Visitor<'tcx> for MarkUsedGenericParams<'a, 'tcx> {
                     }
                 }
 
-                Visitor::visit_ty(self, ty, TyContext::Location(location));
+                self.maybe_ignore_unused_fn_def_const(ty);
             }
-            ConstantKind::Val(_, ty) => Visitor::visit_ty(self, ty, TyContext::Location(location)),
+            ConstantKind::Val(_, ty) => {
+                self.maybe_ignore_unused_fn_def_const(ty);
+            }
         }
     }
 
@@ -315,7 +348,10 @@ impl<'a, 'tcx> TypeVisitor<'tcx> for MarkUsedGenericParams<'a, 'tcx> {
                 self.visit_child_body(def.did, substs);
                 ControlFlow::CONTINUE
             }
-            _ => c.super_visit_with(self),
+            _ => {
+                self.maybe_ignore_unused_fn_def_const(c.ty());
+                ControlFlow::CONTINUE
+            }
         }
     }
 

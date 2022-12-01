@@ -1,5 +1,6 @@
 #![feature(array_windows)]
 #![feature(control_flow_enum)]
+#![feature(let_chains)]
 #![recursion_limit = "256"]
 #![allow(rustc::potential_query_instability)]
 #![deny(rustc::untranslatable_diagnostic)]

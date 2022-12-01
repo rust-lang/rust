@@ -6,7 +6,7 @@ use rustc_errors::ErrorGuaranteed;
 use rustc_hir::def::Namespace;
 use rustc_hir::def_id::{CrateNum, DefId};
 use rustc_hir::lang_items::LangItem;
-use rustc_index::bit_set::FiniteBitSet;
+use rustc_index::bit_set::{FiniteBitSet, FullFiniteBitSetIter};
 use rustc_macros::HashStable;
 use rustc_middle::ty::normalize_erasing_regions::NormalizationError;
 use rustc_span::Symbol;
@@ -806,5 +806,12 @@ impl UnusedGenericParams {
 
     pub fn all_used(&self) -> bool {
         self.0.is_empty()
+    }
+
+    /// Iterates over all the flags in the internal bitset. This will not only return the flags
+    /// for the generic paramters but also more than that, so the caller has to make sure to limit
+    /// iteration by the actual amount of flags.
+    pub fn iter_over_eager(&self) -> FullFiniteBitSetIter<u32> {
+        self.0.iter()
     }
 }
