@@ -44,6 +44,7 @@ static TEST: AtomicUsize = AtomicUsize::new(0);
 struct Config {
     verbose: bool,
     sequential: bool,
+    batch: bool,
     bind: SocketAddr,
 }
 
@@ -52,6 +53,7 @@ impl Config {
         Config {
             verbose: false,
             sequential: false,
+            batch: false,
             bind: if cfg!(target_os = "android") || cfg!(windows) {
                 ([0, 0, 0, 0], 12345).into()
             } else {
@@ -73,6 +75,7 @@ impl Config {
                 }
                 "--bind" => next_is_bind = true,
                 "--sequential" => config.sequential = true,
+                "--batch" => config.batch = true,
                 "--verbose" | "-v" => config.verbose = true,
                 "--help" | "-h" => {
                     show_help();
@@ -98,6 +101,7 @@ fn show_help() {
 OPTIONS:
     --bind <IP>:<PORT>   Specify IP address and port to listen for requests, e.g. "0.0.0.0:12345"
     --sequential         Run only one test at a time
+    --batch              Send stdout and stderr in batch instead of streaming
     -v, --verbose        Show status messages
     -h, --help           Show this help screen
 "#,
@@ -268,22 +272,30 @@ fn handle_run(socket: TcpStream, work: &Path, tmp: &Path, lock: &Mutex<()>, conf
     // Some tests assume RUST_TEST_TMPDIR exists
     cmd.env("RUST_TEST_TMPDIR", tmp.to_owned());
 
-    // Spawn the child and ferry over stdout/stderr to the socket in a framed
-    // fashion (poor man's style)
-    let mut child =
-        t!(cmd.stdin(Stdio::null()).stdout(Stdio::piped()).stderr(Stdio::piped()).spawn());
-    drop(lock);
-    let mut stdout = child.stdout.take().unwrap();
-    let mut stderr = child.stderr.take().unwrap();
     let socket = Arc::new(Mutex::new(reader.into_inner()));
-    let socket2 = socket.clone();
-    let thread = thread::spawn(move || my_copy(&mut stdout, 0, &*socket2));
-    my_copy(&mut stderr, 1, &*socket);
-    thread.join().unwrap();
+
+    let status = if config.batch {
+        let child =
+            t!(cmd.stdin(Stdio::null()).stdout(Stdio::piped()).stderr(Stdio::piped()).output());
+        batch_copy(&child.stdout, 0, &*socket);
+        batch_copy(&child.stderr, 1, &*socket);
+        child.status
+    } else {
+        // Spawn the child and ferry over stdout/stderr to the socket in a framed
+        // fashion (poor man's style)
+        let mut child =
+            t!(cmd.stdin(Stdio::null()).stdout(Stdio::piped()).stderr(Stdio::piped()).spawn());
+        drop(lock);
+        let mut stdout = child.stdout.take().unwrap();
+        let mut stderr = child.stderr.take().unwrap();
+        let socket2 = socket.clone();
+        let thread = thread::spawn(move || my_copy(&mut stdout, 0, &*socket2));
+        my_copy(&mut stderr, 1, &*socket);
+        thread.join().unwrap();
+        t!(child.wait())
+    };
 
     // Finally send over the exit status.
-    let status = t!(child.wait());
-
     let (which, code) = get_status_code(&status);
 
     t!(socket.lock().unwrap().write_all(&[
@@ -353,6 +365,17 @@ fn my_copy(src: &mut dyn Read, which: u8, dst: &Mutex<dyn Write>) {
         } else {
             break;
         }
+    }
+}
+
+fn batch_copy(buf: &[u8], which: u8, dst: &Mutex<dyn Write>) {
+    let n = buf.len();
+    let mut dst = dst.lock().unwrap();
+    t!(dst.write_all(&[which, (n >> 24) as u8, (n >> 16) as u8, (n >> 8) as u8, (n >> 0) as u8,]));
+    if n > 0 {
+        t!(dst.write_all(buf));
+        // Marking buf finished
+        t!(dst.write_all(&[which, 0, 0, 0, 0,]));
     }
 }
 
