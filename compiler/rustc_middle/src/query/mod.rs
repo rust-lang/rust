@@ -1109,6 +1109,7 @@ rustc_queries! {
         desc { |tcx| "looking up span for `{}`", tcx.def_path_str(def_id) }
         cache_on_disk_if { def_id.is_local() }
         separate_provide_extern
+        feedable
     }
 
     /// Gets the span for the identifier of the definition.
