@@ -326,7 +326,7 @@ macro_rules! late_lint_pass_impl {
 
 crate::late_lint_methods!(late_lint_pass_impl, [], ['tcx]);
 
-pub fn late_lint_mod<'tcx, T: LateLintPass<'tcx> + 'tcx>(
+pub(super) fn late_lint_mod<'tcx, T: LateLintPass<'tcx> + 'tcx>(
     tcx: TyCtxt<'tcx>,
     module_def_id: LocalDefId,
     builtin_lints: T,
@@ -361,40 +361,35 @@ pub fn late_lint_mod<'tcx, T: LateLintPass<'tcx> + 'tcx>(
     }
 }
 
-fn late_lint_pass_crate<'tcx, T: LateLintPass<'tcx>>(tcx: TyCtxt<'tcx>, pass: T) {
-    let effective_visibilities = &tcx.effective_visibilities(());
-
+fn late_lint_crate<'tcx, T: LateLintPass<'tcx> + 'tcx>(tcx: TyCtxt<'tcx>, builtin_lints: T) {
     let context = LateContext {
         tcx,
         enclosing_body: None,
         cached_typeck_results: Cell::new(None),
         param_env: ty::ParamEnv::empty(),
-        effective_visibilities,
+        effective_visibilities: &tcx.effective_visibilities(()),
         lint_store: unerased_lint_store(tcx),
         last_node_with_lint_attrs: hir::CRATE_HIR_ID,
         generics: None,
         only_module: false,
     };
 
+    let mut passes =
+        unerased_lint_store(tcx).late_passes.iter().map(|p| (p)(tcx)).collect::<Vec<_>>();
+    passes.push(Box::new(builtin_lints));
+    let pass = LateLintPassObjects { lints: &mut passes[..] };
+
     let mut cx = LateContextAndPass { context, pass };
 
     // Visit the whole crate.
     cx.with_lint_attrs(hir::CRATE_HIR_ID, |cx| {
-        // since the root module isn't visited as an item (because it isn't an
+        // Since the root module isn't visited as an item (because it isn't an
         // item), warn for it here.
         lint_callback!(cx, check_crate,);
         tcx.hir().walk_toplevel_module(cx);
         tcx.hir().walk_attributes(cx);
         lint_callback!(cx, check_crate_post,);
     })
-}
-
-fn late_lint_crate<'tcx, T: LateLintPass<'tcx> + 'tcx>(tcx: TyCtxt<'tcx>, builtin_lints: T) {
-    let mut passes =
-        unerased_lint_store(tcx).late_passes.iter().map(|p| (p)(tcx)).collect::<Vec<_>>();
-    passes.push(Box::new(builtin_lints));
-
-    late_lint_pass_crate(tcx, LateLintPassObjects { lints: &mut passes[..] });
 }
 
 /// Performs lint checking on a crate.
