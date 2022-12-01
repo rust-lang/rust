@@ -66,7 +66,7 @@ impl RedundantStaticLifetimes {
                         TyKind::Path(..) | TyKind::Slice(..) | TyKind::Array(..) | TyKind::Tup(..) => {
                             if lifetime.ident.name == rustc_span::symbol::kw::StaticLifetime {
                                 let snip = snippet(cx, borrow_type.ty.span, "<type>");
-                                let sugg = format!("&{snip}");
+                                let sugg = format!("&{}{snip}", borrow_type.mutbl.prefix_str());
                                 span_lint_and_then(
                                     cx,
                                     REDUNDANT_STATIC_LIFETIMES,
