@@ -4,7 +4,7 @@
 // FIXME: this is ruled out for now but should work
 
 type Foo = fn() -> impl Send;
-//~^ ERROR: `impl Trait` not allowed within `fn` pointer return [E0562]
+//~^ ERROR: `impl Trait` isn't allowed within `fn` pointer return [E0562]
 
 fn make_foo() -> Foo {
     || 15

@@ -14,5 +14,5 @@ impl<F> Struct<F> {
 
 fn main() {
     let _do_not_waste: Struct<impl Trait<Output = i32>> = Struct::new(());
-    //~^ `impl Trait` not allowed within variable binding [E0562]
+    //~^ `impl Trait` isn't allowed within variable binding [E0562]
 }

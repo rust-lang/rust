@@ -1,4 +1,4 @@
-error[E0562]: `impl Trait` not allowed within variable binding
+error[E0562]: `impl Trait` isn't allowed within variable binding
   --> $DIR/issue-54840.rs:5:13
    |
 LL |     let j: &impl Add = &i;

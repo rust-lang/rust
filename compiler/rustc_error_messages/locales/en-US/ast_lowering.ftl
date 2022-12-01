@@ -17,7 +17,7 @@ ast_lowering_assoc_ty_parentheses =
 ast_lowering_remove_parentheses = remove these parentheses
 
 ast_lowering_misplaced_impl_trait =
-    `impl Trait` not allowed within {$position}
+    `impl Trait` isn't allowed within {$position}
 
 ast_lowering_rustc_box_attribute_error =
     #[rustc_box] requires precisely one argument and no other attributes are allowed

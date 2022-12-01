@@ -1,4 +1,4 @@
-error[E0562]: `impl Trait` not allowed within `impl` method return
+error[E0562]: `impl Trait` isn't allowed within `impl` method return
   --> $DIR/fn-not-async-err2.rs:13:22
    |
 LL |     fn foo(&self) -> impl Future<Output = i32> {

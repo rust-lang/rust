@@ -11,7 +11,7 @@ trait MyTrait {
 
 impl MyTrait for i32 {
     fn foo(&self) -> impl Future<Output = i32> {
-        //~^ ERROR `impl Trait` not allowed within `impl` method return [E0562]
+        //~^ ERROR `impl Trait` isn't allowed within `impl` method return [E0562]
         async {
             *self
         }

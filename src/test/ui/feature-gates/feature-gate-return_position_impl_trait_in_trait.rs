@@ -5,14 +5,14 @@
 #![feature(async_fn_in_trait)]
 
 trait Foo {
-    fn bar() -> impl Sized; //~ ERROR `impl Trait` not allowed within trait method return
-    fn baz() -> Box<impl std::fmt::Display>; //~ ERROR `impl Trait` not allowed within trait method return
+    fn bar() -> impl Sized; //~ ERROR `impl Trait` isn't allowed within trait method return
+    fn baz() -> Box<impl std::fmt::Display>; //~ ERROR `impl Trait` isn't allowed within trait method return
 }
 
 // Both return_position_impl_trait_in_trait and async_fn_in_trait are required for this (see also
 // feature-gate-async_fn_in_trait.rs)
 trait AsyncFoo {
-    async fn bar() -> impl Sized; //~ ERROR `impl Trait` not allowed within trait method return [E0562]
+    async fn bar() -> impl Sized; //~ ERROR `impl Trait` isn't allowed within trait method return [E0562]
 }
 
 fn main() {}

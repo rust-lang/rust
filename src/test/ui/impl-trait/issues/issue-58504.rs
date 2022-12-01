@@ -8,5 +8,5 @@ fn mk_gen() -> impl Generator<Return=!, Yield=()> {
 
 fn main() {
     let gens: [impl Generator<Return=!, Yield=()>;2] = [ mk_gen(), mk_gen() ];
-    //~^ `impl Trait` not allowed within variable binding
+    //~^ `impl Trait` isn't allowed within variable binding
 }
