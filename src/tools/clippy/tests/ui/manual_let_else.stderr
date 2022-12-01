@@ -259,5 +259,14 @@ LL |     create_binding_if_some!(w, g());
    |
    = note: this error originates in the macro `create_binding_if_some` (in Nightly builds, run with -Z macro-backtrace for more info)
 
-error: aborting due to 17 previous errors
+error: this could be rewritten as `let...else`
+  --> $DIR/manual_let_else.rs:247:5
+   |
+LL | /     let _ = match ff {
+LL | |         Some(value) => value,
+LL | |         _ => macro_call!(),
+LL | |     };
+   | |______^ help: consider writing: `let Some(value) = ff else { macro_call!() };`
+
+error: aborting due to 18 previous errors
 

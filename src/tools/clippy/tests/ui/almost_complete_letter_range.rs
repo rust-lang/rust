@@ -2,7 +2,6 @@
 // edition:2018
 // aux-build:macro_rules.rs
 
-#![feature(custom_inner_attributes)]
 #![feature(exclusive_range_pattern)]
 #![feature(stmt_expr_attributes)]
 #![warn(clippy::almost_complete_letter_range)]
@@ -62,16 +61,16 @@ fn main() {
     b!();
 }
 
+#[clippy::msrv = "1.25"]
 fn _under_msrv() {
-    #![clippy::msrv = "1.25"]
     let _ = match 'a' {
         'a'..'z' => 1,
         _ => 2,
     };
 }
 
+#[clippy::msrv = "1.26"]
 fn _meets_msrv() {
-    #![clippy::msrv = "1.26"]
     let _ = 'a'..'z';
     let _ = match 'a' {
         'a'..'z' => 1,

@@ -4,7 +4,7 @@ error: `invalid.version` is not a valid Rust version
 LL | #![clippy::msrv = "invalid.version"]
    | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
-error: `msrv` cannot be an outer attribute
+error: `invalid.version` is not a valid Rust version
   --> $DIR/min_rust_version_invalid_attr.rs:6:1
    |
 LL | #[clippy::msrv = "invalid.version"]

@@ -1,6 +1,5 @@
 // run-rustfix
 
-#![feature(custom_inner_attributes)]
 #![allow(unused, clippy::redundant_clone)]
 #![warn(clippy::option_as_ref_deref)]
 
@@ -47,16 +46,14 @@ fn main() {
     let _ = opt.as_ref().map(std::ops::Deref::deref);
 }
 
+#[clippy::msrv = "1.39"]
 fn msrv_1_39() {
-    #![clippy::msrv = "1.39"]
-
     let opt = Some(String::from("123"));
     let _ = opt.as_ref().map(String::as_str);
 }
 
+#[clippy::msrv = "1.40"]
 fn msrv_1_40() {
-    #![clippy::msrv = "1.40"]
-
     let opt = Some(String::from("123"));
     let _ = opt.as_ref().map(String::as_str);
 }

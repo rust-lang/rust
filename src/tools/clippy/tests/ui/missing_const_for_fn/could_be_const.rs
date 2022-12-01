@@ -1,6 +1,5 @@
 #![warn(clippy::missing_const_for_fn)]
 #![allow(incomplete_features, clippy::let_and_return)]
-#![feature(custom_inner_attributes)]
 
 use std::mem::transmute;
 
@@ -68,24 +67,21 @@ mod with_drop {
     }
 }
 
+#[clippy::msrv = "1.47.0"]
 mod const_fn_stabilized_before_msrv {
-    #![clippy::msrv = "1.47.0"]
-
     // This could be const because `u8::is_ascii_digit` is a stable const function in 1.47.
     fn const_fn_stabilized_before_msrv(byte: u8) {
         byte.is_ascii_digit();
     }
 }
 
+#[clippy::msrv = "1.45"]
 fn msrv_1_45() -> i32 {
-    #![clippy::msrv = "1.45"]
-
     45
 }
 
+#[clippy::msrv = "1.46"]
 fn msrv_1_46() -> i32 {
-    #![clippy::msrv = "1.46"]
-
     46
 }
 

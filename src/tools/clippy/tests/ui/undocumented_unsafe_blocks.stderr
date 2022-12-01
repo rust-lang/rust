@@ -239,6 +239,19 @@ LL |     unsafe impl TrailingComment for () {} // SAFETY:
    |
    = help: consider adding a safety comment on the preceding line
 
+error: constant item has unnecessary safety comment
+  --> $DIR/undocumented_unsafe_blocks.rs:471:5
+   |
+LL |     const BIG_NUMBER: i32 = 1000000;
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+help: consider removing the safety comment
+  --> $DIR/undocumented_unsafe_blocks.rs:470:5
+   |
+LL |     // SAFETY:
+   |     ^^^^^^^^^^
+   = note: `-D clippy::unnecessary-safety-comment` implied by `-D warnings`
+
 error: unsafe impl missing a safety comment
   --> $DIR/undocumented_unsafe_blocks.rs:472:5
    |
@@ -271,6 +284,24 @@ LL |         unsafe {};
    |
    = help: consider adding a safety comment on the preceding line
 
+error: statement has unnecessary safety comment
+  --> $DIR/undocumented_unsafe_blocks.rs:501:5
+   |
+LL | /     let _ = {
+LL | |         if unsafe { true } {
+LL | |             todo!();
+LL | |         } else {
+...  |
+LL | |         }
+LL | |     };
+   | |______^
+   |
+help: consider removing the safety comment
+  --> $DIR/undocumented_unsafe_blocks.rs:500:5
+   |
+LL |     // SAFETY: this is more than one level away, so it should warn
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
 error: unsafe block missing a safety comment
   --> $DIR/undocumented_unsafe_blocks.rs:502:12
    |
@@ -287,5 +318,5 @@ LL |             let bar = unsafe {};
    |
    = help: consider adding a safety comment on the preceding line
 
-error: aborting due to 34 previous errors
+error: aborting due to 36 previous errors
 

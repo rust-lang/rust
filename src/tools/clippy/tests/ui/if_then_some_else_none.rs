@@ -1,5 +1,4 @@
 #![warn(clippy::if_then_some_else_none)]
-#![feature(custom_inner_attributes)]
 
 fn main() {
     // Should issue an error.
@@ -66,8 +65,8 @@ fn main() {
     let _ = if foo() { into_some("foo") } else { None };
 }
 
+#[clippy::msrv = "1.49"]
 fn _msrv_1_49() {
-    #![clippy::msrv = "1.49"]
     // `bool::then` was stabilized in 1.50. Do not lint this
     let _ = if foo() {
         println!("true!");
@@ -77,8 +76,8 @@ fn _msrv_1_49() {
     };
 }
 
+#[clippy::msrv = "1.50"]
 fn _msrv_1_50() {
-    #![clippy::msrv = "1.50"]
     let _ = if foo() {
         println!("true!");
         Some(150)

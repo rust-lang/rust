@@ -1,6 +1,5 @@
 // run-rustfix
 
-#![feature(custom_inner_attributes)]
 #![warn(clippy::redundant_field_names)]
 #![allow(clippy::no_effect, dead_code, unused_variables)]
 
@@ -72,16 +71,14 @@ fn issue_3476() {
     S { foo: foo::<i32> };
 }
 
+#[clippy::msrv = "1.16"]
 fn msrv_1_16() {
-    #![clippy::msrv = "1.16"]
-
     let start = 0;
     let _ = RangeFrom { start: start };
 }
 
+#[clippy::msrv = "1.17"]
 fn msrv_1_17() {
-    #![clippy::msrv = "1.17"]
-
     let start = 0;
     let _ = RangeFrom { start: start };
 }

@@ -72,26 +72,32 @@ LL |     return the_answer!();
    = help: remove `return`
 
 error: unneeded `return` statement
-  --> $DIR/needless_return.rs:62:5
+  --> $DIR/needless_return.rs:61:21
    |
-LL |     return;
-   |     ^^^^^^
-   |
-   = help: remove `return`
-
-error: unneeded `return` statement
-  --> $DIR/needless_return.rs:67:9
-   |
-LL |         return;
-   |         ^^^^^^
+LL |   fn test_void_fun() {
+   |  _____________________^
+LL | |     return;
+   | |__________^
    |
    = help: remove `return`
 
 error: unneeded `return` statement
-  --> $DIR/needless_return.rs:69:9
+  --> $DIR/needless_return.rs:66:11
    |
-LL |         return;
-   |         ^^^^^^
+LL |       if b {
+   |  ___________^
+LL | |         return;
+   | |______________^
+   |
+   = help: remove `return`
+
+error: unneeded `return` statement
+  --> $DIR/needless_return.rs:68:13
+   |
+LL |       } else {
+   |  _____________^
+LL | |         return;
+   | |______________^
    |
    = help: remove `return`
 
@@ -104,10 +110,12 @@ LL |         _ => return,
    = help: replace `return` with a unit value
 
 error: unneeded `return` statement
-  --> $DIR/needless_return.rs:85:13
+  --> $DIR/needless_return.rs:84:24
    |
-LL |             return;
-   |             ^^^^^^
+LL |               let _ = 42;
+   |  ________________________^
+LL | |             return;
+   | |__________________^
    |
    = help: remove `return`
 
@@ -144,10 +152,12 @@ LL |         bar.unwrap_or_else(|_| return)
    = help: replace `return` with an empty block
 
 error: unneeded `return` statement
-  --> $DIR/needless_return.rs:129:13
+  --> $DIR/needless_return.rs:128:21
    |
-LL |             return;
-   |             ^^^^^^
+LL |           let _ = || {
+   |  _____________________^
+LL | |             return;
+   | |__________________^
    |
    = help: remove `return`
 
@@ -240,26 +250,32 @@ LL |     return the_answer!();
    = help: remove `return`
 
 error: unneeded `return` statement
-  --> $DIR/needless_return.rs:182:5
+  --> $DIR/needless_return.rs:181:33
    |
-LL |     return;
-   |     ^^^^^^
-   |
-   = help: remove `return`
-
-error: unneeded `return` statement
-  --> $DIR/needless_return.rs:187:9
-   |
-LL |         return;
-   |         ^^^^^^
+LL |   async fn async_test_void_fun() {
+   |  _________________________________^
+LL | |     return;
+   | |__________^
    |
    = help: remove `return`
 
 error: unneeded `return` statement
-  --> $DIR/needless_return.rs:189:9
+  --> $DIR/needless_return.rs:186:11
    |
-LL |         return;
-   |         ^^^^^^
+LL |       if b {
+   |  ___________^
+LL | |         return;
+   | |______________^
+   |
+   = help: remove `return`
+
+error: unneeded `return` statement
+  --> $DIR/needless_return.rs:188:13
+   |
+LL |       } else {
+   |  _____________^
+LL | |         return;
+   | |______________^
    |
    = help: remove `return`
 
@@ -351,5 +367,24 @@ LL |             return !*(x as *const isize);
    |
    = help: remove `return`
 
-error: aborting due to 44 previous errors
+error: unneeded `return` statement
+  --> $DIR/needless_return.rs:274:20
+   |
+LL |           let _ = 42;
+   |  ____________________^
+LL | |
+LL | |         return;
+   | |______________^
+   |
+   = help: remove `return`
+
+error: unneeded `return` statement
+  --> $DIR/needless_return.rs:281:20
+   |
+LL |         let _ = 42; return;
+   |                    ^^^^^^^
+   |
+   = help: remove `return`
+
+error: aborting due to 46 previous errors
 

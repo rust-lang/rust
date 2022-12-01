@@ -7,7 +7,6 @@
 
 #![warn(clippy::missing_const_for_fn)]
 #![feature(start)]
-#![feature(custom_inner_attributes)]
 
 extern crate helper;
 extern crate proc_macro_with_span;
@@ -115,9 +114,8 @@ fn unstably_const_fn() {
     helper::unstably_const_fn()
 }
 
+#[clippy::msrv = "1.46.0"]
 mod const_fn_stabilized_after_msrv {
-    #![clippy::msrv = "1.46.0"]
-
     // Do not lint this because `u8::is_ascii_digit` is stabilized as a const function in 1.47.0.
     fn const_fn_stabilized_after_msrv(byte: u8) {
         byte.is_ascii_digit();

@@ -76,4 +76,13 @@ fn main() {
     DropStruct { ..get_drop_struct() };
     DropEnum::Tuple(get_number());
     DropEnum::Struct { field: get_number() };
+
+    // Issue #9954
+    fn one() -> i8 {
+        1
+    }
+    macro_rules! use_expr {
+        ($($e:expr),*) => {{ $($e;)* }}
+    }
+    use_expr!(isize::MIN / -(one() as isize), i8::MIN / -one());
 }
