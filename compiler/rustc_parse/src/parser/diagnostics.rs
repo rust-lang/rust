@@ -345,7 +345,7 @@ impl<'a> Parser<'a> {
                 match self.parse_generics() {
                     Ok(generic) => {
                         if let TokenKind::Ident(symbol, _) = maybe_keyword.kind {
-                            let ident_name = symbol.to_string();
+                            let ident_name = symbol;
                             // at this point, we've found something like
                             // `fn <T>id`
                             // and current token should be Ident with the item name (i.e. the function name)
@@ -355,9 +355,9 @@ impl<'a> Parser<'a> {
                                 let Ok(snippet) = self.sess.source_map().span_to_snippet(generic.span) &&
                                 let Ok(ident) = self.sess.source_map().span_to_snippet(self.token.span) {
                                     err.span_suggestion_verbose(
-                                        generic.span.to(self.token.span),
+                                        self.token.span.shrink_to_hi(),
                                         format!("place the generic parameter name after the {ident_name} name"),
-                                        format!(" {ident}{snippet}"),
+                                        snippet,
                                         Applicability::MachineApplicable,
                                     );
                                 } else {
