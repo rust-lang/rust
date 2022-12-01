@@ -566,10 +566,9 @@ impl<T, A: Allocator> VecDeque<T, A> {
     ///
     /// let deque: VecDeque<u32> = VecDeque::new();
     /// ```
-    // FIXME: This should probably be const
     #[inline]
     #[unstable(feature = "allocator_api", issue = "32838")]
-    pub fn new_in(alloc: A) -> VecDeque<T, A> {
+    pub const fn new_in(alloc: A) -> VecDeque<T, A> {
         VecDeque { head: 0, len: 0, buf: RawVec::new_in(alloc) }
     }
 
