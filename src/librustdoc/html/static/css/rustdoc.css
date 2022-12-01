@@ -1660,10 +1660,6 @@ in storage.js
 		content: "Since ";
 	}
 
-	#copy-path {
-		display: none;
-	}
-
 	/* Hide the logo and item name from the sidebar. Those are displayed
 	   in the mobile-topbar instead. */
 	.sidebar .sidebar-logo,
@@ -1797,8 +1793,8 @@ in storage.js
 		border-bottom: 1px solid;
 	}
 
-	/* We don't display the help button on mobile devices. */
-	#help-button {
+	/* We don't display these buttons on mobile devices. */
+	#copy-path, #help-button {
 		display: none;
 	}
 
