@@ -358,19 +358,16 @@ fn late_lint_mod_pass<'tcx, T: LateLintPass<'tcx>>(
     }
 }
 
-pub fn late_lint_mod<'tcx, T: LateLintPass<'tcx>>(
+pub fn late_lint_mod<'tcx, T: LateLintPass<'tcx> + 'tcx>(
     tcx: TyCtxt<'tcx>,
     module_def_id: LocalDefId,
     builtin_lints: T,
 ) {
-    late_lint_mod_pass(tcx, module_def_id, builtin_lints);
-
     let mut passes: Vec<_> =
         unerased_lint_store(tcx).late_module_passes.iter().map(|pass| (pass)(tcx)).collect();
+    passes.push(Box::new(builtin_lints));
 
-    if !passes.is_empty() {
-        late_lint_mod_pass(tcx, module_def_id, LateLintPassObjects { lints: &mut passes[..] });
-    }
+    late_lint_mod_pass(tcx, module_def_id, LateLintPassObjects { lints: &mut passes[..] });
 }
 
 fn late_lint_pass_crate<'tcx, T: LateLintPass<'tcx>>(tcx: TyCtxt<'tcx>, pass: T) {
@@ -401,19 +398,16 @@ fn late_lint_pass_crate<'tcx, T: LateLintPass<'tcx>>(tcx: TyCtxt<'tcx>, pass: T)
     })
 }
 
-fn late_lint_crate<'tcx, T: LateLintPass<'tcx>>(tcx: TyCtxt<'tcx>, builtin_lints: T) {
+fn late_lint_crate<'tcx, T: LateLintPass<'tcx> + 'tcx>(tcx: TyCtxt<'tcx>, builtin_lints: T) {
     let mut passes =
         unerased_lint_store(tcx).late_passes.iter().map(|p| (p)(tcx)).collect::<Vec<_>>();
+    passes.push(Box::new(builtin_lints));
 
-    if !passes.is_empty() {
-        late_lint_pass_crate(tcx, LateLintPassObjects { lints: &mut passes[..] });
-    }
-
-    late_lint_pass_crate(tcx, builtin_lints);
+    late_lint_pass_crate(tcx, LateLintPassObjects { lints: &mut passes[..] });
 }
 
 /// Performs lint checking on a crate.
-pub fn check_crate<'tcx, T: LateLintPass<'tcx>>(
+pub fn check_crate<'tcx, T: LateLintPass<'tcx> + 'tcx>(
     tcx: TyCtxt<'tcx>,
     builtin_lints: impl FnOnce() -> T + Send,
 ) {
