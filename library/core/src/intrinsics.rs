@@ -2297,12 +2297,22 @@ pub(crate) use assert_unsafe_precondition;
 
 /// Checks whether `ptr` is properly aligned with respect to
 /// `align_of::<T>()`.
+#[inline]
 pub(crate) fn is_aligned_and_not_null<T>(ptr: *const T) -> bool {
-    !ptr.is_null() && ptr.is_aligned()
+    // A reasonable implementation of this would be
+    // !ptr.is_null() && ptr.is_aligned()
+    // However that implementation is based on many layers of abstraction, and results in a lot
+    // more MIR being generated, which matters for this function especially because when debug
+    // assertions are enabled it is called in very many places. This simpler implementation seems
+    // to be worth 0-5% on debug builds.
+    let addr = ptr.addr();
+    let mask = const { crate::mem::align_of::<T>() - 1 };
+    (addr != 0) && (addr & mask == 0)
 }
 
 /// Checks whether an allocation of `len` instances of `T` exceeds
 /// the maximum allowed allocation size.
+#[inline]
 pub(crate) fn is_valid_allocation_size<T>(len: usize) -> bool {
     let max_len = const {
         let size = crate::mem::size_of::<T>();
@@ -2313,6 +2323,7 @@ pub(crate) fn is_valid_allocation_size<T>(len: usize) -> bool {
 
 /// Checks whether the regions of memory starting at `src` and `dst` of size
 /// `count * size_of::<T>()` do *not* overlap.
+#[inline]
 pub(crate) fn is_nonoverlapping<T>(src: *const T, dst: *const T, count: usize) -> bool {
     let src_usize = src.addr();
     let dst_usize = dst.addr();
