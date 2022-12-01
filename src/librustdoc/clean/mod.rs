@@ -22,7 +22,7 @@ use rustc_infer::infer::region_constraints::{Constraint, RegionConstraintData};
 use rustc_middle::middle::resolve_lifetime as rl;
 use rustc_middle::ty::fold::TypeFolder;
 use rustc_middle::ty::InternalSubsts;
-use rustc_middle::ty::{self, AdtKind,Binder, DefIdTree, EarlyBinder, Ty, TyCtxt};
+use rustc_middle::ty::{self, AdtKind, Binder, DefIdTree, EarlyBinder, Ty, TyCtxt};
 use rustc_middle::{bug, span_bug};
 use rustc_span::hygiene::{AstPass, MacroKind};
 use rustc_span::symbol::{kw, sym, Ident, Symbol};
@@ -164,7 +164,8 @@ pub(crate) fn clean_trait_ref_with_bindings<'tcx>(
         span_bug!(cx.tcx.def_span(trait_ref.def_id()), "`TraitRef` had unexpected kind {:?}", kind);
     }
     inline::record_extern_fqn(cx, trait_ref.def_id(), kind);
-    let path = external_path(cx, trait_ref.def_id(), true, bindings, trait_ref.skip_binder().substs);
+    let path =
+        external_path(cx, trait_ref.def_id(), true, bindings, trait_ref.skip_binder().substs);
 
     debug!("ty::TraitRef\n  subst: {:?}\n", trait_ref.skip_binder().substs);
 
@@ -422,7 +423,8 @@ fn clean_projection<'tcx>(
         return clean_middle_opaque_bounds(cx, bounds);
     }
 
-    let trait_ = clean_trait_ref_with_bindings(cx, ty::Binder::dummy(ty.trait_ref(cx.tcx)), ThinVec::new());
+    let trait_ =
+        clean_trait_ref_with_bindings(cx, ty::Binder::dummy(ty.trait_ref(cx.tcx)), ThinVec::new());
     let self_type = clean_middle_ty(ty.self_ty(), cx, None);
     let self_def_id = if let Some(def_id) = def_id {
         cx.tcx.opt_parent(def_id).or(Some(def_id))
