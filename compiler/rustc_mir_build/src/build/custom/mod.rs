@@ -20,6 +20,7 @@
 use rustc_ast::Attribute;
 use rustc_data_structures::fx::FxHashMap;
 use rustc_hir::def_id::DefId;
+use rustc_hir::HirId;
 use rustc_index::vec::IndexVec;
 use rustc_middle::{
     mir::*,
@@ -33,6 +34,7 @@ mod parse;
 pub(super) fn build_custom_mir<'tcx>(
     tcx: TyCtxt<'tcx>,
     did: DefId,
+    hir_id: HirId,
     thir: &Thir<'tcx>,
     expr: ExprId,
     params: &IndexVec<ParamId, Param<'tcx>>,
@@ -67,7 +69,10 @@ pub(super) fn build_custom_mir<'tcx>(
         parent_scope: None,
         inlined: None,
         inlined_parent_scope: None,
-        local_data: ClearCrossCrate::Clear,
+        local_data: ClearCrossCrate::Set(SourceScopeLocalData {
+            lint_root: hir_id,
+            safety: Safety::Safe,
+        }),
     });
     body.injection_phase = Some(parse_attribute(attr));
 
