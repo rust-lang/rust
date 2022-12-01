@@ -25,7 +25,7 @@ namespace {
 struct MulFOpInterface
     : public AutoDiffOpInterface::ExternalModel<MulFOpInterface,
                                                 arith::MulFOp> {
-  LogicalResult createForwardModeAdjoint(Operation *op, OpBuilder &builder,
+  LogicalResult createForwardModeTangent(Operation *op, OpBuilder &builder,
                                          MGradientUtils *gutils) const {
     // Derivative of r = a * b -> dr = a * db + da * b
     auto mulOp = cast<arith::MulFOp>(op);
@@ -53,7 +53,7 @@ struct MulFOpInterface
 struct AddFOpInterface
     : public AutoDiffOpInterface::ExternalModel<AddFOpInterface,
                                                 arith::AddFOp> {
-  LogicalResult createForwardModeAdjoint(Operation *op, OpBuilder &builder,
+  LogicalResult createForwardModeTangent(Operation *op, OpBuilder &builder,
                                          MGradientUtils *gutils) const {
     // Derivative of r = a + b -> dr = da + db
     auto addOp = cast<arith::AddFOp>(op);

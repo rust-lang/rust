@@ -25,7 +25,7 @@ using namespace mlir::enzyme;
 namespace {
 struct ForOpInterface
     : public AutoDiffOpInterface::ExternalModel<ForOpInterface, scf::ForOp> {
-  LogicalResult createForwardModeAdjoint(Operation *op, OpBuilder &builder,
+  LogicalResult createForwardModeTangent(Operation *op, OpBuilder &builder,
                                          MGradientUtils *gutils) const {
     auto forOp = cast<scf::ForOp>(op);
     auto nFor = cast<scf::ForOp>(gutils->getNewFromOriginal(op));

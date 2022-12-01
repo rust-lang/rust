@@ -25,7 +25,7 @@ using namespace mlir::enzyme;
 namespace {
 struct LoadOpInterface
     : public AutoDiffOpInterface::ExternalModel<LoadOpInterface, LLVM::LoadOp> {
-  LogicalResult createForwardModeAdjoint(Operation *op, OpBuilder &builder,
+  LogicalResult createForwardModeTangent(Operation *op, OpBuilder &builder,
                                          MGradientUtils *gutils) const {
     auto loadOp = cast<LLVM::LoadOp>(op);
     if (!gutils->isConstantValue(loadOp)) {
@@ -41,7 +41,7 @@ struct LoadOpInterface
 struct StoreOpInterface
     : public AutoDiffOpInterface::ExternalModel<StoreOpInterface,
                                                 LLVM::StoreOp> {
-  LogicalResult createForwardModeAdjoint(Operation *op, OpBuilder &builder,
+  LogicalResult createForwardModeTangent(Operation *op, OpBuilder &builder,
                                          MGradientUtils *gutils) const {
     auto storeOp = cast<LLVM::StoreOp>(op);
     if (!gutils->isConstantValue(storeOp.getAddr())) {
@@ -57,7 +57,7 @@ struct StoreOpInterface
 struct AllocaOpInterface
     : public AutoDiffOpInterface::ExternalModel<AllocaOpInterface,
                                                 LLVM::AllocaOp> {
-  LogicalResult createForwardModeAdjoint(Operation *op, OpBuilder &builder,
+  LogicalResult createForwardModeTangent(Operation *op, OpBuilder &builder,
                                          MGradientUtils *gutils) const {
     auto allocOp = cast<LLVM::AllocaOp>(op);
     if (!gutils->isConstantValue(allocOp)) {

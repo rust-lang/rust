@@ -26,7 +26,7 @@ namespace {
 struct LoadOpInterface
     : public AutoDiffOpInterface::ExternalModel<LoadOpInterface,
                                                 memref::LoadOp> {
-  LogicalResult createForwardModeAdjoint(Operation *op, OpBuilder &builder,
+  LogicalResult createForwardModeTangent(Operation *op, OpBuilder &builder,
                                          MGradientUtils *gutils) const {
     auto loadOp = cast<memref::LoadOp>(op);
     if (!gutils->isConstantValue(loadOp)) {
@@ -46,7 +46,7 @@ struct LoadOpInterface
 struct StoreOpInterface
     : public AutoDiffOpInterface::ExternalModel<StoreOpInterface,
                                                 memref::StoreOp> {
-  LogicalResult createForwardModeAdjoint(Operation *op, OpBuilder &builder,
+  LogicalResult createForwardModeTangent(Operation *op, OpBuilder &builder,
                                          MGradientUtils *gutils) const {
     auto storeOp = cast<memref::StoreOp>(op);
     if (!gutils->isConstantValue(storeOp.getMemref())) {
@@ -65,7 +65,7 @@ struct StoreOpInterface
 struct AllocOpInterface
     : public AutoDiffOpInterface::ExternalModel<AllocOpInterface,
                                                 memref::AllocOp> {
-  LogicalResult createForwardModeAdjoint(Operation *op, OpBuilder &builder,
+  LogicalResult createForwardModeTangent(Operation *op, OpBuilder &builder,
                                          MGradientUtils *gutils) const {
     auto allocOp = cast<memref::AllocOp>(op);
     if (!gutils->isConstantValue(allocOp)) {
