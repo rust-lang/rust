@@ -91,7 +91,7 @@ impl Thread {
 
         unsafe extern "C" fn trampoline(exinf: isize) {
             // Safety: `ThreadInner` is alive at this point
-            let inner = unsafe { &*(exinf as *const ThreadInner) };
+            let inner: &ThreadInner = unsafe { &*crate::ptr::from_exposed_addr(exinf as usize) };
 
             // Safety: Since `trampoline` is called only once for each
             //         `ThreadInner` and only `trampoline` touches `start`,
@@ -168,7 +168,7 @@ impl Thread {
             abi::acre_tsk(&abi::T_CTSK {
                 // Activate this task immediately
                 tskatr: abi::TA_ACT,
-                exinf: inner_ptr as abi::EXINF,
+                exinf: inner_ptr.expose_addr() as abi::EXINF,
                 // The entry point
                 task: Some(trampoline),
                 // Inherit the calling task's base priority
