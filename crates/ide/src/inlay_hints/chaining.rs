@@ -1,19 +1,18 @@
 //! Implementation of "chaining" inlay hints.
-use hir::{HirDisplay, Semantics};
-use ide_db::{famous_defs::FamousDefs, RootDatabase};
+use hir::Semantics;
+use ide_db::RootDatabase;
 use syntax::{
     ast::{self, AstNode},
     Direction, NodeOrToken, SyntaxKind, T,
 };
 
-use crate::{
-    inlay_hints::hint_iterator, FileId, InlayHint, InlayHintsConfig, InlayKind, InlayTooltip,
-};
+use crate::{FileId, InlayHint, InlayHintsConfig, InlayKind, InlayTooltip};
+
+use super::label_of_ty;
 
 pub(super) fn hints(
     acc: &mut Vec<InlayHint>,
     sema: &Semantics<'_, RootDatabase>,
-    famous_defs: &FamousDefs<'_, '_>,
     config: &InlayHintsConfig,
     file_id: FileId,
     expr: &ast::Expr,
@@ -62,9 +61,7 @@ pub(super) fn hints(
             acc.push(InlayHint {
                 range: expr.syntax().text_range(),
                 kind: InlayKind::ChainingHint,
-                label: hint_iterator(sema, &famous_defs, config, &ty)
-                    .unwrap_or_else(|| ty.display_truncated(sema.db, config.max_length).to_string())
-                    .into(),
+                label: label_of_ty(sema, desc_expr, config, ty)?,
                 tooltip: Some(InlayTooltip::HoverRanged(file_id, expr.syntax().text_range())),
             });
         }
@@ -110,7 +107,19 @@ fn main() {
                         range: 147..172,
                         kind: ChainingHint,
                         label: [
-                            "B",
+                            "",
+                            InlayHintLabelPart {
+                                text: "B",
+                                linked_location: Some(
+                                    FileRange {
+                                        file_id: FileId(
+                                            0,
+                                        ),
+                                        range: 63..64,
+                                    },
+                                ),
+                            },
+                            "",
                         ],
                         tooltip: Some(
                             HoverRanged(
@@ -125,7 +134,19 @@ fn main() {
                         range: 147..154,
                         kind: ChainingHint,
                         label: [
-                            "A",
+                            "",
+                            InlayHintLabelPart {
+                                text: "A",
+                                linked_location: Some(
+                                    FileRange {
+                                        file_id: FileId(
+                                            0,
+                                        ),
+                                        range: 7..8,
+                                    },
+                                ),
+                            },
+                            "",
                         ],
                         tooltip: Some(
                             HoverRanged(
@@ -185,7 +206,19 @@ fn main() {
                         range: 143..190,
                         kind: ChainingHint,
                         label: [
-                            "C",
+                            "",
+                            InlayHintLabelPart {
+                                text: "C",
+                                linked_location: Some(
+                                    FileRange {
+                                        file_id: FileId(
+                                            0,
+                                        ),
+                                        range: 51..52,
+                                    },
+                                ),
+                            },
+                            "",
                         ],
                         tooltip: Some(
                             HoverRanged(
@@ -200,7 +233,19 @@ fn main() {
                         range: 143..179,
                         kind: ChainingHint,
                         label: [
-                            "B",
+                            "",
+                            InlayHintLabelPart {
+                                text: "B",
+                                linked_location: Some(
+                                    FileRange {
+                                        file_id: FileId(
+                                            0,
+                                        ),
+                                        range: 29..30,
+                                    },
+                                ),
+                            },
+                            "",
                         ],
                         tooltip: Some(
                             HoverRanged(
@@ -245,7 +290,31 @@ fn main() {
                         range: 246..283,
                         kind: ChainingHint,
                         label: [
-                            "B<X<i32, bool>>",
+                            "",
+                            InlayHintLabelPart {
+                                text: "B",
+                                linked_location: Some(
+                                    FileRange {
+                                        file_id: FileId(
+                                            0,
+                                        ),
+                                        range: 23..24,
+                                    },
+                                ),
+                            },
+                            "<",
+                            InlayHintLabelPart {
+                                text: "X",
+                                linked_location: Some(
+                                    FileRange {
+                                        file_id: FileId(
+                                            0,
+                                        ),
+                                        range: 55..56,
+                                    },
+                                ),
+                            },
+                            "<i32, bool>>",
                         ],
                         tooltip: Some(
                             HoverRanged(
@@ -260,7 +329,31 @@ fn main() {
                         range: 246..265,
                         kind: ChainingHint,
                         label: [
-                            "A<X<i32, bool>>",
+                            "",
+                            InlayHintLabelPart {
+                                text: "A",
+                                linked_location: Some(
+                                    FileRange {
+                                        file_id: FileId(
+                                            0,
+                                        ),
+                                        range: 7..8,
+                                    },
+                                ),
+                            },
+                            "<",
+                            InlayHintLabelPart {
+                                text: "X",
+                                linked_location: Some(
+                                    FileRange {
+                                        file_id: FileId(
+                                            0,
+                                        ),
+                                        range: 55..56,
+                                    },
+                                ),
+                            },
+                            "<i32, bool>>",
                         ],
                         tooltip: Some(
                             HoverRanged(
@@ -352,7 +445,19 @@ fn main() {
                         range: 174..189,
                         kind: ChainingHint,
                         label: [
-                            "&mut MyIter",
+                            "&mut ",
+                            InlayHintLabelPart {
+                                text: "MyIter",
+                                linked_location: Some(
+                                    FileRange {
+                                        file_id: FileId(
+                                            0,
+                                        ),
+                                        range: 24..30,
+                                    },
+                                ),
+                            },
+                            "",
                         ],
                         tooltip: Some(
                             HoverRanged(
@@ -396,7 +501,19 @@ fn main() {
                         range: 124..130,
                         kind: TypeHint,
                         label: [
-                            "Struct",
+                            "",
+                            InlayHintLabelPart {
+                                text: "Struct",
+                                linked_location: Some(
+                                    FileRange {
+                                        file_id: FileId(
+                                            0,
+                                        ),
+                                        range: 7..13,
+                                    },
+                                ),
+                            },
+                            "",
                         ],
                         tooltip: Some(
                             HoverRanged(
@@ -411,7 +528,19 @@ fn main() {
                         range: 145..185,
                         kind: ChainingHint,
                         label: [
-                            "Struct",
+                            "",
+                            InlayHintLabelPart {
+                                text: "Struct",
+                                linked_location: Some(
+                                    FileRange {
+                                        file_id: FileId(
+                                            0,
+                                        ),
+                                        range: 7..13,
+                                    },
+                                ),
+                            },
+                            "",
                         ],
                         tooltip: Some(
                             HoverRanged(
@@ -426,7 +555,19 @@ fn main() {
                         range: 145..168,
                         kind: ChainingHint,
                         label: [
-                            "Struct",
+                            "",
+                            InlayHintLabelPart {
+                                text: "Struct",
+                                linked_location: Some(
+                                    FileRange {
+                                        file_id: FileId(
+                                            0,
+                                        ),
+                                        range: 7..13,
+                                    },
+                                ),
+                            },
+                            "",
                         ],
                         tooltip: Some(
                             HoverRanged(

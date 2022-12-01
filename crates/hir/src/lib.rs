@@ -114,12 +114,20 @@ pub use {
         path::{ModPath, PathKind},
         type_ref::{Mutability, TypeRef},
         visibility::Visibility,
+        // FIXME: This is here since it is input of a method in `HirWrite`
+        // and things outside of hir need to implement that trait. We probably
+        // should move whole `hir_ty::display` to this crate so we will become
+        // able to use `ModuleDef` or `Definition` instead of `ModuleDefId`.
+        ModuleDefId,
     },
     hir_expand::{
         name::{known, Name},
         ExpandResult, HirFileId, InFile, MacroFile, Origin,
     },
-    hir_ty::{display::HirDisplay, PointerCast, Safety},
+    hir_ty::{
+        display::{HirDisplay, HirWrite},
+        PointerCast, Safety,
+    },
 };
 
 // These are negative re-exports: pub using these names is forbidden, they

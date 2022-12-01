@@ -16,7 +16,7 @@ use hir_def::{
     path::{Path, PathKind},
     type_ref::{ConstScalar, TraitBoundModifier, TypeBound, TypeRef},
     visibility::Visibility,
-    HasModule, ItemContainerId, Lookup, ModuleId, TraitId,
+    HasModule, ItemContainerId, Lookup, ModuleDefId, ModuleId, TraitId,
 };
 use hir_expand::{hygiene::Hygiene, name::Name};
 use itertools::Itertools;
@@ -35,14 +35,42 @@ use crate::{
     TraitRefExt, Ty, TyExt, TyKind, WhereClause,
 };
 
+pub trait HirWrite: fmt::Write {
+    fn start_location_link(&mut self, location: ModuleDefId);
+    fn end_location_link(&mut self);
+}
+
+// String will ignore link metadata
+impl HirWrite for String {
+    fn start_location_link(&mut self, _: ModuleDefId) {}
+
+    fn end_location_link(&mut self) {}
+}
+
+// `core::Formatter` will ignore metadata
+impl HirWrite for fmt::Formatter<'_> {
+    fn start_location_link(&mut self, _: ModuleDefId) {}
+    fn end_location_link(&mut self) {}
+}
+
 pub struct HirFormatter<'a> {
     pub db: &'a dyn HirDatabase,
-    fmt: &'a mut dyn fmt::Write,
+    fmt: &'a mut dyn HirWrite,
     buf: String,
     curr_size: usize,
     pub(crate) max_size: Option<usize>,
     omit_verbose_types: bool,
     display_target: DisplayTarget,
+}
+
+impl HirFormatter<'_> {
+    fn start_location_link(&mut self, location: ModuleDefId) {
+        self.fmt.start_location_link(location);
+    }
+
+    fn end_location_link(&mut self) {
+        self.fmt.end_location_link();
+    }
 }
 
 pub trait HirDisplay {
@@ -245,12 +273,9 @@ pub struct HirDisplayWrapper<'a, T> {
     display_target: DisplayTarget,
 }
 
-impl<'a, T> fmt::Display for HirDisplayWrapper<'a, T>
-where
-    T: HirDisplay,
-{
-    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        match self.t.hir_fmt(&mut HirFormatter {
+impl<T: HirDisplay> HirDisplayWrapper<'_, T> {
+    pub fn write_to<F: HirWrite>(&self, f: &mut F) -> Result<(), HirDisplayError> {
+        self.t.hir_fmt(&mut HirFormatter {
             db: self.db,
             fmt: f,
             buf: String::with_capacity(20),
@@ -258,7 +283,16 @@ where
             max_size: self.max_size,
             omit_verbose_types: self.omit_verbose_types,
             display_target: self.display_target,
-        }) {
+        })
+    }
+}
+
+impl<'a, T> fmt::Display for HirDisplayWrapper<'a, T>
+where
+    T: HirDisplay,
+{
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        match self.write_to(f) {
             Ok(()) => Ok(()),
             Err(HirDisplayError::FmtError) => Err(fmt::Error),
             Err(HirDisplayError::DisplaySourceCodeError(_)) => {
@@ -530,6 +564,7 @@ impl HirDisplay for Ty {
                 }
             }
             TyKind::Adt(AdtId(def_id), parameters) => {
+                f.start_location_link((*def_id).into());
                 match f.display_target {
                     DisplayTarget::Diagnostics | DisplayTarget::Test => {
                         let name = match *def_id {
@@ -554,6 +589,7 @@ impl HirDisplay for Ty {
                         }
                     }
                 }
+                f.end_location_link();
 
                 if parameters.len(Interner) > 0 {
                     let parameters_to_write = if f.display_target.is_source_code()
