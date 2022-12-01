@@ -1,0 +1,9 @@
+error[E0308]: mismatched types
+  --> $DIR/expr-with-block-err.rs:4:13
+   |
+LL |     const { 2 } - const { 1 };
+   |             ^ expected `()`, found integer
+
+error: aborting due to previous error
+
+For more information about this error, try `rustc --explain E0308`.
