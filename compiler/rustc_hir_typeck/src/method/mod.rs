@@ -20,7 +20,7 @@ use rustc_hir::def_id::DefId;
 use rustc_infer::infer::{self, InferOk};
 use rustc_middle::traits::ObligationCause;
 use rustc_middle::ty::subst::{InternalSubsts, SubstsRef};
-use rustc_middle::ty::{self, DefIdTree, GenericParamDefKind, Ty, TypeVisitable};
+use rustc_middle::ty::{self, GenericParamDefKind, Ty, TypeVisitable};
 use rustc_span::symbol::Ident;
 use rustc_span::Span;
 use rustc_trait_selection::traits;
@@ -217,7 +217,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             }
 
             // We probe again, taking all traits into account (not only those in scope).
-            let mut candidates =
+            let candidates =
                 match self.lookup_probe(segment.ident, self_ty, call_expr, ProbeScope::AllTraits) {
                     // If we find a different result the caller probably forgot to import a trait.
                     Ok(ref new_pick) if pick.differs_from(new_pick) => {
@@ -236,7 +236,6 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                         .collect(),
                     _ => Vec::new(),
                 };
-            candidates.retain(|candidate| *candidate != self.tcx.parent(result.callee.def_id));
 
             return Err(IllegalSizedBound(candidates, needs_mut, span));
         }
