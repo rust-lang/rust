@@ -85,6 +85,15 @@ pub use core::prelude::v1::cfg_accessible;
 )]
 pub use core::prelude::v1::cfg_eval;
 
+// Do not `doc(no_inline)` either.
+#[unstable(
+    feature = "type_ascription",
+    issue = "23416",
+    reason = "placeholder syntax for type ascription"
+)]
+#[cfg(not(bootstrap))]
+pub use core::prelude::v1::type_ascribe;
+
 // The file so far is equivalent to src/libcore/prelude/v1.rs,
 // and below to src/liballoc/prelude.rs.
 // Those files are duplicated rather than using glob imports
