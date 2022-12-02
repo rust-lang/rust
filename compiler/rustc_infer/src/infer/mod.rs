@@ -80,7 +80,6 @@ pub struct InferOk<'tcx, T> {
 }
 pub type InferResult<'tcx, T> = Result<InferOk<'tcx, T>, TypeError<'tcx>>;
 
-pub type Bound<T> = Option<T>;
 pub type UnitResult<'tcx> = RelateResult<'tcx, ()>; // "unify result"
 pub type FixupResult<'tcx, T> = Result<T, FixupError<'tcx>>; // "fixup result"
 
