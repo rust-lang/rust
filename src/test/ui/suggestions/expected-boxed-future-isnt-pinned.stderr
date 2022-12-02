@@ -87,7 +87,7 @@ LL | |     }
    |       arguments to this function are incorrect
    |
    = note:     expected struct `Pin<Box<dyn Future<Output = i32> + Send>>`
-           found `async` block `impl Future<Output = {integer}>`
+           found `async` block `[async block@$DIR/expected-boxed-future-isnt-pinned.rs:28:5: 30:6]`
 note: function defined here
   --> $SRC_DIR/core/src/future/mod.rs:LL:COL
    |

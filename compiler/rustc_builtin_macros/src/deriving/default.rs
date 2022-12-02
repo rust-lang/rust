@@ -20,8 +20,7 @@ pub fn expand_deriving_default(
 ) {
     item.visit_with(&mut DetectNonVariantDefaultAttr { cx });
 
-    let inline = cx.meta_word(span, sym::inline);
-    let attrs = thin_vec![cx.attribute(inline)];
+    let attrs = thin_vec![cx.attr_word(sym::inline, span)];
     let trait_def = TraitDef {
         span,
         path: Path::new(vec![kw::Default, sym::Default]),
@@ -146,7 +145,7 @@ fn extract_default_variant<'a>(
                 let suggestion = default_variants
                     .iter()
                     .filter_map(|v| {
-                        if v.ident == variant.ident {
+                        if v.span == variant.span {
                             None
                         } else {
                             Some((cx.sess.find_by_name(&v.attrs, kw::Default)?.span, String::new()))

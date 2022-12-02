@@ -10,9 +10,9 @@ use rustc_errors::{Applicability, FatalError, PResult};
 use rustc_feature::{AttributeTemplate, BuiltinAttribute, BUILTIN_ATTRIBUTE_MAP};
 use rustc_session::lint::builtin::ILL_FORMED_ATTRIBUTE_INPUT;
 use rustc_session::parse::ParseSess;
-use rustc_span::{sym, Symbol};
+use rustc_span::{sym, Span, Symbol};
 
-pub fn check_meta(sess: &ParseSess, attr: &Attribute) {
+pub fn check_attr(sess: &ParseSess, attr: &Attribute) {
     if attr.is_doc_comment() {
         return;
     }
@@ -51,7 +51,7 @@ pub fn parse_meta<'a>(sess: &'a ParseSess, attr: &Attribute) -> PResult<'a, Meta
             }
             AttrArgs::Eq(_, AttrArgsEq::Ast(expr)) => {
                 if let ast::ExprKind::Lit(token_lit) = expr.kind
-                    && let Ok(lit) = ast::Lit::from_token_lit(token_lit, expr.span)
+                    && let Ok(lit) = ast::MetaItemLit::from_token_lit(token_lit, expr.span)
                 {
                     if token_lit.suffix.is_some() {
                         let mut err = sess.span_diagnostic.struct_span_err(
@@ -115,25 +115,34 @@ pub fn check_builtin_attribute(
     name: Symbol,
     template: AttributeTemplate,
 ) {
-    // Some special attributes like `cfg` must be checked
-    // before the generic check, so we skip them here.
-    let should_skip = |name| name == sym::cfg;
-
     match parse_meta(sess, attr) {
-        Ok(meta) => {
-            if !should_skip(name) && !is_attr_template_compatible(&template, &meta.kind) {
-                emit_malformed_attribute(sess, attr, name, template);
-            }
-        }
+        Ok(meta) => check_builtin_meta_item(sess, &meta, attr.style, name, template),
         Err(mut err) => {
             err.emit();
         }
     }
 }
 
+pub fn check_builtin_meta_item(
+    sess: &ParseSess,
+    meta: &MetaItem,
+    style: ast::AttrStyle,
+    name: Symbol,
+    template: AttributeTemplate,
+) {
+    // Some special attributes like `cfg` must be checked
+    // before the generic check, so we skip them here.
+    let should_skip = |name| name == sym::cfg;
+
+    if !should_skip(name) && !is_attr_template_compatible(&template, &meta.kind) {
+        emit_malformed_attribute(sess, style, meta.span, name, template);
+    }
+}
+
 fn emit_malformed_attribute(
     sess: &ParseSess,
-    attr: &Attribute,
+    style: ast::AttrStyle,
+    span: Span,
     name: Symbol,
     template: AttributeTemplate,
 ) {
@@ -147,7 +156,7 @@ fn emit_malformed_attribute(
     let mut msg = "attribute must be of the form ".to_owned();
     let mut suggestions = vec![];
     let mut first = true;
-    let inner = if attr.style == ast::AttrStyle::Inner { "!" } else { "" };
+    let inner = if style == ast::AttrStyle::Inner { "!" } else { "" };
     if template.word {
         first = false;
         let code = format!("#{}[{}]", inner, name);
@@ -172,12 +181,12 @@ fn emit_malformed_attribute(
         suggestions.push(code);
     }
     if should_warn(name) {
-        sess.buffer_lint(&ILL_FORMED_ATTRIBUTE_INPUT, attr.span, ast::CRATE_NODE_ID, &msg);
+        sess.buffer_lint(&ILL_FORMED_ATTRIBUTE_INPUT, span, ast::CRATE_NODE_ID, &msg);
     } else {
         sess.span_diagnostic
-            .struct_span_err(attr.span, &error_msg)
+            .struct_span_err(span, &error_msg)
             .span_suggestions(
-                attr.span,
+                span,
                 if suggestions.len() == 1 {
                     "must be of the form"
                 } else {
@@ -196,7 +205,7 @@ pub fn emit_fatal_malformed_builtin_attribute(
     name: Symbol,
 ) -> ! {
     let template = BUILTIN_ATTRIBUTE_MAP.get(&name).expect("builtin attr defined").template;
-    emit_malformed_attribute(sess, attr, name, template);
+    emit_malformed_attribute(sess, attr.style, attr.span, name, template);
     // This is fatal, otherwise it will likely cause a cascade of other errors
     // (and an error here is expected to be very rare).
     FatalError.raise()

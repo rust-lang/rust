@@ -116,7 +116,7 @@ pub struct NativeLib {
     pub name: Option<Symbol>,
     pub filename: Option<Symbol>,
     pub cfg: Option<ast::MetaItem>,
-    pub verbatim: Option<bool>,
+    pub verbatim: bool,
     pub dll_imports: Vec<cstore::DllImport>,
 }
 
@@ -127,7 +127,7 @@ impl From<&cstore::NativeLib> for NativeLib {
             filename: lib.filename,
             name: lib.name,
             cfg: lib.cfg.clone(),
-            verbatim: lib.verbatim,
+            verbatim: lib.verbatim.unwrap_or(false),
             dll_imports: lib.dll_imports.clone(),
         }
     }

@@ -68,8 +68,7 @@ pub fn expand_deriving_clone(
         _ => cx.span_bug(span, "`#[derive(Clone)]` on trait item or impl item"),
     }
 
-    let inline = cx.meta_word(span, sym::inline);
-    let attrs = thin_vec![cx.attribute(inline)];
+    let attrs = thin_vec![cx.attr_word(sym::inline, span)];
     let trait_def = TraitDef {
         span,
         path: path_std!(clone::Clone),

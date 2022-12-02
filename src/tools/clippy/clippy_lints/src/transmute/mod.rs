@@ -16,10 +16,10 @@ mod utils;
 mod wrong_transmute;
 
 use clippy_utils::in_constant;
+use clippy_utils::msrvs::Msrv;
 use if_chain::if_chain;
 use rustc_hir::{Expr, ExprKind, QPath};
 use rustc_lint::{LateContext, LateLintPass};
-use rustc_semver::RustcVersion;
 use rustc_session::{declare_tool_lint, impl_lint_pass};
 use rustc_span::symbol::sym;
 
@@ -410,7 +410,7 @@ declare_clippy_lint! {
 }
 
 pub struct Transmute {
-    msrv: Option<RustcVersion>,
+    msrv: Msrv,
 }
 impl_lint_pass!(Transmute => [
     CROSSPOINTER_TRANSMUTE,
@@ -431,7 +431,7 @@ impl_lint_pass!(Transmute => [
 ]);
 impl Transmute {
     #[must_use]
-    pub fn new(msrv: Option<RustcVersion>) -> Self {
+    pub fn new(msrv: Msrv) -> Self {
         Self { msrv }
     }
 }
@@ -461,7 +461,7 @@ impl<'tcx> LateLintPass<'tcx> for Transmute {
                 let linted = wrong_transmute::check(cx, e, from_ty, to_ty)
                     | crosspointer_transmute::check(cx, e, from_ty, to_ty)
                     | transmuting_null::check(cx, e, arg, to_ty)
-                    | transmute_ptr_to_ref::check(cx, e, from_ty, to_ty, arg, path, self.msrv)
+                    | transmute_ptr_to_ref::check(cx, e, from_ty, to_ty, arg, path, &self.msrv)
                     | transmute_int_to_char::check(cx, e, from_ty, to_ty, arg, const_context)
                     | transmute_ref_to_ref::check(cx, e, from_ty, to_ty, arg, const_context)
                     | transmute_ptr_to_ptr::check(cx, e, from_ty, to_ty, arg)

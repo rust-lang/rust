@@ -158,6 +158,8 @@ approved by the appropriate team for that shared code before acceptance.
     the name of the target makes people extremely likely to form incorrect
     beliefs about what it targets, the name should be changed or augmented to
     disambiguate it.
+  - If possible, use only letters, numbers, dashes and underscores for the name.
+    Periods (`.`) are known to cause issues in Cargo.
 - Tier 3 targets may have unusual requirements to build or use, but must not
   create legal issues or impose onerous legal terms for the Rust project or for
   Rust developers or users.

@@ -9,13 +9,13 @@ pub(crate) mod item_kind;
 mod json_find;
 mod validator;
 
-#[derive(Debug)]
+#[derive(Debug, PartialEq, Eq)]
 struct Error {
     kind: ErrorKind,
     id: Id,
 }
 
-#[derive(Debug)]
+#[derive(Debug, PartialEq, Eq)]
 enum ErrorKind {
     NotFound,
     Custom(String),

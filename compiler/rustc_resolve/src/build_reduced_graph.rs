@@ -445,19 +445,13 @@ impl<'a, 'b> BuildReducedGraphVisitor<'a, 'b> {
             prefix.is_empty() || prefix.len() == 1 && prefix[0].ident.name == kw::PathRoot
         };
         match use_tree.kind {
-            ast::UseTreeKind::Simple(rename, id1, id2) => {
+            ast::UseTreeKind::Simple(rename) => {
                 let mut ident = use_tree.ident();
                 let mut module_path = prefix;
                 let mut source = module_path.pop().unwrap();
                 let mut type_ns_only = false;
 
                 self.r.visibilities.insert(self.r.local_def_id(id), vis);
-                if id1 != ast::DUMMY_NODE_ID {
-                    self.r.visibilities.insert(self.r.local_def_id(id1), vis);
-                }
-                if id2 != ast::DUMMY_NODE_ID {
-                    self.r.visibilities.insert(self.r.local_def_id(id2), vis);
-                }
 
                 if nested {
                     // Correctly handle `self`
@@ -565,7 +559,6 @@ impl<'a, 'b> BuildReducedGraphVisitor<'a, 'b> {
                     type_ns_only,
                     nested,
                     id,
-                    additional_ids: (id1, id2),
                 };
 
                 self.add_import(module_path, kind, use_tree.span, item, root_span, item.id, vis);
@@ -621,11 +614,7 @@ impl<'a, 'b> BuildReducedGraphVisitor<'a, 'b> {
                     let new_span = prefix[prefix.len() - 1].ident.span;
                     let tree = ast::UseTree {
                         prefix: ast::Path::from_ident(Ident::new(kw::SelfLower, new_span)),
-                        kind: ast::UseTreeKind::Simple(
-                            Some(Ident::new(kw::Underscore, new_span)),
-                            ast::DUMMY_NODE_ID,
-                            ast::DUMMY_NODE_ID,
-                        ),
+                        kind: ast::UseTreeKind::Simple(Some(Ident::new(kw::Underscore, new_span))),
                         span: use_tree.span,
                     };
                     self.build_reduced_graph_for_use_tree(

@@ -5,10 +5,10 @@ fn mut_ref(_1: &mut i32) -> &mut i32 {
     let mut _2: *mut i32;                // in scope 0 at $SRC_DIR/core/src/intrinsics/mir.rs:LL:COL
 
     bb0: {
-        _2 = &raw mut (*_1);             // scope 0 at $DIR/references.rs:+0:1: +0:40
-        Retag([raw] _2);                 // scope 0 at $DIR/references.rs:+0:1: +0:40
-        _0 = &mut (*_2);                 // scope 0 at $DIR/references.rs:+0:1: +0:40
-        Retag(_0);                       // scope 0 at $DIR/references.rs:+0:1: +0:40
-        return;                          // scope 0 at $DIR/references.rs:+0:1: +0:40
+        _2 = &raw mut (*_1);             // scope 0 at $DIR/references.rs:+5:13: +5:33
+        Retag([raw] _2);                 // scope 0 at $DIR/references.rs:+6:13: +6:24
+        _0 = &mut (*_2);                 // scope 0 at $DIR/references.rs:+7:13: +7:26
+        Retag(_0);                       // scope 0 at $DIR/references.rs:+8:13: +8:23
+        return;                          // scope 0 at $DIR/references.rs:+9:13: +9:21
     }
 }

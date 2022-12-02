@@ -433,7 +433,7 @@ impl<'tcx> Visitor<'tcx> for MarkSymbolVisitor<'tcx> {
         self.in_pat = false;
     }
 
-    fn visit_path(&mut self, path: &'tcx hir::Path<'tcx>, _: hir::HirId) {
+    fn visit_path(&mut self, path: &hir::Path<'tcx>, _: hir::HirId) {
         self.handle_res(path.res);
         intravisit::walk_path(self, path);
     }

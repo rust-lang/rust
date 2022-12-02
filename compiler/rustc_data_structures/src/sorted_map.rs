@@ -10,8 +10,8 @@ mod index_map;
 pub use index_map::SortedIndexMultiMap;
 
 /// `SortedMap` is a data structure with similar characteristics as BTreeMap but
-/// slightly different trade-offs: lookup, insertion, and removal are *O*(log(*n*))
-/// and elements can be iterated in order cheaply.
+/// slightly different trade-offs: lookup is *O*(log(*n*)), insertion and removal
+/// are *O*(*n*) but elements can be iterated in order cheaply.
 ///
 /// `SortedMap` can be faster than a `BTreeMap` for small sizes (<50) since it
 /// stores data in a more compact way. It also supports accessing contiguous

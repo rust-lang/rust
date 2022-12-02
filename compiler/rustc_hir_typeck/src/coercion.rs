@@ -62,7 +62,9 @@ use rustc_span::{self, BytePos, DesugaringKind, Span};
 use rustc_target::spec::abi::Abi;
 use rustc_trait_selection::infer::InferCtxtExt as _;
 use rustc_trait_selection::traits::error_reporting::TypeErrCtxtExt as _;
-use rustc_trait_selection::traits::{self, ObligationCause, ObligationCauseCode, ObligationCtxt};
+use rustc_trait_selection::traits::{
+    self, NormalizeExt, ObligationCause, ObligationCauseCode, ObligationCtxt,
+};
 
 use smallvec::{smallvec, SmallVec};
 use std::ops::Deref;
@@ -194,10 +196,6 @@ impl<'f, 'tcx> Coerce<'f, 'tcx> {
             Ok(_) => {
                 debug!("coerce: unsize successful");
                 return unsize;
-            }
-            Err(TypeError::ObjectUnsafeCoercion(did)) => {
-                debug!("coerce: unsize not object safe");
-                return Err(TypeError::ObjectUnsafeCoercion(did));
             }
             Err(error) => {
                 debug!(?error, "coerce: unsize failed");
@@ -498,27 +496,9 @@ impl<'f, 'tcx> Coerce<'f, 'tcx> {
         target = self.shallow_resolve(target);
         debug!(?source, ?target);
 
-        // These 'if' statements require some explanation.
-        // The `CoerceUnsized` trait is special - it is only
-        // possible to write `impl CoerceUnsized<B> for A` where
-        // A and B have 'matching' fields. This rules out the following
-        // two types of blanket impls:
-        //
-        // `impl<T> CoerceUnsized<T> for SomeType`
-        // `impl<T> CoerceUnsized<SomeType> for T`
-        //
-        // Both of these trigger a special `CoerceUnsized`-related error (E0376)
-        //
-        // We can take advantage of this fact to avoid performing unnecessary work.
-        // If either `source` or `target` is a type variable, then any applicable impl
-        // would need to be generic over the self-type (`impl<T> CoerceUnsized<SomeType> for T`)
-        // or generic over the `CoerceUnsized` type parameter (`impl<T> CoerceUnsized<T> for
-        // SomeType`).
-        //
-        // However, these are exactly the kinds of impls which are forbidden by
-        // the compiler! Therefore, we can be sure that coercion will always fail
-        // when either the source or target type is a type variable. This allows us
-        // to skip performing any trait selection, and immediately bail out.
+        // We don't apply any coercions incase either the source or target
+        // aren't sufficiently well known but tend to instead just equate
+        // them both.
         if source.is_ty_var() {
             debug!("coerce_unsized: source is a TyVar, bailing out");
             return Err(TypeError::Mismatch);
@@ -854,7 +834,7 @@ impl<'f, 'tcx> Coerce<'f, 'tcx> {
 
         let b = self.shallow_resolve(b);
         let InferOk { value: b, mut obligations } =
-            self.normalize_associated_types_in_as_infer_ok(self.cause.span, b);
+            self.at(&self.cause, self.param_env).normalize(b);
         debug!("coerce_from_fn_item(a={:?}, b={:?})", a, b);
 
         match b.kind() {
@@ -876,7 +856,7 @@ impl<'f, 'tcx> Coerce<'f, 'tcx> {
                 }
 
                 let InferOk { value: a_sig, obligations: o1 } =
-                    self.normalize_associated_types_in_as_infer_ok(self.cause.span, a_sig);
+                    self.at(&self.cause, self.param_env).normalize(a_sig);
                 obligations.extend(o1);
 
                 let a_fn_pointer = self.tcx.mk_fn_ptr(a_sig);
@@ -1101,15 +1081,14 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         // Special-case that coercion alone cannot handle:
         // Function items or non-capturing closures of differing IDs or InternalSubsts.
         let (a_sig, b_sig) = {
-            #[allow(rustc::usage_of_ty_tykind)]
-            let is_capturing_closure = |ty: &ty::TyKind<'tcx>| {
-                if let &ty::Closure(closure_def_id, _substs) = ty {
+            let is_capturing_closure = |ty: Ty<'tcx>| {
+                if let &ty::Closure(closure_def_id, _substs) = ty.kind() {
                     self.tcx.upvars_mentioned(closure_def_id.expect_local()).is_some()
                 } else {
                     false
                 }
             };
-            if is_capturing_closure(prev_ty.kind()) || is_capturing_closure(new_ty.kind()) {
+            if is_capturing_closure(prev_ty) || is_capturing_closure(new_ty) {
                 (None, None)
             } else {
                 match (prev_ty.kind(), new_ty.kind()) {
@@ -1164,8 +1143,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                 return Err(TypeError::IntrinsicCast);
             }
             // The signature must match.
-            let a_sig = self.normalize_associated_types_in(new.span, a_sig);
-            let b_sig = self.normalize_associated_types_in(new.span, b_sig);
+            let (a_sig, b_sig) = self.normalize(new.span, (a_sig, b_sig));
             let sig = self
                 .at(cause, self.param_env)
                 .trace(prev_ty, new_ty)

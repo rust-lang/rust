@@ -2168,7 +2168,7 @@ fn determine_place_ancestry_relation<'tcx>(
     place_a: &Place<'tcx>,
     place_b: &Place<'tcx>,
 ) -> PlaceAncestryRelation {
-    // If Place A and Place B, don't start off from the same root variable, they are divergent.
+    // If Place A and Place B don't start off from the same root variable, they are divergent.
     if place_a.base != place_b.base {
         return PlaceAncestryRelation::Divergent;
     }

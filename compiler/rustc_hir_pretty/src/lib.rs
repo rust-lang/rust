@@ -1591,7 +1591,7 @@ impl<'a> State<'a> {
         self.print_ident(Ident::with_dummy_span(name))
     }
 
-    pub fn print_path(&mut self, path: &hir::Path<'_>, colons_before_params: bool) {
+    pub fn print_path<R>(&mut self, path: &hir::Path<'_, R>, colons_before_params: bool) {
         self.maybe_print_comment(path.span.lo());
 
         for (i, segment) in path.segments.iter().enumerate() {

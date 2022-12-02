@@ -25,4 +25,16 @@ fn main() {
         x * y
     })();
     let d = (async || something().await)();
+
+    macro_rules! m {
+        () => {
+            (|| 0)()
+        };
+    }
+    macro_rules! m2 {
+        () => {
+            (|| m!())()
+        };
+    }
+    m2!();
 }

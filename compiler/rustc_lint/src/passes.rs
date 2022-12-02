@@ -44,7 +44,7 @@ macro_rules! late_lint_methods {
             fn check_struct_def(a: &$hir hir::VariantData<$hir>);
             fn check_field_def(a: &$hir hir::FieldDef<$hir>);
             fn check_variant(a: &$hir hir::Variant<$hir>);
-            fn check_path(a: &$hir hir::Path<$hir>, b: hir::HirId);
+            fn check_path(a: &hir::Path<$hir>, b: hir::HirId);
             fn check_attribute(a: &$hir ast::Attribute);
 
             /// Called when entering a syntax node that can have lint attributes such

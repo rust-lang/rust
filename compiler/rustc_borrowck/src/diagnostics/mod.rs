@@ -590,7 +590,7 @@ impl UseSpans<'_> {
         }
     }
 
-    // Add a span label to the arguments of the closure, if it exists.
+    /// Add a span label to the arguments of the closure, if it exists.
     pub(super) fn args_span_label(self, err: &mut Diagnostic, message: impl Into<String>) {
         if let UseSpans::ClosureUse { args_span, .. } = self {
             err.span_label(args_span, message);
@@ -628,7 +628,7 @@ impl UseSpans<'_> {
         }
     }
 
-    // Add a span label to the use of the captured variable, if it exists.
+    /// Add a span label to the use of the captured variable, if it exists.
     pub(super) fn var_span_label(
         self,
         err: &mut Diagnostic,

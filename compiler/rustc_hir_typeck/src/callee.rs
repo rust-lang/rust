@@ -179,12 +179,16 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
 
             // Hack: we know that there are traits implementing Fn for &F
             // where F:Fn and so forth. In the particular case of types
-            // like `x: &mut FnMut()`, if there is a call `x()`, we would
-            // normally translate to `FnMut::call_mut(&mut x, ())`, but
-            // that winds up requiring `mut x: &mut FnMut()`. A little
-            // over the top. The simplest fix by far is to just ignore
-            // this case and deref again, so we wind up with
-            // `FnMut::call_mut(&mut *x, ())`.
+            // like `f: &mut FnMut()`, if there is a call `f()`, we would
+            // normally translate to `FnMut::call_mut(&mut f, ())`, but
+            // that winds up potentially requiring the user to mark their
+            // variable as `mut` which feels unnecessary and unexpected.
+            //
+            //     fn foo(f: &mut impl FnMut()) { f() }
+            //            ^ without this hack `f` would have to be declared as mutable
+            //
+            // The simplest fix by far is to just ignore this case and deref again,
+            // so we wind up with `FnMut::call_mut(&mut *f, ())`.
             ty::Ref(..) if autoderef.step_count() == 0 => {
                 return None;
             }
@@ -444,7 +448,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         // previously appeared within a `Binder<>` and hence would not
         // have been normalized before.
         let fn_sig = self.replace_bound_vars_with_fresh_vars(call_expr.span, infer::FnCall, fn_sig);
-        let fn_sig = self.normalize_associated_types_in(call_expr.span, fn_sig);
+        let fn_sig = self.normalize(call_expr.span, fn_sig);
 
         // Call the generic checker.
         let expected_arg_tys = self.expected_inputs_for_expected_output(

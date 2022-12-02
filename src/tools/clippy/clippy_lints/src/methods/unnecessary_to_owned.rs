@@ -1,13 +1,11 @@
 use super::implicit_clone::is_clone_like;
 use super::unnecessary_iter_cloned::{self, is_into_iter};
 use clippy_utils::diagnostics::span_lint_and_sugg;
+use clippy_utils::msrvs::{self, Msrv};
 use clippy_utils::source::snippet_opt;
 use clippy_utils::ty::{get_iterator_item_ty, implements_trait, is_copy, peel_mid_ty_refs};
 use clippy_utils::visitors::find_all_ret_expressions;
-use clippy_utils::{
-    fn_def_id, get_parent_expr, is_diag_item_method, is_diag_trait_item, return_ty,
-};
-use clippy_utils::{meets_msrv, msrvs};
+use clippy_utils::{fn_def_id, get_parent_expr, is_diag_item_method, is_diag_trait_item, return_ty};
 use rustc_errors::Applicability;
 use rustc_hir::{def_id::DefId, BorrowKind, Expr, ExprKind, ItemKind, Node};
 use rustc_hir_typeck::{FnCtxt, Inherited};
@@ -16,14 +14,9 @@ use rustc_lint::LateContext;
 use rustc_middle::mir::Mutability;
 use rustc_middle::ty::adjustment::{Adjust, Adjustment, OverloadedDeref};
 use rustc_middle::ty::subst::{GenericArg, GenericArgKind, SubstsRef};
-use rustc_middle::ty::EarlyBinder;
-use rustc_middle::ty::{self, Clause, ParamTy, PredicateKind, ProjectionPredicate, TraitPredicate, Ty};
-use rustc_semver::RustcVersion;
+use rustc_middle::ty::{self, Clause, EarlyBinder, ParamTy, PredicateKind, ProjectionPredicate, TraitPredicate, Ty};
 use rustc_span::{sym, Symbol};
-use rustc_trait_selection::traits::{
-    query::evaluate_obligation::InferCtxtExt as _, Obligation, ObligationCause,
-};
-use std::cmp::max;
+use rustc_trait_selection::traits::{query::evaluate_obligation::InferCtxtExt as _, Obligation, ObligationCause};
 
 use super::UNNECESSARY_TO_OWNED;
 
@@ -33,7 +26,7 @@ pub fn check<'tcx>(
     method_name: Symbol,
     receiver: &'tcx Expr<'_>,
     args: &'tcx [Expr<'_>],
-    msrv: Option<RustcVersion>,
+    msrv: &Msrv,
 ) {
     if_chain! {
         if let Some(method_def_id) = cx.typeck_results().type_dependent_def_id(expr.hir_id);
@@ -204,7 +197,7 @@ fn check_into_iter_call_arg(
     expr: &Expr<'_>,
     method_name: Symbol,
     receiver: &Expr<'_>,
-    msrv: Option<RustcVersion>,
+    msrv: &Msrv,
 ) -> bool {
     if_chain! {
         if let Some(parent) = get_parent_expr(cx, expr);
@@ -219,7 +212,7 @@ fn check_into_iter_call_arg(
             if unnecessary_iter_cloned::check_for_loop_iter(cx, parent, method_name, receiver, true) {
                 return true;
             }
-            let cloned_or_copied = if is_copy(cx, item_ty) && meets_msrv(msrv, msrvs::ITERATOR_COPIED) {
+            let cloned_or_copied = if is_copy(cx, item_ty) && msrv.meets(msrvs::ITERATOR_COPIED) {
                 "copied"
             } else {
                 "cloned"
@@ -267,11 +260,22 @@ fn check_other_call_arg<'tcx>(
         if let Some(as_ref_trait_id) = cx.tcx.get_diagnostic_item(sym::AsRef);
         if trait_predicate.def_id() == deref_trait_id || trait_predicate.def_id() == as_ref_trait_id;
         let receiver_ty = cx.typeck_results().expr_ty(receiver);
-        if can_change_type(cx, maybe_arg, receiver_ty);
         // We can't add an `&` when the trait is `Deref` because `Target = &T` won't match
         // `Target = T`.
-        if n_refs > 0 || is_copy(cx, receiver_ty) || trait_predicate.def_id() != deref_trait_id;
-        let n_refs = max(n_refs, usize::from(!is_copy(cx, receiver_ty)));
+        if let Some((n_refs, receiver_ty)) = if n_refs > 0 || is_copy(cx, receiver_ty) {
+            Some((n_refs, receiver_ty))
+        } else if trait_predicate.def_id() != deref_trait_id {
+            Some((1, cx.tcx.mk_ref(
+                cx.tcx.lifetimes.re_erased,
+                ty::TypeAndMut {
+                    ty: receiver_ty,
+                    mutbl: Mutability::Not,
+                },
+            )))
+        } else {
+            None
+        };
+        if can_change_type(cx, maybe_arg, receiver_ty);
         if let Some(receiver_snippet) = snippet_opt(cx, receiver.span);
         then {
             span_lint_and_sugg(
@@ -345,13 +349,13 @@ fn get_input_traits_and_projections<'tcx>(
                 if trait_predicate.trait_ref.self_ty() == input {
                     trait_predicates.push(trait_predicate);
                 }
-            }
+            },
             PredicateKind::Clause(Clause::Projection(projection_predicate)) => {
                 if projection_predicate.projection_ty.self_ty() == input {
                     projection_predicates.push(projection_predicate);
                 }
-            }
-            _ => {}
+            },
+            _ => {},
         }
     }
     (trait_predicates, projection_predicates)
@@ -403,10 +407,12 @@ fn can_change_type<'a>(cx: &LateContext<'a>, mut expr: &'a Expr<'a>, mut ty: Ty<
 
                         let mut trait_predicates = cx.tcx.param_env(callee_def_id)
                             .caller_bounds().iter().filter(|predicate| {
-                            if let PredicateKind::Clause(Clause::Trait(trait_predicate)) =  predicate.kind().skip_binder()
-                                && trait_predicate.trait_ref.self_ty() == *param_ty {
-                                    true
-                                } else {
+                            if let PredicateKind::Clause(Clause::Trait(trait_predicate))
+                                    = predicate.kind().skip_binder()
+                                && trait_predicate.trait_ref.self_ty() == *param_ty
+                            {
+                                true
+                            } else {
                                 false
                             }
                         });
@@ -466,12 +472,7 @@ fn is_cloned_or_copied(cx: &LateContext<'_>, method_name: Symbol, method_def_id:
 
 /// Returns true if the named method can be used to convert the receiver to its "owned"
 /// representation.
-fn is_to_owned_like<'a>(
-    cx: &LateContext<'a>,
-    call_expr: &Expr<'a>,
-    method_name: Symbol,
-    method_def_id: DefId,
-) -> bool {
+fn is_to_owned_like<'a>(cx: &LateContext<'a>, call_expr: &Expr<'a>, method_name: Symbol, method_def_id: DefId) -> bool {
     is_clone_like(cx, method_name.as_str(), method_def_id)
         || is_cow_into_owned(cx, method_name, method_def_id)
         || is_to_string_on_string_like(cx, call_expr, method_name, method_def_id)

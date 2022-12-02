@@ -1,3 +1,4 @@
+mod misnamed_getters;
 mod must_use;
 mod not_unsafe_ptr_arg_deref;
 mod result;
@@ -260,6 +261,48 @@ declare_clippy_lint! {
     "function returning `Result` with large `Err` type"
 }
 
+declare_clippy_lint! {
+    /// ### What it does
+    /// Checks for getter methods that return a field that doesn't correspond
+    /// to the name of the method, when there is a field's whose name matches that of the method.
+    ///
+    /// ### Why is this bad?
+    /// It is most likely that such a  method is a bug caused by a typo or by copy-pasting.
+    ///
+    /// ### Example
+
+    /// ```rust
+    /// struct A {
+    ///     a: String,
+    ///     b: String,
+    /// }
+    ///
+    /// impl A {
+    ///     fn a(&self) -> &str{
+    ///         &self.b
+    ///     }
+    /// }
+
+    /// ```
+    /// Use instead:
+    /// ```rust
+    /// struct A {
+    ///     a: String,
+    ///     b: String,
+    /// }
+    ///
+    /// impl A {
+    ///     fn a(&self) -> &str{
+    ///         &self.a
+    ///     }
+    /// }
+    /// ```
+    #[clippy::version = "1.67.0"]
+    pub MISNAMED_GETTERS,
+    suspicious,
+    "getter method returning the wrong field"
+}
+
 #[derive(Copy, Clone)]
 pub struct Functions {
     too_many_arguments_threshold: u64,
@@ -286,6 +329,7 @@ impl_lint_pass!(Functions => [
     MUST_USE_CANDIDATE,
     RESULT_UNIT_ERR,
     RESULT_LARGE_ERR,
+    MISNAMED_GETTERS,
 ]);
 
 impl<'tcx> LateLintPass<'tcx> for Functions {
@@ -301,6 +345,7 @@ impl<'tcx> LateLintPass<'tcx> for Functions {
         too_many_arguments::check_fn(cx, kind, decl, span, hir_id, self.too_many_arguments_threshold);
         too_many_lines::check_fn(cx, kind, span, body, self.too_many_lines_threshold);
         not_unsafe_ptr_arg_deref::check_fn(cx, kind, decl, body, hir_id);
+        misnamed_getters::check_fn(cx, kind, decl, body, span, hir_id);
     }
 
     fn check_item(&mut self, cx: &LateContext<'tcx>, item: &'tcx hir::Item<'_>) {

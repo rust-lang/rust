@@ -566,7 +566,7 @@ pub fn eq_use_tree_kind(l: &UseTreeKind, r: &UseTreeKind) -> bool {
     use UseTreeKind::*;
     match (l, r) {
         (Glob, Glob) => true,
-        (Simple(l, _, _), Simple(r, _, _)) => both(l, r, |l, r| eq_id(*l, *r)),
+        (Simple(l), Simple(r)) => both(l, r, |l, r| eq_id(*l, *r)),
         (Nested(l), Nested(r)) => over(l, r, |(l, _), (r, _)| eq_use_tree(l, r)),
         _ => false,
     }

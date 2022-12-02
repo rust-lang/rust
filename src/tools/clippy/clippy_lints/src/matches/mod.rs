@@ -23,13 +23,13 @@ mod single_match;
 mod try_err;
 mod wild_in_or_pats;
 
+use clippy_utils::msrvs::{self, Msrv};
 use clippy_utils::source::{snippet_opt, walk_span_to_context};
-use clippy_utils::{higher, in_constant, is_span_match, meets_msrv, msrvs};
+use clippy_utils::{higher, in_constant, is_span_match};
 use rustc_hir::{Arm, Expr, ExprKind, Local, MatchSource, Pat};
 use rustc_lexer::{tokenize, TokenKind};
 use rustc_lint::{LateContext, LateLintPass, LintContext};
 use rustc_middle::lint::in_external_macro;
-use rustc_semver::RustcVersion;
 use rustc_session::{declare_tool_lint, impl_lint_pass};
 use rustc_span::{Span, SpanData, SyntaxContext};
 
@@ -930,13 +930,13 @@ declare_clippy_lint! {
 
 #[derive(Default)]
 pub struct Matches {
-    msrv: Option<RustcVersion>,
+    msrv: Msrv,
     infallible_destructuring_match_linted: bool,
 }
 
 impl Matches {
     #[must_use]
-    pub fn new(msrv: Option<RustcVersion>) -> Self {
+    pub fn new(msrv: Msrv) -> Self {
         Self {
             msrv,
             ..Matches::default()
@@ -1000,9 +1000,7 @@ impl<'tcx> LateLintPass<'tcx> for Matches {
 
             if !from_expansion && !contains_cfg_arm(cx, expr, ex, arms) {
                 if source == MatchSource::Normal {
-                    if !(meets_msrv(self.msrv, msrvs::MATCHES_MACRO)
-                        && match_like_matches::check_match(cx, expr, ex, arms))
-                    {
+                    if !(self.msrv.meets(msrvs::MATCHES_MACRO) && match_like_matches::check_match(cx, expr, ex, arms)) {
                         match_same_arms::check(cx, arms);
                     }
 
@@ -1034,7 +1032,7 @@ impl<'tcx> LateLintPass<'tcx> for Matches {
             collapsible_match::check_if_let(cx, if_let.let_pat, if_let.if_then, if_let.if_else);
             if !from_expansion {
                 if let Some(else_expr) = if_let.if_else {
-                    if meets_msrv(self.msrv, msrvs::MATCHES_MACRO) {
+                    if self.msrv.meets(msrvs::MATCHES_MACRO) {
                         match_like_matches::check_if_let(
                             cx,
                             expr,

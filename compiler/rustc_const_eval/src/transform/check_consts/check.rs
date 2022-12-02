@@ -761,8 +761,7 @@ impl<'tcx> Visitor<'tcx> for Checker<'_, 'tcx> {
                             hir_id,
                             ObligationCauseCode::ItemObligation(callee),
                         );
-                        let normalized_predicates =
-                            ocx.normalize(cause.clone(), param_env, predicates);
+                        let normalized_predicates = ocx.normalize(&cause, param_env, predicates);
                         ocx.register_obligations(traits::predicates_for_generics(
                             |_, _| cause.clone(),
                             self.param_env,

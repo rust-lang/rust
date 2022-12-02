@@ -91,6 +91,16 @@ fn fn_eagerness(cx: &LateContext<'_>, fn_id: DefId, name: Symbol, have_one_arg: 
     }
 }
 
+fn res_has_significant_drop(res: Res, cx: &LateContext<'_>, e: &Expr<'_>) -> bool {
+    if let Res::Def(DefKind::Ctor(..) | DefKind::Variant, _) | Res::SelfCtor(_) = res {
+        cx.typeck_results()
+            .expr_ty(e)
+            .has_significant_drop(cx.tcx, cx.param_env)
+    } else {
+        false
+    }
+}
+
 #[expect(clippy::too_many_lines)]
 fn expr_eagerness<'tcx>(cx: &LateContext<'tcx>, e: &'tcx Expr<'_>) -> EagernessSuggestion {
     struct V<'cx, 'tcx> {
@@ -113,13 +123,8 @@ fn expr_eagerness<'tcx>(cx: &LateContext<'tcx>, e: &'tcx Expr<'_>) -> EagernessS
                     },
                     args,
                 ) => match self.cx.qpath_res(path, hir_id) {
-                    Res::Def(DefKind::Ctor(..) | DefKind::Variant, _) | Res::SelfCtor(_) => {
-                        if self
-                            .cx
-                            .typeck_results()
-                            .expr_ty(e)
-                            .has_significant_drop(self.cx.tcx, self.cx.param_env)
-                        {
+                    res @ (Res::Def(DefKind::Ctor(..) | DefKind::Variant, _) | Res::SelfCtor(_)) => {
+                        if res_has_significant_drop(res, self.cx, e) {
                             self.eagerness = ForceNoChange;
                             return;
                         }
@@ -146,6 +151,12 @@ fn expr_eagerness<'tcx>(cx: &LateContext<'tcx>, e: &'tcx Expr<'_>) -> EagernessS
                 ExprKind::MethodCall(..) if is_const_evaluatable(self.cx, e) => {
                     self.eagerness |= NoChange;
                     return;
+                },
+                ExprKind::Path(ref path) => {
+                    if res_has_significant_drop(self.cx.qpath_res(path, e.hir_id), self.cx, e) {
+                        self.eagerness = ForceNoChange;
+                        return;
+                    }
                 },
                 ExprKind::MethodCall(name, ..) => {
                     self.eagerness |= self
@@ -206,7 +217,6 @@ fn expr_eagerness<'tcx>(cx: &LateContext<'tcx>, e: &'tcx Expr<'_>) -> EagernessS
                 | ExprKind::Match(..)
                 | ExprKind::Closure { .. }
                 | ExprKind::Field(..)
-                | ExprKind::Path(_)
                 | ExprKind::AddrOf(..)
                 | ExprKind::Struct(..)
                 | ExprKind::Repeat(..)

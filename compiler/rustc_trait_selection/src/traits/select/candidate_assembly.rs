@@ -9,225 +9,18 @@ use hir::LangItem;
 use rustc_hir as hir;
 use rustc_infer::traits::ObligationCause;
 use rustc_infer::traits::{Obligation, SelectionError, TraitObligation};
-use rustc_middle::ty::print::with_no_trimmed_paths;
 use rustc_middle::ty::{self, Ty, TypeVisitable};
 use rustc_target::spec::abi::Abi;
 
 use crate::traits;
-use crate::traits::coherence::Conflict;
 use crate::traits::query::evaluate_obligation::InferCtxtExt;
-use crate::traits::{util, SelectionResult};
-use crate::traits::{ErrorReporting, Overflow, Unimplemented};
+use crate::traits::util;
 
 use super::BuiltinImplConditions;
-use super::IntercrateAmbiguityCause;
-use super::OverflowError;
-use super::SelectionCandidate::{self, *};
-use super::{EvaluatedCandidate, SelectionCandidateSet, SelectionContext, TraitObligationStack};
+use super::SelectionCandidate::*;
+use super::{SelectionCandidateSet, SelectionContext, TraitObligationStack};
 
 impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
-    #[instrument(level = "debug", skip(self), ret)]
-    pub(super) fn candidate_from_obligation<'o>(
-        &mut self,
-        stack: &TraitObligationStack<'o, 'tcx>,
-    ) -> SelectionResult<'tcx, SelectionCandidate<'tcx>> {
-        // Watch out for overflow. This intentionally bypasses (and does
-        // not update) the cache.
-        self.check_recursion_limit(&stack.obligation, &stack.obligation)?;
-
-        // Check the cache. Note that we freshen the trait-ref
-        // separately rather than using `stack.fresh_trait_ref` --
-        // this is because we want the unbound variables to be
-        // replaced with fresh types starting from index 0.
-        let cache_fresh_trait_pred = self.infcx.freshen(stack.obligation.predicate);
-        debug!(?cache_fresh_trait_pred);
-        debug_assert!(!stack.obligation.predicate.has_escaping_bound_vars());
-
-        if let Some(c) =
-            self.check_candidate_cache(stack.obligation.param_env, cache_fresh_trait_pred)
-        {
-            debug!("CACHE HIT");
-            return c;
-        }
-
-        // If no match, compute result and insert into cache.
-        //
-        // FIXME(nikomatsakis) -- this cache is not taking into
-        // account cycles that may have occurred in forming the
-        // candidate. I don't know of any specific problems that
-        // result but it seems awfully suspicious.
-        let (candidate, dep_node) =
-            self.in_task(|this| this.candidate_from_obligation_no_cache(stack));
-
-        debug!("CACHE MISS");
-        self.insert_candidate_cache(
-            stack.obligation.param_env,
-            cache_fresh_trait_pred,
-            dep_node,
-            candidate.clone(),
-        );
-        candidate
-    }
-
-    fn candidate_from_obligation_no_cache<'o>(
-        &mut self,
-        stack: &TraitObligationStack<'o, 'tcx>,
-    ) -> SelectionResult<'tcx, SelectionCandidate<'tcx>> {
-        if let Err(conflict) = self.is_knowable(stack) {
-            debug!("coherence stage: not knowable");
-            if self.intercrate_ambiguity_causes.is_some() {
-                debug!("evaluate_stack: intercrate_ambiguity_causes is some");
-                // Heuristics: show the diagnostics when there are no candidates in crate.
-                if let Ok(candidate_set) = self.assemble_candidates(stack) {
-                    let mut no_candidates_apply = true;
-
-                    for c in candidate_set.vec.iter() {
-                        if self.evaluate_candidate(stack, &c)?.may_apply() {
-                            no_candidates_apply = false;
-                            break;
-                        }
-                    }
-
-                    if !candidate_set.ambiguous && no_candidates_apply {
-                        let trait_ref = stack.obligation.predicate.skip_binder().trait_ref;
-                        let self_ty = trait_ref.self_ty();
-                        let (trait_desc, self_desc) = with_no_trimmed_paths!({
-                            let trait_desc = trait_ref.print_only_trait_path().to_string();
-                            let self_desc = if self_ty.has_concrete_skeleton() {
-                                Some(self_ty.to_string())
-                            } else {
-                                None
-                            };
-                            (trait_desc, self_desc)
-                        });
-                        let cause = if let Conflict::Upstream = conflict {
-                            IntercrateAmbiguityCause::UpstreamCrateUpdate { trait_desc, self_desc }
-                        } else {
-                            IntercrateAmbiguityCause::DownstreamCrate { trait_desc, self_desc }
-                        };
-                        debug!(?cause, "evaluate_stack: pushing cause");
-                        self.intercrate_ambiguity_causes.as_mut().unwrap().insert(cause);
-                    }
-                }
-            }
-            return Ok(None);
-        }
-
-        let candidate_set = self.assemble_candidates(stack)?;
-
-        if candidate_set.ambiguous {
-            debug!("candidate set contains ambig");
-            return Ok(None);
-        }
-
-        let candidates = candidate_set.vec;
-
-        debug!(?stack, ?candidates, "assembled {} candidates", candidates.len());
-
-        // At this point, we know that each of the entries in the
-        // candidate set is *individually* applicable. Now we have to
-        // figure out if they contain mutual incompatibilities. This
-        // frequently arises if we have an unconstrained input type --
-        // for example, we are looking for `$0: Eq` where `$0` is some
-        // unconstrained type variable. In that case, we'll get a
-        // candidate which assumes $0 == int, one that assumes `$0 ==
-        // usize`, etc. This spells an ambiguity.
-
-        let mut candidates = self.filter_impls(candidates, stack.obligation);
-
-        // If there is more than one candidate, first winnow them down
-        // by considering extra conditions (nested obligations and so
-        // forth). We don't winnow if there is exactly one
-        // candidate. This is a relatively minor distinction but it
-        // can lead to better inference and error-reporting. An
-        // example would be if there was an impl:
-        //
-        //     impl<T:Clone> Vec<T> { fn push_clone(...) { ... } }
-        //
-        // and we were to see some code `foo.push_clone()` where `boo`
-        // is a `Vec<Bar>` and `Bar` does not implement `Clone`.  If
-        // we were to winnow, we'd wind up with zero candidates.
-        // Instead, we select the right impl now but report "`Bar` does
-        // not implement `Clone`".
-        if candidates.len() == 1 {
-            return self.filter_reservation_impls(candidates.pop().unwrap(), stack.obligation);
-        }
-
-        // Winnow, but record the exact outcome of evaluation, which
-        // is needed for specialization. Propagate overflow if it occurs.
-        let mut candidates = candidates
-            .into_iter()
-            .map(|c| match self.evaluate_candidate(stack, &c) {
-                Ok(eval) if eval.may_apply() => {
-                    Ok(Some(EvaluatedCandidate { candidate: c, evaluation: eval }))
-                }
-                Ok(_) => Ok(None),
-                Err(OverflowError::Canonical) => Err(Overflow(OverflowError::Canonical)),
-                Err(OverflowError::ErrorReporting) => Err(ErrorReporting),
-                Err(OverflowError::Error(e)) => Err(Overflow(OverflowError::Error(e))),
-            })
-            .flat_map(Result::transpose)
-            .collect::<Result<Vec<_>, _>>()?;
-
-        debug!(?stack, ?candidates, "winnowed to {} candidates", candidates.len());
-
-        let needs_infer = stack.obligation.predicate.has_non_region_infer();
-
-        // If there are STILL multiple candidates, we can further
-        // reduce the list by dropping duplicates -- including
-        // resolving specializations.
-        if candidates.len() > 1 {
-            let mut i = 0;
-            while i < candidates.len() {
-                let is_dup = (0..candidates.len()).filter(|&j| i != j).any(|j| {
-                    self.candidate_should_be_dropped_in_favor_of(
-                        &candidates[i],
-                        &candidates[j],
-                        needs_infer,
-                    )
-                });
-                if is_dup {
-                    debug!(candidate = ?candidates[i], "Dropping candidate #{}/{}", i, candidates.len());
-                    candidates.swap_remove(i);
-                } else {
-                    debug!(candidate = ?candidates[i], "Retaining candidate #{}/{}", i, candidates.len());
-                    i += 1;
-
-                    // If there are *STILL* multiple candidates, give up
-                    // and report ambiguity.
-                    if i > 1 {
-                        debug!("multiple matches, ambig");
-                        return Ok(None);
-                    }
-                }
-            }
-        }
-
-        // If there are *NO* candidates, then there are no impls --
-        // that we know of, anyway. Note that in the case where there
-        // are unbound type variables within the obligation, it might
-        // be the case that you could still satisfy the obligation
-        // from another crate by instantiating the type variables with
-        // a type from another crate that does have an impl. This case
-        // is checked for in `evaluate_stack` (and hence users
-        // who might care about this case, like coherence, should use
-        // that function).
-        if candidates.is_empty() {
-            // If there's an error type, 'downgrade' our result from
-            // `Err(Unimplemented)` to `Ok(None)`. This helps us avoid
-            // emitting additional spurious errors, since we're guaranteed
-            // to have emitted at least one.
-            if stack.obligation.predicate.references_error() {
-                debug!(?stack.obligation.predicate, "found error type in predicate, treating as ambiguous");
-                return Ok(None);
-            }
-            return Err(Unimplemented);
-        }
-
-        // Just one candidate left.
-        self.filter_reservation_impls(candidates.pop().unwrap().candidate, stack.obligation)
-    }
-
     #[instrument(skip(self, stack), level = "debug")]
     pub(super) fn assemble_candidates<'o>(
         &mut self,
@@ -238,7 +31,7 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
             param_env: obligation.param_env,
             cause: obligation.cause.clone(),
             recursion_depth: obligation.recursion_depth,
-            predicate: self.infcx().resolve_vars_if_possible(obligation.predicate),
+            predicate: self.infcx.resolve_vars_if_possible(obligation.predicate),
         };
 
         if obligation.predicate.skip_binder().self_ty().is_ty_var() {
@@ -430,9 +223,7 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
     ) {
         let self_ty = obligation.self_ty().skip_binder();
         if let ty::Generator(did, ..) = self_ty.kind() {
-            if let Some(rustc_hir::GeneratorKind::Async(_generator_kind)) =
-                self.tcx().generator_kind(did)
-            {
+            if self.tcx().generator_is_async(*did) {
                 debug!(?self_ty, ?obligation, "assemble_future_candidates",);
 
                 candidates.vec.push(FutureCandidate);
@@ -451,7 +242,7 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
         obligation: &TraitObligation<'tcx>,
         candidates: &mut SelectionCandidateSet<'tcx>,
     ) {
-        let Some(kind) = self.tcx().fn_trait_kind_from_lang_item(obligation.predicate.def_id()) else {
+        let Some(kind) = self.tcx().fn_trait_kind_from_def_id(obligation.predicate.def_id()) else {
             return;
         };
 
@@ -489,7 +280,7 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
         candidates: &mut SelectionCandidateSet<'tcx>,
     ) {
         // We provide impl of all fn traits for fn pointers.
-        if self.tcx().fn_trait_kind_from_lang_item(obligation.predicate.def_id()).is_none() {
+        if !self.tcx().is_fn_trait(obligation.predicate.def_id()) {
             return;
         }
 
@@ -689,9 +480,9 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
 
             debug!(?poly_trait_ref, "assemble_candidates_from_object_ty");
 
-            let poly_trait_predicate = self.infcx().resolve_vars_if_possible(obligation.predicate);
+            let poly_trait_predicate = self.infcx.resolve_vars_if_possible(obligation.predicate);
             let placeholder_trait_predicate =
-                self.infcx().replace_bound_vars_with_placeholders(poly_trait_predicate);
+                self.infcx.replace_bound_vars_with_placeholders(poly_trait_predicate);
 
             // Count only those upcast versions that match the trait-ref
             // we are looking for. Specifically, do not only check for the
@@ -940,7 +731,7 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
             return;
         }
 
-        let self_ty = self.infcx().shallow_resolve(obligation.self_ty());
+        let self_ty = self.infcx.shallow_resolve(obligation.self_ty());
         match self_ty.skip_binder().kind() {
             ty::Opaque(..)
             | ty::Dynamic(..)
@@ -1007,7 +798,7 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
         obligation: &TraitObligation<'tcx>,
         candidates: &mut SelectionCandidateSet<'tcx>,
     ) {
-        let self_ty = self.infcx().shallow_resolve(obligation.self_ty().skip_binder());
+        let self_ty = self.infcx.shallow_resolve(obligation.self_ty().skip_binder());
         match self_ty.kind() {
             ty::Tuple(_) => {
                 candidates.vec.push(BuiltinCandidate { has_nested: false });

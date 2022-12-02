@@ -787,7 +787,7 @@ impl<'tcx> Visitor<'tcx> for Checker<'tcx> {
         intravisit::walk_item(self, item);
     }
 
-    fn visit_path(&mut self, path: &'tcx hir::Path<'tcx>, id: hir::HirId) {
+    fn visit_path(&mut self, path: &hir::Path<'tcx>, id: hir::HirId) {
         if let Some(def_id) = path.res.opt_def_id() {
             let method_span = path.segments.last().map(|s| s.ident.span);
             let item_is_allowed = self.tcx.check_stability_allow_unstable(
@@ -880,7 +880,7 @@ struct CheckTraitImplStable<'tcx> {
 }
 
 impl<'tcx> Visitor<'tcx> for CheckTraitImplStable<'tcx> {
-    fn visit_path(&mut self, path: &'tcx hir::Path<'tcx>, _id: hir::HirId) {
+    fn visit_path(&mut self, path: &hir::Path<'tcx>, _id: hir::HirId) {
         if let Some(def_id) = path.res.opt_def_id() {
             if let Some(stab) = self.tcx.lookup_stability(def_id) {
                 self.fully_stable &= stab.level.is_stable();

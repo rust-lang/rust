@@ -98,3 +98,11 @@ pub use crate::macros::builtin::cfg_accessible;
     reason = "`cfg_eval` is a recently implemented feature"
 )]
 pub use crate::macros::builtin::cfg_eval;
+
+#[unstable(
+    feature = "type_ascription",
+    issue = "23416",
+    reason = "placeholder syntax for type ascription"
+)]
+#[cfg(not(bootstrap))]
+pub use crate::macros::builtin::type_ascribe;

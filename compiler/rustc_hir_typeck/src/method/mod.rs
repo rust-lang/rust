@@ -23,8 +23,8 @@ use rustc_middle::ty::subst::{InternalSubsts, SubstsRef};
 use rustc_middle::ty::{self, DefIdTree, GenericParamDefKind, Ty, TypeVisitable};
 use rustc_span::symbol::Ident;
 use rustc_span::Span;
-use rustc_trait_selection::traits;
 use rustc_trait_selection::traits::query::evaluate_obligation::InferCtxtExt;
+use rustc_trait_selection::traits::{self, NormalizeExt};
 
 use self::probe::{IsSuggestion, ProbeScope};
 
@@ -465,11 +465,22 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         let fn_sig = fn_sig.subst(self.tcx, substs);
         let fn_sig = self.replace_bound_vars_with_fresh_vars(span, infer::FnCall, fn_sig);
 
-        let InferOk { value, obligations: o } = if is_op {
-            self.normalize_op_associated_types_in_as_infer_ok(span, fn_sig, opt_input_expr)
+        let cause = if is_op {
+            ObligationCause::new(
+                span,
+                self.body_id,
+                traits::BinOp {
+                    rhs_span: opt_input_expr.map(|expr| expr.span),
+                    is_lit: opt_input_expr
+                        .map_or(false, |expr| matches!(expr.kind, hir::ExprKind::Lit(_))),
+                    output_ty: None,
+                },
+            )
         } else {
-            self.normalize_associated_types_in_as_infer_ok(span, fn_sig)
+            traits::ObligationCause::misc(span, self.body_id)
         };
+
+        let InferOk { value, obligations: o } = self.at(&cause, self.param_env).normalize(fn_sig);
         let fn_sig = {
             obligations.extend(o);
             value
@@ -485,11 +496,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         // any late-bound regions appearing in its bounds.
         let bounds = self.tcx.predicates_of(def_id).instantiate(self.tcx, substs);
 
-        let InferOk { value, obligations: o } = if is_op {
-            self.normalize_op_associated_types_in_as_infer_ok(span, bounds, opt_input_expr)
-        } else {
-            self.normalize_associated_types_in_as_infer_ok(span, bounds)
-        };
+        let InferOk { value, obligations: o } = self.at(&cause, self.param_env).normalize(bounds);
         let bounds = {
             obligations.extend(o);
             value
@@ -497,20 +504,6 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
 
         assert!(!bounds.has_escaping_bound_vars());
 
-        let cause = if is_op {
-            ObligationCause::new(
-                span,
-                self.body_id,
-                traits::BinOp {
-                    rhs_span: opt_input_expr.map(|expr| expr.span),
-                    is_lit: opt_input_expr
-                        .map_or(false, |expr| matches!(expr.kind, hir::ExprKind::Lit(_))),
-                    output_ty: None,
-                },
-            )
-        } else {
-            traits::ObligationCause::misc(span, self.body_id)
-        };
         let predicates_cause = cause.clone();
         obligations.extend(traits::predicates_for_generics(
             move |_, _| predicates_cause.clone(),

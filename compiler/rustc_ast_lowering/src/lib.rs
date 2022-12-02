@@ -497,7 +497,7 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
             self.tcx.hir().def_key(self.local_def_id(node_id)),
         );
 
-        let def_id = self.tcx.create_def(parent, data);
+        let def_id = self.tcx.create_def(parent, data).def_id();
 
         debug!("create_def: def_id_to_node_id[{:?}] <-> {:?}", def_id, node_id);
         self.resolver.node_id_to_def_id.insert(node_id, def_id);
@@ -948,17 +948,12 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
             AttrArgs::Eq(eq_span, AttrArgsEq::Ast(expr)) => {
                 // In valid code the value always ends up as a single literal. Otherwise, a dummy
                 // literal suffices because the error is handled elsewhere.
-                let lit = if let ExprKind::Lit(token_lit) = expr.kind {
-                    match Lit::from_token_lit(token_lit, expr.span) {
-                        Ok(lit) => lit,
-                        Err(_err) => Lit {
-                            token_lit: token::Lit::new(token::LitKind::Err, kw::Empty, None),
-                            kind: LitKind::Err,
-                            span: DUMMY_SP,
-                        },
-                    }
+                let lit = if let ExprKind::Lit(token_lit) = expr.kind
+                    && let Ok(lit) = MetaItemLit::from_token_lit(token_lit, expr.span)
+                {
+                    lit
                 } else {
-                    Lit {
+                    MetaItemLit {
                         token_lit: token::Lit::new(token::LitKind::Err, kw::Empty, None),
                         kind: LitKind::Err,
                         span: DUMMY_SP,

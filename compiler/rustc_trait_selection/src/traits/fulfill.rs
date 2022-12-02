@@ -199,7 +199,7 @@ impl<'a, 'tcx> ObligationProcessor for FulfillProcessor<'a, 'tcx> {
             // code is so hot. 1 and 0 dominate; 2+ is fairly rare.
             1 => {
                 let infer_var = pending_obligation.stalled_on[0];
-                self.selcx.infcx().ty_or_const_infer_var_changed(infer_var)
+                self.selcx.infcx.ty_or_const_infer_var_changed(infer_var)
             }
             0 => {
                 // In this case we haven't changed, but wish to make a change.
@@ -210,7 +210,7 @@ impl<'a, 'tcx> ObligationProcessor for FulfillProcessor<'a, 'tcx> {
                 // form was a perf win. See #64545 for details.
                 (|| {
                     for &infer_var in &pending_obligation.stalled_on {
-                        if self.selcx.infcx().ty_or_const_infer_var_changed(infer_var) {
+                        if self.selcx.infcx.ty_or_const_infer_var_changed(infer_var) {
                             return true;
                         }
                     }
@@ -240,13 +240,12 @@ impl<'a, 'tcx> ObligationProcessor for FulfillProcessor<'a, 'tcx> {
         debug!(?obligation, "pre-resolve");
 
         if obligation.predicate.has_non_region_infer() {
-            obligation.predicate =
-                self.selcx.infcx().resolve_vars_if_possible(obligation.predicate);
+            obligation.predicate = self.selcx.infcx.resolve_vars_if_possible(obligation.predicate);
         }
 
         let obligation = &pending_obligation.obligation;
 
-        let infcx = self.selcx.infcx();
+        let infcx = self.selcx.infcx;
 
         if obligation.predicate.has_projections() {
             let mut obligations = Vec::new();
@@ -353,7 +352,7 @@ impl<'a, 'tcx> ObligationProcessor for FulfillProcessor<'a, 'tcx> {
                 }
 
                 ty::PredicateKind::ClosureKind(_, closure_substs, kind) => {
-                    match self.selcx.infcx().closure_kind(closure_substs) {
+                    match self.selcx.infcx.closure_kind(closure_substs) {
                         Some(closure_kind) => {
                             if closure_kind.extends(kind) {
                                 ProcessResult::Changed(vec![])
@@ -367,7 +366,7 @@ impl<'a, 'tcx> ObligationProcessor for FulfillProcessor<'a, 'tcx> {
 
                 ty::PredicateKind::WellFormed(arg) => {
                     match wf::obligations(
-                        self.selcx.infcx(),
+                        self.selcx.infcx,
                         obligation.param_env,
                         obligation.cause.body_id,
                         obligation.recursion_depth + 1,
@@ -384,7 +383,7 @@ impl<'a, 'tcx> ObligationProcessor for FulfillProcessor<'a, 'tcx> {
                 }
 
                 ty::PredicateKind::Subtype(subtype) => {
-                    match self.selcx.infcx().subtype_predicate(
+                    match self.selcx.infcx.subtype_predicate(
                         &obligation.cause,
                         obligation.param_env,
                         Binder::dummy(subtype),
@@ -408,7 +407,7 @@ impl<'a, 'tcx> ObligationProcessor for FulfillProcessor<'a, 'tcx> {
                 }
 
                 ty::PredicateKind::Coerce(coerce) => {
-                    match self.selcx.infcx().coerce_predicate(
+                    match self.selcx.infcx.coerce_predicate(
                         &obligation.cause,
                         obligation.param_env,
                         Binder::dummy(coerce),
@@ -432,7 +431,7 @@ impl<'a, 'tcx> ObligationProcessor for FulfillProcessor<'a, 'tcx> {
 
                 ty::PredicateKind::ConstEvaluatable(uv) => {
                     match const_evaluatable::is_const_evaluatable(
-                        self.selcx.infcx(),
+                        self.selcx.infcx,
                         uv,
                         obligation.param_env,
                         obligation.cause.span,
@@ -503,7 +502,7 @@ impl<'a, 'tcx> ObligationProcessor for FulfillProcessor<'a, 'tcx> {
 
                     let mut evaluate = |c: Const<'tcx>| {
                         if let ty::ConstKind::Unevaluated(unevaluated) = c.kind() {
-                            match self.selcx.infcx().try_const_eval_resolve(
+                            match self.selcx.infcx.try_const_eval_resolve(
                                 obligation.param_env,
                                 unevaluated,
                                 c.ty(),
@@ -531,7 +530,7 @@ impl<'a, 'tcx> ObligationProcessor for FulfillProcessor<'a, 'tcx> {
                         (Ok(c1), Ok(c2)) => {
                             match self
                                 .selcx
-                                .infcx()
+                                .infcx
                                 .at(&obligation.cause, obligation.param_env)
                                 .eq(c1, c2)
                             {
@@ -601,7 +600,7 @@ impl<'a, 'tcx> FulfillProcessor<'a, 'tcx> {
         trait_obligation: TraitObligation<'tcx>,
         stalled_on: &mut Vec<TyOrConstInferVar<'tcx>>,
     ) -> ProcessResult<PendingPredicateObligation<'tcx>, FulfillmentErrorCode<'tcx>> {
-        let infcx = self.selcx.infcx();
+        let infcx = self.selcx.infcx;
         if obligation.predicate.is_global() {
             // no type variables present, can use evaluation for better caching.
             // FIXME: consider caching errors too.
@@ -659,7 +658,7 @@ impl<'a, 'tcx> FulfillProcessor<'a, 'tcx> {
         if obligation.predicate.is_global() {
             // no type variables present, can use evaluation for better caching.
             // FIXME: consider caching errors too.
-            if self.selcx.infcx().predicate_must_hold_considering_regions(obligation) {
+            if self.selcx.infcx.predicate_must_hold_considering_regions(obligation) {
                 if let Some(key) = ProjectionCacheKey::from_poly_projection_predicate(
                     &mut self.selcx,
                     project_obligation.predicate,
@@ -668,7 +667,7 @@ impl<'a, 'tcx> FulfillProcessor<'a, 'tcx> {
                     // evaluated all sub-obligations. We can therefore mark the 'root'
                     // obligation as complete, and skip evaluating sub-obligations.
                     self.selcx
-                        .infcx()
+                        .infcx
                         .inner
                         .borrow_mut()
                         .projection_cache()
@@ -707,7 +706,7 @@ fn substs_infer_vars<'a, 'tcx>(
     substs: ty::Binder<'tcx, SubstsRef<'tcx>>,
 ) -> impl Iterator<Item = TyOrConstInferVar<'tcx>> {
     selcx
-        .infcx()
+        .infcx
         .resolve_vars_if_possible(substs)
         .skip_binder() // ok because this check doesn't care about regions
         .iter()

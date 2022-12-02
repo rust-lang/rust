@@ -16,6 +16,7 @@
 	--right-side-color: grey;
 	--code-attribute-color: #999;
 	--toggles-color: #999;
+	--toggle-filter: invert(100%);
 	--search-input-focused-border-color: #008dfd;
 	--copy-path-button-color: #999;
 	--copy-path-img-filter: invert(50%);
@@ -87,10 +88,6 @@
 
 body.source .example-wrap pre.rust a {
 	background: #333;
-}
-
-details.rustdoc-toggle > summary::before {
-	filter: invert(100%);
 }
 
 #titles > button:not(.selected) {

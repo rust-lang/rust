@@ -340,20 +340,20 @@ pub struct CodegenContext<B: WriteBackendMethods> {
     pub split_debuginfo: rustc_target::spec::SplitDebuginfo,
     pub split_dwarf_kind: rustc_session::config::SplitDwarfKind,
 
-    // Number of cgus excluding the allocator/metadata modules
+    /// Number of cgus excluding the allocator/metadata modules
     pub total_cgus: usize,
-    // Handler to use for diagnostics produced during codegen.
+    /// Handler to use for diagnostics produced during codegen.
     pub diag_emitter: SharedEmitter,
-    // LLVM optimizations for which we want to print remarks.
+    /// LLVM optimizations for which we want to print remarks.
     pub remark: Passes,
-    // Worker thread number
+    /// Worker thread number
     pub worker: usize,
-    // The incremental compilation session directory, or None if we are not
-    // compiling incrementally
+    /// The incremental compilation session directory, or None if we are not
+    /// compiling incrementally
     pub incr_comp_session_dir: Option<PathBuf>,
-    // Used to update CGU re-use information during the thinlto phase.
+    /// Used to update CGU re-use information during the thinlto phase.
     pub cgu_reuse_tracker: CguReuseTracker,
-    // Channel back to the main control thread to send messages to
+    /// Channel back to the main control thread to send messages to
     pub coordinator_send: Sender<Box<dyn Any + Send>>,
 }
 
@@ -756,7 +756,7 @@ fn execute_work_item<B: ExtraBackendMethods>(
     }
 }
 
-// Actual LTO type we end up choosing based on multiple factors.
+/// Actual LTO type we end up choosing based on multiple factors.
 pub enum ComputedLtoType {
     No,
     Thin,

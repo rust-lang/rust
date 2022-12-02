@@ -4,7 +4,7 @@ fn simple_ref(_1: &mut i32) -> &mut i32 {
     let mut _0: &mut i32;                // return place in scope 0 at $DIR/simple_assign.rs:+0:35: +0:43
 
     bb0: {
-        _0 = move _1;                    // scope 0 at $DIR/simple_assign.rs:+0:1: +0:43
-        return;                          // scope 0 at $DIR/simple_assign.rs:+0:1: +0:43
+        _0 = move _1;                    // scope 0 at $DIR/simple_assign.rs:+2:9: +2:22
+        return;                          // scope 0 at $DIR/simple_assign.rs:+3:9: +3:17
     }
 }

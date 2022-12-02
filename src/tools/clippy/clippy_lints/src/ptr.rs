@@ -490,7 +490,7 @@ fn check_fn_args<'cx, 'tcx: 'cx>(
                         ty_name: name.ident.name,
                         method_renames,
                         ref_prefix: RefPrefix {
-                            lt: lt.clone(),
+                            lt: *lt,
                             mutability,
                         },
                         deref_ty,
@@ -693,9 +693,10 @@ fn matches_preds<'tcx>(
             cx.tcx,
             ObligationCause::dummy(),
             cx.param_env,
-            cx.tcx.mk_predicate(Binder::dummy(
-                PredicateKind::Clause(Clause::Projection(p.with_self_ty(cx.tcx, ty))),
-            )),
+            cx.tcx
+                .mk_predicate(Binder::dummy(PredicateKind::Clause(Clause::Projection(
+                    p.with_self_ty(cx.tcx, ty),
+                )))),
         )),
         ExistentialPredicate::AutoTrait(p) => infcx
             .type_implements_trait(p, [ty], cx.param_env)

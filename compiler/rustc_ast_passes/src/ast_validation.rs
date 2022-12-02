@@ -209,7 +209,7 @@ impl<'a> AstValidator<'a> {
 
     // Mirrors `visit::walk_ty`, but tracks relevant state.
     fn walk_ty(&mut self, t: &'a Ty) {
-        match t.kind {
+        match &t.kind {
             TyKind::ImplTrait(..) => {
                 self.with_impl_trait(Some(t.span), |this| visit::walk_ty(this, t))
             }
@@ -217,7 +217,7 @@ impl<'a> AstValidator<'a> {
                 .with_banned_tilde_const(DisallowTildeConstContext::TraitObject, |this| {
                     visit::walk_ty(this, t)
                 }),
-            TyKind::Path(ref qself, ref path) => {
+            TyKind::Path(qself, path) => {
                 // We allow these:
                 //  - `Option<impl Trait>`
                 //  - `option::Option<impl Trait>`
@@ -231,7 +231,7 @@ impl<'a> AstValidator<'a> {
                 // (for cases like `<impl Trait>::Foo>`)
                 // but we allow `impl Trait` in `GenericArgs`
                 // iff there are no more PathSegments.
-                if let Some(ref qself) = *qself {
+                if let Some(qself) = qself {
                     // `impl Trait` in `qself` is always illegal
                     self.with_banned_impl_trait(|this| this.visit_ty(&qself.ty));
                 }
@@ -738,8 +738,8 @@ impl<'a> AstValidator<'a> {
     }
 
     fn visit_ty_common(&mut self, ty: &'a Ty) {
-        match ty.kind {
-            TyKind::BareFn(ref bfty) => {
+        match &ty.kind {
+            TyKind::BareFn(bfty) => {
                 self.check_fn_decl(&bfty.decl, SelfSemantic::No);
                 Self::check_decl_no_pat(&bfty.decl, |span, _, _| {
                     struct_span_err!(
@@ -756,10 +756,10 @@ impl<'a> AstValidator<'a> {
                     self.maybe_lint_missing_abi(sig_span, ty.id);
                 }
             }
-            TyKind::TraitObject(ref bounds, ..) => {
+            TyKind::TraitObject(bounds, ..) => {
                 let mut any_lifetime_bounds = false;
                 for bound in bounds {
-                    if let GenericBound::Outlives(ref lifetime) = *bound {
+                    if let GenericBound::Outlives(lifetime) = bound {
                         if any_lifetime_bounds {
                             struct_span_err!(
                                 self.session,
@@ -774,7 +774,7 @@ impl<'a> AstValidator<'a> {
                     }
                 }
             }
-            TyKind::ImplTrait(_, ref bounds) => {
+            TyKind::ImplTrait(_, bounds) => {
                 if self.is_impl_trait_banned {
                     struct_span_err!(
                         self.session,
@@ -842,8 +842,8 @@ fn validate_generic_param_order(
         let (kind, bounds, span) = (&param.kind, &param.bounds, ident.span);
         let (ord_kind, ident) = match &param.kind {
             GenericParamKind::Lifetime => (ParamKindOrd::Lifetime, ident.to_string()),
-            GenericParamKind::Type { default: _ } => (ParamKindOrd::TypeOrConst, ident.to_string()),
-            GenericParamKind::Const { ref ty, kw_span: _, default: _ } => {
+            GenericParamKind::Type { .. } => (ParamKindOrd::TypeOrConst, ident.to_string()),
+            GenericParamKind::Const { ty, .. } => {
                 let ty = pprust::ty_to_string(ty);
                 (ParamKindOrd::TypeOrConst, format!("const {}: {}", ident, ty))
             }
@@ -912,7 +912,7 @@ fn validate_generic_param_order(
 
 impl<'a> Visitor<'a> for AstValidator<'a> {
     fn visit_attribute(&mut self, attr: &Attribute) {
-        validate_attr::check_meta(&self.session.parse_sess, attr);
+        validate_attr::check_attr(&self.session.parse_sess, attr);
     }
 
     fn visit_expr(&mut self, expr: &'a Expr) {
@@ -948,8 +948,8 @@ impl<'a> Visitor<'a> for AstValidator<'a> {
                 }
                 ExprKind::Paren(local_expr) => {
                     fn has_let_expr(expr: &Expr) -> bool {
-                        match expr.kind {
-                            ExprKind::Binary(_, ref lhs, ref rhs) => has_let_expr(lhs) || has_let_expr(rhs),
+                        match &expr.kind {
+                            ExprKind::Binary(_, lhs, rhs) => has_let_expr(lhs) || has_let_expr(rhs),
                             ExprKind::Let(..) => true,
                             _ => false,
                         }
@@ -1005,18 +1005,18 @@ impl<'a> Visitor<'a> for AstValidator<'a> {
             self.check_nomangle_item_asciionly(item.ident, item.span);
         }
 
-        match item.kind {
+        match &item.kind {
             ItemKind::Impl(box Impl {
                 unsafety,
                 polarity,
                 defaultness: _,
                 constness,
-                ref generics,
-                of_trait: Some(ref t),
-                ref self_ty,
-                ref items,
+                generics,
+                of_trait: Some(t),
+                self_ty,
+                items,
             }) => {
-                self.with_in_trait_impl(true, Some(constness), |this| {
+                self.with_in_trait_impl(true, Some(*constness), |this| {
                     this.invalid_visibility(&item.vis, None);
                     if let TyKind::Err = self_ty.kind {
                         this.err_handler()
@@ -1027,7 +1027,8 @@ impl<'a> Visitor<'a> for AstValidator<'a> {
                             .help("use `auto trait Trait {}` instead")
                             .emit();
                     }
-                    if let (Unsafe::Yes(span), ImplPolarity::Negative(sp)) = (unsafety, polarity) {
+                    if let (&Unsafe::Yes(span), &ImplPolarity::Negative(sp)) = (unsafety, polarity)
+                    {
                         struct_span_err!(
                             this.session,
                             sp.to(t.path.span),
@@ -1061,7 +1062,7 @@ impl<'a> Visitor<'a> for AstValidator<'a> {
                 constness,
                 generics: _,
                 of_trait: None,
-                ref self_ty,
+                self_ty,
                 items: _,
             }) => {
                 let error = |annotation_span, annotation| {
@@ -1078,25 +1079,25 @@ impl<'a> Visitor<'a> for AstValidator<'a> {
                     &item.vis,
                     Some(InvalidVisibilityNote::IndividualImplItems),
                 );
-                if let Unsafe::Yes(span) = unsafety {
+                if let &Unsafe::Yes(span) = unsafety {
                     error(span, "unsafe").code(error_code!(E0197)).emit();
                 }
-                if let ImplPolarity::Negative(span) = polarity {
+                if let &ImplPolarity::Negative(span) = polarity {
                     error(span, "negative").emit();
                 }
-                if let Defaultness::Default(def_span) = defaultness {
+                if let &Defaultness::Default(def_span) = defaultness {
                     error(def_span, "`default`")
                         .note("only trait implementations may be annotated with `default`")
                         .emit();
                 }
-                if let Const::Yes(span) = constness {
+                if let &Const::Yes(span) = constness {
                     error(span, "`const`")
                         .note("only trait implementations may be annotated with `const`")
                         .emit();
                 }
             }
-            ItemKind::Fn(box Fn { defaultness, ref sig, ref generics, ref body }) => {
-                self.check_defaultness(item.span, defaultness);
+            ItemKind::Fn(box Fn { defaultness, sig, generics, body }) => {
+                self.check_defaultness(item.span, *defaultness);
 
                 if body.is_none() {
                     self.session.emit_err(FnWithoutBody {
@@ -1132,7 +1133,7 @@ impl<'a> Visitor<'a> for AstValidator<'a> {
                     &item.vis,
                     Some(InvalidVisibilityNote::IndividualForeignItems),
                 );
-                if let Unsafe::Yes(span) = unsafety {
+                if let &Unsafe::Yes(span) = unsafety {
                     self.err_handler().span_err(span, "extern block cannot be declared unsafe");
                 }
                 if abi.is_none() {
@@ -1142,7 +1143,7 @@ impl<'a> Visitor<'a> for AstValidator<'a> {
                 self.extern_mod = old_item;
                 return; // Avoid visiting again.
             }
-            ItemKind::Enum(ref def, _) => {
+            ItemKind::Enum(def, _) => {
                 for variant in &def.variants {
                     self.invalid_visibility(&variant.vis, None);
                     for field in variant.data.fields() {
@@ -1150,8 +1151,8 @@ impl<'a> Visitor<'a> for AstValidator<'a> {
                     }
                 }
             }
-            ItemKind::Trait(box Trait { is_auto, ref generics, ref bounds, ref items, .. }) => {
-                if is_auto == IsAuto::Yes {
+            ItemKind::Trait(box Trait { is_auto, generics, bounds, items, .. }) => {
+                if *is_auto == IsAuto::Yes {
                     // Auto traits cannot have generics, super traits nor contain items.
                     self.deny_generic_params(generics, item.ident.span);
                     self.deny_super_traits(bounds, item.ident.span);
@@ -1171,8 +1172,8 @@ impl<'a> Visitor<'a> for AstValidator<'a> {
                 walk_list!(self, visit_attribute, &item.attrs);
                 return; // Avoid visiting again
             }
-            ItemKind::Mod(unsafety, ref mod_kind) => {
-                if let Unsafe::Yes(span) = unsafety {
+            ItemKind::Mod(unsafety, mod_kind) => {
+                if let &Unsafe::Yes(span) = unsafety {
                     self.err_handler().span_err(span, "module cannot be declared unsafe");
                 }
                 // Ensure that `path` attributes on modules are recorded as used (cf. issue #35584).
@@ -1182,13 +1183,13 @@ impl<'a> Visitor<'a> for AstValidator<'a> {
                     self.check_mod_file_item_asciionly(item.ident);
                 }
             }
-            ItemKind::Union(ref vdata, ..) => {
+            ItemKind::Union(vdata, ..) => {
                 if vdata.fields().is_empty() {
                     self.err_handler().span_err(item.span, "unions cannot have zero fields");
                 }
             }
             ItemKind::Const(def, .., None) => {
-                self.check_defaultness(item.span, def);
+                self.check_defaultness(item.span, *def);
                 self.session.emit_err(ConstWithoutBody {
                     span: item.span,
                     replace_span: self.ending_semi_or_hi(item.span),
@@ -1200,14 +1201,8 @@ impl<'a> Visitor<'a> for AstValidator<'a> {
                     replace_span: self.ending_semi_or_hi(item.span),
                 });
             }
-            ItemKind::TyAlias(box TyAlias {
-                defaultness,
-                where_clauses,
-                ref bounds,
-                ref ty,
-                ..
-            }) => {
-                self.check_defaultness(item.span, defaultness);
+            ItemKind::TyAlias(box TyAlias { defaultness, where_clauses, bounds, ty, .. }) => {
+                self.check_defaultness(item.span, *defaultness);
                 if ty.is_none() {
                     self.session.emit_err(TyAliasWithoutBody {
                         span: item.span,
@@ -1266,8 +1261,8 @@ impl<'a> Visitor<'a> for AstValidator<'a> {
 
     // Mirrors `visit::walk_generic_args`, but tracks relevant state.
     fn visit_generic_args(&mut self, generic_args: &'a GenericArgs) {
-        match *generic_args {
-            GenericArgs::AngleBracketed(ref data) => {
+        match generic_args {
+            GenericArgs::AngleBracketed(data) => {
                 self.check_generic_args_before_constraints(data);
 
                 for arg in &data.args {
@@ -1283,7 +1278,7 @@ impl<'a> Visitor<'a> for AstValidator<'a> {
                     }
                 }
             }
-            GenericArgs::Parenthesized(ref data) => {
+            GenericArgs::Parenthesized(data) => {
                 walk_list!(self, visit_ty, &data.inputs);
                 if let FnRetTy::Ty(ty) = &data.output {
                     // `-> Foo` syntax is essentially an associated type binding,
@@ -1319,7 +1314,7 @@ impl<'a> Visitor<'a> for AstValidator<'a> {
         validate_generic_param_order(self.err_handler(), &generics.params, generics.span);
 
         for predicate in &generics.where_clause.predicates {
-            if let WherePredicate::EqPredicate(ref predicate) = *predicate {
+            if let WherePredicate::EqPredicate(predicate) = predicate {
                 deny_equality_constraints(self, predicate, generics);
             }
         }
@@ -1368,7 +1363,7 @@ impl<'a> Visitor<'a> for AstValidator<'a> {
     }
 
     fn visit_param_bound(&mut self, bound: &'a GenericBound, ctxt: BoundKind) {
-        if let GenericBound::Trait(ref poly, modify) = *bound {
+        if let GenericBound::Trait(poly, modify) = bound {
             match (ctxt, modify) {
                 (BoundKind::SuperTraits, TraitBoundModifier::Maybe) => {
                     let mut err = self
@@ -1573,8 +1568,8 @@ impl<'a> Visitor<'a> for AstValidator<'a> {
             self.check_item_named(item.ident, "const");
         }
 
-        match item.kind {
-            AssocItemKind::Type(box TyAlias { ref generics, ref bounds, ref ty, .. })
+        match &item.kind {
+            AssocItemKind::Type(box TyAlias { generics, bounds, ty, .. })
                 if ctxt == AssocCtxt::Trait =>
             {
                 self.visit_vis(&item.vis);
@@ -1586,7 +1581,7 @@ impl<'a> Visitor<'a> for AstValidator<'a> {
                 });
                 walk_list!(self, visit_ty, ty);
             }
-            AssocItemKind::Fn(box Fn { ref sig, ref generics, ref body, .. })
+            AssocItemKind::Fn(box Fn { sig, generics, body, .. })
                 if self.in_const_trait_impl
                     || ctxt == AssocCtxt::Trait
                     || matches!(sig.header.constness, Const::Yes(_)) =>

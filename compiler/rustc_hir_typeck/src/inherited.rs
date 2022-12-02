@@ -7,12 +7,10 @@ use rustc_hir::def_id::LocalDefId;
 use rustc_hir::HirIdMap;
 use rustc_infer::infer;
 use rustc_infer::infer::{DefiningAnchor, InferCtxt, InferOk, TyCtxtInferExt};
-use rustc_middle::ty::fold::TypeFoldable;
 use rustc_middle::ty::visit::TypeVisitable;
 use rustc_middle::ty::{self, Ty, TyCtxt};
 use rustc_span::def_id::LocalDefIdMap;
 use rustc_span::{self, Span};
-use rustc_trait_selection::infer::InferCtxtExt as _;
 use rustc_trait_selection::traits::{
     self, ObligationCause, ObligationCtxt, TraitEngine, TraitEngineExt as _,
 };
@@ -38,19 +36,19 @@ pub struct Inherited<'tcx> {
 
     pub(super) fulfillment_cx: RefCell<Box<dyn TraitEngine<'tcx>>>,
 
-    // Some additional `Sized` obligations badly affect type inference.
-    // These obligations are added in a later stage of typeck.
-    // Removing these may also cause additional complications, see #101066.
+    /// Some additional `Sized` obligations badly affect type inference.
+    /// These obligations are added in a later stage of typeck.
+    /// Removing these may also cause additional complications, see #101066.
     pub(super) deferred_sized_obligations:
         RefCell<Vec<(Ty<'tcx>, Span, traits::ObligationCauseCode<'tcx>)>>,
 
-    // When we process a call like `c()` where `c` is a closure type,
-    // we may not have decided yet whether `c` is a `Fn`, `FnMut`, or
-    // `FnOnce` closure. In that case, we defer full resolution of the
-    // call until upvar inference can kick in and make the
-    // decision. We keep these deferred resolutions grouped by the
-    // def-id of the closure, so that once we decide, we can easily go
-    // back and process them.
+    /// When we process a call like `c()` where `c` is a closure type,
+    /// we may not have decided yet whether `c` is a `Fn`, `FnMut`, or
+    /// `FnOnce` closure. In that case, we defer full resolution of the
+    /// call until upvar inference can kick in and make the
+    /// decision. We keep these deferred resolutions grouped by the
+    /// def-id of the closure, so that once we decide, we can easily go
+    /// back and process them.
     pub(super) deferred_call_resolutions: RefCell<LocalDefIdMap<Vec<DeferredCallResolution<'tcx>>>>,
 
     pub(super) deferred_cast_checks: RefCell<Vec<super::cast::CastCheck<'tcx>>>,
@@ -102,7 +100,7 @@ impl<'tcx> Inherited<'tcx> {
                     infcx.probe(|_| {
                         let ocx = ObligationCtxt::new_in_snapshot(infcx);
                         let normalized_fn_sig = ocx.normalize(
-                            ObligationCause::dummy(),
+                            &ObligationCause::dummy(),
                             // FIXME(compiler-errors): This is probably not the right param-env...
                             infcx.tcx.param_env(def_id),
                             fn_sig,
@@ -178,36 +176,5 @@ impl<'tcx> Inherited<'tcx> {
     pub(super) fn register_infer_ok_obligations<T>(&self, infer_ok: InferOk<'tcx, T>) -> T {
         self.register_predicates(infer_ok.obligations);
         infer_ok.value
-    }
-
-    pub(super) fn normalize_associated_types_in<T>(
-        &self,
-        span: Span,
-        body_id: hir::HirId,
-        param_env: ty::ParamEnv<'tcx>,
-        value: T,
-    ) -> T
-    where
-        T: TypeFoldable<'tcx>,
-    {
-        self.normalize_associated_types_in_with_cause(
-            ObligationCause::misc(span, body_id),
-            param_env,
-            value,
-        )
-    }
-
-    pub(super) fn normalize_associated_types_in_with_cause<T>(
-        &self,
-        cause: ObligationCause<'tcx>,
-        param_env: ty::ParamEnv<'tcx>,
-        value: T,
-    ) -> T
-    where
-        T: TypeFoldable<'tcx>,
-    {
-        let ok = self.partially_normalize_associated_types_in(cause, param_env, value);
-        debug!(?ok);
-        self.register_infer_ok_obligations(ok)
     }
 }

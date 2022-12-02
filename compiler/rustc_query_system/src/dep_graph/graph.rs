@@ -489,6 +489,91 @@ impl<K: DepKind> DepGraph<K> {
         }
     }
 
+    /// Create a node when we force-feed a value into the query cache.
+    /// This is used to remove cycles during type-checking const generic parameters.
+    ///
+    /// As usual in the query system, we consider the current state of the calling query
+    /// only depends on the list of dependencies up to now.  As a consequence, the value
+    /// that this query gives us can only depend on those dependencies too.  Therefore,
+    /// it is sound to use the current dependency set for the created node.
+    ///
+    /// During replay, the order of the nodes is relevant in the dependency graph.
+    /// So the unchanged replay will mark the caller query before trying to mark this one.
+    /// If there is a change to report, the caller query will be re-executed before this one.
+    ///
+    /// FIXME: If the code is changed enough for this node to be marked before requiring the
+    /// caller's node, we suppose that those changes will be enough to mark this node red and
+    /// force a recomputation using the "normal" way.
+    pub fn with_feed_task<Ctxt: DepContext<DepKind = K>, A: Debug, R: Debug>(
+        &self,
+        node: DepNode<K>,
+        cx: Ctxt,
+        key: A,
+        result: &R,
+        hash_result: fn(&mut StableHashingContext<'_>, &R) -> Fingerprint,
+    ) -> DepNodeIndex {
+        if let Some(data) = self.data.as_ref() {
+            // The caller query has more dependencies than the node we are creating.  We may
+            // encounter a case where this created node is marked as green, but the caller query is
+            // subsequently marked as red or recomputed.  In this case, we will end up feeding a
+            // value to an existing node.
+            //
+            // For sanity, we still check that the loaded stable hash and the new one match.
+            if let Some(dep_node_index) = self.dep_node_index_of_opt(&node) {
+                let _current_fingerprint =
+                    crate::query::incremental_verify_ich(cx, result, &node, Some(hash_result));
+
+                #[cfg(debug_assertions)]
+                data.current.record_edge(dep_node_index, node, _current_fingerprint);
+
+                return dep_node_index;
+            }
+
+            let mut edges = SmallVec::new();
+            K::read_deps(|task_deps| match task_deps {
+                TaskDepsRef::Allow(deps) => edges.extend(deps.lock().reads.iter().copied()),
+                TaskDepsRef::Ignore | TaskDepsRef::Forbid => {
+                    panic!("Cannot summarize when dependencies are not recorded.")
+                }
+            });
+
+            let hashing_timer = cx.profiler().incr_result_hashing();
+            let current_fingerprint =
+                cx.with_stable_hashing_context(|mut hcx| hash_result(&mut hcx, result));
+
+            let print_status = cfg!(debug_assertions) && cx.sess().opts.unstable_opts.dep_tasks;
+
+            // Intern the new `DepNode` with the dependencies up-to-now.
+            let (dep_node_index, prev_and_color) = data.current.intern_node(
+                cx.profiler(),
+                &data.previous,
+                node,
+                edges,
+                Some(current_fingerprint),
+                print_status,
+            );
+
+            hashing_timer.finish_with_query_invocation_id(dep_node_index.into());
+
+            if let Some((prev_index, color)) = prev_and_color {
+                debug_assert!(
+                    data.colors.get(prev_index).is_none(),
+                    "DepGraph::with_task() - Duplicate DepNodeColor insertion for {key:?}",
+                );
+
+                data.colors.insert(prev_index, color);
+            }
+
+            dep_node_index
+        } else {
+            // Incremental compilation is turned off. We just execute the task
+            // without tracking. We still provide a dep-node index that uniquely
+            // identifies the task so that we have a cheap way of referring to
+            // the query for self-profiling.
+            self.next_virtual_depnode_index()
+        }
+    }
+
     #[inline]
     pub fn dep_node_index_of(&self, dep_node: &DepNode<K>) -> DepNodeIndex {
         self.dep_node_index_of_opt(dep_node).unwrap()
@@ -779,26 +864,26 @@ impl<K: DepKind> DepGraph<K> {
         }
     }
 
-    // Returns true if the given node has been marked as red during the
-    // current compilation session. Used in various assertions
+    /// Returns true if the given node has been marked as red during the
+    /// current compilation session. Used in various assertions
     pub fn is_red(&self, dep_node: &DepNode<K>) -> bool {
         self.node_color(dep_node) == Some(DepNodeColor::Red)
     }
 
-    // Returns true if the given node has been marked as green during the
-    // current compilation session. Used in various assertions
+    /// Returns true if the given node has been marked as green during the
+    /// current compilation session. Used in various assertions
     pub fn is_green(&self, dep_node: &DepNode<K>) -> bool {
         self.node_color(dep_node).map_or(false, |c| c.is_green())
     }
 
-    // This method loads all on-disk cacheable query results into memory, so
-    // they can be written out to the new cache file again. Most query results
-    // will already be in memory but in the case where we marked something as
-    // green but then did not need the value, that value will never have been
-    // loaded from disk.
-    //
-    // This method will only load queries that will end up in the disk cache.
-    // Other queries will not be executed.
+    /// This method loads all on-disk cacheable query results into memory, so
+    /// they can be written out to the new cache file again. Most query results
+    /// will already be in memory but in the case where we marked something as
+    /// green but then did not need the value, that value will never have been
+    /// loaded from disk.
+    ///
+    /// This method will only load queries that will end up in the disk cache.
+    /// Other queries will not be executed.
     pub fn exec_cache_promotions<Tcx: DepContext<DepKind = K>>(&self, tcx: Tcx) {
         let _prof_timer = tcx.profiler().generic_activity("incr_comp_query_cache_promotion");
 
@@ -916,6 +1001,11 @@ pub(super) struct CurrentDepGraph<K: DepKind> {
     new_node_to_index: Sharded<FxHashMap<DepNode<K>, DepNodeIndex>>,
     prev_index_to_index: Lock<IndexVec<SerializedDepNodeIndex, Option<DepNodeIndex>>>,
 
+    /// This is used to verify that fingerprints do not change between the creation of a node
+    /// and its recomputation.
+    #[cfg(debug_assertions)]
+    fingerprints: Lock<FxHashMap<DepNode<K>, Fingerprint>>,
+
     /// Used to trap when a specific edge is added to the graph.
     /// This is used for debug purposes and is only active with `debug_assertions`.
     #[cfg(debug_assertions)]
@@ -999,6 +1089,8 @@ impl<K: DepKind> CurrentDepGraph<K> {
             anon_id_seed,
             #[cfg(debug_assertions)]
             forbidden_edge,
+            #[cfg(debug_assertions)]
+            fingerprints: Lock::new(Default::default()),
             total_read_count: AtomicU64::new(0),
             total_duplicate_read_count: AtomicU64::new(0),
             node_intern_event_id,
@@ -1006,9 +1098,17 @@ impl<K: DepKind> CurrentDepGraph<K> {
     }
 
     #[cfg(debug_assertions)]
-    fn record_edge(&self, dep_node_index: DepNodeIndex, key: DepNode<K>) {
+    fn record_edge(&self, dep_node_index: DepNodeIndex, key: DepNode<K>, fingerprint: Fingerprint) {
         if let Some(forbidden_edge) = &self.forbidden_edge {
             forbidden_edge.index_to_node.lock().insert(dep_node_index, key);
+        }
+        match self.fingerprints.lock().entry(key) {
+            Entry::Vacant(v) => {
+                v.insert(fingerprint);
+            }
+            Entry::Occupied(o) => {
+                assert_eq!(*o.get(), fingerprint, "Unstable fingerprints for {:?}", key);
+            }
         }
     }
 
@@ -1021,17 +1121,21 @@ impl<K: DepKind> CurrentDepGraph<K> {
         edges: EdgesVec,
         current_fingerprint: Fingerprint,
     ) -> DepNodeIndex {
-        match self.new_node_to_index.get_shard_by_value(&key).lock().entry(key) {
+        let dep_node_index = match self.new_node_to_index.get_shard_by_value(&key).lock().entry(key)
+        {
             Entry::Occupied(entry) => *entry.get(),
             Entry::Vacant(entry) => {
                 let dep_node_index =
                     self.encoder.borrow().send(profiler, key, current_fingerprint, edges);
                 entry.insert(dep_node_index);
-                #[cfg(debug_assertions)]
-                self.record_edge(dep_node_index, key);
                 dep_node_index
             }
-        }
+        };
+
+        #[cfg(debug_assertions)]
+        self.record_edge(dep_node_index, key, current_fingerprint);
+
+        dep_node_index
     }
 
     fn intern_node(
@@ -1072,7 +1176,7 @@ impl<K: DepKind> CurrentDepGraph<K> {
                     };
 
                     #[cfg(debug_assertions)]
-                    self.record_edge(dep_node_index, key);
+                    self.record_edge(dep_node_index, key, fingerprint);
                     (dep_node_index, Some((prev_index, DepNodeColor::Green(dep_node_index))))
                 } else {
                     if print_status {
@@ -1094,7 +1198,7 @@ impl<K: DepKind> CurrentDepGraph<K> {
                     };
 
                     #[cfg(debug_assertions)]
-                    self.record_edge(dep_node_index, key);
+                    self.record_edge(dep_node_index, key, fingerprint);
                     (dep_node_index, Some((prev_index, DepNodeColor::Red)))
                 }
             } else {
@@ -1119,7 +1223,7 @@ impl<K: DepKind> CurrentDepGraph<K> {
                 };
 
                 #[cfg(debug_assertions)]
-                self.record_edge(dep_node_index, key);
+                self.record_edge(dep_node_index, key, Fingerprint::ZERO);
                 (dep_node_index, Some((prev_index, DepNodeColor::Red)))
             }
         } else {
@@ -1150,19 +1254,16 @@ impl<K: DepKind> CurrentDepGraph<K> {
             Some(dep_node_index) => dep_node_index,
             None => {
                 let key = prev_graph.index_to_node(prev_index);
-                let dep_node_index = self.encoder.borrow().send(
-                    profiler,
-                    key,
-                    prev_graph.fingerprint_by_index(prev_index),
-                    prev_graph
-                        .edge_targets_from(prev_index)
-                        .iter()
-                        .map(|i| prev_index_to_index[*i].unwrap())
-                        .collect(),
-                );
+                let edges = prev_graph
+                    .edge_targets_from(prev_index)
+                    .iter()
+                    .map(|i| prev_index_to_index[*i].unwrap())
+                    .collect();
+                let fingerprint = prev_graph.fingerprint_by_index(prev_index);
+                let dep_node_index = self.encoder.borrow().send(profiler, key, fingerprint, edges);
                 prev_index_to_index[prev_index] = Some(dep_node_index);
                 #[cfg(debug_assertions)]
-                self.record_edge(dep_node_index, key);
+                self.record_edge(dep_node_index, key, fingerprint);
                 dep_node_index
             }
         }

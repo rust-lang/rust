@@ -23,6 +23,7 @@ macro_rules! parse_by_kind {
     (
         $self:ident,
         $expr_id:expr,
+        $expr_name:pat,
         $expected:literal,
         $(
             @call($name:literal, $args:ident) => $call_expr:expr,
@@ -33,6 +34,8 @@ macro_rules! parse_by_kind {
     ) => {{
         let expr_id = $self.preparse($expr_id);
         let expr = &$self.thir[expr_id];
+        debug!("Trying to parse {:?} as {}", expr.kind, $expected);
+        let $expr_name = expr;
         match &expr.kind {
             $(
                 ExprKind::Call { ty, fun: _, args: $args, .. } if {
@@ -137,10 +140,10 @@ impl<'tcx, 'body> ParseCtxt<'tcx, 'body> {
     /// This allows us to easily parse the basic blocks declarations, local declarations, and
     /// basic block definitions in order.
     pub fn parse_body(&mut self, expr_id: ExprId) -> PResult<()> {
-        let body = parse_by_kind!(self, expr_id, "whole body",
+        let body = parse_by_kind!(self, expr_id, _, "whole body",
             ExprKind::Block { block } => self.thir[*block].expr.unwrap(),
         );
-        let (block_decls, rest) = parse_by_kind!(self, body, "body with block decls",
+        let (block_decls, rest) = parse_by_kind!(self, body, _, "body with block decls",
             ExprKind::Block { block } => {
                 let block = &self.thir[*block];
                 (&block.stmts, block.expr.unwrap())
@@ -148,7 +151,7 @@ impl<'tcx, 'body> ParseCtxt<'tcx, 'body> {
         );
         self.parse_block_decls(block_decls.iter().copied())?;
 
-        let (local_decls, rest) = parse_by_kind!(self, rest, "body with local decls",
+        let (local_decls, rest) = parse_by_kind!(self, rest, _, "body with local decls",
             ExprKind::Block { block } => {
                 let block = &self.thir[*block];
                 (&block.stmts, block.expr.unwrap())
@@ -156,7 +159,7 @@ impl<'tcx, 'body> ParseCtxt<'tcx, 'body> {
         );
         self.parse_local_decls(local_decls.iter().copied())?;
 
-        let block_defs = parse_by_kind!(self, rest, "body with block defs",
+        let block_defs = parse_by_kind!(self, rest, _, "body with block defs",
             ExprKind::Block { block } => &self.thir[*block].stmts,
         );
         for (i, block_def) in block_defs.iter().enumerate() {
@@ -223,22 +226,30 @@ impl<'tcx, 'body> ParseCtxt<'tcx, 'body> {
     }
 
     fn parse_block_def(&self, expr_id: ExprId) -> PResult<BasicBlockData<'tcx>> {
-        let block = parse_by_kind!(self, expr_id, "basic block",
+        let block = parse_by_kind!(self, expr_id, _, "basic block",
             ExprKind::Block { block } => &self.thir[*block],
         );
 
         let mut data = BasicBlockData::new(None);
         for stmt_id in &*block.stmts {
             let stmt = self.statement_as_expr(*stmt_id)?;
+            let span = self.thir[stmt].span;
             let statement = self.parse_statement(stmt)?;
-            data.statements.push(Statement { source_info: self.source_info, kind: statement });
+            data.statements.push(Statement {
+                source_info: SourceInfo { span, scope: self.source_scope },
+                kind: statement,
+            });
         }
 
         let Some(trailing) = block.expr else {
             return Err(self.expr_error(expr_id, "terminator"))
         };
+        let span = self.thir[trailing].span;
         let terminator = self.parse_terminator(trailing)?;
-        data.terminator = Some(Terminator { source_info: self.source_info, kind: terminator });
+        data.terminator = Some(Terminator {
+            source_info: SourceInfo { span, scope: self.source_scope },
+            kind: terminator,
+        });
 
         Ok(data)
     }

@@ -2,6 +2,7 @@ use super::{DefIdOrName, Obligation, ObligationCause, ObligationCauseCode, Predi
 
 use crate::autoderef::Autoderef;
 use crate::infer::InferCtxt;
+use crate::traits::NormalizeExt;
 
 use hir::def::CtorOf;
 use hir::HirId;
@@ -1336,8 +1337,9 @@ impl<'tcx> TypeErrCtxtExt<'tcx> for TypeErrCtxt<'_, 'tcx> {
                     obligation.param_env,
                     trait_pred_and_suggested_ty,
                 );
-                let suggested_ty_would_satisfy_obligation =
-                    self.predicate_must_hold_modulo_regions(&new_obligation);
+                let suggested_ty_would_satisfy_obligation = self
+                    .evaluate_obligation_no_overflow(&new_obligation)
+                    .must_apply_modulo_regions();
                 if suggested_ty_would_satisfy_obligation {
                     let sp = self
                         .tcx
@@ -1679,9 +1681,7 @@ impl<'tcx> TypeErrCtxtExt<'tcx> for TypeErrCtxt<'_, 'tcx> {
         ) -> Ty<'tcx> {
             let inputs = trait_ref.skip_binder().substs.type_at(1);
             let sig = match inputs.kind() {
-                ty::Tuple(inputs)
-                    if infcx.tcx.fn_trait_kind_from_lang_item(trait_ref.def_id()).is_some() =>
-                {
+                ty::Tuple(inputs) if infcx.tcx.is_fn_trait(trait_ref.def_id()) => {
                     infcx.tcx.mk_fn_sig(
                         inputs.iter(),
                         infcx.next_ty_var(TypeVariableOrigin {
@@ -1752,7 +1752,7 @@ impl<'tcx> TypeErrCtxtExt<'tcx> for TypeErrCtxt<'_, 'tcx> {
             && let predicates = self.tcx.predicates_of(def_id).instantiate_identity(self.tcx)
             && let Some(pred) = predicates.predicates.get(*idx)
             && let ty::PredicateKind::Clause(ty::Clause::Trait(trait_pred)) = pred.kind().skip_binder()
-            && ty::ClosureKind::from_def_id(self.tcx, trait_pred.def_id()).is_some()
+            && self.tcx.is_fn_trait(trait_pred.def_id())
         {
             let expected_self =
                 self.tcx.anonymize_late_bound_regions(pred.kind().rebind(trait_pred.self_ty()));
@@ -1766,8 +1766,7 @@ impl<'tcx> TypeErrCtxtExt<'tcx> for TypeErrCtxt<'_, 'tcx> {
                 .enumerate()
                 .find(|(other_idx, (pred, _))| match pred.kind().skip_binder() {
                     ty::PredicateKind::Clause(ty::Clause::Trait(trait_pred))
-                        if ty::ClosureKind::from_def_id(self.tcx, trait_pred.def_id())
-                            .is_some()
+                        if self.tcx.is_fn_trait(trait_pred.def_id())
                             && other_idx != idx
                             // Make sure that the self type matches
                             // (i.e. constraining this closure)
@@ -1991,11 +1990,6 @@ impl<'tcx> TypeErrCtxtExt<'tcx> for TypeErrCtxt<'_, 'tcx> {
             .as_local()
             .and_then(|def_id| hir.maybe_body_owned_by(def_id))
             .map(|body_id| hir.body(body_id));
-        let is_async = self
-            .tcx
-            .generator_kind(generator_did)
-            .map(|generator_kind| matches!(generator_kind, hir::GeneratorKind::Async(..)))
-            .unwrap_or(false);
         let mut visitor = AwaitsVisitor::default();
         if let Some(body) = generator_body {
             visitor.visit_body(body);
@@ -2072,6 +2066,7 @@ impl<'tcx> TypeErrCtxtExt<'tcx> for TypeErrCtxt<'_, 'tcx> {
 
         debug!(?interior_or_upvar_span);
         if let Some(interior_or_upvar_span) = interior_or_upvar_span {
+            let is_async = self.tcx.generator_is_async(generator_did);
             let typeck_results = match generator_data {
                 GeneratorData::Local(typeck_results) => Some(typeck_results),
                 GeneratorData::Foreign(_) => None,
@@ -2644,10 +2639,7 @@ impl<'tcx> TypeErrCtxtExt<'tcx> for TypeErrCtxt<'_, 'tcx> {
                                 if is_future
                                     && obligated_types.last().map_or(false, |ty| match ty.kind() {
                                         ty::Generator(last_def_id, ..) => {
-                                            matches!(
-                                                tcx.generator_kind(last_def_id),
-                                                Some(GeneratorKind::Async(..))
-                                            )
+                                            tcx.generator_is_async(*last_def_id)
                                         }
                                         _ => false,
                                     })
@@ -2673,7 +2665,7 @@ impl<'tcx> TypeErrCtxtExt<'tcx> for TypeErrCtxt<'_, 'tcx> {
                                 let sp = self.tcx.def_span(def_id);
 
                                 // Special-case this to say "async block" instead of `[static generator]`.
-                                let kind = tcx.generator_kind(def_id).unwrap();
+                                let kind = tcx.generator_kind(def_id).unwrap().descr();
                                 err.span_note(
                                     sp,
                                     &format!("required because it's used within this {}", kind),
@@ -2975,12 +2967,8 @@ impl<'tcx> TypeErrCtxtExt<'tcx> for TypeErrCtxt<'_, 'tcx> {
                         self.tcx.mk_substs_trait(trait_pred.self_ty(), []),
                     )
                 });
-                let InferOk { value: projection_ty, .. } = self
-                    .partially_normalize_associated_types_in(
-                        obligation.cause.clone(),
-                        obligation.param_env,
-                        projection_ty,
-                    );
+                let InferOk { value: projection_ty, .. } =
+                    self.at(&obligation.cause, obligation.param_env).normalize(projection_ty);
 
                 debug!(
                     normalized_projection_type = ?self.resolve_vars_if_possible(projection_ty)

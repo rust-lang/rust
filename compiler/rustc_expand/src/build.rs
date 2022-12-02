@@ -193,7 +193,7 @@ impl<'a> ExtCtxt<'a> {
         self.stmt_local(local, sp)
     }
 
-    // Generates `let _: Type;`, which is usually used for type assertions.
+    /// Generates `let _: Type;`, which is usually used for type assertions.
     pub fn stmt_let_type_only(&self, span: Span, ty: P<ast::Ty>) -> ast::Stmt {
         let local = P(ast::Local {
             pat: self.pat_wild(span),
@@ -579,8 +579,6 @@ impl<'a> ExtCtxt<'a> {
         attrs: ast::AttrVec,
         kind: ast::ItemKind,
     ) -> P<ast::Item> {
-        // FIXME: Would be nice if our generated code didn't violate
-        // Rust coding conventions
         P(ast::Item {
             ident: name,
             attrs,
@@ -618,11 +616,23 @@ impl<'a> ExtCtxt<'a> {
         self.item(span, name, AttrVec::new(), ast::ItemKind::Const(def, ty, Some(expr)))
     }
 
-    pub fn attribute(&self, mi: ast::MetaItem) -> ast::Attribute {
-        attr::mk_attr_outer(&self.sess.parse_sess.attr_id_generator, mi)
+    // Builds `#[name]`.
+    pub fn attr_word(&self, name: Symbol, span: Span) -> ast::Attribute {
+        let g = &self.sess.parse_sess.attr_id_generator;
+        attr::mk_attr_word(g, ast::AttrStyle::Outer, name, span)
     }
 
-    pub fn meta_word(&self, sp: Span, w: Symbol) -> ast::MetaItem {
-        attr::mk_word_item(Ident::new(w, sp))
+    // Builds `#[name = val]`.
+    //
+    // Note: `span` is used for both the identifer and the value.
+    pub fn attr_name_value_str(&self, name: Symbol, val: Symbol, span: Span) -> ast::Attribute {
+        let g = &self.sess.parse_sess.attr_id_generator;
+        attr::mk_attr_name_value_str(g, ast::AttrStyle::Outer, name, val, span)
+    }
+
+    // Builds `#[outer(inner)]`.
+    pub fn attr_nested_word(&self, outer: Symbol, inner: Symbol, span: Span) -> ast::Attribute {
+        let g = &self.sess.parse_sess.attr_id_generator;
+        attr::mk_attr_nested_word(g, ast::AttrStyle::Outer, outer, inner, span)
     }
 }

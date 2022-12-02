@@ -358,7 +358,7 @@ impl<'a> Parser<'a> {
     /// report error for `let 1x = 123`
     pub fn report_invalid_identifier_error(&mut self) -> PResult<'a, ()> {
         if let token::Literal(lit) = self.token.uninterpolate().kind &&
-            rustc_ast::Lit::from_token(&self.token).is_none() &&
+            rustc_ast::MetaItemLit::from_token(&self.token).is_none() &&
             (lit.kind == token::LitKind::Integer || lit.kind == token::LitKind::Float) &&
             self.look_ahead(1, |t| matches!(t.kind, token::Eq) || matches!(t.kind, token::Colon ) ) {
                 return Err(self.sess.create_err(InvalidIdentiferStartsWithNumber { span: self.token.span }));

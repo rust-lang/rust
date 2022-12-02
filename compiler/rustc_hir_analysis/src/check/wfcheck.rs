@@ -53,12 +53,14 @@ impl<'tcx> WfCheckingCtxt<'_, 'tcx> {
         self.ocx.infcx.tcx
     }
 
+    // Convenience function to normalize during wfcheck. This performs
+    // `ObligationCtxt::normalize`, but provides a nice `ObligationCauseCode`.
     fn normalize<T>(&self, span: Span, loc: Option<WellFormedLoc>, value: T) -> T
     where
         T: TypeFoldable<'tcx>,
     {
         self.ocx.normalize(
-            ObligationCause::new(span, self.body_id, ObligationCauseCode::WellFormed(loc)),
+            &ObligationCause::new(span, self.body_id, ObligationCauseCode::WellFormed(loc)),
             self.param_env,
             value,
         )

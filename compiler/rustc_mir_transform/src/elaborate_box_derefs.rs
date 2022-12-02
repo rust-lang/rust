@@ -25,7 +25,7 @@ pub fn build_ptr_tys<'tcx>(
     (unique_ty, nonnull_ty, ptr_ty)
 }
 
-// Constructs the projection needed to access a Box's pointer
+/// Constructs the projection needed to access a Box's pointer
 pub fn build_projection<'tcx>(
     unique_ty: Ty<'tcx>,
     nonnull_ty: Ty<'tcx>,

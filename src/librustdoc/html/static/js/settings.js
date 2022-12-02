@@ -268,7 +268,7 @@
             event.preventDefault();
             const shouldDisplaySettings = settingsMenu.style.display === "none";
 
-            window.hidePopoverMenus();
+            window.hideAllModals();
             if (shouldDisplaySettings) {
                 displaySettings();
             }

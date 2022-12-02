@@ -252,11 +252,11 @@ impl<'a, 'tcx> ExprUseVisitor<'a, 'tcx> {
 
             hir::ExprKind::Match(ref discr, arms, _) => {
                 let discr_place = return_if_err!(self.mc.cat_expr(discr));
-                self.maybe_read_scrutinee(
+                return_if_err!(self.maybe_read_scrutinee(
                     discr,
                     discr_place.clone(),
                     arms.iter().map(|arm| arm.pat),
-                );
+                ));
 
                 // treatment of the discriminant is handled while walking the arms.
                 for arm in arms {
@@ -390,7 +390,7 @@ impl<'a, 'tcx> ExprUseVisitor<'a, 'tcx> {
         discr: &Expr<'_>,
         discr_place: PlaceWithHirId<'tcx>,
         pats: impl Iterator<Item = &'t hir::Pat<'t>>,
-    ) {
+    ) -> Result<(), ()> {
         // Matching should not always be considered a use of the place, hence
         // discr does not necessarily need to be borrowed.
         // We only want to borrow discr if the pattern contain something other
@@ -398,7 +398,7 @@ impl<'a, 'tcx> ExprUseVisitor<'a, 'tcx> {
         let ExprUseVisitor { ref mc, body_owner: _, delegate: _ } = *self;
         let mut needs_to_be_read = false;
         for pat in pats {
-            return_if_err!(mc.cat_pattern(discr_place.clone(), pat, |place, pat| {
+            mc.cat_pattern(discr_place.clone(), pat, |place, pat| {
                 match &pat.kind {
                     PatKind::Binding(.., opt_sub_pat) => {
                         // If the opt_sub_pat is None, than the binding does not count as
@@ -453,7 +453,7 @@ impl<'a, 'tcx> ExprUseVisitor<'a, 'tcx> {
                         // examined
                     }
                 }
-            }));
+            })?
         }
 
         if needs_to_be_read {
@@ -474,6 +474,7 @@ impl<'a, 'tcx> ExprUseVisitor<'a, 'tcx> {
             // that the discriminant has been initialized.
             self.walk_expr(discr);
         }
+        Ok(())
     }
 
     fn walk_local<F>(
@@ -490,7 +491,11 @@ impl<'a, 'tcx> ExprUseVisitor<'a, 'tcx> {
         f(self);
         if let Some(els) = els {
             // borrowing because we need to test the discriminant
-            self.maybe_read_scrutinee(expr, expr_place.clone(), from_ref(pat).iter());
+            return_if_err!(self.maybe_read_scrutinee(
+                expr,
+                expr_place.clone(),
+                from_ref(pat).iter()
+            ));
             self.walk_block(els)
         }
         self.walk_irrefutable_pat(&expr_place, &pat);

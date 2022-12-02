@@ -191,38 +191,38 @@ pub enum MetadataPosition {
     Last,
 }
 
-// For rlibs we "pack" rustc metadata into a dummy object file.
-//
-// Historically it was needed because rustc linked rlibs as whole-archive in some cases.
-// In that case linkers try to include all files located in an archive, so if metadata is stored
-// in an archive then it needs to be of a form that the linker is able to process.
-// Now it's not clear whether metadata still needs to be wrapped into an object file or not.
-//
-// Note, though, that we don't actually want this metadata to show up in any
-// final output of the compiler. Instead this is purely for rustc's own
-// metadata tracking purposes.
-//
-// With the above in mind, each "flavor" of object format gets special
-// handling here depending on the target:
-//
-// * MachO - macos-like targets will insert the metadata into a section that
-//   is sort of fake dwarf debug info. Inspecting the source of the macos
-//   linker this causes these sections to be skipped automatically because
-//   it's not in an allowlist of otherwise well known dwarf section names to
-//   go into the final artifact.
-//
-// * WebAssembly - we actually don't have any container format for this
-//   target. WebAssembly doesn't support the `dylib` crate type anyway so
-//   there's no need for us to support this at this time. Consequently the
-//   metadata bytes are simply stored as-is into an rlib.
-//
-// * COFF - Windows-like targets create an object with a section that has
-//   the `IMAGE_SCN_LNK_REMOVE` flag set which ensures that if the linker
-//   ever sees the section it doesn't process it and it's removed.
-//
-// * ELF - All other targets are similar to Windows in that there's a
-//   `SHF_EXCLUDE` flag we can set on sections in an object file to get
-//   automatically removed from the final output.
+/// For rlibs we "pack" rustc metadata into a dummy object file.
+///
+/// Historically it was needed because rustc linked rlibs as whole-archive in some cases.
+/// In that case linkers try to include all files located in an archive, so if metadata is stored
+/// in an archive then it needs to be of a form that the linker is able to process.
+/// Now it's not clear whether metadata still needs to be wrapped into an object file or not.
+///
+/// Note, though, that we don't actually want this metadata to show up in any
+/// final output of the compiler. Instead this is purely for rustc's own
+/// metadata tracking purposes.
+///
+/// With the above in mind, each "flavor" of object format gets special
+/// handling here depending on the target:
+///
+/// * MachO - macos-like targets will insert the metadata into a section that
+///   is sort of fake dwarf debug info. Inspecting the source of the macos
+///   linker this causes these sections to be skipped automatically because
+///   it's not in an allowlist of otherwise well known dwarf section names to
+///   go into the final artifact.
+///
+/// * WebAssembly - we actually don't have any container format for this
+///   target. WebAssembly doesn't support the `dylib` crate type anyway so
+///   there's no need for us to support this at this time. Consequently the
+///   metadata bytes are simply stored as-is into an rlib.
+///
+/// * COFF - Windows-like targets create an object with a section that has
+///   the `IMAGE_SCN_LNK_REMOVE` flag set which ensures that if the linker
+///   ever sees the section it doesn't process it and it's removed.
+///
+/// * ELF - All other targets are similar to Windows in that there's a
+///   `SHF_EXCLUDE` flag we can set on sections in an object file to get
+///   automatically removed from the final output.
 pub fn create_wrapper_file(
     sess: &Session,
     section_name: Vec<u8>,

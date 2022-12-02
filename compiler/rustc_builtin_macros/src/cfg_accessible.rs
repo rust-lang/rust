@@ -37,10 +37,10 @@ impl MultiItemModifier for Expander {
         _is_derive_const: bool,
     ) -> ExpandResult<Vec<Annotatable>, Annotatable> {
         let template = AttributeTemplate { list: Some("path"), ..Default::default() };
-        let attr = &ecx.attribute(meta_item.clone());
-        validate_attr::check_builtin_attribute(
+        validate_attr::check_builtin_meta_item(
             &ecx.sess.parse_sess,
-            attr,
+            &meta_item,
+            ast::AttrStyle::Outer,
             sym::cfg_accessible,
             template,
         );

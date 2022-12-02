@@ -376,7 +376,7 @@ impl<'tcx> NonConstOp<'tcx> for Generator {
         ccx: &ConstCx<'_, 'tcx>,
         span: Span,
     ) -> DiagnosticBuilder<'tcx, ErrorGuaranteed> {
-        let msg = format!("{}s are not allowed in {}s", self.0, ccx.const_kind());
+        let msg = format!("{}s are not allowed in {}s", self.0.descr(), ccx.const_kind());
         if let hir::GeneratorKind::Async(hir::AsyncGeneratorKind::Block) = self.0 {
             ccx.tcx.sess.create_feature_err(
                 UnallowedOpInConstContext { span, msg },
@@ -686,7 +686,7 @@ impl<'tcx> NonConstOp<'tcx> for ThreadLocalAccess {
     }
 }
 
-// Types that cannot appear in the signature or locals of a `const fn`.
+/// Types that cannot appear in the signature or locals of a `const fn`.
 pub mod ty {
     use super::*;
 

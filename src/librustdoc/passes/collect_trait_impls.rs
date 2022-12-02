@@ -8,7 +8,7 @@ use crate::formats::cache::Cache;
 use crate::visit::DocVisitor;
 
 use rustc_data_structures::fx::{FxHashMap, FxHashSet};
-use rustc_hir::def_id::DefId;
+use rustc_hir::def_id::{DefId, LOCAL_CRATE};
 use rustc_middle::ty::{self, DefIdTree};
 use rustc_span::symbol::sym;
 
@@ -25,7 +25,9 @@ pub(crate) fn collect_trait_impls(mut krate: Crate, cx: &mut DocContext<'_>) -> 
         synth.impls
     });
 
-    let prims: FxHashSet<PrimitiveType> = krate.primitives.iter().map(|p| p.1).collect();
+    let local_crate = ExternalCrate { crate_num: LOCAL_CRATE };
+    let prims: FxHashSet<PrimitiveType> =
+        local_crate.primitives(cx.tcx).iter().map(|p| p.1).collect();
 
     let crate_items = {
         let mut coll = ItemCollector::new();

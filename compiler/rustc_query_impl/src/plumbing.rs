@@ -252,6 +252,18 @@ macro_rules! depth_limit {
     };
 }
 
+macro_rules! feedable {
+    ([]) => {{
+        false
+    }};
+    ([(feedable) $($rest:tt)*]) => {{
+        true
+    }};
+    ([$other:tt $($modifiers:tt)*]) => {
+        feedable!([$($modifiers)*])
+    };
+}
+
 macro_rules! hash_result {
     ([]) => {{
         Some(dep_graph::hash_result)
@@ -309,7 +321,7 @@ pub(crate) fn create_query_frame<
         ty::print::with_forced_impl_filename_line!(do_describe(tcx.tcx, key))
     );
     let description =
-        if tcx.sess.verbose() { format!("{} [{}]", description, name) } else { description };
+        if tcx.sess.verbose() { format!("{} [{:?}]", description, name) } else { description };
     let span = if kind == dep_graph::DepKind::def_span {
         // The `def_span` query is used to calculate `default_span`,
         // so exit to avoid infinite recursion.
@@ -491,6 +503,7 @@ macro_rules! define_queries {
                     anon: is_anon!([$($modifiers)*]),
                     eval_always: is_eval_always!([$($modifiers)*]),
                     depth_limit: depth_limit!([$($modifiers)*]),
+                    feedable: feedable!([$($modifiers)*]),
                     dep_kind: dep_graph::DepKind::$name,
                     hash_result: hash_result!([$($modifiers)*]),
                     handle_cycle_error: handle_cycle_error!([$($modifiers)*]),

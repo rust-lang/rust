@@ -79,16 +79,15 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
 
         debug!(?bound_sig, ?liberated_sig);
 
+        let mut fcx = FnCtxt::new(self, self.param_env.without_const(), body.value.hir_id);
         let generator_types = check_fn(
-            self,
-            self.param_env.without_const(),
+            &mut fcx,
             liberated_sig,
             closure.fn_decl,
             expr_def_id,
             body,
             closure.movability,
-        )
-        .1;
+        );
 
         let parent_substs = InternalSubsts::identity_for_item(
             self.tcx,
@@ -178,7 +177,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                 });
                 let kind = object_type
                     .principal_def_id()
-                    .and_then(|did| self.tcx.fn_trait_kind_from_lang_item(did));
+                    .and_then(|did| self.tcx.fn_trait_kind_from_def_id(did));
                 (sig, kind)
             }
             ty::Infer(ty::TyVar(vid)) => self.deduce_signature_from_predicates(
@@ -214,7 +213,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             if expected_sig.is_none()
                 && let ty::PredicateKind::Clause(ty::Clause::Projection(proj_predicate)) = bound_predicate.skip_binder()
             {
-                expected_sig = self.normalize_associated_types_in(
+                expected_sig = self.normalize(
                     obligation.cause.span,
                     self.deduce_sig_from_projection(
                     Some(obligation.cause.span),
@@ -235,7 +234,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                 _ => None,
             };
             if let Some(closure_kind) =
-                trait_def_id.and_then(|def_id| self.tcx.fn_trait_kind_from_lang_item(def_id))
+                trait_def_id.and_then(|def_id| self.tcx.fn_trait_kind_from_def_id(def_id))
             {
                 expected_kind = Some(
                     expected_kind
@@ -263,7 +262,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
 
         let trait_def_id = projection.trait_def_id(tcx);
 
-        let is_fn = tcx.fn_trait_kind_from_lang_item(trait_def_id).is_some();
+        let is_fn = tcx.is_fn_trait(trait_def_id);
         let gen_trait = tcx.require_lang_item(LangItem::Generator, cause_span);
         let is_gen = gen_trait == trait_def_id;
         if !is_fn && !is_gen {
@@ -623,7 +622,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         );
         // Astconv can't normalize inputs or outputs with escaping bound vars,
         // so normalize them here, after we've wrapped them in a binder.
-        let result = self.normalize_associated_types_in(self.tcx.hir().span(hir_id), result);
+        let result = self.normalize(self.tcx.hir().span(hir_id), result);
 
         let c_result = self.inh.infcx.canonicalize_response(result);
         self.typeck_results.borrow_mut().user_provided_sigs.insert(expr_def_id, c_result);
@@ -797,12 +796,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
     ) -> ClosureSignatures<'tcx> {
         let liberated_sig =
             self.tcx().liberate_late_bound_regions(expr_def_id.to_def_id(), bound_sig);
-        let liberated_sig = self.inh.normalize_associated_types_in(
-            body.value.span,
-            self.tcx.hir().local_def_id_to_hir_id(expr_def_id),
-            self.param_env,
-            liberated_sig,
-        );
+        let liberated_sig = self.normalize(body.value.span, liberated_sig);
         ClosureSignatures { bound_sig, liberated_sig }
     }
 }

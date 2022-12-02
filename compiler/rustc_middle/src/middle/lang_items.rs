@@ -27,7 +27,10 @@ impl<'tcx> TyCtxt<'tcx> {
         })
     }
 
-    pub fn fn_trait_kind_from_lang_item(self, id: DefId) -> Option<ty::ClosureKind> {
+    /// Given a [`DefId`] of a [`Fn`], [`FnMut`] or [`FnOnce`] traits,
+    /// returns a corresponding [`ty::ClosureKind`].
+    /// For any other [`DefId`] return `None`.
+    pub fn fn_trait_kind_from_def_id(self, id: DefId) -> Option<ty::ClosureKind> {
         let items = self.lang_items();
         match Some(id) {
             x if x == items.fn_trait() => Some(ty::ClosureKind::Fn),
@@ -35,6 +38,11 @@ impl<'tcx> TyCtxt<'tcx> {
             x if x == items.fn_once_trait() => Some(ty::ClosureKind::FnOnce),
             _ => None,
         }
+    }
+
+    /// Returns `true` if `id` is a `DefId` of [`Fn`], [`FnMut`] or [`FnOnce`] traits.
+    pub fn is_fn_trait(self, id: DefId) -> bool {
+        self.fn_trait_kind_from_def_id(id).is_some()
     }
 }
 

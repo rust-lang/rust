@@ -51,22 +51,13 @@ mod casts {
 
 mod typeascription {
     fn outside() -> u8 {
-        ({ 0 }): u8
-    }
-    fn inside() -> u8 {
-        ({ 0 }: u8)
+        type_ascribe!(({ 0 }), u8)
     }
     fn outside_match() -> u8 {
-        (match 0 { x => x }): u8
-    }
-    fn inside_match() -> u8 {
-        (match 0 { x => x }: u8)
+        type_ascribe!((match 0 { x => x }), u8)
     }
     fn outside_if() -> u8 {
-        (if false { 0 } else { 0 }): u8
-    }
-    fn inside_if() -> u8 {
-        (if false { 0 } else { 0 }: u8)
+        type_ascribe!((if false { 0 } else { 0 }), u8)
     }
 }
 

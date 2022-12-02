@@ -14,8 +14,8 @@ use rustc_lint::{LateContext, LateLintPass};
 use rustc_middle::hir::nested_filter;
 use rustc_middle::traits::Reveal;
 use rustc_middle::ty::{
-    self, Binder, BoundConstness, Clause, GenericParamDefKind, ImplPolarity, ParamEnv, PredicateKind, TraitPredicate, TraitRef,
-    Ty, TyCtxt,
+    self, Binder, BoundConstness, Clause, GenericParamDefKind, ImplPolarity, ParamEnv, PredicateKind, TraitPredicate,
+    TraitRef, Ty, TyCtxt,
 };
 use rustc_session::{declare_lint_pass, declare_tool_lint};
 use rustc_span::source_map::Span;

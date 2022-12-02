@@ -41,7 +41,7 @@ impl<'tcx> InferCtxt<'tcx> {
     /// inference variables and applies it to the canonical value.
     /// Returns both the instantiated result *and* the substitution S.
     ///
-    /// This is only meant to be invoked as part of constructing an
+    /// This can be invoked as part of constructing an
     /// inference context at the start of a query (see
     /// `InferCtxtBuilder::build_with_canonical`). It basically
     /// brings the canonical value "into scope" within your new infcx.
@@ -63,8 +63,11 @@ impl<'tcx> InferCtxt<'tcx> {
         // in them, so this code has no effect, but it is looking
         // forward to the day when we *do* want to carry universes
         // through into queries.
-        let universes: IndexVec<ty::UniverseIndex, _> = std::iter::once(ty::UniverseIndex::ROOT)
-            .chain((0..canonical.max_universe.as_u32()).map(|_| self.create_next_universe()))
+        //
+        // Instantiate the root-universe content into the current universe,
+        // and create fresh universes for the higher universes.
+        let universes: IndexVec<ty::UniverseIndex, _> = std::iter::once(self.universe())
+            .chain((1..=canonical.max_universe.as_u32()).map(|_| self.create_next_universe()))
             .collect();
 
         let canonical_inference_vars =
@@ -147,7 +150,7 @@ impl<'tcx> InferCtxt<'tcx> {
             CanonicalVarKind::PlaceholderConst(ty::PlaceholderConst { universe, name }, ty) => {
                 let universe_mapped = universe_map(universe);
                 let placeholder_mapped = ty::PlaceholderConst { universe: universe_mapped, name };
-                self.tcx.mk_const(ty::ConstKind::Placeholder(placeholder_mapped), ty).into()
+                self.tcx.mk_const(placeholder_mapped, ty).into()
             }
         }
     }

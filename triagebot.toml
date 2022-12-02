@@ -15,7 +15,7 @@ allow-unauthenticated = [
     "llvm-main",
     "needs-fcp",
     "relnotes",
-    "requires-nightly",
+    "requires-*",
     "regression-*",
     "perf-*",
     "AsyncAwait-OnDeck",
@@ -334,6 +334,13 @@ cc = ["@rust-lang/wg-mir-opt"]
 message = "Some changes occurred in const_evaluatable.rs"
 cc = ["@lcnr"]
 
+[mentions."compiler/rustc_trait_selection/src/traits/engine.rs"]
+message = """
+Some changes occurred in engine.rs, potentially modifying the public API \
+of `ObligationCtxt`.
+"""
+cc = ["@lcnr"]
+
 [mentions."compiler/rustc_error_codes/src/error_codes.rs"]
 message = "Some changes occurred in diagnostic error codes"
 cc = ["@GuillaumeGomez"]
@@ -404,6 +411,9 @@ cc = ["@rust-lang/clippy"]
 [mentions."src/tools/miri"]
 message = "The Miri subtree was changed"
 cc = ["@rust-lang/miri"]
+
+[mentions."src/tools/rust-analyzer"]
+cc = ["@rust-lang/wg-rls-2"]
 
 [mentions."src/tools/rustfmt"]
 cc = ["@rust-lang/rustfmt"]
@@ -568,6 +578,13 @@ fallback = [
 "/src/bootstrap" =                           ["bootstrap"]
 "/src/ci" =                                  ["infra-ci"]
 "/src/doc" =                                 ["docs"]
+"/src/doc/book" =                            ["@ehuss"]
+"/src/doc/edition-guide" =                   ["@ehuss"]
+"/src/doc/embedded-book" =                   ["@ehuss"]
+"/src/doc/nomicon" =                         ["@ehuss"]
+"/src/doc/reference" =                       ["@ehuss"]
+"/src/doc/rust-by-example" =                 ["@ehuss"]
+"/src/doc/rustc-dev-guide" =                 ["@ehuss"]
 "/src/doc/rustdoc" =                         ["rustdoc"]
 "/src/etc" =                                 ["@Mark-Simulacrum"]
 "/src/librustdoc" =                          ["rustdoc"]

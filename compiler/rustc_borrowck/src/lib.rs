@@ -83,7 +83,7 @@ mod type_check;
 mod universal_regions;
 mod used_muts;
 
-// A public API provided for the Rust compiler consumers.
+/// A public API provided for the Rust compiler consumers.
 pub mod consumers;
 
 use borrow_set::{BorrowData, BorrowSet};

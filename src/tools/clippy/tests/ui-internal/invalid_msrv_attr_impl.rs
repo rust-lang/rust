@@ -11,9 +11,9 @@ extern crate rustc_middle;
 #[macro_use]
 extern crate rustc_session;
 use clippy_utils::extract_msrv_attr;
+use clippy_utils::msrvs::Msrv;
 use rustc_hir::Expr;
 use rustc_lint::{EarlyContext, EarlyLintPass, LateContext, LateLintPass};
-use rustc_semver::RustcVersion;
 
 declare_lint! {
     pub TEST_LINT,
@@ -22,7 +22,7 @@ declare_lint! {
 }
 
 struct Pass {
-    msrv: Option<RustcVersion>,
+    msrv: Msrv,
 }
 
 impl_lint_pass!(Pass => [TEST_LINT]);

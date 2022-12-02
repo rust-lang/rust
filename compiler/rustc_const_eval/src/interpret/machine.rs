@@ -417,8 +417,8 @@ pub trait Machine<'mir, 'tcx>: Sized {
     }
 }
 
-// A lot of the flexibility above is just needed for `Miri`, but all "compile-time" machines
-// (CTFE and ConstProp) use the same instance.  Here, we share that code.
+/// A lot of the flexibility above is just needed for `Miri`, but all "compile-time" machines
+/// (CTFE and ConstProp) use the same instance.  Here, we share that code.
 pub macro compile_time_machine(<$mir: lifetime, $tcx: lifetime>) {
     type Provenance = AllocId;
     type ProvenanceExtra = ();

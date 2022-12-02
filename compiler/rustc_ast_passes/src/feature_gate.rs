@@ -198,8 +198,8 @@ impl<'a> Visitor<'a> for PostExpansionVisitor<'a> {
     }
 
     fn visit_item(&mut self, i: &'a ast::Item) {
-        match i.kind {
-            ast::ItemKind::ForeignMod(ref foreign_module) => {
+        match &i.kind {
+            ast::ItemKind::ForeignMod(foreign_module) => {
                 if let Some(abi) = foreign_module.abi {
                     self.check_abi(abi, ast::Const::No);
                 }
@@ -233,8 +233,8 @@ impl<'a> Visitor<'a> for PostExpansionVisitor<'a> {
                 }
             }
 
-            ast::ItemKind::Impl(box ast::Impl { polarity, defaultness, ref of_trait, .. }) => {
-                if let ast::ImplPolarity::Negative(span) = polarity {
+            ast::ItemKind::Impl(box ast::Impl { polarity, defaultness, of_trait, .. }) => {
+                if let &ast::ImplPolarity::Negative(span) = polarity {
                     gate_feature_post!(
                         &self,
                         negative_impls,
@@ -267,7 +267,7 @@ impl<'a> Visitor<'a> for PostExpansionVisitor<'a> {
                 gate_feature_post!(&self, decl_macro, i.span, msg);
             }
 
-            ast::ItemKind::TyAlias(box ast::TyAlias { ty: Some(ref ty), .. }) => {
+            ast::ItemKind::TyAlias(box ast::TyAlias { ty: Some(ty), .. }) => {
                 self.check_impl_trait(&ty)
             }
 
@@ -302,8 +302,8 @@ impl<'a> Visitor<'a> for PostExpansionVisitor<'a> {
     }
 
     fn visit_ty(&mut self, ty: &'a ast::Ty) {
-        match ty.kind {
-            ast::TyKind::BareFn(ref bare_fn_ty) => {
+        match &ty.kind {
+            ast::TyKind::BareFn(bare_fn_ty) => {
                 // Function pointers cannot be `const`
                 self.check_extern(bare_fn_ty.ext, ast::Const::No);
             }
@@ -319,7 +319,7 @@ impl<'a> Visitor<'a> for PostExpansionVisitor<'a> {
     }
 
     fn visit_fn_ret_ty(&mut self, ret_ty: &'a ast::FnRetTy) {
-        if let ast::FnRetTy::Ty(ref output_ty) = *ret_ty {
+        if let ast::FnRetTy::Ty(output_ty) = ret_ty {
             if let ast::TyKind::Never = output_ty.kind {
                 // Do nothing.
             } else {
@@ -455,9 +455,9 @@ impl<'a> Visitor<'a> for PostExpansionVisitor<'a> {
     }
 
     fn visit_assoc_item(&mut self, i: &'a ast::AssocItem, ctxt: AssocCtxt) {
-        let is_fn = match i.kind {
+        let is_fn = match &i.kind {
             ast::AssocItemKind::Fn(_) => true,
-            ast::AssocItemKind::Type(box ast::TyAlias { ref ty, .. }) => {
+            ast::AssocItemKind::Type(box ast::TyAlias { ty, .. }) => {
                 if let (Some(_), AssocCtxt::Trait) = (ty, ctxt) {
                     gate_feature_post!(
                         &self,

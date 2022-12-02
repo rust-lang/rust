@@ -3,7 +3,6 @@ use crate::traits::{self, ObligationCtxt};
 
 use rustc_hir::def_id::DefId;
 use rustc_hir::lang_items::LangItem;
-use rustc_infer::traits::ObligationCause;
 use rustc_middle::arena::ArenaAllocatable;
 use rustc_middle::infer::canonical::{Canonical, CanonicalizedQueryResponse, QueryResponse};
 use rustc_middle::traits::query::Fallible;
@@ -29,15 +28,6 @@ pub trait InferCtxtExt<'tcx> {
         ty: Ty<'tcx>,
         span: Span,
     ) -> bool;
-
-    fn partially_normalize_associated_types_in<T>(
-        &self,
-        cause: ObligationCause<'tcx>,
-        param_env: ty::ParamEnv<'tcx>,
-        value: T,
-    ) -> InferOk<'tcx, T>
-    where
-        T: TypeFoldable<'tcx>;
 
     /// Check whether a `ty` implements given trait(trait_def_id).
     /// The inputs are:
@@ -86,24 +76,6 @@ impl<'tcx> InferCtxtExt<'tcx> for InferCtxt<'tcx> {
     ) -> bool {
         let lang_item = self.tcx.require_lang_item(LangItem::Sized, None);
         traits::type_known_to_meet_bound_modulo_regions(self, param_env, ty, lang_item, span)
-    }
-
-    /// Normalizes associated types in `value`, potentially returning
-    /// new obligations that must further be processed.
-    #[instrument(level = "debug", skip(self, cause, param_env), ret)]
-    fn partially_normalize_associated_types_in<T>(
-        &self,
-        cause: ObligationCause<'tcx>,
-        param_env: ty::ParamEnv<'tcx>,
-        value: T,
-    ) -> InferOk<'tcx, T>
-    where
-        T: TypeFoldable<'tcx>,
-    {
-        let mut selcx = traits::SelectionContext::new(self);
-        let traits::Normalized { value, obligations } =
-            traits::normalize(&mut selcx, param_env, cause, value);
-        InferOk { value, obligations }
     }
 
     #[instrument(level = "debug", skip(self, params), ret)]
