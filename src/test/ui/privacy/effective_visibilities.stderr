@@ -124,12 +124,6 @@ error: Direct: pub, Reexported: pub, Reachable: pub, ReachableThroughImplTrait: 
 LL | pub use half_public_import::HalfPublicImport;
    |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
-error: Direct: pub, Reexported: pub, Reachable: pub, ReachableThroughImplTrait: pub
-  --> $DIR/effective_visibilities.rs:74:9
-   |
-LL | pub use half_public_import::HalfPublicImport;
-   |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
-
 error: Direct: pub(crate), Reexported: pub, Reachable: pub, ReachableThroughImplTrait: pub
   --> $DIR/effective_visibilities.rs:14:13
    |
@@ -142,5 +136,5 @@ error: Direct: pub(crate), Reexported: pub, Reachable: pub, ReachableThroughImpl
 LL |             type B;
    |             ^^^^^^
 
-error: aborting due to 24 previous errors
+error: aborting due to 23 previous errors
 

@@ -242,7 +242,9 @@ impl ExternalCrate {
                         hir::ItemKind::Use(path, hir::UseKind::Single)
                             if tcx.visibility(id.owner_id).is_public() =>
                         {
-                            as_keyword(path.res.expect_non_local())
+                            path.res
+                                .iter()
+                                .find_map(|res| as_keyword(res.expect_non_local()))
                                 .map(|(_, prim)| (id.owner_id.to_def_id(), prim))
                         }
                         _ => None,
@@ -310,10 +312,11 @@ impl ExternalCrate {
                         hir::ItemKind::Use(path, hir::UseKind::Single)
                             if tcx.visibility(id.owner_id).is_public() =>
                         {
-                            as_primitive(path.res.expect_non_local()).map(|(_, prim)| {
+                            path.res
+                                .iter()
+                                .find_map(|res| as_primitive(res.expect_non_local()))
                                 // Pretend the primitive is local.
-                                (id.owner_id.to_def_id(), prim)
-                            })
+                                .map(|(_, prim)| (id.owner_id.to_def_id(), prim))
                         }
                         _ => None,
                     }

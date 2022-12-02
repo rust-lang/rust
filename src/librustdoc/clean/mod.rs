@@ -2233,6 +2233,26 @@ fn clean_extern_crate<'tcx>(
 fn clean_use_statement<'tcx>(
     import: &hir::Item<'tcx>,
     name: Symbol,
+    path: &hir::UsePath<'tcx>,
+    kind: hir::UseKind,
+    cx: &mut DocContext<'tcx>,
+    inlined_names: &mut FxHashSet<(ItemType, Symbol)>,
+) -> Vec<Item> {
+    let mut items = Vec::new();
+    let hir::UsePath { segments, ref res, span } = *path;
+    for &res in res {
+        if let Res::Def(DefKind::Ctor(..), _) | Res::SelfCtor(..) = res {
+            continue;
+        }
+        let path = hir::Path { segments, res, span };
+        items.append(&mut clean_use_statement_inner(import, name, &path, kind, cx, inlined_names));
+    }
+    items
+}
+
+fn clean_use_statement_inner<'tcx>(
+    import: &hir::Item<'tcx>,
+    name: Symbol,
     path: &hir::Path<'tcx>,
     kind: hir::UseKind,
     cx: &mut DocContext<'tcx>,

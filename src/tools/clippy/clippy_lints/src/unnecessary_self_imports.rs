@@ -57,7 +57,7 @@ impl EarlyLintPass for UnnecessarySelfImports {
                             format!(
                                 "{}{};",
                                 last_segment.ident,
-                                if let UseTreeKind::Simple(Some(alias), ..) = self_tree.kind { format!(" as {alias}") } else { String::new() },
+                                if let UseTreeKind::Simple(Some(alias)) = self_tree.kind { format!(" as {alias}") } else { String::new() },
                             ),
                             Applicability::MaybeIncorrect,
                         );

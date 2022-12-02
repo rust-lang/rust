@@ -1,4 +1,4 @@
-use crate::{ImportKind, NameBinding, NameBindingKind, Resolver, ResolverTree};
+use crate::{NameBinding, NameBindingKind, Resolver, ResolverTree};
 use rustc_ast::ast;
 use rustc_ast::visit;
 use rustc_ast::visit::Visitor;
@@ -104,28 +104,11 @@ impl<'r, 'a> EffectiveVisibilitiesVisitor<'r, 'a> {
         for (binding, eff_vis) in visitor.import_effective_visibilities.iter() {
             let NameBindingKind::Import { import, .. } = binding.kind else { unreachable!() };
             if let Some(node_id) = import.id() {
-                let mut update = |node_id| {
-                    r.effective_visibilities.update_eff_vis(
-                        r.local_def_id(node_id),
-                        eff_vis,
-                        ResolverTree(&r.definitions, &r.crate_loader),
-                    )
-                };
-                update(node_id);
-                if let ImportKind::Single { additional_ids: (id1, id2), .. } = import.kind {
-                    // In theory all the single import IDs have individual visibilities and
-                    // effective visibilities, but in practice these IDs go straight to HIR
-                    // where all their few uses assume that their (effective) visibility
-                    // applies to the whole syntactic `use` item. So they all get the same
-                    // value which is the maximum of all bindings. Maybe HIR for imports
-                    // shouldn't use three IDs at all.
-                    if id1 != ast::DUMMY_NODE_ID {
-                        update(id1);
-                    }
-                    if id2 != ast::DUMMY_NODE_ID {
-                        update(id2);
-                    }
-                }
+                r.effective_visibilities.update_eff_vis(
+                    r.local_def_id(node_id),
+                    eff_vis,
+                    ResolverTree(&r.definitions, &r.crate_loader),
+                )
             }
         }
 

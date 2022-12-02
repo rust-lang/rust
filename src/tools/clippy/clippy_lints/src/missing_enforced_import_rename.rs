@@ -66,35 +66,38 @@ impl LateLintPass<'_> for ImportRename {
     }
 
     fn check_item(&mut self, cx: &LateContext<'_>, item: &Item<'_>) {
-        if_chain! {
-            if let ItemKind::Use(path, UseKind::Single) = &item.kind;
-            if let Res::Def(_, id) = path.res;
-            if let Some(name) = self.renames.get(&id);
-            // Remove semicolon since it is not present for nested imports
-            let span_without_semi = cx.sess().source_map().span_until_char(item.span, ';');
-            if let Some(snip) = snippet_opt(cx, span_without_semi);
-            if let Some(import) = match snip.split_once(" as ") {
-                None => Some(snip.as_str()),
-                Some((import, rename)) => {
-                    if rename.trim() == name.as_str() {
-                        None
-                    } else {
-                        Some(import.trim())
+        if let ItemKind::Use(path, UseKind::Single) = &item.kind {
+            for &res in &path.res {
+                if_chain! {
+                    if let Res::Def(_, id) = res;
+                    if let Some(name) = self.renames.get(&id);
+                    // Remove semicolon since it is not present for nested imports
+                    let span_without_semi = cx.sess().source_map().span_until_char(item.span, ';');
+                    if let Some(snip) = snippet_opt(cx, span_without_semi);
+                    if let Some(import) = match snip.split_once(" as ") {
+                        None => Some(snip.as_str()),
+                        Some((import, rename)) => {
+                            if rename.trim() == name.as_str() {
+                                None
+                            } else {
+                                Some(import.trim())
+                            }
+                        },
+                    };
+                    then {
+                        span_lint_and_sugg(
+                            cx,
+                            MISSING_ENFORCED_IMPORT_RENAMES,
+                            span_without_semi,
+                            "this import should be renamed",
+                            "try",
+                            format!(
+                                "{import} as {name}",
+                            ),
+                            Applicability::MachineApplicable,
+                        );
                     }
-                },
-            };
-            then {
-                span_lint_and_sugg(
-                    cx,
-                    MISSING_ENFORCED_IMPORT_RENAMES,
-                    span_without_semi,
-                    "this import should be renamed",
-                    "try",
-                    format!(
-                        "{import} as {name}",
-                    ),
-                    Applicability::MachineApplicable,
-                );
+                }
             }
         }
     }
