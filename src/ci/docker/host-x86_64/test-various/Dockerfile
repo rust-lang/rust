@@ -21,7 +21,8 @@ RUN apt-get update && DEBIAN_FRONTEND=noninteractive apt-get install -y --no-ins
   ovmf \
   qemu-efi-aarch64 \
   qemu-system-arm \
-  qemu-system-x86
+  qemu-system-x86 \
+  && rm -rf /var/lib/apt/lists/*
 
 RUN curl -sL https://nodejs.org/dist/v15.14.0/node-v15.14.0-linux-x64.tar.xz | \
   tar -xJ
