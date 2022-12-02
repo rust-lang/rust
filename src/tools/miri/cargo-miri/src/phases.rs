@@ -94,7 +94,7 @@ pub fn phase_cargo_miri(mut args: impl Iterator<Item = String>) {
     let target = target.as_ref().unwrap_or(host);
 
     // We always setup.
-    setup(&subcommand, target, &rustc_version);
+    setup(&subcommand, target, &rustc_version, verbose);
 
     // Invoke actual cargo for the job, but with different flags.
     // We re-use `cargo test` and `cargo run`, which makes target and binary handling very easy but
