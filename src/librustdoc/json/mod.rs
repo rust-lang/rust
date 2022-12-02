@@ -99,53 +99,6 @@ impl<'tcx> JsonRenderer<'tcx> {
             })
             .unwrap_or_default()
     }
-
-    fn get_trait_items(&mut self) -> Vec<(types::Id, types::Item)> {
-        debug!("Adding foreign trait items");
-        Rc::clone(&self.cache)
-            .traits
-            .iter()
-            .filter_map(|(&id, trait_item)| {
-                // only need to synthesize items for external traits
-                if !id.is_local() {
-                    for item in &trait_item.items {
-                        trace!("Adding subitem to {id:?}: {:?}", item.item_id);
-                        self.item(item.clone()).unwrap();
-                    }
-                    let item_id = from_item_id(id.into(), self.tcx);
-                    Some((
-                        item_id.clone(),
-                        types::Item {
-                            id: item_id,
-                            crate_id: id.krate.as_u32(),
-                            name: self
-                                .cache
-                                .paths
-                                .get(&id)
-                                .unwrap_or_else(|| {
-                                    self.cache
-                                        .external_paths
-                                        .get(&id)
-                                        .expect("Trait should either be in local or external paths")
-                                })
-                                .0
-                                .last()
-                                .map(|s| s.to_string()),
-                            visibility: types::Visibility::Public,
-                            inner: types::ItemEnum::Trait(trait_item.clone().into_tcx(self.tcx)),
-                            span: None,
-                            docs: Default::default(),
-                            links: Default::default(),
-                            attrs: Default::default(),
-                            deprecation: Default::default(),
-                        },
-                    ))
-                } else {
-                    None
-                }
-            })
-            .collect()
-    }
 }
 
 impl<'tcx> FormatRenderer<'tcx> for JsonRenderer<'tcx> {
@@ -276,11 +229,7 @@ impl<'tcx> FormatRenderer<'tcx> for JsonRenderer<'tcx> {
 
         let e = ExternalCrate { crate_num: LOCAL_CRATE };
 
-        // FIXME(adotinthevoid): Remove this, as it's not consistent with not
-        // inlining foreign items.
-        let foreign_trait_items = self.get_trait_items();
-        let mut index = (*self.index).clone().into_inner();
-        index.extend(foreign_trait_items);
+        let index = (*self.index).clone().into_inner();
 
         debug!("Constructing Output");
         // This needs to be the default HashMap for compatibility with the public interface for
