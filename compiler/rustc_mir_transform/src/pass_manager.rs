@@ -143,7 +143,7 @@ fn run_passes_inner<'tcx>(
 
         dump_mir_for_phase_change(tcx, body);
         if validate || new_phase == MirPhase::Runtime(RuntimePhase::Optimized) {
-            validate_body(tcx, body, format!("after phase change to {}", new_phase));
+            validate_body(tcx, body, format!("after phase change to {}", new_phase.name()));
         }
 
         body.pass_count = 1;

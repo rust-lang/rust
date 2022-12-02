@@ -178,12 +178,6 @@ impl RuntimePhase {
     }
 }
 
-impl Display for MirPhase {
-    fn fmt(&self, f: &mut Formatter<'_>) -> fmt::Result {
-        f.write_str(self.name())
-    }
-}
-
 /// Where a specific `mir::Body` comes from.
 #[derive(Copy, Clone, Debug, PartialEq, Eq)]
 #[derive(HashStable, TyEncodable, TyDecodable, TypeFoldable, TypeVisitable)]
