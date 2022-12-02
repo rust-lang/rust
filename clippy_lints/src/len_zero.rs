@@ -219,7 +219,7 @@ fn check_trait_items(cx: &LateContext<'_>, visited_trait: &Item<'_>, trait_items
         let is_empty = sym!(is_empty);
 
         let is_empty_method_found = current_and_super_traits
-            .iter()
+            .items()
             .flat_map(|&i| cx.tcx.associated_items(i).filter_by_name_unhygienic(is_empty))
             .any(|i| {
                 i.kind == ty::AssocKind::Fn
