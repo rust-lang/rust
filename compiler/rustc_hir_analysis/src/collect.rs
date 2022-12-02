@@ -2075,6 +2075,7 @@ fn codegen_fn_attrs(tcx: TyCtxt<'_>, did: DefId) -> CodegenFnAttrs {
 
     if codegen_fn_attrs.flags.contains(CodegenFnAttrFlags::NAKED) {
         codegen_fn_attrs.flags |= CodegenFnAttrFlags::NO_COVERAGE;
+        codegen_fn_attrs.inline = InlineAttr::Never;
     }
 
     // Weak lang items have the same semantics as "std internal" symbols in the
