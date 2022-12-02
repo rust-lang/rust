@@ -113,7 +113,7 @@ pub struct Thread<'mir, 'tcx> {
     thread_name: Option<Vec<u8>>,
 
     /// The virtual call stack.
-    stack: Vec<Frame<'mir, 'tcx, Provenance, FrameData<'tcx>>>,
+    stack: Vec<Frame<'mir, 'tcx, Provenance, FrameExtra<'tcx>>>,
 
     /// The function to call when the stack ran empty, to figure out what to do next.
     /// Conceptually, this is the interpreter implementation of the things that happen 'after' the
@@ -232,7 +232,7 @@ impl VisitTags for Thread<'_, '_> {
     }
 }
 
-impl VisitTags for Frame<'_, '_, Provenance, FrameData<'_>> {
+impl VisitTags for Frame<'_, '_, Provenance, FrameExtra<'_>> {
     fn visit_tags(&self, visit: &mut dyn FnMut(BorTag)) {
         let Frame {
             return_place,
@@ -385,20 +385,20 @@ impl<'mir, 'tcx: 'mir> ThreadManager<'mir, 'tcx> {
     }
 
     /// Borrow the stack of the active thread.
-    pub fn active_thread_stack(&self) -> &[Frame<'mir, 'tcx, Provenance, FrameData<'tcx>>] {
+    pub fn active_thread_stack(&self) -> &[Frame<'mir, 'tcx, Provenance, FrameExtra<'tcx>>] {
         &self.threads[self.active_thread].stack
     }
 
     /// Mutably borrow the stack of the active thread.
     fn active_thread_stack_mut(
         &mut self,
-    ) -> &mut Vec<Frame<'mir, 'tcx, Provenance, FrameData<'tcx>>> {
+    ) -> &mut Vec<Frame<'mir, 'tcx, Provenance, FrameExtra<'tcx>>> {
         &mut self.threads[self.active_thread].stack
     }
 
     pub fn all_stacks(
         &self,
-    ) -> impl Iterator<Item = &[Frame<'mir, 'tcx, Provenance, FrameData<'tcx>>]> {
+    ) -> impl Iterator<Item = &[Frame<'mir, 'tcx, Provenance, FrameExtra<'tcx>>]> {
         self.threads.iter().map(|t| &t.stack[..])
     }
 
@@ -921,7 +921,7 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriInterpCxExt<'mir, 'tcx> {
     }
 
     #[inline]
-    fn active_thread_stack(&self) -> &[Frame<'mir, 'tcx, Provenance, FrameData<'tcx>>] {
+    fn active_thread_stack(&self) -> &[Frame<'mir, 'tcx, Provenance, FrameExtra<'tcx>>] {
         let this = self.eval_context_ref();
         this.machine.threads.active_thread_stack()
     }
@@ -929,7 +929,7 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriInterpCxExt<'mir, 'tcx> {
     #[inline]
     fn active_thread_stack_mut(
         &mut self,
-    ) -> &mut Vec<Frame<'mir, 'tcx, Provenance, FrameData<'tcx>>> {
+    ) -> &mut Vec<Frame<'mir, 'tcx, Provenance, FrameExtra<'tcx>>> {
         let this = self.eval_context_mut();
         this.machine.threads.active_thread_stack_mut()
     }

@@ -93,7 +93,7 @@ use super::{
     vector_clock::{VClock, VTimestamp, VectorIdx},
 };
 
-pub type AllocExtra = StoreBufferAlloc;
+pub type AllocState = StoreBufferAlloc;
 
 // Each store buffer must be bounded otherwise it will grow indefinitely.
 // However, bounding the store buffer means restricting the amount of weak

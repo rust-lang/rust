@@ -59,7 +59,7 @@ use super::{
     weak_memory::EvalContextExt as _,
 };
 
-pub type AllocExtra = VClockAlloc;
+pub type AllocState = VClockAlloc;
 
 /// Valid atomic read-write orderings, alias of atomic::Ordering (not non-exhaustive).
 #[derive(Copy, Clone, PartialEq, Eq, Debug)]

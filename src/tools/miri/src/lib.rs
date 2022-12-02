@@ -106,7 +106,7 @@ pub use crate::eval::{
 pub use crate::helpers::EvalContextExt as _;
 pub use crate::intptrcast::ProvenanceMode;
 pub use crate::machine::{
-    AllocExtra, FrameData, MiriInterpCx, MiriInterpCxExt, MiriMachine, MiriMemoryKind,
+    AllocExtra, FrameExtra, MiriInterpCx, MiriInterpCxExt, MiriMachine, MiriMemoryKind,
     PrimitiveLayouts, Provenance, ProvenanceExtra, PAGE_SIZE, STACK_ADDR, STACK_SIZE,
 };
 pub use crate::mono_hash_map::MonoHashMap;

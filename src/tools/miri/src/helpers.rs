@@ -988,7 +988,7 @@ impl<'mir, 'tcx> MiriMachine<'mir, 'tcx> {
         self.stack()[frame_idx].current_span()
     }
 
-    fn stack(&self) -> &[Frame<'mir, 'tcx, Provenance, machine::FrameData<'tcx>>] {
+    fn stack(&self) -> &[Frame<'mir, 'tcx, Provenance, machine::FrameExtra<'tcx>>] {
         self.threads.active_thread_stack()
     }
 

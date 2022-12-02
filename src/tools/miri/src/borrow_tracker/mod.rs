@@ -200,7 +200,7 @@ impl GlobalStateInner {
         FrameState { call_id, protected_tags: SmallVec::new() }
     }
 
-    pub fn end_call(&mut self, frame: &machine::FrameData<'_>) {
+    pub fn end_call(&mut self, frame: &machine::FrameExtra<'_>) {
         for tag in &frame
             .borrow_tracker
             .as_ref()
