@@ -455,23 +455,18 @@ impl<'history, 'ecx, 'mir, 'tcx> DiagnosticCx<'history, 'ecx, 'mir, 'tcx> {
         if !global.tracked_pointer_tags.contains(&item.tag()) {
             return;
         }
-        let summary = match self.operation {
-            Operation::Dealloc(_) => None,
-            Operation::Access(AccessOp { kind, tag, .. }) => Some((tag, kind)),
+        let cause = match self.operation {
+            Operation::Dealloc(_) => format!(" due to deallocation"),
+            Operation::Access(AccessOp { kind, tag, .. }) =>
+                format!(" due to {kind:?} access for {tag:?}"),
             Operation::Retag(RetagOp { orig_tag, permission, .. }) => {
-                let kind = match permission
-                    .expect("start_grant should set the current permission before popping a tag")
-                {
-                    Permission::SharedReadOnly => AccessKind::Read,
-                    Permission::Unique => AccessKind::Write,
-                    Permission::SharedReadWrite | Permission::Disabled => {
-                        panic!("Only SharedReadOnly and Unique retags can pop tags");
-                    }
-                };
-                Some((orig_tag, kind))
+                let permission = permission
+                    .expect("start_grant should set the current permission before popping a tag");
+                format!(" due to {permission:?} retag from {orig_tag:?}")
             }
         };
-        self.machine.emit_diagnostic(NonHaltingDiagnostic::PoppedPointerTag(*item, summary));
+
+        self.machine.emit_diagnostic(NonHaltingDiagnostic::PoppedPointerTag(*item, cause));
     }
 }
 

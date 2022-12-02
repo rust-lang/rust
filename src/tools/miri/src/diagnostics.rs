@@ -6,7 +6,7 @@ use log::trace;
 use rustc_span::{source_map::DUMMY_SP, SpanData, Symbol};
 use rustc_target::abi::{Align, Size};
 
-use crate::borrow_tracker::{stacked_borrows::diagnostics::TagHistory, AccessKind};
+use crate::borrow_tracker::stacked_borrows::diagnostics::TagHistory;
 use crate::*;
 
 /// Details of premature program termination.
@@ -67,9 +67,8 @@ pub enum NonHaltingDiagnostic {
     ///
     /// new_kind is `None` for base tags.
     CreatedPointerTag(NonZeroU64, Option<String>, Option<(AllocId, AllocRange, ProvenanceExtra)>),
-    /// This `Item` was popped from the borrow stack, either due to an access with the given tag or
-    /// a deallocation when the second argument is `None`.
-    PoppedPointerTag(Item, Option<(ProvenanceExtra, AccessKind)>),
+    /// This `Item` was popped from the borrow stack. The string explains the reason.
+    PoppedPointerTag(Item, String),
     CreatedCallId(CallId),
     CreatedAlloc(AllocId, Size, Align, MemoryKind<MiriMemoryKind>),
     FreedAlloc(AllocId),
@@ -399,15 +398,7 @@ impl<'mir, 'tcx> MiriMachine<'mir, 'tcx> {
                 format!(
                     "created tag {tag:?} for {kind} at {alloc_id:?}{range:?} derived from {orig_tag:?}"
                 ),
-            PoppedPointerTag(item, tag) =>
-                match tag {
-                    None => format!("popped tracked tag for item {item:?} due to deallocation",),
-                    Some((tag, access)) => {
-                        format!(
-                            "popped tracked tag for item {item:?} due to {access:?} access for {tag:?}",
-                        )
-                    }
-                },
+            PoppedPointerTag(item, cause) => format!("popped tracked tag for item {item:?}{cause}"),
             CreatedCallId(id) => format!("function call with id {id}"),
             CreatedAlloc(AllocId(id), size, align, kind) =>
                 format!(
