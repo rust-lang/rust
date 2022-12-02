@@ -37,9 +37,9 @@ pub const STACK_ADDR: u64 = 32 * PAGE_SIZE; // not really about the "stack", but
 pub const STACK_SIZE: u64 = 16 * PAGE_SIZE; // whatever
 
 /// Extra data stored with each stack frame
-pub struct FrameData<'tcx> {
+pub struct FrameExtra<'tcx> {
     /// Extra data for Stacked Borrows.
-    pub borrow_tracker: Option<borrow_tracker::FrameExtra>,
+    pub borrow_tracker: Option<borrow_tracker::FrameState>,
 
     /// If this is Some(), then this is a special "catch unwind" frame (the frame of `try_fn`
     /// called by `try`). When this frame is popped during unwinding a panic,
@@ -58,10 +58,10 @@ pub struct FrameData<'tcx> {
     pub is_user_relevant: bool,
 }
 
-impl<'tcx> std::fmt::Debug for FrameData<'tcx> {
+impl<'tcx> std::fmt::Debug for FrameExtra<'tcx> {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         // Omitting `timing`, it does not support `Debug`.
-        let FrameData { borrow_tracker, catch_unwind, timing: _, is_user_relevant: _ } = self;
+        let FrameExtra { borrow_tracker, catch_unwind, timing: _, is_user_relevant: _ } = self;
         f.debug_struct("FrameData")
             .field("borrow_tracker", borrow_tracker)
             .field("catch_unwind", catch_unwind)
@@ -69,9 +69,9 @@ impl<'tcx> std::fmt::Debug for FrameData<'tcx> {
     }
 }
 
-impl VisitTags for FrameData<'_> {
+impl VisitTags for FrameExtra<'_> {
     fn visit_tags(&self, visit: &mut dyn FnMut(BorTag)) {
-        let FrameData { catch_unwind, borrow_tracker, timing: _, is_user_relevant: _ } = self;
+        let FrameExtra { catch_unwind, borrow_tracker, timing: _, is_user_relevant: _ } = self;
 
         catch_unwind.visit_tags(visit);
         borrow_tracker.visit_tags(visit);
@@ -255,13 +255,13 @@ impl ProvenanceExtra {
 #[derive(Debug, Clone)]
 pub struct AllocExtra {
     /// Global state of the borrow tracker, if enabled.
-    pub borrow_tracker: Option<borrow_tracker::AllocExtra>,
+    pub borrow_tracker: Option<borrow_tracker::AllocState>,
     /// Data race detection via the use of a vector-clock,
     ///  this is only added if it is enabled.
-    pub data_race: Option<data_race::AllocExtra>,
+    pub data_race: Option<data_race::AllocState>,
     /// Weak memory emulation via the use of store buffers,
     ///  this is only added if it is enabled.
-    pub weak_memory: Option<weak_memory::AllocExtra>,
+    pub weak_memory: Option<weak_memory::AllocState>,
 }
 
 impl VisitTags for AllocExtra {
@@ -736,7 +736,7 @@ impl<'mir, 'tcx> Machine<'mir, 'tcx> for MiriMachine<'mir, 'tcx> {
     type MemoryKind = MiriMemoryKind;
     type ExtraFnVal = Dlsym;
 
-    type FrameExtra = FrameData<'tcx>;
+    type FrameExtra = FrameExtra<'tcx>;
     type AllocExtra = AllocExtra;
 
     type Provenance = Provenance;
@@ -908,14 +908,14 @@ impl<'mir, 'tcx> Machine<'mir, 'tcx> for MiriMachine<'mir, 'tcx> {
             .map(|bt| bt.borrow_mut().new_allocation(id, alloc.size(), kind, &ecx.machine));
 
         let race_alloc = ecx.machine.data_race.as_ref().map(|data_race| {
-            data_race::AllocExtra::new_allocation(
+            data_race::AllocState::new_allocation(
                 data_race,
                 &ecx.machine.threads,
                 alloc.size(),
                 kind,
             )
         });
-        let buffer_alloc = ecx.machine.weak_memory.then(weak_memory::AllocExtra::new_allocation);
+        let buffer_alloc = ecx.machine.weak_memory.then(weak_memory::AllocState::new_allocation);
         let alloc: Allocation<Provenance, Self::AllocExtra> = alloc.adjust_from_tcx(
             &ecx.tcx,
             AllocExtra { borrow_tracker, data_race: race_alloc, weak_memory: buffer_alloc },
@@ -1070,7 +1070,7 @@ impl<'mir, 'tcx> Machine<'mir, 'tcx> for MiriMachine<'mir, 'tcx> {
     fn init_frame_extra(
         ecx: &mut InterpCx<'mir, 'tcx, Self>,
         frame: Frame<'mir, 'tcx, Provenance>,
-    ) -> InterpResult<'tcx, Frame<'mir, 'tcx, Provenance, FrameData<'tcx>>> {
+    ) -> InterpResult<'tcx, Frame<'mir, 'tcx, Provenance, FrameExtra<'tcx>>> {
         // Start recording our event before doing anything else
         let timing = if let Some(profiler) = ecx.machine.profiler.as_ref() {
             let fn_name = frame.instance.to_string();
@@ -1088,7 +1088,7 @@ impl<'mir, 'tcx> Machine<'mir, 'tcx> for MiriMachine<'mir, 'tcx> {
 
         let borrow_tracker = ecx.machine.borrow_tracker.as_ref();
 
-        let extra = FrameData {
+        let extra = FrameExtra {
             borrow_tracker: borrow_tracker.map(|bt| bt.borrow_mut().new_frame(&ecx.machine)),
             catch_unwind: None,
             timing,
@@ -1157,7 +1157,7 @@ impl<'mir, 'tcx> Machine<'mir, 'tcx> for MiriMachine<'mir, 'tcx> {
     #[inline(always)]
     fn after_stack_pop(
         ecx: &mut InterpCx<'mir, 'tcx, Self>,
-        mut frame: Frame<'mir, 'tcx, Provenance, FrameData<'tcx>>,
+        mut frame: Frame<'mir, 'tcx, Provenance, FrameExtra<'tcx>>,
         unwinding: bool,
     ) -> InterpResult<'tcx, StackPopJump> {
         if frame.extra.is_user_relevant {

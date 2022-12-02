@@ -125,7 +125,7 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriInterpCxExt<'mir, 'tcx> {
 
     fn handle_stack_pop_unwind(
         &mut self,
-        mut extra: FrameData<'tcx>,
+        mut extra: FrameExtra<'tcx>,
         unwinding: bool,
     ) -> InterpResult<'tcx, StackPopJump> {
         let this = self.eval_context_mut();
