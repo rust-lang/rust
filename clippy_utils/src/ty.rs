@@ -30,7 +30,7 @@ use std::iter;
 
 use crate::{match_def_path, path_res, paths};
 
-// Checks if the given type implements copy.
+/// Checks if the given type implements copy.
 pub fn is_copy<'tcx>(cx: &LateContext<'tcx>, ty: Ty<'tcx>) -> bool {
     ty.is_copy_modulo_regions(cx.tcx, cx.param_env)
 }
