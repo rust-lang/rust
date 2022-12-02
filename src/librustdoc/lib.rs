@@ -781,10 +781,7 @@ fn main_args(at_args: &[String]) -> MainResult {
         let sess = compiler.session();
 
         if sess.opts.describe_lints {
-            let mut lint_store = rustc_lint::new_lint_store(
-                sess.opts.unstable_opts.no_interleave_lints,
-                sess.enable_internal_lints(),
-            );
+            let mut lint_store = rustc_lint::new_lint_store(sess.enable_internal_lints());
             let registered_lints = if let Some(register_lints) = compiler.register_lints() {
                 register_lints(sess, &mut lint_store);
                 true
