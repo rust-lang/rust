@@ -1,16 +1,15 @@
 use smallvec::SmallVec;
 use std::fmt;
 
-use rustc_middle::mir::interpret::{alloc_range, AllocId, AllocRange};
+use rustc_middle::mir::interpret::{alloc_range, AllocId, AllocRange, InterpError};
 use rustc_span::{Span, SpanData};
 use rustc_target::abi::Size;
 
-use crate::stacked_borrows::{
-    err_sb_ub, AccessKind, GlobalStateInner, Permission, ProtectorKind, Stack,
+use crate::borrow_tracker::{
+    stacked_borrows::{err_sb_ub, Permission},
+    AccessKind, GlobalStateInner, ProtectorKind,
 };
 use crate::*;
-
-use rustc_middle::mir::interpret::InterpError;
 
 #[derive(Clone, Debug)]
 pub struct AllocHistory {
@@ -53,7 +52,7 @@ impl Creation {
 
 #[derive(Clone, Debug)]
 struct Invalidation {
-    tag: SbTag,
+    tag: BorTag,
     range: AllocRange,
     span: Span,
     cause: InvalidationCause,
@@ -100,7 +99,7 @@ impl fmt::Display for InvalidationCause {
 
 #[derive(Clone, Debug)]
 struct Protection {
-    tag: SbTag,
+    tag: BorTag,
     span: Span,
 }
 
@@ -135,7 +134,7 @@ impl<'ecx, 'mir, 'tcx> DiagnosticCxBuilder<'ecx, 'mir, 'tcx> {
     pub fn retag(
         machine: &'ecx MiriMachine<'mir, 'tcx>,
         cause: RetagCause,
-        new_tag: SbTag,
+        new_tag: BorTag,
         orig_tag: ProvenanceExtra,
         range: AllocRange,
     ) -> Self {
@@ -185,7 +184,7 @@ enum Operation {
 #[derive(Debug, Clone)]
 struct RetagOp {
     cause: RetagCause,
-    new_tag: SbTag,
+    new_tag: BorTag,
     orig_tag: ProvenanceExtra,
     range: AllocRange,
     permission: Option<Permission>,
@@ -257,7 +256,7 @@ impl<'history, 'ecx, 'mir, 'tcx> DiagnosticCx<'history, 'ecx, 'mir, 'tcx> {
             .push(Creation { retag: op.clone(), span: self.machine.current_span() });
     }
 
-    pub fn log_invalidation(&mut self, tag: SbTag) {
+    pub fn log_invalidation(&mut self, tag: BorTag) {
         let mut span = self.machine.current_span();
         let (range, cause) = match &self.operation {
             Operation::Retag(RetagOp { cause, range, permission, .. }) => {
@@ -288,8 +287,8 @@ impl<'history, 'ecx, 'mir, 'tcx> DiagnosticCx<'history, 'ecx, 'mir, 'tcx> {
 
     pub fn get_logs_relevant_to(
         &self,
-        tag: SbTag,
-        protector_tag: Option<SbTag>,
+        tag: BorTag,
+        protector_tag: Option<BorTag>,
     ) -> Option<TagHistory> {
         let Some(created) = self.history
             .creations
@@ -410,7 +409,7 @@ impl<'history, 'ecx, 'mir, 'tcx> DiagnosticCx<'history, 'ecx, 'mir, 'tcx> {
             .all_stacks()
             .flatten()
             .map(|frame| {
-                frame.extra.stacked_borrows.as_ref().expect("we should have Stacked Borrows data")
+                frame.extra.borrow_tracker.as_ref().expect("we should have borrow tracking data")
             })
             .find(|frame| frame.protected_tags.contains(&item.tag()))
             .map(|frame| frame.call_id)

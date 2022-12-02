@@ -53,6 +53,7 @@ extern crate rustc_session;
 extern crate rustc_span;
 extern crate rustc_target;
 
+mod borrow_tracker;
 mod clock;
 mod concurrency;
 mod diagnostics;
@@ -64,7 +65,6 @@ mod mono_hash_map;
 mod operator;
 mod range_map;
 mod shims;
-mod stacked_borrows;
 mod tag_gc;
 
 // Establish a "crate-wide prelude": we often import `crate::*`.
@@ -84,6 +84,12 @@ pub use crate::shims::time::EvalContextExt as _;
 pub use crate::shims::tls::TlsData;
 pub use crate::shims::EvalContextExt as _;
 
+pub use crate::borrow_tracker::stacked_borrows::{
+    EvalContextExt as _, Item, Permission, Stack, Stacks,
+};
+pub use crate::borrow_tracker::{
+    BorTag, BorrowTrackerMethod, CallId, EvalContextExt as _, RetagFields,
+};
 pub use crate::clock::{Clock, Instant};
 pub use crate::concurrency::{
     data_race::{AtomicFenceOrd, AtomicReadOrd, AtomicRwOrd, AtomicWriteOrd, EvalContextExt as _},
@@ -106,9 +112,6 @@ pub use crate::machine::{
 pub use crate::mono_hash_map::MonoHashMap;
 pub use crate::operator::EvalContextExt as _;
 pub use crate::range_map::RangeMap;
-pub use crate::stacked_borrows::{
-    CallId, EvalContextExt as _, Item, Permission, RetagFields, SbTag,
-};
 pub use crate::tag_gc::{EvalContextExt as _, VisitTags};
 
 /// Insert rustc arguments at the beginning of the argument list that Miri wants to be

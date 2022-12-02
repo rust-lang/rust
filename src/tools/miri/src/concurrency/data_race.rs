@@ -670,7 +670,7 @@ pub struct VClockAlloc {
 }
 
 impl VisitTags for VClockAlloc {
-    fn visit_tags(&self, _visit: &mut dyn FnMut(SbTag)) {
+    fn visit_tags(&self, _visit: &mut dyn FnMut(BorTag)) {
         // No tags here.
     }
 }
@@ -1220,7 +1220,7 @@ pub struct GlobalState {
 }
 
 impl VisitTags for GlobalState {
-    fn visit_tags(&self, _visit: &mut dyn FnMut(SbTag)) {
+    fn visit_tags(&self, _visit: &mut dyn FnMut(BorTag)) {
         // We don't have any tags.
     }
 }

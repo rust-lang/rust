@@ -9,6 +9,7 @@ use std::thread;
 
 use log::info;
 
+use crate::borrow_tracker::RetagFields;
 use rustc_data_structures::fx::FxHashSet;
 use rustc_hir::def::Namespace;
 use rustc_hir::def_id::DefId;
@@ -87,7 +88,7 @@ pub struct MiriConfig {
     /// Determine if validity checking is enabled.
     pub validate: bool,
     /// Determines if Stacked Borrows is enabled.
-    pub stacked_borrows: bool,
+    pub borrow_tracker: Option<BorrowTrackerMethod>,
     /// Controls alignment checking.
     pub check_alignment: AlignmentCheck,
     /// Controls function [ABI](Abi) checking.
@@ -103,7 +104,7 @@ pub struct MiriConfig {
     /// The seed to use when non-determinism or randomness are required (e.g. ptr-to-int cast, `getrandom()`).
     pub seed: Option<u64>,
     /// The stacked borrows pointer ids to report about
-    pub tracked_pointer_tags: FxHashSet<SbTag>,
+    pub tracked_pointer_tags: FxHashSet<BorTag>,
     /// The stacked borrows call IDs to report about
     pub tracked_call_ids: FxHashSet<CallId>,
     /// The allocation ids to report about.
@@ -138,7 +139,7 @@ pub struct MiriConfig {
     /// The location of a shared object file to load when calling external functions
     /// FIXME! consider allowing users to specify paths to multiple SO files, or to a directory
     pub external_so_file: Option<PathBuf>,
-    /// Run a garbage collector for SbTags every N basic blocks.
+    /// Run a garbage collector for BorTags every N basic blocks.
     pub gc_interval: u32,
     /// The number of CPUs to be reported by miri.
     pub num_cpus: u32,
@@ -149,7 +150,7 @@ impl Default for MiriConfig {
         MiriConfig {
             env: vec![],
             validate: true,
-            stacked_borrows: true,
+            borrow_tracker: Some(BorrowTrackerMethod::StackedBorrows),
             check_alignment: AlignmentCheck::Int,
             check_abi: true,
             isolated_op: IsolatedOp::Reject(RejectOpWith::Abort),

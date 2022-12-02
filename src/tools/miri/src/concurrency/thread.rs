@@ -212,7 +212,7 @@ impl<'mir, 'tcx> Thread<'mir, 'tcx> {
 }
 
 impl VisitTags for Thread<'_, '_> {
-    fn visit_tags(&self, visit: &mut dyn FnMut(SbTag)) {
+    fn visit_tags(&self, visit: &mut dyn FnMut(BorTag)) {
         let Thread {
             panic_payload,
             last_error,
@@ -233,7 +233,7 @@ impl VisitTags for Thread<'_, '_> {
 }
 
 impl VisitTags for Frame<'_, '_, Provenance, FrameData<'_>> {
-    fn visit_tags(&self, visit: &mut dyn FnMut(SbTag)) {
+    fn visit_tags(&self, visit: &mut dyn FnMut(BorTag)) {
         let Frame {
             return_place,
             locals,
@@ -316,7 +316,7 @@ pub struct ThreadManager<'mir, 'tcx> {
 }
 
 impl VisitTags for ThreadManager<'_, '_> {
-    fn visit_tags(&self, visit: &mut dyn FnMut(SbTag)) {
+    fn visit_tags(&self, visit: &mut dyn FnMut(BorTag)) {
         let ThreadManager {
             threads,
             thread_local_alloc_ids,

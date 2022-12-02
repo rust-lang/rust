@@ -278,7 +278,7 @@ struct UnblockCallback {
 }
 
 impl VisitTags for UnblockCallback {
-    fn visit_tags(&self, _visit: &mut dyn FnMut(SbTag)) {}
+    fn visit_tags(&self, _visit: &mut dyn FnMut(BorTag)) {}
 }
 
 impl<'mir, 'tcx: 'mir> MachineCallback<'mir, 'tcx> for UnblockCallback {

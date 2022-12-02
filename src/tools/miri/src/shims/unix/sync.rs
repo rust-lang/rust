@@ -747,7 +747,7 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriInterpCxExt<'mir, 'tcx> {
         }
 
         impl<'tcx> VisitTags for Callback<'tcx> {
-            fn visit_tags(&self, visit: &mut dyn FnMut(SbTag)) {
+            fn visit_tags(&self, visit: &mut dyn FnMut(BorTag)) {
                 let Callback { active_thread: _, mutex_id: _, id: _, dest } = self;
                 dest.visit_tags(visit);
             }
