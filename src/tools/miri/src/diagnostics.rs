@@ -6,7 +6,7 @@ use log::trace;
 use rustc_span::{source_map::DUMMY_SP, SpanData, Symbol};
 use rustc_target::abi::{Align, Size};
 
-use crate::stacked_borrows::{diagnostics::TagHistory, AccessKind};
+use crate::borrow_tracker::{stacked_borrows::diagnostics::TagHistory, AccessKind};
 use crate::*;
 
 /// Details of premature program termination.

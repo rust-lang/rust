@@ -9,6 +9,7 @@ use std::thread;
 
 use log::info;
 
+use crate::borrow_tracker::RetagFields;
 use rustc_data_structures::fx::FxHashSet;
 use rustc_hir::def::Namespace;
 use rustc_hir::def_id::DefId;
