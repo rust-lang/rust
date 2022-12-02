@@ -147,6 +147,7 @@ impl<'hir> LoweringContext<'_, 'hir> {
                 ),
                 ExprKind::Async(capture_clause, closure_node_id, block) => self.make_async_expr(
                     *capture_clause,
+                    None,
                     *closure_node_id,
                     None,
                     e.span,
@@ -581,6 +582,7 @@ impl<'hir> LoweringContext<'_, 'hir> {
     pub(super) fn make_async_expr(
         &mut self,
         capture_clause: CaptureBy,
+        outer_hir_id: Option<hir::HirId>,
         closure_node_id: NodeId,
         ret_ty: Option<hir::FnRetTy<'hir>>,
         span: Span,
@@ -647,18 +649,20 @@ impl<'hir> LoweringContext<'_, 'hir> {
 
             hir::ExprKind::Closure(c)
         };
-        let parent_has_track_caller = self
-            .attrs
-            .values()
-            .find(|attrs| attrs.into_iter().find(|attr| attr.has_name(sym::track_caller)).is_some())
-            .is_some();
-        let unstable_span =
-            self.mark_span_with_reason(DesugaringKind::Async, span, self.allow_gen_future.clone());
 
-        let hir_id = if parent_has_track_caller {
-            let generator_hir_id = self.lower_node_id(closure_node_id);
+        let track_caller = outer_hir_id
+            .and_then(|id| self.attrs.get(&id.local_id))
+            .map_or(false, |attrs| attrs.into_iter().any(|attr| attr.has_name(sym::track_caller)));
+
+        let hir_id = self.lower_node_id(closure_node_id);
+        if track_caller {
+            let unstable_span = self.mark_span_with_reason(
+                DesugaringKind::Async,
+                span,
+                self.allow_gen_future.clone(),
+            );
             self.lower_attrs(
-                generator_hir_id,
+                hir_id,
                 &[Attribute {
                     kind: AttrKind::Normal(ptr::P(NormalAttr {
                         item: AttrItem {
@@ -673,10 +677,7 @@ impl<'hir> LoweringContext<'_, 'hir> {
                     span: unstable_span,
                 }],
             );
-            generator_hir_id
-        } else {
-            self.lower_node_id(closure_node_id)
-        };
+        }
 
         let generator = hir::Expr { hir_id, kind: generator_kind, span: self.lower_span(span) };
 
@@ -1012,6 +1013,7 @@ impl<'hir> LoweringContext<'_, 'hir> {
 
                 let async_body = this.make_async_expr(
                     capture_clause,
+                    None,
                     inner_closure_id,
                     async_ret_ty,
                     body.span,
