@@ -25,7 +25,7 @@ mod stack;
 pub use stack::Stack;
 pub mod diagnostics;
 
-pub type AllocExtra = Stacks;
+pub type AllocState = Stacks;
 
 /// Extra per-allocation state.
 #[derive(Clone, Debug)]
@@ -500,10 +500,6 @@ impl Stacks {
         })?;
         Ok(())
     }
-
-    fn expose_tag(&mut self, tag: BorTag) {
-        self.exposed_tags.insert(tag);
-    }
 }
 
 /// Retagging/reborrowing.  There is some policy in here, such as which permissions
@@ -567,10 +563,7 @@ trait EvalContextPrivExt<'mir: 'ecx, 'tcx: 'mir, 'ecx>: crate::MiriInterpCxExt<'
                     // uncovers a non-supported `extern static`.
                     let extra = this.get_alloc_extra(alloc_id)?;
                     let mut stacked_borrows = extra
-                        .borrow_tracker
-                        .as_ref()
-                        .expect("We should have borrow tracking data")
-                        .assert_sb()
+                        .borrow_tracker_sb()
                         .borrow_mut();
                     // Note that we create a *second* `DiagnosticCxBuilder` below for the actual retag.
                     // FIXME: can this be done cleaner?
@@ -681,12 +674,7 @@ trait EvalContextPrivExt<'mir: 'ecx, 'tcx: 'mir, 'ecx>: crate::MiriInterpCxExt<'
                 // We have to use shared references to alloc/memory_extra here since
                 // `visit_freeze_sensitive` needs to access the global state.
                 let alloc_extra = this.get_alloc_extra(alloc_id)?;
-                let mut stacked_borrows = alloc_extra
-                    .borrow_tracker
-                    .as_ref()
-                    .expect("We should have borrow tracking data")
-                    .assert_sb()
-                    .borrow_mut();
+                let mut stacked_borrows = alloc_extra.borrow_tracker_sb().borrow_mut();
                 this.visit_freeze_sensitive(place, size, |mut range, frozen| {
                     // Adjust range.
                     range.start += base_offset;
@@ -736,12 +724,7 @@ trait EvalContextPrivExt<'mir: 'ecx, 'tcx: 'mir, 'ecx>: crate::MiriInterpCxExt<'
         // Note that this asserts that the allocation is mutable -- but since we are creating a
         // mutable pointer, that seems reasonable.
         let (alloc_extra, machine) = this.get_alloc_extra_mut(alloc_id)?;
-        let stacked_borrows = alloc_extra
-            .borrow_tracker
-            .as_mut()
-            .expect("We should have borrow tracking data")
-            .assert_sb_mut()
-            .get_mut();
+        let stacked_borrows = alloc_extra.borrow_tracker_sb_mut().get_mut();
         let item = Item::new(new_tag, perm, protect.is_some());
         let range = alloc_range(base_offset, size);
         let global = machine.borrow_tracker.as_ref().unwrap().borrow();
@@ -993,13 +976,7 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriInterpCxExt<'mir, 'tcx> {
                 // uncovers a non-supported `extern static`.
                 let alloc_extra = this.get_alloc_extra(alloc_id)?;
                 trace!("Stacked Borrows tag {tag:?} exposed in {alloc_id:?}");
-                alloc_extra
-                    .borrow_tracker
-                    .as_ref()
-                    .expect("We should have borrow tracking data")
-                    .assert_sb()
-                    .borrow_mut()
-                    .expose_tag(tag);
+                alloc_extra.borrow_tracker_sb().borrow_mut().exposed_tags.insert(tag);
             }
             AllocKind::Function | AllocKind::VTable | AllocKind::Dead => {
                 // No stacked borrows on these allocations.
@@ -1011,12 +988,7 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriInterpCxExt<'mir, 'tcx> {
     fn print_stacks(&mut self, alloc_id: AllocId) -> InterpResult<'tcx> {
         let this = self.eval_context_mut();
         let alloc_extra = this.get_alloc_extra(alloc_id)?;
-        let stacks = alloc_extra
-            .borrow_tracker
-            .as_ref()
-            .expect("We should have borrow tracking data")
-            .assert_sb()
-            .borrow();
+        let stacks = alloc_extra.borrow_tracker_sb().borrow();
         for (range, stack) in stacks.stacks.iter_all() {
             print!("{range:?}: [");
             if let Some(bottom) = stack.unknown_bottom() {

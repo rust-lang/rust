@@ -39,7 +39,7 @@ pub const STACK_SIZE: u64 = 16 * PAGE_SIZE; // whatever
 /// Extra data stored with each stack frame
 pub struct FrameData<'tcx> {
     /// Extra data for Stacked Borrows.
-    pub borrow_tracker: Option<borrow_tracker::FrameExtra>,
+    pub borrow_tracker: Option<borrow_tracker::FrameState>,
 
     /// If this is Some(), then this is a special "catch unwind" frame (the frame of `try_fn`
     /// called by `try`). When this frame is popped during unwinding a panic,
@@ -255,7 +255,7 @@ impl ProvenanceExtra {
 #[derive(Debug, Clone)]
 pub struct AllocExtra {
     /// Global state of the borrow tracker, if enabled.
-    pub borrow_tracker: Option<borrow_tracker::AllocExtra>,
+    pub borrow_tracker: Option<borrow_tracker::AllocState>,
     /// Data race detection via the use of a vector-clock,
     ///  this is only added if it is enabled.
     pub data_race: Option<data_race::AllocExtra>,

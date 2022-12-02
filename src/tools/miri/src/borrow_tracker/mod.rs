@@ -55,9 +55,9 @@ impl fmt::Debug for BorTag {
     }
 }
 
-/// Per-frame data for borrow tracking
+/// Per-call-stack-frame data for borrow tracking
 #[derive(Debug)]
-pub struct FrameExtra {
+pub struct FrameState {
     /// The ID of the call this frame corresponds to.
     pub call_id: CallId,
 
@@ -72,7 +72,7 @@ pub struct FrameExtra {
     pub protected_tags: SmallVec<[BorTag; 2]>,
 }
 
-impl VisitTags for FrameExtra {
+impl VisitTags for FrameState {
     fn visit_tags(&self, _visit: &mut dyn FnMut(BorTag)) {
         // `protected_tags` are fine to GC.
     }
@@ -190,14 +190,14 @@ impl GlobalStateInner {
         id
     }
 
-    pub fn new_frame(&mut self, machine: &MiriMachine<'_, '_>) -> FrameExtra {
+    pub fn new_frame(&mut self, machine: &MiriMachine<'_, '_>) -> FrameState {
         let call_id = self.next_call_id;
         trace!("new_frame: Assigning call ID {}", call_id);
         if self.tracked_call_ids.contains(&call_id) {
             machine.emit_diagnostic(NonHaltingDiagnostic::CreatedCallId(call_id));
         }
         self.next_call_id = NonZeroU64::new(call_id.get() + 1).unwrap();
-        FrameExtra { call_id, protected_tags: SmallVec::new() }
+        FrameState { call_id, protected_tags: SmallVec::new() }
     }
 
     pub fn end_call(&mut self, frame: &machine::FrameData<'_>) {
@@ -253,10 +253,10 @@ impl GlobalStateInner {
         alloc_size: Size,
         kind: MemoryKind<machine::MiriMemoryKind>,
         machine: &MiriMachine<'_, '_>,
-    ) -> AllocExtra {
+    ) -> AllocState {
         match self.borrow_tracker_method {
             BorrowTrackerMethod::StackedBorrows =>
-                AllocExtra::StackedBorrows(Box::new(RefCell::new(Stacks::new_allocation(
+                AllocState::StackedBorrows(Box::new(RefCell::new(Stacks::new_allocation(
                     id, alloc_size, self, kind, machine,
                 )))),
         }
@@ -292,24 +292,30 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriInterpCxExt<'mir, 'tcx> {
 
 /// Extra per-allocation data for borrow tracking
 #[derive(Debug, Clone)]
-pub enum AllocExtra {
+pub enum AllocState {
     /// Data corresponding to Stacked Borrows
-    StackedBorrows(Box<RefCell<stacked_borrows::AllocExtra>>),
+    StackedBorrows(Box<RefCell<stacked_borrows::AllocState>>),
 }
 
-impl AllocExtra {
-    pub fn assert_sb(&self) -> &RefCell<stacked_borrows::AllocExtra> {
-        match self {
-            AllocExtra::StackedBorrows(ref sb) => sb,
+impl machine::AllocExtra {
+    #[track_caller]
+    pub fn borrow_tracker_sb(&self) -> &RefCell<stacked_borrows::AllocState> {
+        match self.borrow_tracker {
+            Some(AllocState::StackedBorrows(ref sb)) => sb,
+            _ => panic!("expected Stacked Borrows borrow tracking, got something else"),
         }
     }
 
-    pub fn assert_sb_mut(&mut self) -> &mut RefCell<stacked_borrows::AllocExtra> {
-        match self {
-            AllocExtra::StackedBorrows(ref mut sb) => sb,
+    #[track_caller]
+    pub fn borrow_tracker_sb_mut(&mut self) -> &mut RefCell<stacked_borrows::AllocState> {
+        match self.borrow_tracker {
+            Some(AllocState::StackedBorrows(ref mut sb)) => sb,
+            _ => panic!("expected Stacked Borrows borrow tracking, got something else"),
         }
     }
+}
 
+impl AllocState {
     pub fn before_memory_read<'tcx>(
         &self,
         alloc_id: AllocId,
@@ -318,7 +324,7 @@ impl AllocExtra {
         machine: &MiriMachine<'_, 'tcx>,
     ) -> InterpResult<'tcx> {
         match self {
-            AllocExtra::StackedBorrows(sb) =>
+            AllocState::StackedBorrows(sb) =>
                 sb.borrow_mut().before_memory_read(alloc_id, prov_extra, range, machine),
         }
     }
@@ -331,7 +337,7 @@ impl AllocExtra {
         machine: &mut MiriMachine<'_, 'tcx>,
     ) -> InterpResult<'tcx> {
         match self {
-            AllocExtra::StackedBorrows(sb) =>
+            AllocState::StackedBorrows(sb) =>
                 sb.get_mut().before_memory_write(alloc_id, prov_extra, range, machine),
         }
     }
@@ -344,22 +350,22 @@ impl AllocExtra {
         machine: &mut MiriMachine<'_, 'tcx>,
     ) -> InterpResult<'tcx> {
         match self {
-            AllocExtra::StackedBorrows(sb) =>
+            AllocState::StackedBorrows(sb) =>
                 sb.get_mut().before_memory_deallocation(alloc_id, prov_extra, range, machine),
         }
     }
 
     pub fn remove_unreachable_tags(&self, tags: &FxHashSet<BorTag>) {
         match self {
-            AllocExtra::StackedBorrows(sb) => sb.borrow_mut().remove_unreachable_tags(tags),
+            AllocState::StackedBorrows(sb) => sb.borrow_mut().remove_unreachable_tags(tags),
         }
     }
 }
 
-impl VisitTags for AllocExtra {
+impl VisitTags for AllocState {
     fn visit_tags(&self, visit: &mut dyn FnMut(BorTag)) {
         match self {
-            AllocExtra::StackedBorrows(sb) => sb.visit_tags(visit),
+            AllocState::StackedBorrows(sb) => sb.visit_tags(visit),
         }
     }
 }
