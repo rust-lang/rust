@@ -197,9 +197,7 @@ a.srclink,
 #help-button > a,
 details.rustdoc-toggle.top-doc > summary,
 details.rustdoc-toggle.non-exhaustive > summary,
-.scraped-example-title,
-.more-examples-toggle summary, .more-examples-toggle .hide-more,
-.example-links a,
+.scraped-example-list,
 /* This selector is for the items listed in the "all items" page. */
 ul.all-items {
 	font-family: "Fira Sans", Arial, NanumBarunGothic, sans-serif;
