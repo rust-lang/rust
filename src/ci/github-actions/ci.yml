@@ -298,17 +298,6 @@ jobs:
               SCRIPT: make ci-subset-2
             <<: *job-windows-xl
 
-          - name: mingw-check
-            <<: *job-linux-xl
-
-          - name: x86_64-gnu-llvm-13
-            <<: *job-linux-xl
-
-          - name: x86_64-gnu-tools
-            env:
-              CI_ONLY_WHEN_SUBMODULES_CHANGED: 1
-            <<: *job-linux-xl
-
   auto:
     permissions:
       actions: write # for rust-lang/simpleinfra/github-actions/cancel-outdated-builds
