@@ -87,7 +87,7 @@ pub struct MiriConfig {
     /// Determine if validity checking is enabled.
     pub validate: bool,
     /// Determines if Stacked Borrows is enabled.
-    pub stacked_borrows: bool,
+    pub borrow_tracker: Option<BorrowTrackerMethod>,
     /// Controls alignment checking.
     pub check_alignment: AlignmentCheck,
     /// Controls function [ABI](Abi) checking.
@@ -149,7 +149,7 @@ impl Default for MiriConfig {
         MiriConfig {
             env: vec![],
             validate: true,
-            stacked_borrows: true,
+            borrow_tracker: Some(BorrowTrackerMethod::StackedBorrows),
             check_alignment: AlignmentCheck::Int,
             check_abi: true,
             isolated_op: IsolatedOp::Reject(RejectOpWith::Abort),

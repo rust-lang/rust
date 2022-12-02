@@ -317,7 +317,7 @@ fn main() {
         } else if arg == "-Zmiri-disable-validation" {
             miri_config.validate = false;
         } else if arg == "-Zmiri-disable-stacked-borrows" {
-            miri_config.stacked_borrows = false;
+            miri_config.borrow_tracker = None;
         } else if arg == "-Zmiri-disable-data-race-detector" {
             miri_config.data_race_detector = false;
             miri_config.weak_memory_emulation = false;

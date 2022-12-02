@@ -154,7 +154,7 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: MiriInterpCxExt<'mir, 'tcx> {
     fn garbage_collect_tags(&mut self) -> InterpResult<'tcx> {
         let this = self.eval_context_mut();
         // No reason to do anything at all if stacked borrows is off.
-        if this.machine.stacked_borrows.is_none() {
+        if this.machine.borrow_tracker.is_none() {
             return Ok(());
         }
 
@@ -167,17 +167,13 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: MiriInterpCxExt<'mir, 'tcx> {
         Ok(())
     }
 
-    fn remove_unreachable_tags(&mut self, tags: FxHashSet<SbTag>) {
+    fn remove_unreachable_tags(&mut self, tags: FxHashSet<BorTag>) {
         let this = self.eval_context_mut();
         this.memory.alloc_map().iter(|it| {
             for (_id, (_kind, alloc)) in it {
-                alloc
-                    .extra
-                    .stacked_borrows
-                    .as_ref()
-                    .unwrap()
-                    .borrow_mut()
-                    .remove_unreachable_tags(&tags);
+                if let Some(bt) = &alloc.extra.borrow_tracker {
+                    bt.remove_unreachable_tags(&tags);
+                }
             }
         });
     }

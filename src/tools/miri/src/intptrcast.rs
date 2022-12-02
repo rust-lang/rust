@@ -112,8 +112,8 @@ impl<'mir, 'tcx> GlobalStateInner {
         if global_state.provenance_mode != ProvenanceMode::Strict {
             trace!("Exposing allocation id {alloc_id:?}");
             global_state.exposed.insert(alloc_id);
-            if ecx.machine.stacked_borrows.is_some() {
-                ecx.expose_tag(alloc_id, sb)?;
+            if ecx.machine.borrow_tracker.is_some() {
+                ecx.expose_tag(alloc_id, tag)?;
             }
         }
         Ok(())
