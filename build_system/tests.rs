@@ -219,6 +219,16 @@ const BASE_SYSROOT_SUITE: &[TestCase] = &[
         ]);
         runner.run_out_command("mod_bench", []);
     }),
+    TestCase::new("aot.issue-72793", &|runner| {
+        runner.run_rustc([
+            "example/issue-72793.rs",
+            "--crate-type",
+            "bin",
+            "--target",
+            &runner.target_compiler.triple,
+        ]);
+        runner.run_out_command("issue-72793", []);
+    }),
 ];
 
 pub(crate) static RAND_REPO: GitRepo =
