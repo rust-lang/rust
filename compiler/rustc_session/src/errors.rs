@@ -291,20 +291,33 @@ pub fn report_lit_error(sess: &ParseSess, err: LitError, lit: token::Lit, span: 
         s.len() > 1 && s.starts_with(first_chars) && s[1..].chars().all(|c| c.is_ascii_digit())
     }
 
-    // Try to lowercase the prefix if it's a valid base prefix.
-    fn fix_base_capitalisation(s: &str) -> Option<String> {
-        if let Some(stripped) = s.strip_prefix('B') {
-            Some(format!("0b{stripped}"))
-        } else if let Some(stripped) = s.strip_prefix('O') {
-            Some(format!("0o{stripped}"))
-        } else if let Some(stripped) = s.strip_prefix('X') {
-            Some(format!("0x{stripped}"))
+    // Try to lowercase the prefix if the prefix and suffix are valid.
+    fn fix_base_capitalisation(prefix: &str, suffix: &str) -> Option<String> {
+        let mut chars = suffix.chars();
+
+        let base_char = chars.next().unwrap();
+        let base = match base_char {
+            'B' => 2,
+            'O' => 8,
+            'X' => 16,
+            _ => return None,
+        };
+
+        // check that the suffix contains only base-appropriate characters
+        let valid = prefix == "0"
+            && chars
+                .filter(|c| *c != '_')
+                .take_while(|c| *c != 'i' && *c != 'u')
+                .all(|c| c.to_digit(base).is_some());
+
+        if valid {
+            Some(format!("0{}{}", base_char.to_ascii_lowercase(), &suffix[1..]))
         } else {
             None
         }
     }
 
-    let token::Lit { kind, suffix, .. } = lit;
+    let token::Lit { kind, symbol, suffix, .. } = lit;
     match err {
         // `LexerError` is an error, but it was already reported
         // by lexer, so here we don't report it the second time.
@@ -324,7 +337,7 @@ pub fn report_lit_error(sess: &ParseSess, err: LitError, lit: token::Lit, span: 
             if looks_like_width_suffix(&['i', 'u'], &suf) {
                 // If it looks like a width, try to be helpful.
                 sess.emit_err(InvalidIntLiteralWidth { span, width: suf[1..].into() });
-            } else if let Some(fixed) = fix_base_capitalisation(suf) {
+            } else if let Some(fixed) = fix_base_capitalisation(symbol.as_str(), suf) {
                 sess.emit_err(InvalidNumLiteralBasePrefix { span, fixed });
             } else {
                 sess.emit_err(InvalidNumLiteralSuffix { span, suffix: suf.to_string() });
