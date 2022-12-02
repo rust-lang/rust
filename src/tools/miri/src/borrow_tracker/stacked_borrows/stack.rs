@@ -3,11 +3,14 @@ use std::ops::Range;
 
 use rustc_data_structures::fx::FxHashSet;
 
-use crate::stacked_borrows::{AccessKind, Item, Permission, SbTag};
+use crate::borrow_tracker::{
+    stacked_borrows::{Item, Permission},
+    AccessKind, BorTag,
+};
 use crate::ProvenanceExtra;
 
 /// Exactly what cache size we should use is a difficult tradeoff. There will always be some
-/// workload which has a `SbTag` working set which exceeds the size of the cache, and ends up
+/// workload which has a `BorTag` working set which exceeds the size of the cache, and ends up
 /// falling back to linear searches of the borrow stack very often.
 /// The cost of making this value too large is that the loop in `Stack::insert` which ensures the
 /// entries in the cache stay correct after an insert becomes expensive.
@@ -28,7 +31,7 @@ pub struct Stack {
     /// than `id`.
     /// When the bottom is unknown, `borrows` always has a `SharedReadOnly` or `Unique` at the bottom;
     /// we never have the unknown-to-known boundary in an SRW group.
-    unknown_bottom: Option<SbTag>,
+    unknown_bottom: Option<BorTag>,
 
     /// A small LRU cache of searches of the borrow stack.
     #[cfg(feature = "stack-cache")]
@@ -40,7 +43,7 @@ pub struct Stack {
 }
 
 impl Stack {
-    pub fn retain(&mut self, tags: &FxHashSet<SbTag>) {
+    pub fn retain(&mut self, tags: &FxHashSet<BorTag>) {
         let mut first_removed = None;
 
         // We never consider removing the bottom-most tag. For stacks without an unknown
@@ -185,7 +188,7 @@ impl<'tcx> Stack {
         &mut self,
         access: AccessKind,
         tag: ProvenanceExtra,
-        exposed_tags: &FxHashSet<SbTag>,
+        exposed_tags: &FxHashSet<BorTag>,
     ) -> Result<Option<usize>, ()> {
         #[cfg(all(feature = "stack-cache", debug_assertions))]
         self.verify_cache_consistency();
@@ -219,12 +222,12 @@ impl<'tcx> Stack {
 
         // Couldn't find it in the stack; but if there is an unknown bottom it might be there.
         let found = self.unknown_bottom.is_some_and(|unknown_limit| {
-            tag.0 < unknown_limit.0 // unknown_limit is an upper bound for what can be in the unknown bottom.
+            tag < unknown_limit // unknown_limit is an upper bound for what can be in the unknown bottom.
         });
         if found { Ok(None) } else { Err(()) }
     }
 
-    fn find_granting_tagged(&mut self, access: AccessKind, tag: SbTag) -> Option<usize> {
+    fn find_granting_tagged(&mut self, access: AccessKind, tag: BorTag) -> Option<usize> {
         #[cfg(feature = "stack-cache")]
         if let Some(idx) = self.find_granting_cache(access, tag) {
             return Some(idx);
@@ -243,7 +246,7 @@ impl<'tcx> Stack {
     }
 
     #[cfg(feature = "stack-cache")]
-    fn find_granting_cache(&mut self, access: AccessKind, tag: SbTag) -> Option<usize> {
+    fn find_granting_cache(&mut self, access: AccessKind, tag: BorTag) -> Option<usize> {
         // This looks like a common-sense optimization; we're going to do a linear search of the
         // cache or the borrow stack to scan the shorter of the two. This optimization is miniscule
         // and this check actually ensures we do not access an invalid cache.
@@ -349,11 +352,11 @@ impl<'tcx> Stack {
         self.borrows.len()
     }
 
-    pub fn unknown_bottom(&self) -> Option<SbTag> {
+    pub fn unknown_bottom(&self) -> Option<BorTag> {
         self.unknown_bottom
     }
 
-    pub fn set_unknown_bottom(&mut self, tag: SbTag) {
+    pub fn set_unknown_bottom(&mut self, tag: BorTag) {
         // We clear the borrow stack but the lookup cache doesn't support clearing per se. Instead,
         // there is a check explained in `find_granting_cache` which protects against accessing the
         // cache when it has been cleared and not yet refilled.

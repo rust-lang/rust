@@ -1,13 +1,13 @@
-use crate::stacked_borrows::SbTag;
 use std::fmt;
-use std::num::NonZeroU64;
+
+use crate::borrow_tracker::BorTag;
 
 /// An item in the per-location borrow stack.
 #[derive(Copy, Clone, Hash, PartialEq, Eq)]
 pub struct Item(u64);
 
 // An Item contains 3 bitfields:
-// * Bits 0-61 store an SbTag
+// * Bits 0-61 store a BorTag
 // * Bits 61-63 store a Permission
 // * Bit 64 stores a flag which indicates if we have a protector
 const TAG_MASK: u64 = u64::MAX >> 3;
@@ -18,9 +18,9 @@ const PERM_SHIFT: u64 = 61;
 const PROTECTED_SHIFT: u64 = 63;
 
 impl Item {
-    pub fn new(tag: SbTag, perm: Permission, protected: bool) -> Self {
-        assert!(tag.0.get() <= TAG_MASK);
-        let packed_tag = tag.0.get();
+    pub fn new(tag: BorTag, perm: Permission, protected: bool) -> Self {
+        assert!(tag.get() <= TAG_MASK);
+        let packed_tag = tag.get();
         let packed_perm = perm.to_bits() << PERM_SHIFT;
         let packed_protected = u64::from(protected) << PROTECTED_SHIFT;
 
@@ -34,8 +34,8 @@ impl Item {
     }
 
     /// The pointers the permission is granted to.
-    pub fn tag(self) -> SbTag {
-        SbTag(NonZeroU64::new(self.0 & TAG_MASK).unwrap())
+    pub fn tag(self) -> BorTag {
+        BorTag::new(self.0 & TAG_MASK).unwrap()
     }
 
     /// The permission this item grants.
