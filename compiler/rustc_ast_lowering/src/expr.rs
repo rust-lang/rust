@@ -31,6 +31,41 @@ impl<'hir> LoweringContext<'_, 'hir> {
 
     pub(super) fn lower_expr_mut(&mut self, e: &Expr) -> hir::Expr<'hir> {
         ensure_sufficient_stack(|| {
+            match &e.kind {
+                // Paranthesis expression does not have a HirId and is handled specially.
+                ExprKind::Paren(ex) => {
+                    let mut ex = self.lower_expr_mut(ex);
+                    // Include parens in span, but only if it is a super-span.
+                    if e.span.contains(ex.span) {
+                        ex.span = self.lower_span(e.span);
+                    }
+                    // Merge attributes into the inner expression.
+                    if !e.attrs.is_empty() {
+                        let old_attrs =
+                            self.attrs.get(&ex.hir_id.local_id).map(|la| *la).unwrap_or(&[]);
+                        self.attrs.insert(
+                            ex.hir_id.local_id,
+                            &*self.arena.alloc_from_iter(
+                                e.attrs
+                                    .iter()
+                                    .map(|a| self.lower_attr(a))
+                                    .chain(old_attrs.iter().cloned()),
+                            ),
+                        );
+                    }
+                    return ex;
+                }
+                // Desugar `ExprForLoop`
+                // from: `[opt_ident]: for <pat> in <head> <body>`
+                //
+                // This also needs special handling because the HirId of the returned `hir::Expr` will not
+                // correspond to the `e.id`, so `lower_expr_for` handles attribute lowering itself.
+                ExprKind::ForLoop(pat, head, body, opt_label) => {
+                    return self.lower_expr_for(e, pat, head, body, *opt_label);
+                }
+                _ => (),
+            }
+
             let hir_id = self.lower_node_id(e.id);
             self.lower_attrs(hir_id, &e.attrs);
 
@@ -51,7 +86,6 @@ impl<'hir> LoweringContext<'_, 'hir> {
                     if e.attrs.get(0).map_or(false, |a| a.has_name(sym::rustc_box)) {
                         if let [inner] = &args[..] && e.attrs.len() == 1 {
                             let kind = hir::ExprKind::Box(self.lower_expr(&inner));
-                            let hir_id = self.lower_node_id(e.id);
                             return hir::Expr { hir_id, kind, span: self.lower_span(e.span) };
                         } else {
                             self.tcx.sess.emit_err(RustcBoxAttributeError { span: e.span });
@@ -283,34 +317,9 @@ impl<'hir> LoweringContext<'_, 'hir> {
                 ExprKind::Yield(opt_expr) => self.lower_expr_yield(e.span, opt_expr.as_deref()),
                 ExprKind::Err => hir::ExprKind::Err,
                 ExprKind::Try(sub_expr) => self.lower_expr_try(e.span, sub_expr),
-                ExprKind::Paren(ex) => {
-                    let mut ex = self.lower_expr_mut(ex);
-                    // Include parens in span, but only if it is a super-span.
-                    if e.span.contains(ex.span) {
-                        ex.span = self.lower_span(e.span);
-                    }
-                    // Merge attributes into the inner expression.
-                    if !e.attrs.is_empty() {
-                        let old_attrs =
-                            self.attrs.get(&ex.hir_id.local_id).map(|la| *la).unwrap_or(&[]);
-                        self.attrs.insert(
-                            ex.hir_id.local_id,
-                            &*self.arena.alloc_from_iter(
-                                e.attrs
-                                    .iter()
-                                    .map(|a| self.lower_attr(a))
-                                    .chain(old_attrs.iter().cloned()),
-                            ),
-                        );
-                    }
-                    return ex;
-                }
 
-                // Desugar `ExprForLoop`
-                // from: `[opt_ident]: for <pat> in <head> <body>`
-                ExprKind::ForLoop(pat, head, body, opt_label) => {
-                    return self.lower_expr_for(e, pat, head, body, *opt_label);
-                }
+                ExprKind::Paren(_) | ExprKind::ForLoop(..) => unreachable!("already handled"),
+
                 ExprKind::MacCall(_) => panic!("{:?} shouldn't exist here", e.span),
             };
 
