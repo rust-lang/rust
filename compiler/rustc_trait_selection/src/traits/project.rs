@@ -50,6 +50,10 @@ pub type ProjectionTyObligation<'tcx> = Obligation<'tcx, ty::ProjectionTy<'tcx>>
 pub(super) struct InProgress;
 
 pub trait NormalizeExt<'tcx> {
+    /// Normalize a value using the `AssocTypeNormalizer`.
+    ///
+    /// This normalization should be used when the type contains inference variables or the
+    /// projection may be fallible.
     fn normalize<T: TypeFoldable<'tcx>>(&self, t: T) -> InferOk<'tcx, T>;
 }
 
@@ -57,7 +61,7 @@ impl<'tcx> NormalizeExt<'tcx> for At<'_, 'tcx> {
     fn normalize<T: TypeFoldable<'tcx>>(&self, value: T) -> InferOk<'tcx, T> {
         let mut selcx = SelectionContext::new(self.infcx);
         let Normalized { value, obligations } =
-            normalize(&mut selcx, self.param_env, self.cause.clone(), value);
+            normalize_with_depth(&mut selcx, self.param_env, self.cause.clone(), 0, value);
         InferOk { value, obligations }
     }
 }
@@ -301,37 +305,6 @@ fn project_and_unify_type<'cx, 'tcx>(
             ProjectAndUnifyResult::MismatchedProjectionTypes(MismatchedProjectionTypes { err })
         }
     }
-}
-
-/// Normalizes any associated type projections in `value`, replacing
-/// them with a fully resolved type where possible. The return value
-/// combines the normalized result and any additional obligations that
-/// were incurred as result.
-pub(crate) fn normalize<'a, 'b, 'tcx, T>(
-    selcx: &'a mut SelectionContext<'b, 'tcx>,
-    param_env: ty::ParamEnv<'tcx>,
-    cause: ObligationCause<'tcx>,
-    value: T,
-) -> Normalized<'tcx, T>
-where
-    T: TypeFoldable<'tcx>,
-{
-    let mut obligations = Vec::new();
-    let value = normalize_to(selcx, param_env, cause, value, &mut obligations);
-    Normalized { value, obligations }
-}
-
-pub(crate) fn normalize_to<'a, 'b, 'tcx, T>(
-    selcx: &'a mut SelectionContext<'b, 'tcx>,
-    param_env: ty::ParamEnv<'tcx>,
-    cause: ObligationCause<'tcx>,
-    value: T,
-    obligations: &mut Vec<PredicateObligation<'tcx>>,
-) -> T
-where
-    T: TypeFoldable<'tcx>,
-{
-    normalize_with_depth_to(selcx, param_env, cause, 0, value, obligations)
 }
 
 /// As `normalize`, but with a custom depth.
@@ -2324,10 +2297,11 @@ fn confirm_impl_trait_in_trait_candidate<'tcx>(
         },
     ));
 
-    let ty = super::normalize_to(
+    let ty = normalize_with_depth_to(
         selcx,
         obligation.param_env,
         cause.clone(),
+        obligation.recursion_depth + 1,
         tcx.bound_trait_impl_trait_tys(impl_fn_def_id)
             .map_bound(|tys| {
                 tys.map_or_else(|_| tcx.ty_error(), |tys| tys[&obligation.predicate.item_def_id])

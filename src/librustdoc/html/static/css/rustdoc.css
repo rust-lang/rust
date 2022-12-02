@@ -908,6 +908,7 @@ so that we can apply CSS-filters to change the arrow color in themes */
 
 .popover {
 	position: absolute;
+	top: 100%;
 	right: 0;
 	z-index: 2;
 	display: block;
@@ -1357,22 +1358,24 @@ a.test-arrow:hover {
 }
 #settings-menu, #help-button {
 	margin-left: 4px;
-	outline: none;
+	display: flex;
 }
 
 #settings-menu > a, #help-button > a, #copy-path {
 	width: 33px;
-	line-height: 1.5;
 }
 
 #settings-menu > a, #help-button > a {
-	padding: 5px;
-	height: 100%;
-	display: block;
+	display: flex;
+	align-items: center;
+	justify-content: center;
 	background-color: var(--button-background-color);
 	border: 1px solid var(--border-color);
 	border-radius: 2px;
 	color: var(--settings-button-color);
+	/* Rare exception to specifying font sizes in rem. Since this is acting
+	   as an icon, it's okay to specify their sizes in pixels. */
+	font-size: 20px;
 }
 
 #settings-menu > a:hover, #settings-menu > a:focus,
@@ -1406,14 +1409,6 @@ a.test-arrow:hover {
 }
 #settings-menu.rotate > a img {
 	animation: rotating 2s linear infinite;
-}
-
-#help-button > a {
-	text-align: center;
-	/* Rare exception to specifying font sizes in rem. Since this is acting
-	   as an icon, it's okay to specify their sizes in pixels. */
-	font-size: 20px;
-	padding-top: 2px;
 }
 
 kbd {
@@ -1658,10 +1653,6 @@ in storage.js
 		content: "Since ";
 	}
 
-	#copy-path {
-		display: none;
-	}
-
 	/* Hide the logo and item name from the sidebar. Those are displayed
 	   in the mobile-topbar instead. */
 	.sidebar .sidebar-logo,
@@ -1795,8 +1786,8 @@ in storage.js
 		border-bottom: 1px solid;
 	}
 
-	/* We don't display the help button on mobile devices. */
-	#help-button {
+	/* We don't display these buttons on mobile devices. */
+	#copy-path, #help-button {
 		display: none;
 	}
 

@@ -32,13 +32,23 @@ impl<'tcx> Value<TyCtxt<'tcx>> for ty::SymbolName<'_> {
 }
 
 impl<'tcx> Value<TyCtxt<'tcx>> for ty::Binder<'_, ty::FnSig<'_>> {
-    fn from_cycle_error(tcx: TyCtxt<'tcx>, _: &[QueryInfo]) -> Self {
+    fn from_cycle_error(tcx: TyCtxt<'tcx>, stack: &[QueryInfo]) -> Self {
         let err = tcx.ty_error();
-        // FIXME(compiler-errors): It would be nice if we could get the
-        // query key, so we could at least generate a fn signature that
-        // has the right arity.
+
+        let arity = if let Some(frame) = stack.get(0)
+            && frame.query.name == "fn_sig"
+            && let Some(def_id) = frame.query.def_id
+            && let Some(node) = tcx.hir().get_if_local(def_id)
+            && let Some(sig) = node.fn_sig()
+        {
+            sig.decl.inputs.len() + sig.decl.implicit_self.has_implicit_self() as usize
+        } else {
+            tcx.sess.abort_if_errors();
+            unreachable!()
+        };
+
         let fn_sig = ty::Binder::dummy(tcx.mk_fn_sig(
-            [].into_iter(),
+            std::iter::repeat(err).take(arity),
             err,
             false,
             rustc_hir::Unsafety::Normal,
