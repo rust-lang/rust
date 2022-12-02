@@ -150,6 +150,32 @@ public:
         }
       }
     }
+    SmallVector<GlobalVariable *, 1> toErase;
+    for (GlobalVariable &g : F.getParent()->globals()) {
+      if (g.getName().contains("__enzyme_inactive_global")) {
+        if (g.hasInitializer()) {
+          Value *V = g.getInitializer();
+          while (1) {
+            if (auto CE = dyn_cast<ConstantExpr>(V)) {
+              V = CE->getOperand(0);
+              continue;
+            }
+            if (auto CA = dyn_cast<ConstantAggregate>(V)) {
+              V = CA->getOperand(0);
+              continue;
+            }
+            break;
+          }
+          if (auto GV = cast<GlobalVariable>(V)) {
+            GV->setMetadata("enzyme_inactive", MDNode::get(g.getContext(), {}));
+            toErase.push_back(&g);
+          }
+        }
+      }
+    }
+    for (auto G : toErase)
+      G->eraseFromParent();
+
     if (!Begin && F.hasFnAttribute("prev_fixup")) {
       changed = true;
       F.removeFnAttr("prev_fixup");

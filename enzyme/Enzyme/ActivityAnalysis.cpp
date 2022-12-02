@@ -1092,6 +1092,10 @@ bool ActivityAnalyzer::isConstantValue(TypeResults const &TR, Value *Val) {
       InsertConstantValue(TR, Val);
       return true;
     }
+    if (hasMetadata(GI, "enzyme_inactive")) {
+      InsertConstantValue(TR, Val);
+      return true;
+    }
 
     if (GI->getName().contains("enzyme_const") ||
         InactiveGlobals.count(GI->getName().str())) {
@@ -2569,6 +2573,9 @@ bool ActivityAnalyzer::isValueInactiveFromUsers(TypeResults const &TR,
               // explicitly marked as active, this is inactive
               if (!hasMetadata(GV, "enzyme_shadow") &&
                   EnzymeNonmarkedGlobalsInactive) {
+                continue;
+              }
+              if (hasMetadata(GV, "enzyme_inactive")) {
                 continue;
               }
               if (GV->getName().contains("enzyme_const") ||
