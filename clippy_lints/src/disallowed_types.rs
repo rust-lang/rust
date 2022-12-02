@@ -106,7 +106,9 @@ impl<'tcx> LateLintPass<'tcx> for DisallowedTypes {
 
     fn check_item(&mut self, cx: &LateContext<'tcx>, item: &'tcx Item<'tcx>) {
         if let ItemKind::Use(path, UseKind::Single) = &item.kind {
-            self.check_res_emit(cx, &path.res, item.span);
+            for res in &path.res {
+                self.check_res_emit(cx, res, item.span);
+            }
         }
     }
 
