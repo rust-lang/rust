@@ -57,7 +57,8 @@ pub(crate) fn incoming_calls(
         .flat_map(|func| func.usages(sema).all());
 
     for (_, references) in references {
-        let references = references.into_iter().map(|FileReference { name, .. }| name);
+        let references =
+            references.iter().filter_map(|FileReference { name, .. }| name.as_name_ref());
         for name in references {
             // This target is the containing function
             let nav = sema.ancestors_with_macros(name.syntax().clone()).find_map(|node| {
@@ -454,6 +455,150 @@ fn caller$0() {
             expect![[r#"caller Function FileId(0) 160..194 163..169"#]],
             expect![[]],
             // FIXME
+            expect![[]],
+        );
+    }
+
+    #[test]
+    fn test_trait_method_call_hierarchy_on_def() {
+        check_hierarchy(
+            r#"
+trait T1 {
+    fn call$0ee();
+}
+
+struct S1;
+
+impl T1 for S1 {
+    fn callee() {}
+}
+
+fn caller() {
+    S1::callee();
+}
+"#,
+            expect![["callee Function FileId(0) 15..27 18..24"]],
+            expect![["caller Function FileId(0) 82..115 85..91 : [104..110]"]],
+            expect![[]],
+        );
+    }
+
+    #[test]
+    fn test_trait_method_call_hierarchy_on_impl() {
+        check_hierarchy(
+            r#"
+trait T1 {
+    fn callee();
+}
+
+struct S1;
+
+impl T1 for S1 {
+    fn call$0ee() {}
+}
+
+fn caller() {
+    S1::callee();
+}
+"#,
+            expect![["callee Function FileId(0) 64..78 67..73"]],
+            expect![["caller Function FileId(0) 82..115 85..91 : [104..110]"]],
+            expect![[]],
+        );
+    }
+
+    #[test]
+    fn test_trait_method_call_hierarchy_on_ref() {
+        check_hierarchy(
+            r#"
+trait T1 {
+    fn callee();
+}
+
+struct S1;
+
+impl T1 for S1 {
+    fn callee() {}
+}
+
+fn caller() {
+    S1::call$0ee();
+}
+"#,
+            expect![["callee Function FileId(0) 64..78 67..73"]],
+            expect![["caller Function FileId(0) 82..115 85..91 : [104..110]"]],
+            expect![[]],
+        );
+    }
+
+    #[test]
+    fn test_trait_method_generic_call_hierarchy_on_def() {
+        check_hierarchy(
+            r#"
+trait T1 {
+    fn call$0ee();
+}
+
+struct S1;
+
+impl T1 for S1 {
+    fn callee() {}
+}
+
+fn caller<T: T1>() {
+    T::callee();
+}
+"#,
+            expect![["callee Function FileId(0) 15..27 18..24"]],
+            expect![["caller Function FileId(0) 82..121 85..91 : [110..116]"]],
+            expect![[]],
+        );
+    }
+
+    #[test]
+    fn test_trait_method_generic_call_hierarchy_on_impl() {
+        check_hierarchy(
+            r#"
+trait T1 {
+    fn callee();
+}
+
+struct S1;
+
+impl T1 for S1 {
+    fn call$0ee() {}
+}
+
+fn caller<T: T1>() {
+    T::callee();
+}
+"#,
+            expect![["callee Function FileId(0) 64..78 67..73"]],
+            expect![["caller Function FileId(0) 82..121 85..91 : [110..116]"]],
+            expect![[]],
+        );
+    }
+
+    #[test]
+    fn test_trait_method_generic_call_hierarchy_on_ref() {
+        check_hierarchy(
+            r#"
+trait T1 {
+    fn callee();
+}
+
+struct S1;
+
+impl T1 for S1 {
+    fn callee() {}
+}
+
+fn caller<T: T1>() {
+    T::call$0ee();
+}
+"#,
+            expect![["callee Function FileId(0) 15..27 18..24"]],
+            expect![["caller Function FileId(0) 82..121 85..91 : [110..116]"]],
             expect![[]],
         );
     }
