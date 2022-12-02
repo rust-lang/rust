@@ -1,5 +1,9 @@
 include ../tools.mk
 
+ifdef IS_WINDOWS
+        REPRO_LINKER_FLAGS=-Clink-arg=/experimental:deterministic 
+endif
+
 # ignore-musl
 # Objects are reproducible but their path is not.
 
@@ -64,11 +68,12 @@ different_source_dirs_bin:
 	$(RUSTC) reproducible-build-aux.rs
 	mkdir $(TMPDIR)/test
 	cp reproducible-build.rs $(TMPDIR)/test
-	$(RUSTC) reproducible-build.rs --crate-type bin --remap-path-prefix=$$PWD=/b
+	$(RUSTC) reproducible-build.rs --crate-type bin --remap-path-prefix=$$PWD=/b $(REPRO_LINKER_FLAGS)
 	cp $(TMPDIR)/reproducible-build $(TMPDIR)/foo
 	(cd $(TMPDIR)/test && $(RUSTC) reproducible-build.rs \
 		--remap-path-prefix=$(TMPDIR)/test=/b \
-		--crate-type bin)
+		--crate-type bin \
+		$(REPRO_LINKER_FLAGS))
 	cmp "$(TMPDIR)/reproducible-build" "$(TMPDIR)/foo" || exit 1
 
 different_source_dirs_rlib:
