@@ -10,7 +10,7 @@ use rustc_hir::{
     TyKind,
 };
 use rustc_lint::{LateContext, LateLintPass};
-use rustc_middle::hir::nested_filter::OnlyBodies;
+use rustc_middle::{hir::nested_filter::OnlyBodies, ty};
 use rustc_session::{declare_tool_lint, impl_lint_pass};
 use rustc_span::symbol::{kw, sym};
 use rustc_span::{Span, Symbol};
@@ -78,6 +78,7 @@ impl<'tcx> LateLintPass<'tcx> for FromOverInto {
             && let Some(GenericArgs { args: [GenericArg::Type(target_ty)], .. }) = into_trait_seg.args
             && let Some(middle_trait_ref) = cx.tcx.impl_trait_ref(item.owner_id)
             && cx.tcx.is_diagnostic_item(sym::Into, middle_trait_ref.def_id)
+            && !matches!(middle_trait_ref.substs.type_at(1).kind(), ty::Opaque(..))
         {
             span_lint_and_then(
                 cx,
