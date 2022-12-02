@@ -10,6 +10,7 @@ pub use ar_archive_writer::get_native_object_symbols;
 use ar_archive_writer::{write_archive_to_stream, ArchiveKind, NewArchiveMember};
 use object::read::archive::ArchiveFile;
 use object::read::macho::FatArch;
+use tempfile::Builder as TempFileBuilder;
 
 use std::error::Error;
 use std::fs::File;
@@ -271,10 +272,27 @@ impl<'a> ArArchiveBuilder<'a> {
             })
         }
 
-        let mut w = File::create(output)
-            .map_err(|err| io_error_context("failed to create archive file", err))?;
+        // Write to a temporary file first before atomically renaming to the final name.
+        // This prevents programs (including rustc) from attempting to read a partial archive.
+        // It also enables writing an archive with the same filename as a dependency on Windows as
+        // required by a test.
+        let mut archive_tmpfile = TempFileBuilder::new()
+            .suffix(".temp-archive")
+            .tempfile_in(output.parent().unwrap_or_else(|| Path::new("")))
+            .map_err(|err| io_error_context("couldn't create a temp file", err))?;
 
-        write_archive_to_stream(&mut w, &entries, true, archive_kind, true, false)?;
+        write_archive_to_stream(
+            archive_tmpfile.as_file_mut(),
+            &entries,
+            true,
+            archive_kind,
+            true,
+            false,
+        )?;
+
+        archive_tmpfile
+            .persist(output)
+            .map_err(|err| io_error_context("failed to rename archive file", err.error))?;
 
         Ok(!entries.is_empty())
     }
