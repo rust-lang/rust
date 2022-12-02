@@ -109,7 +109,7 @@ pub struct StoreBufferAlloc {
 }
 
 impl VisitTags for StoreBufferAlloc {
-    fn visit_tags(&self, visit: &mut dyn FnMut(SbTag)) {
+    fn visit_tags(&self, visit: &mut dyn FnMut(BorTag)) {
         let Self { store_buffers } = self;
         for val in store_buffers
             .borrow()

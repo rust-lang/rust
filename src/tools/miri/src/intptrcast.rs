@@ -45,7 +45,7 @@ pub struct GlobalStateInner {
 }
 
 impl VisitTags for GlobalStateInner {
-    fn visit_tags(&self, _visit: &mut dyn FnMut(SbTag)) {
+    fn visit_tags(&self, _visit: &mut dyn FnMut(BorTag)) {
         // Nothing to visit here.
     }
 }
@@ -105,7 +105,7 @@ impl<'mir, 'tcx> GlobalStateInner {
     pub fn expose_ptr(
         ecx: &mut MiriInterpCx<'mir, 'tcx>,
         alloc_id: AllocId,
-        sb: SbTag,
+        tag: BorTag,
     ) -> InterpResult<'tcx> {
         let global_state = ecx.machine.intptrcast.get_mut();
         // In strict mode, we don't need this, so we can save some cycles by not tracking it.

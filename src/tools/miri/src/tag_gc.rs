@@ -3,11 +3,11 @@ use rustc_data_structures::fx::FxHashSet;
 use crate::*;
 
 pub trait VisitTags {
-    fn visit_tags(&self, visit: &mut dyn FnMut(SbTag));
+    fn visit_tags(&self, visit: &mut dyn FnMut(BorTag));
 }
 
 impl<T: VisitTags> VisitTags for Option<T> {
-    fn visit_tags(&self, visit: &mut dyn FnMut(SbTag)) {
+    fn visit_tags(&self, visit: &mut dyn FnMut(BorTag)) {
         if let Some(x) = self {
             x.visit_tags(visit);
         }
@@ -15,41 +15,41 @@ impl<T: VisitTags> VisitTags for Option<T> {
 }
 
 impl<T: VisitTags> VisitTags for std::cell::RefCell<T> {
-    fn visit_tags(&self, visit: &mut dyn FnMut(SbTag)) {
+    fn visit_tags(&self, visit: &mut dyn FnMut(BorTag)) {
         self.borrow().visit_tags(visit)
     }
 }
 
-impl VisitTags for SbTag {
-    fn visit_tags(&self, visit: &mut dyn FnMut(SbTag)) {
+impl VisitTags for BorTag {
+    fn visit_tags(&self, visit: &mut dyn FnMut(BorTag)) {
         visit(*self)
     }
 }
 
 impl VisitTags for Provenance {
-    fn visit_tags(&self, visit: &mut dyn FnMut(SbTag)) {
-        if let Provenance::Concrete { sb, .. } = self {
-            visit(*sb);
+    fn visit_tags(&self, visit: &mut dyn FnMut(BorTag)) {
+        if let Provenance::Concrete { tag, .. } = self {
+            visit(*tag);
         }
     }
 }
 
 impl VisitTags for Pointer<Provenance> {
-    fn visit_tags(&self, visit: &mut dyn FnMut(SbTag)) {
+    fn visit_tags(&self, visit: &mut dyn FnMut(BorTag)) {
         let (prov, _offset) = self.into_parts();
         prov.visit_tags(visit);
     }
 }
 
 impl VisitTags for Pointer<Option<Provenance>> {
-    fn visit_tags(&self, visit: &mut dyn FnMut(SbTag)) {
+    fn visit_tags(&self, visit: &mut dyn FnMut(BorTag)) {
         let (prov, _offset) = self.into_parts();
         prov.visit_tags(visit);
     }
 }
 
 impl VisitTags for Scalar<Provenance> {
-    fn visit_tags(&self, visit: &mut dyn FnMut(SbTag)) {
+    fn visit_tags(&self, visit: &mut dyn FnMut(BorTag)) {
         match self {
             Scalar::Ptr(ptr, _) => ptr.visit_tags(visit),
             Scalar::Int(_) => (),
@@ -58,7 +58,7 @@ impl VisitTags for Scalar<Provenance> {
 }
 
 impl VisitTags for Immediate<Provenance> {
-    fn visit_tags(&self, visit: &mut dyn FnMut(SbTag)) {
+    fn visit_tags(&self, visit: &mut dyn FnMut(BorTag)) {
         match self {
             Immediate::Scalar(s) => {
                 s.visit_tags(visit);
@@ -73,7 +73,7 @@ impl VisitTags for Immediate<Provenance> {
 }
 
 impl VisitTags for MemPlaceMeta<Provenance> {
-    fn visit_tags(&self, visit: &mut dyn FnMut(SbTag)) {
+    fn visit_tags(&self, visit: &mut dyn FnMut(BorTag)) {
         match self {
             MemPlaceMeta::Meta(m) => m.visit_tags(visit),
             MemPlaceMeta::None => {}
@@ -82,7 +82,7 @@ impl VisitTags for MemPlaceMeta<Provenance> {
 }
 
 impl VisitTags for MemPlace<Provenance> {
-    fn visit_tags(&self, visit: &mut dyn FnMut(SbTag)) {
+    fn visit_tags(&self, visit: &mut dyn FnMut(BorTag)) {
         let MemPlace { ptr, meta } = self;
         ptr.visit_tags(visit);
         meta.visit_tags(visit);
@@ -90,13 +90,13 @@ impl VisitTags for MemPlace<Provenance> {
 }
 
 impl VisitTags for MPlaceTy<'_, Provenance> {
-    fn visit_tags(&self, visit: &mut dyn FnMut(SbTag)) {
+    fn visit_tags(&self, visit: &mut dyn FnMut(BorTag)) {
         (**self).visit_tags(visit)
     }
 }
 
 impl VisitTags for Place<Provenance> {
-    fn visit_tags(&self, visit: &mut dyn FnMut(SbTag)) {
+    fn visit_tags(&self, visit: &mut dyn FnMut(BorTag)) {
         match self {
             Place::Ptr(p) => p.visit_tags(visit),
             Place::Local { .. } => {
@@ -107,13 +107,13 @@ impl VisitTags for Place<Provenance> {
 }
 
 impl VisitTags for PlaceTy<'_, Provenance> {
-    fn visit_tags(&self, visit: &mut dyn FnMut(SbTag)) {
+    fn visit_tags(&self, visit: &mut dyn FnMut(BorTag)) {
         (**self).visit_tags(visit)
     }
 }
 
 impl VisitTags for Operand<Provenance> {
-    fn visit_tags(&self, visit: &mut dyn FnMut(SbTag)) {
+    fn visit_tags(&self, visit: &mut dyn FnMut(BorTag)) {
         match self {
             Operand::Immediate(imm) => {
                 imm.visit_tags(visit);
@@ -126,7 +126,7 @@ impl VisitTags for Operand<Provenance> {
 }
 
 impl VisitTags for Allocation<Provenance, AllocExtra> {
-    fn visit_tags(&self, visit: &mut dyn FnMut(SbTag)) {
+    fn visit_tags(&self, visit: &mut dyn FnMut(BorTag)) {
         for prov in self.provenance().provenances() {
             prov.visit_tags(visit);
         }
@@ -136,7 +136,7 @@ impl VisitTags for Allocation<Provenance, AllocExtra> {
 }
 
 impl VisitTags for crate::MiriInterpCx<'_, '_> {
-    fn visit_tags(&self, visit: &mut dyn FnMut(SbTag)) {
+    fn visit_tags(&self, visit: &mut dyn FnMut(BorTag)) {
         // Memory.
         self.memory.alloc_map().iter(|it| {
             for (_id, (_kind, alloc)) in it {

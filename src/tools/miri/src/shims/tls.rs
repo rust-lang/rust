@@ -208,7 +208,7 @@ impl<'tcx> TlsData<'tcx> {
 }
 
 impl VisitTags for TlsData<'_> {
-    fn visit_tags(&self, visit: &mut dyn FnMut(SbTag)) {
+    fn visit_tags(&self, visit: &mut dyn FnMut(BorTag)) {
         let TlsData { keys, macos_thread_dtors, next_key: _ } = self;
 
         for scalar in keys.values().flat_map(|v| v.data.values()) {

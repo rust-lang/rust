@@ -103,7 +103,7 @@ pub struct MiriConfig {
     /// The seed to use when non-determinism or randomness are required (e.g. ptr-to-int cast, `getrandom()`).
     pub seed: Option<u64>,
     /// The stacked borrows pointer ids to report about
-    pub tracked_pointer_tags: FxHashSet<SbTag>,
+    pub tracked_pointer_tags: FxHashSet<BorTag>,
     /// The stacked borrows call IDs to report about
     pub tracked_call_ids: FxHashSet<CallId>,
     /// The allocation ids to report about.
@@ -138,7 +138,7 @@ pub struct MiriConfig {
     /// The location of a shared object file to load when calling external functions
     /// FIXME! consider allowing users to specify paths to multiple SO files, or to a directory
     pub external_so_file: Option<PathBuf>,
-    /// Run a garbage collector for SbTags every N basic blocks.
+    /// Run a garbage collector for BorTags every N basic blocks.
     pub gc_interval: u32,
     /// The number of CPUs to be reported by miri.
     pub num_cpus: u32,

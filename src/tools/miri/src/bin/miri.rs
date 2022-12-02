@@ -413,7 +413,7 @@ fn main() {
                         err
                     ),
             };
-            for id in ids.into_iter().map(miri::SbTag::new) {
+            for id in ids.into_iter().map(miri::BorTag::new) {
                 if let Some(id) = id {
                     miri_config.tracked_pointer_tags.insert(id);
                 } else {

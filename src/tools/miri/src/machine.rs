@@ -147,7 +147,7 @@ pub enum Provenance {
     Concrete {
         alloc_id: AllocId,
         /// Stacked Borrows tag.
-        sb: SbTag,
+        tag: BorTag,
     },
     Wildcard,
 }
@@ -173,7 +173,7 @@ impl std::hash::Hash for Provenance {
 /// The "extra" information a pointer has over a regular AllocId.
 #[derive(Copy, Clone, PartialEq)]
 pub enum ProvenanceExtra {
-    Concrete(SbTag),
+    Concrete(BorTag),
     Wildcard,
 }
 
@@ -188,7 +188,7 @@ static_assert_size!(Scalar<Provenance>, 32);
 impl fmt::Debug for Provenance {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         match self {
-            Provenance::Concrete { alloc_id, sb } => {
+            Provenance::Concrete { alloc_id, tag } => {
                 // Forward `alternate` flag to `alloc_id` printing.
                 if f.alternate() {
                     write!(f, "[{alloc_id:#?}]")?;
@@ -196,7 +196,7 @@ impl fmt::Debug for Provenance {
                     write!(f, "[{alloc_id:?}]")?;
                 }
                 // Print Stacked Borrows tag.
-                write!(f, "{sb:?}")?;
+                write!(f, "{tag:?}")?;
             }
             Provenance::Wildcard => {
                 write!(f, "[wildcard]")?;
@@ -221,9 +221,9 @@ impl interpret::Provenance for Provenance {
         match (left, right) {
             // If both are the *same* concrete tag, that is the result.
             (
-                Some(Provenance::Concrete { alloc_id: left_alloc, sb: left_sb }),
-                Some(Provenance::Concrete { alloc_id: right_alloc, sb: right_sb }),
-            ) if left_alloc == right_alloc && left_sb == right_sb => left,
+                Some(Provenance::Concrete { alloc_id: left_alloc, tag: left_tag }),
+                Some(Provenance::Concrete { alloc_id: right_alloc, tag: right_tag }),
+            ) if left_alloc == right_alloc && left_tag == right_tag => left,
             // If one side is a wildcard, the best possible outcome is that it is equal to the other
             // one, and we use that.
             (Some(Provenance::Wildcard), o) | (o, Some(Provenance::Wildcard)) => o,
@@ -243,7 +243,7 @@ impl fmt::Debug for ProvenanceExtra {
 }
 
 impl ProvenanceExtra {
-    pub fn and_then<T>(self, f: impl FnOnce(SbTag) -> Option<T>) -> Option<T> {
+    pub fn and_then<T>(self, f: impl FnOnce(BorTag) -> Option<T>) -> Option<T> {
         match self {
             ProvenanceExtra::Concrete(pid) => f(pid),
             ProvenanceExtra::Wildcard => None,
@@ -463,9 +463,9 @@ pub struct MiriMachine<'mir, 'tcx> {
     #[cfg(not(target_os = "linux"))]
     pub external_so_lib: Option<!>,
 
-    /// Run a garbage collector for SbTags every N basic blocks.
+    /// Run a garbage collector for BorTags every N basic blocks.
     pub(crate) gc_interval: u32,
-    /// The number of blocks that passed since the last SbTag GC pass.
+    /// The number of blocks that passed since the last BorTag GC pass.
     pub(crate) since_gc: u32,
     /// The number of CPUs to be reported by miri.
     pub(crate) num_cpus: u32,
@@ -656,7 +656,7 @@ impl<'mir, 'tcx> MiriMachine<'mir, 'tcx> {
 }
 
 impl VisitTags for MiriMachine<'_, '_> {
-    fn visit_tags(&self, visit: &mut dyn FnMut(SbTag)) {
+    fn visit_tags(&self, visit: &mut dyn FnMut(BorTag)) {
         #[rustfmt::skip]
         let MiriMachine {
             threads,
@@ -959,10 +959,10 @@ impl<'mir, 'tcx> Machine<'mir, 'tcx> for MiriMachine<'mir, 'tcx> {
             stacked_borrows.borrow_mut().base_ptr_tag(ptr.provenance, &ecx.machine)
         } else {
             // Value does not matter, SB is disabled
-            SbTag::default()
+            BorTag::default()
         };
         Pointer::new(
-            Provenance::Concrete { alloc_id: ptr.provenance, sb: sb_tag },
+            Provenance::Concrete { alloc_id: ptr.provenance, tag },
             Size::from_bytes(absolute_addr),
         )
     }
@@ -980,8 +980,8 @@ impl<'mir, 'tcx> Machine<'mir, 'tcx> for MiriMachine<'mir, 'tcx> {
         ptr: Pointer<Self::Provenance>,
     ) -> InterpResult<'tcx> {
         match ptr.provenance {
-            Provenance::Concrete { alloc_id, sb } =>
-                intptrcast::GlobalStateInner::expose_ptr(ecx, alloc_id, sb),
+            Provenance::Concrete { alloc_id, tag } =>
+                intptrcast::GlobalStateInner::expose_ptr(ecx, alloc_id, tag),
             Provenance::Wildcard => {
                 // No need to do anything for wildcard pointers as
                 // their provenances have already been previously exposed.
@@ -999,11 +999,11 @@ impl<'mir, 'tcx> Machine<'mir, 'tcx> for MiriMachine<'mir, 'tcx> {
         let rel = intptrcast::GlobalStateInner::abs_ptr_to_rel(ecx, ptr);
 
         rel.map(|(alloc_id, size)| {
-            let sb = match ptr.provenance {
-                Provenance::Concrete { sb, .. } => ProvenanceExtra::Concrete(sb),
+            let tag = match ptr.provenance {
+                Provenance::Concrete { tag, .. } => ProvenanceExtra::Concrete(tag),
                 Provenance::Wildcard => ProvenanceExtra::Wildcard,
             };
-            (alloc_id, size, sb)
+            (alloc_id, size, tag)
         })
     }
 

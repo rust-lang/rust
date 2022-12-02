@@ -278,7 +278,7 @@ pub struct FileHandler {
 }
 
 impl VisitTags for FileHandler {
-    fn visit_tags(&self, _visit: &mut dyn FnMut(SbTag)) {
+    fn visit_tags(&self, _visit: &mut dyn FnMut(BorTag)) {
         // All our FileDescriptor do not have any tags.
     }
 }
@@ -490,7 +490,7 @@ impl Default for DirHandler {
 }
 
 impl VisitTags for DirHandler {
-    fn visit_tags(&self, visit: &mut dyn FnMut(SbTag)) {
+    fn visit_tags(&self, visit: &mut dyn FnMut(BorTag)) {
         let DirHandler { streams, next_id: _ } = self;
 
         for dir in streams.values() {
