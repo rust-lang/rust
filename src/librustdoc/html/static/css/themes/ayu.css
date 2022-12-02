@@ -21,6 +21,7 @@ Original by Dempfi (https://github.com/dempfi/ayu)
 	--right-side-color: grey;
 	--code-attribute-color: #999;
 	--toggles-color: #999;
+	--toggle-filter: invert(100%);
 	--search-input-focused-border-color: #5c6773; /* Same as `--border-color`. */
 	--copy-path-button-color: #fff;
 	--copy-path-img-filter: invert(70%);
@@ -156,10 +157,6 @@ pre, .rustdoc.source .example-wrap {
 }
 body.source .example-wrap pre.rust a {
 	background: #333;
-}
-
-details.rustdoc-toggle > summary::before {
-	filter: invert(100%);
 }
 
 .module-item .stab,
