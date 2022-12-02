@@ -22,14 +22,14 @@
           _4 = const 2_usize;              // scope 0 at $DIR/repeat.rs:+1:26: +1:27
           _5 = const 8_usize;              // scope 0 at $DIR/repeat.rs:+1:18: +1:28
 -         _6 = Lt(_4, _5);                 // scope 0 at $DIR/repeat.rs:+1:18: +1:28
--         assert(move _6, "index out of bounds: the length is {} but the index is {}", move _5, _4) -> bb1; // scope 0 at $DIR/repeat.rs:+1:18: +1:28
+-         assert(_6, "index out of bounds: the length is {} but the index is {}", _5, _4) -> bb1; // scope 0 at $DIR/repeat.rs:+1:18: +1:28
 +         _6 = const true;                 // scope 0 at $DIR/repeat.rs:+1:18: +1:28
 +         assert(const true, "index out of bounds: the length is {} but the index is {}", const 8_usize, const 2_usize) -> bb1; // scope 0 at $DIR/repeat.rs:+1:18: +1:28
       }
   
       bb1: {
 -         _2 = _3[_4];                     // scope 0 at $DIR/repeat.rs:+1:18: +1:28
--         _1 = Add(move _2, const 0_u32);  // scope 0 at $DIR/repeat.rs:+1:18: +1:32
+-         _1 = Add(_2, const 0_u32);       // scope 0 at $DIR/repeat.rs:+1:18: +1:32
 +         _2 = const 42_u32;               // scope 0 at $DIR/repeat.rs:+1:18: +1:28
 +         _1 = const 42_u32;               // scope 0 at $DIR/repeat.rs:+1:18: +1:32
           StorageDead(_2);                 // scope 0 at $DIR/repeat.rs:+1:31: +1:32

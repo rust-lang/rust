@@ -74,6 +74,7 @@ mod instcombine;
 mod lower_intrinsics;
 mod lower_slice_len;
 mod match_branches;
+mod move_to_copy;
 mod multiple_return_terminators;
 mod normalize_array_len;
 mod nrvo;
@@ -557,6 +558,7 @@ fn run_optimization_passes<'tcx>(tcx: TyCtxt<'tcx>, body: &mut Body<'tcx>) {
             &normalize_array_len::NormalizeArrayLen, // has to run after `slice::len` lowering
             &unreachable_prop::UnreachablePropagation,
             &uninhabited_enum_branching::UninhabitedEnumBranching,
+            &move_to_copy::MoveToCopy,
             &o1(simplify::SimplifyCfg::new("after-uninhabited-enum-branching")),
             &inline::Inline,
             &remove_storage_markers::RemoveStorageMarkers,

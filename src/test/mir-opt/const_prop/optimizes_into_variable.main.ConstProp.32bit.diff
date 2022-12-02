@@ -27,13 +27,13 @@
       bb0: {
           StorageLive(_1);                 // scope 0 at $DIR/optimizes_into_variable.rs:+1:9: +1:10
 -         _2 = CheckedAdd(const 2_i32, const 2_i32); // scope 0 at $DIR/optimizes_into_variable.rs:+1:13: +1:18
--         assert(!move (_2.1: bool), "attempt to compute `{} + {}`, which would overflow", const 2_i32, const 2_i32) -> bb1; // scope 0 at $DIR/optimizes_into_variable.rs:+1:13: +1:18
+-         assert(!(_2.1: bool), "attempt to compute `{} + {}`, which would overflow", const 2_i32, const 2_i32) -> bb1; // scope 0 at $DIR/optimizes_into_variable.rs:+1:13: +1:18
 +         _2 = const (4_i32, false);       // scope 0 at $DIR/optimizes_into_variable.rs:+1:13: +1:18
 +         assert(!const false, "attempt to compute `{} + {}`, which would overflow", const 2_i32, const 2_i32) -> bb1; // scope 0 at $DIR/optimizes_into_variable.rs:+1:13: +1:18
       }
   
       bb1: {
--         _1 = move (_2.0: i32);           // scope 0 at $DIR/optimizes_into_variable.rs:+1:13: +1:18
+-         _1 = (_2.0: i32);                // scope 0 at $DIR/optimizes_into_variable.rs:+1:13: +1:18
 +         _1 = const 4_i32;                // scope 0 at $DIR/optimizes_into_variable.rs:+1:13: +1:18
           StorageLive(_3);                 // scope 1 at $DIR/optimizes_into_variable.rs:+2:9: +2:10
           StorageLive(_4);                 // scope 1 at $DIR/optimizes_into_variable.rs:+2:13: +2:31
@@ -42,7 +42,7 @@
           _5 = const 3_usize;              // scope 1 at $DIR/optimizes_into_variable.rs:+2:32: +2:33
           _6 = const 6_usize;              // scope 1 at $DIR/optimizes_into_variable.rs:+2:13: +2:34
 -         _7 = Lt(_5, _6);                 // scope 1 at $DIR/optimizes_into_variable.rs:+2:13: +2:34
--         assert(move _7, "index out of bounds: the length is {} but the index is {}", move _6, _5) -> bb2; // scope 1 at $DIR/optimizes_into_variable.rs:+2:13: +2:34
+-         assert(_7, "index out of bounds: the length is {} but the index is {}", _6, _5) -> bb2; // scope 1 at $DIR/optimizes_into_variable.rs:+2:13: +2:34
 +         _7 = const true;                 // scope 1 at $DIR/optimizes_into_variable.rs:+2:13: +2:34
 +         assert(const true, "index out of bounds: the length is {} but the index is {}", const 6_usize, const 3_usize) -> bb2; // scope 1 at $DIR/optimizes_into_variable.rs:+2:13: +2:34
       }

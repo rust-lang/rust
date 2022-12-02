@@ -56,11 +56,11 @@
 - 
 -     bb2: {
 +         StorageLive(_5);                 // scope 4 at $SRC_DIR/core/src/pin.rs:LL:COL
-+         _5 = move _3;                    // scope 4 at $SRC_DIR/core/src/pin.rs:LL:COL
++         _5 = _3;                         // scope 4 at $SRC_DIR/core/src/pin.rs:LL:COL
 +         StorageLive(_6);                 // scope 5 at $SRC_DIR/core/src/pin.rs:LL:COL
-+         _6 = move _5;                    // scope 5 at $SRC_DIR/core/src/pin.rs:LL:COL
++         _6 = _5;                         // scope 5 at $SRC_DIR/core/src/pin.rs:LL:COL
 +         Deinit(_2);                      // scope 5 at $SRC_DIR/core/src/pin.rs:LL:COL
-+         (_2.0: &mut [generator@$DIR/inline_generator.rs:15:5: 15:8]) = move _6; // scope 5 at $SRC_DIR/core/src/pin.rs:LL:COL
++         (_2.0: &mut [generator@$DIR/inline_generator.rs:15:5: 15:8]) = _6; // scope 5 at $SRC_DIR/core/src/pin.rs:LL:COL
 +         StorageDead(_6);                 // scope 5 at $SRC_DIR/core/src/pin.rs:LL:COL
 +         StorageDead(_5);                 // scope 4 at $SRC_DIR/core/src/pin.rs:LL:COL
           StorageDead(_3);                 // scope 0 at $DIR/inline_generator.rs:+1:31: +1:32
@@ -72,7 +72,7 @@
 +         _7 = const false;                // scope 0 at $DIR/inline_generator.rs:+1:14: +1:46
 +         _10 = deref_copy (_2.0: &mut [generator@$DIR/inline_generator.rs:15:5: 15:8]); // scope 6 at $DIR/inline_generator.rs:15:5: 15:41
 +         _9 = discriminant((*_10));       // scope 6 at $DIR/inline_generator.rs:15:5: 15:41
-+         switchInt(move _9) -> [0: bb3, 1: bb8, 3: bb7, otherwise: bb9]; // scope 6 at $DIR/inline_generator.rs:15:5: 15:41
++         switchInt(_9) -> [0: bb3, 1: bb8, 3: bb7, otherwise: bb9]; // scope 6 at $DIR/inline_generator.rs:15:5: 15:41
       }
   
 -     bb3: {
@@ -92,7 +92,7 @@
 + 
 +     bb3: {
 +         StorageLive(_8);                 // scope 6 at $DIR/inline_generator.rs:15:17: 15:39
-+         switchInt(move _7) -> [0: bb5, otherwise: bb4]; // scope 6 at $DIR/inline_generator.rs:15:20: 15:21
++         switchInt(_7) -> [0: bb5, otherwise: bb4]; // scope 6 at $DIR/inline_generator.rs:15:20: 15:21
 +     }
 + 
 +     bb4: {
@@ -107,7 +107,7 @@
 + 
 +     bb6: {
 +         Deinit(_1);                      // scope 6 at $DIR/inline_generator.rs:15:11: 15:39
-+         ((_1 as Yielded).0: i32) = move _8; // scope 6 at $DIR/inline_generator.rs:15:11: 15:39
++         ((_1 as Yielded).0: i32) = _8;   // scope 6 at $DIR/inline_generator.rs:15:11: 15:39
 +         discriminant(_1) = 0;            // scope 6 at $DIR/inline_generator.rs:15:11: 15:39
 +         _11 = deref_copy (_2.0: &mut [generator@$DIR/inline_generator.rs:15:5: 15:8]); // scope 6 at $DIR/inline_generator.rs:15:11: 15:39
 +         discriminant((*_11)) = 3;        // scope 6 at $DIR/inline_generator.rs:15:11: 15:39
@@ -118,7 +118,7 @@
 +         StorageLive(_8);                 // scope 6 at $DIR/inline_generator.rs:15:5: 15:41
 +         StorageDead(_8);                 // scope 6 at $DIR/inline_generator.rs:15:38: 15:39
 +         Deinit(_1);                      // scope 6 at $DIR/inline_generator.rs:15:41: 15:41
-+         ((_1 as Complete).0: bool) = move _7; // scope 6 at $DIR/inline_generator.rs:15:41: 15:41
++         ((_1 as Complete).0: bool) = _7; // scope 6 at $DIR/inline_generator.rs:15:41: 15:41
 +         discriminant(_1) = 1;            // scope 6 at $DIR/inline_generator.rs:15:41: 15:41
 +         _12 = deref_copy (_2.0: &mut [generator@$DIR/inline_generator.rs:15:5: 15:8]); // scope 6 at $DIR/inline_generator.rs:15:41: 15:41
 +         discriminant((*_12)) = 1;        // scope 6 at $DIR/inline_generator.rs:15:41: 15:41

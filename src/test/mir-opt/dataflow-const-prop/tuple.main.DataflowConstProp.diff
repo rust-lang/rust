@@ -35,12 +35,12 @@
 +         _4 = const 1_i32;                // scope 1 at $DIR/tuple.rs:+2:13: +2:16
           StorageLive(_5);                 // scope 1 at $DIR/tuple.rs:+2:19: +2:22
 -         _5 = (_1.1: i32);                // scope 1 at $DIR/tuple.rs:+2:19: +2:22
--         _3 = Add(move _4, move _5);      // scope 1 at $DIR/tuple.rs:+2:13: +2:22
+-         _3 = Add(_4, _5);                // scope 1 at $DIR/tuple.rs:+2:13: +2:22
 +         _5 = const 2_i32;                // scope 1 at $DIR/tuple.rs:+2:19: +2:22
 +         _3 = const 3_i32;                // scope 1 at $DIR/tuple.rs:+2:13: +2:22
           StorageDead(_5);                 // scope 1 at $DIR/tuple.rs:+2:21: +2:22
           StorageDead(_4);                 // scope 1 at $DIR/tuple.rs:+2:21: +2:22
--         _2 = Add(move _3, const 3_i32);  // scope 1 at $DIR/tuple.rs:+2:13: +2:26
+-         _2 = Add(_3, const 3_i32);       // scope 1 at $DIR/tuple.rs:+2:13: +2:26
 +         _2 = const 6_i32;                // scope 1 at $DIR/tuple.rs:+2:13: +2:26
           StorageDead(_3);                 // scope 1 at $DIR/tuple.rs:+2:25: +2:26
           Deinit(_1);                      // scope 2 at $DIR/tuple.rs:+3:5: +3:15
@@ -53,14 +53,14 @@
 +         _8 = const 2_i32;                // scope 2 at $DIR/tuple.rs:+4:13: +4:16
           StorageLive(_9);                 // scope 2 at $DIR/tuple.rs:+4:19: +4:22
 -         _9 = (_1.1: i32);                // scope 2 at $DIR/tuple.rs:+4:19: +4:22
--         _7 = Add(move _8, move _9);      // scope 2 at $DIR/tuple.rs:+4:13: +4:22
+-         _7 = Add(_8, _9);                // scope 2 at $DIR/tuple.rs:+4:13: +4:22
 +         _9 = const 3_i32;                // scope 2 at $DIR/tuple.rs:+4:19: +4:22
 +         _7 = const 5_i32;                // scope 2 at $DIR/tuple.rs:+4:13: +4:22
           StorageDead(_9);                 // scope 2 at $DIR/tuple.rs:+4:21: +4:22
           StorageDead(_8);                 // scope 2 at $DIR/tuple.rs:+4:21: +4:22
           StorageLive(_10);                // scope 2 at $DIR/tuple.rs:+4:25: +4:26
 -         _10 = _2;                        // scope 2 at $DIR/tuple.rs:+4:25: +4:26
--         _6 = Add(move _7, move _10);     // scope 2 at $DIR/tuple.rs:+4:13: +4:26
+-         _6 = Add(_7, _10);               // scope 2 at $DIR/tuple.rs:+4:13: +4:26
 +         _10 = const 6_i32;               // scope 2 at $DIR/tuple.rs:+4:25: +4:26
 +         _6 = const 11_i32;               // scope 2 at $DIR/tuple.rs:+4:13: +4:26
           StorageDead(_10);                // scope 2 at $DIR/tuple.rs:+4:25: +4:26

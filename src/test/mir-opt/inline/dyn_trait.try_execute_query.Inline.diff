@@ -14,7 +14,7 @@
           StorageLive(_2);                 // scope 0 at $DIR/dyn_trait.rs:+1:14: +1:15
           StorageLive(_3);                 // scope 0 at $DIR/dyn_trait.rs:+1:14: +1:15
           _3 = &(*_1);                     // scope 0 at $DIR/dyn_trait.rs:+1:14: +1:15
-          _2 = move _3 as &dyn Cache<V = <C as Cache>::V> (Pointer(Unsize)); // scope 0 at $DIR/dyn_trait.rs:+1:14: +1:15
+          _2 = _3 as &dyn Cache<V = <C as Cache>::V> (Pointer(Unsize)); // scope 0 at $DIR/dyn_trait.rs:+1:14: +1:15
           StorageDead(_3);                 // scope 0 at $DIR/dyn_trait.rs:+1:14: +1:15
 -         _0 = mk_cycle::<<C as Cache>::V>(move _2) -> bb1; // scope 0 at $DIR/dyn_trait.rs:+1:5: +1:16
 +         _0 = <dyn Cache<V = <C as Cache>::V> as Cache>::store_nocache(move _2) -> bb1; // scope 1 at $DIR/dyn_trait.rs:21:5: 21:22

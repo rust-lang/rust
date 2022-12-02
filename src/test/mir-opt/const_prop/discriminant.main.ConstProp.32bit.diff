@@ -21,7 +21,7 @@
           ((_3 as Some).0: bool) = const true; // scope 2 at $DIR/discriminant.rs:+1:34: +1:44
           discriminant(_3) = 1;            // scope 2 at $DIR/discriminant.rs:+1:34: +1:44
 -         _4 = discriminant(_3);           // scope 2 at $DIR/discriminant.rs:+1:21: +1:31
--         switchInt(move _4) -> [1: bb1, otherwise: bb3]; // scope 2 at $DIR/discriminant.rs:+1:21: +1:31
+-         switchInt(_4) -> [1: bb1, otherwise: bb3]; // scope 2 at $DIR/discriminant.rs:+1:21: +1:31
 +         _4 = const 1_isize;              // scope 2 at $DIR/discriminant.rs:+1:21: +1:31
 +         switchInt(const 1_isize) -> [1: bb1, otherwise: bb3]; // scope 2 at $DIR/discriminant.rs:+1:21: +1:31
       }
@@ -41,7 +41,7 @@
       }
   
       bb4: {
-          _1 = Add(move _2, const 0_i32);  // scope 0 at $DIR/discriminant.rs:+1:13: +1:68
+          _1 = Add(_2, const 0_i32);       // scope 0 at $DIR/discriminant.rs:+1:13: +1:68
           StorageDead(_2);                 // scope 0 at $DIR/discriminant.rs:+1:67: +1:68
           StorageDead(_3);                 // scope 0 at $DIR/discriminant.rs:+1:68: +1:69
           _0 = const ();                   // scope 0 at $DIR/discriminant.rs:+0:11: +2:2

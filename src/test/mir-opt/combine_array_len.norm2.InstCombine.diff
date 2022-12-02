@@ -32,7 +32,7 @@
 -         _4 = Len(_1);                    // scope 0 at $DIR/combine_array_len.rs:+1:13: +1:17
 +         _4 = const 2_usize;              // scope 0 at $DIR/combine_array_len.rs:+1:13: +1:17
           _5 = Lt(_3, _4);                 // scope 0 at $DIR/combine_array_len.rs:+1:13: +1:17
-          assert(move _5, "index out of bounds: the length is {} but the index is {}", move _4, _3) -> bb1; // scope 0 at $DIR/combine_array_len.rs:+1:13: +1:17
+          assert(_5, "index out of bounds: the length is {} but the index is {}", _4, _3) -> bb1; // scope 0 at $DIR/combine_array_len.rs:+1:13: +1:17
       }
   
       bb1: {
@@ -44,7 +44,7 @@
 -         _8 = Len(_1);                    // scope 1 at $DIR/combine_array_len.rs:+2:13: +2:17
 +         _8 = const 2_usize;              // scope 1 at $DIR/combine_array_len.rs:+2:13: +2:17
           _9 = Lt(_7, _8);                 // scope 1 at $DIR/combine_array_len.rs:+2:13: +2:17
-          assert(move _9, "index out of bounds: the length is {} but the index is {}", move _8, _7) -> bb2; // scope 1 at $DIR/combine_array_len.rs:+2:13: +2:17
+          assert(_9, "index out of bounds: the length is {} but the index is {}", _8, _7) -> bb2; // scope 1 at $DIR/combine_array_len.rs:+2:13: +2:17
       }
   
       bb2: {
@@ -55,7 +55,7 @@
           _11 = _2;                        // scope 2 at $DIR/combine_array_len.rs:+3:5: +3:6
           StorageLive(_12);                // scope 2 at $DIR/combine_array_len.rs:+3:7: +3:8
           _12 = _2;                        // scope 2 at $DIR/combine_array_len.rs:+3:7: +3:8
-          _10 = Mul(move _11, move _12);   // scope 2 at $DIR/combine_array_len.rs:+3:5: +3:8
+          _10 = Mul(_11, _12);             // scope 2 at $DIR/combine_array_len.rs:+3:5: +3:8
           StorageDead(_12);                // scope 2 at $DIR/combine_array_len.rs:+3:7: +3:8
           StorageDead(_11);                // scope 2 at $DIR/combine_array_len.rs:+3:7: +3:8
           StorageLive(_13);                // scope 2 at $DIR/combine_array_len.rs:+3:11: +3:14
@@ -63,10 +63,10 @@
           _14 = _6;                        // scope 2 at $DIR/combine_array_len.rs:+3:11: +3:12
           StorageLive(_15);                // scope 2 at $DIR/combine_array_len.rs:+3:13: +3:14
           _15 = _6;                        // scope 2 at $DIR/combine_array_len.rs:+3:13: +3:14
-          _13 = Mul(move _14, move _15);   // scope 2 at $DIR/combine_array_len.rs:+3:11: +3:14
+          _13 = Mul(_14, _15);             // scope 2 at $DIR/combine_array_len.rs:+3:11: +3:14
           StorageDead(_15);                // scope 2 at $DIR/combine_array_len.rs:+3:13: +3:14
           StorageDead(_14);                // scope 2 at $DIR/combine_array_len.rs:+3:13: +3:14
-          _0 = Add(move _10, move _13);    // scope 2 at $DIR/combine_array_len.rs:+3:5: +3:14
+          _0 = Add(_10, _13);              // scope 2 at $DIR/combine_array_len.rs:+3:5: +3:14
           StorageDead(_13);                // scope 2 at $DIR/combine_array_len.rs:+3:13: +3:14
           StorageDead(_10);                // scope 2 at $DIR/combine_array_len.rs:+3:13: +3:14
           StorageDead(_6);                 // scope 1 at $DIR/combine_array_len.rs:+4:1: +4:2

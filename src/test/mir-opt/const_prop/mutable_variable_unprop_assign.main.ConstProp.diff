@@ -40,7 +40,7 @@
           _7 = const 2_i32;                // scope 1 at $DIR/mutable_variable_unprop_assign.rs:+2:29: +2:35
           StorageLive(_3);                 // scope 2 at $DIR/mutable_variable_unprop_assign.rs:+3:11: +3:12
           _3 = _1;                         // scope 2 at $DIR/mutable_variable_unprop_assign.rs:+3:11: +3:12
-          _7 = move _3;                    // scope 2 at $DIR/mutable_variable_unprop_assign.rs:+3:5: +3:12
+          _7 = _3;                         // scope 2 at $DIR/mutable_variable_unprop_assign.rs:+3:5: +3:12
           StorageDead(_3);                 // scope 2 at $DIR/mutable_variable_unprop_assign.rs:+3:11: +3:12
           StorageLive(_4);                 // scope 2 at $DIR/mutable_variable_unprop_assign.rs:+4:9: +4:10
           _4 = _7;                         // scope 2 at $DIR/mutable_variable_unprop_assign.rs:+4:13: +4:16

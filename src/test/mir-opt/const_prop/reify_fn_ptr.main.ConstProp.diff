@@ -17,9 +17,9 @@
                                            // mir::Constant
                                            // + span: $DIR/reify_fn_ptr.rs:4:13: 4:17
                                            // + literal: Const { ty: fn() {main}, val: Value(<ZST>) }
-          _2 = move _3 as usize (PointerExposeAddress); // scope 0 at $DIR/reify_fn_ptr.rs:+1:13: +1:26
+          _2 = _3 as usize (PointerExposeAddress); // scope 0 at $DIR/reify_fn_ptr.rs:+1:13: +1:26
           StorageDead(_3);                 // scope 0 at $DIR/reify_fn_ptr.rs:+1:25: +1:26
-          _1 = move _2 as *const fn() (PointerFromExposedAddress); // scope 0 at $DIR/reify_fn_ptr.rs:+1:13: +1:41
+          _1 = _2 as *const fn() (PointerFromExposedAddress); // scope 0 at $DIR/reify_fn_ptr.rs:+1:13: +1:41
           StorageDead(_2);                 // scope 0 at $DIR/reify_fn_ptr.rs:+1:40: +1:41
           StorageDead(_1);                 // scope 0 at $DIR/reify_fn_ptr.rs:+1:41: +1:42
           nop;                             // scope 0 at $DIR/reify_fn_ptr.rs:+0:11: +2:2

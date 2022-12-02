@@ -70,10 +70,10 @@
           StorageLive(_10);                // scope 4 at $DIR/matches_reduce_branches.rs:+23:15: +23:16
           _10 = _5;                        // scope 4 at $DIR/matches_reduce_branches.rs:+23:15: +23:16
           Deinit(_0);                      // scope 4 at $DIR/matches_reduce_branches.rs:+23:5: +23:17
-          (_0.0: bool) = move _7;          // scope 4 at $DIR/matches_reduce_branches.rs:+23:5: +23:17
-          (_0.1: bool) = move _8;          // scope 4 at $DIR/matches_reduce_branches.rs:+23:5: +23:17
-          (_0.2: bool) = move _9;          // scope 4 at $DIR/matches_reduce_branches.rs:+23:5: +23:17
-          (_0.3: bool) = move _10;         // scope 4 at $DIR/matches_reduce_branches.rs:+23:5: +23:17
+          (_0.0: bool) = _7;               // scope 4 at $DIR/matches_reduce_branches.rs:+23:5: +23:17
+          (_0.1: bool) = _8;               // scope 4 at $DIR/matches_reduce_branches.rs:+23:5: +23:17
+          (_0.2: bool) = _9;               // scope 4 at $DIR/matches_reduce_branches.rs:+23:5: +23:17
+          (_0.3: bool) = _10;              // scope 4 at $DIR/matches_reduce_branches.rs:+23:5: +23:17
           StorageDead(_10);                // scope 4 at $DIR/matches_reduce_branches.rs:+23:16: +23:17
           StorageDead(_9);                 // scope 4 at $DIR/matches_reduce_branches.rs:+23:16: +23:17
           StorageDead(_8);                 // scope 4 at $DIR/matches_reduce_branches.rs:+23:16: +23:17

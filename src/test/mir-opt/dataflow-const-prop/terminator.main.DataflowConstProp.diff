@@ -18,7 +18,7 @@
           StorageLive(_3);                 // scope 1 at $DIR/terminator.rs:+3:9: +3:14
           StorageLive(_4);                 // scope 1 at $DIR/terminator.rs:+3:9: +3:10
 -         _4 = _1;                         // scope 1 at $DIR/terminator.rs:+3:9: +3:10
--         _3 = Add(move _4, const 1_i32);  // scope 1 at $DIR/terminator.rs:+3:9: +3:14
+-         _3 = Add(_4, const 1_i32);       // scope 1 at $DIR/terminator.rs:+3:9: +3:14
 +         _4 = const 1_i32;                // scope 1 at $DIR/terminator.rs:+3:9: +3:10
 +         _3 = const 2_i32;                // scope 1 at $DIR/terminator.rs:+3:9: +3:14
           StorageDead(_4);                 // scope 1 at $DIR/terminator.rs:+3:13: +3:14

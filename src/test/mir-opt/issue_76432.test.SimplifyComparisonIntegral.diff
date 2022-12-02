@@ -46,7 +46,7 @@
           _7 = _1;                         // scope 0 at $DIR/issue_76432.rs:+1:24: +1:25
           StorageLive(_8);                 // scope 0 at $DIR/issue_76432.rs:+1:27: +1:28
           _8 = _1;                         // scope 0 at $DIR/issue_76432.rs:+1:27: +1:28
-          _5 = [move _6, move _7, move _8]; // scope 0 at $DIR/issue_76432.rs:+1:20: +1:29
+          _5 = [_6, _7, _8];               // scope 0 at $DIR/issue_76432.rs:+1:20: +1:29
           StorageDead(_8);                 // scope 0 at $DIR/issue_76432.rs:+1:28: +1:29
           StorageDead(_7);                 // scope 0 at $DIR/issue_76432.rs:+1:28: +1:29
           StorageDead(_6);                 // scope 0 at $DIR/issue_76432.rs:+1:28: +1:29
@@ -54,7 +54,7 @@
           _3 = _4;                         // scope 0 at $DIR/issue_76432.rs:+1:19: +1:29
           StorageLive(_23);                // scope 0 at $DIR/issue_76432.rs:+1:19: +1:29
           _23 = _3;                        // scope 0 at $DIR/issue_76432.rs:+1:19: +1:29
-          _2 = move _3 as &[T] (Pointer(Unsize)); // scope 0 at $DIR/issue_76432.rs:+1:19: +1:29
+          _2 = _3 as &[T] (Pointer(Unsize)); // scope 0 at $DIR/issue_76432.rs:+1:19: +1:29
           StorageDead(_3);                 // scope 0 at $DIR/issue_76432.rs:+1:28: +1:29
           StorageDead(_4);                 // scope 0 at $DIR/issue_76432.rs:+1:29: +1:30
           StorageLive(_9);                 // scope 1 at $DIR/issue_76432.rs:+2:5: +5:6
@@ -95,7 +95,7 @@
           StorageLive(_21);                // scope 2 at $DIR/issue_76432.rs:+3:70: +3:84
           _21 = &raw const (*_15);         // scope 2 at $DIR/issue_76432.rs:+3:70: +3:72
           _20 = _21;                       // scope 2 at $DIR/issue_76432.rs:+3:70: +3:84
-          _9 = [move _16, move _18, move _20]; // scope 2 at $DIR/issue_76432.rs:+3:37: +3:85
+          _9 = [_16, _18, _20];            // scope 2 at $DIR/issue_76432.rs:+3:37: +3:85
           StorageDead(_21);                // scope 2 at $DIR/issue_76432.rs:+3:84: +3:85
           StorageDead(_20);                // scope 2 at $DIR/issue_76432.rs:+3:84: +3:85
           StorageDead(_19);                // scope 2 at $DIR/issue_76432.rs:+3:84: +3:85

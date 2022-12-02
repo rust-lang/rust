@@ -21,11 +21,11 @@
           StorageLive(_3);                 // scope 1 at $DIR/cast.rs:+2:13: +2:20
           StorageLive(_4);                 // scope 1 at $DIR/cast.rs:+2:13: +2:14
 -         _4 = _1;                         // scope 1 at $DIR/cast.rs:+2:13: +2:14
--         _3 = move _4 as u8 (IntToInt);   // scope 1 at $DIR/cast.rs:+2:13: +2:20
+-         _3 = _4 as u8 (IntToInt);        // scope 1 at $DIR/cast.rs:+2:13: +2:20
 +         _4 = const 257_i32;              // scope 1 at $DIR/cast.rs:+2:13: +2:14
 +         _3 = const 1_u8;                 // scope 1 at $DIR/cast.rs:+2:13: +2:20
           StorageDead(_4);                 // scope 1 at $DIR/cast.rs:+2:19: +2:20
--         _2 = Add(move _3, const 1_u8);   // scope 1 at $DIR/cast.rs:+2:13: +2:24
+-         _2 = Add(_3, const 1_u8);        // scope 1 at $DIR/cast.rs:+2:13: +2:24
 +         _2 = const 2_u8;                 // scope 1 at $DIR/cast.rs:+2:13: +2:24
           StorageDead(_3);                 // scope 1 at $DIR/cast.rs:+2:23: +2:24
           _0 = const ();                   // scope 0 at $DIR/cast.rs:+0:11: +3:2

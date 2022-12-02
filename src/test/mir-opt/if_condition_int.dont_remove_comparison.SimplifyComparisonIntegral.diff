@@ -18,10 +18,9 @@
           StorageLive(_2);                 // scope 0 at $DIR/if_condition_int.rs:+1:9: +1:10
           StorageLive(_3);                 // scope 0 at $DIR/if_condition_int.rs:+1:13: +1:14
           _3 = _1;                         // scope 0 at $DIR/if_condition_int.rs:+1:13: +1:14
--         _2 = Eq(move _3, const 17_i8);   // scope 0 at $DIR/if_condition_int.rs:+1:13: +1:20
+          _2 = Eq(_3, const 17_i8);        // scope 0 at $DIR/if_condition_int.rs:+1:13: +1:20
 -         StorageDead(_3);                 // scope 0 at $DIR/if_condition_int.rs:+1:19: +1:20
 -         switchInt(_2) -> [0: bb2, otherwise: bb1]; // scope 1 at $DIR/if_condition_int.rs:+2:5: +2:12
-+         _2 = Eq(_3, const 17_i8);        // scope 0 at $DIR/if_condition_int.rs:+1:13: +1:20
 +         nop;                             // scope 0 at $DIR/if_condition_int.rs:+1:19: +1:20
 +         switchInt(move _3) -> [17: bb1, otherwise: bb2]; // scope 1 at $DIR/if_condition_int.rs:+2:5: +2:12
       }
@@ -31,9 +30,9 @@
           StorageLive(_6);                 // scope 1 at $DIR/if_condition_int.rs:+4:23: +4:31
           StorageLive(_7);                 // scope 1 at $DIR/if_condition_int.rs:+4:23: +4:24
           _7 = _2;                         // scope 1 at $DIR/if_condition_int.rs:+4:23: +4:24
-          _6 = move _7 as i32 (IntToInt);  // scope 1 at $DIR/if_condition_int.rs:+4:23: +4:31
+          _6 = _7 as i32 (IntToInt);       // scope 1 at $DIR/if_condition_int.rs:+4:23: +4:31
           StorageDead(_7);                 // scope 1 at $DIR/if_condition_int.rs:+4:30: +4:31
-          _0 = Add(const 100_i32, move _6); // scope 1 at $DIR/if_condition_int.rs:+4:17: +4:31
+          _0 = Add(const 100_i32, _6);     // scope 1 at $DIR/if_condition_int.rs:+4:17: +4:31
           StorageDead(_6);                 // scope 1 at $DIR/if_condition_int.rs:+4:30: +4:31
           goto -> bb3;                     // scope 1 at $DIR/if_condition_int.rs:+4:30: +4:31
       }
@@ -43,9 +42,9 @@
           StorageLive(_4);                 // scope 1 at $DIR/if_condition_int.rs:+3:23: +3:31
           StorageLive(_5);                 // scope 1 at $DIR/if_condition_int.rs:+3:23: +3:24
           _5 = _2;                         // scope 1 at $DIR/if_condition_int.rs:+3:23: +3:24
-          _4 = move _5 as i32 (IntToInt);  // scope 1 at $DIR/if_condition_int.rs:+3:23: +3:31
+          _4 = _5 as i32 (IntToInt);       // scope 1 at $DIR/if_condition_int.rs:+3:23: +3:31
           StorageDead(_5);                 // scope 1 at $DIR/if_condition_int.rs:+3:30: +3:31
-          _0 = Add(const 10_i32, move _4); // scope 1 at $DIR/if_condition_int.rs:+3:18: +3:31
+          _0 = Add(const 10_i32, _4);      // scope 1 at $DIR/if_condition_int.rs:+3:18: +3:31
           StorageDead(_4);                 // scope 1 at $DIR/if_condition_int.rs:+3:30: +3:31
           goto -> bb3;                     // scope 1 at $DIR/if_condition_int.rs:+3:30: +3:31
       }

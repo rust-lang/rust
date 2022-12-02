@@ -27,8 +27,8 @@
           StorageDead(_3);                 // scope 0 at $DIR/deduplicate_blocks.rs:+1:22: +1:23
           _7 = Len((*_2));                 // scope 0 at $DIR/deduplicate_blocks.rs:+2:9: +2:37
           _8 = const 4_usize;              // scope 0 at $DIR/deduplicate_blocks.rs:+2:9: +2:37
-          _9 = Ge(move _7, move _8);       // scope 0 at $DIR/deduplicate_blocks.rs:+2:9: +2:37
-          switchInt(move _9) -> [0: bb6, otherwise: bb2]; // scope 0 at $DIR/deduplicate_blocks.rs:+2:9: +2:37
+          _9 = Ge(_7, _8);                 // scope 0 at $DIR/deduplicate_blocks.rs:+2:9: +2:37
+          switchInt(_9) -> [0: bb6, otherwise: bb2]; // scope 0 at $DIR/deduplicate_blocks.rs:+2:9: +2:37
       }
   
       bb2: {
@@ -51,8 +51,8 @@
       bb6: {
           _4 = Len((*_2));                 // scope 0 at $DIR/deduplicate_blocks.rs:+3:9: +3:31
           _5 = const 3_usize;              // scope 0 at $DIR/deduplicate_blocks.rs:+3:9: +3:31
-          _6 = Ge(move _4, move _5);       // scope 0 at $DIR/deduplicate_blocks.rs:+3:9: +3:31
-          switchInt(move _6) -> [0: bb10, otherwise: bb7]; // scope 0 at $DIR/deduplicate_blocks.rs:+3:9: +3:31
+          _6 = Ge(_4, _5);                 // scope 0 at $DIR/deduplicate_blocks.rs:+3:9: +3:31
+          switchInt(_6) -> [0: bb10, otherwise: bb7]; // scope 0 at $DIR/deduplicate_blocks.rs:+3:9: +3:31
       }
   
       bb7: {

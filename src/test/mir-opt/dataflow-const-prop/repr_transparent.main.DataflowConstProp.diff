@@ -26,13 +26,13 @@
 +         _4 = const 0_i32;                // scope 1 at $DIR/repr_transparent.rs:+2:17: +2:20
           StorageLive(_5);                 // scope 1 at $DIR/repr_transparent.rs:+2:23: +2:26
 -         _5 = (_1.0: i32);                // scope 1 at $DIR/repr_transparent.rs:+2:23: +2:26
--         _3 = Add(move _4, move _5);      // scope 1 at $DIR/repr_transparent.rs:+2:17: +2:26
+-         _3 = Add(_4, _5);                // scope 1 at $DIR/repr_transparent.rs:+2:17: +2:26
 +         _5 = const 0_i32;                // scope 1 at $DIR/repr_transparent.rs:+2:23: +2:26
 +         _3 = const 0_i32;                // scope 1 at $DIR/repr_transparent.rs:+2:17: +2:26
           StorageDead(_5);                 // scope 1 at $DIR/repr_transparent.rs:+2:25: +2:26
           StorageDead(_4);                 // scope 1 at $DIR/repr_transparent.rs:+2:25: +2:26
           Deinit(_2);                      // scope 1 at $DIR/repr_transparent.rs:+2:13: +2:27
--         (_2.0: i32) = move _3;           // scope 1 at $DIR/repr_transparent.rs:+2:13: +2:27
+-         (_2.0: i32) = _3;                // scope 1 at $DIR/repr_transparent.rs:+2:13: +2:27
 +         (_2.0: i32) = const 0_i32;       // scope 1 at $DIR/repr_transparent.rs:+2:13: +2:27
           StorageDead(_3);                 // scope 1 at $DIR/repr_transparent.rs:+2:26: +2:27
           _0 = const ();                   // scope 0 at $DIR/repr_transparent.rs:+0:11: +3:2

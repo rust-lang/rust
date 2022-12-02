@@ -26,7 +26,7 @@
           StorageLive(_5);                 // scope 0 at $DIR/matches_reduce_branches.rs:+2:21: +2:52
           StorageLive(_6);                 // scope 0 at $DIR/matches_reduce_branches.rs:+2:24: +2:28
           _6 = const true;                 // scope 0 at $DIR/matches_reduce_branches.rs:+2:24: +2:28
--         switchInt(move _6) -> [0: bb2, otherwise: bb1]; // scope 0 at $DIR/matches_reduce_branches.rs:+2:24: +2:28
+-         switchInt(_6) -> [0: bb2, otherwise: bb1]; // scope 0 at $DIR/matches_reduce_branches.rs:+2:24: +2:28
 -     }
 - 
 -     bb1: {
@@ -41,11 +41,11 @@
 - 
 -     bb3: {
 +         StorageLive(_7);                 // scope 0 at $DIR/matches_reduce_branches.rs:+2:24: +2:28
-+         _7 = move _6;                    // scope 0 at $DIR/matches_reduce_branches.rs:+2:24: +2:28
++         _7 = _6;                         // scope 0 at $DIR/matches_reduce_branches.rs:+2:24: +2:28
 +         _5 = Ne(_7, const false);        // scope 0 at $DIR/matches_reduce_branches.rs:+2:45: +2:50
 +         StorageDead(_7);                 // scope 0 at $DIR/matches_reduce_branches.rs:+2:24: +2:28
           StorageDead(_6);                 // scope 0 at $DIR/matches_reduce_branches.rs:+2:51: +2:52
--         switchInt(move _5) -> [0: bb5, otherwise: bb4]; // scope 0 at $DIR/matches_reduce_branches.rs:+2:21: +2:52
+-         switchInt(_5) -> [0: bb5, otherwise: bb4]; // scope 0 at $DIR/matches_reduce_branches.rs:+2:21: +2:52
 -     }
 - 
 -     bb4: {
@@ -60,11 +60,11 @@
 - 
 -     bb6: {
 +         StorageLive(_8);                 // scope 0 at $DIR/matches_reduce_branches.rs:+2:21: +2:52
-+         _8 = move _5;                    // scope 0 at $DIR/matches_reduce_branches.rs:+2:21: +2:52
++         _8 = _5;                         // scope 0 at $DIR/matches_reduce_branches.rs:+2:21: +2:52
 +         _4 = Ne(_8, const false);        // scope 0 at $DIR/matches_reduce_branches.rs:+2:69: +2:74
 +         StorageDead(_8);                 // scope 0 at $DIR/matches_reduce_branches.rs:+2:21: +2:52
           StorageDead(_5);                 // scope 0 at $DIR/matches_reduce_branches.rs:+2:75: +2:76
--         switchInt(move _4) -> [0: bb8, otherwise: bb7]; // scope 0 at $DIR/matches_reduce_branches.rs:+2:18: +2:76
+-         switchInt(_4) -> [0: bb8, otherwise: bb7]; // scope 0 at $DIR/matches_reduce_branches.rs:+2:18: +2:76
 -     }
 - 
 -     bb7: {
@@ -78,16 +78,16 @@
 -     }
 - 
 -     bb9: {
--         switchInt(move _3) -> [0: bb11, otherwise: bb10]; // scope 0 at $DIR/matches_reduce_branches.rs:+2:15: +6:10
+-         switchInt(_3) -> [0: bb11, otherwise: bb10]; // scope 0 at $DIR/matches_reduce_branches.rs:+2:15: +6:10
 -     }
 - 
 -     bb10: {
 +         StorageLive(_9);                 // scope 0 at $DIR/matches_reduce_branches.rs:+2:18: +2:76
-+         _9 = move _4;                    // scope 0 at $DIR/matches_reduce_branches.rs:+2:18: +2:76
++         _9 = _4;                         // scope 0 at $DIR/matches_reduce_branches.rs:+2:18: +2:76
 +         _3 = Ne(_9, const false);        // scope 0 at $DIR/matches_reduce_branches.rs:+5:13: +5:18
 +         StorageDead(_9);                 // scope 0 at $DIR/matches_reduce_branches.rs:+2:18: +2:76
 +         StorageLive(_10);                // scope 0 at $DIR/matches_reduce_branches.rs:+2:15: +6:10
-+         _10 = move _3;                   // scope 0 at $DIR/matches_reduce_branches.rs:+2:15: +6:10
++         _10 = _3;                        // scope 0 at $DIR/matches_reduce_branches.rs:+2:15: +6:10
           StorageDead(_4);                 // scope 0 at $DIR/matches_reduce_branches.rs:+6:9: +6:10
           StorageDead(_3);                 // scope 0 at $DIR/matches_reduce_branches.rs:+6:9: +6:10
 -         _1 = const true;                 // scope 0 at $DIR/matches_reduce_branches.rs:+8:13: +8:17

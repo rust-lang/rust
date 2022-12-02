@@ -12,13 +12,13 @@
   
       bb0: {
           _3 = discriminant((*_1));        // scope 1 at $DIR/early_otherwise_branch_soundness.rs:+1:12: +1:31
-          switchInt(move _3) -> [1: bb1, otherwise: bb3]; // scope 1 at $DIR/early_otherwise_branch_soundness.rs:+1:12: +1:31
+          switchInt(_3) -> [1: bb1, otherwise: bb3]; // scope 1 at $DIR/early_otherwise_branch_soundness.rs:+1:12: +1:31
       }
   
       bb1: {
           _4 = deref_copy (((*_1) as Some).0: &E<'_>); // scope 1 at $DIR/early_otherwise_branch_soundness.rs:+1:12: +1:31
           _2 = discriminant((*_4));        // scope 1 at $DIR/early_otherwise_branch_soundness.rs:+1:12: +1:31
-          switchInt(move _2) -> [1: bb2, otherwise: bb3]; // scope 1 at $DIR/early_otherwise_branch_soundness.rs:+1:12: +1:31
+          switchInt(_2) -> [1: bb2, otherwise: bb3]; // scope 1 at $DIR/early_otherwise_branch_soundness.rs:+1:12: +1:31
       }
   
       bb2: {

@@ -17,13 +17,13 @@ fn foo(_1: Option<String>) -> i32 {
         _7 = const false;                // scope 0 at $DIR/string.rs:+1:11: +1:12
         _7 = const true;                 // scope 0 at $DIR/string.rs:+1:11: +1:12
         _5 = discriminant(_1);           // scope 0 at $DIR/string.rs:+1:11: +1:12
-        switchInt(move _5) -> [1: bb2, otherwise: bb1]; // scope 0 at $DIR/string.rs:+1:5: +1:12
+        switchInt(_5) -> [1: bb2, otherwise: bb1]; // scope 0 at $DIR/string.rs:+1:5: +1:12
     }
 
     bb1: {
         StorageLive(_6);                 // scope 0 at $DIR/string.rs:+3:9: +3:10
         _7 = const false;                // scope 0 at $DIR/string.rs:+3:9: +3:10
-        _6 = move _1;                    // scope 0 at $DIR/string.rs:+3:9: +3:10
+        _6 = _1;                         // scope 0 at $DIR/string.rs:+3:9: +3:10
         _0 = const 4321_i32;             // scope 1 at $DIR/string.rs:+3:14: +3:18
         drop(_6) -> bb6;                 // scope 0 at $DIR/string.rs:+3:17: +3:18
     }
@@ -47,7 +47,7 @@ fn foo(_1: Option<String>) -> i32 {
     }
 
     bb4: {
-        switchInt(move _4) -> [0: bb1, otherwise: bb5]; // scope 0 at $DIR/string.rs:+2:14: +2:17
+        switchInt(_4) -> [0: bb1, otherwise: bb5]; // scope 0 at $DIR/string.rs:+2:14: +2:17
     }
 
     bb5: {

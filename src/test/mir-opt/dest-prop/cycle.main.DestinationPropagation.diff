@@ -39,7 +39,7 @@
 -         _3 = _2;                         // scope 2 at $DIR/cycle.rs:+3:13: +3:14
 -         StorageLive(_4);                 // scope 3 at $DIR/cycle.rs:+4:9: +4:10
 -         _4 = _3;                         // scope 3 at $DIR/cycle.rs:+4:9: +4:10
--         _1 = move _4;                    // scope 3 at $DIR/cycle.rs:+4:5: +4:10
+-         _1 = _4;                         // scope 3 at $DIR/cycle.rs:+4:5: +4:10
 -         StorageDead(_4);                 // scope 3 at $DIR/cycle.rs:+4:9: +4:10
 +         nop;                             // scope 1 at $DIR/cycle.rs:+2:9: +2:10
 +         nop;                             // scope 1 at $DIR/cycle.rs:+2:13: +2:14

@@ -5,7 +5,7 @@
       let mut _0: ();                      // return place in scope 0 at $DIR/union.rs:+0:11: +0:11
       let _1: main::Un;                    // in scope 0 at $DIR/union.rs:+5:9: +5:11
       let mut _2: u32;                     // in scope 0 at $DIR/union.rs:+5:23: +5:28
-      let mut _3: u32;                     // in scope 0 at $DIR/union.rs:+7:10: +7:26
+      let mut _3: u32;                     // in scope 0 at $DIR/union.rs:+7:5: +7:27
       scope 1 {
           debug un => _1;                  // in scope 1 at $DIR/union.rs:+5:9: +5:11
           scope 2 {
@@ -28,9 +28,10 @@
           nop;                             // scope 0 at $DIR/union.rs:+5:14: +5:30
           nop;                             // scope 0 at $DIR/union.rs:+5:14: +5:30
           StorageDead(_2);                 // scope 0 at $DIR/union.rs:+5:29: +5:30
-          StorageLive(_3);                 // scope 1 at $DIR/union.rs:+7:10: +7:26
           nop;                             // scope 2 at $DIR/union.rs:+7:19: +7:24
-          StorageDead(_3);                 // scope 1 at $DIR/union.rs:+7:26: +7:27
+          StorageLive(_3);                 // scope 1 at $DIR/union.rs:+7:5: +7:27
+          nop;                             // scope 1 at $DIR/union.rs:+7:5: +7:27
+          StorageDead(_3);                 // scope 1 at $DIR/union.rs:+7:5: +7:27
           StorageDead(_1);                 // scope 0 at $DIR/union.rs:+8:1: +8:2
           return;                          // scope 0 at $DIR/union.rs:+8:2: +8:2
       }

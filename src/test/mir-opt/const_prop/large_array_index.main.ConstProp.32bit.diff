@@ -20,7 +20,7 @@
           _3 = const 2_usize;              // scope 0 at $DIR/large_array_index.rs:+2:30: +2:31
           _4 = const 5000_usize;           // scope 0 at $DIR/large_array_index.rs:+2:17: +2:32
 -         _5 = Lt(_3, _4);                 // scope 0 at $DIR/large_array_index.rs:+2:17: +2:32
--         assert(move _5, "index out of bounds: the length is {} but the index is {}", move _4, _3) -> bb1; // scope 0 at $DIR/large_array_index.rs:+2:17: +2:32
+-         assert(_5, "index out of bounds: the length is {} but the index is {}", _4, _3) -> bb1; // scope 0 at $DIR/large_array_index.rs:+2:17: +2:32
 +         _5 = const true;                 // scope 0 at $DIR/large_array_index.rs:+2:17: +2:32
 +         assert(const true, "index out of bounds: the length is {} but the index is {}", const 5000_usize, const 2_usize) -> bb1; // scope 0 at $DIR/large_array_index.rs:+2:17: +2:32
       }

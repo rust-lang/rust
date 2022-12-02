@@ -28,7 +28,7 @@
                                            // + span: $DIR/mutable_variable_no_prop.rs:10:13: 10:19
                                            // + literal: Const { ty: *mut u32, val: Value(Scalar(alloc1)) }
           _3 = (*_4);                      // scope 2 at $DIR/mutable_variable_no_prop.rs:+3:13: +3:19
-          _1 = move _3;                    // scope 2 at $DIR/mutable_variable_no_prop.rs:+3:9: +3:19
+          _1 = _3;                         // scope 2 at $DIR/mutable_variable_no_prop.rs:+3:9: +3:19
           StorageDead(_3);                 // scope 2 at $DIR/mutable_variable_no_prop.rs:+3:18: +3:19
           StorageDead(_4);                 // scope 2 at $DIR/mutable_variable_no_prop.rs:+3:19: +3:20
           nop;                             // scope 2 at $DIR/mutable_variable_no_prop.rs:+2:5: +4:6

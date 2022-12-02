@@ -13,7 +13,7 @@ fn test2(_1: &dyn X) -> bool {
         StorageLive(_2);                 // scope 0 at $DIR/inline_trait_method_2.rs:+1:10: +1:11
         StorageLive(_3);                 // scope 0 at $DIR/inline_trait_method_2.rs:+1:10: +1:11
         _3 = &(*_1);                     // scope 0 at $DIR/inline_trait_method_2.rs:+1:10: +1:11
-        _2 = move _3 as &dyn X (Pointer(Unsize)); // scope 0 at $DIR/inline_trait_method_2.rs:+1:10: +1:11
+        _2 = _3 as &dyn X (Pointer(Unsize)); // scope 0 at $DIR/inline_trait_method_2.rs:+1:10: +1:11
         StorageDead(_3);                 // scope 0 at $DIR/inline_trait_method_2.rs:+1:10: +1:11
         _0 = <dyn X as X>::y(move _2) -> bb1; // scope 1 at $DIR/inline_trait_method_2.rs:10:5: 10:10
                                          // mir::Constant

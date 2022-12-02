@@ -11,7 +11,7 @@
           StorageLive(_2);                 // scope 0 at $DIR/simplify_locals.rs:+2:5: +2:15
           StorageLive(_3);                 // scope 0 at $DIR/simplify_locals.rs:+2:5: +2:6
           _3 = _1;                         // scope 0 at $DIR/simplify_locals.rs:+2:5: +2:6
-          _2 = move _3 as usize (PointerExposeAddress); // scope 0 at $DIR/simplify_locals.rs:+2:5: +2:15
+          _2 = _3 as usize (PointerExposeAddress); // scope 0 at $DIR/simplify_locals.rs:+2:5: +2:15
           StorageDead(_3);                 // scope 0 at $DIR/simplify_locals.rs:+2:14: +2:15
           StorageDead(_2);                 // scope 0 at $DIR/simplify_locals.rs:+2:15: +2:16
           _0 = const ();                   // scope 0 at $DIR/simplify_locals.rs:+0:33: +3:2

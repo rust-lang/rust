@@ -47,7 +47,7 @@
           StorageLive(_5);                 // scope 3 at $DIR/issue_75439.rs:+5:14: +5:38
           StorageLive(_6);                 // scope 4 at $DIR/issue_75439.rs:+5:33: +5:35
           _6 = _4;                         // scope 4 at $DIR/issue_75439.rs:+5:33: +5:35
-          _5 = transmute::<u32, [u8; 4]>(move _6) -> bb7; // scope 4 at $DIR/issue_75439.rs:+5:23: +5:36
+          _5 = transmute::<u32, [u8; 4]>(_6) -> bb7; // scope 4 at $DIR/issue_75439.rs:+5:23: +5:36
                                            // mir::Constant
                                            // + span: $DIR/issue_75439.rs:10:23: 10:32
                                            // + literal: Const { ty: unsafe extern "rust-intrinsic" fn(u32) -> [u8; 4] {transmute::<u32, [u8; 4]>}, val: Value(<ZST>) }
@@ -68,7 +68,7 @@
       bb7: {
           StorageDead(_6);                 // scope 4 at $DIR/issue_75439.rs:+5:35: +5:36
           Deinit(_0);                      // scope 3 at $DIR/issue_75439.rs:+5:9: +5:39
-          ((_0 as Some).0: [u8; 4]) = move _5; // scope 3 at $DIR/issue_75439.rs:+5:9: +5:39
+          ((_0 as Some).0: [u8; 4]) = _5;  // scope 3 at $DIR/issue_75439.rs:+5:9: +5:39
           discriminant(_0) = 1;            // scope 3 at $DIR/issue_75439.rs:+5:9: +5:39
           StorageDead(_5);                 // scope 3 at $DIR/issue_75439.rs:+5:38: +5:39
           StorageDead(_4);                 // scope 1 at $DIR/issue_75439.rs:+6:5: +6:6

@@ -11,10 +11,10 @@
           StorageLive(_2);                 // scope 0 at $DIR/bool_compare.rs:+1:8: +1:18
           StorageLive(_3);                 // scope 0 at $DIR/bool_compare.rs:+1:17: +1:18
           _3 = _1;                         // scope 0 at $DIR/bool_compare.rs:+1:17: +1:18
--         _2 = Eq(const false, move _3);   // scope 0 at $DIR/bool_compare.rs:+1:8: +1:18
-+         _2 = Not(move _3);               // scope 0 at $DIR/bool_compare.rs:+1:8: +1:18
+-         _2 = Eq(const false, _3);        // scope 0 at $DIR/bool_compare.rs:+1:8: +1:18
++         _2 = Not(_3);                    // scope 0 at $DIR/bool_compare.rs:+1:8: +1:18
           StorageDead(_3);                 // scope 0 at $DIR/bool_compare.rs:+1:17: +1:18
-          switchInt(move _2) -> [0: bb2, otherwise: bb1]; // scope 0 at $DIR/bool_compare.rs:+1:8: +1:18
+          switchInt(_2) -> [0: bb2, otherwise: bb1]; // scope 0 at $DIR/bool_compare.rs:+1:8: +1:18
       }
   
       bb1: {

@@ -29,7 +29,7 @@
                                            // + span: $DIR/read_immutable_static.rs:8:19: 8:22
                                            // + literal: Const { ty: &u8, val: Value(Scalar(alloc1)) }
 -         _4 = (*_5);                      // scope 0 at $DIR/read_immutable_static.rs:+1:19: +1:22
--         _1 = Add(move _2, move _4);      // scope 0 at $DIR/read_immutable_static.rs:+1:13: +1:22
+-         _1 = Add(_2, _4);                // scope 0 at $DIR/read_immutable_static.rs:+1:13: +1:22
 +         _4 = const 2_u8;                 // scope 0 at $DIR/read_immutable_static.rs:+1:19: +1:22
 +         _1 = const 4_u8;                 // scope 0 at $DIR/read_immutable_static.rs:+1:13: +1:22
           StorageDead(_4);                 // scope 0 at $DIR/read_immutable_static.rs:+1:21: +1:22

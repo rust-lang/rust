@@ -37,8 +37,8 @@
       }
   
       bb2: {
--         switchInt(move _5) -> [0: bb4, otherwise: bb3]; // scope 0 at $DIR/cycle.rs:+3:11: +3:17
-+         switchInt(move _4) -> [0: bb4, otherwise: bb3]; // scope 0 at $DIR/cycle.rs:+3:11: +3:17
+-         switchInt(_5) -> [0: bb4, otherwise: bb3]; // scope 0 at $DIR/cycle.rs:+3:11: +3:17
++         switchInt(_4) -> [0: bb4, otherwise: bb3]; // scope 0 at $DIR/cycle.rs:+3:11: +3:17
       }
   
       bb3: {
@@ -46,15 +46,15 @@
 -         _6 = _3;                         // scope 0 at $DIR/cycle.rs:+4:20: +4:21
 -         StorageLive(_7);                 // scope 1 at $DIR/cycle.rs:+5:13: +5:14
 -         _7 = _2;                         // scope 1 at $DIR/cycle.rs:+5:13: +5:14
--         _3 = move _7;                    // scope 1 at $DIR/cycle.rs:+5:9: +5:14
+-         _3 = _7;                         // scope 1 at $DIR/cycle.rs:+5:9: +5:14
 -         StorageDead(_7);                 // scope 1 at $DIR/cycle.rs:+5:13: +5:14
 -         StorageLive(_8);                 // scope 1 at $DIR/cycle.rs:+6:13: +6:14
 -         _8 = _1;                         // scope 1 at $DIR/cycle.rs:+6:13: +6:14
--         _2 = move _8;                    // scope 1 at $DIR/cycle.rs:+6:9: +6:14
+-         _2 = _8;                         // scope 1 at $DIR/cycle.rs:+6:9: +6:14
 -         StorageDead(_8);                 // scope 1 at $DIR/cycle.rs:+6:13: +6:14
 -         StorageLive(_9);                 // scope 1 at $DIR/cycle.rs:+7:13: +7:17
 -         _9 = _6;                         // scope 1 at $DIR/cycle.rs:+7:13: +7:17
--         _1 = move _9;                    // scope 1 at $DIR/cycle.rs:+7:9: +7:17
+-         _1 = _9;                         // scope 1 at $DIR/cycle.rs:+7:9: +7:17
 -         StorageDead(_9);                 // scope 1 at $DIR/cycle.rs:+7:16: +7:17
 -         _4 = const ();                   // scope 0 at $DIR/cycle.rs:+3:18: +8:6
 -         StorageDead(_6);                 // scope 0 at $DIR/cycle.rs:+8:5: +8:6

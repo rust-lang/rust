@@ -17,15 +17,15 @@
           StorageLive(_2);                 // scope 0 at $DIR/inline_diverging.rs:+1:8: +1:13
           StorageLive(_3);                 // scope 0 at $DIR/inline_diverging.rs:+1:8: +1:9
           _3 = _1;                         // scope 0 at $DIR/inline_diverging.rs:+1:8: +1:9
-          _2 = Gt(move _3, const 0_i32);   // scope 0 at $DIR/inline_diverging.rs:+1:8: +1:13
+          _2 = Gt(_3, const 0_i32);        // scope 0 at $DIR/inline_diverging.rs:+1:8: +1:13
           StorageDead(_3);                 // scope 0 at $DIR/inline_diverging.rs:+1:12: +1:13
-          switchInt(move _2) -> [0: bb2, otherwise: bb1]; // scope 0 at $DIR/inline_diverging.rs:+1:8: +1:13
+          switchInt(_2) -> [0: bb2, otherwise: bb1]; // scope 0 at $DIR/inline_diverging.rs:+1:8: +1:13
       }
   
       bb1: {
           StorageLive(_4);                 // scope 0 at $DIR/inline_diverging.rs:+2:9: +2:10
           _4 = _1;                         // scope 0 at $DIR/inline_diverging.rs:+2:9: +2:10
-          _0 = move _4 as u32 (IntToInt);  // scope 0 at $DIR/inline_diverging.rs:+2:9: +2:17
+          _0 = _4 as u32 (IntToInt);       // scope 0 at $DIR/inline_diverging.rs:+2:9: +2:17
           StorageDead(_4);                 // scope 0 at $DIR/inline_diverging.rs:+2:16: +2:17
           StorageDead(_2);                 // scope 0 at $DIR/inline_diverging.rs:+5:5: +5:6
           return;                          // scope 0 at $DIR/inline_diverging.rs:+6:2: +6:2

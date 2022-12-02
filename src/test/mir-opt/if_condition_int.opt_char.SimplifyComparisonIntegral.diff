@@ -11,10 +11,9 @@
           StorageLive(_2);                 // scope 0 at $DIR/if_condition_int.rs:+1:8: +1:16
           StorageLive(_3);                 // scope 0 at $DIR/if_condition_int.rs:+1:8: +1:9
           _3 = _1;                         // scope 0 at $DIR/if_condition_int.rs:+1:8: +1:9
--         _2 = Eq(move _3, const 'x');     // scope 0 at $DIR/if_condition_int.rs:+1:8: +1:16
+          _2 = Eq(_3, const 'x');          // scope 0 at $DIR/if_condition_int.rs:+1:8: +1:16
 -         StorageDead(_3);                 // scope 0 at $DIR/if_condition_int.rs:+1:15: +1:16
--         switchInt(move _2) -> [0: bb2, otherwise: bb1]; // scope 0 at $DIR/if_condition_int.rs:+1:8: +1:16
-+         nop;                             // scope 0 at $DIR/if_condition_int.rs:+1:8: +1:16
+-         switchInt(_2) -> [0: bb2, otherwise: bb1]; // scope 0 at $DIR/if_condition_int.rs:+1:8: +1:16
 +         nop;                             // scope 0 at $DIR/if_condition_int.rs:+1:15: +1:16
 +         switchInt(move _3) -> [120: bb1, otherwise: bb2]; // scope 0 at $DIR/if_condition_int.rs:+1:8: +1:16
       }

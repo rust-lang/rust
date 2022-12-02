@@ -11,10 +11,10 @@
           StorageLive(_2);                 // scope 0 at $DIR/equal_true.rs:+1:8: +1:17
           StorageLive(_3);                 // scope 0 at $DIR/equal_true.rs:+1:8: +1:9
           _3 = _1;                         // scope 0 at $DIR/equal_true.rs:+1:8: +1:9
--         _2 = Eq(move _3, const true);    // scope 0 at $DIR/equal_true.rs:+1:8: +1:17
-+         _2 = move _3;                    // scope 0 at $DIR/equal_true.rs:+1:8: +1:17
+-         _2 = Eq(_3, const true);         // scope 0 at $DIR/equal_true.rs:+1:8: +1:17
++         _2 = _3;                         // scope 0 at $DIR/equal_true.rs:+1:8: +1:17
           StorageDead(_3);                 // scope 0 at $DIR/equal_true.rs:+1:16: +1:17
-          switchInt(move _2) -> [0: bb2, otherwise: bb1]; // scope 0 at $DIR/equal_true.rs:+1:8: +1:17
+          switchInt(_2) -> [0: bb2, otherwise: bb1]; // scope 0 at $DIR/equal_true.rs:+1:8: +1:17
       }
   
       bb1: {

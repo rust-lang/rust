@@ -22,13 +22,13 @@
           Deinit(_5);                      // scope 0 at $DIR/sroa.rs:+1:23: +1:29
           (_5.0: usize) = const 2_usize;   // scope 0 at $DIR/sroa.rs:+1:23: +1:29
           Deinit(_2);                      // scope 0 at $DIR/sroa.rs:+1:5: +1:30
-          (_2.0: Tag) = move _3;           // scope 0 at $DIR/sroa.rs:+1:5: +1:30
-          (_2.1: Tag) = move _4;           // scope 0 at $DIR/sroa.rs:+1:5: +1:30
-          (_2.2: Tag) = move _5;           // scope 0 at $DIR/sroa.rs:+1:5: +1:30
+          (_2.0: Tag) = _3;                // scope 0 at $DIR/sroa.rs:+1:5: +1:30
+          (_2.1: Tag) = _4;                // scope 0 at $DIR/sroa.rs:+1:5: +1:30
+          (_2.2: Tag) = _5;                // scope 0 at $DIR/sroa.rs:+1:5: +1:30
           StorageDead(_5);                 // scope 0 at $DIR/sroa.rs:+1:29: +1:30
           StorageDead(_4);                 // scope 0 at $DIR/sroa.rs:+1:29: +1:30
           StorageDead(_3);                 // scope 0 at $DIR/sroa.rs:+1:29: +1:30
-          _1 = move (_2.1: Tag);           // scope 0 at $DIR/sroa.rs:+1:5: +1:32
+          _1 = (_2.1: Tag);                // scope 0 at $DIR/sroa.rs:+1:5: +1:32
           drop(_1) -> bb1;                 // scope 0 at $DIR/sroa.rs:+1:32: +1:33
       }
   
