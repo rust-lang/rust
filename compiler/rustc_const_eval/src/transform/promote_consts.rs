@@ -318,14 +318,14 @@ impl<'tcx> Validator<'_, 'tcx> {
                 match elem {
                     ProjectionElem::Deref => {
                         let mut promotable = false;
+                        // When a static is used by-value, that gets desugared to `*STATIC_ADDR`,
+                        // and we need to be able to promote this. So check if this deref matches
+                        // that specific pattern.
+
                         // We need to make sure this is a `Deref` of a local with no further projections.
                         // Discussion can be found at
                         // https://github.com/rust-lang/rust/pull/74945#discussion_r463063247
                         if let Some(local) = place_base.as_local() {
-                            // This is a special treatment for cases like *&STATIC where STATIC is a
-                            // global static variable.
-                            // This pattern is generated only when global static variables are directly
-                            // accessed and is qualified for promotion safely.
                             if let TempState::Defined { location, .. } = self.temps[local] {
                                 let def_stmt = self.body[location.block]
                                     .statements
