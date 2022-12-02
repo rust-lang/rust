@@ -38,17 +38,17 @@ impl<T, I: Iterator<Item = T>> UnordItems<T, I> {
     }
 
     #[inline]
-    pub fn all<U, F: Fn(T) -> bool>(mut self, f: F) -> bool {
+    pub fn all<F: Fn(T) -> bool>(mut self, f: F) -> bool {
         self.0.all(f)
     }
 
     #[inline]
-    pub fn any<U, F: Fn(T) -> bool>(mut self, f: F) -> bool {
+    pub fn any<F: Fn(T) -> bool>(mut self, f: F) -> bool {
         self.0.any(f)
     }
 
     #[inline]
-    pub fn filter<U, F: Fn(&T) -> bool>(self, f: F) -> UnordItems<T, impl Iterator<Item = T>> {
+    pub fn filter<F: Fn(&T) -> bool>(self, f: F) -> UnordItems<T, impl Iterator<Item = T>> {
         UnordItems(self.0.filter(f))
     }
 
@@ -95,6 +95,15 @@ impl<T, I: Iterator<Item = T>> UnordItems<T, I> {
     #[inline]
     pub fn count(self) -> usize {
         self.0.count()
+    }
+
+    #[inline]
+    pub fn flat_map<U, F, O>(self, f: F) -> UnordItems<O, impl Iterator<Item = O>>
+    where
+        U: IntoIterator<Item = O>,
+        F: Fn(T) -> U,
+    {
+        UnordItems(self.0.flat_map(f))
     }
 }
 
@@ -193,11 +202,22 @@ impl<V: Eq + Hash> UnordSet<V> {
     pub fn extend<I: Iterator<Item = V>>(&mut self, items: UnordItems<V, I>) {
         self.inner.extend(items.0)
     }
+
+    #[inline]
+    pub fn clear(&mut self) {
+        self.inner.clear();
+    }
 }
 
 impl<V: Hash + Eq> Extend<V> for UnordSet<V> {
     fn extend<T: IntoIterator<Item = V>>(&mut self, iter: T) {
         self.inner.extend(iter)
+    }
+}
+
+impl<V: Hash + Eq> FromIterator<V> for UnordSet<V> {
+    fn from_iter<T: IntoIterator<Item = V>>(iter: T) -> Self {
+        UnordSet { inner: FxHashSet::from_iter(iter) }
     }
 }
 

@@ -19,6 +19,7 @@ use rustc_middle::ty::TypeckResults;
 use rustc_middle::ty::{self, ClosureSizeProfileData, Ty, TyCtxt};
 use rustc_span::symbol::sym;
 use rustc_span::Span;
+use smallvec::SmallVec;
 
 use std::mem;
 use std::ops::ControlFlow;
@@ -458,12 +459,17 @@ impl<'cx, 'tcx> WritebackCx<'cx, 'tcx> {
 
     fn visit_coercion_casts(&mut self) {
         let fcx_typeck_results = self.fcx.typeck_results.borrow();
-        let fcx_coercion_casts = fcx_typeck_results.coercion_casts();
+
         assert_eq!(fcx_typeck_results.hir_owner, self.typeck_results.hir_owner);
 
-        for local_id in fcx_coercion_casts {
-            self.typeck_results.set_coercion_cast(*local_id);
-        }
+        self.tcx().with_stable_hashing_context(|hcx| {
+            let fcx_coercion_casts: SmallVec<[_; 32]> =
+                fcx_typeck_results.coercion_casts().items().cloned().into_sorted_small_vec(&hcx);
+
+            for local_id in fcx_coercion_casts {
+                self.typeck_results.set_coercion_cast(local_id);
+            }
+        });
     }
 
     fn visit_user_provided_tys(&mut self) {
