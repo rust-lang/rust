@@ -460,7 +460,7 @@ fn caller$0() {
     }
 
     #[test]
-    fn test_trait_method_call_hierarchy_on_def() {
+    fn test_trait_method_call_hierarchy() {
         check_hierarchy(
             r#"
 trait T1 {
@@ -482,124 +482,5 @@ fn caller() {
             expect![[]],
         );
     }
-
-    #[test]
-    fn test_trait_method_call_hierarchy_on_impl() {
-        check_hierarchy(
-            r#"
-trait T1 {
-    fn callee();
-}
-
-struct S1;
-
-impl T1 for S1 {
-    fn call$0ee() {}
-}
-
-fn caller() {
-    S1::callee();
-}
-"#,
-            expect![["callee Function FileId(0) 64..78 67..73"]],
-            expect![["caller Function FileId(0) 82..115 85..91 : [104..110]"]],
-            expect![[]],
-        );
-    }
-
-    #[test]
-    fn test_trait_method_call_hierarchy_on_ref() {
-        check_hierarchy(
-            r#"
-trait T1 {
-    fn callee();
-}
-
-struct S1;
-
-impl T1 for S1 {
-    fn callee() {}
-}
-
-fn caller() {
-    S1::call$0ee();
-}
-"#,
-            expect![["callee Function FileId(0) 64..78 67..73"]],
-            expect![["caller Function FileId(0) 82..115 85..91 : [104..110]"]],
-            expect![[]],
-        );
-    }
-
-    #[test]
-    fn test_trait_method_generic_call_hierarchy_on_def() {
-        check_hierarchy(
-            r#"
-trait T1 {
-    fn call$0ee();
-}
-
-struct S1;
-
-impl T1 for S1 {
-    fn callee() {}
-}
-
-fn caller<T: T1>() {
-    T::callee();
-}
-"#,
-            expect![["callee Function FileId(0) 15..27 18..24"]],
-            expect![["caller Function FileId(0) 82..121 85..91 : [110..116]"]],
-            expect![[]],
-        );
-    }
-
-    #[test]
-    fn test_trait_method_generic_call_hierarchy_on_impl() {
-        check_hierarchy(
-            r#"
-trait T1 {
-    fn callee();
-}
-
-struct S1;
-
-impl T1 for S1 {
-    fn call$0ee() {}
-}
-
-fn caller<T: T1>() {
-    T::callee();
-}
-"#,
-            expect![["callee Function FileId(0) 64..78 67..73"]],
-            expect![["caller Function FileId(0) 82..121 85..91 : [110..116]"]],
-            expect![[]],
-        );
-    }
-
-    #[test]
-    fn test_trait_method_generic_call_hierarchy_on_ref() {
-        check_hierarchy(
-            r#"
-trait T1 {
-    fn callee();
-}
-
-struct S1;
-
-impl T1 for S1 {
-    fn callee() {}
-}
-
-fn caller<T: T1>() {
-    T::call$0ee();
-}
-"#,
-            expect![["callee Function FileId(0) 15..27 18..24"]],
-            expect![["caller Function FileId(0) 82..121 85..91 : [110..116]"]],
-            expect![[]],
-        );
-    }
+    
 }
