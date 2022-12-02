@@ -140,7 +140,7 @@ impl stable_hasher::StableHasherResult for Fingerprint {
     }
 }
 
-impl_stable_hash_via_hash!(Fingerprint);
+impl_stable_ord_and_stable_hash_via_hash!(Fingerprint);
 
 impl<E: Encoder> Encodable<E> for Fingerprint {
     #[inline]
