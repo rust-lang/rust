@@ -140,6 +140,7 @@ fn run_passes_inner<'tcx>(
         }
 
         body.phase = new_phase;
+        body.pass_count = 0;
 
         dump_mir_for_phase_change(tcx, body);
         if validate || new_phase == MirPhase::Runtime(RuntimePhase::Optimized) {
@@ -171,5 +172,6 @@ pub fn dump_mir_for_pass<'tcx>(
 }
 
 pub fn dump_mir_for_phase_change<'tcx>(tcx: TyCtxt<'tcx>, body: &Body<'tcx>) {
+    assert_eq!(body.pass_count, 0);
     mir::dump_mir(tcx, true, body.phase.name(), &"after", body, |_, _| Ok(()))
 }

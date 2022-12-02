@@ -57,7 +57,7 @@ pub(super) fn build_custom_mir<'tcx>(
         is_polymorphic: false,
         tainted_by_errors: None,
         injection_phase: None,
-        pass_count: 1,
+        pass_count: 0,
     };
 
     body.local_decls.push(LocalDecl::new(return_ty, return_ty_span));

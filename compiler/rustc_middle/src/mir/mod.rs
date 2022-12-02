@@ -335,7 +335,7 @@ impl<'tcx> Body<'tcx> {
 
         let mut body = Body {
             phase: MirPhase::Built,
-            pass_count: 1,
+            pass_count: 0,
             source,
             basic_blocks: BasicBlocks::new(basic_blocks),
             source_scopes,
@@ -370,7 +370,7 @@ impl<'tcx> Body<'tcx> {
     pub fn new_cfg_only(basic_blocks: IndexVec<BasicBlock, BasicBlockData<'tcx>>) -> Self {
         let mut body = Body {
             phase: MirPhase::Built,
-            pass_count: 1,
+            pass_count: 0,
             source: MirSource::item(CRATE_DEF_ID.to_def_id()),
             basic_blocks: BasicBlocks::new(basic_blocks),
             source_scopes: IndexVec::new(),
