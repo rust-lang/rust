@@ -31,6 +31,9 @@ impl<'hir> LoweringContext<'_, 'hir> {
 
     pub(super) fn lower_expr_mut(&mut self, e: &Expr) -> hir::Expr<'hir> {
         ensure_sufficient_stack(|| {
+            let hir_id = self.lower_node_id(e.id);
+            self.lower_attrs(hir_id, &e.attrs);
+
             let kind = match &e.kind {
                 ExprKind::Box(inner) => hir::ExprKind::Box(self.lower_expr(inner)),
                 ExprKind::Array(exprs) => hir::ExprKind::Array(self.lower_exprs(exprs)),
@@ -147,7 +150,7 @@ impl<'hir> LoweringContext<'_, 'hir> {
                 ),
                 ExprKind::Async(capture_clause, closure_node_id, block) => self.make_async_expr(
                     *capture_clause,
-                    None,
+                    hir_id,
                     *closure_node_id,
                     None,
                     e.span,
@@ -184,6 +187,7 @@ impl<'hir> LoweringContext<'_, 'hir> {
                             binder,
                             *capture_clause,
                             e.id,
+                            hir_id,
                             *closure_id,
                             fn_decl,
                             body,
@@ -310,8 +314,6 @@ impl<'hir> LoweringContext<'_, 'hir> {
                 ExprKind::MacCall(_) => panic!("{:?} shouldn't exist here", e.span),
             };
 
-            let hir_id = self.lower_node_id(e.id);
-            self.lower_attrs(hir_id, &e.attrs);
             hir::Expr { hir_id, kind, span: self.lower_span(e.span) }
         })
     }
@@ -576,7 +578,7 @@ impl<'hir> LoweringContext<'_, 'hir> {
     pub(super) fn make_async_expr(
         &mut self,
         capture_clause: CaptureBy,
-        outer_hir_id: Option<hir::HirId>,
+        outer_hir_id: hir::HirId,
         closure_node_id: NodeId,
         ret_ty: Option<hir::FnRetTy<'hir>>,
         span: Span,
@@ -669,8 +671,9 @@ impl<'hir> LoweringContext<'_, 'hir> {
             hir::ExprKind::Closure(c)
         };
 
-        let track_caller = outer_hir_id
-            .and_then(|id| self.attrs.get(&id.local_id))
+        let track_caller = self
+            .attrs
+            .get(&outer_hir_id.local_id)
             .map_or(false, |attrs| attrs.into_iter().any(|attr| attr.has_name(sym::track_caller)));
 
         let hir_id = self.lower_node_id(closure_node_id);
@@ -985,6 +988,7 @@ impl<'hir> LoweringContext<'_, 'hir> {
         binder: &ClosureBinder,
         capture_clause: CaptureBy,
         closure_id: NodeId,
+        closure_hir_id: hir::HirId,
         inner_closure_id: NodeId,
         decl: &FnDecl,
         body: &Expr,
@@ -1018,9 +1022,7 @@ impl<'hir> LoweringContext<'_, 'hir> {
 
                 let async_body = this.make_async_expr(
                     capture_clause,
-                    // FIXME(nbdd0121): This should also use a proper HIR id so `#[track_caller]`
-                    // can be applied on async closures as well.
-                    None,
+                    closure_hir_id,
                     inner_closure_id,
                     async_ret_ty,
                     body.span,
