@@ -117,7 +117,8 @@ public:
           g.getName().contains(derivative_handler_name) ||
           g.getName().contains(splitderivative_handler_name) ||
           g.getName().contains("__enzyme_inactivefn") ||
-          g.getName().contains("__enzyme_function_like")) {
+          g.getName().contains("__enzyme_function_like") ||
+          g.getName().contains("__enzyme_allocation_like")) {
         if (g.hasInitializer()) {
           Value *V = g.getInitializer();
           while (1) {

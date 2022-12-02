@@ -10738,7 +10738,7 @@ public:
                       bb,
                       [&](Value *anti) {
                         zeroKnownAllocation(bb, anti, args, funcName,
-                                            gutils->TLI);
+                                            gutils->TLI, orig);
                       },
                       anti);
                 }
@@ -10760,7 +10760,7 @@ public:
             assert(tofree->getType());
             auto rule = [&](Value *tofree) {
               auto CI = freeKnownAllocation(Builder2, tofree, funcName, dbgLoc,
-                                            gutils->TLI);
+                                            gutils->TLI, orig, gutils);
               if (CI)
 #if LLVM_VERSION_MAJOR >= 14
                 CI->addAttributeAtIndex(AttributeList::FirstArgIndex,
@@ -10978,7 +10978,7 @@ public:
               getReverseBuilder(Builder2);
               auto dbgLoc = gutils->getNewFromOriginal(orig->getDebugLoc());
               freeKnownAllocation(Builder2, lookup(newCall, Builder2), funcName,
-                                  dbgLoc, gutils->TLI);
+                                  dbgLoc, gutils->TLI, orig, gutils);
               if (Mode == DerivativeMode::ReverseModeGradient &&
                   found->second.LI && found->second.LI->contains(orig))
                 gutils->rematerializedPrimalOrShadowAllocations.push_back(
@@ -11063,7 +11063,7 @@ public:
           getReverseBuilder(Builder2);
           auto dbgLoc = gutils->getNewFromOriginal(orig->getDebugLoc());
           freeKnownAllocation(Builder2, lookup(nop, Builder2), funcName, dbgLoc,
-                              gutils->TLI);
+                              gutils->TLI, orig, gutils);
         }
       } else if (Mode == DerivativeMode::ReverseModeGradient ||
                  Mode == DerivativeMode::ReverseModeCombined ||

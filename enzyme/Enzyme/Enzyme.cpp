@@ -391,7 +391,7 @@ handleFunctionLike(llvm::Module &M, llvm::GlobalVariable &g,
                         Attribute::get(g.getContext(), "enzyme_math", nameVal));
       } else {
         llvm::errs() << M << "\n";
-        llvm::errs() << "Param of __enzyme_inactivefn must be a "
+        llvm::errs() << "Param of __enzyme_function_like must be a "
                         "function"
                      << g << "\n"
                      << *V << "\n";
@@ -399,10 +399,112 @@ handleFunctionLike(llvm::Module &M, llvm::GlobalVariable &g,
       }
     } else {
       llvm::errs() << M << "\n";
-      llvm::errs() << "Use of __enzyme_inactivefn must be a "
+      llvm::errs() << "Use of __enzyme_function_like must be a "
                       "constant function "
                    << g << "\n";
       llvm_unreachable("__enzyme_register_gradient");
+    }
+    globalsToErase.push_back(&g);
+  }
+}
+
+static void
+handleAllocationLike(llvm::Module &M, llvm::GlobalVariable &g,
+                     SmallVectorImpl<GlobalVariable *> &globalsToErase) {
+  if (g.hasInitializer()) {
+    if (auto CA = dyn_cast<ConstantAggregate>(g.getInitializer())) {
+      if (CA->getNumOperands() != 4) {
+        llvm::errs() << M << "\n";
+        llvm::errs() << "Use of "
+                     << "enzyme_allocation_like"
+                     << " must be a "
+                        "constant of size at least "
+                     << 4 << " " << g << "\n";
+        llvm_unreachable("enzyme_allocation_like");
+      }
+      Value *V = CA->getOperand(0);
+      Value *name = CA->getOperand(1);
+      while (auto CE = dyn_cast<ConstantExpr>(V)) {
+        V = CE->getOperand(0);
+      }
+      while (auto CE = dyn_cast<ConstantExpr>(name)) {
+        name = CE->getOperand(0);
+      }
+      Value *deallocind = CA->getOperand(2);
+      while (auto CE = dyn_cast<ConstantExpr>(deallocind)) {
+        deallocind = CE->getOperand(0);
+      }
+      Value *deallocfn = CA->getOperand(3);
+      while (auto CE = dyn_cast<ConstantExpr>(deallocfn)) {
+        deallocfn = CE->getOperand(0);
+      }
+      size_t index = 0;
+      if (auto CI = dyn_cast<ConstantInt>(name)) {
+        index = CI->getZExtValue();
+      } else {
+        llvm::errs() << *name << "\n";
+        llvm::errs() << "Use of "
+                     << "enzyme_allocation_like"
+                     << "requires an integer index"
+                     << "\n";
+        llvm_unreachable("enzyme_allocation_like");
+      }
+
+      StringRef deallocIndStr;
+      bool foundInd = false;
+      if (auto GV = dyn_cast<GlobalVariable>(deallocind))
+        if (GV->isConstant())
+          if (auto C = GV->getInitializer())
+            if (auto CA = dyn_cast<ConstantDataArray>(C))
+              if (CA->getType()->getElementType()->isIntegerTy(8) &&
+                  CA->isCString()) {
+                deallocIndStr = CA->getAsCString();
+                foundInd = true;
+              }
+
+      if (!foundInd) {
+        llvm::errs() << *deallocind << "\n";
+        llvm::errs() << "Use of "
+                     << "enzyme_allocation_like"
+                     << "requires a deallocation index string"
+                     << "\n";
+        llvm_unreachable("enzyme_allocation_like");
+      }
+      if (auto F = dyn_cast<Function>(V)) {
+        F->addAttribute(AttributeList::FunctionIndex,
+                        Attribute::get(g.getContext(), "enzyme_allocator",
+                                       std::to_string(index)));
+      } else {
+        llvm::errs() << M << "\n";
+        llvm::errs() << "Param of __enzyme_allocation_like must be a "
+                        "function"
+                     << g << "\n"
+                     << *V << "\n";
+        llvm_unreachable("__enzyme_allocation_like");
+      }
+      cast<Function>(V)->addAttribute(
+          AttributeList::FunctionIndex,
+          Attribute::get(g.getContext(), "enzyme_deallocator", deallocIndStr));
+
+      if (auto F = dyn_cast<Function>(deallocfn)) {
+        cast<Function>(V)->setMetadata(
+            "enzyme_deallocator_fn",
+            llvm::MDTuple::get(F->getContext(),
+                               {llvm::ValueAsMetadata::get(F)}));
+      } else {
+        llvm::errs() << M << "\n";
+        llvm::errs() << "Free fn of __enzyme_allocation_like must be a "
+                        "function"
+                     << g << "\n"
+                     << *deallocfn << "\n";
+        llvm_unreachable("__enzyme_allocation_like");
+      }
+    } else {
+      llvm::errs() << M << "\n";
+      llvm::errs() << "Use of __enzyme_allocation_like must be a "
+                      "constant function "
+                   << g << "\n";
+      llvm_unreachable("__enzyme_allocation_like");
     }
     globalsToErase.push_back(&g);
   }
@@ -2452,6 +2554,8 @@ public:
         handleInactiveFunction(M, g, globalsToErase);
       } else if (g.getName().contains("__enzyme_function_like")) {
         handleFunctionLike(M, g, globalsToErase);
+      } else if (g.getName().contains("__enzyme_allocation_like")) {
+        handleAllocationLike(M, g, globalsToErase);
       }
     }
     for (auto g : globalsToErase) {

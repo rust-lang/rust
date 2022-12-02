@@ -3995,6 +3995,25 @@ void TypeAnalyzer::visitCallInst(CallInst &call) {
                      TypeTree(BaseType::Integer).Only(-1, &call), &call);
       return;
     }
+    if (auto opidx = getAllocationIndexFromCall(&call)) {
+      auto ptr = TypeTree(BaseType::Pointer);
+#if LLVM_VERSION_MAJOR >= 15
+      unsigned index = (size_t)opidx.value();
+#else
+      unsigned index = (size_t)opidx.getValue();
+#endif
+      if (auto CI = dyn_cast<ConstantInt>(call.getOperand(index))) {
+        auto &DL = call.getParent()->getParent()->getParent()->getDataLayout();
+        auto LoadSize = CI->getZExtValue();
+        // Only propagate mappings in range that aren't "Anything" into the
+        // pointer
+        ptr |= getAnalysis(&call).Lookup(LoadSize, DL);
+      }
+      updateAnalysis(&call, ptr.Only(-1, &call), &call);
+      updateAnalysis(call.getOperand(index),
+                     TypeTree(BaseType::Integer).Only(-1, &call), &call);
+      return;
+    }
     if (funcName == "malloc") {
       auto ptr = TypeTree(BaseType::Pointer);
       if (auto CI = dyn_cast<ConstantInt>(call.getOperand(0))) {

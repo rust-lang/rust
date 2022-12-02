@@ -1031,14 +1031,91 @@ template <typename T> static inline llvm::StringRef getFuncNameFromCall(T *op) {
       op->getAttributes().getAttributes(llvm::AttributeList::FunctionIndex);
   if (AttrList.hasAttribute("enzyme_math"))
     return AttrList.getAttribute("enzyme_math").getValueAsString();
+  if (AttrList.hasAttribute("enzyme_allocator"))
+    return "enzyme_allocator";
 
   if (auto called = getFunctionFromCall(op)) {
     if (called->hasFnAttribute("enzyme_math"))
       return called->getFnAttribute("enzyme_math").getValueAsString();
+    else if (called->hasFnAttribute("enzyme_allocator"))
+      return "enzyme_allocator";
     else
       return called->getName();
   }
   return "";
+}
+
+template <typename T>
+static inline llvm::Optional<size_t> getAllocationIndexFromCall(T *op) {
+  auto AttrList =
+      op->getAttributes().getAttributes(llvm::AttributeList::FunctionIndex);
+  if (AttrList.hasAttribute("enzyme_allocator")) {
+    size_t res;
+    bool b = AttrList.getAttribute("enzyme_allocator")
+                 .getValueAsString()
+                 .getAsInteger(10, res);
+    assert(!b);
+    return llvm::Optional<size_t>(res);
+  }
+
+  if (auto called = getFunctionFromCall(op)) {
+    if (called->hasFnAttribute("enzyme_allocator")) {
+      size_t res;
+      bool b = called->getFnAttribute("enzyme_allocator")
+                   .getValueAsString()
+                   .getAsInteger(10, res);
+      assert(!b);
+      return llvm::Optional<size_t>(res);
+    }
+  }
+  return llvm::Optional<size_t>();
+}
+
+template <typename T>
+static inline llvm::Function *getDeallocatorFnFromCall(T *op) {
+  if (auto MD = hasMetadata(op, "enzyme_deallocator_fn")) {
+    auto md2 = llvm::cast<llvm::MDTuple>(MD);
+    assert(md2->getNumOperands() == 1);
+    return llvm::cast<llvm::Function>(
+        llvm::cast<llvm::ConstantAsMetadata>(md2->getOperand(0))->getValue());
+  }
+  if (auto called = getFunctionFromCall(op)) {
+    if (auto MD = hasMetadata(called, "enzyme_deallocator_fn")) {
+      auto md2 = llvm::cast<llvm::MDTuple>(MD);
+      assert(md2->getNumOperands() == 1);
+      return llvm::cast<llvm::Function>(
+          llvm::cast<llvm::ConstantAsMetadata>(md2->getOperand(0))->getValue());
+    }
+  }
+  llvm::errs() << "dealloc fn: " << *op->getParent()->getParent()->getParent()
+               << "\n";
+  llvm_unreachable("Illegal deallocatorfn");
+}
+
+template <typename T>
+static inline std::vector<ssize_t> getDeallocationIndicesFromCall(T *op) {
+  llvm::StringRef res = "";
+  auto AttrList =
+      op->getAttributes().getAttributes(llvm::AttributeList::FunctionIndex);
+  if (AttrList.hasAttribute("enzyme_deallocator"))
+    res = AttrList.getAttribute("enzyme_deaellocator").getValueAsString();
+
+  if (auto called = getFunctionFromCall(op)) {
+    if (called->hasFnAttribute("enzyme_deallocator"))
+      res = called->getFnAttribute("enzyme_deallocator").getValueAsString();
+  }
+  if (res.size() == 0)
+    llvm_unreachable("Illegal deallocator");
+  llvm::SmallVector<llvm::StringRef, 1> inds;
+  res.split(inds, ",");
+  std::vector<ssize_t> vinds;
+  for (auto ind : inds) {
+    ssize_t Result;
+    bool b = ind.getAsInteger(10, Result);
+    assert(!b);
+    vinds.push_back(Result);
+  }
+  return vinds;
 }
 
 llvm::Function *
