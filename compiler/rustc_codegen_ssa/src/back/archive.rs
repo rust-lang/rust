@@ -290,11 +290,17 @@ impl<'a> ArArchiveBuilder<'a> {
             false,
         )?;
 
+        let any_entries = !entries.is_empty();
+        drop(entries);
+        // Drop src_archives to unmap all input archives, which is necessary if we want to write the
+        // output archive to the same location as an input archive on Windows.
+        drop(self.src_archives);
+
         archive_tmpfile
             .persist(output)
             .map_err(|err| io_error_context("failed to rename archive file", err.error))?;
 
-        Ok(!entries.is_empty())
+        Ok(any_entries)
     }
 }
 
