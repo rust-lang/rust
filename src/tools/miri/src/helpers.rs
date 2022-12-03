@@ -554,9 +554,7 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriInterpCxExt<'mir, 'tcx> {
         assert_eq!(
             self.eval_context_ref().tcx.sess.target.os,
             target_os,
-            "`{}` is only available on the `{}` target OS",
-            name,
-            target_os,
+            "`{name}` is only available on the `{target_os}` target OS",
         )
     }
 
@@ -566,8 +564,7 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriInterpCxExt<'mir, 'tcx> {
     fn assert_target_os_is_unix(&self, name: &str) {
         assert!(
             target_os_is_unix(self.eval_context_ref().tcx.sess.target.os.as_ref()),
-            "`{}` is only available for supported UNIX family targets",
-            name,
+            "`{name}` is only available for supported UNIX family targets",
         );
     }
 
@@ -988,7 +985,7 @@ impl<'mir, 'tcx> MiriMachine<'mir, 'tcx> {
         self.stack()[frame_idx].current_span()
     }
 
-    fn stack(&self) -> &[Frame<'mir, 'tcx, Provenance, machine::FrameData<'tcx>>] {
+    fn stack(&self) -> &[Frame<'mir, 'tcx, Provenance, machine::FrameExtra<'tcx>>] {
         self.threads.active_thread_stack()
     }
 
@@ -1019,8 +1016,7 @@ where
 
 pub fn isolation_abort_error<'tcx>(name: &str) -> InterpResult<'tcx> {
     throw_machine_stop!(TerminationInfo::UnsupportedInIsolation(format!(
-        "{} not available when isolation is enabled",
-        name,
+        "{name} not available when isolation is enabled",
     )))
 }
 

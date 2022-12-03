@@ -6,12 +6,15 @@ use log::trace;
 use rustc_span::{source_map::DUMMY_SP, SpanData, Symbol};
 use rustc_target::abi::{Align, Size};
 
-use crate::stacked_borrows::{diagnostics::TagHistory, AccessKind};
+use crate::borrow_tracker::stacked_borrows::diagnostics::TagHistory;
 use crate::*;
 
 /// Details of premature program termination.
 pub enum TerminationInfo {
-    Exit(i64),
+    Exit {
+        code: i64,
+        leak_check: bool,
+    },
     Abort(String),
     UnsupportedInIsolation(String),
     StackedBorrowsUb {
@@ -38,7 +41,7 @@ impl fmt::Display for TerminationInfo {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         use TerminationInfo::*;
         match self {
-            Exit(code) => write!(f, "the evaluated program completed with exit code {code}"),
+            Exit { code, .. } => write!(f, "the evaluated program completed with exit code {code}"),
             Abort(msg) => write!(f, "{msg}"),
             UnsupportedInIsolation(msg) => write!(f, "{msg}"),
             Int2PtrWithStrictProvenance =>
@@ -64,9 +67,8 @@ pub enum NonHaltingDiagnostic {
     ///
     /// new_kind is `None` for base tags.
     CreatedPointerTag(NonZeroU64, Option<String>, Option<(AllocId, AllocRange, ProvenanceExtra)>),
-    /// This `Item` was popped from the borrow stack, either due to an access with the given tag or
-    /// a deallocation when the second argument is `None`.
-    PoppedPointerTag(Item, Option<(ProvenanceExtra, AccessKind)>),
+    /// This `Item` was popped from the borrow stack. The string explains the reason.
+    PoppedPointerTag(Item, String),
     CreatedCallId(CallId),
     CreatedAlloc(AllocId, Size, Align, MemoryKind<MiriMemoryKind>),
     FreedAlloc(AllocId),
@@ -148,11 +150,11 @@ fn prune_stacktrace<'tcx>(
 
 /// Emit a custom diagnostic without going through the miri-engine machinery.
 ///
-/// Returns `Some` if this was regular program termination with a given exit code, `None` otherwise.
+/// Returns `Some` if this was regular program termination with a given exit code and a `bool` indicating whether a leak check should happen; `None` otherwise.
 pub fn report_error<'tcx, 'mir>(
     ecx: &InterpCx<'mir, 'tcx, MiriMachine<'mir, 'tcx>>,
     e: InterpErrorInfo<'tcx>,
-) -> Option<i64> {
+) -> Option<(i64, bool)> {
     use InterpError::*;
 
     let mut msg = vec![];
@@ -161,7 +163,7 @@ pub fn report_error<'tcx, 'mir>(
         let info = info.downcast_ref::<TerminationInfo>().expect("invalid MachineStop payload");
         use TerminationInfo::*;
         let title = match info {
-            Exit(code) => return Some(*code),
+            Exit { code, leak_check } => return Some((*code, *leak_check)),
             Abort(_) => Some("abnormal termination"),
             UnsupportedInIsolation(_) | Int2PtrWithStrictProvenance =>
                 Some("unsupported operation"),
@@ -396,15 +398,7 @@ impl<'mir, 'tcx> MiriMachine<'mir, 'tcx> {
                 format!(
                     "created tag {tag:?} for {kind} at {alloc_id:?}{range:?} derived from {orig_tag:?}"
                 ),
-            PoppedPointerTag(item, tag) =>
-                match tag {
-                    None => format!("popped tracked tag for item {item:?} due to deallocation",),
-                    Some((tag, access)) => {
-                        format!(
-                            "popped tracked tag for item {item:?} due to {access:?} access for {tag:?}",
-                        )
-                    }
-                },
+            PoppedPointerTag(item, cause) => format!("popped tracked tag for item {item:?}{cause}"),
             CreatedCallId(id) => format!("function call with id {id}"),
             CreatedAlloc(AllocId(id), size, align, kind) =>
                 format!(

@@ -36,7 +36,7 @@ pub struct CatchUnwindData<'tcx> {
 }
 
 impl VisitTags for CatchUnwindData<'_> {
-    fn visit_tags(&self, visit: &mut dyn FnMut(SbTag)) {
+    fn visit_tags(&self, visit: &mut dyn FnMut(BorTag)) {
         let CatchUnwindData { catch_fn, data, dest, ret: _ } = self;
         catch_fn.visit_tags(visit);
         data.visit_tags(visit);
@@ -125,7 +125,7 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriInterpCxExt<'mir, 'tcx> {
 
     fn handle_stack_pop_unwind(
         &mut self,
-        mut extra: FrameData<'tcx>,
+        mut extra: FrameExtra<'tcx>,
         unwinding: bool,
     ) -> InterpResult<'tcx, StackPopJump> {
         let this = self.eval_context_mut();

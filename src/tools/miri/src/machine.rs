@@ -37,9 +37,9 @@ pub const STACK_ADDR: u64 = 32 * PAGE_SIZE; // not really about the "stack", but
 pub const STACK_SIZE: u64 = 16 * PAGE_SIZE; // whatever
 
 /// Extra data stored with each stack frame
-pub struct FrameData<'tcx> {
+pub struct FrameExtra<'tcx> {
     /// Extra data for Stacked Borrows.
-    pub stacked_borrows: Option<stacked_borrows::FrameExtra>,
+    pub borrow_tracker: Option<borrow_tracker::FrameState>,
 
     /// If this is Some(), then this is a special "catch unwind" frame (the frame of `try_fn`
     /// called by `try`). When this frame is popped during unwinding a panic,
@@ -58,23 +58,23 @@ pub struct FrameData<'tcx> {
     pub is_user_relevant: bool,
 }
 
-impl<'tcx> std::fmt::Debug for FrameData<'tcx> {
+impl<'tcx> std::fmt::Debug for FrameExtra<'tcx> {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         // Omitting `timing`, it does not support `Debug`.
-        let FrameData { stacked_borrows, catch_unwind, timing: _, is_user_relevant: _ } = self;
+        let FrameExtra { borrow_tracker, catch_unwind, timing: _, is_user_relevant: _ } = self;
         f.debug_struct("FrameData")
-            .field("stacked_borrows", stacked_borrows)
+            .field("borrow_tracker", borrow_tracker)
             .field("catch_unwind", catch_unwind)
             .finish()
     }
 }
 
-impl VisitTags for FrameData<'_> {
-    fn visit_tags(&self, visit: &mut dyn FnMut(SbTag)) {
-        let FrameData { catch_unwind, stacked_borrows, timing: _, is_user_relevant: _ } = self;
+impl VisitTags for FrameExtra<'_> {
+    fn visit_tags(&self, visit: &mut dyn FnMut(BorTag)) {
+        let FrameExtra { catch_unwind, borrow_tracker, timing: _, is_user_relevant: _ } = self;
 
         catch_unwind.visit_tags(visit);
-        stacked_borrows.visit_tags(visit);
+        borrow_tracker.visit_tags(visit);
     }
 }
 
@@ -147,7 +147,7 @@ pub enum Provenance {
     Concrete {
         alloc_id: AllocId,
         /// Stacked Borrows tag.
-        sb: SbTag,
+        tag: BorTag,
     },
     Wildcard,
 }
@@ -173,7 +173,7 @@ impl std::hash::Hash for Provenance {
 /// The "extra" information a pointer has over a regular AllocId.
 #[derive(Copy, Clone, PartialEq)]
 pub enum ProvenanceExtra {
-    Concrete(SbTag),
+    Concrete(BorTag),
     Wildcard,
 }
 
@@ -188,7 +188,7 @@ static_assert_size!(Scalar<Provenance>, 32);
 impl fmt::Debug for Provenance {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         match self {
-            Provenance::Concrete { alloc_id, sb } => {
+            Provenance::Concrete { alloc_id, tag } => {
                 // Forward `alternate` flag to `alloc_id` printing.
                 if f.alternate() {
                     write!(f, "[{alloc_id:#?}]")?;
@@ -196,7 +196,7 @@ impl fmt::Debug for Provenance {
                     write!(f, "[{alloc_id:?}]")?;
                 }
                 // Print Stacked Borrows tag.
-                write!(f, "{sb:?}")?;
+                write!(f, "{tag:?}")?;
             }
             Provenance::Wildcard => {
                 write!(f, "[wildcard]")?;
@@ -221,9 +221,9 @@ impl interpret::Provenance for Provenance {
         match (left, right) {
             // If both are the *same* concrete tag, that is the result.
             (
-                Some(Provenance::Concrete { alloc_id: left_alloc, sb: left_sb }),
-                Some(Provenance::Concrete { alloc_id: right_alloc, sb: right_sb }),
-            ) if left_alloc == right_alloc && left_sb == right_sb => left,
+                Some(Provenance::Concrete { alloc_id: left_alloc, tag: left_tag }),
+                Some(Provenance::Concrete { alloc_id: right_alloc, tag: right_tag }),
+            ) if left_alloc == right_alloc && left_tag == right_tag => left,
             // If one side is a wildcard, the best possible outcome is that it is equal to the other
             // one, and we use that.
             (Some(Provenance::Wildcard), o) | (o, Some(Provenance::Wildcard)) => o,
@@ -243,7 +243,7 @@ impl fmt::Debug for ProvenanceExtra {
 }
 
 impl ProvenanceExtra {
-    pub fn and_then<T>(self, f: impl FnOnce(SbTag) -> Option<T>) -> Option<T> {
+    pub fn and_then<T>(self, f: impl FnOnce(BorTag) -> Option<T>) -> Option<T> {
         match self {
             ProvenanceExtra::Concrete(pid) => f(pid),
             ProvenanceExtra::Wildcard => None,
@@ -254,21 +254,21 @@ impl ProvenanceExtra {
 /// Extra per-allocation data
 #[derive(Debug, Clone)]
 pub struct AllocExtra {
-    /// Stacked Borrows state is only added if it is enabled.
-    pub stacked_borrows: Option<stacked_borrows::AllocExtra>,
+    /// Global state of the borrow tracker, if enabled.
+    pub borrow_tracker: Option<borrow_tracker::AllocState>,
     /// Data race detection via the use of a vector-clock,
     ///  this is only added if it is enabled.
-    pub data_race: Option<data_race::AllocExtra>,
+    pub data_race: Option<data_race::AllocState>,
     /// Weak memory emulation via the use of store buffers,
     ///  this is only added if it is enabled.
-    pub weak_memory: Option<weak_memory::AllocExtra>,
+    pub weak_memory: Option<weak_memory::AllocState>,
 }
 
 impl VisitTags for AllocExtra {
-    fn visit_tags(&self, visit: &mut dyn FnMut(SbTag)) {
-        let AllocExtra { stacked_borrows, data_race, weak_memory } = self;
+    fn visit_tags(&self, visit: &mut dyn FnMut(BorTag)) {
+        let AllocExtra { borrow_tracker, data_race, weak_memory } = self;
 
-        stacked_borrows.visit_tags(visit);
+        borrow_tracker.visit_tags(visit);
         data_race.visit_tags(visit);
         weak_memory.visit_tags(visit);
     }
@@ -350,8 +350,8 @@ pub struct MiriMachine<'mir, 'tcx> {
     // We carry a copy of the global `TyCtxt` for convenience, so methods taking just `&Evaluator` have `tcx` access.
     pub tcx: TyCtxt<'tcx>,
 
-    /// Stacked Borrows global data.
-    pub stacked_borrows: Option<stacked_borrows::GlobalState>,
+    /// Global data for borrow tracking.
+    pub borrow_tracker: Option<borrow_tracker::GlobalState>,
 
     /// Data race detector global data.
     pub data_race: Option<data_race::GlobalState>,
@@ -362,6 +362,9 @@ pub struct MiriMachine<'mir, 'tcx> {
     /// Environment variables set by `setenv`.
     /// Miri does not expose env vars from the host to the emulated program.
     pub(crate) env_vars: EnvVars<'tcx>,
+
+    /// Return place of the main function.
+    pub(crate) main_fn_ret_place: Option<MemPlace<Provenance>>,
 
     /// Program arguments (`Option` because we can only initialize them after creating the ecx).
     /// These are *pointers* to argc/argv because macOS.
@@ -460,9 +463,9 @@ pub struct MiriMachine<'mir, 'tcx> {
     #[cfg(not(target_os = "linux"))]
     pub external_so_lib: Option<!>,
 
-    /// Run a garbage collector for SbTags every N basic blocks.
+    /// Run a garbage collector for BorTags every N basic blocks.
     pub(crate) gc_interval: u32,
-    /// The number of blocks that passed since the last SbTag GC pass.
+    /// The number of blocks that passed since the last BorTag GC pass.
     pub(crate) since_gc: u32,
     /// The number of CPUs to be reported by miri.
     pub(crate) num_cpus: u32,
@@ -477,21 +480,16 @@ impl<'mir, 'tcx> MiriMachine<'mir, 'tcx> {
             measureme::Profiler::new(out).expect("Couldn't create `measureme` profiler")
         });
         let rng = StdRng::seed_from_u64(config.seed.unwrap_or(0));
-        let stacked_borrows = config.stacked_borrows.then(|| {
-            RefCell::new(stacked_borrows::GlobalStateInner::new(
-                config.tracked_pointer_tags.clone(),
-                config.tracked_call_ids.clone(),
-                config.retag_fields,
-            ))
-        });
+        let borrow_tracker = config.borrow_tracker.map(|bt| bt.instanciate_global_state(config));
         let data_race = config.data_race_detector.then(|| data_race::GlobalState::new(config));
         MiriMachine {
             tcx: layout_cx.tcx,
-            stacked_borrows,
+            borrow_tracker,
             data_race,
             intptrcast: RefCell::new(intptrcast::GlobalStateInner::new(config)),
             // `env_vars` depends on a full interpreter so we cannot properly initialize it yet.
             env_vars: EnvVars::default(),
+            main_fn_ret_place: None,
             argc: None,
             argv: None,
             cmd_line: None,
@@ -556,10 +554,11 @@ impl<'mir, 'tcx> MiriMachine<'mir, 'tcx> {
     pub(crate) fn late_init(
         this: &mut MiriInterpCx<'mir, 'tcx>,
         config: &MiriConfig,
+        on_main_stack_empty: StackEmptyCallback<'mir, 'tcx>,
     ) -> InterpResult<'tcx> {
         EnvVars::init(this, config)?;
         MiriMachine::init_extern_statics(this)?;
-        ThreadManager::init(this);
+        ThreadManager::init(this, on_main_stack_empty);
         Ok(())
     }
 
@@ -651,18 +650,19 @@ impl<'mir, 'tcx> MiriMachine<'mir, 'tcx> {
 }
 
 impl VisitTags for MiriMachine<'_, '_> {
-    fn visit_tags(&self, visit: &mut dyn FnMut(SbTag)) {
+    fn visit_tags(&self, visit: &mut dyn FnMut(BorTag)) {
         #[rustfmt::skip]
         let MiriMachine {
             threads,
             tls,
             env_vars,
+            main_fn_ret_place,
             argc,
             argv,
             cmd_line,
             extern_statics,
             dir_handler,
-            stacked_borrows,
+            borrow_tracker,
             data_race,
             intptrcast,
             file_handler,
@@ -700,8 +700,9 @@ impl VisitTags for MiriMachine<'_, '_> {
         dir_handler.visit_tags(visit);
         file_handler.visit_tags(visit);
         data_race.visit_tags(visit);
-        stacked_borrows.visit_tags(visit);
+        borrow_tracker.visit_tags(visit);
         intptrcast.visit_tags(visit);
+        main_fn_ret_place.visit_tags(visit);
         argc.visit_tags(visit);
         argv.visit_tags(visit);
         cmd_line.visit_tags(visit);
@@ -735,7 +736,7 @@ impl<'mir, 'tcx> Machine<'mir, 'tcx> for MiriMachine<'mir, 'tcx> {
     type MemoryKind = MiriMemoryKind;
     type ExtraFnVal = Dlsym;
 
-    type FrameExtra = FrameData<'tcx>;
+    type FrameExtra = FrameExtra<'tcx>;
     type AllocExtra = AllocExtra;
 
     type Provenance = Provenance;
@@ -900,25 +901,24 @@ impl<'mir, 'tcx> Machine<'mir, 'tcx> for MiriMachine<'mir, 'tcx> {
         }
 
         let alloc = alloc.into_owned();
-        let stacks = ecx.machine.stacked_borrows.as_ref().map(|stacked_borrows| {
-            Stacks::new_allocation(id, alloc.size(), stacked_borrows, kind, &ecx.machine)
-        });
+        let borrow_tracker = ecx
+            .machine
+            .borrow_tracker
+            .as_ref()
+            .map(|bt| bt.borrow_mut().new_allocation(id, alloc.size(), kind, &ecx.machine));
+
         let race_alloc = ecx.machine.data_race.as_ref().map(|data_race| {
-            data_race::AllocExtra::new_allocation(
+            data_race::AllocState::new_allocation(
                 data_race,
                 &ecx.machine.threads,
                 alloc.size(),
                 kind,
             )
         });
-        let buffer_alloc = ecx.machine.weak_memory.then(weak_memory::AllocExtra::new_allocation);
+        let buffer_alloc = ecx.machine.weak_memory.then(weak_memory::AllocState::new_allocation);
         let alloc: Allocation<Provenance, Self::AllocExtra> = alloc.adjust_from_tcx(
             &ecx.tcx,
-            AllocExtra {
-                stacked_borrows: stacks.map(RefCell::new),
-                data_race: race_alloc,
-                weak_memory: buffer_alloc,
-            },
+            AllocExtra { borrow_tracker, data_race: race_alloc, weak_memory: buffer_alloc },
             |ptr| ecx.global_base_pointer(ptr),
         )?;
         Ok(Cow::Owned(alloc))
@@ -942,14 +942,14 @@ impl<'mir, 'tcx> Machine<'mir, 'tcx> for MiriMachine<'mir, 'tcx> {
             }
         }
         let absolute_addr = intptrcast::GlobalStateInner::rel_ptr_to_addr(ecx, ptr);
-        let sb_tag = if let Some(stacked_borrows) = &ecx.machine.stacked_borrows {
-            stacked_borrows.borrow_mut().base_ptr_tag(ptr.provenance, &ecx.machine)
+        let tag = if let Some(borrow_tracker) = &ecx.machine.borrow_tracker {
+            borrow_tracker.borrow_mut().base_ptr_tag(ptr.provenance, &ecx.machine)
         } else {
             // Value does not matter, SB is disabled
-            SbTag::default()
+            BorTag::default()
         };
         Pointer::new(
-            Provenance::Concrete { alloc_id: ptr.provenance, sb: sb_tag },
+            Provenance::Concrete { alloc_id: ptr.provenance, tag },
             Size::from_bytes(absolute_addr),
         )
     }
@@ -967,8 +967,8 @@ impl<'mir, 'tcx> Machine<'mir, 'tcx> for MiriMachine<'mir, 'tcx> {
         ptr: Pointer<Self::Provenance>,
     ) -> InterpResult<'tcx> {
         match ptr.provenance {
-            Provenance::Concrete { alloc_id, sb } =>
-                intptrcast::GlobalStateInner::expose_ptr(ecx, alloc_id, sb),
+            Provenance::Concrete { alloc_id, tag } =>
+                intptrcast::GlobalStateInner::expose_ptr(ecx, alloc_id, tag),
             Provenance::Wildcard => {
                 // No need to do anything for wildcard pointers as
                 // their provenances have already been previously exposed.
@@ -986,11 +986,11 @@ impl<'mir, 'tcx> Machine<'mir, 'tcx> for MiriMachine<'mir, 'tcx> {
         let rel = intptrcast::GlobalStateInner::abs_ptr_to_rel(ecx, ptr);
 
         rel.map(|(alloc_id, size)| {
-            let sb = match ptr.provenance {
-                Provenance::Concrete { sb, .. } => ProvenanceExtra::Concrete(sb),
+            let tag = match ptr.provenance {
+                Provenance::Concrete { tag, .. } => ProvenanceExtra::Concrete(tag),
                 Provenance::Wildcard => ProvenanceExtra::Wildcard,
             };
-            (alloc_id, size, sb)
+            (alloc_id, size, tag)
         })
     }
 
@@ -1005,10 +1005,8 @@ impl<'mir, 'tcx> Machine<'mir, 'tcx> for MiriMachine<'mir, 'tcx> {
         if let Some(data_race) = &alloc_extra.data_race {
             data_race.read(alloc_id, range, machine)?;
         }
-        if let Some(stacked_borrows) = &alloc_extra.stacked_borrows {
-            stacked_borrows
-                .borrow_mut()
-                .before_memory_read(alloc_id, prov_extra, range, machine)?;
+        if let Some(borrow_tracker) = &alloc_extra.borrow_tracker {
+            borrow_tracker.before_memory_read(alloc_id, prov_extra, range, machine)?;
         }
         if let Some(weak_memory) = &alloc_extra.weak_memory {
             weak_memory.memory_accessed(range, machine.data_race.as_ref().unwrap());
@@ -1027,8 +1025,8 @@ impl<'mir, 'tcx> Machine<'mir, 'tcx> for MiriMachine<'mir, 'tcx> {
         if let Some(data_race) = &mut alloc_extra.data_race {
             data_race.write(alloc_id, range, machine)?;
         }
-        if let Some(stacked_borrows) = &mut alloc_extra.stacked_borrows {
-            stacked_borrows.get_mut().before_memory_write(alloc_id, prov_extra, range, machine)?;
+        if let Some(borrow_tracker) = &mut alloc_extra.borrow_tracker {
+            borrow_tracker.before_memory_write(alloc_id, prov_extra, range, machine)?;
         }
         if let Some(weak_memory) = &alloc_extra.weak_memory {
             weak_memory.memory_accessed(range, machine.data_race.as_ref().unwrap());
@@ -1050,16 +1048,10 @@ impl<'mir, 'tcx> Machine<'mir, 'tcx> for MiriMachine<'mir, 'tcx> {
         if let Some(data_race) = &mut alloc_extra.data_race {
             data_race.deallocate(alloc_id, range, machine)?;
         }
-        if let Some(stacked_borrows) = &mut alloc_extra.stacked_borrows {
-            stacked_borrows.get_mut().before_memory_deallocation(
-                alloc_id,
-                prove_extra,
-                range,
-                machine,
-            )
-        } else {
-            Ok(())
+        if let Some(borrow_tracker) = &mut alloc_extra.borrow_tracker {
+            borrow_tracker.before_memory_deallocation(alloc_id, prove_extra, range, machine)?;
         }
+        Ok(())
     }
 
     #[inline(always)]
@@ -1068,14 +1060,17 @@ impl<'mir, 'tcx> Machine<'mir, 'tcx> for MiriMachine<'mir, 'tcx> {
         kind: mir::RetagKind,
         place: &PlaceTy<'tcx, Provenance>,
     ) -> InterpResult<'tcx> {
-        if ecx.machine.stacked_borrows.is_some() { ecx.retag(kind, place) } else { Ok(()) }
+        if ecx.machine.borrow_tracker.is_some() {
+            ecx.retag(kind, place)?;
+        }
+        Ok(())
     }
 
     #[inline(always)]
     fn init_frame_extra(
         ecx: &mut InterpCx<'mir, 'tcx, Self>,
         frame: Frame<'mir, 'tcx, Provenance>,
-    ) -> InterpResult<'tcx, Frame<'mir, 'tcx, Provenance, FrameData<'tcx>>> {
+    ) -> InterpResult<'tcx, Frame<'mir, 'tcx, Provenance, FrameExtra<'tcx>>> {
         // Start recording our event before doing anything else
         let timing = if let Some(profiler) = ecx.machine.profiler.as_ref() {
             let fn_name = frame.instance.to_string();
@@ -1091,10 +1086,10 @@ impl<'mir, 'tcx> Machine<'mir, 'tcx> for MiriMachine<'mir, 'tcx> {
             None
         };
 
-        let stacked_borrows = ecx.machine.stacked_borrows.as_ref();
+        let borrow_tracker = ecx.machine.borrow_tracker.as_ref();
 
-        let extra = FrameData {
-            stacked_borrows: stacked_borrows.map(|sb| sb.borrow_mut().new_frame(&ecx.machine)),
+        let extra = FrameExtra {
+            borrow_tracker: borrow_tracker.map(|bt| bt.borrow_mut().new_frame(&ecx.machine)),
             catch_unwind: None,
             timing,
             is_user_relevant: ecx.machine.is_user_relevant(&frame),
@@ -1127,7 +1122,7 @@ impl<'mir, 'tcx> Machine<'mir, 'tcx> for MiriMachine<'mir, 'tcx> {
             }
         }
 
-        // Search for SbTags to find all live pointers, then remove all other tags from borrow
+        // Search for BorTags to find all live pointers, then remove all other tags from borrow
         // stacks.
         // When debug assertions are enabled, run the GC as often as possible so that any cases
         // where it mistakenly removes an important tag become visible.
@@ -1153,14 +1148,16 @@ impl<'mir, 'tcx> Machine<'mir, 'tcx> for MiriMachine<'mir, 'tcx> {
             let stack_len = ecx.active_thread_stack().len();
             ecx.active_thread_mut().set_top_user_relevant_frame(stack_len - 1);
         }
-
-        if ecx.machine.stacked_borrows.is_some() { ecx.retag_return_place() } else { Ok(()) }
+        if ecx.machine.borrow_tracker.is_some() {
+            ecx.retag_return_place()?;
+        }
+        Ok(())
     }
 
     #[inline(always)]
     fn after_stack_pop(
         ecx: &mut InterpCx<'mir, 'tcx, Self>,
-        mut frame: Frame<'mir, 'tcx, Provenance, FrameData<'tcx>>,
+        mut frame: Frame<'mir, 'tcx, Provenance, FrameExtra<'tcx>>,
         unwinding: bool,
     ) -> InterpResult<'tcx, StackPopJump> {
         if frame.extra.is_user_relevant {
@@ -1171,8 +1168,8 @@ impl<'mir, 'tcx> Machine<'mir, 'tcx> for MiriMachine<'mir, 'tcx> {
             ecx.active_thread_mut().recompute_top_user_relevant_frame();
         }
         let timing = frame.extra.timing.take();
-        if let Some(stacked_borrows) = &ecx.machine.stacked_borrows {
-            stacked_borrows.borrow_mut().end_call(&frame.extra);
+        if let Some(borrow_tracker) = &ecx.machine.borrow_tracker {
+            borrow_tracker.borrow_mut().end_call(&frame.extra);
         }
         let res = ecx.handle_stack_pop_unwind(frame.extra, unwinding);
         if let Some(profiler) = ecx.machine.profiler.as_ref() {

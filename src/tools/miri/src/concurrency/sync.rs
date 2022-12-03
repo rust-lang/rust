@@ -181,7 +181,7 @@ pub(crate) struct SynchronizationState<'mir, 'tcx> {
 }
 
 impl<'mir, 'tcx> VisitTags for SynchronizationState<'mir, 'tcx> {
-    fn visit_tags(&self, visit: &mut dyn FnMut(SbTag)) {
+    fn visit_tags(&self, visit: &mut dyn FnMut(BorTag)) {
         for init_once in self.init_onces.iter() {
             init_once.visit_tags(visit);
         }

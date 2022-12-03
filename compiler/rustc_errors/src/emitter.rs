@@ -283,7 +283,7 @@ pub trait Emitter: Translate {
                         if self
                             .source_map()
                             .map(|sm| is_case_difference(
-                                &**sm,
+                                sm,
                                 substitution,
                                 sugg.substitutions[0].parts[0].span,
                             ))
@@ -525,7 +525,7 @@ impl Translate for EmitterWriter {
     }
 
     fn fallback_fluent_bundle(&self) -> &FluentBundle {
-        &**self.fallback_bundle
+        &self.fallback_bundle
     }
 }
 
@@ -538,7 +538,7 @@ impl Emitter for EmitterWriter {
         let fluent_args = to_fluent_args(diag.args());
 
         let mut children = diag.children.clone();
-        let (mut primary_span, suggestions) = self.primary_span_formatted(&diag, &fluent_args);
+        let (mut primary_span, suggestions) = self.primary_span_formatted(diag, &fluent_args);
         debug!("emit_diagnostic: suggestions={:?}", suggestions);
 
         self.fix_multispans_in_extern_macros_and_render_macro_backtrace(
@@ -555,7 +555,7 @@ impl Emitter for EmitterWriter {
             &diag.code,
             &primary_span,
             &children,
-            &suggestions,
+            suggestions,
             self.track_diagnostics.then_some(&diag.emitted_at),
         );
     }
@@ -801,7 +801,7 @@ impl EmitterWriter {
         }
 
         let source_string = match file.get_line(line.line_index - 1) {
-            Some(s) => normalize_whitespace(&*s),
+            Some(s) => normalize_whitespace(&s),
             None => return Vec::new(),
         };
 
@@ -1148,7 +1148,7 @@ impl EmitterWriter {
                 (pos + 2, annotation.start_col.saturating_sub(left))
             };
             if let Some(ref label) = annotation.label {
-                buffer.puts(line_offset + pos, code_offset + col, &label, style);
+                buffer.puts(line_offset + pos, code_offset + col, label, style);
             }
         }
 
@@ -1358,7 +1358,7 @@ impl EmitterWriter {
             // only render error codes, not lint codes
             if let Some(DiagnosticId::Error(ref code)) = *code {
                 buffer.append(0, "[", Style::Level(*level));
-                buffer.append(0, &code, Style::Level(*level));
+                buffer.append(0, code, Style::Level(*level));
                 buffer.append(0, "]", Style::Level(*level));
                 label_width += 2 + code.len();
             }
@@ -1683,7 +1683,7 @@ impl EmitterWriter {
         };
 
         // Render the replacements for each suggestion
-        let suggestions = suggestion.splice_lines(&**sm);
+        let suggestions = suggestion.splice_lines(sm);
         debug!("emit_suggestion_default: suggestions={:?}", suggestions);
 
         if suggestions.is_empty() {
@@ -1784,7 +1784,7 @@ impl EmitterWriter {
                     buffer.puts(
                         row_num - 1 + line - line_start,
                         max_line_num_len + 3,
-                        &normalize_whitespace(&*file_lines.file.get_line(line - 1).unwrap()),
+                        &normalize_whitespace(&file_lines.file.get_line(line - 1).unwrap()),
                         Style::Removal,
                     );
                 }
@@ -1926,7 +1926,7 @@ impl EmitterWriter {
                             buffer.putc(
                                 row_num,
                                 (padding as isize + p) as usize,
-                                if part.is_addition(&sm) { '+' } else { '~' },
+                                if part.is_addition(sm) { '+' } else { '~' },
                                 Style::Addition,
                             );
                         }
@@ -1973,7 +1973,7 @@ impl EmitterWriter {
             buffer.puts(row_num, max_line_num_len + 3, &msg, Style::NoStyle);
         } else if notice_capitalization {
             let msg = "notice the capitalization difference";
-            buffer.puts(row_num, max_line_num_len + 3, &msg, Style::NoStyle);
+            buffer.puts(row_num, max_line_num_len + 3, msg, Style::NoStyle);
         }
         emit_to_destination(&buffer.render(), level, &mut self.dst, self.short_message)?;
         Ok(())
@@ -2028,7 +2028,7 @@ impl EmitterWriter {
                     for child in children {
                         let span = child.render_span.as_ref().unwrap_or(&child.span);
                         if let Err(err) = self.emit_message_default(
-                            &span,
+                            span,
                             &child.message,
                             args,
                             &None,
@@ -2113,7 +2113,7 @@ impl EmitterWriter {
                 *row_num - 1,
                 max_line_num_len + 3,
                 &normalize_whitespace(
-                    &*file_lines.file.get_line(file_lines.lines[line_pos].line_index).unwrap(),
+                    &file_lines.file.get_line(file_lines.lines[line_pos].line_index).unwrap(),
                 ),
                 Style::NoStyle,
             );

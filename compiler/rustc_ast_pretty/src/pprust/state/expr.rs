@@ -305,10 +305,10 @@ impl<'a> State<'a> {
                 self.print_expr_tup(exprs);
             }
             ast::ExprKind::Call(func, args) => {
-                self.print_expr_call(func, &args);
+                self.print_expr_call(func, args);
             }
             ast::ExprKind::MethodCall(box ast::MethodCall { seg, receiver, args, .. }) => {
-                self.print_expr_method_call(seg, &receiver, &args);
+                self.print_expr_method_call(seg, receiver, args);
             }
             ast::ExprKind::Binary(op, lhs, rhs) => {
                 self.print_expr_binary(*op, lhs, rhs);
@@ -402,6 +402,7 @@ impl<'a> State<'a> {
                 fn_decl,
                 body,
                 fn_decl_span: _,
+                fn_arg_span: _,
             }) => {
                 self.print_closure_binder(binder);
                 self.print_movability(*movability);
@@ -605,7 +606,7 @@ impl<'a> State<'a> {
         match binder {
             ast::ClosureBinder::NotPresent => {}
             ast::ClosureBinder::For { generic_params, .. } => {
-                self.print_formal_generic_params(&generic_params)
+                self.print_formal_generic_params(generic_params)
             }
         }
     }

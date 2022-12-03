@@ -539,6 +539,9 @@ impl<'a> ExtCtxt<'a> {
                 fn_decl,
                 body,
                 fn_decl_span: span,
+                // FIXME(SarthakSingh31): This points to the start of the declaration block and
+                // not the span of the argument block.
+                fn_arg_span: span,
             })),
         )
     }

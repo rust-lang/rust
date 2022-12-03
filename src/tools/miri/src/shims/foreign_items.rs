@@ -286,7 +286,7 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriInterpCxExt<'mir, 'tcx> {
                         let [code] = this.check_shim(abi, exp_abi, link_name, args)?;
                         // it's really u32 for ExitProcess, but we have to put it into the `Exit` variant anyway
                         let code = this.read_scalar(code)?.to_i32()?;
-                        throw_machine_stop!(TerminationInfo::Exit(code.into()));
+                        throw_machine_stop!(TerminationInfo::Exit { code: code.into(), leak_check: false });
                     }
                     "abort" => {
                         let [] = this.check_shim(abi, Abi::C { unwind: false }, link_name, args)?;
@@ -299,8 +299,7 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriInterpCxExt<'mir, 'tcx> {
                             return Ok(Some(body));
                         }
                         this.handle_unsupported(format!(
-                            "can't call (diverging) foreign function: {}",
-                            link_name
+                            "can't call (diverging) foreign function: {link_name}"
                         ))?;
                         return Ok(None);
                     }

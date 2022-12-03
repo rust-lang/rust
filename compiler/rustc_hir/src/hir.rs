@@ -943,7 +943,10 @@ pub struct Closure<'hir> {
     pub bound_generic_params: &'hir [GenericParam<'hir>],
     pub fn_decl: &'hir FnDecl<'hir>,
     pub body: BodyId,
+    /// The span of the declaration block: 'move |...| -> ...'
     pub fn_decl_span: Span,
+    /// The span of the argument block `|...|`
+    pub fn_arg_span: Option<Span>,
     pub movability: Option<Movability>,
 }
 
@@ -2434,7 +2437,7 @@ impl<'hir> Ty<'hir> {
     pub fn peel_refs(&self) -> &Self {
         let mut final_ty = self;
         while let TyKind::Rptr(_, MutTy { ty, .. }) = &final_ty.kind {
-            final_ty = &ty;
+            final_ty = ty;
         }
         final_ty
     }

@@ -1179,7 +1179,7 @@ impl Expr {
     pub fn peel_parens(&self) -> &Expr {
         let mut expr = self;
         while let ExprKind::Paren(inner) = &expr.kind {
-            expr = &inner;
+            expr = inner;
         }
         expr
     }
@@ -1312,8 +1312,10 @@ pub struct Closure {
     pub movability: Movability,
     pub fn_decl: P<FnDecl>,
     pub body: P<Expr>,
-    /// The span of the argument block `|...|`.
+    /// The span of the declaration block: 'move |...| -> ...'
     pub fn_decl_span: Span,
+    /// The span of the argument block `|...|`
+    pub fn_arg_span: Span,
 }
 
 /// Limit types of a range (inclusive or exclusive)
@@ -2027,7 +2029,7 @@ impl Ty {
     pub fn peel_refs(&self) -> &Self {
         let mut final_ty = self;
         while let TyKind::Rptr(_, MutTy { ty, .. }) = &final_ty.kind {
-            final_ty = &ty;
+            final_ty = ty;
         }
         final_ty
     }

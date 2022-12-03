@@ -80,7 +80,7 @@ fn report_error_if_not_applied_to_ty(
     path: &[&str],
     ty_name: &str,
 ) -> Result<(), DiagnosticDeriveError> {
-    if !type_matches_path(&info.ty, path) {
+    if !type_matches_path(info.ty, path) {
         report_type_error(attr, ty_name)?;
     }
 
@@ -105,8 +105,8 @@ pub(crate) fn report_error_if_not_applied_to_span(
     attr: &Attribute,
     info: &FieldInfo<'_>,
 ) -> Result<(), DiagnosticDeriveError> {
-    if !type_matches_path(&info.ty, &["rustc_span", "Span"])
-        && !type_matches_path(&info.ty, &["rustc_errors", "MultiSpan"])
+    if !type_matches_path(info.ty, &["rustc_span", "Span"])
+        && !type_matches_path(info.ty, &["rustc_errors", "MultiSpan"])
     {
         report_type_error(attr, "`Span` or `MultiSpan`")?;
     }
@@ -686,7 +686,7 @@ impl SubdiagnosticKind {
             let meta = match nested_attr {
                 NestedMeta::Meta(ref meta) => meta,
                 NestedMeta::Lit(_) => {
-                    invalid_nested_attr(attr, &nested_attr).emit();
+                    invalid_nested_attr(attr, nested_attr).emit();
                     continue;
                 }
             };
@@ -698,7 +698,7 @@ impl SubdiagnosticKind {
             let string_value = match meta {
                 Meta::NameValue(MetaNameValue { lit: syn::Lit::Str(value), .. }) => Some(value),
 
-                Meta::Path(_) => throw_invalid_nested_attr!(attr, &nested_attr, |diag| {
+                Meta::Path(_) => throw_invalid_nested_attr!(attr, nested_attr, |diag| {
                     diag.help("a diagnostic slug must be the first argument to the attribute")
                 }),
                 _ => None,
@@ -720,7 +720,7 @@ impl SubdiagnosticKind {
                     | SubdiagnosticKind::MultipartSuggestion { ref mut applicability, .. },
                 ) => {
                     let Some(value) = string_value else {
-                        invalid_nested_attr(attr, &nested_attr).emit();
+                        invalid_nested_attr(attr, nested_attr).emit();
                         continue;
                     };
 
@@ -736,7 +736,7 @@ impl SubdiagnosticKind {
                     | SubdiagnosticKind::MultipartSuggestion { .. },
                 ) => {
                     let Some(value) = string_value else {
-                        invalid_nested_attr(attr, &nested_attr).emit();
+                        invalid_nested_attr(attr, nested_attr).emit();
                         continue;
                     };
 
@@ -752,19 +752,19 @@ impl SubdiagnosticKind {
 
                 // Invalid nested attribute
                 (_, SubdiagnosticKind::Suggestion { .. }) => {
-                    invalid_nested_attr(attr, &nested_attr)
+                    invalid_nested_attr(attr, nested_attr)
                         .help(
                             "only `style`, `code` and `applicability` are valid nested attributes",
                         )
                         .emit();
                 }
                 (_, SubdiagnosticKind::MultipartSuggestion { .. }) => {
-                    invalid_nested_attr(attr, &nested_attr)
+                    invalid_nested_attr(attr, nested_attr)
                         .help("only `style` and `applicability` are valid nested attributes")
                         .emit()
                 }
                 _ => {
-                    invalid_nested_attr(attr, &nested_attr).emit();
+                    invalid_nested_attr(attr, nested_attr).emit();
                 }
             }
         }
