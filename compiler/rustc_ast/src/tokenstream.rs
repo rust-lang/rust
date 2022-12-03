@@ -64,7 +64,7 @@ impl TokenTree {
         match (self, other) {
             (TokenTree::Token(token, _), TokenTree::Token(token2, _)) => token.kind == token2.kind,
             (TokenTree::Delimited(_, delim, tts), TokenTree::Delimited(_, delim2, tts2)) => {
-                delim == delim2 && tts.eq_unspanned(&tts2)
+                delim == delim2 && tts.eq_unspanned(tts2)
             }
             _ => false,
         }
@@ -402,7 +402,7 @@ impl TokenStream {
         let mut t1 = self.trees();
         let mut t2 = other.trees();
         for (t1, t2) in iter::zip(&mut t1, &mut t2) {
-            if !t1.eq_unspanned(&t2) {
+            if !t1.eq_unspanned(t2) {
                 return false;
             }
         }
@@ -475,7 +475,7 @@ impl TokenStream {
             token::Interpolated(nt) => TokenTree::Delimited(
                 DelimSpan::from_single(token.span),
                 Delimiter::Invisible,
-                TokenStream::from_nonterminal_ast(&nt).flattened(),
+                TokenStream::from_nonterminal_ast(nt).flattened(),
             ),
             _ => TokenTree::Token(token.clone(), spacing),
         }
@@ -511,7 +511,7 @@ impl TokenStream {
     fn try_glue_to_last(vec: &mut Vec<TokenTree>, tt: &TokenTree) -> bool {
         if let Some(TokenTree::Token(last_tok, Spacing::Joint)) = vec.last()
             && let TokenTree::Token(tok, spacing) = tt
-            && let Some(glued_tok) = last_tok.glue(&tok)
+            && let Some(glued_tok) = last_tok.glue(tok)
         {
             // ...then overwrite the last token tree in `vec` with the
             // glued token, and skip the first token tree from `stream`.

@@ -72,7 +72,7 @@ impl<'a, T: PartialOrd> PartialOrd for Interned<'a, T> {
         if ptr::eq(self.0, other.0) {
             Some(Ordering::Equal)
         } else {
-            let res = self.0.partial_cmp(&other.0);
+            let res = self.0.partial_cmp(other.0);
             debug_assert_ne!(res, Some(Ordering::Equal));
             res
         }
@@ -86,7 +86,7 @@ impl<'a, T: Ord> Ord for Interned<'a, T> {
         if ptr::eq(self.0, other.0) {
             Ordering::Equal
         } else {
-            let res = self.0.cmp(&other.0);
+            let res = self.0.cmp(other.0);
             debug_assert_ne!(res, Ordering::Equal);
             res
         }

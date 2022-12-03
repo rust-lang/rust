@@ -78,7 +78,7 @@ fn arg_scalar_pair<C>(
 where
     C: HasDataLayout,
 {
-    data = arg_scalar(cx, &scalar1, offset, data);
+    data = arg_scalar(cx, scalar1, offset, data);
     match (scalar1.primitive(), scalar2.primitive()) {
         (abi::F32, _) => offset += Reg::f32().size,
         (_, abi::F64) => offset += Reg::f64().size,
@@ -90,7 +90,7 @@ where
     if (offset.bytes() % 4) != 0 && scalar2.primitive().is_float() {
         offset += Size::from_bytes(4 - (offset.bytes() % 4));
     }
-    data = arg_scalar(cx, &scalar2, offset, data);
+    data = arg_scalar(cx, scalar2, offset, data);
     return data;
 }
 

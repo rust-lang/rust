@@ -292,7 +292,7 @@ impl Diagnostic {
             let lint_index = expectation_id.get_lint_index();
             expectation_id.set_lint_index(None);
             let mut stable_id = unstable_to_stable
-                .get(&expectation_id)
+                .get(expectation_id)
                 .expect("each unstable `LintExpectationId` must have a matching stable id")
                 .normalize();
 
