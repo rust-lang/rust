@@ -64,7 +64,34 @@ macro_rules! uint_impl {
         /// ```
         #[stable(feature = "rust1", since = "1.0.0")]
         pub fn from_str_radix(src: &str, radix: u32) -> Result<Self, ParseIntError> {
-            from_str_radix(src, radix)
+            from_ascii_radix(src.as_bytes(), radix)
+        }
+
+        /// Parses an integer in a given base from a slice of bytes.
+        ///
+        /// The bytes are interpreted as ASCII characters. Accepts an
+        /// optional `+` sign followed by digits. Leading and trailing
+        /// whitespace are rejected.
+        /// Digits are a subset of these characters, depending on `radix`:
+        ///
+        /// * `0-9`
+        /// * `a-z`
+        /// * `A-Z`
+        ///
+        /// # Panics
+        ///
+        /// This function panics if `radix` is not in the range from 2 to 36.
+        ///
+        /// # Examples
+        ///
+        /// ```
+        /// #![feature(int_from_ascii_radix)]
+        ///
+        #[doc = concat!("assert_eq!(", stringify!($SelfT), "::from_ascii_radix(b\"+100\", 2), Ok(4));")]
+        /// ```
+        #[unstable(feature = "int_from_ascii_radix", issue = "none")]
+        pub fn from_ascii_radix(src: &[u8], radix: u32) -> Result<Self, ParseIntError> {
+            from_ascii_radix(src, radix)
         }
 
         /// Returns the number of ones in the binary representation of `self`.

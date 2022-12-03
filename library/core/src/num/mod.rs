@@ -1055,7 +1055,7 @@ pub enum FpCategory {
 }
 
 #[doc(hidden)]
-trait FromStrRadixHelper:
+trait FromAsciiRadixHelper:
     PartialOrd + Copy + Add<Output = Self> + Sub<Output = Self> + Mul<Output = Self>
 {
     const MIN: Self;
@@ -1071,7 +1071,7 @@ macro_rules! from_str_radix_int_impl {
         impl FromStr for $t {
             type Err = ParseIntError;
             fn from_str(src: &str) -> Result<Self, ParseIntError> {
-                from_str_radix(src, 10)
+                from_ascii_radix(src.as_bytes(), 10)
             }
         }
     )*}
@@ -1079,7 +1079,7 @@ macro_rules! from_str_radix_int_impl {
 from_str_radix_int_impl! { isize i8 i16 i32 i64 i128 usize u8 u16 u32 u64 u128 }
 
 macro_rules! impl_helper_for {
-    ($($t:ty)*) => ($(impl FromStrRadixHelper for $t {
+    ($($t:ty)*) => ($(impl FromAsciiRadixHelper for $t {
         const MIN: Self = Self::MIN;
         #[inline]
         fn from_u32(u: u32) -> Self { u as Self }
@@ -1110,27 +1110,17 @@ pub fn can_not_overflow<T>(radix: u32, is_signed_ty: bool, digits: &[u8]) -> boo
     radix <= 16 && digits.len() <= mem::size_of::<T>() * 2 - is_signed_ty as usize
 }
 
-fn from_str_radix<T: FromStrRadixHelper>(src: &str, radix: u32) -> Result<T, ParseIntError> {
+fn from_ascii_radix<T: FromAsciiRadixHelper>(src: &[u8], radix: u32) -> Result<T, ParseIntError> {
     use self::IntErrorKind::*;
     use self::ParseIntError as PIE;
 
-    assert!(
-        (2..=36).contains(&radix),
-        "from_str_radix_int: must lie in the range `[2, 36]` - found {}",
-        radix
-    );
+    assert!((2..=36).contains(&radix), "radix must lie in the range `[2, 36]` - found {}", radix);
 
     if src.is_empty() {
         return Err(PIE { kind: Empty });
     }
 
     let is_signed_ty = T::from_u32(0) > T::MIN;
-
-    // all valid digits are ascii, so we will just iterate over the utf8 bytes
-    // and cast them to chars. .to_digit() will safely return None for anything
-    // other than a valid ascii digit for the given radix, including the first-byte
-    // of multi-byte sequences
-    let src = src.as_bytes();
 
     let (is_positive, digits) = match src[0] {
         b'+' | b'-' if src[1..].is_empty() => {

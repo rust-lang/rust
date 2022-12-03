@@ -4,7 +4,7 @@ use crate::fmt;
 use crate::ops::{BitOr, BitOrAssign, Div, Rem};
 use crate::str::FromStr;
 
-use super::from_str_radix;
+use super::from_ascii_radix;
 use super::{IntErrorKind, ParseIntError};
 use crate::intrinsics;
 
@@ -182,7 +182,7 @@ macro_rules! from_str_radix_nzint_impl {
         impl FromStr for $t {
             type Err = ParseIntError;
             fn from_str(src: &str) -> Result<Self, Self::Err> {
-                Self::new(from_str_radix(src, 10)?)
+                Self::new(from_ascii_radix(src.as_bytes(), 10)?)
                     .ok_or(ParseIntError {
                         kind: IntErrorKind::Zero
                     })
