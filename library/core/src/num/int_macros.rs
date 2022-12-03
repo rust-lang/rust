@@ -62,6 +62,7 @@ macro_rules! int_impl {
         #[doc = concat!("assert_eq!(", stringify!($SelfT), "::from_str_radix(\"A\", 16), Ok(10));")]
         /// ```
         #[stable(feature = "rust1", since = "1.0.0")]
+        #[track_caller]
         pub fn from_str_radix(src: &str, radix: u32) -> Result<Self, ParseIntError> {
             from_ascii_radix(src.as_bytes(), radix)
         }
@@ -89,6 +90,7 @@ macro_rules! int_impl {
         #[doc = concat!("assert_eq!(", stringify!($SelfT), "::from_ascii_radix(b\"+100\", 2), Ok(4));")]
         /// ```
         #[unstable(feature = "int_from_ascii_radix", issue = "none")]
+        #[track_caller]
         pub fn from_ascii_radix(src: &[u8], radix: u32) -> Result<Self, ParseIntError> {
             from_ascii_radix(src, radix)
         }
