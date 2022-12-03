@@ -5346,9 +5346,9 @@ checksum = "56dee185309b50d1f11bfedef0fe6d036842e3fb77413abef29f8f8d1c5d4c1c"
 
 [[package]]
 name = "ui_test"
-version = "0.4.0"
+version = "0.5.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "bf4559da3fe6b481f8674a29379677cb9606cd6f75fc254a2c9834c55638503d"
+checksum = "54ddb6f31025943e2f9d59237f433711c461a43d9415974c3eb3a4902edc1c1f"
 dependencies = [
  "bstr 1.0.1",
  "cargo_metadata 0.15.0",
