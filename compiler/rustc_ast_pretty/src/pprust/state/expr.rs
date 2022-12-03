@@ -402,6 +402,7 @@ impl<'a> State<'a> {
                 fn_decl,
                 body,
                 fn_decl_span: _,
+                fn_arg_span: _,
             }) => {
                 self.print_closure_binder(binder);
                 self.print_movability(*movability);

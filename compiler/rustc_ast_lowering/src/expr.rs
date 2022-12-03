@@ -176,6 +176,7 @@ impl<'hir> LoweringContext<'_, 'hir> {
                     fn_decl,
                     body,
                     fn_decl_span,
+                    fn_arg_span,
                 }) => {
                     if let Async::Yes { closure_id, .. } = asyncness {
                         self.lower_expr_async_closure(
@@ -186,6 +187,7 @@ impl<'hir> LoweringContext<'_, 'hir> {
                             fn_decl,
                             body,
                             *fn_decl_span,
+                            *fn_arg_span,
                         )
                     } else {
                         self.lower_expr_closure(
@@ -196,6 +198,7 @@ impl<'hir> LoweringContext<'_, 'hir> {
                             fn_decl,
                             body,
                             *fn_decl_span,
+                            *fn_arg_span,
                         )
                     }
                 }
@@ -642,6 +645,7 @@ impl<'hir> LoweringContext<'_, 'hir> {
                 fn_decl,
                 body,
                 fn_decl_span: self.lower_span(span),
+                fn_arg_span: None,
                 movability: Some(hir::Movability::Static),
             });
 
@@ -898,6 +902,7 @@ impl<'hir> LoweringContext<'_, 'hir> {
         decl: &FnDecl,
         body: &Expr,
         fn_decl_span: Span,
+        fn_arg_span: Span,
     ) -> hir::ExprKind<'hir> {
         let (binder_clause, generic_params) = self.lower_closure_binder(binder);
 
@@ -928,6 +933,7 @@ impl<'hir> LoweringContext<'_, 'hir> {
             fn_decl,
             body: body_id,
             fn_decl_span: self.lower_span(fn_decl_span),
+            fn_arg_span: Some(self.lower_span(fn_arg_span)),
             movability: generator_option,
         });
 
@@ -984,6 +990,7 @@ impl<'hir> LoweringContext<'_, 'hir> {
         decl: &FnDecl,
         body: &Expr,
         fn_decl_span: Span,
+        fn_arg_span: Span,
     ) -> hir::ExprKind<'hir> {
         if let &ClosureBinder::For { span, .. } = binder {
             self.tcx.sess.emit_err(NotSupportedForLifetimeBinderAsyncClosure { span });
@@ -1038,6 +1045,7 @@ impl<'hir> LoweringContext<'_, 'hir> {
             fn_decl,
             body,
             fn_decl_span: self.lower_span(fn_decl_span),
+            fn_arg_span: Some(self.lower_span(fn_arg_span)),
             movability: None,
         });
         hir::ExprKind::Closure(c)

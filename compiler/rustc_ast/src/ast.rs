@@ -1312,8 +1312,10 @@ pub struct Closure {
     pub movability: Movability,
     pub fn_decl: P<FnDecl>,
     pub body: P<Expr>,
-    /// The span of the argument block `|...|`.
+    /// The span of the declaration block: 'move |...| -> ...'
     pub fn_decl_span: Span,
+    /// The span of the argument block `|...|`
+    pub fn_arg_span: Span,
 }
 
 /// Limit types of a range (inclusive or exclusive)

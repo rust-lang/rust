@@ -840,6 +840,7 @@ pub fn walk_expr<'a, V: Visitor<'a>>(visitor: &mut V, expression: &'a Expr) {
             fn_decl,
             body,
             fn_decl_span: _,
+            fn_arg_span: _,
         }) => {
             visitor.visit_fn(FnKind::Closure(binder, fn_decl, body), expression.span, expression.id)
         }
