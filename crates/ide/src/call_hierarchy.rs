@@ -482,5 +482,4 @@ fn caller() {
             expect![[]],
         );
     }
-    
 }
