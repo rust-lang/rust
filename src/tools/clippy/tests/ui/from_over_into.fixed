@@ -1,6 +1,5 @@
 // run-rustfix
 
-#![feature(custom_inner_attributes)]
 #![warn(clippy::from_over_into)]
 #![allow(unused)]
 
@@ -60,9 +59,8 @@ impl From<String> for A {
     }
 }
 
+#[clippy::msrv = "1.40"]
 fn msrv_1_40() {
-    #![clippy::msrv = "1.40"]
-
     struct FromOverInto<T>(Vec<T>);
 
     impl<T> Into<FromOverInto<T>> for Vec<T> {
@@ -72,9 +70,8 @@ fn msrv_1_40() {
     }
 }
 
+#[clippy::msrv = "1.41"]
 fn msrv_1_41() {
-    #![clippy::msrv = "1.41"]
-
     struct FromOverInto<T>(Vec<T>);
 
     impl<T> From<Vec<T>> for FromOverInto<T> {

@@ -410,11 +410,7 @@ pub fn noop_visit_use_tree<T: MutVisitor>(use_tree: &mut UseTree, vis: &mut T) {
     let UseTree { prefix, kind, span } = use_tree;
     vis.visit_path(prefix);
     match kind {
-        UseTreeKind::Simple(rename, id1, id2) => {
-            visit_opt(rename, |rename| vis.visit_ident(rename));
-            vis.visit_id(id1);
-            vis.visit_id(id2);
-        }
+        UseTreeKind::Simple(rename) => visit_opt(rename, |rename| vis.visit_ident(rename)),
         UseTreeKind::Nested(items) => {
             for (tree, id) in items {
                 vis.visit_use_tree(tree);
@@ -628,7 +624,7 @@ pub fn noop_visit_macro_def<T: MutVisitor>(macro_def: &mut MacroDef, vis: &mut T
 pub fn noop_visit_meta_list_item<T: MutVisitor>(li: &mut NestedMetaItem, vis: &mut T) {
     match li {
         NestedMetaItem::MetaItem(mi) => vis.visit_meta_item(mi),
-        NestedMetaItem::Literal(_lit) => {}
+        NestedMetaItem::Lit(_lit) => {}
     }
 }
 
@@ -725,10 +721,10 @@ pub fn visit_lazy_tts<T: MutVisitor>(lazy_tts: &mut Option<LazyAttrTokenStream>,
     visit_lazy_tts_opt_mut(lazy_tts.as_mut(), vis);
 }
 
+/// Applies ident visitor if it's an ident; applies other visits to interpolated nodes.
+/// In practice the ident part is not actually used by specific visitors right now,
+/// but there's a test below checking that it works.
 // No `noop_` prefix because there isn't a corresponding method in `MutVisitor`.
-// Applies ident visitor if it's an ident; applies other visits to interpolated nodes.
-// In practice the ident part is not actually used by specific visitors right now,
-// but there's a test below checking that it works.
 pub fn visit_token<T: MutVisitor>(t: &mut Token, vis: &mut T) {
     let Token { kind, span } = t;
     match kind {

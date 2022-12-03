@@ -10,7 +10,7 @@ fn bench_push_back_100(b: &mut test::Bencher) {
             deq.push_back(i);
         }
         deq.head = 0;
-        deq.tail = 0;
+        deq.len = 0;
     })
 }
 
@@ -22,7 +22,7 @@ fn bench_push_front_100(b: &mut test::Bencher) {
             deq.push_front(i);
         }
         deq.head = 0;
-        deq.tail = 0;
+        deq.len = 0;
     })
 }
 
@@ -35,8 +35,8 @@ fn bench_pop_back_100(b: &mut test::Bencher) {
     unsafe { deq.ptr().write_bytes(0u8, size + 1) };
 
     b.iter(|| {
-        deq.head = size;
-        deq.tail = 0;
+        deq.head = 0;
+        deq.len = 100;
         while !deq.is_empty() {
             test::black_box(deq.pop_back());
         }
@@ -85,8 +85,8 @@ fn bench_pop_front_100(b: &mut test::Bencher) {
     unsafe { deq.ptr().write_bytes(0u8, size + 1) };
 
     b.iter(|| {
-        deq.head = size;
-        deq.tail = 0;
+        deq.head = 0;
+        deq.len = 100;
         while !deq.is_empty() {
             test::black_box(deq.pop_front());
         }
@@ -105,9 +105,9 @@ fn test_swap_front_back_remove() {
         for len in 0..final_len {
             let expected: VecDeque<_> =
                 if back { (0..len).collect() } else { (0..len).rev().collect() };
-            for tail_pos in 0..usable_cap {
-                tester.tail = tail_pos;
-                tester.head = tail_pos;
+            for head_pos in 0..usable_cap {
+                tester.head = head_pos;
+                tester.len = 0;
                 if back {
                     for i in 0..len * 2 {
                         tester.push_front(i);
@@ -124,8 +124,8 @@ fn test_swap_front_back_remove() {
                         assert_eq!(tester.swap_remove_front(idx), Some(len * 2 - 1 - i));
                     }
                 }
-                assert!(tester.tail < tester.cap());
-                assert!(tester.head < tester.cap());
+                assert!(tester.head <= tester.capacity());
+                assert!(tester.len <= tester.capacity());
                 assert_eq!(tester, expected);
             }
         }
@@ -150,18 +150,18 @@ fn test_insert() {
     for len in minlen..cap {
         // 0, 1, 2, .., len - 1
         let expected = (0..).take(len).collect::<VecDeque<_>>();
-        for tail_pos in 0..cap {
+        for head_pos in 0..cap {
             for to_insert in 0..len {
-                tester.tail = tail_pos;
-                tester.head = tail_pos;
+                tester.head = head_pos;
+                tester.len = 0;
                 for i in 0..len {
                     if i != to_insert {
                         tester.push_back(i);
                     }
                 }
                 tester.insert(to_insert, to_insert);
-                assert!(tester.tail < tester.cap());
-                assert!(tester.head < tester.cap());
+                assert!(tester.head <= tester.capacity());
+                assert!(tester.len <= tester.capacity());
                 assert_eq!(tester, expected);
             }
         }
@@ -257,13 +257,14 @@ fn test_swap_panic() {
 #[test]
 fn test_reserve_exact() {
     let mut tester: VecDeque<i32> = VecDeque::with_capacity(1);
-    assert!(tester.capacity() == 1);
+    assert_eq!(tester.capacity(), 1);
     tester.reserve_exact(50);
-    assert!(tester.capacity() >= 51);
+    assert_eq!(tester.capacity(), 50);
     tester.reserve_exact(40);
-    assert!(tester.capacity() >= 51);
+    // reserving won't shrink the buffer
+    assert_eq!(tester.capacity(), 50);
     tester.reserve_exact(200);
-    assert!(tester.capacity() >= 200);
+    assert_eq!(tester.capacity(), 200);
 }
 
 #[test]
@@ -323,6 +324,7 @@ fn test_contains() {
 #[test]
 fn test_rotate_left_right() {
     let mut tester: VecDeque<_> = (1..=10).collect();
+    tester.reserve(1);
 
     assert_eq!(tester.len(), 10);
 
@@ -463,7 +465,7 @@ fn test_binary_search_key() {
 }
 
 #[test]
-fn make_contiguous_big_tail() {
+fn make_contiguous_big_head() {
     let mut tester = VecDeque::with_capacity(15);
 
     for i in 0..3 {
@@ -478,14 +480,14 @@ fn make_contiguous_big_tail() {
     assert_eq!(tester.capacity(), 15);
     assert_eq!((&[9, 8, 7, 6, 5, 4, 3] as &[_], &[0, 1, 2] as &[_]), tester.as_slices());
 
-    let expected_start = tester.head;
+    let expected_start = tester.as_slices().1.len();
     tester.make_contiguous();
-    assert_eq!(tester.tail, expected_start);
+    assert_eq!(tester.head, expected_start);
     assert_eq!((&[9, 8, 7, 6, 5, 4, 3, 0, 1, 2] as &[_], &[] as &[_]), tester.as_slices());
 }
 
 #[test]
-fn make_contiguous_big_head() {
+fn make_contiguous_big_tail() {
     let mut tester = VecDeque::with_capacity(15);
 
     for i in 0..8 {
@@ -499,44 +501,46 @@ fn make_contiguous_big_head() {
     // 01234567......98
     let expected_start = 0;
     tester.make_contiguous();
-    assert_eq!(tester.tail, expected_start);
+    assert_eq!(tester.head, expected_start);
     assert_eq!((&[9, 8, 0, 1, 2, 3, 4, 5, 6, 7] as &[_], &[] as &[_]), tester.as_slices());
 }
 
 #[test]
 fn make_contiguous_small_free() {
-    let mut tester = VecDeque::with_capacity(15);
+    let mut tester = VecDeque::with_capacity(16);
 
-    for i in 'A' as u8..'I' as u8 {
+    for i in b'A'..b'I' {
         tester.push_back(i as char);
     }
 
-    for i in 'I' as u8..'N' as u8 {
+    for i in b'I'..b'N' {
         tester.push_front(i as char);
     }
+
+    assert_eq!(tester, ['M', 'L', 'K', 'J', 'I', 'A', 'B', 'C', 'D', 'E', 'F', 'G', 'H']);
 
     // ABCDEFGH...MLKJI
     let expected_start = 0;
     tester.make_contiguous();
-    assert_eq!(tester.tail, expected_start);
+    assert_eq!(tester.head, expected_start);
     assert_eq!(
         (&['M', 'L', 'K', 'J', 'I', 'A', 'B', 'C', 'D', 'E', 'F', 'G', 'H'] as &[_], &[] as &[_]),
         tester.as_slices()
     );
 
     tester.clear();
-    for i in 'I' as u8..'N' as u8 {
+    for i in b'I'..b'N' {
         tester.push_back(i as char);
     }
 
-    for i in 'A' as u8..'I' as u8 {
+    for i in b'A'..b'I' {
         tester.push_front(i as char);
     }
 
     // IJKLM...HGFEDCBA
-    let expected_start = 0;
+    let expected_start = 3;
     tester.make_contiguous();
-    assert_eq!(tester.tail, expected_start);
+    assert_eq!(tester.head, expected_start);
     assert_eq!(
         (&['H', 'G', 'F', 'E', 'D', 'C', 'B', 'A', 'I', 'J', 'K', 'L', 'M'] as &[_], &[] as &[_]),
         tester.as_slices()
@@ -545,16 +549,55 @@ fn make_contiguous_small_free() {
 
 #[test]
 fn make_contiguous_head_to_end() {
-    let mut dq = VecDeque::with_capacity(3);
-    dq.push_front('B');
-    dq.push_front('A');
-    dq.push_back('C');
-    dq.make_contiguous();
-    let expected_tail = 0;
-    let expected_head = 3;
-    assert_eq!(expected_tail, dq.tail);
-    assert_eq!(expected_head, dq.head);
-    assert_eq!((&['A', 'B', 'C'] as &[_], &[] as &[_]), dq.as_slices());
+    let mut tester = VecDeque::with_capacity(16);
+
+    for i in b'A'..b'L' {
+        tester.push_back(i as char);
+    }
+
+    for i in b'L'..b'Q' {
+        tester.push_front(i as char);
+    }
+
+    assert_eq!(
+        tester,
+        ['P', 'O', 'N', 'M', 'L', 'A', 'B', 'C', 'D', 'E', 'F', 'G', 'H', 'I', 'J', 'K']
+    );
+
+    // ABCDEFGHIJKPONML
+    let expected_start = 0;
+    tester.make_contiguous();
+    assert_eq!(tester.head, expected_start);
+    assert_eq!(
+        (
+            &['P', 'O', 'N', 'M', 'L', 'A', 'B', 'C', 'D', 'E', 'F', 'G', 'H', 'I', 'J', 'K']
+                as &[_],
+            &[] as &[_]
+        ),
+        tester.as_slices()
+    );
+
+    tester.clear();
+    for i in b'L'..b'Q' {
+        tester.push_back(i as char);
+    }
+
+    for i in b'A'..b'L' {
+        tester.push_front(i as char);
+    }
+
+    // LMNOPKJIHGFEDCBA
+    let expected_start = 0;
+    tester.make_contiguous();
+    assert_eq!(tester.head, expected_start);
+    assert_eq!(
+        (
+            &['K', 'J', 'I', 'H', 'G', 'F', 'E', 'D', 'C', 'B', 'A', 'L', 'M', 'N', 'O', 'P']
+                as &[_],
+            &[] as &[_]
+        ),
+        tester.as_slices()
+    );
 }
 
 #[test]
@@ -588,10 +631,10 @@ fn test_remove() {
     for len in minlen..cap - 1 {
         // 0, 1, 2, .., len - 1
         let expected = (0..).take(len).collect::<VecDeque<_>>();
-        for tail_pos in 0..cap {
+        for head_pos in 0..cap {
             for to_remove in 0..=len {
-                tester.tail = tail_pos;
-                tester.head = tail_pos;
+                tester.head = head_pos;
+                tester.len = 0;
                 for i in 0..len {
                     if i == to_remove {
                         tester.push_back(1234);
@@ -602,8 +645,8 @@ fn test_remove() {
                     tester.push_back(1234);
                 }
                 tester.remove(to_remove);
-                assert!(tester.tail < tester.cap());
-                assert!(tester.head < tester.cap());
+                assert!(tester.head <= tester.capacity());
+                assert!(tester.len <= tester.capacity());
                 assert_eq!(tester, expected);
             }
         }
@@ -617,11 +660,11 @@ fn test_range() {
     let cap = tester.capacity();
     let minlen = if cfg!(miri) { cap - 1 } else { 0 }; // Miri is too slow
     for len in minlen..=cap {
-        for tail in 0..=cap {
+        for head in 0..=cap {
             for start in 0..=len {
                 for end in start..=len {
-                    tester.tail = tail;
-                    tester.head = tail;
+                    tester.head = head;
+                    tester.len = 0;
                     for i in 0..len {
                         tester.push_back(i);
                     }
@@ -642,17 +685,17 @@ fn test_range_mut() {
 
     let cap = tester.capacity();
     for len in 0..=cap {
-        for tail in 0..=cap {
+        for head in 0..=cap {
             for start in 0..=len {
                 for end in start..=len {
-                    tester.tail = tail;
-                    tester.head = tail;
+                    tester.head = head;
+                    tester.len = 0;
                     for i in 0..len {
                         tester.push_back(i);
                     }
 
                     let head_was = tester.head;
-                    let tail_was = tester.tail;
+                    let len_was = tester.len;
 
                     // Check that we iterate over the correct values
                     let range: VecDeque<_> = tester.range_mut(start..end).map(|v| *v).collect();
@@ -662,8 +705,8 @@ fn test_range_mut() {
                     // We shouldn't have changed the capacity or made the
                     // head or tail out of bounds
                     assert_eq!(tester.capacity(), cap);
-                    assert_eq!(tester.tail, tail_was);
                     assert_eq!(tester.head, head_was);
+                    assert_eq!(tester.len, len_was);
                 }
             }
         }
@@ -676,11 +719,11 @@ fn test_drain() {
 
     let cap = tester.capacity();
     for len in 0..=cap {
-        for tail in 0..=cap {
+        for head in 0..cap {
             for drain_start in 0..=len {
                 for drain_end in drain_start..=len {
-                    tester.tail = tail;
-                    tester.head = tail;
+                    tester.head = head;
+                    tester.len = 0;
                     for i in 0..len {
                         tester.push_back(i);
                     }
@@ -693,8 +736,8 @@ fn test_drain() {
                     // We shouldn't have changed the capacity or made the
                     // head or tail out of bounds
                     assert_eq!(tester.capacity(), cap);
-                    assert!(tester.tail < tester.cap());
-                    assert!(tester.head < tester.cap());
+                    assert!(tester.head <= tester.capacity());
+                    assert!(tester.len <= tester.capacity());
 
                     // We should see the correct values in the VecDeque
                     let expected: VecDeque<_> = (0..drain_start).chain(drain_end..len).collect();
@@ -721,17 +764,18 @@ fn test_shrink_to_fit() {
     for len in 0..=cap {
         // 0, 1, 2, .., len - 1
         let expected = (0..).take(len).collect::<VecDeque<_>>();
-        for tail_pos in 0..=max_cap {
-            tester.tail = tail_pos;
-            tester.head = tail_pos;
+        for head_pos in 0..=max_cap {
+            tester.reserve(head_pos);
+            tester.head = head_pos;
+            tester.len = 0;
             tester.reserve(63);
             for i in 0..len {
                 tester.push_back(i);
             }
             tester.shrink_to_fit();
             assert!(tester.capacity() <= cap);
-            assert!(tester.tail < tester.cap());
-            assert!(tester.head < tester.cap());
+            assert!(tester.head <= tester.capacity());
+            assert!(tester.len <= tester.capacity());
             assert_eq!(tester, expected);
         }
     }
@@ -758,17 +802,17 @@ fn test_split_off() {
             // at, at + 1, .., len - 1 (may be empty)
             let expected_other = (at..).take(len - at).collect::<VecDeque<_>>();
 
-            for tail_pos in 0..cap {
-                tester.tail = tail_pos;
-                tester.head = tail_pos;
+            for head_pos in 0..cap {
+                tester.head = head_pos;
+                tester.len = 0;
                 for i in 0..len {
                     tester.push_back(i);
                 }
                 let result = tester.split_off(at);
-                assert!(tester.tail < tester.cap());
-                assert!(tester.head < tester.cap());
-                assert!(result.tail < result.cap());
-                assert!(result.head < result.cap());
+                assert!(tester.head <= tester.capacity());
+                assert!(tester.len <= tester.capacity());
+                assert!(result.head <= result.capacity());
+                assert!(result.len <= result.capacity());
                 assert_eq!(tester, expected_self);
                 assert_eq!(result, expected_other);
             }
@@ -785,16 +829,10 @@ fn test_from_vec() {
             vec.extend(0..len);
 
             let vd = VecDeque::from(vec.clone());
-            assert!(vd.cap().is_power_of_two());
             assert_eq!(vd.len(), vec.len());
             assert!(vd.into_iter().eq(vec));
         }
     }
-
-    let vec = Vec::from([(); MAXIMUM_ZST_CAPACITY - 1]);
-    let vd = VecDeque::from(vec.clone());
-    assert!(vd.cap().is_power_of_two());
-    assert_eq!(vd.len(), vec.len());
 }
 
 #[test]
@@ -846,10 +884,6 @@ fn test_extend_impl(trusted_len: bool) {
             }
 
             assert_eq!(self.test, self.expected);
-            let (a1, b1) = self.test.as_slices();
-            let (a2, b2) = self.expected.as_slices();
-            assert_eq!(a1, a2);
-            assert_eq!(b1, b2);
         }
 
         fn drain<R: RangeBounds<usize> + Clone>(&mut self, range: R) {
@@ -872,7 +906,7 @@ fn test_extend_impl(trusted_len: bool) {
     let mut tester = VecDequeTester::new(trusted_len);
 
     // Initial capacity
-    tester.test_extend(0..tester.remaining_capacity() - 1);
+    tester.test_extend(0..tester.remaining_capacity());
 
     // Grow
     tester.test_extend(1024..2048);
@@ -880,7 +914,7 @@ fn test_extend_impl(trusted_len: bool) {
     // Wrap around
     tester.drain(..128);
 
-    tester.test_extend(0..tester.remaining_capacity() - 1);
+    tester.test_extend(0..tester.remaining_capacity());
 
     // Continue
     tester.drain(256..);
@@ -890,16 +924,6 @@ fn test_extend_impl(trusted_len: bool) {
 
     // Start again
     tester.test_extend(0..32);
-}
-
-#[test]
-#[should_panic = "capacity overflow"]
-fn test_from_vec_zst_overflow() {
-    use crate::vec::Vec;
-    let vec = Vec::from([(); MAXIMUM_ZST_CAPACITY]);
-    let vd = VecDeque::from(vec.clone()); // no room for +1
-    assert!(vd.cap().is_power_of_two());
-    assert_eq!(vd.len(), vec.len());
 }
 
 #[test]
@@ -917,7 +941,6 @@ fn test_from_array() {
             assert_eq!(deq[i], i);
         }
 
-        assert!(deq.cap().is_power_of_two());
         assert_eq!(deq.len(), N);
     }
     test::<0>();
@@ -925,11 +948,6 @@ fn test_from_array() {
     test::<2>();
     test::<32>();
     test::<35>();
-
-    let array = [(); MAXIMUM_ZST_CAPACITY - 1];
-    let deq = VecDeque::from(array);
-    assert!(deq.cap().is_power_of_two());
-    assert_eq!(deq.len(), MAXIMUM_ZST_CAPACITY - 1);
 }
 
 #[test]

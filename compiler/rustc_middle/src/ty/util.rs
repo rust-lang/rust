@@ -1208,11 +1208,11 @@ pub fn is_trivially_const_drop<'tcx>(ty: Ty<'tcx>) -> bool {
     }
 }
 
-// Does the equivalent of
-// ```
-// let v = self.iter().map(|p| p.fold_with(folder)).collect::<SmallVec<[_; 8]>>();
-// folder.tcx().intern_*(&v)
-// ```
+/// Does the equivalent of
+/// ```ignore (ilustrative)
+/// let v = self.iter().map(|p| p.fold_with(folder)).collect::<SmallVec<[_; 8]>>();
+/// folder.tcx().intern_*(&v)
+/// ```
 pub fn fold_list<'tcx, F, T>(
     list: &'tcx ty::List<T>,
     folder: &mut F,

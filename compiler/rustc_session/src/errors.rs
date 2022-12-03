@@ -197,12 +197,12 @@ pub enum UnleashedFeatureHelp {
 
 #[derive(Diagnostic)]
 #[diag(session_invalid_literal_suffix)]
-pub(crate) struct InvalidLiteralSuffix {
+pub(crate) struct InvalidLiteralSuffix<'a> {
     #[primary_span]
     #[label]
     pub span: Span,
     // FIXME(#100717)
-    pub kind: String,
+    pub kind: &'a str,
     pub suffix: Symbol,
 }
 
@@ -311,11 +311,7 @@ pub fn report_lit_error(sess: &ParseSess, err: LitError, lit: token::Lit, span: 
         LitError::LexerError => {}
         LitError::InvalidSuffix => {
             if let Some(suffix) = suffix {
-                sess.emit_err(InvalidLiteralSuffix {
-                    span,
-                    kind: format!("{}", kind.descr()),
-                    suffix,
-                });
+                sess.emit_err(InvalidLiteralSuffix { span, kind: kind.descr(), suffix });
             }
         }
         LitError::InvalidIntSuffix => {

@@ -1,6 +1,5 @@
 // run-rustfix
 #![allow(unused)]
-#![feature(custom_inner_attributes)]
 #![warn(clippy::seek_to_start_instead_of_rewind)]
 
 use std::fs::OpenOptions;
@@ -94,9 +93,8 @@ fn main() {
     assert_eq!(&buf, hello);
 }
 
+#[clippy::msrv = "1.54"]
 fn msrv_1_54() {
-    #![clippy::msrv = "1.54"]
-
     let mut f = OpenOptions::new()
         .write(true)
         .read(true)
@@ -115,9 +113,8 @@ fn msrv_1_54() {
     assert_eq!(&buf, hello);
 }
 
+#[clippy::msrv = "1.55"]
 fn msrv_1_55() {
-    #![clippy::msrv = "1.55"]
-
     let mut f = OpenOptions::new()
         .write(true)
         .read(true)

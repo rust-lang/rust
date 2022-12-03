@@ -109,6 +109,9 @@ pub trait AstConv<'tcx> {
     ) -> Ty<'tcx>;
 
     /// Normalize an associated type coming from the user.
+    ///
+    /// This should only be used by astconv. Use `FnCtxt::normalize`
+    /// or `ObligationCtxt::normalize` in downstream crates.
     fn normalize_ty(&self, span: Span, ty: Ty<'tcx>) -> Ty<'tcx>;
 
     /// Invoked when we encounter an error from some prior pass
@@ -850,7 +853,7 @@ impl<'o, 'tcx> dyn AstConv<'tcx> + 'o {
             .is_some()
     }
 
-    // Sets `implicitly_sized` to true on `Bounds` if necessary
+    /// Sets `implicitly_sized` to true on `Bounds` if necessary
     pub(crate) fn add_implicitly_sized<'hir>(
         &self,
         bounds: &mut Bounds<'hir>,
@@ -2391,7 +2394,7 @@ impl<'o, 'tcx> dyn AstConv<'tcx> + 'o {
         path_segs
     }
 
-    // Check a type `Path` and convert it to a `Ty`.
+    /// Check a type `Path` and convert it to a `Ty`.
     pub fn res_to_ty(
         &self,
         opt_self_ty: Option<Ty<'tcx>>,

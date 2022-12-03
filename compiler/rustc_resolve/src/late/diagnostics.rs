@@ -282,6 +282,14 @@ impl<'a: 'ast, 'ast> LateResolutionVisitor<'a, '_, 'ast> {
                             "you may want to use a bool value instead",
                             format!("{}", item_typo),
                         ))
+                    // FIXME(vincenzopalazzo): make the check smarter,
+                    // and maybe expand with levenshtein distance checks
+                    } else if item_str.as_str() == "printf" {
+                        Some((
+                            item_span,
+                            "you may have meant to use the `print` macro",
+                            "print!".to_owned(),
+                        ))
                     } else {
                         suggestion
                     };

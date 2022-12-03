@@ -295,8 +295,18 @@ impl<'ll> CodegenCx<'ll, '_> {
             llvm::set_thread_local_mode(g, self.tls_model);
         }
 
+        let dso_local = unsafe { self.should_assume_dso_local(g, true) };
+        if dso_local {
+            unsafe {
+                llvm::LLVMRustSetDSOLocal(g, true);
+            }
+        }
+
         if !def_id.is_local() {
             let needs_dll_storage_attr = self.use_dll_storage_attrs && !self.tcx.is_foreign_item(def_id) &&
+                // Local definitions can never be imported, so we must not apply
+                // the DLLImport annotation.
+                !dso_local &&
                 // ThinLTO can't handle this workaround in all cases, so we don't
                 // emit the attrs. Instead we make them unnecessary by disallowing
                 // dynamic linking when linker plugin based LTO is enabled.
@@ -337,12 +347,6 @@ impl<'ll> CodegenCx<'ll, '_> {
             // For foreign (native) libs we know the exact storage type to use.
             unsafe {
                 llvm::LLVMSetDLLStorageClass(g, llvm::DLLStorageClass::DllImport);
-            }
-        }
-
-        unsafe {
-            if self.should_assume_dso_local(g, true) {
-                llvm::LLVMRustSetDSOLocal(g, true);
             }
         }
 

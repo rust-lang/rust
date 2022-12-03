@@ -108,4 +108,10 @@ pub fn array_error<T, U>() -> Result<(), ArrayError<(i32, T), U>> {
     Ok(())
 }
 
+// Issue #10005
+enum Empty {}
+fn _empty_error() -> Result<(), Empty> {
+    Ok(())
+}
+
 fn main() {}

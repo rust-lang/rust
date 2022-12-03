@@ -300,12 +300,12 @@ struct TypeParameter {
     ty: P<ast::Ty>,
 }
 
-// The code snippets built up for derived code are sometimes used as blocks
-// (e.g. in a function body) and sometimes used as expressions (e.g. in a match
-// arm). This structure avoids committing to either form until necessary,
-// avoiding the insertion of any unnecessary blocks.
-//
-// The statements come before the expression.
+/// The code snippets built up for derived code are sometimes used as blocks
+/// (e.g. in a function body) and sometimes used as expressions (e.g. in a match
+/// arm). This structure avoids committing to either form until necessary,
+/// avoiding the insertion of any unnecessary blocks.
+///
+/// The statements come before the expression.
 pub struct BlockOrExpr(Vec<ast::Stmt>, Option<P<Expr>>);
 
 impl BlockOrExpr {
@@ -718,7 +718,7 @@ impl<'a> TraitDef<'a> {
         let path = cx.path_all(self.span, false, vec![type_ident], self_params);
         let self_type = cx.ty_path(path);
 
-        let attr = cx.attribute(cx.meta_word(self.span, sym::automatically_derived));
+        let attr = cx.attr_word(sym::automatically_derived, self.span);
         let attrs = thin_vec![attr];
         let opt_trait_ref = Some(trait_ref);
 

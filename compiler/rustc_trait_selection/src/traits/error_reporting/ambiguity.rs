@@ -17,11 +17,11 @@ pub fn recompute_applicable_impls<'tcx>(
         let placeholder_obligation =
             infcx.replace_bound_vars_with_placeholders(obligation.predicate);
         let obligation_trait_ref =
-            ocx.normalize(dummy_cause.clone(), param_env, placeholder_obligation.trait_ref);
+            ocx.normalize(&dummy_cause, param_env, placeholder_obligation.trait_ref);
 
         let impl_substs = infcx.fresh_substs_for_item(DUMMY_SP, impl_def_id);
         let impl_trait_ref = tcx.bound_impl_trait_ref(impl_def_id).unwrap().subst(tcx, impl_substs);
-        let impl_trait_ref = ocx.normalize(ObligationCause::dummy(), param_env, impl_trait_ref);
+        let impl_trait_ref = ocx.normalize(&ObligationCause::dummy(), param_env, impl_trait_ref);
 
         if let Err(_) = ocx.eq(&dummy_cause, param_env, obligation_trait_ref, impl_trait_ref) {
             return false;

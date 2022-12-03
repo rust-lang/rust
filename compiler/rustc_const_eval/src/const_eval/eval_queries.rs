@@ -66,7 +66,7 @@ fn eval_body_using_ecx<'mir, 'tcx>(
     )?;
 
     // The main interpreter loop.
-    ecx.run()?;
+    while ecx.step()? {}
 
     // Intern the result
     let intern_kind = if cid.promoted.is_some() {

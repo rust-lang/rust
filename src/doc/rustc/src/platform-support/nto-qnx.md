@@ -93,15 +93,15 @@ Run the following:
 
 ```bash
 env \
-    CC_aarch64-unknown-nto-qnx7.1.0="qcc" \
-    CFLAGS_aarch64-unknown-nto-qnx7.1.0="-Vgcc_ntoaarch64le_cxx" \
-    CXX_aarch64-unknown-nto-qnx7.1.0="qcc" \
-    AR_aarch64_unknown_nto_qnx7.1.0="ntoaarch64-ar" \
-    CC_x86_64-pc-nto-qnx7.1.0="qcc" \
-    CFLAGS_x86_64-pc-nto-qnx7.1.0="-Vgcc_ntox86_64_cxx" \
-    CXX_x86_64-pc-nto-qnx7.1.0="qcc" \
-    AR_x86_64_pc_nto_qnx7.1.0="ntox86_64-ar" \
-        ./x.py build --target aarch64-unknown-nto-qnx7.1.0 --target x86_64-pc-nto-qnx7.1.0 --target x86_64-unknown-linux-gnu rustc library/core library/alloc/
+    CC_aarch64-unknown-nto-qnx710="qcc" \
+    CFLAGS_aarch64-unknown-nto-qnx710="-Vgcc_ntoaarch64le_cxx" \
+    CXX_aarch64-unknown-nto-qnx710="qcc" \
+    AR_aarch64_unknown_nto_qnx710="ntoaarch64-ar" \
+    CC_x86_64-pc-nto-qnx710="qcc" \
+    CFLAGS_x86_64-pc-nto-qnx710="-Vgcc_ntox86_64_cxx" \
+    CXX_x86_64-pc-nto-qnx710="qcc" \
+    AR_x86_64_pc_nto_qnx710="ntox86_64-ar" \
+        ./x.py build --target aarch64-unknown-nto-qnx710 --target x86_64-pc-nto-qnx710 --target x86_64-unknown-linux-gnu rustc library/core library/alloc/
 ```
 
 ## Building Rust programs

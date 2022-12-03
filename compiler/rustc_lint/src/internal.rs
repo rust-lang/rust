@@ -117,7 +117,7 @@ impl<'tcx> LateLintPass<'tcx> for TyTyKind {
     fn check_path(
         &mut self,
         cx: &LateContext<'tcx>,
-        path: &'tcx rustc_hir::Path<'tcx>,
+        path: &rustc_hir::Path<'tcx>,
         _: rustc_hir::HirId,
     ) {
         if let Some(segment) = path.segments.iter().nth_back(1)
@@ -462,8 +462,8 @@ impl LateLintPass<'_> for BadOptAccess {
                 let Some(attr) = cx.tcx.get_attr(field.did, sym::rustc_lint_opt_deny_field_access) &&
                 let Some(items) = attr.meta_item_list()  &&
                 let Some(item) = items.first()  &&
-                let Some(literal) = item.literal()  &&
-                let ast::LitKind::Str(val, _) = literal.kind
+                let Some(lit) = item.lit()  &&
+                let ast::LitKind::Str(val, _) = lit.kind
             {
                 cx.struct_span_lint(BAD_OPT_ACCESS, expr.span, val.as_str(), |lint|
                     lint

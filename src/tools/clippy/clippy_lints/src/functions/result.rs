@@ -94,7 +94,9 @@ fn check_result_large_err<'tcx>(cx: &LateContext<'tcx>, err_ty: Ty<'tcx>, hir_ty
         if let hir::ItemKind::Enum(ref def, _) = item.kind;
         then {
             let variants_size = AdtVariantInfo::new(cx, *adt, subst);
-            if variants_size[0].size >= large_err_threshold {
+            if let Some((first_variant, variants)) = variants_size.split_first()
+                && first_variant.size >= large_err_threshold
+            {
                 span_lint_and_then(
                     cx,
                     RESULT_LARGE_ERR,
@@ -102,11 +104,11 @@ fn check_result_large_err<'tcx>(cx: &LateContext<'tcx>, err_ty: Ty<'tcx>, hir_ty
                     "the `Err`-variant returned from this function is very large",
                     |diag| {
                         diag.span_label(
-                            def.variants[variants_size[0].ind].span,
+                            def.variants[first_variant.ind].span,
                             format!("the largest variant contains at least {} bytes", variants_size[0].size),
                         );
 
-                        for variant in &variants_size[1..] {
+                        for variant in variants {
                             if variant.size >= large_err_threshold {
                                 let variant_def = &def.variants[variant.ind];
                                 diag.span_label(

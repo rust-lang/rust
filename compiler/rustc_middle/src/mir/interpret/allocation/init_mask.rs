@@ -12,7 +12,7 @@ type Block = u64;
 /// is initialized. If it is `false` the byte is uninitialized.
 // Note: for performance reasons when interning, some of the `InitMask` fields can be partially
 // hashed. (see the `Hash` impl below for more details), so the impl is not derived.
-#[derive(Clone, Debug, Eq, PartialEq, PartialOrd, Ord, TyEncodable, TyDecodable)]
+#[derive(Clone, Debug, Eq, PartialEq, TyEncodable, TyDecodable)]
 #[derive(HashStable)]
 pub struct InitMask {
     blocks: Vec<Block>,

@@ -1,12 +1,12 @@
-use core::fmt;
 use core::iter::FusedIterator;
 use core::marker::PhantomData;
-use core::mem::{self, MaybeUninit};
-use core::ptr::{self, NonNull};
+use core::mem::{self, SizedTypeProperties};
+use core::ptr::NonNull;
+use core::{fmt, ptr};
 
 use crate::alloc::{Allocator, Global};
 
-use super::{count, wrap_index, VecDeque};
+use super::VecDeque;
 
 /// A draining iterator over the elements of a `VecDeque`.
 ///
@@ -20,26 +20,70 @@ pub struct Drain<
     T: 'a,
     #[unstable(feature = "allocator_api", issue = "32838")] A: Allocator = Global,
 > {
-    after_tail: usize,
-    after_head: usize,
-    ring: NonNull<[T]>,
-    tail: usize,
-    head: usize,
+    // We can't just use a &mut VecDeque<T, A>, as that would make Drain invariant over T
+    // and we want it to be covariant instead
     deque: NonNull<VecDeque<T, A>>,
-    _phantom: PhantomData<&'a T>,
+    // drain_start is stored in deque.len
+    drain_len: usize,
+    // index into the logical array, not the physical one (always lies in [0..deque.len))
+    idx: usize,
+    // number of elements after the drain range
+    tail_len: usize,
+    remaining: usize,
+    // Needed to make Drain covariant over T
+    _marker: PhantomData<&'a T>,
 }
 
 impl<'a, T, A: Allocator> Drain<'a, T, A> {
     pub(super) unsafe fn new(
-        after_tail: usize,
-        after_head: usize,
-        ring: &'a [MaybeUninit<T>],
-        tail: usize,
-        head: usize,
-        deque: NonNull<VecDeque<T, A>>,
+        deque: &'a mut VecDeque<T, A>,
+        drain_start: usize,
+        drain_len: usize,
     ) -> Self {
-        let ring = unsafe { NonNull::new_unchecked(ring as *const [MaybeUninit<T>] as *mut _) };
-        Drain { after_tail, after_head, ring, tail, head, deque, _phantom: PhantomData }
+        let orig_len = mem::replace(&mut deque.len, drain_start);
+        let tail_len = orig_len - drain_start - drain_len;
+        Drain {
+            deque: NonNull::from(deque),
+            drain_len,
+            idx: drain_start,
+            tail_len,
+            remaining: drain_len,
+            _marker: PhantomData,
+        }
+    }
+
+    // Only returns pointers to the slices, as that's
+    // all we need to drop them. May only be called if `self.remaining != 0`.
+    unsafe fn as_slices(&self) -> (*mut [T], *mut [T]) {
+        unsafe {
+            let deque = self.deque.as_ref();
+            // FIXME: This is doing almost exactly the same thing as the else branch in `VecDeque::slice_ranges`.
+            // Unfortunately, we can't just call `slice_ranges` here, as the deque's `len` is currently
+            // just `drain_start`, so the range check would (almost) always panic. Between temporarily
+            // adjusting the deques `len` to call `slice_ranges`, and just copy pasting the `slice_ranges`
+            // implementation, this seemed like the less hacky solution, though it might be good to
+            // find a better one in the future.
+
+            // because `self.remaining != 0`, we know that `self.idx < deque.original_len`, so it's a valid
+            // logical index.
+            let wrapped_start = deque.to_physical_idx(self.idx);
+
+            let head_len = deque.capacity() - wrapped_start;
+
+            let (a_range, b_range) = if head_len >= self.remaining {
+                (wrapped_start..wrapped_start + self.remaining, 0..0)
+            } else {
+                let tail_len = self.remaining - head_len;
+                (wrapped_start..deque.capacity(), 0..tail_len)
+            };
+
+            // SAFETY: the range `self.idx..self.idx+self.remaining` lies strictly inside
+            // the range `0..deque.original_len`. because of this, and because of the fact
+            // that we acquire `a_range` and `b_range` exactly like `slice_ranges` would,
+            // it's guaranteed that `a_range` and `b_range` represent valid ranges into
+            // the deques buffer.
+            (deque.buffer_range(a_range), deque.buffer_range(b_range))
+        }
     }
 }
 
@@ -47,11 +91,10 @@ impl<'a, T, A: Allocator> Drain<'a, T, A> {
 impl<T: fmt::Debug, A: Allocator> fmt::Debug for Drain<'_, T, A> {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         f.debug_tuple("Drain")
-            .field(&self.after_tail)
-            .field(&self.after_head)
-            .field(&self.ring)
-            .field(&self.tail)
-            .field(&self.head)
+            .field(&self.drain_len)
+            .field(&self.idx)
+            .field(&self.tail_len)
+            .field(&self.remaining)
             .finish()
     }
 }
@@ -68,57 +111,81 @@ impl<T, A: Allocator> Drop for Drain<'_, T, A> {
 
         impl<'r, 'a, T, A: Allocator> Drop for DropGuard<'r, 'a, T, A> {
             fn drop(&mut self) {
-                self.0.for_each(drop);
+                if self.0.remaining != 0 {
+                    unsafe {
+                        // SAFETY: We just checked that `self.remaining != 0`.
+                        let (front, back) = self.0.as_slices();
+                        ptr::drop_in_place(front);
+                        ptr::drop_in_place(back);
+                    }
+                }
 
                 let source_deque = unsafe { self.0.deque.as_mut() };
 
-                // T = source_deque_tail; H = source_deque_head; t = drain_tail; h = drain_head
-                //
-                //        T   t   h   H
-                // [. . . o o x x o o . . .]
-                //
-                let orig_tail = source_deque.tail;
-                let drain_tail = source_deque.head;
-                let drain_head = self.0.after_tail;
-                let orig_head = self.0.after_head;
+                let drain_start = source_deque.len();
+                let drain_len = self.0.drain_len;
+                let drain_end = drain_start + drain_len;
 
-                let tail_len = count(orig_tail, drain_tail, source_deque.cap());
-                let head_len = count(drain_head, orig_head, source_deque.cap());
+                let orig_len = self.0.tail_len + drain_end;
 
-                // Restore the original head value
-                source_deque.head = orig_head;
+                if T::IS_ZST {
+                    // no need to copy around any memory if T is a ZST
+                    source_deque.len = orig_len - drain_len;
+                    return;
+                }
 
-                match (tail_len, head_len) {
+                let head_len = drain_start;
+                let tail_len = self.0.tail_len;
+
+                match (head_len, tail_len) {
                     (0, 0) => {
                         source_deque.head = 0;
-                        source_deque.tail = 0;
+                        source_deque.len = 0;
                     }
                     (0, _) => {
-                        source_deque.tail = drain_head;
+                        source_deque.head = source_deque.to_physical_idx(drain_len);
+                        source_deque.len = orig_len - drain_len;
                     }
                     (_, 0) => {
-                        source_deque.head = drain_tail;
+                        source_deque.len = orig_len - drain_len;
                     }
                     _ => unsafe {
-                        if tail_len <= head_len {
-                            source_deque.tail = source_deque.wrap_sub(drain_head, tail_len);
-                            source_deque.wrap_copy(source_deque.tail, orig_tail, tail_len);
+                        if head_len <= tail_len {
+                            source_deque.wrap_copy(
+                                source_deque.head,
+                                source_deque.to_physical_idx(drain_len),
+                                head_len,
+                            );
+                            source_deque.head = source_deque.to_physical_idx(drain_len);
+                            source_deque.len = orig_len - drain_len;
                         } else {
-                            source_deque.head = source_deque.wrap_add(drain_tail, head_len);
-                            source_deque.wrap_copy(drain_tail, drain_head, head_len);
+                            source_deque.wrap_copy(
+                                source_deque.to_physical_idx(head_len + drain_len),
+                                source_deque.to_physical_idx(head_len),
+                                tail_len,
+                            );
+                            source_deque.len = orig_len - drain_len;
                         }
                     },
                 }
             }
         }
 
-        while let Some(item) = self.next() {
-            let guard = DropGuard(self);
-            drop(item);
-            mem::forget(guard);
+        let guard = DropGuard(self);
+        if guard.0.remaining != 0 {
+            unsafe {
+                // SAFETY: We just checked that `self.remaining != 0`.
+                let (front, back) = guard.0.as_slices();
+                // since idx is a logical index, we don't need to worry about wrapping.
+                guard.0.idx += front.len();
+                guard.0.remaining -= front.len();
+                ptr::drop_in_place(front);
+                guard.0.remaining = 0;
+                ptr::drop_in_place(back);
+            }
         }
 
-        DropGuard(self);
+        // Dropping `guard` handles moving the remaining elements into place.
     }
 }
 
@@ -128,20 +195,18 @@ impl<T, A: Allocator> Iterator for Drain<'_, T, A> {
 
     #[inline]
     fn next(&mut self) -> Option<T> {
-        if self.tail == self.head {
+        if self.remaining == 0 {
             return None;
         }
-        let tail = self.tail;
-        self.tail = wrap_index(self.tail.wrapping_add(1), self.ring.len());
-        // Safety:
-        // - `self.tail` in a ring buffer is always a valid index.
-        // - `self.head` and `self.tail` equality is checked above.
-        unsafe { Some(ptr::read(self.ring.as_ptr().get_unchecked_mut(tail))) }
+        let wrapped_idx = unsafe { self.deque.as_ref().to_physical_idx(self.idx) };
+        self.idx += 1;
+        self.remaining -= 1;
+        Some(unsafe { self.deque.as_mut().buffer_read(wrapped_idx) })
     }
 
     #[inline]
     fn size_hint(&self) -> (usize, Option<usize>) {
-        let len = count(self.tail, self.head, self.ring.len());
+        let len = self.remaining;
         (len, Some(len))
     }
 }
@@ -150,14 +215,12 @@ impl<T, A: Allocator> Iterator for Drain<'_, T, A> {
 impl<T, A: Allocator> DoubleEndedIterator for Drain<'_, T, A> {
     #[inline]
     fn next_back(&mut self) -> Option<T> {
-        if self.tail == self.head {
+        if self.remaining == 0 {
             return None;
         }
-        self.head = wrap_index(self.head.wrapping_sub(1), self.ring.len());
-        // Safety:
-        // - `self.head` in a ring buffer is always a valid index.
-        // - `self.head` and `self.tail` equality is checked above.
-        unsafe { Some(ptr::read(self.ring.as_ptr().get_unchecked_mut(self.head))) }
+        self.remaining -= 1;
+        let wrapped_idx = unsafe { self.deque.as_ref().to_physical_idx(self.idx + self.remaining) };
+        Some(unsafe { self.deque.as_mut().buffer_read(wrapped_idx) })
     }
 }
 

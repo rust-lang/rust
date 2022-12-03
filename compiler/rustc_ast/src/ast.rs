@@ -13,7 +13,7 @@
 //! - [`FnDecl`], [`FnHeader`] and [`Param`]: Metadata associated with a function declaration.
 //! - [`Generics`], [`GenericParam`], [`WhereClause`]: Metadata associated with generic parameters.
 //! - [`EnumDef`] and [`Variant`]: Enum declaration.
-//! - [`Lit`] and [`LitKind`]: Literal expressions.
+//! - [`MetaItemLit`] and [`LitKind`]: Literal expressions.
 //! - [`MacroDef`], [`MacStmtStyle`], [`MacCall`], [`MacDelimiter`]: Macro definition and invocation.
 //! - [`Attribute`]: Metadata associated with item.
 //! - [`UnOp`], [`BinOp`], and [`BinOpKind`]: Unary and binary operators.
@@ -111,8 +111,8 @@ impl<CTX: rustc_span::HashStableContext> HashStable<CTX> for Path {
 }
 
 impl Path {
-    // Convert a span and an identifier to the corresponding
-    // one-segment path.
+    /// Convert a span and an identifier to the corresponding
+    /// one-segment path.
     pub fn from_ident(ident: Ident) -> Path {
         Path { segments: thin_vec![PathSegment::from_ident(ident)], span: ident.span, tokens: None }
     }
@@ -479,20 +479,10 @@ pub struct Crate {
     pub is_placeholder: bool,
 }
 
-/// Possible values inside of compile-time attribute lists.
-///
-/// E.g., the '..' in `#[name(..)]`.
-#[derive(Clone, Encodable, Decodable, Debug, HashStable_Generic)]
-pub enum NestedMetaItem {
-    /// A full MetaItem, for recursive meta items.
-    MetaItem(MetaItem),
-    /// A literal.
-    ///
-    /// E.g., `"foo"`, `64`, `true`.
-    Literal(Lit),
-}
-
-/// A spanned compile-time attribute item.
+/// A semantic representation of a meta item. A meta item is a slightly
+/// restricted form of an attribute -- it can only contain expressions in
+/// certain leaf positions, rather than arbitrary token streams -- that is used
+/// for most built-in attributes.
 ///
 /// E.g., `#[test]`, `#[derive(..)]`, `#[rustfmt::skip]` or `#[feature = "foo"]`.
 #[derive(Clone, Encodable, Decodable, Debug, HashStable_Generic)]
@@ -502,23 +492,37 @@ pub struct MetaItem {
     pub span: Span,
 }
 
-/// A compile-time attribute item.
-///
-/// E.g., `#[test]`, `#[derive(..)]` or `#[feature = "foo"]`.
+/// The meta item kind, containing the data after the initial path.
 #[derive(Clone, Encodable, Decodable, Debug, HashStable_Generic)]
 pub enum MetaItemKind {
     /// Word meta item.
     ///
-    /// E.g., `test` as in `#[test]`.
+    /// E.g., `#[test]`, which lacks any arguments after `test`.
     Word,
+
     /// List meta item.
     ///
-    /// E.g., `derive(..)` as in `#[derive(..)]`.
+    /// E.g., `#[derive(..)]`, where the field represents the `..`.
     List(Vec<NestedMetaItem>),
+
     /// Name value meta item.
     ///
-    /// E.g., `feature = "foo"` as in `#[feature = "foo"]`.
-    NameValue(Lit),
+    /// E.g., `#[feature = "foo"]`, where the field represents the `"foo"`.
+    NameValue(MetaItemLit),
+}
+
+/// Values inside meta item lists.
+///
+/// E.g., each of `Clone`, `Copy` in `#[derive(Clone, Copy)]`.
+#[derive(Clone, Encodable, Decodable, Debug, HashStable_Generic)]
+pub enum NestedMetaItem {
+    /// A full MetaItem, for recursive meta items.
+    MetaItem(MetaItem),
+
+    /// A literal.
+    ///
+    /// E.g., `"foo"`, `64`, `true`.
+    Lit(MetaItemLit),
 }
 
 /// A block (`{ .. }`).
@@ -1283,7 +1287,7 @@ impl Expr {
         )
     }
 
-    // To a first-order approximation, is this a pattern
+    /// To a first-order approximation, is this a pattern?
     pub fn is_approximately_pattern(&self) -> bool {
         match &self.peel_parens().kind {
             ExprKind::Box(_)
@@ -1599,12 +1603,12 @@ pub enum AttrArgs {
 }
 
 // The RHS of an `AttrArgs::Eq` starts out as an expression. Once macro
-// expansion is completed, all cases end up either as a literal, which is the
-// form used after lowering to HIR, or as an error.
+// expansion is completed, all cases end up either as a meta item literal,
+// which is the form used after lowering to HIR, or as an error.
 #[derive(Clone, Encodable, Decodable, Debug)]
 pub enum AttrArgsEq {
     Ast(P<Expr>),
-    Hir(Lit),
+    Hir(MetaItemLit),
 }
 
 impl AttrArgs {
@@ -1726,19 +1730,18 @@ pub enum StrStyle {
     Raw(u8),
 }
 
-/// An AST literal.
+/// A literal in a meta item.
 #[derive(Clone, Encodable, Decodable, Debug, HashStable_Generic)]
-pub struct Lit {
+pub struct MetaItemLit {
     /// The original literal token as written in source code.
     pub token_lit: token::Lit,
     /// The "semantic" representation of the literal lowered from the original tokens.
     /// Strings are unescaped, hexadecimal forms are eliminated, etc.
-    /// FIXME: Remove this and only create the semantic representation during lowering to HIR.
     pub kind: LitKind,
     pub span: Span,
 }
 
-/// Same as `Lit`, but restricted to string literals.
+/// Similar to `MetaItemLit`, but restricted to string literals.
 #[derive(Clone, Copy, Encodable, Decodable, Debug)]
 pub struct StrLit {
     /// The original literal token as written in source code.
@@ -1747,7 +1750,6 @@ pub struct StrLit {
     pub suffix: Option<Symbol>,
     pub span: Span,
     /// The unescaped "semantic" representation of the literal lowered from the original token.
-    /// FIXME: Remove this and only create the semantic representation during lowering to HIR.
     pub symbol_unescaped: Symbol,
 }
 
@@ -1783,6 +1785,8 @@ pub enum LitFloatType {
     Unsuffixed,
 }
 
+/// This type is used within both `ast::MetaItemLit` and `hir::Lit`.
+///
 /// Note that the entire literal (including the suffix) is considered when
 /// deciding the `LitKind`. This means that float literals like `1f32` are
 /// classified by this type as `Float`. This is different to `token::LitKind`
@@ -2513,10 +2517,7 @@ pub struct Variant {
 #[derive(Clone, Encodable, Decodable, Debug)]
 pub enum UseTreeKind {
     /// `use prefix` or `use prefix as rename`
-    ///
-    /// The extra `NodeId`s are for HIR lowering, when additional statements are created for each
-    /// namespace.
-    Simple(Option<Ident>, NodeId, NodeId),
+    Simple(Option<Ident>),
     /// `use prefix::{...}`
     Nested(Vec<(UseTree, NodeId)>),
     /// `use prefix::*`
@@ -2535,8 +2536,8 @@ pub struct UseTree {
 impl UseTree {
     pub fn ident(&self) -> Ident {
         match self.kind {
-            UseTreeKind::Simple(Some(rename), ..) => rename,
-            UseTreeKind::Simple(None, ..) => {
+            UseTreeKind::Simple(Some(rename)) => rename,
+            UseTreeKind::Simple(None) => {
                 self.prefix.segments.last().expect("empty prefix in a simple import").ident
             }
             _ => panic!("`UseTree::ident` can only be used on a simple import"),
@@ -2570,17 +2571,10 @@ impl<D: Decoder> Decodable<D> for AttrId {
     }
 }
 
-#[derive(Clone, Encodable, Decodable, Debug, HashStable_Generic)]
-pub struct AttrItem {
-    pub path: Path,
-    pub args: AttrArgs,
-    pub tokens: Option<LazyAttrTokenStream>,
-}
-
 /// A list of attributes.
 pub type AttrVec = ThinVec<Attribute>;
 
-/// Metadata associated with an item.
+/// A syntax-level representation of an attribute.
 #[derive(Clone, Encodable, Decodable, Debug)]
 pub struct Attribute {
     pub kind: AttrKind,
@@ -2592,12 +2586,6 @@ pub struct Attribute {
 }
 
 #[derive(Clone, Encodable, Decodable, Debug)]
-pub struct NormalAttr {
-    pub item: AttrItem,
-    pub tokens: Option<LazyAttrTokenStream>,
-}
-
-#[derive(Clone, Encodable, Decodable, Debug)]
 pub enum AttrKind {
     /// A normal attribute.
     Normal(P<NormalAttr>),
@@ -2606,6 +2594,19 @@ pub enum AttrKind {
     /// Doc attributes (e.g. `#[doc="..."]`) are represented with the `Normal`
     /// variant (which is much less compact and thus more expensive).
     DocComment(CommentKind, Symbol),
+}
+
+#[derive(Clone, Encodable, Decodable, Debug)]
+pub struct NormalAttr {
+    pub item: AttrItem,
+    pub tokens: Option<LazyAttrTokenStream>,
+}
+
+#[derive(Clone, Encodable, Decodable, Debug, HashStable_Generic)]
+pub struct AttrItem {
+    pub path: Path,
+    pub args: AttrArgs,
+    pub tokens: Option<LazyAttrTokenStream>,
 }
 
 /// `TraitRef`s appear in impls.
@@ -3096,9 +3097,9 @@ mod size_asserts {
     static_assert_size!(Impl, 184);
     static_assert_size!(Item, 184);
     static_assert_size!(ItemKind, 112);
-    static_assert_size!(Lit, 48);
     static_assert_size!(LitKind, 24);
     static_assert_size!(Local, 72);
+    static_assert_size!(MetaItemLit, 48);
     static_assert_size!(Param, 40);
     static_assert_size!(Pat, 88);
     static_assert_size!(Path, 24);

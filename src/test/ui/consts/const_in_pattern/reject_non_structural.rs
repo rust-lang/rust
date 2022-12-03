@@ -53,7 +53,7 @@ fn main() {
     match (None, Some(NoDerive)) { TUPLE => dbg!(TUPLE), _ => panic!("whoops"), };
     //~^ ERROR must be annotated with `#[derive(PartialEq, Eq)]`
 
-    const TYPE_ASCRIPTION: OND = Some(NoDerive): OND;
+    const TYPE_ASCRIPTION: OND = type_ascribe!(Some(NoDerive), OND);
     match Some(NoDerive) { TYPE_ASCRIPTION => dbg!(TYPE_ASCRIPTION), _ => panic!("whoops"), };
     //~^ ERROR must be annotated with `#[derive(PartialEq, Eq)]`
 

@@ -9,10 +9,11 @@ use std::iter::TrustedLen;
 /// Expand `lhs = Rvalue::Aggregate(kind, operands)` into assignments to the fields.
 ///
 /// Produces something like
-///
+/// ```ignore (ilustrative)
 /// (lhs as Variant).field0 = arg0;     // We only have a downcast if this is an enum
 /// (lhs as Variant).field1 = arg1;
 /// discriminant(lhs) = variant_index;  // If lhs is an enum or generator.
+/// ```
 pub fn expand_aggregate<'tcx>(
     orig_lhs: Place<'tcx>,
     operands: impl Iterator<Item = (Operand<'tcx>, Ty<'tcx>)> + TrustedLen,

@@ -1,7 +1,7 @@
 //! Parsing and validation of builtin attributes
 
 use rustc_ast as ast;
-use rustc_ast::{Attribute, Lit, LitKind, MetaItem, MetaItemKind, NestedMetaItem, NodeId};
+use rustc_ast::{Attribute, LitKind, MetaItem, MetaItemKind, MetaItemLit, NestedMetaItem, NodeId};
 use rustc_ast_pretty::pprust;
 use rustc_feature::{find_gated_cfg, is_builtin_attr_name, Features, GatedCfg};
 use rustc_macros::HashStable_Generic;
@@ -486,7 +486,7 @@ where
                                     continue 'outer;
                                 }
                             },
-                            NestedMetaItem::Literal(lit) => {
+                            NestedMetaItem::Lit(lit) => {
                                 handle_errors(
                                     &sess.parse_sess,
                                     lit.span,
@@ -658,11 +658,11 @@ pub fn eval_condition(
         ast::MetaItemKind::List(ref mis) if cfg.name_or_empty() == sym::version => {
             try_gate_cfg(sym::version, cfg.span, sess, features);
             let (min_version, span) = match &mis[..] {
-                [NestedMetaItem::Literal(Lit { kind: LitKind::Str(sym, ..), span, .. })] => {
+                [NestedMetaItem::Lit(MetaItemLit { kind: LitKind::Str(sym, ..), span, .. })] => {
                     (sym, span)
                 }
                 [
-                    NestedMetaItem::Literal(Lit { span, .. })
+                    NestedMetaItem::Lit(MetaItemLit { span, .. })
                     | NestedMetaItem::MetaItem(MetaItem { span, .. }),
                 ] => {
                     sess.emit_err(session_diagnostics::ExpectedVersionLiteral { span: *span });
@@ -899,7 +899,7 @@ where
                                 continue 'outer;
                             }
                         },
-                        NestedMetaItem::Literal(lit) => {
+                        NestedMetaItem::Lit(lit) => {
                             handle_errors(
                                 &sess.parse_sess,
                                 lit.span,

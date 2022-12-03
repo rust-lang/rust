@@ -1,13 +1,11 @@
-use clippy_utils::{
-    diagnostics::{self, span_lint_and_sugg},
-    meets_msrv, msrvs, source,
-    sugg::Sugg,
-    ty,
-};
+use clippy_utils::diagnostics::{self, span_lint_and_sugg};
+use clippy_utils::msrvs::{self, Msrv};
+use clippy_utils::source;
+use clippy_utils::sugg::Sugg;
+use clippy_utils::ty;
 use rustc_errors::Applicability;
 use rustc_hir::{BinOpKind, Expr, ExprKind};
 use rustc_lint::{LateContext, LateLintPass};
-use rustc_semver::RustcVersion;
 use rustc_session::{declare_tool_lint, impl_lint_pass};
 use rustc_span::{source_map::Spanned, sym};
 
@@ -68,12 +66,12 @@ declare_clippy_lint! {
 }
 
 pub struct InstantSubtraction {
-    msrv: Option<RustcVersion>,
+    msrv: Msrv,
 }
 
 impl InstantSubtraction {
     #[must_use]
-    pub fn new(msrv: Option<RustcVersion>) -> Self {
+    pub fn new(msrv: Msrv) -> Self {
         Self { msrv }
     }
 }
@@ -101,7 +99,7 @@ impl LateLintPass<'_> for InstantSubtraction {
                 } else {
                     if_chain! {
                         if !expr.span.from_expansion();
-                        if meets_msrv(self.msrv, msrvs::TRY_FROM);
+                        if self.msrv.meets(msrvs::TRY_FROM);
 
                         if is_an_instant(cx, lhs);
                         if is_a_duration(cx, rhs);

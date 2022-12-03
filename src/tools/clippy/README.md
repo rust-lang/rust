@@ -197,8 +197,8 @@ disallowed-names = ["toto", "tata", "titi"]
 cognitive-complexity-threshold = 30
 ```
 
-See the [list of lints](https://rust-lang.github.io/rust-clippy/master/index.html) for more information about which
-lints can be configured and the meaning of the variables.
+See the [list of configurable lints](https://rust-lang.github.io/rust-clippy/master/index.html#Configuration),
+the lint descriptions contain the names and meanings of these configuration variables.
 
 > **Note**
 >
@@ -224,7 +224,7 @@ in the `Cargo.toml` can be used.
 rust-version = "1.30"
 ```
 
-The MSRV can also be specified as an inner attribute, like below.
+The MSRV can also be specified as an attribute, like below.
 
 ```rust
 #![feature(custom_inner_attributes)]

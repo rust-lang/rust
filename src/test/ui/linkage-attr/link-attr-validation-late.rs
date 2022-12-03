@@ -1,4 +1,3 @@
-#![feature(native_link_modifiers_verbatim)]
 #![feature(link_cfg)]
 
 // Top-level ill-formed

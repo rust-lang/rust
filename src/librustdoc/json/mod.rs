@@ -225,10 +225,10 @@ impl<'tcx> FormatRenderer<'tcx> for JsonRenderer<'tcx> {
 
                 types::ItemEnum::Function(_)
                 | types::ItemEnum::Module(_)
+                | types::ItemEnum::Import(_)
                 | types::ItemEnum::AssocConst { .. }
                 | types::ItemEnum::AssocType { .. } => true,
                 types::ItemEnum::ExternCrate { .. }
-                | types::ItemEnum::Import(_)
                 | types::ItemEnum::StructField(_)
                 | types::ItemEnum::Variant(_)
                 | types::ItemEnum::TraitAlias(_)

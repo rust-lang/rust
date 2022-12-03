@@ -9,11 +9,11 @@ use super::{
 };
 use crate::infer::error_reporting::{TyCategory, TypeAnnotationNeeded as ErrorCode};
 use crate::infer::type_variable::{TypeVariableOrigin, TypeVariableOriginKind};
-use crate::infer::InferCtxtExt as _;
 use crate::infer::{self, InferCtxt, TyCtxtInferExt};
 use crate::traits::query::evaluate_obligation::InferCtxtExt as _;
-use crate::traits::query::normalize::AtExt as _;
+use crate::traits::query::normalize::QueryNormalizeExt as _;
 use crate::traits::specialize::to_pretty_impl_header;
+use crate::traits::NormalizeExt;
 use on_unimplemented::OnUnimplementedNote;
 use on_unimplemented::TypeErrCtxtExt as _;
 use rustc_data_structures::fx::{FxHashMap, FxIndexMap};
@@ -357,7 +357,8 @@ impl<'tcx> InferCtxtExt<'tcx> for InferCtxt<'tcx> {
                 ocx.register_obligation(obligation);
                 if ocx.select_all_or_error().is_empty() {
                     return Ok((
-                        ty::ClosureKind::from_def_id(self.tcx, trait_def_id)
+                        self.tcx
+                            .fn_trait_kind_from_def_id(trait_def_id)
                             .expect("expected to map DefId to ClosureKind"),
                         ty.rebind(self.resolve_vars_if_possible(var)),
                     ));
@@ -686,7 +687,7 @@ impl<'tcx> TypeErrCtxtExt<'tcx> for TypeErrCtxt<'_, 'tcx> {
                                 }
                                 ObligationCauseCode::BindingObligation(def_id, _)
                                 | ObligationCauseCode::ItemObligation(def_id)
-                                    if ty::ClosureKind::from_def_id(tcx, *def_id).is_some() =>
+                                    if tcx.is_fn_trait(*def_id) =>
                                 {
                                     err.code(rustc_errors::error_code!(E0059));
                                     err.set_primary_message(format!(
@@ -846,8 +847,7 @@ impl<'tcx> TypeErrCtxtExt<'tcx> for TypeErrCtxt<'_, 'tcx> {
                             );
                         }
 
-                        let is_fn_trait =
-                            ty::ClosureKind::from_def_id(tcx, trait_ref.def_id()).is_some();
+                        let is_fn_trait = tcx.is_fn_trait(trait_ref.def_id());
                         let is_target_feature_fn = if let ty::FnDef(def_id, _) =
                             *trait_ref.skip_binder().self_ty().kind()
                         {
@@ -877,7 +877,7 @@ impl<'tcx> TypeErrCtxtExt<'tcx> for TypeErrCtxt<'_, 'tcx> {
                             // Note if the `FnMut` or `FnOnce` is less general than the trait we're trying
                             // to implement.
                             let selected_kind =
-                                ty::ClosureKind::from_def_id(self.tcx, trait_ref.def_id())
+                                self.tcx.fn_trait_kind_from_def_id(trait_ref.def_id())
                                     .expect("expected to map DefId to ClosureKind");
                             if !implemented_kind.extends(selected_kind) {
                                 err.note(
@@ -1595,6 +1595,7 @@ impl<'tcx> InferCtxtPrivExt<'tcx> for TypeErrCtxt<'_, 'tcx> {
                     bound_predicate.rebind(data),
                 );
                 let mut obligations = vec![];
+                // FIXME(normalization): Change this to use `At::normalize`
                 let normalized_ty = super::normalize_projection_type(
                     &mut selcx,
                     obligation.param_env,
@@ -1933,7 +1934,7 @@ impl<'tcx> InferCtxtPrivExt<'tcx> for TypeErrCtxt<'_, 'tcx> {
             let infcx = self.tcx.infer_ctxt().build();
             infcx
                 .at(&ObligationCause::dummy(), ty::ParamEnv::empty())
-                .normalize(candidate)
+                .query_normalize(candidate)
                 .map_or(candidate, |normalized| normalized.value)
         };
 
@@ -2155,7 +2156,7 @@ impl<'tcx> InferCtxtPrivExt<'tcx> for TypeErrCtxt<'_, 'tcx> {
                     if generics.params.iter().any(|p| p.name != kw::SelfUpper)
                         && !snippet.ends_with('>')
                         && !generics.has_impl_trait()
-                        && !self.tcx.fn_trait_kind_from_lang_item(def_id).is_some()
+                        && !self.tcx.is_fn_trait(def_id)
                     {
                         // FIXME: To avoid spurious suggestions in functions where type arguments
                         // where already supplied, we check the snippet to make sure it doesn't
@@ -2535,19 +2536,12 @@ impl<'tcx> InferCtxtPrivExt<'tcx> for TypeErrCtxt<'_, 'tcx> {
                 pred.fold_with(&mut ParamToVarFolder { infcx: self, var_map: Default::default() });
 
             let InferOk { value: cleaned_pred, .. } =
-                self.infcx.partially_normalize_associated_types_in(
-                    ObligationCause::dummy(),
-                    param_env,
-                    cleaned_pred,
-                );
+                self.infcx.at(&ObligationCause::dummy(), param_env).normalize(cleaned_pred);
 
             let obligation =
                 Obligation::new(self.tcx, ObligationCause::dummy(), param_env, cleaned_pred);
 
-            // We don't use `InferCtxt::predicate_may_hold` because that
-            // will re-run predicates that overflow locally, which ends up
-            // taking a really long time to compute.
-            self.evaluate_obligation(&obligation).map_or(false, |eval| eval.may_apply())
+            self.predicate_may_hold(&obligation)
         })
     }
 

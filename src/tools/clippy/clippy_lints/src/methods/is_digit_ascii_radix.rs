@@ -1,23 +1,22 @@
 //! Lint for `c.is_digit(10)`
 
 use super::IS_DIGIT_ASCII_RADIX;
+use clippy_utils::msrvs::{self, Msrv};
 use clippy_utils::{
-    consts::constant_full_int, consts::FullInt, diagnostics::span_lint_and_sugg, meets_msrv, msrvs,
-    source::snippet_with_applicability,
+    consts::constant_full_int, consts::FullInt, diagnostics::span_lint_and_sugg, source::snippet_with_applicability,
 };
 use rustc_errors::Applicability;
 use rustc_hir::Expr;
 use rustc_lint::LateContext;
-use rustc_semver::RustcVersion;
 
 pub(super) fn check<'tcx>(
     cx: &LateContext<'tcx>,
     expr: &'tcx Expr<'_>,
     self_arg: &'tcx Expr<'_>,
     radix: &'tcx Expr<'_>,
-    msrv: Option<RustcVersion>,
+    msrv: &Msrv,
 ) {
-    if !meets_msrv(msrv, msrvs::IS_ASCII_DIGIT) {
+    if !msrv.meets(msrvs::IS_ASCII_DIGIT) {
         return;
     }
 

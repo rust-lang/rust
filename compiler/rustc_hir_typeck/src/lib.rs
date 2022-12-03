@@ -233,9 +233,10 @@ fn typeck_with_fallback<'tcx>(
 
     let typeck_results = Inherited::build(tcx, def_id).enter(|inh| {
         let param_env = tcx.param_env(def_id);
-        let mut fcx = if let Some(hir::FnSig { header, decl, .. }) = fn_sig {
+        let mut fcx = FnCtxt::new(&inh, param_env, body.value.hir_id);
+
+        if let Some(hir::FnSig { header, decl, .. }) = fn_sig {
             let fn_sig = if rustc_hir_analysis::collect::get_infer_ret_ty(&decl.output).is_some() {
-                let fcx = FnCtxt::new(&inh, param_env, body.value.hir_id);
                 <dyn AstConv<'_>>::ty_of_fn(&fcx, id, header.unsafety, header.abi, decl, None, None)
             } else {
                 tcx.fn_sig(def_id)
@@ -245,15 +246,10 @@ fn typeck_with_fallback<'tcx>(
 
             // Compute the function signature from point of view of inside the fn.
             let fn_sig = tcx.liberate_late_bound_regions(def_id.to_def_id(), fn_sig);
-            let fn_sig = inh.normalize_associated_types_in(
-                body.value.span,
-                body_id.hir_id,
-                param_env,
-                fn_sig,
-            );
-            check_fn(&inh, param_env, fn_sig, decl, def_id, body, None).0
+            let fn_sig = fcx.normalize(body.value.span, fn_sig);
+
+            check_fn(&mut fcx, fn_sig, decl, def_id, body, None);
         } else {
-            let fcx = FnCtxt::new(&inh, param_env, body.value.hir_id);
             let expected_type = body_ty
                 .and_then(|ty| match ty.kind {
                     hir::TyKind::Infer => Some(<dyn AstConv<'_>>::ast_ty_to_ty(&fcx, ty)),
@@ -304,7 +300,7 @@ fn typeck_with_fallback<'tcx>(
                     _ => fallback(),
                 });
 
-            let expected_type = fcx.normalize_associated_types_in(body.value.span, expected_type);
+            let expected_type = fcx.normalize(body.value.span, expected_type);
             fcx.require_type_is_sized(expected_type, body.value.span, traits::ConstSized);
 
             // Gather locals in statics (because of block expressions).
@@ -313,8 +309,6 @@ fn typeck_with_fallback<'tcx>(
             fcx.check_expr_coercable_to_type(&body.value, expected_type, None);
 
             fcx.write_ty(id, expected_type);
-
-            fcx
         };
 
         fcx.type_inference_fallback();

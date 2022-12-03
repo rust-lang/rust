@@ -56,9 +56,6 @@ pub enum ImportKind<'a> {
         /// If this is the import for `foo::bar::a`, we would have the ID of the `UseTree`
         /// for `a` in this field.
         id: NodeId,
-        /// Additional `NodeId`s allocated to a `ast::UseTree` for automatically generated `use` statement
-        /// (eg. implicit struct constructors)
-        additional_ids: (NodeId, NodeId),
     },
     Glob {
         is_prelude: bool,
@@ -88,7 +85,6 @@ impl<'a> std::fmt::Debug for ImportKind<'a> {
                 ref type_ns_only,
                 ref nested,
                 ref id,
-                ref additional_ids,
                 // Ignore the following to avoid an infinite loop while printing.
                 source_bindings: _,
                 target_bindings: _,
@@ -99,7 +95,6 @@ impl<'a> std::fmt::Debug for ImportKind<'a> {
                 .field("type_ns_only", type_ns_only)
                 .field("nested", nested)
                 .field("id", id)
-                .field("additional_ids", additional_ids)
                 .finish_non_exhaustive(),
             Glob { ref is_prelude, ref max_vis, ref id } => f
                 .debug_struct("Glob")
@@ -196,7 +191,7 @@ pub(crate) struct NameResolution<'a> {
 }
 
 impl<'a> NameResolution<'a> {
-    // Returns the binding for the name if it is known or None if it not known.
+    /// Returns the binding for the name if it is known or None if it not known.
     pub(crate) fn binding(&self) -> Option<&'a NameBinding<'a>> {
         self.binding.and_then(|binding| {
             if !binding.is_glob_import() || self.single_imports.is_empty() {
@@ -228,8 +223,8 @@ fn pub_use_of_private_extern_crate_hack(import: &Import<'_>, binding: &NameBindi
 }
 
 impl<'a> Resolver<'a> {
-    // Given a binding and an import that resolves to it,
-    // return the corresponding binding defined by the import.
+    /// Given a binding and an import that resolves to it,
+    /// return the corresponding binding defined by the import.
     pub(crate) fn import(
         &self,
         binding: &'a NameBinding<'a>,
@@ -261,7 +256,7 @@ impl<'a> Resolver<'a> {
         })
     }
 
-    // Define the name or return the existing binding if there is a collision.
+    /// Define the name or return the existing binding if there is a collision.
     pub(crate) fn try_define(
         &mut self,
         module: Module<'a>,

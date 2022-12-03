@@ -486,8 +486,7 @@ pub fn phase_runner(mut binary_args: impl Iterator<Item = String>, phase: Runner
                 continue;
             } else if verbose > 0 {
                 eprintln!(
-                    "[cargo-miri runner] Overwriting run-time env var {:?}={:?} with build-time value {:?}",
-                    name, old_val, val
+                    "[cargo-miri runner] Overwriting run-time env var {name:?}={old_val:?} with build-time value {val:?}"
                 );
             }
         }

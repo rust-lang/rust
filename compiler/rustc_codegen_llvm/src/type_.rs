@@ -238,7 +238,7 @@ impl Type {
         unsafe { llvm::LLVMInt8TypeInContext(llcx) }
     }
 
-    // Creates an integer type with the given number of bits, e.g., i24
+    /// Creates an integer type with the given number of bits, e.g., i24
     pub fn ix_llcx(llcx: &llvm::Context, num_bits: u64) -> &Type {
         unsafe { llvm::LLVMIntTypeInContext(llcx, num_bits as c_uint) }
     }

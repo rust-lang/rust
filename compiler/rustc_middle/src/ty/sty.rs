@@ -2116,8 +2116,7 @@ impl<'tcx> Ty<'tcx> {
     /// parameter. This is kind of a phantom type, except that the
     /// most convenient thing for us to are the integral types. This
     /// function converts such a special type into the closure
-    /// kind. To go the other way, use
-    /// `tcx.closure_kind_ty(closure_kind)`.
+    /// kind. To go the other way, use `closure_kind.to_ty(tcx)`.
     ///
     /// Note that during type checking, we use an inference variable
     /// to represent the closure kind, because it has not yet been
@@ -2243,7 +2242,7 @@ impl<'tcx> Ty<'tcx> {
         }
     }
 
-    // If `self` is a primitive, return its [`Symbol`].
+    /// If `self` is a primitive, return its [`Symbol`].
     pub fn primitive_symbol(self) -> Option<Symbol> {
         match self.kind() {
             ty::Bool => Some(sym::bool),

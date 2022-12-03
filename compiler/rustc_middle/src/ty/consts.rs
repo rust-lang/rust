@@ -76,10 +76,10 @@ impl<'tcx> Const<'tcx> {
         match Self::try_eval_lit_or_param(tcx, ty, expr) {
             Some(v) => v,
             None => tcx.mk_const(
-                ty::ConstKind::Unevaluated(ty::UnevaluatedConst {
+                ty::UnevaluatedConst {
                     def: def.to_global(),
                     substs: InternalSubsts::identity_for_item(tcx, def.did.to_def_id()),
-                }),
+                },
                 ty,
             ),
         }
@@ -134,16 +134,10 @@ impl<'tcx> Const<'tcx> {
                 let generics = tcx.generics_of(item_def_id);
                 let index = generics.param_def_id_to_index[&def_id];
                 let name = tcx.item_name(def_id);
-                Some(tcx.mk_const(ty::ConstKind::Param(ty::ParamConst::new(index, name)), ty))
+                Some(tcx.mk_const(ty::ParamConst::new(index, name), ty))
             }
             _ => None,
         }
-    }
-
-    /// Interns the given value as a constant.
-    #[inline]
-    pub fn from_value(tcx: TyCtxt<'tcx>, val: ty::ValTree<'tcx>, ty: Ty<'tcx>) -> Self {
-        tcx.mk_const(ConstKind::Value(val), ty)
     }
 
     /// Panics if self.kind != ty::ConstKind::Value
@@ -154,11 +148,6 @@ impl<'tcx> Const<'tcx> {
         }
     }
 
-    pub fn from_scalar_int(tcx: TyCtxt<'tcx>, i: ScalarInt, ty: Ty<'tcx>) -> Self {
-        let valtree = ty::ValTree::from_scalar_int(i);
-        Self::from_value(tcx, valtree, ty)
-    }
-
     #[inline]
     /// Creates a constant with the given integer value and interns it.
     pub fn from_bits(tcx: TyCtxt<'tcx>, bits: u128, ty: ParamEnvAnd<'tcx, Ty<'tcx>>) -> Self {
@@ -166,14 +155,16 @@ impl<'tcx> Const<'tcx> {
             .layout_of(ty)
             .unwrap_or_else(|e| panic!("could not compute layout for {:?}: {:?}", ty, e))
             .size;
-        Self::from_scalar_int(tcx, ScalarInt::try_from_uint(bits, size).unwrap(), ty.value)
+        tcx.mk_const(
+            ty::ValTree::from_scalar_int(ScalarInt::try_from_uint(bits, size).unwrap()),
+            ty.value,
+        )
     }
 
     #[inline]
     /// Creates an interned zst constant.
     pub fn zero_sized(tcx: TyCtxt<'tcx>, ty: Ty<'tcx>) -> Self {
-        let valtree = ty::ValTree::zst();
-        Self::from_value(tcx, valtree, ty)
+        tcx.mk_const(ty::ValTree::zst(), ty)
     }
 
     #[inline]
@@ -220,7 +211,7 @@ impl<'tcx> Const<'tcx> {
     pub fn eval(self, tcx: TyCtxt<'tcx>, param_env: ParamEnv<'tcx>) -> Const<'tcx> {
         if let Some(val) = self.kind().try_eval_for_typeck(tcx, param_env) {
             match val {
-                Ok(val) => Const::from_value(tcx, val, self.ty()),
+                Ok(val) => tcx.mk_const(val, self.ty()),
                 Err(guar) => tcx.const_error_with_guaranteed(self.ty(), guar),
             }
         } else {

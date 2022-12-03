@@ -39,6 +39,7 @@ macro_rules! arena_types {
             [] param: rustc_hir::Param<'tcx>,
             [] pat: rustc_hir::Pat<'tcx>,
             [] path: rustc_hir::Path<'tcx>,
+            [] use_path: rustc_hir::UsePath<'tcx>,
             [] path_segment: rustc_hir::PathSegment<'tcx>,
             [] poly_trait_ref: rustc_hir::PolyTraitRef<'tcx>,
             [] qpath: rustc_hir::QPath<'tcx>,

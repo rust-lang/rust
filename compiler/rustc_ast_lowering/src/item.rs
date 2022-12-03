@@ -19,7 +19,6 @@ use rustc_span::symbol::{kw, sym, Ident};
 use rustc_span::{Span, Symbol};
 use rustc_target::spec::abi;
 use smallvec::{smallvec, SmallVec};
-use std::iter;
 use thin_vec::ThinVec;
 
 pub(super) struct ItemLowerer<'a, 'hir> {
@@ -179,36 +178,22 @@ impl<'hir> LoweringContext<'_, 'hir> {
         let mut node_ids =
             smallvec![hir::ItemId { owner_id: hir::OwnerId { def_id: self.local_def_id(i.id) } }];
         if let ItemKind::Use(use_tree) = &i.kind {
-            self.lower_item_id_use_tree(use_tree, i.id, &mut node_ids);
+            self.lower_item_id_use_tree(use_tree, &mut node_ids);
         }
         node_ids
     }
 
-    fn lower_item_id_use_tree(
-        &mut self,
-        tree: &UseTree,
-        base_id: NodeId,
-        vec: &mut SmallVec<[hir::ItemId; 1]>,
-    ) {
+    fn lower_item_id_use_tree(&mut self, tree: &UseTree, vec: &mut SmallVec<[hir::ItemId; 1]>) {
         match &tree.kind {
             UseTreeKind::Nested(nested_vec) => {
                 for &(ref nested, id) in nested_vec {
                     vec.push(hir::ItemId {
                         owner_id: hir::OwnerId { def_id: self.local_def_id(id) },
                     });
-                    self.lower_item_id_use_tree(nested, id, vec);
+                    self.lower_item_id_use_tree(nested, vec);
                 }
             }
-            UseTreeKind::Glob => {}
-            UseTreeKind::Simple(_, id1, id2) => {
-                for (_, id) in
-                    iter::zip(self.expect_full_res_from_use(base_id).skip(1), [*id1, *id2])
-                {
-                    vec.push(hir::ItemId {
-                        owner_id: hir::OwnerId { def_id: self.local_def_id(id) },
-                    });
-                }
-            }
+            UseTreeKind::Simple(..) | UseTreeKind::Glob => {}
         }
     }
 
@@ -489,7 +474,7 @@ impl<'hir> LoweringContext<'_, 'hir> {
         let segments = prefix.segments.iter().chain(path.segments.iter()).cloned().collect();
 
         match tree.kind {
-            UseTreeKind::Simple(rename, id1, id2) => {
+            UseTreeKind::Simple(rename) => {
                 *ident = tree.ident();
 
                 // First, apply the prefix to the path.
@@ -505,66 +490,16 @@ impl<'hir> LoweringContext<'_, 'hir> {
                     }
                 }
 
-                let mut resolutions = self.expect_full_res_from_use(id).fuse();
-                // We want to return *something* from this function, so hold onto the first item
-                // for later.
-                let ret_res = self.lower_res(resolutions.next().unwrap_or(Res::Err));
-
-                // Here, we are looping over namespaces, if they exist for the definition
-                // being imported. We only handle type and value namespaces because we
-                // won't be dealing with macros in the rest of the compiler.
-                // Essentially a single `use` which imports two names is desugared into
-                // two imports.
-                for new_node_id in [id1, id2] {
-                    let new_id = self.local_def_id(new_node_id);
-                    let Some(res) = resolutions.next() else {
-                        debug_assert!(self.children.iter().find(|(id, _)| id == &new_id).is_none());
-                        // Associate an HirId to both ids even if there is no resolution.
-                        self.children.push((
-                            new_id,
-                            hir::MaybeOwner::NonOwner(hir::HirId::make_owner(new_id))),
-                        );
-                        continue;
-                    };
-                    let ident = *ident;
-                    let mut path = path.clone();
-                    for seg in &mut path.segments {
-                        // Give the cloned segment the same resolution information
-                        // as the old one (this is needed for stability checking).
-                        let new_id = self.next_node_id();
-                        self.resolver.clone_res(seg.id, new_id);
-                        seg.id = new_id;
-                    }
-                    let span = path.span;
-
-                    self.with_hir_id_owner(new_node_id, |this| {
-                        let res = this.lower_res(res);
-                        let path = this.lower_path_extra(res, &path, ParamMode::Explicit);
-                        let kind = hir::ItemKind::Use(path, hir::UseKind::Single);
-                        if let Some(attrs) = attrs {
-                            this.attrs.insert(hir::ItemLocalId::new(0), attrs);
-                        }
-
-                        let item = hir::Item {
-                            owner_id: hir::OwnerId { def_id: new_id },
-                            ident: this.lower_ident(ident),
-                            kind,
-                            vis_span,
-                            span: this.lower_span(span),
-                        };
-                        hir::OwnerNode::Item(this.arena.alloc(item))
-                    });
-                }
-
-                let path = self.lower_path_extra(ret_res, &path, ParamMode::Explicit);
+                let res =
+                    self.expect_full_res_from_use(id).map(|res| self.lower_res(res)).collect();
+                let path = self.lower_use_path(res, &path, ParamMode::Explicit);
                 hir::ItemKind::Use(path, hir::UseKind::Single)
             }
             UseTreeKind::Glob => {
-                let path = self.lower_path(
-                    id,
-                    &Path { segments, span: path.span, tokens: None },
-                    ParamMode::Explicit,
-                );
+                let res = self.expect_full_res(id);
+                let res = smallvec![self.lower_res(res)];
+                let path = Path { segments, span: path.span, tokens: None };
+                let path = self.lower_use_path(res, &path, ParamMode::Explicit);
                 hir::ItemKind::Use(path, hir::UseKind::Glob)
             }
             UseTreeKind::Nested(ref trees) => {
@@ -634,9 +569,9 @@ impl<'hir> LoweringContext<'_, 'hir> {
                     });
                 }
 
-                let res = self.expect_full_res_from_use(id).next().unwrap_or(Res::Err);
-                let res = self.lower_res(res);
-                let path = self.lower_path_extra(res, &prefix, ParamMode::Explicit);
+                let res =
+                    self.expect_full_res_from_use(id).map(|res| self.lower_res(res)).collect();
+                let path = self.lower_use_path(res, &prefix, ParamMode::Explicit);
                 hir::ItemKind::Use(path, hir::UseKind::ListStem)
             }
         }

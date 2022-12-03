@@ -28,6 +28,7 @@ use crate::traits::query::{
 };
 use crate::traits::specialization_graph;
 use crate::traits::{self, ImplSource};
+use crate::ty::context::TyCtxtFeed;
 use crate::ty::fast_reject::SimplifiedType;
 use crate::ty::layout::TyAndLayout;
 use crate::ty::subst::{GenericArg, SubstsRef};
@@ -327,6 +328,46 @@ macro_rules! define_callbacks {
     };
 }
 
+macro_rules! define_feedable {
+    ($($(#[$attr:meta])* [$($modifiers:tt)*] fn $name:ident($($K:tt)*) -> $V:ty,)*) => {
+        impl<'tcx> TyCtxtFeed<'tcx> {
+            $($(#[$attr])*
+            #[inline(always)]
+            pub fn $name(self, value: $V) -> query_stored::$name<'tcx> {
+                let key = self.def_id().into_query_param();
+                opt_remap_env_constness!([$($modifiers)*][key]);
+
+                let tcx = self.tcx;
+                let cache = &tcx.query_caches.$name;
+
+                let cached = try_get_cached(tcx, cache, &key, copy);
+
+                match cached {
+                    Ok(old) => {
+                        assert_eq!(
+                            value, old,
+                            "Trying to feed an already recorded value for query {} key={key:?}",
+                            stringify!($name),
+                        );
+                        return old;
+                    }
+                    Err(()) => (),
+                }
+
+                let dep_node = dep_graph::DepNode::construct(tcx, dep_graph::DepKind::$name, &key);
+                let dep_node_index = tcx.dep_graph.with_feed_task(
+                    dep_node,
+                    tcx,
+                    key,
+                    &value,
+                    dep_graph::hash_result,
+                );
+                cache.complete(key, value, dep_node_index)
+            })*
+        }
+    }
+}
+
 // Each of these queries corresponds to a function pointer field in the
 // `Providers` struct for requesting a value of that type, and a method
 // on `tcx: TyCtxt` (and `tcx.at(span)`) for doing that request in a way
@@ -340,6 +381,7 @@ macro_rules! define_callbacks {
 // as they will raise an fatal error on query cycles instead.
 
 rustc_query_append! { define_callbacks! }
+rustc_feedable_queries! { define_feedable! }
 
 mod sealed {
     use super::{DefId, LocalDefId, OwnerId};

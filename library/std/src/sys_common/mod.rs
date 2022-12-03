@@ -32,6 +32,7 @@ pub mod thread;
 pub mod thread_info;
 pub mod thread_local_dtor;
 pub mod thread_parker;
+pub mod wstr;
 pub mod wtf8;
 
 cfg_if::cfg_if! {

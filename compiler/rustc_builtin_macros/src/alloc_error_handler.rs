@@ -95,9 +95,7 @@ fn generate_handler(cx: &ExtCtxt<'_>, handler: Ident, span: Span, sig_span: Span
         body,
     }));
 
-    let special = sym::rustc_std_internal_symbol;
-    let special = cx.meta_word(span, special);
-    let attrs = thin_vec![cx.attribute(special)];
+    let attrs = thin_vec![cx.attr_word(sym::rustc_std_internal_symbol, span)];
 
     let item = cx.item(span, Ident::from_str_and_span("__rg_oom", span), attrs, kind);
     cx.stmt_item(sig_span, item)

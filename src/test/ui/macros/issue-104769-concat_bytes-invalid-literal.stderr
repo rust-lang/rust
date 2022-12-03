@@ -1,0 +1,16 @@
+error: invalid suffix `Y` for number literal
+  --> $DIR/issue-104769-concat_bytes-invalid-literal.rs:4:19
+   |
+LL |     concat_bytes!(7Y);
+   |                   ^^ invalid suffix `Y`
+   |
+   = help: the suffix must be one of the numeric types (`u32`, `isize`, `f32`, etc.)
+
+error: integer literal is too large
+  --> $DIR/issue-104769-concat_bytes-invalid-literal.rs:6:19
+   |
+LL |     concat_bytes!(888888888888888888888888888888888888888);
+   |                   ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+error: aborting due to 2 previous errors
+

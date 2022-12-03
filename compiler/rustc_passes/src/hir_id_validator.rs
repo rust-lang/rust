@@ -1,11 +1,11 @@
 use rustc_data_structures::sync::Lock;
 use rustc_hir as hir;
+use rustc_hir::def_id::LocalDefId;
 use rustc_hir::intravisit;
 use rustc_hir::{HirId, ItemLocalId};
 use rustc_index::bit_set::GrowableBitSet;
-use rustc_middle::hir::map::Map;
 use rustc_middle::hir::nested_filter;
-use rustc_middle::ty::TyCtxt;
+use rustc_middle::ty::{DefIdTree, TyCtxt};
 
 pub fn check_crate(tcx: TyCtxt<'_>) {
     tcx.dep_graph.assert_ignored();
@@ -17,11 +17,10 @@ pub fn check_crate(tcx: TyCtxt<'_>) {
     #[cfg(debug_assertions)]
     {
         let errors = Lock::new(Vec::new());
-        let hir_map = tcx.hir();
 
-        hir_map.par_for_each_module(|module_id| {
+        tcx.hir().par_for_each_module(|module_id| {
             let mut v = HirIdValidator {
-                hir_map,
+                tcx,
                 owner: None,
                 hir_ids_seen: Default::default(),
                 errors: &errors,
@@ -40,20 +39,15 @@ pub fn check_crate(tcx: TyCtxt<'_>) {
 }
 
 struct HirIdValidator<'a, 'hir> {
-    hir_map: Map<'hir>,
+    tcx: TyCtxt<'hir>,
     owner: Option<hir::OwnerId>,
     hir_ids_seen: GrowableBitSet<ItemLocalId>,
     errors: &'a Lock<Vec<String>>,
 }
 
 impl<'a, 'hir> HirIdValidator<'a, 'hir> {
-    fn new_visitor(&self, hir_map: Map<'hir>) -> HirIdValidator<'a, 'hir> {
-        HirIdValidator {
-            hir_map,
-            owner: None,
-            hir_ids_seen: Default::default(),
-            errors: self.errors,
-        }
+    fn new_visitor(&self, tcx: TyCtxt<'hir>) -> HirIdValidator<'a, 'hir> {
+        HirIdValidator { tcx, owner: None, hir_ids_seen: Default::default(), errors: self.errors }
     }
 
     #[cold]
@@ -96,21 +90,38 @@ impl<'a, 'hir> HirIdValidator<'a, 'hir> {
                 missing_items.push(format!(
                     "[local_id: {}, owner: {}]",
                     local_id,
-                    self.hir_map.def_path(owner.def_id).to_string_no_crate_verbose()
+                    self.tcx.hir().def_path(owner.def_id).to_string_no_crate_verbose()
                 ));
             }
             self.error(|| {
                 format!(
                     "ItemLocalIds not assigned densely in {}. \
                 Max ItemLocalId = {}, missing IDs = {:#?}; seens IDs = {:#?}",
-                    self.hir_map.def_path(owner.def_id).to_string_no_crate_verbose(),
+                    self.tcx.hir().def_path(owner.def_id).to_string_no_crate_verbose(),
                     max,
                     missing_items,
                     self.hir_ids_seen
                         .iter()
                         .map(|local_id| HirId { owner, local_id })
-                        .map(|h| format!("({:?} {})", h, self.hir_map.node_to_string(h)))
+                        .map(|h| format!("({:?} {})", h, self.tcx.hir().node_to_string(h)))
                         .collect::<Vec<_>>()
+                )
+            });
+        }
+    }
+
+    fn check_nested_id(&mut self, id: LocalDefId) {
+        let Some(owner) = self.owner else { return };
+        let def_parent = self.tcx.local_parent(id);
+        let def_parent_hir_id = self.tcx.local_def_id_to_hir_id(def_parent);
+        if def_parent_hir_id.owner != owner {
+            self.error(|| {
+                format!(
+                    "inconsistent Def parent at `{:?}` for `{:?}`:\nexpected={:?}\nfound={:?}",
+                    self.tcx.def_span(id),
+                    id,
+                    owner,
+                    def_parent_hir_id
                 )
             });
         }
@@ -121,11 +132,27 @@ impl<'a, 'hir> intravisit::Visitor<'hir> for HirIdValidator<'a, 'hir> {
     type NestedFilter = nested_filter::OnlyBodies;
 
     fn nested_visit_map(&mut self) -> Self::Map {
-        self.hir_map
+        self.tcx.hir()
+    }
+
+    fn visit_nested_item(&mut self, id: hir::ItemId) {
+        self.check_nested_id(id.owner_id.def_id);
+    }
+
+    fn visit_nested_trait_item(&mut self, id: hir::TraitItemId) {
+        self.check_nested_id(id.owner_id.def_id);
+    }
+
+    fn visit_nested_impl_item(&mut self, id: hir::ImplItemId) {
+        self.check_nested_id(id.owner_id.def_id);
+    }
+
+    fn visit_nested_foreign_item(&mut self, id: hir::ForeignItemId) {
+        self.check_nested_id(id.owner_id.def_id);
     }
 
     fn visit_item(&mut self, i: &'hir hir::Item<'hir>) {
-        let mut inner_visitor = self.new_visitor(self.hir_map);
+        let mut inner_visitor = self.new_visitor(self.tcx);
         inner_visitor.check(i.owner_id, |this| intravisit::walk_item(this, i));
     }
 
@@ -136,9 +163,9 @@ impl<'a, 'hir> intravisit::Visitor<'hir> for HirIdValidator<'a, 'hir> {
             self.error(|| {
                 format!(
                     "HirIdValidator: The recorded owner of {} is {} instead of {}",
-                    self.hir_map.node_to_string(hir_id),
-                    self.hir_map.def_path(hir_id.owner.def_id).to_string_no_crate_verbose(),
-                    self.hir_map.def_path(owner.def_id).to_string_no_crate_verbose()
+                    self.tcx.hir().node_to_string(hir_id),
+                    self.tcx.hir().def_path(hir_id.owner.def_id).to_string_no_crate_verbose(),
+                    self.tcx.hir().def_path(owner.def_id).to_string_no_crate_verbose()
                 )
             });
         }
@@ -147,17 +174,17 @@ impl<'a, 'hir> intravisit::Visitor<'hir> for HirIdValidator<'a, 'hir> {
     }
 
     fn visit_foreign_item(&mut self, i: &'hir hir::ForeignItem<'hir>) {
-        let mut inner_visitor = self.new_visitor(self.hir_map);
+        let mut inner_visitor = self.new_visitor(self.tcx);
         inner_visitor.check(i.owner_id, |this| intravisit::walk_foreign_item(this, i));
     }
 
     fn visit_trait_item(&mut self, i: &'hir hir::TraitItem<'hir>) {
-        let mut inner_visitor = self.new_visitor(self.hir_map);
+        let mut inner_visitor = self.new_visitor(self.tcx);
         inner_visitor.check(i.owner_id, |this| intravisit::walk_trait_item(this, i));
     }
 
     fn visit_impl_item(&mut self, i: &'hir hir::ImplItem<'hir>) {
-        let mut inner_visitor = self.new_visitor(self.hir_map);
+        let mut inner_visitor = self.new_visitor(self.tcx);
         inner_visitor.check(i.owner_id, |this| intravisit::walk_impl_item(this, i));
     }
 }

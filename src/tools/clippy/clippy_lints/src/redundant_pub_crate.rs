@@ -84,7 +84,7 @@ impl<'tcx> LateLintPass<'tcx> for RedundantPubCrate {
 
 fn is_not_macro_export<'tcx>(item: &'tcx Item<'tcx>) -> bool {
     if let ItemKind::Use(path, _) = item.kind {
-        if let Res::Def(DefKind::Macro(MacroKind::Bang), _) = path.res {
+        if path.res.iter().all(|res| matches!(res, Res::Def(DefKind::Macro(MacroKind::Bang), _))) {
             return false;
         }
     } else if let ItemKind::Macro(..) = item.kind {

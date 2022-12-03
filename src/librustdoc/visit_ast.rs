@@ -301,39 +301,40 @@ impl<'a, 'tcx> RustdocVisitor<'a, 'tcx> {
             hir::ItemKind::GlobalAsm(..) => {}
             hir::ItemKind::Use(_, hir::UseKind::ListStem) => {}
             hir::ItemKind::Use(path, kind) => {
-                let is_glob = kind == hir::UseKind::Glob;
-
-                // Struct and variant constructors and proc macro stubs always show up alongside
-                // their definitions, we've already processed them so just discard these.
-                if let Res::Def(DefKind::Ctor(..), _) | Res::SelfCtor(..) = path.res {
-                    return;
-                }
-
-                let attrs = self.cx.tcx.hir().attrs(item.hir_id());
-
-                // If there was a private module in the current path then don't bother inlining
-                // anything as it will probably be stripped anyway.
-                if is_pub && self.inside_public_path {
-                    let please_inline = attrs.iter().any(|item| match item.meta_item_list() {
-                        Some(ref list) if item.has_name(sym::doc) => {
-                            list.iter().any(|i| i.has_name(sym::inline))
-                        }
-                        _ => false,
-                    });
-                    let ident = if is_glob { None } else { Some(name) };
-                    if self.maybe_inline_local(
-                        item.hir_id(),
-                        path.res,
-                        ident,
-                        is_glob,
-                        om,
-                        please_inline,
-                    ) {
-                        return;
+                for &res in &path.res {
+                    // Struct and variant constructors and proc macro stubs always show up alongside
+                    // their definitions, we've already processed them so just discard these.
+                    if let Res::Def(DefKind::Ctor(..), _) | Res::SelfCtor(..) = res {
+                        continue;
                     }
-                }
 
-                om.items.push((item, renamed, parent_id))
+                    let attrs = self.cx.tcx.hir().attrs(item.hir_id());
+
+                    // If there was a private module in the current path then don't bother inlining
+                    // anything as it will probably be stripped anyway.
+                    if is_pub && self.inside_public_path {
+                        let please_inline = attrs.iter().any(|item| match item.meta_item_list() {
+                            Some(ref list) if item.has_name(sym::doc) => {
+                                list.iter().any(|i| i.has_name(sym::inline))
+                            }
+                            _ => false,
+                        });
+                        let is_glob = kind == hir::UseKind::Glob;
+                        let ident = if is_glob { None } else { Some(name) };
+                        if self.maybe_inline_local(
+                            item.hir_id(),
+                            res,
+                            ident,
+                            is_glob,
+                            om,
+                            please_inline,
+                        ) {
+                            continue;
+                        }
+                    }
+
+                    om.items.push((item, renamed, parent_id))
+                }
             }
             hir::ItemKind::Macro(ref macro_def, _) => {
                 // `#[macro_export] macro_rules!` items are handled separately in `visit()`,

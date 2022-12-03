@@ -16,6 +16,7 @@ use rustc_errors::{
 use rustc_lint_defs::builtin::PROC_MACRO_BACK_COMPAT;
 use rustc_lint_defs::{BufferedEarlyLint, BuiltinLintDiagnostics};
 use rustc_parse::{self, parser, MACRO_ARGUMENTS};
+use rustc_session::errors::report_lit_error;
 use rustc_session::{parse::ParseSess, Limit, Session};
 use rustc_span::def_id::{CrateNum, DefId, LocalDefId};
 use rustc_span::edition::Edition;
@@ -242,8 +243,8 @@ pub enum ExpandResult<T, U> {
     Retry(U),
 }
 
-// `meta_item` is the attribute, and `item` is the item being modified.
 pub trait MultiItemModifier {
+    /// `meta_item` is the attribute, and `item` is the item being modified.
     fn expand(
         &self,
         ecx: &mut ExtCtxt<'_>,
@@ -1245,7 +1246,10 @@ pub fn expr_to_spanned_string<'a>(
                 Some((err, true))
             }
             Ok(ast::LitKind::Err) => None,
-            Err(_) => None,
+            Err(err) => {
+                report_lit_error(&cx.sess.parse_sess, err, token_lit, expr.span);
+                None
+            }
             _ => Some((cx.struct_span_err(expr.span, err_msg), false)),
         },
         ast::ExprKind::Err => None,

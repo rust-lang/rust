@@ -77,7 +77,7 @@ impl<'a, 'hir> NodeCollector<'a, 'hir> {
             if hir_id.owner != self.owner {
                 span_bug!(
                     span,
-                    "inconsistent DepNode at `{:?}` for `{:?}`: \
+                    "inconsistent HirId at `{:?}` for `{:?}`: \
                      current_dep_node_owner={} ({:?}), hir_id.owner={} ({:?})",
                     self.source_map.span_to_diagnostic_string(span),
                     node,

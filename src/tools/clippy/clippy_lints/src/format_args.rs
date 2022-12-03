@@ -1,19 +1,22 @@
 use clippy_utils::diagnostics::{span_lint_and_sugg, span_lint_and_then};
-use clippy_utils::macros::FormatParamKind::{Implicit, Named, Numbered, Starred};
+use clippy_utils::is_diag_trait_item;
+use clippy_utils::macros::FormatParamKind::{Implicit, Named, NamedInline, Numbered, Starred};
 use clippy_utils::macros::{
     is_format_macro, is_panic, root_macro_call, Count, FormatArg, FormatArgsExpn, FormatParam, FormatParamUsage,
 };
+use clippy_utils::msrvs::{self, Msrv};
 use clippy_utils::source::snippet_opt;
 use clippy_utils::ty::{implements_trait, is_type_diagnostic_item};
-use clippy_utils::{is_diag_trait_item, meets_msrv, msrvs};
 use if_chain::if_chain;
 use itertools::Itertools;
-use rustc_errors::Applicability;
+use rustc_errors::{
+    Applicability,
+    SuggestionStyle::{CompletelyHidden, ShowCode},
+};
 use rustc_hir::{Expr, ExprKind, HirId, QPath};
 use rustc_lint::{LateContext, LateLintPass, LintContext};
 use rustc_middle::ty::adjustment::{Adjust, Adjustment};
 use rustc_middle::ty::Ty;
-use rustc_semver::RustcVersion;
 use rustc_session::{declare_tool_lint, impl_lint_pass};
 use rustc_span::def_id::DefId;
 use rustc_span::edition::Edition::Edition2021;
@@ -103,19 +106,25 @@ declare_clippy_lint! {
     /// format!("{var:.prec$}");
     /// ```
     ///
-    /// ### Known Problems
-    ///
-    /// There may be a false positive if the format string is expanded from certain proc macros:
-    ///
-    /// ```ignore
-    /// println!(indoc!("{}"), var);
+    /// If allow-mixed-uninlined-format-args is set to false in clippy.toml,
+    /// the following code will also trigger the lint:
+    /// ```rust
+    /// # let var = 42;
+    /// format!("{} {}", var, 1+2);
     /// ```
+    /// Use instead:
+    /// ```rust
+    /// # let var = 42;
+    /// format!("{var} {}", 1+2);
+    /// ```
+    ///
+    /// ### Known Problems
     ///
     /// If a format string contains a numbered argument that cannot be inlined
     /// nothing will be suggested, e.g. `println!("{0}={1}", var, 1+2)`.
     #[clippy::version = "1.65.0"]
     pub UNINLINED_FORMAT_ARGS,
-    pedantic,
+    style,
     "using non-inlined variables in `format!` calls"
 }
 
@@ -158,13 +167,17 @@ impl_lint_pass!(FormatArgs => [
 ]);
 
 pub struct FormatArgs {
-    msrv: Option<RustcVersion>,
+    msrv: Msrv,
+    ignore_mixed: bool,
 }
 
 impl FormatArgs {
     #[must_use]
-    pub fn new(msrv: Option<RustcVersion>) -> Self {
-        Self { msrv }
+    pub fn new(msrv: Msrv, allow_mixed_uninlined_format_args: bool) -> Self {
+        Self {
+            msrv,
+            ignore_mixed: allow_mixed_uninlined_format_args,
+        }
     }
 }
 
@@ -188,8 +201,8 @@ impl<'tcx> LateLintPass<'tcx> for FormatArgs {
                 check_format_in_format_args(cx, outermost_expn_data.call_site, name, arg.param.value);
                 check_to_string_in_format_args(cx, name, arg.param.value);
             }
-            if meets_msrv(self.msrv, msrvs::FORMAT_ARGS_CAPTURE) {
-                check_uninlined_args(cx, &format_args, outermost_expn_data.call_site, macro_def_id);
+            if self.msrv.meets(msrvs::FORMAT_ARGS_CAPTURE) {
+                check_uninlined_args(cx, &format_args, outermost_expn_data.call_site, macro_def_id, self.ignore_mixed);
             }
         }
     }
@@ -267,7 +280,13 @@ fn check_unused_format_specifier(cx: &LateContext<'_>, arg: &FormatArg<'_>) {
     }
 }
 
-fn check_uninlined_args(cx: &LateContext<'_>, args: &FormatArgsExpn<'_>, call_site: Span, def_id: DefId) {
+fn check_uninlined_args(
+    cx: &LateContext<'_>,
+    args: &FormatArgsExpn<'_>,
+    call_site: Span,
+    def_id: DefId,
+    ignore_mixed: bool,
+) {
     if args.format_string.span.from_expansion() {
         return;
     }
@@ -282,14 +301,13 @@ fn check_uninlined_args(cx: &LateContext<'_>, args: &FormatArgsExpn<'_>, call_si
     // we cannot remove any other arguments in the format string,
     // because the index numbers might be wrong after inlining.
     // Example of an un-inlinable format:  print!("{}{1}", foo, 2)
-    if !args.params().all(|p| check_one_arg(args, &p, &mut fixes)) || fixes.is_empty() {
+    if !args.params().all(|p| check_one_arg(args, &p, &mut fixes, ignore_mixed)) || fixes.is_empty() {
         return;
     }
 
-    // Temporarily ignore multiline spans: https://github.com/rust-lang/rust/pull/102729#discussion_r988704308
-    if fixes.iter().any(|(span, _)| cx.sess().source_map().is_multiline(*span)) {
-        return;
-    }
+    // multiline span display suggestion is sometimes broken: https://github.com/rust-lang/rust/pull/102729#discussion_r988704308
+    // in those cases, make the code suggestion hidden
+    let multiline_fix = fixes.iter().any(|(span, _)| cx.sess().source_map().is_multiline(*span));
 
     span_lint_and_then(
         cx,
@@ -297,12 +315,22 @@ fn check_uninlined_args(cx: &LateContext<'_>, args: &FormatArgsExpn<'_>, call_si
         call_site,
         "variables can be used directly in the `format!` string",
         |diag| {
-            diag.multipart_suggestion("change this to", fixes, Applicability::MachineApplicable);
+            diag.multipart_suggestion_with_style(
+                "change this to",
+                fixes,
+                Applicability::MachineApplicable,
+                if multiline_fix { CompletelyHidden } else { ShowCode },
+            );
         },
     );
 }
 
-fn check_one_arg(args: &FormatArgsExpn<'_>, param: &FormatParam<'_>, fixes: &mut Vec<(Span, String)>) -> bool {
+fn check_one_arg(
+    args: &FormatArgsExpn<'_>,
+    param: &FormatParam<'_>,
+    fixes: &mut Vec<(Span, String)>,
+    ignore_mixed: bool,
+) -> bool {
     if matches!(param.kind, Implicit | Starred | Named(_) | Numbered)
         && let ExprKind::Path(QPath::Resolved(None, path)) = param.value.kind
         && let [segment] = path.segments
@@ -317,8 +345,10 @@ fn check_one_arg(args: &FormatArgsExpn<'_>, param: &FormatParam<'_>, fixes: &mut
         fixes.push((arg_span, String::new()));
         true  // successful inlining, continue checking
     } else {
-        // if we can't inline a numbered argument, we can't continue
-        param.kind != Numbered
+        // Do not continue inlining (return false) in case
+        // * if we can't inline a numbered argument, e.g. `print!("{0} ...", foo.bar, ...)`
+        // * if allow_mixed_uninlined_format_args is false and this arg hasn't been inlined already
+        param.kind != Numbered && (!ignore_mixed || matches!(param.kind, NamedInline(_)))
     }
 }
 

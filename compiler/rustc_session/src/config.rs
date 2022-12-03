@@ -2029,10 +2029,7 @@ fn parse_native_lib_modifiers(
                 "linking modifier `bundle` is only compatible with `static` linking kind",
             ),
 
-            ("verbatim", _) => {
-                report_unstable_modifier();
-                assign_modifier(&mut verbatim)
-            }
+            ("verbatim", _) => assign_modifier(&mut verbatim),
 
             ("whole-archive", NativeLibKind::Static { whole_archive, .. }) => {
                 assign_modifier(whole_archive)

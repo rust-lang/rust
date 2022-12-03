@@ -94,7 +94,7 @@ impl<'tcx> SaveContext<'tcx> {
         }
     }
 
-    // Returns path to the compilation output (e.g., libfoo-12345678.rmeta)
+    /// Returns path to the compilation output (e.g., libfoo-12345678.rmeta)
     pub fn compilation_output(&self, crate_name: &str) -> PathBuf {
         let sess = &self.tcx.sess;
         // Save-analysis is emitted per whole session, not per each crate type
@@ -112,7 +112,7 @@ impl<'tcx> SaveContext<'tcx> {
         }
     }
 
-    // List external crates used by the current crate.
+    /// List external crates used by the current crate.
     pub fn get_external_crates(&self) -> Vec<ExternalCrateData> {
         let mut result = Vec::with_capacity(self.tcx.crates(()).len());
 
@@ -594,7 +594,9 @@ impl<'tcx> SaveContext<'tcx> {
         match self.tcx.hir().get(hir_id) {
             Node::TraitRef(tr) => tr.path.res,
 
-            Node::Item(&hir::Item { kind: hir::ItemKind::Use(path, _), .. }) => path.res,
+            Node::Item(&hir::Item { kind: hir::ItemKind::Use(path, _), .. }) => {
+                path.res.get(0).copied().unwrap_or(Res::Err)
+            }
             Node::PathSegment(seg) => {
                 if seg.res != Res::Err {
                     seg.res

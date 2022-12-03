@@ -1488,6 +1488,7 @@ symbols! {
         ty,
         type_alias_enum_variants,
         type_alias_impl_trait,
+        type_ascribe,
         type_ascription,
         type_changing_struct_update,
         type_id,
@@ -2051,8 +2052,8 @@ impl Symbol {
 }
 
 impl Ident {
-    // Returns `true` for reserved identifiers used internally for elided lifetimes,
-    // unnamed method parameters, crate root module, error recovery etc.
+    /// Returns `true` for reserved identifiers used internally for elided lifetimes,
+    /// unnamed method parameters, crate root module, error recovery etc.
     pub fn is_special(self) -> bool {
         self.name.is_special()
     }

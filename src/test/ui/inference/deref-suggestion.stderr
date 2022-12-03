@@ -157,11 +157,11 @@ error[E0308]: `if` and `else` have incompatible types
   --> $DIR/deref-suggestion.rs:69:12
    |
 LL |        let val = if true {
-   |   _______________-
-LL |  |         *a
-   |  |         -- expected because of this
-LL |  |     } else if true {
-   |  |____________^
+   |  ________________-
+LL | |          *a
+   | |          -- expected because of this
+LL | |      } else if true {
+   | | ____________^
 LL | ||
 LL | ||         b
 LL | ||     } else {
@@ -169,7 +169,7 @@ LL | ||         &0
 LL | ||     };
    | ||     ^
    | ||_____|
-   | |______`if` and `else` have incompatible types
+   |  |_____`if` and `else` have incompatible types
    |        expected `i32`, found `&{integer}`
 
 error: aborting due to 13 previous errors

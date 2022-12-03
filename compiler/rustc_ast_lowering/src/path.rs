@@ -12,7 +12,7 @@ use rustc_hir::GenericArg;
 use rustc_span::symbol::{kw, Ident};
 use rustc_span::{BytePos, Span, DUMMY_SP};
 
-use smallvec::smallvec;
+use smallvec::{smallvec, SmallVec};
 
 impl<'a, 'hir> LoweringContext<'a, 'hir> {
     #[instrument(level = "trace", skip(self))]
@@ -144,13 +144,13 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
         );
     }
 
-    pub(crate) fn lower_path_extra(
+    pub(crate) fn lower_use_path(
         &mut self,
-        res: Res,
+        res: SmallVec<[Res; 3]>,
         p: &Path,
         param_mode: ParamMode,
-    ) -> &'hir hir::Path<'hir> {
-        self.arena.alloc(hir::Path {
+    ) -> &'hir hir::UsePath<'hir> {
+        self.arena.alloc(hir::UsePath {
             res,
             segments: self.arena.alloc_from_iter(p.segments.iter().map(|segment| {
                 self.lower_path_segment(
@@ -163,17 +163,6 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
             })),
             span: self.lower_span(p.span),
         })
-    }
-
-    pub(crate) fn lower_path(
-        &mut self,
-        id: NodeId,
-        p: &Path,
-        param_mode: ParamMode,
-    ) -> &'hir hir::Path<'hir> {
-        let res = self.expect_full_res(id);
-        let res = self.lower_res(res);
-        self.lower_path_extra(res, p, param_mode)
     }
 
     pub(crate) fn lower_path_segment(

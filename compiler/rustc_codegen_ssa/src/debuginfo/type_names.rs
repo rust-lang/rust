@@ -1,4 +1,4 @@
-// Type Names for Debug Info.
+//! Type Names for Debug Info.
 
 // Notes on targeting MSVC:
 // In general, MSVC's debugger attempts to parse all arguments as C++ expressions,
@@ -26,10 +26,10 @@ use std::fmt::Write;
 
 use crate::debuginfo::wants_c_like_enum_debuginfo;
 
-// Compute the name of the type as it should be stored in debuginfo. Does not do
-// any caching, i.e., calling the function twice with the same type will also do
-// the work twice. The `qualified` parameter only affects the first level of the
-// type name, further levels (i.e., type parameters) are always fully qualified.
+/// Compute the name of the type as it should be stored in debuginfo. Does not do
+/// any caching, i.e., calling the function twice with the same type will also do
+/// the work twice. The `qualified` parameter only affects the first level of the
+/// type name, further levels (i.e., type parameters) are always fully qualified.
 pub fn compute_debuginfo_type_name<'tcx>(
     tcx: TyCtxt<'tcx>,
     t: Ty<'tcx>,

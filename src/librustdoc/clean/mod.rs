@@ -893,7 +893,7 @@ fn clean_fn_decl_legacy_const_generics(func: &mut Function, attrs: &[ast::Attrib
         .filter(|a| a.has_name(sym::rustc_legacy_const_generics))
         .filter_map(|a| a.meta_item_list())
     {
-        for (pos, literal) in meta_item_list.iter().filter_map(|meta| meta.literal()).enumerate() {
+        for (pos, literal) in meta_item_list.iter().filter_map(|meta| meta.lit()).enumerate() {
             match literal.kind {
                 ast::LitKind::Int(a, _) => {
                     let gen = func.generics.params.remove(0);
@@ -1581,14 +1581,14 @@ fn normalize<'tcx>(cx: &mut DocContext<'tcx>, ty: Ty<'tcx>) -> Option<Ty<'tcx>> 
     }
 
     use crate::rustc_trait_selection::infer::TyCtxtInferExt;
-    use crate::rustc_trait_selection::traits::query::normalize::AtExt;
+    use crate::rustc_trait_selection::traits::query::normalize::QueryNormalizeExt;
     use rustc_middle::traits::ObligationCause;
 
     // Try to normalize `<X as Y>::T` to a type
     let infcx = cx.tcx.infer_ctxt().build();
     let normalized = infcx
         .at(&ObligationCause::dummy(), cx.param_env)
-        .normalize(ty)
+        .query_normalize(ty)
         .map(|resolved| infcx.resolve_vars_if_possible(resolved.value));
     match normalized {
         Ok(normalized_value) => {
@@ -2231,6 +2231,26 @@ fn clean_extern_crate<'tcx>(
 }
 
 fn clean_use_statement<'tcx>(
+    import: &hir::Item<'tcx>,
+    name: Symbol,
+    path: &hir::UsePath<'tcx>,
+    kind: hir::UseKind,
+    cx: &mut DocContext<'tcx>,
+    inlined_names: &mut FxHashSet<(ItemType, Symbol)>,
+) -> Vec<Item> {
+    let mut items = Vec::new();
+    let hir::UsePath { segments, ref res, span } = *path;
+    for &res in res {
+        if let Res::Def(DefKind::Ctor(..), _) | Res::SelfCtor(..) = res {
+            continue;
+        }
+        let path = hir::Path { segments, res, span };
+        items.append(&mut clean_use_statement_inner(import, name, &path, kind, cx, inlined_names));
+    }
+    items
+}
+
+fn clean_use_statement_inner<'tcx>(
     import: &hir::Item<'tcx>,
     name: Symbol,
     path: &hir::Path<'tcx>,

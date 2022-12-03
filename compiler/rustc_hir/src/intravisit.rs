@@ -367,7 +367,7 @@ pub trait Visitor<'v>: Sized {
     fn visit_fn(&mut self, fk: FnKind<'v>, fd: &'v FnDecl<'v>, b: BodyId, _: Span, id: HirId) {
         walk_fn(self, fk, fd, b, id)
     }
-    fn visit_use(&mut self, path: &'v Path<'v>, hir_id: HirId) {
+    fn visit_use(&mut self, path: &'v UsePath<'v>, hir_id: HirId) {
         walk_use(self, path, hir_id)
     }
     fn visit_trait_item(&mut self, ti: &'v TraitItem<'v>) {
@@ -422,7 +422,7 @@ pub trait Visitor<'v>: Sized {
     fn visit_qpath(&mut self, qpath: &'v QPath<'v>, id: HirId, _span: Span) {
         walk_qpath(self, qpath, id)
     }
-    fn visit_path(&mut self, path: &'v Path<'v>, _id: HirId) {
+    fn visit_path(&mut self, path: &Path<'v>, _id: HirId) {
         walk_path(self, path)
     }
     fn visit_path_segment(&mut self, path_segment: &'v PathSegment<'v>) {
@@ -938,9 +938,12 @@ pub fn walk_fn_kind<'v, V: Visitor<'v>>(visitor: &mut V, function_kind: FnKind<'
     }
 }
 
-pub fn walk_use<'v, V: Visitor<'v>>(visitor: &mut V, path: &'v Path<'v>, hir_id: HirId) {
+pub fn walk_use<'v, V: Visitor<'v>>(visitor: &mut V, path: &'v UsePath<'v>, hir_id: HirId) {
     visitor.visit_id(hir_id);
-    visitor.visit_path(path, hir_id);
+    let UsePath { segments, ref res, span } = *path;
+    for &res in res {
+        visitor.visit_path(&Path { segments, res, span }, hir_id);
+    }
 }
 
 pub fn walk_trait_item<'v, V: Visitor<'v>>(visitor: &mut V, trait_item: &'v TraitItem<'v>) {
@@ -1126,7 +1129,7 @@ pub fn walk_qpath<'v, V: Visitor<'v>>(visitor: &mut V, qpath: &'v QPath<'v>, id:
     }
 }
 
-pub fn walk_path<'v, V: Visitor<'v>>(visitor: &mut V, path: &'v Path<'v>) {
+pub fn walk_path<'v, V: Visitor<'v>>(visitor: &mut V, path: &Path<'v>) {
     for segment in path.segments {
         visitor.visit_path_segment(segment);
     }

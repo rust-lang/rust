@@ -138,7 +138,7 @@
 // cdb-command: dx vecdeque
 // cdb-check:vecdeque         : { len=0x2 } [Type: alloc::collections::vec_deque::VecDeque<i32,alloc::alloc::Global>]
 // cdb-check:    [<Raw View>]     [Type: alloc::collections::vec_deque::VecDeque<i32,alloc::alloc::Global>]
-// cdb-check:    [len]            : 0x2
+// cdb-check:    [len]            : 0x2 [Type: unsigned [...]]
 // cdb-check:    [capacity]       : 0x8 [Type: unsigned [...]]
 // cdb-check:    [0x0]            : 90 [Type: int]
 // cdb-check:    [0x1]            : 20 [Type: int]
@@ -175,7 +175,7 @@ fn main() {
     linkedlist.push_front(128);
 
     // VecDeque
-    let mut vecdeque = VecDeque::new();
+    let mut vecdeque = VecDeque::with_capacity(8);
     vecdeque.push_back(20);
     vecdeque.push_front(90);
 
