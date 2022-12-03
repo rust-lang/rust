@@ -15,8 +15,8 @@ use crate::errors::{
 use crate::llvm::archive_ro::{ArchiveRO, Child};
 use crate::llvm::{self, ArchiveKind, LLVMMachineType, LLVMRustCOFFShortExport};
 use rustc_codegen_ssa::back::archive::{
-    get_native_object_symbols, try_extract_macho_fat_archive, ArArchiveBuilder,
-    ArchiveBuildFailure, ArchiveBuilder, ArchiveBuilderBuilder, UnknownArchiveKind,
+    get_native_object_symbols, ArArchiveBuilder, ArchiveBuildFailure, ArchiveBuilder,
+    ArchiveBuilderBuilder, UnknownArchiveKind,
 };
 
 use rustc_session::cstore::DllImport;
@@ -66,13 +66,7 @@ impl<'a> ArchiveBuilder<'a> for LlvmArchiveBuilder<'a> {
         archive: &Path,
         skip: Box<dyn FnMut(&str) -> bool + 'static>,
     ) -> io::Result<()> {
-        let mut archive = archive.to_path_buf();
-        if self.sess.target.llvm_target.contains("-apple-macosx") {
-            if let Some(new_archive) = try_extract_macho_fat_archive(&self.sess, &archive)? {
-                archive = new_archive
-            }
-        }
-        let archive_ro = match ArchiveRO::open(&archive) {
+        let archive_ro = match ArchiveRO::open(archive) {
             Ok(ar) => ar,
             Err(e) => return Err(io::Error::new(io::ErrorKind::Other, e)),
         };
@@ -80,7 +74,7 @@ impl<'a> ArchiveBuilder<'a> for LlvmArchiveBuilder<'a> {
             return Ok(());
         }
         self.additions.push(Addition::Archive {
-            path: archive,
+            path: archive.to_path_buf(),
             archive: archive_ro,
             skip: Box::new(skip),
         });
