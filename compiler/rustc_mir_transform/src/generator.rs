@@ -162,6 +162,7 @@ impl<'tcx> MutVisitor<'tcx> for PinArgVisitor<'tcx> {
                     projection: self.tcx().intern_place_elems(&[ProjectionElem::Field(
                         Field::new(0),
                         self.ref_gen_ty,
+                        ProjectionMode::Weak,
                     )]),
                 },
                 self.tcx,
@@ -300,7 +301,7 @@ impl<'tcx> TransformVisitor<'tcx> {
         let self_place = Place::from(SELF_ARG);
         let base = self.tcx.mk_place_downcast_unnamed(self_place, variant_index);
         let mut projection = base.projection.to_vec();
-        projection.push(ProjectionElem::Field(Field::new(idx), ty));
+        projection.push(ProjectionElem::Field(Field::new(idx), ty, ProjectionMode::Weak));
 
         Place { local: base.local, projection: self.tcx.intern_place_elems(&projection) }
     }

@@ -2,6 +2,7 @@ use std::ffi::OsStr;
 
 use log::trace;
 
+use rustc_middle::mir;
 use rustc_middle::ty::layout::LayoutOf;
 use rustc_span::Symbol;
 use rustc_target::abi::{Align, Size};
@@ -581,7 +582,7 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriInterpCxExt<'mir, 'tcx> {
                 #[allow(deprecated)]
                 let home_dir = std::env::home_dir().unwrap();
                 let (written, _) = this.write_path_to_c_str(&home_dir, buf, buflen)?;
-                let pw_dir = this.mplace_field_named(&pwd, "pw_dir")?;
+                let pw_dir = this.mplace_field_named(&pwd, "pw_dir", mir::ProjectionMode::Strong)?;
                 this.write_pointer(buf, &pw_dir.into())?;
 
                 if written {

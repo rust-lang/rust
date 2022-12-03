@@ -18,8 +18,11 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
         subpatterns
             .iter()
             .map(|fieldpat| {
-                let place =
-                    place.clone_project(PlaceElem::Field(fieldpat.field, fieldpat.pattern.ty));
+                let place = place.clone_project(PlaceElem::Field(
+                    fieldpat.field,
+                    fieldpat.pattern.ty,
+                    ProjectionMode::Weak,
+                ));
                 MatchPair::new(place, &fieldpat.pattern, self)
             })
             .collect()

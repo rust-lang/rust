@@ -37,6 +37,7 @@ where
         &self,
         base: &MPlaceTy<'tcx, M::Provenance>,
         field: usize,
+        strength: mir::ProjectionMode,
     ) -> InterpResult<'tcx, MPlaceTy<'tcx, M::Provenance>> {
         let offset = base.layout.fields.offset(field);
         let field_layout = base.layout.field(self, field);
@@ -74,22 +75,24 @@ where
         &mut self,
         base: &PlaceTy<'tcx, M::Provenance>,
         field: usize,
+        strength: mir::ProjectionMode,
     ) -> InterpResult<'tcx, PlaceTy<'tcx, M::Provenance>> {
         // FIXME: We could try to be smarter and avoid allocation for fields that span the
         // entire place.
         let base = self.force_allocation(base)?;
-        Ok(self.mplace_field(&base, field)?.into())
+        Ok(self.mplace_field(&base, field, strength)?.into())
     }
 
     pub fn operand_field(
         &self,
         base: &OpTy<'tcx, M::Provenance>,
         field: usize,
+        strength: mir::ProjectionMode,
     ) -> InterpResult<'tcx, OpTy<'tcx, M::Provenance>> {
         let base = match base.as_mplace_or_imm() {
             Left(ref mplace) => {
                 // We can reuse the mplace field computation logic for indirect operands.
-                let field = self.mplace_field(mplace, field)?;
+                let field = self.mplace_field(mplace, field, strength)?;
                 return Ok(field.into());
             }
             Right(value) => value,
@@ -357,7 +360,7 @@ where
                 place.layout = self.layout_of(ty)?;
                 place
             }
-            Field(field, _) => self.place_field(base, field.index())?,
+            Field(field, _, strength) => self.place_field(base, field.index(), strength)?,
             Downcast(_, variant) => self.place_downcast(base, variant)?,
             Deref => self.deref_operand(&self.place_to_op(base)?)?.into(),
             Index(local) => {
@@ -386,7 +389,7 @@ where
                 op.layout = self.layout_of(ty)?;
                 op
             }
-            Field(field, _) => self.operand_field(base, field.index())?,
+            Field(field, _, strength) => self.operand_field(base, field.index(), strength)?,
             Downcast(_, variant) => self.operand_downcast(base, variant)?,
             Deref => self.deref_operand(base)?.into(),
             Index(local) => {

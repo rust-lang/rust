@@ -11,6 +11,7 @@ use std::time::SystemTime;
 use log::trace;
 
 use rustc_data_structures::fx::FxHashMap;
+use rustc_middle::mir;
 use rustc_target::abi::{Align, Size};
 
 use crate::shims::os_str::bytes_to_os_str;
@@ -1134,7 +1135,7 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriInterpCxExt<'mir, 'tcx> {
                 ("tv_sec", access_sec.into()),
                 ("tv_nsec", access_nsec.into()),
             ],
-            &this.mplace_field_named(&statxbuf, "stx_atime")?,
+            &this.mplace_field_named(&statxbuf, "stx_atime", mir::ProjectionMode::Strong)?,
         )?;
         #[rustfmt::skip]
         this.write_int_fields_named(
@@ -1142,7 +1143,7 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriInterpCxExt<'mir, 'tcx> {
                 ("tv_sec", created_sec.into()),
                 ("tv_nsec", created_nsec.into()),
             ],
-            &this.mplace_field_named(&statxbuf, "stx_btime")?,
+            &this.mplace_field_named(&statxbuf, "stx_btime", mir::ProjectionMode::Strong)?,
         )?;
         #[rustfmt::skip]
         this.write_int_fields_named(
@@ -1150,7 +1151,7 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriInterpCxExt<'mir, 'tcx> {
                 ("tv_sec", 0.into()),
                 ("tv_nsec", 0.into()),
             ],
-            &this.mplace_field_named(&statxbuf, "stx_ctime")?,
+            &this.mplace_field_named(&statxbuf, "stx_ctime", mir::ProjectionMode::Strong)?,
         )?;
         #[rustfmt::skip]
         this.write_int_fields_named(
@@ -1158,7 +1159,7 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriInterpCxExt<'mir, 'tcx> {
                 ("tv_sec", modified_sec.into()),
                 ("tv_nsec", modified_nsec.into()),
             ],
-            &this.mplace_field_named(&statxbuf, "stx_mtime")?,
+            &this.mplace_field_named(&statxbuf, "stx_mtime", mir::ProjectionMode::Strong)?,
         )?;
 
         Ok(0)
@@ -1414,7 +1415,7 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriInterpCxExt<'mir, 'tcx> {
                 // }
 
                 let entry_place = this.deref_operand(entry_op)?;
-                let name_place = this.mplace_field(&entry_place, 5)?;
+                let name_place = this.mplace_field(&entry_place, 5, mir::ProjectionMode::Strong)?;
 
                 let file_name = dir_entry.file_name(); // not a Path as there are no separators!
                 let (name_fits, file_name_buf_len) = this.write_os_str_to_c_str(

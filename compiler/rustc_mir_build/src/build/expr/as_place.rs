@@ -90,7 +90,7 @@ fn convert_to_hir_projections_and_truncate_for_capture<'tcx>(
     for mir_projection in mir_projections {
         let hir_projection = match mir_projection {
             ProjectionElem::Deref => HirProjectionKind::Deref,
-            ProjectionElem::Field(field, _) => {
+            ProjectionElem::Field(field, _, _) => {
                 let variant = variant.unwrap_or(VariantIdx::new(0));
                 HirProjectionKind::Field(field.index() as u32, variant)
             }
@@ -296,7 +296,7 @@ impl<'tcx> PlaceBuilder<'tcx> {
     }
 
     pub(crate) fn field(self, f: Field, ty: Ty<'tcx>) -> Self {
-        self.project(PlaceElem::Field(f, ty))
+        self.project(PlaceElem::Field(f, ty, ProjectionMode::Weak))
     }
 
     pub(crate) fn deref(self) -> Self {

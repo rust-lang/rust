@@ -2,7 +2,7 @@ use std::convert::TryFrom;
 
 use rustc_ast::Mutability;
 use rustc_hir::lang_items::LangItem;
-use rustc_middle::mir::TerminatorKind;
+use rustc_middle::mir::{ProjectionMode, TerminatorKind};
 use rustc_middle::ty::layout::LayoutOf;
 use rustc_span::{Span, Symbol};
 
@@ -102,12 +102,21 @@ impl<'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
         let location = self.allocate(loc_layout, MemoryKind::CallerLocation).unwrap();
 
         // Initialize fields.
-        self.write_immediate(file.to_ref(self), &self.mplace_field(&location, 0).unwrap().into())
-            .expect("writing to memory we just allocated cannot fail");
-        self.write_scalar(line, &self.mplace_field(&location, 1).unwrap().into())
-            .expect("writing to memory we just allocated cannot fail");
-        self.write_scalar(col, &self.mplace_field(&location, 2).unwrap().into())
-            .expect("writing to memory we just allocated cannot fail");
+        self.write_immediate(
+            file.to_ref(self),
+            &self.mplace_field(&location, 0, ProjectionMode::Strong).unwrap().into(),
+        )
+        .expect("writing to memory we just allocated cannot fail");
+        self.write_scalar(
+            line,
+            &self.mplace_field(&location, 1, ProjectionMode::Strong).unwrap().into(),
+        )
+        .expect("writing to memory we just allocated cannot fail");
+        self.write_scalar(
+            col,
+            &self.mplace_field(&location, 2, ProjectionMode::Strong).unwrap().into(),
+        )
+        .expect("writing to memory we just allocated cannot fail");
 
         location
     }

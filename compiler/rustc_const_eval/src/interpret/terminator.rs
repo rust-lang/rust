@@ -441,25 +441,25 @@ impl<'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
                     // last incoming argument.  These two iterators do not have the same type,
                     // so to keep the code paths uniform we accept an allocation
                     // (for RustCall ABI only).
-                    let caller_args: Cow<'_, [OpTy<'tcx, M::Provenance>]> =
-                        if caller_abi == Abi::RustCall && !args.is_empty() {
-                            // Untuple
-                            let (untuple_arg, args) = args.split_last().unwrap();
-                            trace!("eval_fn_call: Will pass last argument by untupling");
-                            Cow::from(
-                                args.iter()
-                                    .map(|a| Ok(a.clone()))
-                                    .chain(
-                                        (0..untuple_arg.layout.fields.count())
-                                            .map(|i| self.operand_field(untuple_arg, i)),
-                                    )
-                                    .collect::<InterpResult<'_, Vec<OpTy<'tcx, M::Provenance>>>>(
-                                    )?,
-                            )
-                        } else {
-                            // Plain arg passing
-                            Cow::from(args)
-                        };
+                    let caller_args: Cow<'_, [OpTy<'tcx, M::Provenance>]> = if caller_abi
+                        == Abi::RustCall
+                        && !args.is_empty()
+                    {
+                        // Untuple
+                        let (untuple_arg, args) = args.split_last().unwrap();
+                        trace!("eval_fn_call: Will pass last argument by untupling");
+                        Cow::from(
+                            args.iter()
+                                .map(|a| Ok(a.clone()))
+                                .chain((0..untuple_arg.layout.fields.count()).map(|i| {
+                                    self.operand_field(untuple_arg, i, mir::ProjectionMode::Strong)
+                                }))
+                                .collect::<InterpResult<'_, Vec<OpTy<'tcx, M::Provenance>>>>()?,
+                        )
+                    } else {
+                        // Plain arg passing
+                        Cow::from(args)
+                    };
                     // If `with_caller_location` is set we pretend there is an extra argument (that
                     // we will not pass).
                     assert_eq!(
@@ -483,7 +483,8 @@ impl<'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
                         if Some(local) == body.spread_arg {
                             // Must be a tuple
                             for i in 0..dest.layout.fields.count() {
-                                let dest = self.place_field(&dest, i)?;
+                                let dest =
+                                    self.place_field(&dest, i, mir::ProjectionMode::Strong)?;
                                 let callee_abi = callee_args_abis.next().unwrap();
                                 self.pass_argument(&mut caller_args, callee_abi, &dest)?;
                             }
@@ -538,7 +539,8 @@ impl<'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
                             // Not there yet, search for the only non-ZST field.
                             let mut non_zst_field = None;
                             for i in 0..receiver.layout.fields.count() {
-                                let field = self.operand_field(&receiver, i)?;
+                                let field =
+                                    self.operand_field(&receiver, i, mir::ProjectionMode::Strong)?;
                                 let zst =
                                     field.layout.is_zst() && field.layout.align.abi.bytes() == 1;
                                 if !zst {

@@ -219,7 +219,7 @@ impl<'a, 'tcx> DropElaborator<'a, 'tcx> for Elaborator<'a, '_, 'tcx> {
 
     fn field_subpath(&self, path: Self::Path, field: Field) -> Option<Self::Path> {
         rustc_mir_dataflow::move_path_children_matching(self.ctxt.move_data(), path, |e| match e {
-            ProjectionElem::Field(idx, _) => idx == field,
+            ProjectionElem::Field(idx, _, _) => idx == field,
             _ => false,
         })
     }

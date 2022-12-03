@@ -1293,7 +1293,7 @@ impl<'cx, 'tcx> MirBorrowckCtxt<'cx, 'tcx> {
                 // second borrowed place for the same union and an access to a different field.
                 for (place_base, elem) in first_borrowed_place.iter_projections().rev() {
                     match elem {
-                        ProjectionElem::Field(field, _) if union_ty(place_base).is_some() => {
+                        ProjectionElem::Field(field, _, _) if union_ty(place_base).is_some() => {
                             return Some((place_base, field));
                         }
                         _ => {}
@@ -1305,7 +1305,7 @@ impl<'cx, 'tcx> MirBorrowckCtxt<'cx, 'tcx> {
                 // With the place of a union and a field access into it, we traverse the second
                 // borrowed place and look for an access to a different field of the same union.
                 for (place_base, elem) in second_borrowed_place.iter_projections().rev() {
-                    if let ProjectionElem::Field(field, _) = elem {
+                    if let ProjectionElem::Field(field, _, _) = elem {
                         if let Some(union_ty) = union_ty(place_base) {
                             if field != target_field && place_base == target_base {
                                 return Some((

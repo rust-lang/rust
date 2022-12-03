@@ -13,6 +13,7 @@ use crate::borrow_tracker::RetagFields;
 use rustc_data_structures::fx::FxHashSet;
 use rustc_hir::def::Namespace;
 use rustc_hir::def_id::DefId;
+use rustc_middle::mir::ProjectionMode;
 use rustc_middle::ty::{
     self,
     layout::{LayoutCx, LayoutOf},
@@ -305,7 +306,7 @@ pub fn create_ecx<'mir, 'tcx: 'mir>(
         )?;
         let argvs_place = ecx.allocate(argvs_layout, MiriMemoryKind::Machine.into())?;
         for (idx, arg) in argvs.into_iter().enumerate() {
-            let place = ecx.mplace_field(&argvs_place, idx)?;
+            let place = ecx.mplace_field(&argvs_place, idx, ProjectionMode::Strong)?;
             ecx.write_immediate(arg, &place.into())?;
         }
         ecx.mark_immutable(&argvs_place);
@@ -338,7 +339,7 @@ pub fn create_ecx<'mir, 'tcx: 'mir>(
             ecx.machine.cmd_line = Some(*cmd_place);
             // Store the UTF-16 string. We just allocated so we know the bounds are fine.
             for (idx, &c) in cmd_utf16.iter().enumerate() {
-                let place = ecx.mplace_field(&cmd_place, idx)?;
+                let place = ecx.mplace_field(&cmd_place, idx, ProjectionMode::Strong)?;
                 ecx.write_scalar(Scalar::from_u16(c), &place.into())?;
             }
             ecx.mark_immutable(&cmd_place);

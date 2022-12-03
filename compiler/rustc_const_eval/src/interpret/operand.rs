@@ -698,7 +698,11 @@ impl<'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
         let tag_layout = self.layout_of(tag_scalar_layout.primitive().to_int_ty(*self.tcx))?;
 
         // Read tag and sanity-check `tag_layout`.
-        let tag_val = self.read_immediate(&self.operand_field(op, tag_field)?)?;
+        let tag_val = self.read_immediate(&self.operand_field(
+            op,
+            tag_field,
+            mir::ProjectionMode::Strong,
+        )?)?;
         assert_eq!(tag_layout.size, tag_val.layout.size);
         assert_eq!(tag_layout.abi.is_signed(), tag_val.layout.abi.is_signed());
         trace!("tag value: {}", tag_val);

@@ -639,7 +639,7 @@ impl Map {
                 // Downcasts are currently not supported.
                 return;
             }
-            projection.push(PlaceElem::Field(field, ty));
+            projection.push(PlaceElem::Field(field, ty, ProjectionMode::Weak));
             self.register_with_filter_rec(tcx, local, projection, ty, filter);
             projection.pop();
         });
@@ -782,7 +782,7 @@ impl<V, T> TryFrom<ProjectionElem<V, T>> for TrackElem {
 
     fn try_from(value: ProjectionElem<V, T>) -> Result<Self, Self::Error> {
         match value {
-            ProjectionElem::Field(field, _) => Ok(TrackElem::Field(field)),
+            ProjectionElem::Field(field, _, _) => Ok(TrackElem::Field(field)),
             _ => Err(()),
         }
     }

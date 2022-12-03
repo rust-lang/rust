@@ -4,7 +4,7 @@ use std::convert::TryFrom;
 use rustc_apfloat::ieee::{Double, Single};
 use rustc_apfloat::{Float, FloatConvert};
 use rustc_middle::mir::interpret::{InterpResult, PointerArithmetic, Scalar};
-use rustc_middle::mir::CastKind;
+use rustc_middle::mir::{CastKind, ProjectionMode};
 use rustc_middle::ty::adjustment::PointerCast;
 use rustc_middle::ty::layout::{IntegerExt, LayoutOf, TyAndLayout};
 use rustc_middle::ty::{self, FloatTy, Ty, TypeAndMut};
@@ -385,8 +385,8 @@ impl<'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
                     if cast_ty_field.is_zst() {
                         continue;
                     }
-                    let src_field = self.operand_field(src, i)?;
-                    let dst_field = self.place_field(dest, i)?;
+                    let src_field = self.operand_field(src, i, ProjectionMode::Weak)?;
+                    let dst_field = self.place_field(dest, i, ProjectionMode::Weak)?;
                     if src_field.layout.ty == cast_ty_field.ty {
                         self.copy_op(&src_field, &dst_field, /*allow_transmute*/ false)?;
                     } else {

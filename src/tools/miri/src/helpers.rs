@@ -194,12 +194,13 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriInterpCxExt<'mir, 'tcx> {
         &self,
         mplace: &MPlaceTy<'tcx, Provenance>,
         name: &str,
+        strength: mir::ProjectionMode,
     ) -> InterpResult<'tcx, MPlaceTy<'tcx, Provenance>> {
         let this = self.eval_context_ref();
         let adt = mplace.layout.ty.ty_adt_def().unwrap();
         for (idx, field) in adt.non_enum_variant().fields.iter().enumerate() {
             if field.name.as_str() == name {
-                return this.mplace_field(mplace, idx);
+                return this.mplace_field(mplace, idx, strength);
             }
         }
         bug!("No field named {} in type {}", name, mplace.layout.ty);
@@ -230,7 +231,7 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriInterpCxExt<'mir, 'tcx> {
     ) -> InterpResult<'tcx> {
         let this = self.eval_context_mut();
         for (idx, &val) in values.iter().enumerate() {
-            let field = this.mplace_field(dest, idx)?;
+            let field = this.mplace_field(dest, idx, mir::ProjectionMode::Strong)?;
             this.write_int(val, &field.into())?;
         }
         Ok(())
@@ -244,7 +245,7 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriInterpCxExt<'mir, 'tcx> {
     ) -> InterpResult<'tcx> {
         let this = self.eval_context_mut();
         for &(name, val) in values.iter() {
-            let field = this.mplace_field_named(dest, name)?;
+            let field = this.mplace_field_named(dest, name, mir::ProjectionMode::Strong)?;
             this.write_int(val, &field.into())?;
         }
         Ok(())
@@ -734,10 +735,10 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriInterpCxExt<'mir, 'tcx> {
         tp: &MPlaceTy<'tcx, Provenance>,
     ) -> InterpResult<'tcx, Option<Duration>> {
         let this = self.eval_context_mut();
-        let seconds_place = this.mplace_field(tp, 0)?;
+        let seconds_place = this.mplace_field(tp, 0, mir::ProjectionMode::Strong)?;
         let seconds_scalar = this.read_scalar(&seconds_place.into())?;
         let seconds = seconds_scalar.to_machine_isize(this)?;
-        let nanoseconds_place = this.mplace_field(tp, 1)?;
+        let nanoseconds_place = this.mplace_field(tp, 1, mir::ProjectionMode::Strong)?;
         let nanoseconds_scalar = this.read_scalar(&nanoseconds_place.into())?;
         let nanoseconds = nanoseconds_scalar.to_machine_isize(this)?;
 

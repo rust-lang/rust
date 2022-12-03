@@ -1090,10 +1090,14 @@ macro_rules! visit_place_fns {
 
                     if new_local == local { None } else { Some(PlaceElem::Index(new_local)) }
                 }
-                PlaceElem::Field(field, ty) => {
+                PlaceElem::Field(field, ty, strength) => {
                     let mut new_ty = ty;
                     self.visit_ty(&mut new_ty, TyContext::Location(location));
-                    if ty != new_ty { Some(PlaceElem::Field(field, new_ty)) } else { None }
+                    if ty != new_ty {
+                        Some(PlaceElem::Field(field, new_ty, strength))
+                    } else {
+                        None
+                    }
                 }
                 PlaceElem::OpaqueCast(ty) => {
                     let mut new_ty = ty;
@@ -1169,7 +1173,7 @@ macro_rules! visit_place_fns {
             location: Location,
         ) {
             match elem {
-                ProjectionElem::OpaqueCast(ty) | ProjectionElem::Field(_, ty) => {
+                ProjectionElem::OpaqueCast(ty) | ProjectionElem::Field(_, ty, _) => {
                     self.visit_ty(ty, TyContext::Location(location));
                 }
                 ProjectionElem::Index(local) => {

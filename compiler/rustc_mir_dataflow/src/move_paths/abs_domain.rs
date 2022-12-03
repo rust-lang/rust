@@ -47,7 +47,7 @@ impl<'tcx> Lift for PlaceElem<'tcx> {
     fn lift(&self) -> Self::Abstract {
         match *self {
             ProjectionElem::Deref => ProjectionElem::Deref,
-            ProjectionElem::Field(f, ty) => ProjectionElem::Field(f, ty.lift()),
+            ProjectionElem::Field(f, ty, s) => ProjectionElem::Field(f, ty.lift(), s),
             ProjectionElem::OpaqueCast(ty) => ProjectionElem::OpaqueCast(ty.lift()),
             ProjectionElem::Index(ref i) => ProjectionElem::Index(i.lift()),
             ProjectionElem::Subslice { from, to, from_end } => {

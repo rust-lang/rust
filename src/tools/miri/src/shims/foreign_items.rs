@@ -253,6 +253,7 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriInterpCxExt<'mir, 'tcx> {
 
         // First: functions that diverge.
         let ret = match ret {
+            #[rustfmt::skip]
             None =>
                 match link_name.as_str() {
                     "miri_start_panic" => {
@@ -274,7 +275,6 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriInterpCxExt<'mir, 'tcx> {
                             panic_impl_instance,
                         )));
                     }
-                    #[rustfmt::skip]
                     | "exit"
                     | "ExitProcess"
                     => {
@@ -825,9 +825,9 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriInterpCxExt<'mir, 'tcx> {
                 #[allow(clippy::integer_arithmetic)] // it's a u128, we can shift by 64
                 let (c_out, sum) = ((wide_sum >> 64).truncate::<u8>(), wide_sum.truncate::<u64>());
 
-                let c_out_field = this.place_field(dest, 0)?;
+                let c_out_field = this.place_field(dest, 0, mir::ProjectionMode::Strong)?;
                 this.write_scalar(Scalar::from_u8(c_out), &c_out_field)?;
-                let sum_field = this.place_field(dest, 1)?;
+                let sum_field = this.place_field(dest, 1, mir::ProjectionMode::Strong)?;
                 this.write_scalar(Scalar::from_u64(sum), &sum_field)?;
             }
             "llvm.x86.sse2.pause" if this.tcx.sess.target.arch == "x86" || this.tcx.sess.target.arch == "x86_64" => {

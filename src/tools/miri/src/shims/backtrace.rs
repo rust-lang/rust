@@ -1,5 +1,6 @@
 use crate::*;
 use rustc_ast::ast::Mutability;
+use rustc_middle::mir;
 use rustc_middle::ty::layout::LayoutOf as _;
 use rustc_middle::ty::{self, Instance};
 use rustc_span::{BytePos, Loc, Symbol};
@@ -196,33 +197,42 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriInterpCxExt<'mir, 'tcx> {
 
                 this.write_immediate(
                     name_alloc.to_ref(this),
-                    &this.mplace_field(&dest, 0)?.into(),
+                    &this.mplace_field(&dest, 0, mir::ProjectionMode::Strong)?.into(),
                 )?;
                 this.write_immediate(
                     filename_alloc.to_ref(this),
-                    &this.mplace_field(&dest, 1)?.into(),
+                    &this.mplace_field(&dest, 1, mir::ProjectionMode::Strong)?.into(),
                 )?;
             }
             1 => {
                 this.write_scalar(
                     Scalar::from_machine_usize(name.len().try_into().unwrap(), this),
-                    &this.mplace_field(&dest, 0)?.into(),
+                    &this.mplace_field(&dest, 0, mir::ProjectionMode::Strong)?.into(),
                 )?;
                 this.write_scalar(
                     Scalar::from_machine_usize(filename.len().try_into().unwrap(), this),
-                    &this.mplace_field(&dest, 1)?.into(),
+                    &this.mplace_field(&dest, 1, mir::ProjectionMode::Strong)?.into(),
                 )?;
             }
             _ => throw_unsup_format!("unknown `miri_resolve_frame` flags {}", flags),
         }
 
-        this.write_scalar(Scalar::from_u32(lineno), &this.mplace_field(&dest, 2)?.into())?;
-        this.write_scalar(Scalar::from_u32(colno), &this.mplace_field(&dest, 3)?.into())?;
+        this.write_scalar(
+            Scalar::from_u32(lineno),
+            &this.mplace_field(&dest, 2, mir::ProjectionMode::Strong)?.into(),
+        )?;
+        this.write_scalar(
+            Scalar::from_u32(colno),
+            &this.mplace_field(&dest, 3, mir::ProjectionMode::Strong)?.into(),
+        )?;
 
         // Support a 4-field struct for now - this is deprecated
         // and slated for removal.
         if num_fields == 5 {
-            this.write_pointer(fn_ptr, &this.mplace_field(&dest, 4)?.into())?;
+            this.write_pointer(
+                fn_ptr,
+                &this.mplace_field(&dest, 4, mir::ProjectionMode::Strong)?.into(),
+            )?;
         }
 
         Ok(())

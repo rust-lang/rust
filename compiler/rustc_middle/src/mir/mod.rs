@@ -1091,7 +1091,7 @@ impl Debug for VarDebugInfoFragment<'_> {
     fn fmt(&self, fmt: &mut Formatter<'_>) -> fmt::Result {
         for elem in self.projection.iter() {
             match elem {
-                ProjectionElem::Field(field, _) => {
+                ProjectionElem::Field(field, _, _) => {
                     write!(fmt, ".{:?}", field.index())?;
                 }
                 _ => bug!("unsupported fragment projection `{:?}`", elem),
@@ -1491,7 +1491,7 @@ impl<V, T> ProjectionElem<V, T> {
         match self {
             Self::Deref => true,
 
-            Self::Field(_, _)
+            Self::Field(..)
             | Self::Index(_)
             | Self::OpaqueCast(_)
             | Self::ConstantIndex { .. }
@@ -1507,7 +1507,7 @@ impl<V, T> ProjectionElem<V, T> {
 
     /// Returns `true` if this is a `Field` projection with the given index.
     pub fn is_field_to(&self, f: Field) -> bool {
-        matches!(*self, Self::Field(x, _) if x == f)
+        matches!(*self, Self::Field(x, _, _) if x == f)
     }
 }
 
@@ -1690,7 +1690,7 @@ impl Debug for Place<'_> {
             match elem {
                 ProjectionElem::OpaqueCast(_)
                 | ProjectionElem::Downcast(_, _)
-                | ProjectionElem::Field(_, _) => {
+                | ProjectionElem::Field(..) => {
                     write!(fmt, "(").unwrap();
                 }
                 ProjectionElem::Deref => {
@@ -1718,8 +1718,8 @@ impl Debug for Place<'_> {
                 ProjectionElem::Deref => {
                     write!(fmt, ")")?;
                 }
-                ProjectionElem::Field(field, ty) => {
-                    write!(fmt, ".{:?}: {:?})", field.index(), ty)?;
+                ProjectionElem::Field(field, ty, strength) => {
+                    write!(fmt, ".{:?}: {:?}, {:?})", field.index(), ty, strength)?;
                 }
                 ProjectionElem::Index(ref index) => {
                     write!(fmt, "[{:?}]", index)?;
@@ -2715,7 +2715,7 @@ impl UserTypeProjection {
     }
 
     pub(crate) fn leaf(mut self, field: Field) -> Self {
-        self.projs.push(ProjectionElem::Field(field, ()));
+        self.projs.push(ProjectionElem::Field(field, (), ProjectionMode::Weak));
         self
     }
 
@@ -2729,7 +2729,7 @@ impl UserTypeProjection {
             Some(adt_def.variant(variant_index).name),
             variant_index,
         ));
-        self.projs.push(ProjectionElem::Field(field, ()));
+        self.projs.push(ProjectionElem::Field(field, (), ProjectionMode::Weak));
         self
     }
 }

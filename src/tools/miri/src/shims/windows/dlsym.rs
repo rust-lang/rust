@@ -101,8 +101,11 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriInterpCxExt<'mir, 'tcx> {
                 };
                 // We have to put the result into io_status_block.
                 if let Some(n) = written {
-                    let io_status_information =
-                        this.mplace_field_named(&io_status_block, "Information")?;
+                    let io_status_information = this.mplace_field_named(
+                        &io_status_block,
+                        "Information",
+                        mir::ProjectionMode::Strong,
+                    )?;
                     this.write_scalar(
                         Scalar::from_machine_usize(n.into(), this),
                         &io_status_information.into(),

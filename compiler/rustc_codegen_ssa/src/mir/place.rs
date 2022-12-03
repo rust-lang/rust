@@ -550,7 +550,7 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
         for elem in place_ref.projection[base..].iter() {
             cg_base = match *elem {
                 mir::ProjectionElem::Deref => bx.load_operand(cg_base).deref(bx.cx()),
-                mir::ProjectionElem::Field(ref field, _) => {
+                mir::ProjectionElem::Field(ref field, _, _) => {
                     cg_base.project_field(bx, field.index())
                 }
                 mir::ProjectionElem::OpaqueCast(ty) => cg_base.project_type(bx, ty),

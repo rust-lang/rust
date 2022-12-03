@@ -715,7 +715,7 @@ impl<'a, 'b, 'tcx> TypeVerifier<'a, 'b, 'tcx> {
                     PlaceTy::from_ty(ty)
                 }
             },
-            ProjectionElem::Field(field, fty) => {
+            ProjectionElem::Field(field, fty, _) => {
                 let fty = self.sanitize_type(place, fty);
                 let fty = self.cx.normalize(fty, location);
                 match self.field_ty(place, base, field, location) {

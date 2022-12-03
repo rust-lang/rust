@@ -108,7 +108,7 @@ impl<'tcx> PlaceTy<'tcx> {
             ProjectionElem::Downcast(_name, index) => {
                 PlaceTy { ty: self.ty, variant_index: Some(index) }
             }
-            ProjectionElem::Field(f, fty) => PlaceTy::from_ty(handle_field(&self, f, fty)),
+            ProjectionElem::Field(f, fty, _) => PlaceTy::from_ty(handle_field(&self, f, fty)),
             ProjectionElem::OpaqueCast(ty) => PlaceTy::from_ty(handle_opaque_cast(&self, ty)),
         };
         debug!("projection_ty self: {:?} elem: {:?} yields: {:?}", self, elem, answer);

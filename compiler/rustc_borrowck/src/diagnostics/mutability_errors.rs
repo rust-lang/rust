@@ -59,7 +59,7 @@ impl<'a, 'tcx> MirBorrowckCtxt<'a, 'tcx> {
 
             PlaceRef {
                 local,
-                projection: [proj_base @ .., ProjectionElem::Field(upvar_index, _)],
+                projection: [proj_base @ .., ProjectionElem::Field(upvar_index, _, _)],
             } => {
                 debug_assert!(is_closure_or_generator(
                     Place::ty_from(local, proj_base, self.body, self.infcx.tcx).ty
@@ -222,7 +222,7 @@ impl<'a, 'tcx> MirBorrowckCtxt<'a, 'tcx> {
                     &[
                         ref proj_base @ ..,
                         ProjectionElem::Deref,
-                        ProjectionElem::Field(field, _),
+                        ProjectionElem::Field(field, _, _),
                         ProjectionElem::Deref,
                     ],
             } => {
@@ -349,7 +349,7 @@ impl<'a, 'tcx> MirBorrowckCtxt<'a, 'tcx> {
             // Also suggest adding mut for upvars
             PlaceRef {
                 local,
-                projection: [proj_base @ .., ProjectionElem::Field(upvar_index, _)],
+                projection: [proj_base @ .., ProjectionElem::Field(upvar_index, _, _)],
             } => {
                 debug_assert!(is_closure_or_generator(
                     Place::ty_from(local, proj_base, self.body, self.infcx.tcx).ty

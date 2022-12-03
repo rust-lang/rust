@@ -45,9 +45,9 @@ impl<'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
             // With randomized layout, `(int, bool)` might cease to be a `ScalarPair`, so we have to
             // do a component-wise write here. This code path is slower than the above because
             // `place_field` will have to `force_allocate` locals here.
-            let val_field = self.place_field(&dest, 0)?;
+            let val_field = self.place_field(&dest, 0, mir::ProjectionMode::Strong)?;
             self.write_scalar(val, &val_field)?;
-            let overflowed_field = self.place_field(&dest, 1)?;
+            let overflowed_field = self.place_field(&dest, 1, mir::ProjectionMode::Strong)?;
             self.write_scalar(Scalar::from_bool(overflowed), &overflowed_field)?;
         }
         Ok(())

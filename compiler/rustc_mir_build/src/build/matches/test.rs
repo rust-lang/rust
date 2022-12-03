@@ -760,8 +760,11 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
         let downcast_place = match_pair.place.downcast(adt_def, variant_index); // `(x as Variant)`
         let consequent_match_pairs = subpatterns.iter().map(|subpattern| {
             // e.g., `(x as Variant).0`
-            let place = downcast_place
-                .clone_project(PlaceElem::Field(subpattern.field, subpattern.pattern.ty));
+            let place = downcast_place.clone_project(PlaceElem::Field(
+                subpattern.field,
+                subpattern.pattern.ty,
+                ProjectionMode::Weak,
+            ));
             // e.g., `(x as Variant).0 @ P1`
             MatchPair::new(place, &subpattern.pattern, self)
         });

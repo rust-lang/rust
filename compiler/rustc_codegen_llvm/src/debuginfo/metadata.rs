@@ -1252,7 +1252,7 @@ fn generator_layout_and_saved_local_names<'tcx>(
                 mir::ProjectionElem::Deref,
                 // Field of a variant of the state.
                 mir::ProjectionElem::Downcast(_, variant),
-                mir::ProjectionElem::Field(field, _),
+                mir::ProjectionElem::Field(field, _, _),
             ] => {
                 let name = &mut generator_saved_local_names
                     [generator_layout.variant_fields[variant][field]];

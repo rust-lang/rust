@@ -2,6 +2,7 @@
 //! types until we arrive at the leaves, with custom handling for primitive types.
 
 use rustc_middle::mir::interpret::InterpResult;
+use rustc_middle::mir::ProjectionMode;
 use rustc_middle::ty;
 use rustc_middle::ty::layout::TyAndLayout;
 use rustc_target::abi::{FieldsShape, VariantIdx, Variants};
@@ -48,6 +49,7 @@ pub trait Value<'mir, 'tcx, M: Machine<'mir, 'tcx>>: Sized {
         &self,
         ecx: &InterpCx<'mir, 'tcx, M>,
         field: usize,
+        mode: ProjectionMode,
     ) -> InterpResult<'tcx, Self>;
 }
 
@@ -87,6 +89,7 @@ pub trait ValueMut<'mir, 'tcx, M: Machine<'mir, 'tcx>>: Sized {
         &self,
         ecx: &mut InterpCx<'mir, 'tcx, M>,
         field: usize,
+        mode: ProjectionMode,
     ) -> InterpResult<'tcx, Self>;
 }
 
@@ -128,8 +131,9 @@ impl<'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> Value<'mir, 'tcx, M> for OpTy<'tc
         &self,
         ecx: &InterpCx<'mir, 'tcx, M>,
         field: usize,
+        mode: ProjectionMode,
     ) -> InterpResult<'tcx, Self> {
-        ecx.operand_field(self, field)
+        ecx.operand_field(self, field, mode)
     }
 }
 
@@ -176,8 +180,9 @@ impl<'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> ValueMut<'mir, 'tcx, M>
         &self,
         ecx: &mut InterpCx<'mir, 'tcx, M>,
         field: usize,
+        mode: ProjectionMode,
     ) -> InterpResult<'tcx, Self> {
-        ecx.operand_field(self, field)
+        ecx.operand_field(self, field, mode)
     }
 }
 
@@ -217,8 +222,9 @@ impl<'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> Value<'mir, 'tcx, M>
         &self,
         ecx: &InterpCx<'mir, 'tcx, M>,
         field: usize,
+        mode: ProjectionMode,
     ) -> InterpResult<'tcx, Self> {
-        ecx.mplace_field(self, field)
+        ecx.mplace_field(self, field, mode)
     }
 }
 
@@ -266,8 +272,9 @@ impl<'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> ValueMut<'mir, 'tcx, M>
         &self,
         ecx: &mut InterpCx<'mir, 'tcx, M>,
         field: usize,
+        mode: ProjectionMode,
     ) -> InterpResult<'tcx, Self> {
-        ecx.mplace_field(self, field)
+        ecx.mplace_field(self, field, mode)
     }
 }
 
@@ -317,8 +324,9 @@ impl<'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> ValueMut<'mir, 'tcx, M>
         &self,
         ecx: &mut InterpCx<'mir, 'tcx, M>,
         field: usize,
+        mode: ProjectionMode,
     ) -> InterpResult<'tcx, Self> {
-        ecx.place_field(self, field)
+        ecx.place_field(self, field, mode)
     }
 }
 
@@ -451,13 +459,13 @@ macro_rules! make_value_visitor {
                         // `Box` has two fields: the pointer we care about, and the allocator.
                         assert_eq!(v.layout().fields.count(), 2, "`Box` must have exactly 2 fields");
                         let (unique_ptr, alloc) =
-                            (v.project_field(self.ecx(), 0)?, v.project_field(self.ecx(), 1)?);
+                            (v.project_field(self.ecx(), 0, ProjectionMode::Strong)?, v.project_field(self.ecx(), 1, ProjectionMode::Strong)?);
                         // Unfortunately there is some type junk in the way here: `unique_ptr` is a `Unique`...
                         // (which means another 2 fields, the second of which is a `PhantomData`)
                         assert_eq!(unique_ptr.layout().fields.count(), 2);
                         let (nonnull_ptr, phantom) = (
-                            unique_ptr.project_field(self.ecx(), 0)?,
-                            unique_ptr.project_field(self.ecx(), 1)?,
+                            unique_ptr.project_field(self.ecx(), 0, ProjectionMode::Strong)?,
+                            unique_ptr.project_field(self.ecx(), 1, ProjectionMode::Strong)?,
                         );
                         assert!(
                             phantom.layout().ty.ty_adt_def().is_some_and(|adt| adt.is_phantom_data()),
@@ -466,7 +474,7 @@ macro_rules! make_value_visitor {
                         );
                         // ... that contains a `NonNull`... (gladly, only a single field here)
                         assert_eq!(nonnull_ptr.layout().fields.count(), 1);
-                        let raw_ptr = nonnull_ptr.project_field(self.ecx(), 0)?; // the actual raw ptr
+                        let raw_ptr = nonnull_ptr.project_field(self.ecx(), 0, ProjectionMode::Strong)?; // the actual raw ptr
                         // ... whose only field finally is a raw ptr we can dereference.
                         self.visit_box(&raw_ptr)?;
 
@@ -491,7 +499,7 @@ macro_rules! make_value_visitor {
                         // errors: Projecting to a field needs access to `ecx`.
                         let fields: Vec<InterpResult<'tcx, Self::V>> =
                             (0..offsets.len()).map(|i| {
-                                v.project_field(self.ecx(), i)
+                                v.project_field(self.ecx(), i, ProjectionMode::Strong)
                             })
                             .collect();
                         self.visit_aggregate(v, fields.into_iter())?;

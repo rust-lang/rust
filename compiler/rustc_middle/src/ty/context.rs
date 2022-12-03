@@ -10,7 +10,8 @@ use crate::middle::resolve_lifetime;
 use crate::middle::stability;
 use crate::mir::interpret::{self, Allocation, ConstAllocation};
 use crate::mir::{
-    Body, BorrowCheckResult, Field, Local, Place, PlaceElem, ProjectionKind, Promoted,
+    Body, BorrowCheckResult, Field, Local, Place, PlaceElem, ProjectionKind, ProjectionMode,
+    Promoted,
 };
 use crate::thir::Thir;
 use crate::traits;
@@ -2720,7 +2721,7 @@ impl<'tcx> TyCtxt<'tcx> {
     }
 
     pub fn mk_place_field(self, place: Place<'tcx>, f: Field, ty: Ty<'tcx>) -> Place<'tcx> {
-        self.mk_place_elem(place, PlaceElem::Field(f, ty))
+        self.mk_place_elem(place, PlaceElem::Field(f, ty, ProjectionMode::Weak))
     }
 
     pub fn mk_place_deref(self, place: Place<'tcx>) -> Place<'tcx> {

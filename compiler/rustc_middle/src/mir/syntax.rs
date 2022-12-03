@@ -890,9 +890,28 @@ pub struct Place<'tcx> {
 
 #[derive(Copy, Clone, Debug, PartialEq, Eq, PartialOrd, Ord, Hash)]
 #[derive(TyEncodable, TyDecodable, HashStable, TypeFoldable, TypeVisitable)]
+pub enum ProjectionMode {
+    /// Weak projections are merely pointer offsets on the underlying place.
+    Weak,
+    /// In addition to shifting the pointer, restrict the allowed range of bytes the projected
+    /// place is allowed to access.  This effectively makes the following MIR UB:
+    /// ```ignore (MIR)
+    /// struct A { x: u8, y: u8 };
+    /// let a = A { x: 0, y: 1 };
+    /// let p = AddressOf(a.Field(x, u8, Strong));
+    /// // Accessing `a.x` through `p` is ok.
+    /// let _x = *p;
+    /// // Accessing `a.y` through `p` is UB, would be ok with `Weak`.
+    /// let _y = *(p.add(1)); // UB
+    /// ```
+    Strong,
+}
+
+#[derive(Copy, Clone, Debug, PartialEq, Eq, PartialOrd, Ord, Hash)]
+#[derive(TyEncodable, TyDecodable, HashStable, TypeFoldable, TypeVisitable)]
 pub enum ProjectionElem<V, T> {
     Deref,
-    Field(Field, T),
+    Field(Field, T, ProjectionMode),
     /// Index into a slice/array.
     ///
     /// Note that this does not also dereference, and so it does not exactly correspond to slice

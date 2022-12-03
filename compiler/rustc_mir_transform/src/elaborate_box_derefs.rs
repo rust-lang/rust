@@ -32,9 +32,9 @@ pub fn build_projection<'tcx>(
     ptr_ty: Ty<'tcx>,
 ) -> [PlaceElem<'tcx>; 3] {
     [
-        PlaceElem::Field(Field::new(0), unique_ty),
-        PlaceElem::Field(Field::new(0), nonnull_ty),
-        PlaceElem::Field(Field::new(0), ptr_ty),
+        PlaceElem::Field(Field::new(0), unique_ty, ProjectionMode::Strong),
+        PlaceElem::Field(Field::new(0), nonnull_ty, ProjectionMode::Strong),
+        PlaceElem::Field(Field::new(0), ptr_ty, ProjectionMode::Strong),
     ]
 }
 

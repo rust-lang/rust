@@ -665,12 +665,12 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
                 match enclosing_upvars_resolved.as_ref() {
                     PlaceRef {
                         local,
-                        projection: &[ProjectionElem::Field(upvar_index, _), ..],
+                        projection: &[ProjectionElem::Field(upvar_index, _, _), ..],
                     }
                     | PlaceRef {
                         local,
                         projection:
-                            &[ProjectionElem::Deref, ProjectionElem::Field(upvar_index, _), ..],
+                            &[ProjectionElem::Deref, ProjectionElem::Field(upvar_index, _, _), ..],
                     } => {
                         // Not in a closure
                         debug_assert!(

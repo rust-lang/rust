@@ -325,7 +325,7 @@ fn place_projection_conflict<'tcx>(
             debug!("place_element_conflict: DISJOINT-OR-EQ-OPAQUE");
             Overlap::EqualOrDisjoint
         }
-        (ProjectionElem::Field(f1, _), ProjectionElem::Field(f2, _)) => {
+        (ProjectionElem::Field(f1, _, _), ProjectionElem::Field(f2, _, _)) => {
             if f1 == f2 {
                 // same field (e.g., `a.y` vs. `a.y`) - recur.
                 debug!("place_element_conflict: DISJOINT-OR-EQ-FIELD");

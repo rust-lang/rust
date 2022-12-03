@@ -29,8 +29,8 @@ use rustc_index::vec::IndexVec;
 use rustc_middle::mir::visit::Visitor as _;
 use rustc_middle::mir::{
     traversal, AnalysisPhase, Body, ConstQualifs, Constant, LocalDecl, MirPass, MirPhase, Operand,
-    Place, ProjectionElem, Promoted, RuntimePhase, Rvalue, SourceInfo, Statement, StatementKind,
-    TerminatorKind,
+    Place, ProjectionElem, ProjectionMode, Promoted, RuntimePhase, Rvalue, SourceInfo, Statement,
+    StatementKind, TerminatorKind,
 };
 use rustc_middle::ty::query::Providers;
 use rustc_middle::ty::{self, TyCtxt, TypeVisitable};
@@ -189,7 +189,7 @@ fn remap_mir_for_const_eval_select<'tcx>(
                 let place_elems = place.projection;
                 let arguments = (0..num_args).map(|x| {
                     let mut place_elems = place_elems.to_vec();
-                    place_elems.push(ProjectionElem::Field(x.into(), fields[x]));
+                    place_elems.push(ProjectionElem::Field(x.into(), fields[x], ProjectionMode::Weak));
                     let projection = tcx.intern_place_elems(&place_elems);
                     let place = Place {
                         local: place.local,

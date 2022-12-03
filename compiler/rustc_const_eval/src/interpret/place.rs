@@ -820,7 +820,7 @@ where
                 let size = tag_layout.size(self);
                 let tag_val = size.truncate(discr_val);
 
-                let tag_dest = self.place_field(dest, tag_field)?;
+                let tag_dest = self.place_field(dest, tag_field, mir::ProjectionMode::Strong)?;
                 self.write_scalar(Scalar::from_uint(tag_val, size), &tag_dest)?;
             }
             abi::Variants::Multiple {
@@ -851,7 +851,8 @@ where
                         &niche_start_val,
                     )?;
                     // Write result.
-                    let niche_dest = self.place_field(dest, tag_field)?;
+                    let niche_dest =
+                        self.place_field(dest, tag_field, mir::ProjectionMode::Strong)?;
                     self.write_immediate(*tag_val, &niche_dest)?;
                 }
             }

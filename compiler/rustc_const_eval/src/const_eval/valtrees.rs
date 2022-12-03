@@ -6,6 +6,7 @@ use crate::interpret::{
     MemoryKind, PlaceTy, Scalar,
 };
 use crate::interpret::{MPlaceTy, Value};
+use rustc_middle::mir::ProjectionMode;
 use rustc_middle::ty::{self, ScalarInt, Ty, TyCtxt};
 use rustc_span::source_map::DUMMY_SP;
 use rustc_target::abi::{Align, VariantIdx};
@@ -27,7 +28,7 @@ fn branches<'tcx>(
 
     let mut fields = Vec::with_capacity(n);
     for i in 0..n {
-        let field = ecx.mplace_field(&place, i).unwrap();
+        let field = ecx.mplace_field(&place, i, ProjectionMode::Weak).unwrap();
         let valtree = const_to_valtree_inner(ecx, &field, num_nodes)?;
         fields.push(Some(valtree));
     }
@@ -436,7 +437,7 @@ fn valtree_into_mplace<'tcx>(
                             )
                             .unwrap()
                     }
-                    _ => ecx.mplace_field(&place_adjusted, i).unwrap(),
+                    _ => ecx.mplace_field(&place_adjusted, i, ProjectionMode::Weak).unwrap(),
                 };
 
                 debug!(?place_inner);

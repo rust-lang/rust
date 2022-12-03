@@ -76,7 +76,7 @@ impl<'cx, 'tcx> Iterator for Prefixes<'cx, 'tcx> {
                 }
                 Some((cursor_base, elem)) => {
                     match elem {
-                        ProjectionElem::Field(_ /*field*/, _ /*ty*/) => {
+                        ProjectionElem::Field(..) => {
                             // FIXME: add union handling
                             self.next = Some(cursor_base);
                             return Some(cursor);

@@ -273,7 +273,7 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
                         indirect_offsets.push(Size::ZERO);
                         place = bx.load_operand(place).deref(bx.cx());
                     }
-                    mir::ProjectionElem::Field(field, _) => {
+                    mir::ProjectionElem::Field(field, _, _) => {
                         let i = field.index();
                         let offset = indirect_offsets.last_mut().unwrap_or(&mut direct_offset);
                         *offset += place.layout.fields.offset(i);
@@ -439,7 +439,7 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
 
                         for elem in &fragment.projection {
                             match *elem {
-                                mir::ProjectionElem::Field(field, _) => {
+                                mir::ProjectionElem::Field(field, _, _) => {
                                     let i = field.index();
                                     fragment_start += fragment_layout.fields.offset(i);
                                     fragment_layout = fragment_layout.field(self.cx, i);

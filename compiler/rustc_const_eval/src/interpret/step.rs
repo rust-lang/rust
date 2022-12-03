@@ -199,7 +199,8 @@ impl<'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
 
                 for (field_index, operand) in operands.iter().enumerate() {
                     let op = self.eval_operand(operand, None)?;
-                    let field_dest = self.place_field(&dest, field_index)?;
+                    let field_dest =
+                        self.place_field(&dest, field_index, mir::ProjectionMode::Strong)?;
                     self.copy_op(&op, &field_dest, /*allow_transmute*/ false)?;
                 }
             }
@@ -215,7 +216,7 @@ impl<'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
                     self.get_place_alloc_mut(&dest)?;
                 } else {
                     // Write the src to the first element.
-                    let first = self.mplace_field(&dest, 0)?;
+                    let first = self.mplace_field(&dest, 0, mir::ProjectionMode::Weak)?;
                     self.copy_op(&src, &first.into(), /*allow_transmute*/ false)?;
 
                     // This is performance-sensitive code for big static/const arrays! So we

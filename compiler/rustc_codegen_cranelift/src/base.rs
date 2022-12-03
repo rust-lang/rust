@@ -854,7 +854,7 @@ pub(crate) fn codegen_place<'tcx>(
                 cplace = cplace.place_deref(fx);
             }
             PlaceElem::OpaqueCast(ty) => cplace = cplace.place_opaque_cast(fx, ty),
-            PlaceElem::Field(field, _ty) => {
+            PlaceElem::Field(field, _, _) => {
                 cplace = cplace.place_field(fx, field);
             }
             PlaceElem::Index(local) => {
