@@ -1577,32 +1577,26 @@ impl<'tcx> InferCtxtPrivExt<'tcx> for TypeErrCtxt<'_, 'tcx> {
         }
 
         self.probe(|_| {
-            let mut err = error.err;
-            let mut values = None;
+            let ocx = ObligationCtxt::new_in_snapshot(self);
 
             // try to find the mismatched types to report the error with.
             //
             // this can fail if the problem was higher-ranked, in which
             // cause I have no idea for a good error message.
             let bound_predicate = predicate.kind();
-            if let ty::PredicateKind::Clause(ty::Clause::Projection(data)) =
+            let (values, err) = if let ty::PredicateKind::Clause(ty::Clause::Projection(data)) =
                 bound_predicate.skip_binder()
             {
-                let mut selcx = SelectionContext::new(self);
                 let data = self.replace_bound_vars_with_fresh_vars(
                     obligation.cause.span,
                     infer::LateBoundRegionConversionTime::HigherRankedType,
                     bound_predicate.rebind(data),
                 );
-                let mut obligations = vec![];
-                // FIXME(normalization): Change this to use `At::normalize`
-                let normalized_ty = super::normalize_projection_type(
-                    &mut selcx,
+                let normalized_ty = ocx.normalize(
+                    &obligation.cause,
                     obligation.param_env,
-                    data.projection_ty,
-                    obligation.cause.clone(),
-                    0,
-                    &mut obligations,
+                    self.tcx
+                        .mk_projection(data.projection_ty.item_def_id, data.projection_ty.substs),
                 );
 
                 debug!(?obligation.cause, ?obligation.param_env);
@@ -1618,19 +1612,34 @@ impl<'tcx> InferCtxtPrivExt<'tcx> for TypeErrCtxt<'_, 'tcx> {
                         | ObligationCauseCode::ObjectCastObligation(..)
                         | ObligationCauseCode::OpaqueType
                 );
-                if let Err(new_err) = self.at(&obligation.cause, obligation.param_env).eq_exp(
+                let expected_ty = data.term.ty().unwrap();
+
+                // constrain inference variables a bit more to nested obligations from normalize so
+                // we can have more helpful errors.
+                ocx.select_where_possible();
+
+                if let Err(new_err) = ocx.eq_exp(
+                    &obligation.cause,
+                    obligation.param_env,
                     is_normalized_ty_expected,
                     normalized_ty,
-                    data.term,
+                    expected_ty,
                 ) {
-                    values = Some((data, is_normalized_ty_expected, normalized_ty, data.term));
-                    err = new_err;
+                    (Some((data, is_normalized_ty_expected, normalized_ty, expected_ty)), new_err)
+                } else {
+                    (None, error.err)
                 }
-            }
+            } else {
+                (None, error.err)
+            };
 
             let msg = values
                 .and_then(|(predicate, _, normalized_ty, expected_ty)| {
-                    self.maybe_detailed_projection_msg(predicate, normalized_ty, expected_ty)
+                    self.maybe_detailed_projection_msg(
+                        predicate,
+                        normalized_ty.into(),
+                        expected_ty.into(),
+                    )
                 })
                 .unwrap_or_else(|| format!("type mismatch resolving `{}`", predicate));
             let mut diag = struct_span_err!(self.tcx.sess, obligation.cause.span, E0271, "{msg}");
@@ -1672,11 +1681,11 @@ impl<'tcx> InferCtxtPrivExt<'tcx> for TypeErrCtxt<'_, 'tcx> {
                 &mut diag,
                 &obligation.cause,
                 secondary_span,
-                values.map(|(_, is_normalized_ty_expected, normalized_ty, term)| {
+                values.map(|(_, is_normalized_ty_expected, normalized_ty, expected_ty)| {
                     infer::ValuePairs::Terms(ExpectedFound::new(
                         is_normalized_ty_expected,
-                        normalized_ty,
-                        term,
+                        normalized_ty.into(),
+                        expected_ty.into(),
                     ))
                 }),
                 err,

@@ -1585,17 +1585,11 @@ details.rustdoc-toggle[open] > summary.hideme > span {
 	display: none;
 }
 
-details.rustdoc-toggle[open] > summary::before,
-details.rustdoc-toggle[open] > summary.hideme::before {
+details.rustdoc-toggle[open] > summary::before {
 	background: url("toggle-minus-31bbd6e4c77f5c96.svg") no-repeat top left;
-	width: 16px;
-	height: 16px;
-	display: inline-block;
-	content: "";
 }
 
-details.rustdoc-toggle[open] > summary::after,
-details.rustdoc-toggle[open] > summary.hideme::after {
+details.rustdoc-toggle[open] > summary::after {
 	content: "Collapse";
 }
 
