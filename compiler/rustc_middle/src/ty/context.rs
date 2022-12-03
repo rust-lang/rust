@@ -1034,16 +1034,23 @@ pub struct FreeRegionInfo {
 
 /// This struct should only be created by `create_def`.
 #[derive(Copy, Clone)]
-pub struct TyCtxtFeed<'tcx> {
+pub struct TyCtxtFeed<'tcx, KEY: Copy> {
     pub tcx: TyCtxt<'tcx>,
     // Do not allow direct access, as downstream code must not mutate this field.
-    def_id: LocalDefId,
+    key: KEY,
 }
 
-impl<'tcx> TyCtxtFeed<'tcx> {
+impl<'tcx, KEY: Copy> TyCtxtFeed<'tcx, KEY> {
+    #[inline(always)]
+    pub fn key(&self) -> KEY {
+        self.key
+    }
+}
+
+impl<'tcx> TyCtxtFeed<'tcx, LocalDefId> {
     #[inline(always)]
     pub fn def_id(&self) -> LocalDefId {
-        self.def_id
+        self.key
     }
 }
 
@@ -1515,7 +1522,7 @@ impl<'tcx> TyCtxtAt<'tcx> {
         self,
         parent: LocalDefId,
         data: hir::definitions::DefPathData,
-    ) -> TyCtxtFeed<'tcx> {
+    ) -> TyCtxtFeed<'tcx, LocalDefId> {
         // This function modifies `self.definitions` using a side-effect.
         // We need to ensure that these side effects are re-run by the incr. comp. engine.
         // Depending on the forever-red node will tell the graph that the calling query
@@ -1536,9 +1543,9 @@ impl<'tcx> TyCtxtAt<'tcx> {
         // This is fine because:
         // - those queries are `eval_always` so we won't miss their result changing;
         // - this write will have happened before these queries are called.
-        let def_id = self.definitions.write().create_def(parent, data);
+        let key = self.definitions.write().create_def(parent, data);
 
-        let feed = TyCtxtFeed { tcx: self.tcx, def_id };
+        let feed = TyCtxtFeed { tcx: self.tcx, key };
         feed.def_span(self.span);
         feed
     }
