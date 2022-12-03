@@ -1507,7 +1507,9 @@ impl<'tcx> TyCtxt<'tcx> {
             self.def_path(def_id).to_string_no_crate_verbose()
         )
     }
+}
 
+impl<'tcx> TyCtxtAt<'tcx> {
     /// Create a new definition within the incr. comp. engine.
     pub fn create_def(
         self,
@@ -1536,9 +1538,13 @@ impl<'tcx> TyCtxt<'tcx> {
         // - this write will have happened before these queries are called.
         let def_id = self.definitions.write().create_def(parent, data);
 
-        TyCtxtFeed { tcx: self, def_id }
+        let feed = TyCtxtFeed { tcx: self.tcx, def_id };
+        feed.def_span(self.span);
+        feed
     }
+}
 
+impl<'tcx> TyCtxt<'tcx> {
     pub fn iter_local_def_id(self) -> impl Iterator<Item = LocalDefId> + 'tcx {
         // Create a dependency to the red node to be sure we re-execute this when the amount of
         // definitions change.
