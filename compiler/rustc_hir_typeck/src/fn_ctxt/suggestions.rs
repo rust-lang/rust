@@ -32,11 +32,13 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
     }
 
     pub(in super::super) fn suggest_semicolon_at_end(&self, span: Span, err: &mut Diagnostic) {
+        // This suggestion is incorrect for
+        // fn foo() -> bool { match () { () => true } || match () { () => true } }
         err.span_suggestion_short(
             span.shrink_to_hi(),
             "consider using a semicolon here",
             ";",
-            Applicability::MachineApplicable,
+            Applicability::MaybeIncorrect,
         );
     }
 
