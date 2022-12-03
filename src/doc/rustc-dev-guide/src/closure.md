@@ -142,11 +142,11 @@ declared in the file [`compiler/rustc_middle/src/ty/mod.rs`][ty].
 [ty]:https://doc.rust-lang.org/nightly/nightly-rustc/rustc_middle/ty/index.html
 
 Before we go any further, let's discuss how we can examine the flow of control through the rustc
-codebase. For closures specifically, set the `RUST_LOG` env variable as below and collect the
+codebase. For closures specifically, set the `RUSTC_LOG` env variable as below and collect the
 output in a file:
 
 ```console
-> RUST_LOG=rustc_hir_typeck::upvar rustc +stage1 -Z dump-mir=all \
+> RUSTC_LOG=rustc_hir_typeck::upvar rustc +stage1 -Z dump-mir=all \
     <.rs file to compile> 2> <file where the output will be dumped>
 ```
 
