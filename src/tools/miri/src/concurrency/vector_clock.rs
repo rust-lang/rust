@@ -404,67 +404,49 @@ mod tests {
         assert_eq!(
             alt_compare,
             o.map(Ordering::reverse),
-            "Invalid alt comparison\n l: {:?}\n r: {:?}",
-            l,
-            r
+            "Invalid alt comparison\n l: {l:?}\n r: {r:?}"
         );
 
         //Test operators with faster implementations
         assert_eq!(
             matches!(compare, Some(Ordering::Less)),
             l < r,
-            "Invalid (<):\n l: {:?}\n r: {:?}",
-            l,
-            r
+            "Invalid (<):\n l: {l:?}\n r: {r:?}"
         );
         assert_eq!(
             matches!(compare, Some(Ordering::Less) | Some(Ordering::Equal)),
             l <= r,
-            "Invalid (<=):\n l: {:?}\n r: {:?}",
-            l,
-            r
+            "Invalid (<=):\n l: {l:?}\n r: {r:?}"
         );
         assert_eq!(
             matches!(compare, Some(Ordering::Greater)),
             l > r,
-            "Invalid (>):\n l: {:?}\n r: {:?}",
-            l,
-            r
+            "Invalid (>):\n l: {l:?}\n r: {r:?}"
         );
         assert_eq!(
             matches!(compare, Some(Ordering::Greater) | Some(Ordering::Equal)),
             l >= r,
-            "Invalid (>=):\n l: {:?}\n r: {:?}",
-            l,
-            r
+            "Invalid (>=):\n l: {l:?}\n r: {r:?}"
         );
         assert_eq!(
             matches!(alt_compare, Some(Ordering::Less)),
             r < l,
-            "Invalid alt (<):\n l: {:?}\n r: {:?}",
-            l,
-            r
+            "Invalid alt (<):\n l: {l:?}\n r: {r:?}"
         );
         assert_eq!(
             matches!(alt_compare, Some(Ordering::Less) | Some(Ordering::Equal)),
             r <= l,
-            "Invalid alt (<=):\n l: {:?}\n r: {:?}",
-            l,
-            r
+            "Invalid alt (<=):\n l: {l:?}\n r: {r:?}"
         );
         assert_eq!(
             matches!(alt_compare, Some(Ordering::Greater)),
             r > l,
-            "Invalid alt (>):\n l: {:?}\n r: {:?}",
-            l,
-            r
+            "Invalid alt (>):\n l: {l:?}\n r: {r:?}"
         );
         assert_eq!(
             matches!(alt_compare, Some(Ordering::Greater) | Some(Ordering::Equal)),
             r >= l,
-            "Invalid alt (>=):\n l: {:?}\n r: {:?}",
-            l,
-            r
+            "Invalid alt (>=):\n l: {l:?}\n r: {r:?}"
         );
     }
 }

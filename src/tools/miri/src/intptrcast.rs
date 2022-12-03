@@ -45,7 +45,7 @@ pub struct GlobalStateInner {
 }
 
 impl VisitTags for GlobalStateInner {
-    fn visit_tags(&self, _visit: &mut dyn FnMut(SbTag)) {
+    fn visit_tags(&self, _visit: &mut dyn FnMut(BorTag)) {
         // Nothing to visit here.
     }
 }
@@ -105,15 +105,15 @@ impl<'mir, 'tcx> GlobalStateInner {
     pub fn expose_ptr(
         ecx: &mut MiriInterpCx<'mir, 'tcx>,
         alloc_id: AllocId,
-        sb: SbTag,
+        tag: BorTag,
     ) -> InterpResult<'tcx> {
         let global_state = ecx.machine.intptrcast.get_mut();
         // In strict mode, we don't need this, so we can save some cycles by not tracking it.
         if global_state.provenance_mode != ProvenanceMode::Strict {
             trace!("Exposing allocation id {alloc_id:?}");
             global_state.exposed.insert(alloc_id);
-            if ecx.machine.stacked_borrows.is_some() {
-                ecx.expose_tag(alloc_id, sb)?;
+            if ecx.machine.borrow_tracker.is_some() {
+                ecx.expose_tag(alloc_id, tag)?;
             }
         }
         Ok(())

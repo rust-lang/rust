@@ -183,7 +183,7 @@ pub fn futex<'tcx>(
                     }
 
                     impl<'tcx> VisitTags for Callback<'tcx> {
-                        fn visit_tags(&self, visit: &mut dyn FnMut(SbTag)) {
+                        fn visit_tags(&self, visit: &mut dyn FnMut(BorTag)) {
                             let Callback { thread: _, addr_usize: _, dest } = self;
                             dest.visit_tags(visit);
                         }

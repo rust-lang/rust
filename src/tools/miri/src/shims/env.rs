@@ -37,7 +37,7 @@ pub struct EnvVars<'tcx> {
 }
 
 impl VisitTags for EnvVars<'_> {
-    fn visit_tags(&self, visit: &mut dyn FnMut(SbTag)) {
+    fn visit_tags(&self, visit: &mut dyn FnMut(BorTag)) {
         let EnvVars { map, environ } = self;
 
         environ.visit_tags(visit);

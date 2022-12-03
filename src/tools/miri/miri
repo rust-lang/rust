@@ -36,7 +36,8 @@ Mainly meant to be invoked by rust-analyzer.
 ./miri many-seeds <command>:
 Runs <command> over and over again with different seeds for Miri. The MIRIFLAGS
 variable is set to its original value appended with ` -Zmiri-seed=$SEED` for
-many different seeds.
+many different seeds. The MIRI_SEEDS variable controls how many seeds are being
+tried; MIRI_SEED_START controls the first seed to try.
 
 ./miri bench <benches>:
 Runs the benchmarks from bench-cargo-miri in hyperfine. hyperfine needs to be installed.
@@ -174,7 +175,9 @@ rustc-push)
     fi
     ;;
 many-seeds)
-    for SEED in $(seq 0 255); do
+    MIRI_SEED_START=${MIRI_SEED_START:-0} # default to 0
+    MIRI_SEEDS=${MIRI_SEEDS:-256} # default to 256
+    for SEED in $(seq $MIRI_SEED_START $(( $MIRI_SEED_START + $MIRI_SEEDS - 1 )) ); do
         echo "Trying seed: $SEED"
         MIRIFLAGS="$MIRIFLAGS -Zlayout-seed=$SEED -Zmiri-seed=$SEED" $@ || { echo "Failing seed: $SEED"; break; }
     done
@@ -249,6 +252,8 @@ export RUSTFLAGS="-C link-args=-Wl,-rpath,$LIBDIR $RUSTFLAGS"
 # Build a sysroot and set MIRI_SYSROOT to use it. Arguments are passed to `cargo miri setup`.
 build_sysroot() {
     if ! MIRI_SYSROOT="$($CARGO run $CARGO_EXTRA_FLAGS --manifest-path "$MIRIDIR"/cargo-miri/Cargo.toml -- miri setup --print-sysroot "$@")"; then
+        # Run it again so the user can see the error.
+        $CARGO run $CARGO_EXTRA_FLAGS --manifest-path "$MIRIDIR"/cargo-miri/Cargo.toml -- miri setup "$@"
         echo "'cargo miri setup' failed"
         exit 1
     fi

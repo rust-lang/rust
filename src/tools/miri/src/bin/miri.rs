@@ -192,10 +192,7 @@ fn init_late_loggers(tcx: TyCtxt<'_>) {
             if log::Level::from_str(&var).is_ok() {
                 env::set_var(
                     "RUSTC_LOG",
-                    format!(
-                        "rustc_middle::mir::interpret={0},rustc_const_eval::interpret={0}",
-                        var
-                    ),
+                    format!("rustc_middle::mir::interpret={var},rustc_const_eval::interpret={var}"),
                 );
             } else {
                 env::set_var("RUSTC_LOG", &var);
@@ -317,7 +314,7 @@ fn main() {
         } else if arg == "-Zmiri-disable-validation" {
             miri_config.validate = false;
         } else if arg == "-Zmiri-disable-stacked-borrows" {
-            miri_config.stacked_borrows = false;
+            miri_config.borrow_tracker = None;
         } else if arg == "-Zmiri-disable-data-race-detector" {
             miri_config.data_race_detector = false;
             miri_config.weak_memory_emulation = false;
@@ -413,7 +410,7 @@ fn main() {
                         err
                     ),
             };
-            for id in ids.into_iter().map(miri::SbTag::new) {
+            for id in ids.into_iter().map(miri::BorTag::new) {
                 if let Some(id) = id {
                     miri_config.tracked_pointer_tags.insert(id);
                 } else {
