@@ -107,8 +107,8 @@ impl server::TokenStream for RustAnalyzer {
             }
 
             bridge::TokenTree::Ident(ident) => {
-                // FIXME: handle raw idents
                 let text = ident.sym.text();
+                let text = if ident.is_raw { tt::SmolStr::from_iter(["r#", &text]) } else { text };
                 let ident: tt::Ident = tt::Ident { text, id: ident.span };
                 let leaf = tt::Leaf::from(ident);
                 let tree = TokenTree::from(leaf);
@@ -182,9 +182,8 @@ impl server::TokenStream for RustAnalyzer {
             .map(|tree| match tree {
                 tt::TokenTree::Leaf(tt::Leaf::Ident(ident)) => {
                     bridge::TokenTree::Ident(bridge::Ident {
-                        sym: Symbol::intern(&ident.text),
-                        // FIXME: handle raw idents
-                        is_raw: false,
+                        sym: Symbol::intern(&ident.text.trim_start_matches("r#")),
+                        is_raw: ident.text.starts_with("r#"),
                         span: ident.id,
                     })
                 }

@@ -86,8 +86,18 @@ pub enum Spacing {
 
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub struct Ident {
+    /// Identifier or keyword. Unlike rustc, we keep "r#" prefix when it represents a raw identifier.
     pub text: SmolStr,
     pub id: TokenId,
+}
+
+impl Ident {
+    /// Constructor intended to be used only by proc macro server. `text` should not contain raw
+    /// identifier prefix.
+    pub fn new_with_is_raw(text: SmolStr, id: TokenId, is_raw: bool) -> Self {
+        let text = if is_raw { SmolStr::from_iter(["r#", &text]) } else { text };
+        Ident { text, id }
+    }
 }
 
 impl Leaf {

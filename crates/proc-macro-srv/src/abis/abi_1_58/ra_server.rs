@@ -471,8 +471,12 @@ impl server::Punct for RustAnalyzer {
 }
 
 impl server::Ident for RustAnalyzer {
-    fn new(&mut self, string: &str, span: Self::Span, _is_raw: bool) -> Self::Ident {
-        IdentId(self.ident_interner.intern(&IdentData(tt::Ident { text: string.into(), id: span })))
+    fn new(&mut self, string: &str, span: Self::Span, is_raw: bool) -> Self::Ident {
+        IdentId(self.ident_interner.intern(&IdentData(tt::Ident::new_with_is_raw(
+            string.into(),
+            span,
+            is_raw,
+        ))))
     }
 
     fn span(&mut self, ident: Self::Ident) -> Self::Span {
