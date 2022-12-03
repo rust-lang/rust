@@ -250,13 +250,23 @@ fn resolve_expr<'tcx>(visitor: &mut RegionResolutionVisitor<'tcx>, expr: &'tcx h
                 ref l,
                 ref r,
             ) => {
-                // For shortcircuiting operators, mark the RHS as a terminating
-                // scope since it only executes conditionally.
+                // expr is a short circuiting operator (|| or &&). As its
+                // functionality can't be overridden by traits, it always
+                // processes bool sub-expressions. bools are Copy and thus we
+                // can drop any temporaries in evaluation (read) order
+                // (with the exception of potentially failing let expressions).
+                // We achieve this by enclosing the operands in a terminating
+                // scope, both the LHS and the RHS.
 
-                // If the LHS is not another binop itself of the same kind as ours,
-                // we also mark it as terminating, so that in && or || chains,
-                // the temporaries are dropped in order instead of the very first
-                // being dropped last. For the Let exception, see below.
+                // We optimize this a little in the presence of chains.
+                // Chains like a && b && c get lowered to AND(AND(a, b), c).
+                // In here, b and c are RHS, while a is the only LHS operand in
+                // that chain. This holds true for longer chains as well: the
+                // leading operand is always the only LHS operand that is not a
+                // binop itself. Putting a binop like AND(a, b) into a
+                // terminating scope is not useful, thus we only put the LHS
+                // into a terminating scope if it is not a binop.
+
                 let terminate_lhs = match l.kind {
                     hir::ExprKind::Let(_) => false,
                     hir::ExprKind::Binary(source_map::Spanned { node, .. }, ..)
@@ -264,6 +274,8 @@ fn resolve_expr<'tcx>(visitor: &mut RegionResolutionVisitor<'tcx>, expr: &'tcx h
                     {
                         false
                     }
+                    // If the LHS is not another binop itself of the same kind as
+                    // the current binop, mark it as terminating.
                     _ => true,
                 };
                 if terminate_lhs {
