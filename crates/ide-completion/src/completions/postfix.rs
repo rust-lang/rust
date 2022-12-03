@@ -5,7 +5,7 @@ mod format_like;
 use hir::{Documentation, HasAttrs};
 use ide_db::{imports::insert_use::ImportScope, ty_filter::TryEnum, SnippetCap};
 use syntax::{
-    ast::{self, AstNode, AstToken},
+    ast::{self, make, AstNode, AstToken},
     SyntaxKind::{EXPR_STMT, STMT_LIST},
     TextRange, TextSize,
 };
@@ -129,8 +129,10 @@ pub(crate) fn complete_postfix(
 
     // The rest of the postfix completions create an expression that moves an argument,
     // so it's better to consider references now to avoid breaking the compilation
-    let dot_receiver = include_references(dot_receiver);
-    let receiver_text = get_receiver_text(&dot_receiver, receiver_is_ambiguous_float_literal);
+
+    let (dot_receiver, node_to_replace_with) = include_references(dot_receiver);
+    let receiver_text =
+        get_receiver_text(&node_to_replace_with, receiver_is_ambiguous_float_literal);
     let postfix_snippet = match build_postfix_snippet_builder(ctx, cap, &dot_receiver) {
         Some(it) => it,
         None => return,
@@ -210,14 +212,35 @@ fn get_receiver_text(receiver: &ast::Expr, receiver_is_ambiguous_float_literal: 
     text.replace('\\', "\\\\").replace('$', "\\$")
 }
 
-fn include_references(initial_element: &ast::Expr) -> ast::Expr {
+fn include_references(initial_element: &ast::Expr) -> (ast::Expr, ast::Expr) {
     let mut resulting_element = initial_element.clone();
-    while let Some(parent_ref_element) =
-        resulting_element.syntax().parent().and_then(ast::RefExpr::cast)
+
+    while let Some(field_expr) = resulting_element.syntax().parent().and_then(ast::FieldExpr::cast)
     {
-        resulting_element = ast::Expr::from(parent_ref_element);
+        resulting_element = ast::Expr::from(field_expr);
     }
-    resulting_element
+
+    let mut new_element_opt = initial_element.clone();
+
+    if let Some(first_ref_expr) = resulting_element.syntax().parent().and_then(ast::RefExpr::cast) {
+        if let Some(expr) = first_ref_expr.expr() {
+            resulting_element = expr.clone();
+        }
+
+        while let Some(parent_ref_element) =
+            resulting_element.syntax().parent().and_then(ast::RefExpr::cast)
+        {
+            resulting_element = ast::Expr::from(parent_ref_element);
+
+            new_element_opt = make::expr_ref(new_element_opt, false);
+        }
+    } else {
+        // If we do not find any ref expressions, restore
+        // all the progress of tree climbing
+        resulting_element = initial_element.clone();
+    }
+
+    (resulting_element, new_element_opt)
 }
 
 fn build_postfix_snippet_builder<'ctx>(
@@ -225,8 +248,7 @@ fn build_postfix_snippet_builder<'ctx>(
     cap: SnippetCap,
     receiver: &'ctx ast::Expr,
 ) -> Option<impl Fn(&str, &str, &str) -> Builder + 'ctx> {
-    let receiver_syntax = receiver.syntax();
-    let receiver_range = ctx.sema.original_range_opt(receiver_syntax)?.range;
+    let receiver_range = ctx.sema.original_range_opt(receiver.syntax())?.range;
     if ctx.source_range().end() < receiver_range.start() {
         // This shouldn't happen, yet it does. I assume this might be due to an incorrect token mapping.
         return None;
@@ -616,22 +638,55 @@ fn main() {
 
     #[test]
     fn postfix_custom_snippets_completion_for_references() {
+        // https://github.com/rust-lang/rust-analyzer/issues/7929
+
+        let snippet = Snippet::new(
+            &[],
+            &["ok".into()],
+            &["Ok(${receiver})".into()],
+            "",
+            &[],
+            crate::SnippetScope::Expr,
+        )
+        .unwrap();
+
         check_edit_with_config(
-            CompletionConfig {
-                snippets: vec![Snippet::new(
-                    &[],
-                    &["ok".into()],
-                    &["Ok(${receiver})".into()],
-                    "",
-                    &[],
-                    crate::SnippetScope::Expr,
-                )
-                .unwrap()],
-                ..TEST_CONFIG
-            },
+            CompletionConfig { snippets: vec![snippet.clone()], ..TEST_CONFIG },
+            "ok",
+            r#"fn main() { &&42.o$0 }"#,
+            r#"fn main() { Ok(&&42) }"#,
+        );
+
+        check_edit_with_config(
+            CompletionConfig { snippets: vec![snippet.clone()], ..TEST_CONFIG },
             "ok",
             r#"fn main() { &&42.$0 }"#,
             r#"fn main() { Ok(&&42) }"#,
+        );
+
+        check_edit_with_config(
+            CompletionConfig { snippets: vec![snippet], ..TEST_CONFIG },
+            "ok",
+            r#"
+struct A {
+    a: i32,
+}
+
+fn main() {
+    let a = A {a :1};
+    &a.a.$0
+}
+            "#,
+            r#"
+struct A {
+    a: i32,
+}
+
+fn main() {
+    let a = A {a :1};
+    Ok(&a.a)
+}
+            "#,
         );
     }
 }
