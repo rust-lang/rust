@@ -1,0 +1,11 @@
+// MIR for `roundtrip` after PreCodegen
+
+fn roundtrip(_1: *const u8) -> *const u8 {
+    debug x => _1;
+    let mut _0: *const u8;
+
+    bb0: {
+        _0 = _1 as *const u8 (PtrToPtr);
+        return;
+    }
+}

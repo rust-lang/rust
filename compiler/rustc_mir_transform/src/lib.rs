@@ -82,6 +82,7 @@ mod ffi_unwind_calls;
 mod function_item_references;
 mod gvn;
 pub mod inline;
+mod instcombine;
 mod instsimplify;
 mod jump_threading;
 mod large_enums;
@@ -598,6 +599,7 @@ fn run_optimization_passes<'tcx>(tcx: TyCtxt<'tcx>, body: &mut Body<'tcx>) {
             &simplify_comparison_integral::SimplifyComparisonIntegral,
             &dead_store_elimination::DeadStoreElimination,
             &dest_prop::DestinationPropagation,
+            &instcombine::InstCombine,
             &o1(simplify_branches::SimplifyConstCondition::Final),
             &o1(remove_noop_landing_pads::RemoveNoopLandingPads),
             &o1(simplify::SimplifyCfg::Final),

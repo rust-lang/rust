@@ -1,0 +1,15 @@
+// MIR for `outer_get` after PreCodegen
+
+fn outer_get(_1: &Outer) -> u8 {
+    debug this => _1;
+    let mut _0: u8;
+    let _2: &Inner;
+    scope 1 (inlined inner_get) {
+        debug this => _2;
+    }
+
+    bb0: {
+        _0 = (((*_1).0: Inner).0: u8);
+        return;
+    }
+}

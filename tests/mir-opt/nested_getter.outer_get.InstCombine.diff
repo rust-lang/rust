@@ -1,0 +1,18 @@
+- // MIR for `outer_get` before InstCombine
++ // MIR for `outer_get` after InstCombine
+  
+  fn outer_get(_1: &Outer) -> u8 {
+      debug this => _1;
+      let mut _0: u8;
+      let mut _2: &Inner;
+      let _3: &Inner;
+      scope 1 (inlined inner_get) {
+          debug this => &((*_1).0: Inner);
+      }
+  
+      bb0: {
+          _0 = (((*_1).0: Inner).0: u8);
+          return;
+      }
+  }
+  

@@ -1,0 +1,40 @@
+// MIR for `as_ptr` after PreCodegen
+
+fn as_ptr(_1: &Vec<i32>) -> *const i32 {
+    debug v => _1;
+    let mut _0: *const i32;
+    scope 1 (inlined Vec::<i32>::as_ptr) {
+        debug self => _1;
+        let mut _2: &alloc::raw_vec::RawVec<i32>;
+        let mut _5: *mut i32;
+        scope 2 (inlined alloc::raw_vec::RawVec::<i32>::ptr) {
+            debug self => _2;
+            let mut _3: std::ptr::NonNull<i32>;
+            scope 3 (inlined Unique::<i32>::as_ptr) {
+                debug ((self: Unique<i32>).0: std::ptr::NonNull<i32>) => _3;
+                debug ((self: Unique<i32>).1: std::marker::PhantomData<i32>) => const PhantomData::<i32>;
+                scope 4 (inlined NonNull::<i32>::as_ptr) {
+                    debug self => _3;
+                    let mut _4: *const i32;
+                }
+            }
+        }
+    }
+
+    bb0: {
+        StorageLive(_5);
+        StorageLive(_2);
+        _2 = &((*_1).0: alloc::raw_vec::RawVec<i32>);
+        StorageLive(_3);
+        _3 = ((((*_1).0: alloc::raw_vec::RawVec<i32>).0: std::ptr::Unique<i32>).0: std::ptr::NonNull<i32>);
+        StorageLive(_4);
+        _4 = (_3.0: *const i32);
+        _5 = move _4 as *mut i32 (PtrToPtr);
+        StorageDead(_4);
+        StorageDead(_3);
+        _0 = move _5 as *const i32 (PointerCoercion(MutToConstPointer));
+        StorageDead(_2);
+        StorageDead(_5);
+        return;
+    }
+}

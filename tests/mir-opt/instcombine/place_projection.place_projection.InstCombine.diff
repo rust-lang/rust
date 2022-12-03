@@ -1,0 +1,22 @@
+- // MIR for `place_projection` before InstCombine
++ // MIR for `place_projection` after InstCombine
+  
+  fn place_projection(_1: Outer) -> u8 {
+      debug o => _1;
+      let mut _0: u8;
+      let _2: Inner;
+      scope 1 {
+          debug temp => _2;
+      }
+  
+      bb0: {
+          StorageLive(_2);
+-         _2 = move (_1.0: Inner);
+-         _0 = (_2.0: u8);
++         _0 = ((_1.0: Inner).0: u8);
++         nop;
+          StorageDead(_2);
+          return;
+      }
+  }
+  

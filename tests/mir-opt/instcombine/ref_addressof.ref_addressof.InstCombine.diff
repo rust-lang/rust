@@ -1,0 +1,44 @@
+- // MIR for `ref_addressof` before InstCombine
++ // MIR for `ref_addressof` after InstCombine
+  
+  fn ref_addressof(_1: T) -> () {
+      debug t => _1;
+      let mut _0: ();
+      let _2: &T;
+      let _4: ();
+      let mut _5: *const T;
+      scope 1 {
+          debug r => _2;
+          let _3: *const T;
+          scope 2 {
+              debug ptr => _3;
+          }
+      }
+  
+      bb0: {
+          StorageLive(_2);
+-         _2 = &_1;
+          StorageLive(_3);
+-         _3 = &raw const (*_2);
++         _3 = &raw const _1;
++         nop;
+          StorageLive(_4);
+          StorageLive(_5);
+          _5 = _3;
+          _4 = std::mem::drop::<*const T>(move _5) -> [return: bb1, unwind unreachable];
+      }
+  
+      bb1: {
+          StorageDead(_5);
+          StorageDead(_4);
+          _0 = const ();
+          StorageDead(_3);
+          StorageDead(_2);
+          drop(_1) -> [return: bb2, unwind unreachable];
+      }
+  
+      bb2: {
+          return;
+      }
+  }
+  
