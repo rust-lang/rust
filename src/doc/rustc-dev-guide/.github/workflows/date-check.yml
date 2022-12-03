@@ -27,9 +27,8 @@ jobs:
           cargo run -- ../../src/ > ../../date-check-output.txt
 
       - name: Open issue
-        uses: actions/github-script@v3
+        uses: actions/github-script@v6
         with:
-          github-token: ${{secrets.GITHUB_TOKEN}}
           script: |
             const fs = require('fs');
 
@@ -37,7 +36,7 @@ jobs:
             const title = rawText.split('\n')[0];
             if (title != 'empty') {
                 const body = rawText.split('\n').slice(1).join('\n');
-                github.issues.create({
+                github.rest.issues.create({
                   owner: context.repo.owner,
                   repo: context.repo.repo,
                   title,
