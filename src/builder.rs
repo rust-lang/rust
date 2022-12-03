@@ -1199,7 +1199,7 @@ impl<'a, 'gcc, 'tcx> BuilderMethods<'a, 'tcx> for Builder<'a, 'gcc, 'tcx> {
     }
 
     #[cfg(feature="master")]
-    fn cleanup_landing_pad(&mut self, _ty: Type<'gcc>, pers_fn: RValue<'gcc>) -> RValue<'gcc> {
+    fn cleanup_landing_pad(&mut self, pers_fn: RValue<'gcc>) -> (RValue<'gcc>, RValue<'gcc>) {
         self.set_personality_fn(pers_fn);
 
         // NOTE: insert the current block in a variable so that a later call to invoke knows to
@@ -1223,21 +1223,19 @@ impl<'a, 'gcc, 'tcx> BuilderMethods<'a, 'tcx> for Builder<'a, 'gcc, 'tcx> {
     }
 
     #[cfg(not(feature="master"))]
-    fn cleanup_landing_pad(&mut self, _ty: Type<'gcc>, _pers_fn: RValue<'gcc>) -> RValue<'gcc> {
+    fn cleanup_landing_pad(&mut self, _pers_fn: RValue<'gcc>) -> (RValue<'gcc>, RValue<'gcc>) {
         let field1 = self.context.new_field(None, self.u8_type.make_pointer(), "landing_pad_field_1");
         let field2 = self.context.new_field(None, self.i32_type, "landing_pad_field_1");
-        let struct_type = self.context.new_struct_type(None, "landing_pad", &[field1, field2]);
-        self.current_func().new_local(None, struct_type.as_type(), "landing_pad")
-            .to_rvalue()
+        (field1, field2)
     }
 
     #[cfg(feature="master")]
-    fn resume(&mut self, exn: RValue<'gcc>) {
+    fn resume(&mut self, exn0: RValue<'gcc>, _exn1: RValue<'gcc>) {
         // TODO(antoyo): check if this is normal that we need to dereference the value.
         // NOTE: the type is wrong, so in order to get a pointer for parameter, cast it to a
         // pointer of pointer that is later dereferenced.
-        let exn_type = exn.get_type().make_pointer();
-        let exn = self.context.new_cast(None, exn, exn_type);
+        let exn_type = exn0.get_type().make_pointer();
+        let exn = self.context.new_cast(None, exn0, exn_type);
         let exn = exn.dereference(None).to_rvalue();
         let unwind_resume = self.context.get_target_builtin_function("__builtin_unwind_resume");
         self.llbb().add_eval(None, self.context.new_call(None, unwind_resume, &[exn]));
@@ -1245,7 +1243,7 @@ impl<'a, 'gcc, 'tcx> BuilderMethods<'a, 'tcx> for Builder<'a, 'gcc, 'tcx> {
     }
 
     #[cfg(not(feature="master"))]
-    fn resume(&mut self, _exn: RValue<'gcc>) {
+    fn resume(&mut self, _exn0: RValue<'gcc>, _exn1: RValue<'gcc>) {
         self.unreachable();
     }
 
