@@ -67,6 +67,7 @@ mod early_otherwise_branch;
 mod elaborate_box_derefs;
 mod elaborate_drops;
 mod ffi_unwind_calls;
+mod fold;
 mod function_item_references;
 mod generator;
 mod inline;
@@ -583,6 +584,7 @@ fn run_optimization_passes<'tcx>(tcx: TyCtxt<'tcx>, body: &mut Body<'tcx>) {
             &simplify_try::SimplifyBranchSame,
             &dead_store_elimination::DeadStoreElimination,
             &dest_prop::DestinationPropagation,
+            &fold::Fold,
             &o1(simplify_branches::SimplifyConstCondition::new("final")),
             &o1(remove_noop_landing_pads::RemoveNoopLandingPads),
             &o1(simplify::SimplifyCfg::new("final")),
