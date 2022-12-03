@@ -676,6 +676,10 @@ impl<'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
         return_to_block: StackPopCleanup,
     ) -> InterpResult<'tcx> {
         trace!("body: {:#?}", body);
+        // Clobber previous return place contents, nobody is supposed to be able to see them any more
+        // This also checks dereferenceable, but not align. We rely on all constructed places being
+        // sufficiently aligned (in particular we rely on `deref_operand` checking alignment).
+        self.write_uninit(return_place)?;
         // first push a stack frame so we have access to the local substs
         let pre_frame = Frame {
             body,
