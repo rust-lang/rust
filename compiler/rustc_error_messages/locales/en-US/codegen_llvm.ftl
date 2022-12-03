@@ -29,9 +29,6 @@ codegen_llvm_linkage_const_or_mut_type =
 codegen_llvm_sanitizer_memtag_requires_mte =
     `-Zsanitizer=memtag` requires `-Ctarget-feature=+mte`
 
-codegen_llvm_archive_build_failure =
-    failed to build archive: {$error}
-
 codegen_llvm_error_writing_def_file =
     Error writing .DEF file: {$error}
 
@@ -40,9 +37,6 @@ codegen_llvm_error_calling_dlltool =
 
 codegen_llvm_dlltool_fail_import_library =
     Dlltool could not create import library: {$stdout}\n{$stderr}
-
-codegen_llvm_unknown_archive_kind =
-    Don't know how to build archive of type: {$kind}
 
 codegen_llvm_target_feature_disable_or_enable =
     the target features {$features} must all be either enabled or disabled together

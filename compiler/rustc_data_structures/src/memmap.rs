@@ -40,6 +40,12 @@ impl Deref for Mmap {
     }
 }
 
+impl AsRef<[u8]> for Mmap {
+    fn as_ref(&self) -> &[u8] {
+        &*self.0
+    }
+}
+
 // SAFETY: On architectures other than WASM, mmap is used as backing storage. The address of this
 // memory map is stable. On WASM, `Vec<u8>` is used as backing storage. The `Mmap` type doesn't
 // export any function that can cause the `Vec` to be re-allocated. As such the address of the

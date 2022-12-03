@@ -222,6 +222,7 @@ fn main() {
         .file("llvm-wrapper/RustWrapper.cpp")
         .file("llvm-wrapper/ArchiveWrapper.cpp")
         .file("llvm-wrapper/CoverageMappingWrapper.cpp")
+        .file("llvm-wrapper/SymbolWrapper.cpp")
         .file("llvm-wrapper/Linker.cpp")
         .cpp(true)
         .cpp_link_stdlib(None) // we handle this below
