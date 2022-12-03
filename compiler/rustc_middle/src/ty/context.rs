@@ -81,7 +81,7 @@ use std::mem;
 use std::ops::{Bound, Deref};
 use std::sync::Arc;
 
-use super::{ImplPolarity, ResolverOutputs, RvalueScopes};
+use super::{ImplPolarity, RvalueScopes};
 
 pub trait OnDiskCache<'tcx>: rustc_data_structures::sync::Sync {
     /// Creates a new `OnDiskCache` instance from the serialized data in `data`.
@@ -1040,6 +1040,12 @@ pub struct TyCtxtFeed<'tcx, KEY: Copy> {
     key: KEY,
 }
 
+impl<'tcx> TyCtxt<'tcx> {
+    pub fn feed_unit_query(self) -> TyCtxtFeed<'tcx, ()> {
+        TyCtxtFeed { tcx: self, key: () }
+    }
+}
+
 impl<'tcx, KEY: Copy> TyCtxtFeed<'tcx, KEY> {
     #[inline(always)]
     pub fn key(&self) -> KEY {
@@ -1106,7 +1112,6 @@ pub struct GlobalCtxt<'tcx> {
 
     /// Output of the resolver.
     pub(crate) untracked_resolutions: ty::ResolverGlobalCtxt,
-    untracked_resolver_for_lowering: Steal<ty::ResolverAstLowering>,
     /// The entire crate as AST. This field serves as the input for the hir_crate query,
     /// which lowers it from AST to HIR. It must not be read or used by anything else.
     pub untracked_crate: Steal<Lrc<ast::Crate>>,
@@ -1269,7 +1274,8 @@ impl<'tcx> TyCtxt<'tcx> {
         lint_store: Lrc<dyn Any + sync::Send + sync::Sync>,
         arena: &'tcx WorkerLocal<Arena<'tcx>>,
         hir_arena: &'tcx WorkerLocal<hir::Arena<'tcx>>,
-        resolver_outputs: ResolverOutputs,
+        definitions: Definitions,
+        untracked_resolutions: ty::ResolverGlobalCtxt,
         krate: Lrc<ast::Crate>,
         dep_graph: DepGraph,
         on_disk_cache: Option<&'tcx dyn OnDiskCache<'tcx>>,
@@ -1278,11 +1284,6 @@ impl<'tcx> TyCtxt<'tcx> {
         crate_name: &str,
         output_filenames: OutputFilenames,
     ) -> GlobalCtxt<'tcx> {
-        let ResolverOutputs {
-            definitions,
-            global_ctxt: untracked_resolutions,
-            ast_lowering: untracked_resolver_for_lowering,
-        } = resolver_outputs;
         let data_layout = s.target.parse_data_layout().unwrap_or_else(|err| {
             s.emit_fatal(err);
         });
@@ -1311,7 +1312,6 @@ impl<'tcx> TyCtxt<'tcx> {
             lifetimes: common_lifetimes,
             consts: common_consts,
             untracked_resolutions,
-            untracked_resolver_for_lowering: Steal::new(untracked_resolver_for_lowering),
             untracked_crate: Steal::new(krate),
             on_disk_cache,
             queries,
@@ -3114,7 +3114,6 @@ fn ptr_eq<T, U>(t: *const T, u: *const U) -> bool {
 
 pub fn provide(providers: &mut ty::query::Providers) {
     providers.resolutions = |tcx, ()| &tcx.untracked_resolutions;
-    providers.resolver_for_lowering = |tcx, ()| &tcx.untracked_resolver_for_lowering;
     providers.module_reexports =
         |tcx, id| tcx.resolutions(()).reexport_map.get(&id).map(|v| &v[..]);
     providers.crate_name = |tcx, id| {

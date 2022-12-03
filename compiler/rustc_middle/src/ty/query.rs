@@ -328,6 +328,18 @@ macro_rules! define_callbacks {
     };
 }
 
+macro_rules! hash_result {
+    ([]) => {{
+        Some(dep_graph::hash_result)
+    }};
+    ([(no_hash) $($rest:tt)*]) => {{
+        None
+    }};
+    ([$other:tt $($modifiers:tt)*]) => {
+        hash_result!([$($modifiers)*])
+    };
+}
+
 macro_rules! define_feedable {
     ($($(#[$attr:meta])* [$($modifiers:tt)*] fn $name:ident($($K:tt)*) -> $V:ty,)*) => {
         $(impl<'tcx, K: IntoQueryParam<$($K)*> + Copy> TyCtxtFeed<'tcx, K> {
@@ -358,7 +370,7 @@ macro_rules! define_feedable {
                     tcx,
                     key,
                     &value,
-                    dep_graph::hash_result,
+                    hash_result!([$($modifiers)*]),
                 );
                 cache.complete(key, value, dep_node_index)
             }
