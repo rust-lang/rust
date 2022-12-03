@@ -390,10 +390,11 @@ impl<'a> Parser<'a> {
             // want to keep their span info to improve diagnostics in these cases in a later stage.
             (true, Some(AssocOp::Multiply)) | // `{ 42 } *foo = bar;` or `{ 42 } * 3`
             (true, Some(AssocOp::Subtract)) | // `{ 42 } -5`
-            (true, Some(AssocOp::Add)) | // `{ 42 } + 42
+            (true, Some(AssocOp::Add)) | // `{ 42 } + 42` (unary plus)
             (true, Some(AssocOp::LAnd)) | // `{ 42 } &&x` (#61475) or `{ 42 } && if x { 1 } else { 0 }`
-            (true, Some(AssocOp::LOr)) |
-            (true, Some(AssocOp::BitOr)) => {
+            (true, Some(AssocOp::LOr)) | // `{ 42 } || 42` ("logical or" or closure)
+            (true, Some(AssocOp::BitOr)) // `{ 42 } | 42` or `{ 42 } |x| 42`
+            => {
                 // These cases are ambiguous and can't be identified in the parser alone.
                 //
                 // Bitwise AND is left out because guessing intent is hard. We can make
