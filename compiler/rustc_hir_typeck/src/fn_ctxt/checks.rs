@@ -1918,6 +1918,14 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         receiver: Option<&'tcx hir::Expr<'tcx>>,
         args: &'tcx [hir::Expr<'tcx>],
     ) -> bool {
+        // Do not call `fn_sig` on non-functions.
+        if !matches!(
+            self.tcx.def_kind(def_id),
+            DefKind::Fn | DefKind::AssocFn | DefKind::Variant | DefKind::Ctor(..)
+        ) {
+            return false;
+        }
+
         let sig = self.tcx.fn_sig(def_id).skip_binder();
         let args_referencing_param: Vec<_> = sig
             .inputs()
