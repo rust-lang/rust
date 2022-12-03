@@ -1,8 +1,7 @@
 //! Removes assignments to ZST places.
 
 use crate::MirPass;
-use rustc_middle::mir::tcx::PlaceTy;
-use rustc_middle::mir::{Body, LocalDecls, Place, StatementKind};
+use rustc_middle::mir::{Body, StatementKind};
 use rustc_middle::ty::{self, Ty, TyCtxt};
 
 pub struct RemoveZsts;
@@ -35,9 +34,6 @@ impl<'tcx> MirPass<'tcx> for RemoveZsts {
                     if !layout.is_zst() {
                         continue;
                     }
-                    if involves_a_union(place, local_decls, tcx) {
-                        continue;
-                    }
                     if tcx.consider_optimizing(|| {
                         format!(
                             "RemoveZsts - Place: {:?} SourceInfo: {:?}",
@@ -62,25 +58,4 @@ fn maybe_zst(ty: Ty<'_>) -> bool {
         // unreachable or can't be ZST
         _ => false,
     }
-}
-
-/// Miri lazily allocates memory for locals on assignment,
-/// so we must preserve writes to unions and union fields,
-/// or it will ICE on reads of those fields.
-fn involves_a_union<'tcx>(
-    place: Place<'tcx>,
-    local_decls: &LocalDecls<'tcx>,
-    tcx: TyCtxt<'tcx>,
-) -> bool {
-    let mut place_ty = PlaceTy::from_ty(local_decls[place.local].ty);
-    if place_ty.ty.is_union() {
-        return true;
-    }
-    for elem in place.projection {
-        place_ty = place_ty.projection_ty(tcx, elem);
-        if place_ty.ty.is_union() {
-            return true;
-        }
-    }
-    return false;
 }
