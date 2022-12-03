@@ -208,6 +208,23 @@ pub(crate) fn render_snippet(_cap: SnippetCap, node: &SyntaxNode, cursor: Cursor
     }
 }
 
+/// Escapes text that should be rendered as-is, typically those that we're copy-pasting what the
+/// users wrote.
+///
+/// This function should only be used when the text doesn't contain snippet **AND** the text
+/// wouldn't be included in a snippet.
+pub(crate) fn escape_non_snippet(text: &mut String) {
+    // While we *can* escape `}`, we don't really have to in this specific case. We only need to
+    // escape it inside `${}` to disambiguate it from the ending token of the syntax, but after we
+    // escape every occurrence of `$`, we wouldn't have `${}` in the first place.
+    //
+    // This will break if the text contains snippet or it will be included in a snippet (hence doc
+    // comment). Compare `fn escape(buf)` in `render_snippet()` above, where the escaped text is
+    // included in a snippet.
+    stdx::replace(text, '\\', r"\\");
+    stdx::replace(text, '$', r"\$");
+}
+
 pub(crate) fn vis_offset(node: &SyntaxNode) -> TextSize {
     node.children_with_tokens()
         .find(|it| !matches!(it.kind(), WHITESPACE | COMMENT | ATTR))

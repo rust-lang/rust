@@ -165,6 +165,7 @@ mod handlers {
     mod merge_imports;
     mod merge_match_arms;
     mod move_bounds;
+    mod move_const_to_impl;
     mod move_guard;
     mod move_module_to_file;
     mod move_to_mod_rs;
@@ -261,6 +262,7 @@ mod handlers {
             merge_imports::merge_imports,
             merge_match_arms::merge_match_arms,
             move_bounds::move_bounds_to_where_clause,
+            move_const_to_impl::move_const_to_impl,
             move_format_string_arg::move_format_string_arg,
             move_guard::move_arm_cond_to_match_guard,
             move_guard::move_guard_to_arm_body,
