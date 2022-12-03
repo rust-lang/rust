@@ -72,12 +72,12 @@ impl<'a> Parser<'a> {
 
         Ok(Some(if self.token.is_keyword(kw::Let) {
             self.parse_local_mk(lo, attrs, capture_semi, force_collect)?
-        } else if self.is_kw_followed_by_ident(kw::Mut) {
+        } else if self.is_kw_followed_by_ident(kw::Mut) && self.may_recover() {
             self.recover_stmt_local(lo, attrs, InvalidVariableDeclarationSub::MissingLet)?
-        } else if self.is_kw_followed_by_ident(kw::Auto) {
+        } else if self.is_kw_followed_by_ident(kw::Auto) && self.may_recover() {
             self.bump(); // `auto`
             self.recover_stmt_local(lo, attrs, InvalidVariableDeclarationSub::UseLetNotAuto)?
-        } else if self.is_kw_followed_by_ident(sym::var) {
+        } else if self.is_kw_followed_by_ident(sym::var) && self.may_recover() {
             self.bump(); // `var`
             self.recover_stmt_local(lo, attrs, InvalidVariableDeclarationSub::UseLetNotVar)?
         } else if self.check_path() && !self.token.is_qpath_start() && !self.is_path_start_item() {
@@ -244,7 +244,7 @@ impl<'a> Parser<'a> {
     }
 
     fn recover_local_after_let(&mut self, lo: Span, attrs: AttrWrapper) -> PResult<'a, Stmt> {
-        self.collect_tokens_trailing_token(attrs, ForceCollect::No, |this, attrs| {
+        self.collect_tokens_trailing_token(attrs, ForceCollect::Yes, |this, attrs| {
             let local = this.parse_local(attrs)?;
             // FIXME - maybe capture semicolon in recovery?
             Ok((
