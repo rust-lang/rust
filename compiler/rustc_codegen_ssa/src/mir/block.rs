@@ -289,16 +289,13 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
             bx.cleanup_ret(funclet, None);
         } else {
             let slot = self.get_personality_slot(bx);
-            let lp0 = slot.project_field(bx, 0);
-            let lp0 = bx.load_operand(lp0).immediate();
-            let lp1 = slot.project_field(bx, 1);
-            let lp1 = bx.load_operand(lp1).immediate();
+            let exn0 = slot.project_field(bx, 0);
+            let exn0 = bx.load_operand(exn0).immediate();
+            let exn1 = slot.project_field(bx, 1);
+            let exn1 = bx.load_operand(exn1).immediate();
             slot.storage_dead(bx);
 
-            let mut lp = bx.const_undef(self.landing_pad_type());
-            lp = bx.insert_value(lp, lp0, 0);
-            lp = bx.insert_value(lp, lp1, 1);
-            bx.resume(lp);
+            bx.resume(exn0, exn1);
         }
     }
 
@@ -1635,22 +1632,15 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
             let mut cleanup_bx = Bx::build(self.cx, cleanup_llbb);
 
             let llpersonality = self.cx.eh_personality();
-            let llretty = self.landing_pad_type();
-            let lp = cleanup_bx.cleanup_landing_pad(llretty, llpersonality);
+            let (exn0, exn1) = cleanup_bx.cleanup_landing_pad(llpersonality);
 
             let slot = self.get_personality_slot(&mut cleanup_bx);
             slot.storage_live(&mut cleanup_bx);
-            Pair(cleanup_bx.extract_value(lp, 0), cleanup_bx.extract_value(lp, 1))
-                .store(&mut cleanup_bx, slot);
+            Pair(exn0, exn1).store(&mut cleanup_bx, slot);
 
             cleanup_bx.br(llbb);
             cleanup_llbb
         }
-    }
-
-    fn landing_pad_type(&self) -> Bx::Type {
-        let cx = self.cx;
-        cx.type_struct(&[cx.type_i8p(), cx.type_i32()], false)
     }
 
     fn unreachable_block(&mut self) -> Bx::BasicBlock {
@@ -1672,8 +1662,7 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
             self.set_debug_loc(&mut bx, mir::SourceInfo::outermost(self.mir.span));
 
             let llpersonality = self.cx.eh_personality();
-            let llretty = self.landing_pad_type();
-            bx.cleanup_landing_pad(llretty, llpersonality);
+            bx.cleanup_landing_pad(llpersonality);
 
             let (fn_abi, fn_ptr) = common::build_langcall(&bx, None, LangItem::PanicNoUnwind);
             let fn_ty = bx.fn_decl_backend_type(&fn_abi);
