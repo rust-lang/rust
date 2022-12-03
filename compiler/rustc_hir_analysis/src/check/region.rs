@@ -241,12 +241,7 @@ fn resolve_expr<'tcx>(visitor: &mut RegionResolutionVisitor<'tcx>, expr: &'tcx h
             // scopes, meaning that temporaries cannot outlive them.
             // This ensures fixed size stacks.
             hir::ExprKind::Binary(
-                source_map::Spanned { node: outer @ hir::BinOpKind::And, .. },
-                ref l,
-                ref r,
-            )
-            | hir::ExprKind::Binary(
-                source_map::Spanned { node: outer @ hir::BinOpKind::Or, .. },
+                source_map::Spanned { node: hir::BinOpKind::And | hir::BinOpKind::Or, .. },
                 ref l,
                 ref r,
             ) => {
@@ -268,14 +263,19 @@ fn resolve_expr<'tcx>(visitor: &mut RegionResolutionVisitor<'tcx>, expr: &'tcx h
                 // into a terminating scope if it is not a binop.
 
                 let terminate_lhs = match l.kind {
+                    // let expressions can create temporaries that live on
                     hir::ExprKind::Let(_) => false,
-                    hir::ExprKind::Binary(source_map::Spanned { node, .. }, ..)
-                        if node == outer =>
-                    {
-                        false
-                    }
-                    // If the LHS is not another binop itself of the same kind as
-                    // the current binop, mark it as terminating.
+                    // binops already drop their temporaries, so there is no
+                    // need to put them into a terminating scope.
+                    // This is purely an optimization to reduce the number of
+                    // terminating scopes.
+                    hir::ExprKind::Binary(
+                        source_map::Spanned {
+                            node: hir::BinOpKind::And | hir::BinOpKind::Or, ..
+                        },
+                        ..,
+                    ) => false,
+                    // otherwise: mark it as terminating
                     _ => true,
                 };
                 if terminate_lhs {

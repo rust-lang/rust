@@ -172,6 +172,20 @@ impl DropOrderCollector {
         }
     }
 
+    fn mixed_and_or_chain(&self) {
+        // issue-103107
+        if self.option_loud_drop(1).is_none() // 1
+            || self.option_loud_drop(2).is_none() // 2
+            || self.option_loud_drop(3).is_some() // 3
+            && self.option_loud_drop(4).is_some() // 4
+            && self.option_loud_drop(5).is_none() // 5
+            || self.option_loud_drop(6).is_none() // 6
+            || self.option_loud_drop(7).is_some() // 7
+        {
+            self.print(8); // 8
+        }
+    }
+
     fn let_chain(&self) {
         // take the "then" branch
         if self.option_loud_drop(1).is_some() // 1
@@ -249,6 +263,11 @@ fn main() {
     println!("-- or chain --");
     let collector = DropOrderCollector::default();
     collector.or_chain();
+    collector.assert_sorted();
+
+    println!("-- mixed and/or chain --");
+    let collector = DropOrderCollector::default();
+    collector.mixed_and_or_chain();
     collector.assert_sorted();
 
     println!("-- if let --");
