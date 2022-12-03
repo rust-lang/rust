@@ -526,6 +526,15 @@ impl TestRunner {
                         "/usr/aarch64-linux-gnu".to_owned(),
                     ];
                 }
+                "s390x-unknown-linux-gnu" => {
+                    // We are cross-compiling for s390x. Use the correct linker and run tests in qemu.
+                    rustflags = format!("-Clinker=s390x-linux-gnu-gcc{}", rustflags);
+                    runner = vec![
+                        "qemu-s390x".to_owned(),
+                        "-L".to_owned(),
+                        "/usr/s390x-linux-gnu".to_owned(),
+                    ];
+                }
                 "x86_64-pc-windows-gnu" => {
                     // We are cross-compiling for Windows. Run tests in wine.
                     runner = vec!["wine".to_owned()];

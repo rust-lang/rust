@@ -119,10 +119,10 @@ pub(crate) fn build_sysroot(
 
             if host_triple != target_triple {
                 // When cross-compiling it is often necessary to manually pick the right linker
-                let linker = if target_triple == "aarch64-unknown-linux-gnu" {
-                    Some("aarch64-linux-gnu-gcc")
-                } else {
-                    None
+                let linker = match target_triple {
+                    "aarch64-unknown-linux-gnu" => Some("aarch64-linux-gnu-gcc"),
+                    "s390x-unknown-linux-gnu" => Some("s390x-linux-gnu-gcc"),
+                    _ => None,
                 };
                 build_clif_sysroot_for_triple(
                     dirs,
