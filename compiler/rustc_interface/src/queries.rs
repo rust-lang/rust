@@ -20,6 +20,7 @@ use rustc_span::symbol::sym;
 use std::any::Any;
 use std::cell::{Ref, RefCell, RefMut};
 use std::rc::Rc;
+use std::sync::Arc;
 
 /// Represent the result of a query.
 ///
@@ -214,7 +215,7 @@ impl<'tcx> Queries<'tcx> {
     pub fn global_ctxt(&'tcx self) -> Result<&Query<QueryContext<'tcx>>> {
         self.global_ctxt.compute(|| {
             let crate_name = self.crate_name()?.peek().clone();
-            let outputs = self.prepare_outputs()?.peek().clone();
+            let outputs = self.prepare_outputs()?.take();
             let dep_graph = self.dep_graph()?.peek().clone();
             let (krate, resolver, lint_store) = self.expansion()?.take();
             Ok(passes::create_global_ctxt(
@@ -235,7 +236,6 @@ impl<'tcx> Queries<'tcx> {
 
     pub fn ongoing_codegen(&'tcx self) -> Result<&Query<Box<dyn Any>>> {
         self.ongoing_codegen.compute(|| {
-            let outputs = self.prepare_outputs()?;
             self.global_ctxt()?.peek_mut().enter(|tcx| {
                 tcx.analysis(()).ok();
 
@@ -249,7 +249,7 @@ impl<'tcx> Queries<'tcx> {
                 // Hook for UI tests.
                 Self::check_for_rustc_errors_attr(tcx);
 
-                Ok(passes::start_codegen(&***self.codegen_backend(), tcx, &*outputs.peek()))
+                Ok(passes::start_codegen(&***self.codegen_backend(), tcx))
             })
         })
     }
@@ -293,8 +293,10 @@ impl<'tcx> Queries<'tcx> {
         let codegen_backend = self.codegen_backend().clone();
 
         let dep_graph = self.dep_graph()?.peek().clone();
-        let prepare_outputs = self.prepare_outputs()?.take();
-        let crate_hash = self.global_ctxt()?.peek_mut().enter(|tcx| tcx.crate_hash(LOCAL_CRATE));
+        let (crate_hash, prepare_outputs) = self
+            .global_ctxt()?
+            .peek_mut()
+            .enter(|tcx| (tcx.crate_hash(LOCAL_CRATE), tcx.output_filenames(()).clone()));
         let ongoing_codegen = self.ongoing_codegen()?.take();
 
         Ok(Linker {
@@ -316,7 +318,7 @@ pub struct Linker {
 
     // compilation outputs
     dep_graph: DepGraph,
-    prepare_outputs: OutputFilenames,
+    prepare_outputs: Arc<OutputFilenames>,
     crate_hash: Svh,
     ongoing_codegen: Box<dyn Any>,
 }
