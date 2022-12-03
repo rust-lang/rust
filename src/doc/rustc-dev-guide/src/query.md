@@ -223,7 +223,7 @@ Let's go over these elements one by one:
 - **Query modifiers:** various flags and options that customize how the
   query is processed (mostly with respect to [incremental compilation][incrcomp]).
 
-[Key]: https://doc.rust-lang.org/nightly/nightly-rustc/rustc_query_impl/keys/trait.Key.html
+[Key]: https://doc.rust-lang.org/nightly/nightly-rustc/rustc_middle/query/keys/trait.Key.html
 [incrcomp]: queries/incremental-compilation-in-detail.html#query-modifiers
 
 So, to add a query:

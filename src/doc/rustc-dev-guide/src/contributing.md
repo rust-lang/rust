@@ -273,6 +273,7 @@ Breakage is not allowed in the beta and stable channels, and must be addressed
 before the PR is merged. They are also not allowed to be broken on master in
 the week leading up to the beta cut.
 
+[Miri]: https://github.com/rust-lang/miri
 [git submodules]: https://git-scm.com/book/en/v2/Git-Tools-Submodules
 [`.gitmodules`]: https://github.com/rust-lang/rust/blob/master/.gitmodules
 [The Rust Reference]: https://github.com/rust-lang/reference/

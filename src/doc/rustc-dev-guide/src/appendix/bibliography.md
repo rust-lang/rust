@@ -23,7 +23,7 @@ Rust, as well as publications about Rust.
 * [Scheduling multithreaded computations by work stealing](http://supertech.csail.mit.edu/papers/steal.pdf)
 * [Thread scheduling for multiprogramming multiprocessors](https://www.eecis.udel.edu/%7Ecavazos/cisc879-spring2008/papers/arora98thread.pdf)
 * [The data locality of work stealing](http://www.aladdin.cs.cmu.edu/papers/pdfs/y2000/locality_spaa00.pdf)
-* [Dynamic circular work stealing deque](https://citeseerx.ist.psu.edu/viewdoc/download?doi=10.1.1.170.1097&rep=rep1&type=pdf) - The Chase/Lev deque
+* [Dynamic circular work stealing deque](https://patents.google.com/patent/US7346753B2/en) - The Chase/Lev deque
 * [Work-first and help-first scheduling policies for async-finish task parallelism](https://dl.acm.org/doi/10.1109/IPDPS.2009.5161079) - More general than fully-strict work stealing
 * [A Java fork/join calamity](https://web.archive.org/web/20190904045322/http://www.coopsoft.com/ar/CalamityArticle.html) - critique of Java's fork/join library, particularly its application of work stealing to non-strict computation
 * [Scheduling techniques for concurrent systems](https://www.stanford.edu/~ouster/cgi-bin/papers/coscheduling.pdf)
@@ -81,7 +81,7 @@ Rust, as well as publications about Rust.
 * [Ownership is Theft: Experiences Building an Embedded OS in Rust - Amit Levy, et. al.](https://amitlevy.com/papers/tock-plos2015.pdf)
 * [You can't spell trust without Rust](https://raw.githubusercontent.com/Gankro/thesis/master/thesis.pdf). Alexis Beingessner's master's thesis.
 * [Rust-Bio: a fast and safe bioinformatics library](https://academic.oup.com/bioinformatics/article/32/3/444/1743419). Johannes Köster
-* [Safe, Correct, and Fast Low-Level Networking](https://citeseerx.ist.psu.edu/viewdoc/summary?doi=10.1.1.704.1768). Robert Clipsham's master's thesis.
+* [Safe, Correct, and Fast Low-Level Networking](https://octarineparrot.com/assets/msci_paper.pdf). Robert Clipsham's master's thesis.
 * [Formalizing Rust traits](https://open.library.ubc.ca/cIRcle/collections/ubctheses/24/items/1.0220521). Jonatan Milewski's master's thesis.
 * [Rust as a Language for High Performance GC Implementation](https://users.cecs.anu.edu.au/~steveb/downloads/pdf/rust-ismm-2016.pdf)
 * [Simple Verification of Rust Programs via Functional Purification](https://github.com/Kha/electrolysis). Sebastian Ullrich's master's thesis.

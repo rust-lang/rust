@@ -328,5 +328,5 @@ does not.
 - [nLab](https://ncatlab.org/nlab/show/HomePage)
 
 ## Misc Papers and Blog Posts
-- [Programming in Martin-Löf's Type Theory](http://citeseerx.ist.psu.edu/viewdoc/download?doi=10.1.1.118.6683&rep=rep1&type=pdf)
+- [Programming in Martin-Löf's Type Theory](https://www.researchgate.net/publication/213877272_Programming_in_Martin-Lof's_Type_Theory)
 - [Polymorphism, Subtyping, and Type Inference in MLsub](https://dl.acm.org/doi/10.1145/3093333.3009882)

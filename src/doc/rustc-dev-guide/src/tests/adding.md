@@ -96,7 +96,7 @@ You should see an error message, something like this:
 
 > error: /rust/src/test/ui/async-await/await-without-async.rs:7: unexpected
 > error: '7:10: 7:16: `await` is only allowed inside `async` functions and
-> blocks [E0728]'
+> blocks E0728'
 
 ### Step 3. Add error annotations
 

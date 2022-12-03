@@ -374,7 +374,7 @@ For more details on bootstrapping, see
 - Lexical Analysis: Lex the user program to a stream of tokens
   - Guide: [Lexing and Parsing](the-parser.md)
   - Lexer definition: [`rustc_lexer`](https://doc.rust-lang.org/nightly/nightly-rustc/rustc_lexer/index.html)
-  - Main entry point: [`rustc_lexer::first_token`](https://doc.rust-lang.org/nightly/nightly-rustc/rustc_lexer/fn.first_token.html)
+  - Main entry point: [`rustc_lexer::cursor::Cursor::advance_token`](https://doc.rust-lang.org/nightly/nightly-rustc/rustc_lexer/cursor/struct.Cursor.html#method.advance_token)
 - Parsing: Parse the stream of tokens to an Abstract Syntax Tree (AST)
   - Guide: [Lexing and Parsing](the-parser.md)
   - Guide: [Macro Expansion](macro-expansion.md)
