@@ -191,8 +191,10 @@ differently from other crates that are directly in this repo:
 
 In contrast to `submodule` dependencies
 (see below for those), the `subtree` dependencies are just regular files and directories which can
-be updated in tree. However, enhancements, bug fixes, etc. specific to these tools should be filed
-against the tools directly in their respective upstream repositories.
+be updated in tree. However, if possible, enhancements, bug fixes, etc. specific
+to these tools should be filed against the tools directly in their respective
+upstream repositories. The exception is that when rustc changes are required to
+implement a new tool feature or test, that should happen in one collective rustc PR.
 
 #### Synchronizing a subtree
 
