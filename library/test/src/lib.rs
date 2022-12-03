@@ -384,8 +384,17 @@ where
             let mut completed_test = rx.recv().unwrap();
             RunningTest { join_handle }.join(&mut completed_test);
 
+            let fail_fast = match completed_test.result {
+                TrIgnored | TrOk | TrBench(_) => false,
+                TrFailed | TrFailedMsg(_) | TrTimedFail => opts.fail_fast,
+            };
+
             let event = TestEvent::TeResult(completed_test);
             notify_about_test_event(event)?;
+
+            if fail_fast {
+                return Ok(());
+            }
         }
     } else {
         while pending > 0 || !remaining.is_empty() {
@@ -431,9 +440,20 @@ where
             let running_test = running_tests.remove(&completed_test.id).unwrap();
             running_test.join(&mut completed_test);
 
+            let fail_fast = match completed_test.result {
+                TrIgnored | TrOk | TrBench(_) => false,
+                TrFailed | TrFailedMsg(_) | TrTimedFail => opts.fail_fast,
+            };
+
             let event = TestEvent::TeResult(completed_test);
             notify_about_test_event(event)?;
             pending -= 1;
+
+            if fail_fast {
+                // Prevent remaining test threads from panicking
+                std::mem::forget(rx);
+                return Ok(());
+            }
         }
     }
 
