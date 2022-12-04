@@ -58,22 +58,39 @@ public:
 
     // Forcibly require emission of all libdevice
     for (it = dg.begin(); it != dg.end(); ++it) {
-      auto FD = dyn_cast<FunctionDecl>(*it);
-      if (!FD)
-        continue;
+      if (auto FD = dyn_cast<FunctionDecl>(*it)) {
+        if (!FD->hasAttr<clang::CUDADeviceAttr>())
+          continue;
 
-      if (!FD->hasAttr<clang::CUDADeviceAttr>())
-        continue;
+        if (!FD->getIdentifier())
+          continue;
+        if (!StringRef(FD->getLocation().printToString(CI.getSourceManager()))
+                 .contains("/__clang_cuda_math.h"))
+          continue;
 
-      if (!FD->getIdentifier())
-        continue;
-      if (!StringRef(FD->getLocation().printToString(CI.getSourceManager()))
-               .contains("/__clang_cuda_math.h"))
-        continue;
-
-      FD->addAttr(UsedAttr::CreateImplicit(CI.getASTContext()));
+        FD->addAttr(UsedAttr::CreateImplicit(CI.getASTContext()));
+      }
+      if (auto FD = dyn_cast<VarDecl>(*it)) {
+        HandleCXXStaticMemberVarInstantiation(FD);
+      }
     }
     return true;
+  }
+  void HandleCXXStaticMemberVarInstantiation(clang::VarDecl *V) override {
+    if (!V->getIdentifier())
+      return;
+    auto name = V->getName();
+    if (!(name.contains("__enzyme_inactive_global") ||
+          name.contains("__enzyme_inactivefn") ||
+          name.contains("__enzyme_function_like") ||
+          name.contains("__enzyme_allocation_like") ||
+          name.contains("__enzyme_register_gradient") ||
+          name.contains("__enzyme_register_derivative") ||
+          name.contains("__enzyme_register_splitderivative")))
+      return;
+
+    V->addAttr(clang::UsedAttr::CreateImplicit(CI.getASTContext()));
+    return;
   }
 };
 

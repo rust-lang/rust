@@ -33,6 +33,7 @@
 #include "llvm/IR/Function.h"
 #include "llvm/IR/GlobalVariable.h"
 #include "llvm/IR/Module.h"
+#include "llvm/Support/raw_ostream.h"
 
 #include "llvm/Pass.h"
 
@@ -45,6 +46,10 @@ using namespace llvm;
 #undef DEBUG_TYPE
 #endif
 #define DEBUG_TYPE "preserve-nvvm"
+
+#if LLVM_VERSION_MAJOR >= 14
+#define addAttribute addAttributeAtIndex
+#endif
 
 namespace {
 
@@ -169,12 +174,226 @@ public:
           if (auto GV = cast<GlobalVariable>(V)) {
             GV->setMetadata("enzyme_inactive", MDNode::get(g.getContext(), {}));
             toErase.push_back(&g);
+            changed = true;
+          } else {
+            llvm::errs() << "Param of __enzyme_inactive_global must be a "
+                            "global variable"
+                         << g << "\n"
+                         << *V << "\n";
+            llvm_unreachable("__enzyme_inactivefn");
           }
         }
       }
+      if (g.getName().contains("__enzyme_inactivefn")) {
+        if (g.hasInitializer()) {
+          Value *V = g.getInitializer();
+          while (1) {
+            if (auto CE = dyn_cast<ConstantExpr>(V)) {
+              V = CE->getOperand(0);
+              continue;
+            }
+            if (auto CA = dyn_cast<ConstantAggregate>(V)) {
+              V = CA->getOperand(0);
+              continue;
+            }
+            break;
+          }
+          if (auto F = cast<Function>(V)) {
+            F->addAttribute(AttributeList::FunctionIndex,
+                            Attribute::get(g.getContext(), "enzyme_inactive"));
+            toErase.push_back(&g);
+            changed = true;
+          } else {
+            llvm::errs() << "Param of __enzyme_inactivefn must be a "
+                            "constant function"
+                         << g << "\n"
+                         << *V << "\n";
+            llvm_unreachable("__enzyme_inactivefn");
+          }
+        }
+      }
+      if (g.getName().contains("__enzyme_function_like")) {
+        if (g.hasInitializer()) {
+          auto CA = dyn_cast<ConstantAggregate>(g.getInitializer());
+          if (!CA || CA->getNumOperands() < 2) {
+            llvm::errs() << "Use of "
+                         << "enzyme_function_like"
+                         << " must be a "
+                            "constant of size at least "
+                         << 2 << " " << g << "\n";
+            llvm_unreachable("enzyme_function_like");
+          }
+          Value *V = CA->getOperand(0);
+          Value *name = CA->getOperand(1);
+          while (auto CE = dyn_cast<ConstantExpr>(V)) {
+            V = CE->getOperand(0);
+          }
+          while (auto CE = dyn_cast<ConstantExpr>(name)) {
+            name = CE->getOperand(0);
+          }
+          StringRef nameVal;
+          if (auto GV = dyn_cast<GlobalVariable>(name))
+            if (GV->isConstant())
+              if (auto C = GV->getInitializer())
+                if (auto CA = dyn_cast<ConstantDataArray>(C))
+                  if (CA->getType()->getElementType()->isIntegerTy(8) &&
+                      CA->isCString())
+                    nameVal = CA->getAsCString();
+
+          if (nameVal == "") {
+            llvm::errs() << *name << "\n";
+            llvm::errs() << "Use of "
+                         << "enzyme_function_like"
+                         << "requires a non-empty function name"
+                         << "\n";
+            llvm_unreachable("enzyme_function_like");
+          }
+          if (auto F = cast<Function>(V)) {
+            F->addAttribute(
+                AttributeList::FunctionIndex,
+                Attribute::get(g.getContext(), "enzyme_math", nameVal));
+            toErase.push_back(&g);
+            changed = true;
+          } else {
+            llvm::errs() << "Param of __enzyme_function_like must be a "
+                            "constant function"
+                         << g << "\n"
+                         << *V << "\n";
+            llvm_unreachable("__enzyme_inactivefn");
+          }
+        }
+      }
+      if (g.getName().contains("__enzyme_allocation_like")) {
+        if (g.hasInitializer()) {
+          auto CA = dyn_cast<ConstantAggregate>(g.getInitializer());
+          if (!CA || CA->getNumOperands() != 4) {
+            llvm::errs() << "Use of "
+                         << "enzyme_allocation_like"
+                         << " must be a "
+                            "constant of size at least "
+                         << 4 << " " << g << "\n";
+            llvm_unreachable("enzyme_allocation_like");
+          }
+          Value *V = CA->getOperand(0);
+          Value *name = CA->getOperand(1);
+          while (auto CE = dyn_cast<ConstantExpr>(V)) {
+            V = CE->getOperand(0);
+          }
+          while (auto CE = dyn_cast<ConstantExpr>(name)) {
+            name = CE->getOperand(0);
+          }
+          Value *deallocind = CA->getOperand(2);
+          while (auto CE = dyn_cast<ConstantExpr>(deallocind)) {
+            deallocind = CE->getOperand(0);
+          }
+          Value *deallocfn = CA->getOperand(3);
+          while (auto CE = dyn_cast<ConstantExpr>(deallocfn)) {
+            deallocfn = CE->getOperand(0);
+          }
+          size_t index = 0;
+          if (auto CI = dyn_cast<ConstantInt>(name)) {
+            index = CI->getZExtValue();
+          } else {
+            llvm::errs() << *name << "\n";
+            llvm::errs() << "Use of "
+                         << "enzyme_allocation_like"
+                         << "requires an integer index"
+                         << "\n";
+            llvm_unreachable("enzyme_allocation_like");
+          }
+
+          StringRef deallocIndStr;
+          bool foundInd = false;
+          if (auto GV = dyn_cast<GlobalVariable>(deallocind))
+            if (GV->isConstant())
+              if (auto C = GV->getInitializer())
+                if (auto CA = dyn_cast<ConstantDataArray>(C))
+                  if (CA->getType()->getElementType()->isIntegerTy(8) &&
+                      CA->isCString()) {
+                    deallocIndStr = CA->getAsCString();
+                    foundInd = true;
+                  }
+
+          if (!foundInd) {
+            llvm::errs() << *deallocind << "\n";
+            llvm::errs() << "Use of "
+                         << "enzyme_allocation_like"
+                         << "requires a deallocation index string"
+                         << "\n";
+            llvm_unreachable("enzyme_allocation_like");
+          }
+          if (auto F = dyn_cast<Function>(V)) {
+            F->addAttribute(AttributeList::FunctionIndex,
+                            Attribute::get(g.getContext(), "enzyme_allocator",
+                                           std::to_string(index)));
+          } else {
+            llvm::errs() << "Param of __enzyme_allocation_like must be a "
+                            "function"
+                         << g << "\n"
+                         << *V << "\n";
+            llvm_unreachable("__enzyme_allocation_like");
+          }
+          cast<Function>(V)->addAttribute(AttributeList::FunctionIndex,
+                                          Attribute::get(g.getContext(),
+                                                         "enzyme_deallocator",
+                                                         deallocIndStr));
+
+          if (auto F = dyn_cast<Function>(deallocfn)) {
+            cast<Function>(V)->setMetadata(
+                "enzyme_deallocator_fn",
+                llvm::MDTuple::get(F->getContext(),
+                                   {llvm::ValueAsMetadata::get(F)}));
+          } else {
+            llvm::errs() << "Free fn of __enzyme_allocation_like must be a "
+                            "function"
+                         << g << "\n"
+                         << *deallocfn << "\n";
+            llvm_unreachable("__enzyme_allocation_like");
+          }
+          toErase.push_back(&g);
+          changed = true;
+        }
+      }
     }
-    for (auto G : toErase)
+
+    for (auto G : toErase) {
+      if (auto V = F.getParent()->getGlobalVariable("llvm.used")) {
+        auto C = cast<ConstantArray>(V->getInitializer());
+        SmallVector<Constant *, 1> toKeep;
+        bool found = false;
+        for (unsigned i = 0; i < C->getNumOperands(); i++) {
+          Value *Op = C->getOperand(i)->stripPointerCasts();
+          if (Op == G)
+            found = true;
+          else
+            toKeep.push_back(C->getOperand(i));
+        }
+        if (found) {
+          if (toKeep.size()) {
+            auto CA = ConstantArray::get(
+                ArrayType::get(C->getType()->getElementType(), toKeep.size()),
+                toKeep);
+            GlobalVariable *NGV = new GlobalVariable(
+                CA->getType(), V->isConstant(), V->getLinkage(), CA, "",
+                V->getThreadLocalMode());
+            V->getParent()->getGlobalList().insert(V->getIterator(), NGV);
+            NGV->takeName(V);
+
+            // Nuke the old list, replacing any uses with the new one.
+            if (!V->use_empty()) {
+              Constant *VV = NGV;
+              if (VV->getType() != V->getType())
+                VV = ConstantExpr::getBitCast(VV, V->getType());
+              V->replaceAllUsesWith(VV);
+            }
+          }
+          V->eraseFromParent();
+        }
+      }
+      changed = true;
+      G->replaceAllUsesWith(ConstantPointerNull::get(G->getType()));
       G->eraseFromParent();
+    }
 
     if (!Begin && F.hasFnAttribute("prev_fixup")) {
       changed = true;
