@@ -203,7 +203,9 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
         // type/region parameters.
         let self_ty = obligation.self_ty().skip_binder();
         match self_ty.kind() {
-            ty::Generator(..) => {
+            // async constructs get lowered to a special kind of generator that
+            // should *not* `impl Generator`.
+            ty::Generator(did, ..) if !self.tcx().generator_is_async(*did) => {
                 debug!(?self_ty, ?obligation, "assemble_generator_candidates",);
 
                 candidates.vec.push(GeneratorCandidate);
@@ -223,6 +225,8 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
     ) {
         let self_ty = obligation.self_ty().skip_binder();
         if let ty::Generator(did, ..) = self_ty.kind() {
+            // async constructs get lowered to a special kind of generator that
+            // should directly `impl Future`.
             if self.tcx().generator_is_async(*did) {
                 debug!(?self_ty, ?obligation, "assemble_future_candidates",);
 
