@@ -2,18 +2,17 @@
 //! For details about how this works in rustc, see the method lookup page in the
 //! [rustc guide](https://rust-lang.github.io/rustc-guide/method-lookup.html)
 //! and the corresponding code mostly in rustc_hir_analysis/check/method/probe.rs.
-use std::{iter, ops::ControlFlow, sync::Arc};
+use std::{ops::ControlFlow, sync::Arc};
 
-use arrayvec::ArrayVec;
 use base_db::{CrateId, Edition};
 use chalk_ir::{cast::Cast, Mutability, UniverseIndex};
 use hir_def::{
     data::ImplData, item_scope::ItemScope, nameres::DefMap, AssocItemId, BlockId, ConstId,
-    FunctionId, GenericDefId, HasModule, ImplId, ItemContainerId, Lookup, ModuleDefId, ModuleId,
-    TraitId,
+    FunctionId, HasModule, ImplId, ItemContainerId, Lookup, ModuleDefId, ModuleId, TraitId,
 };
 use hir_expand::name::Name;
 use rustc_hash::{FxHashMap, FxHashSet};
+use smallvec::{smallvec, SmallVec};
 use stdx::never;
 
 use crate::{
@@ -336,21 +335,18 @@ impl InherentImpls {
     }
 }
 
-pub(crate) fn inherent_impl_crates_query(
+pub(crate) fn incoherent_inherent_impl_crates(
     db: &dyn HirDatabase,
     krate: CrateId,
     fp: TyFingerprint,
-) -> ArrayVec<CrateId, 2> {
+) -> SmallVec<[CrateId; 2]> {
     let _p = profile::span("inherent_impl_crates_query");
-    let mut res = ArrayVec::new();
+    let mut res = SmallVec::new();
     let crate_graph = db.crate_graph();
 
+    // should pass crate for finger print and do reverse deps
+
     for krate in crate_graph.transitive_deps(krate) {
-        if res.is_full() {
-            // we don't currently look for or store more than two crates here,
-            // so don't needlessly look at more crates than necessary.
-            break;
-        }
         let impls = db.inherent_impls_in_crate(krate);
         if impls.map.get(&fp).map_or(false, |v| !v.is_empty()) {
             res.push(krate);
@@ -392,19 +388,40 @@ pub fn def_crates(
     db: &dyn HirDatabase,
     ty: &Ty,
     cur_crate: CrateId,
-) -> Option<ArrayVec<CrateId, 2>> {
-    let mod_to_crate_ids = |module: ModuleId| Some(iter::once(module.krate()).collect());
-
-    let fp = TyFingerprint::for_inherent_impl(ty);
-
+) -> Option<SmallVec<[CrateId; 2]>> {
     match ty.kind(Interner) {
-        TyKind::Adt(AdtId(def_id), _) => mod_to_crate_ids(def_id.module(db.upcast())),
-        TyKind::Foreign(id) => {
-            mod_to_crate_ids(from_foreign_def_id(*id).lookup(db.upcast()).module(db.upcast()))
+        &TyKind::Adt(AdtId(def_id), _) => {
+            let rustc_has_incoherent_inherent_impls = match def_id {
+                hir_def::AdtId::StructId(id) => {
+                    db.struct_data(id).rustc_has_incoherent_inherent_impls
+                }
+                hir_def::AdtId::UnionId(id) => {
+                    db.union_data(id).rustc_has_incoherent_inherent_impls
+                }
+                hir_def::AdtId::EnumId(id) => db.enum_data(id).rustc_has_incoherent_inherent_impls,
+            };
+            Some(if rustc_has_incoherent_inherent_impls {
+                db.incoherent_inherent_impl_crates(cur_crate, TyFingerprint::Adt(def_id))
+            } else {
+                smallvec![def_id.module(db.upcast()).krate()]
+            })
         }
-        TyKind::Dyn(_) => ty
-            .dyn_trait()
-            .and_then(|trait_| mod_to_crate_ids(GenericDefId::TraitId(trait_).module(db.upcast()))),
+        &TyKind::Foreign(id) => {
+            let alias = from_foreign_def_id(id);
+            Some(if db.type_alias_data(alias).rustc_has_incoherent_inherent_impls {
+                db.incoherent_inherent_impl_crates(cur_crate, TyFingerprint::ForeignType(id))
+            } else {
+                smallvec![alias.module(db.upcast()).krate()]
+            })
+        }
+        TyKind::Dyn(_) => {
+            let trait_id = ty.dyn_trait()?;
+            Some(if db.trait_data(trait_id).rustc_has_incoherent_inherent_impls {
+                db.incoherent_inherent_impl_crates(cur_crate, TyFingerprint::Dyn(trait_id))
+            } else {
+                smallvec![trait_id.module(db.upcast()).krate()]
+            })
+        }
         // for primitives, there may be impls in various places (core and alloc
         // mostly). We just check the whole crate graph for crates with impls
         // (cached behind a query).
@@ -412,10 +429,11 @@ pub fn def_crates(
         | TyKind::Str
         | TyKind::Slice(_)
         | TyKind::Array(..)
-        | TyKind::Raw(..) => {
-            Some(db.inherent_impl_crates(cur_crate, fp.expect("fingerprint for primitive")))
-        }
-        _ => return None,
+        | TyKind::Raw(..) => Some(db.incoherent_inherent_impl_crates(
+            cur_crate,
+            TyFingerprint::for_inherent_impl(ty).expect("fingerprint for primitive"),
+        )),
+        _ => None,
     }
 }
 
