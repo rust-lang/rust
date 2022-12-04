@@ -3365,13 +3365,13 @@ impl<'a: 'ast, 'b, 'ast> LateResolutionVisitor<'a, 'b, 'ast> {
             // Before we start looking for candidates, we have to get our hands
             // on the type user is trying to perform invocation on; basically:
             // we're transforming `HashMap::new` into just `HashMap`.
-            let path = match path.split_last() {
+            let prefix_path = match path.split_last() {
                 Some((_, path)) if !path.is_empty() => path,
                 _ => return Some(parent_err),
             };
 
             let (mut err, candidates) =
-                this.smart_resolve_report_errors(path, path_span, PathSource::Type, None);
+                this.smart_resolve_report_errors(prefix_path, path_span, PathSource::Type, None);
 
             // There are two different error messages user might receive at
             // this point:
@@ -3415,11 +3415,23 @@ impl<'a: 'ast, 'b, 'ast> LateResolutionVisitor<'a, 'b, 'ast> {
 
             if this.should_report_errs() {
                 if candidates.is_empty() {
-                    // When there is no suggested imports, we can just emit the error
-                    // and suggestions immediately. Note that we bypass the usually error
-                    // reporting routine (ie via `self.r.report_error`) because we need
-                    // to post-process the `ResolutionError` above.
-                    err.emit();
+                    if path.len() == 2 && prefix_path.len() == 1 {
+                        // Delay to check whether methond name is an associated function or not
+                        // ```
+                        // let foo = Foo {};
+                        // foo::bar(); // possibly suggest to foo.bar();
+                        //```
+                        err.stash(
+                            prefix_path[0].ident.span,
+                            rustc_errors::StashKey::CallAssocMethod,
+                        );
+                    } else {
+                        // When there is no suggested imports, we can just emit the error
+                        // and suggestions immediately. Note that we bypass the usually error
+                        // reporting routine (ie via `self.r.report_error`) because we need
+                        // to post-process the `ResolutionError` above.
+                        err.emit();
+                    }
                 } else {
                     // If there are suggested imports, the error reporting is delayed
                     this.r.use_injections.push(UseError {
@@ -3428,7 +3440,7 @@ impl<'a: 'ast, 'b, 'ast> LateResolutionVisitor<'a, 'b, 'ast> {
                         def_id,
                         instead: false,
                         suggestion: None,
-                        path: path.into(),
+                        path: prefix_path.into(),
                         is_call: source.is_call(),
                     });
                 }
