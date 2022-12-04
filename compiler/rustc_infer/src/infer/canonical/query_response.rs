@@ -151,7 +151,11 @@ impl<'tcx> InferCtxt<'tcx> {
         })
     }
 
-    fn take_opaque_types_for_query_response(&self) -> Vec<(Ty<'tcx>, Ty<'tcx>)> {
+    /// FIXME: This method should only be used for canonical queries and therefore be private.
+    ///
+    /// As the new solver does canonicalization slightly differently, this is also used there
+    /// for now. This should hopefully change fairly soon.
+    pub fn take_opaque_types_for_query_response(&self) -> Vec<(Ty<'tcx>, Ty<'tcx>)> {
         self.inner
             .borrow_mut()
             .opaque_type_storage

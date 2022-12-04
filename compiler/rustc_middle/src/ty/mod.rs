@@ -535,6 +535,17 @@ impl<'tcx> Predicate<'tcx> {
         self
     }
 
+    #[instrument(level = "debug", skip(tcx), ret)]
+    pub fn is_coinductive(self, tcx: TyCtxt<'tcx>) -> bool {
+        match self.kind().skip_binder() {
+            ty::PredicateKind::Clause(ty::Clause::Trait(data)) => {
+                tcx.trait_is_coinductive(data.def_id())
+            }
+            ty::PredicateKind::WellFormed(_) => true,
+            _ => false,
+        }
+    }
+
     /// Whether this projection can be soundly normalized.
     ///
     /// Wf predicates must not be normalized, as normalization
@@ -1018,6 +1029,24 @@ pub struct ProjectionPredicate<'tcx> {
     pub term: Term<'tcx>,
 }
 
+impl<'tcx> ProjectionPredicate<'tcx> {
+    pub fn self_ty(self) -> Ty<'tcx> {
+        self.projection_ty.self_ty()
+    }
+
+    pub fn with_self_ty(self, tcx: TyCtxt<'tcx>, self_ty: Ty<'tcx>) -> ProjectionPredicate<'tcx> {
+        Self { projection_ty: self.projection_ty.with_self_ty(tcx, self_ty), ..self }
+    }
+
+    pub fn trait_def_id(self, tcx: TyCtxt<'tcx>) -> DefId {
+        self.projection_ty.trait_def_id(tcx)
+    }
+
+    pub fn def_id(self) -> DefId {
+        self.projection_ty.def_id
+    }
+}
+
 pub type PolyProjectionPredicate<'tcx> = Binder<'tcx, ProjectionPredicate<'tcx>>;
 
 impl<'tcx> PolyProjectionPredicate<'tcx> {
@@ -1051,18 +1080,6 @@ impl<'tcx> PolyProjectionPredicate<'tcx> {
     pub fn projection_def_id(&self) -> DefId {
         // Ok to skip binder since trait `DefId` does not care about regions.
         self.skip_binder().projection_ty.def_id
-    }
-}
-
-impl<'tcx> ProjectionPredicate<'tcx> {
-    pub fn with_self_ty(self, tcx: TyCtxt<'tcx>, self_ty: Ty<'tcx>) -> Self {
-        Self {
-            projection_ty: tcx.mk_alias_ty(
-                self.projection_ty.def_id,
-                [self_ty.into()].into_iter().chain(self.projection_ty.substs.iter().skip(1)),
-            ),
-            ..self
-        }
     }
 }
 
