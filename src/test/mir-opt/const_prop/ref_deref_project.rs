@@ -1,4 +1,4 @@
-// unit-test
+// compile-flags: -Zmir-enable-passes=-SimplifyLocals-before-const-prop
 // EMIT_MIR ref_deref_project.main.PromoteTemps.diff
 // EMIT_MIR ref_deref_project.main.ConstProp.diff
 
