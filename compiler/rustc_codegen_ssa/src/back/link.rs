@@ -359,21 +359,6 @@ fn link_rlib<'a>(
         }
     }
 
-    for (raw_dylib_name, raw_dylib_imports) in
-        collate_raw_dylibs(sess, &codegen_results.crate_info.used_libraries)?
-    {
-        let output_path = archive_builder_builder.create_dll_import_lib(
-            sess,
-            &raw_dylib_name,
-            &raw_dylib_imports,
-            tmpdir.as_ref(),
-        );
-
-        ab.add_archive(&output_path, Box::new(|_| false)).unwrap_or_else(|e| {
-            sess.fatal(&format!("failed to add native library {}: {}", output_path.display(), e));
-        });
-    }
-
     if let Some(trailing_metadata) = trailing_metadata {
         // Note that it is important that we add all of our non-object "magical
         // files" *after* all of the object files in the archive. The reason for
@@ -414,12 +399,13 @@ fn link_rlib<'a>(
 /// collate the symbols together by library name before generating the import libraries.
 fn collate_raw_dylibs(
     sess: &Session,
-    used_libraries: &[NativeLib],
+    crate_info: &CrateInfo,
 ) -> Result<Vec<(String, Vec<DllImport>)>, ErrorGuaranteed> {
     // Use index maps to preserve original order of imports and libraries.
     let mut dylib_table = FxIndexMap::<String, FxIndexMap<Symbol, &DllImport>>::default();
 
-    for lib in used_libraries {
+    let all_libs = crate_info.used_libraries.iter().chain(crate_info.native_libraries.values().flatten());
+    for lib in all_libs {
         if lib.kind == NativeLibKind::RawDylib {
             let ext = if matches!(lib.verbatim, Some(true)) { "" } else { ".dll" };
             let name = format!("{}{}", lib.name.expect("unnamed raw-dylib library"), ext);
@@ -2008,7 +1994,7 @@ fn linker_with_args<'a>(
 
     // Link with the import library generated for any raw-dylib functions.
     for (raw_dylib_name, raw_dylib_imports) in
-        collate_raw_dylibs(sess, &codegen_results.crate_info.used_libraries)?
+        collate_raw_dylibs(sess, &codegen_results.crate_info)?
     {
         cmd.add_object(&archive_builder_builder.create_dll_import_lib(
             sess,
