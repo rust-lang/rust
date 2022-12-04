@@ -533,6 +533,11 @@ impl<'tcx> Body<'tcx> {
         };
         injection_phase > self.phase
     }
+
+    #[inline]
+    pub fn is_custom_mir(&self) -> bool {
+        self.injection_phase.is_some()
+    }
 }
 
 #[derive(Copy, Clone, PartialEq, Eq, Debug, TyEncodable, TyDecodable, HashStable)]

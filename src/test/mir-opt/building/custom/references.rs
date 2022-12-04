@@ -36,8 +36,22 @@ pub fn immut_ref(x: &i32) -> &i32 {
     )
 }
 
+// EMIT_MIR references.raw_pointer.built.after.mir
+#[custom_mir(dialect = "built")]
+pub fn raw_pointer(x: *const i32) -> *const i32 {
+    // Regression test for a bug in which unsafetyck was not correctly turned off for
+    // `dialect = "built"`
+    mir!({
+        RET = addr_of!(*x);
+        Return()
+    })
+}
+
 fn main() {
     let mut x = 5;
     assert_eq!(*mut_ref(&mut x), 5);
     assert_eq!(*immut_ref(&x), 5);
+    unsafe {
+        assert_eq!(*raw_pointer(addr_of!(x)), 5);
+    }
 }
