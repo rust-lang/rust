@@ -1646,6 +1646,9 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         // the fields with the base_expr. This could cause us to hit errors later
         // when certain fields are assumed to exist that in fact do not.
         if error_happened {
+            if let Some(base_expr) = base_expr {
+                self.check_expr(base_expr);
+            }
             return;
         }
 
