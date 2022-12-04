@@ -28,7 +28,7 @@ fn branches<'tcx>(
 
     let mut fields = Vec::with_capacity(n);
     for i in 0..n {
-        let field = ecx.mplace_field(&place, i, ProjectionMode::Weak).unwrap();
+        let field = ecx.mplace_field(&place, i, ProjectionMode::Strong).unwrap();
         let valtree = const_to_valtree_inner(ecx, &field, num_nodes)?;
         fields.push(Some(valtree));
     }
@@ -437,7 +437,7 @@ fn valtree_into_mplace<'tcx>(
                             )
                             .unwrap()
                     }
-                    _ => ecx.mplace_field(&place_adjusted, i, ProjectionMode::Weak).unwrap(),
+                    _ => ecx.mplace_field(&place_adjusted, i, ProjectionMode::Strong).unwrap(),
                 };
 
                 debug!(?place_inner);

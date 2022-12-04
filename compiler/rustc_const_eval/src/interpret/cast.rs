@@ -385,8 +385,8 @@ impl<'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
                     if cast_ty_field.is_zst() {
                         continue;
                     }
-                    let src_field = self.operand_field(src, i, ProjectionMode::Weak)?;
-                    let dst_field = self.place_field(dest, i, ProjectionMode::Weak)?;
+                    let src_field = self.operand_field(src, i, ProjectionMode::Strong)?;
+                    let dst_field = self.place_field(dest, i, ProjectionMode::Strong)?;
                     if src_field.layout.ty == cast_ty_field.ty {
                         self.copy_op(&src_field, &dst_field, /*allow_transmute*/ false)?;
                     } else {

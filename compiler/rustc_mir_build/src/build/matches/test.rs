@@ -763,7 +763,7 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
             let place = downcast_place.clone_project(PlaceElem::Field(
                 subpattern.field,
                 subpattern.pattern.ty,
-                ProjectionMode::Weak,
+                ProjectionMode::Strong,
             ));
             // e.g., `(x as Variant).0 @ P1`
             MatchPair::new(place, &subpattern.pattern, self)

@@ -216,6 +216,7 @@ impl<'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
                     self.get_place_alloc_mut(&dest)?;
                 } else {
                     // Write the src to the first element.
+                    // We use a weak projection to use `first` as a base for pointer arithmetic.
                     let first = self.mplace_field(&dest, 0, mir::ProjectionMode::Weak)?;
                     self.copy_op(&src, &first.into(), /*allow_transmute*/ false)?;
 

@@ -2715,7 +2715,7 @@ impl UserTypeProjection {
     }
 
     pub(crate) fn leaf(mut self, field: Field) -> Self {
-        self.projs.push(ProjectionElem::Field(field, (), ProjectionMode::Weak));
+        self.projs.push(ProjectionElem::Field(field, (), ProjectionMode::Strong));
         self
     }
 
@@ -2729,7 +2729,7 @@ impl UserTypeProjection {
             Some(adt_def.variant(variant_index).name),
             variant_index,
         ));
-        self.projs.push(ProjectionElem::Field(field, (), ProjectionMode::Weak));
+        self.projs.push(ProjectionElem::Field(field, (), ProjectionMode::Strong));
         self
     }
 }

@@ -639,7 +639,7 @@ impl Map {
                 // Downcasts are currently not supported.
                 return;
             }
-            projection.push(PlaceElem::Field(field, ty, ProjectionMode::Weak));
+            projection.push(PlaceElem::Field(field, ty, ProjectionMode::Strong));
             self.register_with_filter_rec(tcx, local, projection, ty, filter);
             projection.pop();
         });

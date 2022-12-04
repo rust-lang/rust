@@ -361,7 +361,7 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
                                 let place = place_builder.clone_project(PlaceElem::Field(
                                     n,
                                     *ty,
-                                    ProjectionMode::Weak,
+                                    ProjectionMode::Strong,
                                 ));
                                 this.consume_by_copy_or_move(place.to_place(this))
                             }

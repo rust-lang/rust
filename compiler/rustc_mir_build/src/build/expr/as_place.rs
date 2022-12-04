@@ -295,8 +295,8 @@ impl<'tcx> PlaceBuilder<'tcx> {
         &self.projection
     }
 
-    pub(crate) fn field(self, f: Field, ty: Ty<'tcx>) -> Self {
-        self.project(PlaceElem::Field(f, ty, ProjectionMode::Weak))
+    pub(crate) fn field(self, f: Field, ty: Ty<'tcx>, strength: ProjectionMode) -> Self {
+        self.project(PlaceElem::Field(f, ty, strength))
     }
 
     pub(crate) fn deref(self) -> Self {
@@ -425,12 +425,16 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
                 let lhs = &this.thir[lhs];
                 let mut place_builder =
                     unpack!(block = this.expr_as_place(block, lhs, mutability, fake_borrow_temps,));
+                let mut strength = ProjectionMode::Strong;
                 if let ty::Adt(adt_def, _) = lhs.ty.kind() {
                     if adt_def.is_enum() {
                         place_builder = place_builder.downcast(*adt_def, variant_index);
                     }
+                    if adt_def.repr().inhibit_struct_field_reordering_opt() {
+                        strength = ProjectionMode::Weak;
+                    }
                 }
-                block.and(place_builder.field(name, expr.ty))
+                block.and(place_builder.field(name, expr.ty, strength))
             }
             ExprKind::Deref { arg } => {
                 let place_builder = unpack!(

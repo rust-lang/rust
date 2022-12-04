@@ -2721,7 +2721,7 @@ impl<'tcx> TyCtxt<'tcx> {
     }
 
     pub fn mk_place_field(self, place: Place<'tcx>, f: Field, ty: Ty<'tcx>) -> Place<'tcx> {
-        self.mk_place_elem(place, PlaceElem::Field(f, ty, ProjectionMode::Weak))
+        self.mk_place_elem(place, PlaceElem::Field(f, ty, ProjectionMode::Strong))
     }
 
     pub fn mk_place_deref(self, place: Place<'tcx>) -> Place<'tcx> {

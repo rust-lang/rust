@@ -122,7 +122,7 @@ pub(crate) fn try_destructure_mir_constant<'tcx>(
 
     let fields_iter = (0..field_count)
         .map(|i| {
-            let field_op = ecx.operand_field(&down, i, mir::ProjectionMode::Weak)?;
+            let field_op = ecx.operand_field(&down, i, mir::ProjectionMode::Strong)?;
             let val = op_to_const(&ecx, &field_op);
             Ok(mir::ConstantKind::Val(val, field_op.layout.ty))
         })

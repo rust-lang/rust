@@ -844,7 +844,7 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
                     let mutability = captured_place.mutability;
 
                     let mut projs = closure_env_projs.clone();
-                    projs.push(ProjectionElem::Field(Field::new(i), ty, ProjectionMode::Weak));
+                    projs.push(ProjectionElem::Field(Field::new(i), ty, ProjectionMode::Strong));
                     match capture {
                         ty::UpvarCapture::ByValue => {}
                         ty::UpvarCapture::ByRef(..) => {

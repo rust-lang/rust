@@ -21,7 +21,7 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
                 let place = place.clone_project(PlaceElem::Field(
                     fieldpat.field,
                     fieldpat.pattern.ty,
-                    ProjectionMode::Weak,
+                    ProjectionMode::Strong,
                 ));
                 MatchPair::new(place, &fieldpat.pattern, self)
             })
