@@ -540,9 +540,9 @@ impl<'a, 'tcx> ExprUseVisitor<'a, 'tcx> {
             ty::Adt(adt, substs) if adt.is_struct() => {
                 // Consume those fields of the with expression that are needed.
                 for (f_index, with_field) in adt.non_enum_variant().fields.iter().enumerate() {
-                    let is_mentioned = fields.iter().any(|f| {
-                        self.tcx().field_index(f.hir_id, self.mc.typeck_results) == f_index
-                    });
+                    let is_mentioned = fields
+                        .iter()
+                        .any(|f| self.mc.typeck_results.field_index(f.hir_id) == f_index);
                     if !is_mentioned {
                         let field_place = self.mc.cat_projection(
                             &*with_expr,

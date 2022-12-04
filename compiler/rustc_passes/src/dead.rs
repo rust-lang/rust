@@ -124,7 +124,7 @@ impl<'tcx> MarkSymbolVisitor<'tcx> {
     fn handle_field_access(&mut self, lhs: &hir::Expr<'_>, hir_id: hir::HirId) {
         match self.typeck_results().expr_ty_adjusted(lhs).kind() {
             ty::Adt(def, _) => {
-                let index = self.tcx.field_index(hir_id, self.typeck_results());
+                let index = self.typeck_results().field_index(hir_id);
                 self.insert_def_id(def.non_enum_variant().fields[index].did);
             }
             ty::Tuple(..) => {}
@@ -208,7 +208,7 @@ impl<'tcx> MarkSymbolVisitor<'tcx> {
             if let PatKind::Wild = pat.pat.kind {
                 continue;
             }
-            let index = self.tcx.field_index(pat.hir_id, self.typeck_results());
+            let index = self.typeck_results().field_index(pat.hir_id);
             self.insert_def_id(variant.fields[index].did);
         }
     }
@@ -341,7 +341,7 @@ impl<'tcx> MarkSymbolVisitor<'tcx> {
     fn mark_as_used_if_union(&mut self, adt: ty::AdtDef<'tcx>, fields: &[hir::ExprField<'_>]) {
         if adt.is_union() && adt.non_enum_variant().fields.len() > 1 && adt.did().is_local() {
             for field in fields {
-                let index = self.tcx.field_index(field.hir_id, self.typeck_results());
+                let index = self.typeck_results().field_index(field.hir_id);
                 self.insert_def_id(adt.non_enum_variant().fields[index].did);
             }
         }
