@@ -21,6 +21,7 @@ pub fn expr_requires_semi_to_be_stmt(e: &ast::Expr) -> bool {
             | ast::ExprKind::Loop(..)
             | ast::ExprKind::ForLoop(..)
             | ast::ExprKind::TryBlock(..)
+            | ast::ExprKind::ConstBlock(..)
     )
 }
 

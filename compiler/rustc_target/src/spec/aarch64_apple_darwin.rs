@@ -1,4 +1,4 @@
-use super::apple_base::{macos_link_env_remove, macos_llvm_target, opts, Arch};
+use super::apple_base::{macos_llvm_target, opts, Arch};
 use crate::spec::{FramePointer, SanitizerSet, Target, TargetOptions};
 
 pub fn target() -> Target {
@@ -9,8 +9,6 @@ pub fn target() -> Target {
 
     // FIXME: The leak sanitizer currently fails the tests, see #88132.
     base.supported_sanitizers = SanitizerSet::ADDRESS | SanitizerSet::CFI | SanitizerSet::THREAD;
-
-    base.link_env_remove.to_mut().extend(macos_link_env_remove());
 
     Target {
         // Clang automatically chooses a more specific target based on
