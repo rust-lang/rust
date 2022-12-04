@@ -5,16 +5,67 @@
 
 use std::future::Future;
 
+trait Captures<'a> {}
+impl<T> Captures<'_> for T {}
+
 pub trait AsyncTrait {
     fn async_fn(&self, buff: &[u8]) -> impl Future<Output = Vec<u8>>;
+    fn async_fn_early<'a: 'a>(&self, buff: &'a [u8]) -> impl Future<Output = Vec<u8>>;
+    fn async_fn_multiple<'a>(&'a self, buff: &[u8])
+        -> impl Future<Output = Vec<u8>> + Captures<'a>;
+    fn async_fn_reduce_outlive<'a, T>(
+        &'a self,
+        buff: &[u8],
+        t: T,
+    ) -> impl Future<Output = Vec<u8>> + 'a;
+    fn async_fn_reduce<'a, T>(
+        &'a self,
+        buff: &[u8],
+        t: T,
+    ) -> impl Future<Output = Vec<u8>> + Captures<'a>;
 }
 
 pub struct Struct;
 
 impl AsyncTrait for Struct {
     fn async_fn<'a>(&self, buff: &'a [u8]) -> impl Future<Output = Vec<u8>> + 'a {
-        //~^ ERROR `impl` item signature doesn't match `trait` item signature
+        //~^ ERROR `impl` item return type captures lifetime that doesn't appear in `trait`
         async move { buff.to_vec() }
+    }
+
+    fn async_fn_early<'a: 'a>(&self, buff: &'a [u8]) -> impl Future<Output = Vec<u8>> + 'a {
+        //~^ ERROR `impl` item return type captures lifetime that doesn't appear in `trait`
+        async move { buff.to_vec() }
+    }
+
+    fn async_fn_multiple<'a, 'b>(
+        &'a self,
+        buff: &'b [u8],
+    ) -> impl Future<Output = Vec<u8>> + Captures<'a> + Captures<'b> {
+        //~^ ERROR `impl` item return type captures lifetime that doesn't appear in `trait`
+        //~| ERROR lifetime mismatch
+        async move { buff.to_vec() }
+    }
+
+    fn async_fn_reduce_outlive<'a, 'b, T>(
+        &'a self,
+        buff: &'b [u8],
+        t: T,
+    ) -> impl Future<Output = Vec<u8>> {
+        //~^ ERROR the parameter type `T` may not live long enough
+        async move {
+            let _t = t;
+            vec![]
+        }
+    }
+
+    // OK: We remove the `Captures<'a>`, providing a guarantee that we don't capture `'a`,
+    // but we still fulfill the `Captures<'a>` trait bound.
+    fn async_fn_reduce<'a, 'b, T>(&'a self, buff: &'b [u8], t: T) -> impl Future<Output = Vec<u8>> {
+        async move {
+            let _t = t;
+            vec![]
+        }
     }
 }
 
