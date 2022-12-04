@@ -255,9 +255,9 @@ pub(crate) fn data_id_for_alloc_id(
     mutability: rustc_hir::Mutability,
 ) -> DataId {
     cx.todo.push(TodoItem::Alloc(alloc_id));
-    *cx.anon_allocs.entry(alloc_id).or_insert_with(|| {
-        module.declare_anonymous_data(mutability == rustc_hir::Mutability::Mut, false).unwrap()
-    })
+    *cx.anon_allocs
+        .entry(alloc_id)
+        .or_insert_with(|| module.declare_anonymous_data(mutability.is_mut(), false).unwrap())
 }
 
 fn data_id_for_static(
@@ -341,12 +341,7 @@ fn define_all_allocs(tcx: TyCtxt<'_>, module: &mut dyn Module, cx: &mut Constant
                     }
                 };
                 let data_id = *cx.anon_allocs.entry(alloc_id).or_insert_with(|| {
-                    module
-                        .declare_anonymous_data(
-                            alloc.inner().mutability == rustc_hir::Mutability::Mut,
-                            false,
-                        )
-                        .unwrap()
+                    module.declare_anonymous_data(alloc.inner().mutability.is_mut(), false).unwrap()
                 });
                 (data_id, alloc, None)
             }

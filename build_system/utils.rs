@@ -207,5 +207,5 @@ pub(crate) fn copy_dir_recursively(from: &Path, to: &Path) {
 }
 
 pub(crate) fn is_ci() -> bool {
-    env::var("CI").as_ref().map(|val| &**val) == Ok("true")
+    env::var("CI").as_deref() == Ok("true")
 }

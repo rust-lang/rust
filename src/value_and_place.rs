@@ -108,8 +108,8 @@ impl<'tcx> CValue<'tcx> {
     }
 
     // FIXME remove
-    // Forces the data value of a dyn* value to the stack and returns a pointer to it as well as the
-    // vtable pointer.
+    /// Forces the data value of a dyn* value to the stack and returns a pointer to it as well as the
+    /// vtable pointer.
     pub(crate) fn dyn_star_force_data_on_stack(
         self,
         fx: &mut FunctionCx<'_, '_, 'tcx>,
