@@ -517,6 +517,6 @@ pub struct MismatchedStaticLifetime<'a> {
     pub expl: Option<note_and_explain::RegionExplanation<'a>>,
     #[subdiagnostic]
     pub does_not_outlive_static_from_impl: DoesNotOutliveStaticFromImpl,
-    #[subdiagnostic(eager)]
+    #[subdiagnostic]
     pub implicit_static_lifetimes: Vec<ImplicitStaticLifetimeSubdiag>,
 }

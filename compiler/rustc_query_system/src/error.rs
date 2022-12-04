@@ -49,7 +49,7 @@ pub struct Cycle {
     #[primary_span]
     pub span: Span,
     pub stack_bottom: String,
-    #[subdiagnostic(eager)]
+    #[subdiagnostic]
     pub cycle_stack: Vec<CycleStack>,
     #[subdiagnostic]
     pub stack_count: StackCount,

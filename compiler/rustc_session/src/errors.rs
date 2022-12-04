@@ -176,7 +176,7 @@ impl ExprParenthesesNeeded {
 #[derive(Diagnostic)]
 #[diag(session_skipping_const_checks)]
 pub struct SkippingConstChecks {
-    #[subdiagnostic(eager)]
+    #[subdiagnostic]
     pub unleashed_features: Vec<UnleashedFeatureHelp>,
 }
 

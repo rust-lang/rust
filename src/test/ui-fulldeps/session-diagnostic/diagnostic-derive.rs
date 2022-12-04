@@ -683,7 +683,7 @@ struct RawIdentDiagnosticArg {
 #[diag(compiletest_example)]
 struct SubdiagnosticBad {
     #[subdiagnostic(bad)]
-    //~^ ERROR `#[subdiagnostic(bad)]` is not a valid attribute
+    //~^ ERROR `#[subdiagnostic(...)]` is not a valid attribute
     note: Note,
 }
 
@@ -707,7 +707,7 @@ struct SubdiagnosticBadTwice {
 #[diag(compiletest_example)]
 struct SubdiagnosticBadLitStr {
     #[subdiagnostic("bad")]
-    //~^ ERROR `#[subdiagnostic("...")]` is not a valid attribute
+    //~^ ERROR `#[subdiagnostic(...)]` is not a valid attribute
     note: Note,
 }
 
@@ -723,6 +723,7 @@ struct SubdiagnosticEagerLint {
 #[diag(compiletest_example)]
 struct SubdiagnosticEagerCorrect {
     #[subdiagnostic(eager)]
+    //~^ ERROR `#[subdiagnostic(...)]` is not a valid attribute
     note: Note,
 }
 
@@ -743,6 +744,7 @@ pub(crate) struct SubdiagnosticWithSuggestion {
 #[diag(compiletest_example)]
 struct SubdiagnosticEagerSuggestion {
     #[subdiagnostic(eager)]
+    //~^ ERROR `#[subdiagnostic(...)]` is not a valid attribute
     sub: SubdiagnosticWithSuggestion,
 }
 
