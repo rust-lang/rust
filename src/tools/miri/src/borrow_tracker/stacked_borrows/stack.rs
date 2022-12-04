@@ -193,7 +193,7 @@ impl<'tcx> Stack {
         #[cfg(all(feature = "stack-cache", debug_assertions))]
         self.verify_cache_consistency();
 
-        let ProvenanceExtra::Concrete(tag) = tag else {
+        let ProvenanceExtra::Concrete(tag, _, _) = tag else {
             // Handle the wildcard case.
             // Go search the stack for an exposed tag.
             if let Some(idx) =

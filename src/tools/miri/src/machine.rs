@@ -12,6 +12,7 @@ use rustc_ast::ast::Mutability;
 use rustc_data_structures::fx::{FxHashMap, FxHashSet};
 #[allow(unused)]
 use rustc_data_structures::static_assert_size;
+use rustc_errors::pluralize;
 use rustc_middle::{
     mir,
     ty::{
@@ -22,7 +23,7 @@ use rustc_middle::{
 };
 use rustc_span::def_id::{CrateNum, DefId};
 use rustc_span::Symbol;
-use rustc_target::abi::Size;
+use rustc_target::abi::{Layout, Size};
 use rustc_target::spec::abi::Abi;
 
 use crate::{
@@ -148,6 +149,9 @@ pub enum Provenance {
         alloc_id: AllocId,
         /// Stacked Borrows tag.
         tag: BorTag,
+        /// Allowed access range.  The `Size` are absolute byte offsets.
+        /// They are turned into relative offsets in `ProvenanceExtra`.
+        allowed_range: (Size, Size),
     },
     Wildcard,
 }
@@ -173,22 +177,23 @@ impl std::hash::Hash for Provenance {
 /// The "extra" information a pointer has over a regular AllocId.
 #[derive(Copy, Clone, PartialEq)]
 pub enum ProvenanceExtra {
-    Concrete(BorTag),
+    /// `Size`s are the allowed range, relative to the current `AllocId`.
+    Concrete(BorTag, Size, Size),
     Wildcard,
 }
 
 #[cfg(all(target_arch = "x86_64", target_pointer_width = "64"))]
-static_assert_size!(Pointer<Provenance>, 24);
+static_assert_size!(Pointer<Provenance>, 40);
 // FIXME: this would with in 24bytes but layout optimizations are not smart enough
 // #[cfg(all(target_arch = "x86_64", target_pointer_width = "64"))]
 //static_assert_size!(Pointer<Option<Provenance>>, 24);
 #[cfg(all(target_arch = "x86_64", target_pointer_width = "64"))]
-static_assert_size!(Scalar<Provenance>, 32);
+static_assert_size!(Scalar<Provenance>, 48);
 
 impl fmt::Debug for Provenance {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         match self {
-            Provenance::Concrete { alloc_id, tag } => {
+            Provenance::Concrete { alloc_id, tag, allowed_range: (min, max) } => {
                 // Forward `alternate` flag to `alloc_id` printing.
                 if f.alternate() {
                     write!(f, "[{alloc_id:#?}]")?;
@@ -197,6 +202,8 @@ impl fmt::Debug for Provenance {
                 }
                 // Print Stacked Borrows tag.
                 write!(f, "{tag:?}")?;
+                // Print allowed range.
+                write!(f, "[0x{min:x}..0x{max:x}]", min = min.bytes(), max = max.bytes())?;
             }
             Provenance::Wildcard => {
                 write!(f, "[wildcard]")?;
@@ -221,9 +228,21 @@ impl interpret::Provenance for Provenance {
         match (left, right) {
             // If both are the *same* concrete tag, that is the result.
             (
-                Some(Provenance::Concrete { alloc_id: left_alloc, tag: left_tag }),
-                Some(Provenance::Concrete { alloc_id: right_alloc, tag: right_tag }),
-            ) if left_alloc == right_alloc && left_tag == right_tag => left,
+                Some(Provenance::Concrete {
+                    alloc_id: left_alloc,
+                    tag: left_tag,
+                    allowed_range: (left_min, left_max),
+                }),
+                Some(Provenance::Concrete {
+                    alloc_id: right_alloc,
+                    tag: right_tag,
+                    allowed_range: (right_min, right_max),
+                }),
+            ) if left_alloc == right_alloc && left_tag == right_tag => Some(Provenance::Concrete {
+                alloc_id: left_alloc,
+                tag: left_tag,
+                allowed_range: (left_min.max(right_min), left_max.min(right_max)),
+            }),
             // If one side is a wildcard, the best possible outcome is that it is equal to the other
             // one, and we use that.
             (Some(Provenance::Wildcard), o) | (o, Some(Provenance::Wildcard)) => o,
@@ -231,12 +250,27 @@ impl interpret::Provenance for Provenance {
             _ => None,
         }
     }
+
+    fn restrict_to_range(self, ptr: Pointer<Option<Self>>, layout: Layout<'_>) -> Self {
+        match self {
+            Provenance::Concrete { alloc_id, tag, allowed_range: (min, max) } => {
+                let base = ptr.addr();
+                let min = base.max(min);
+                let max =
+                    if layout.abi().is_sized() { (base + layout.size()).min(max) } else { max };
+                Provenance::Concrete { alloc_id, tag, allowed_range: (min, max) }
+            }
+            Provenance::Wildcard => Provenance::Wildcard,
+        }
+    }
 }
 
 impl fmt::Debug for ProvenanceExtra {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         match self {
-            ProvenanceExtra::Concrete(pid) => write!(f, "{pid:?}"),
+            ProvenanceExtra::Concrete(pid, min, max) => {
+                write!(f, "{pid:?}[0x{min:x}..0x{max:x}]", min = min.bytes(), max = max.bytes())
+            }
             ProvenanceExtra::Wildcard => write!(f, "<wildcard>"),
         }
     }
@@ -245,7 +279,7 @@ impl fmt::Debug for ProvenanceExtra {
 impl ProvenanceExtra {
     pub fn and_then<T>(self, f: impl FnOnce(BorTag) -> Option<T>) -> Option<T> {
         match self {
-            ProvenanceExtra::Concrete(pid) => f(pid),
+            ProvenanceExtra::Concrete(pid, _, _) => f(pid),
             ProvenanceExtra::Wildcard => None,
         }
     }
@@ -942,15 +976,21 @@ impl<'mir, 'tcx> Machine<'mir, 'tcx> for MiriMachine<'mir, 'tcx> {
             }
         }
         let absolute_addr = intptrcast::GlobalStateInner::rel_ptr_to_addr(ecx, ptr);
+        let (length, _, _) = ecx.get_alloc_info(ptr.provenance);
         let tag = if let Some(borrow_tracker) = &ecx.machine.borrow_tracker {
             borrow_tracker.borrow_mut().base_ptr_tag(ptr.provenance, &ecx.machine)
         } else {
             // Value does not matter, SB is disabled
             BorTag::default()
         };
+        let absolute_addr = Size::from_bytes(absolute_addr);
         Pointer::new(
-            Provenance::Concrete { alloc_id: ptr.provenance, tag },
-            Size::from_bytes(absolute_addr),
+            Provenance::Concrete {
+                alloc_id: ptr.provenance,
+                tag,
+                allowed_range: (absolute_addr, absolute_addr + length),
+            },
+            absolute_addr,
         )
     }
 
@@ -967,8 +1007,9 @@ impl<'mir, 'tcx> Machine<'mir, 'tcx> for MiriMachine<'mir, 'tcx> {
         ptr: Pointer<Self::Provenance>,
     ) -> InterpResult<'tcx> {
         match ptr.provenance {
-            Provenance::Concrete { alloc_id, tag } =>
-                intptrcast::GlobalStateInner::expose_ptr(ecx, alloc_id, tag),
+            Provenance::Concrete { alloc_id, tag, allowed_range: _ } => {
+                intptrcast::GlobalStateInner::expose_ptr(ecx, alloc_id, tag)
+            }
             Provenance::Wildcard => {
                 // No need to do anything for wildcard pointers as
                 // their provenances have already been previously exposed.
@@ -985,13 +1026,41 @@ impl<'mir, 'tcx> Machine<'mir, 'tcx> for MiriMachine<'mir, 'tcx> {
     ) -> Option<(AllocId, Size, Self::ProvenanceExtra)> {
         let rel = intptrcast::GlobalStateInner::abs_ptr_to_rel(ecx, ptr);
 
-        rel.map(|(alloc_id, size)| {
+        rel.map(|(alloc_id, base_addr, offset)| {
             let tag = match ptr.provenance {
-                Provenance::Concrete { tag, .. } => ProvenanceExtra::Concrete(tag),
+                Provenance::Concrete { tag, allowed_range: (min, max), .. } => {
+                    let min = min - base_addr;
+                    let max = max - base_addr;
+                    ProvenanceExtra::Concrete(tag, min, max)
+                }
                 Provenance::Wildcard => ProvenanceExtra::Wildcard,
             };
-            (alloc_id, size, tag)
+            (alloc_id, offset, tag)
         })
+    }
+
+    #[inline(always)]
+    fn ptr_check_range(
+        _ecx: &MiriInterpCx<'mir, 'tcx>,
+        range: AllocRange,
+        (alloc_id, prov_extra): (AllocId, Self::ProvenanceExtra),
+        msg: CheckInAllocMsg,
+    ) -> InterpResult<'tcx> {
+        if let ProvenanceExtra::Concrete(_, min, max) = prov_extra {
+            if range.start < min || range.end() > max {
+                throw_ub!(Ub(format!(
+                    "{msg}pointer to {alloc_id:?} only permits access to offsets {min}..{max}, \
+                    so access of {ptr_size} byte{ptr_size_p} starting at offset {ptr_offset} \
+                    is out-of-bounds",
+                    min = min.bytes(),
+                    max = max.bytes(),
+                    ptr_size = range.size.bytes(),
+                    ptr_size_p = pluralize!(range.size.bytes()),
+                    ptr_offset = range.start.bytes(),
+                )))
+            }
+        }
+        Ok(())
     }
 
     #[inline(always)]

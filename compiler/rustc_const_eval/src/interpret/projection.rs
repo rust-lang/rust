@@ -64,7 +64,15 @@ where
 
         // We do not look at `base.layout.align` nor `field_layout.align`, unlike
         // codegen -- mostly to see if we can get away with that
-        base.offset_with_meta(offset, meta, field_layout, self)
+        let mut place = base.offset_with_meta(offset, meta, field_layout, self)?;
+
+        if let mir::ProjectionMode::Strong = strength {
+            place = place.map_provenance(|prov| {
+                prov.map(|prov| prov.restrict_to_range(place.ptr, field_layout.layout))
+            });
+        }
+
+        Ok(place)
     }
 
     /// Gets the place of a field inside the place, and also the field's type.

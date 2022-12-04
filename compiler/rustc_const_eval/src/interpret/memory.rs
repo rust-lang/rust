@@ -435,6 +435,7 @@ impl<'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
                         msg,
                     })
                 }
+                M::ptr_check_range(self, alloc_range(offset, size), (alloc_id, prov), msg)?;
                 // Ensure we never consider the null pointer dereferenceable.
                 if M::Provenance::OFFSET_IS_ADDR {
                     assert_ne!(ptr.addr(), Size::ZERO);

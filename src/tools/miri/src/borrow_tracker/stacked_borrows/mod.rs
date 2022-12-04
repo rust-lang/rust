@@ -327,7 +327,7 @@ impl<'tcx> Stack {
                 .find_granting(AccessKind::Write, derived_from, exposed_tags)
                 .map_err(|()| dcx.grant_error(self))?;
 
-            let (Some(granting_idx), ProvenanceExtra::Concrete(_)) = (granting_idx, derived_from) else {
+            let (Some(granting_idx), ProvenanceExtra::Concrete(..)) = (granting_idx, derived_from) else {
                 // The parent is a wildcard pointer or matched the unknown bottom.
                 // This is approximate. Nobody knows what happened, so forget everything.
                 // The new thing is SRW anyway, so we cannot push it "on top of the unkown part"
@@ -519,7 +519,7 @@ trait EvalContextPrivExt<'mir: 'ecx, 'tcx: 'mir, 'ecx>: crate::MiriInterpCxExt<'
         retag_cause: RetagCause, // What caused this retag, for diagnostics only
         new_tag: BorTag,
         protect: Option<ProtectorKind>,
-    ) -> InterpResult<'tcx, Option<AllocId>> {
+    ) -> InterpResult<'tcx, Option<(AllocId, Size, Size)>> {
         let this = self.eval_context_mut();
 
         // It is crucial that this gets called on all code paths, to ensure we track tag creation.
@@ -587,6 +587,14 @@ trait EvalContextPrivExt<'mir: 'ecx, 'tcx: 'mir, 'ecx>: crate::MiriInterpCxExt<'
             Ok(())
         };
 
+        let (min_offset, max_offset) =
+            if let Some(Provenance::Concrete { allowed_range, .. }) = place.ptr.provenance {
+                allowed_range
+            } else {
+                let addr = place.ptr.addr();
+                (addr, addr + size)
+            };
+
         if size == Size::ZERO {
             trace!(
                 "reborrow of size 0: {} reference {:?} derived from {:?} (pointee {})",
@@ -604,7 +612,7 @@ trait EvalContextPrivExt<'mir: 'ecx, 'tcx: 'mir, 'ecx>: crate::MiriInterpCxExt<'
             // pointer tagging for example all calls to get_unchecked on them are invalid.
             if let Ok((alloc_id, base_offset, orig_tag)) = this.ptr_try_get_alloc_id(place.ptr) {
                 log_creation(this, Some((alloc_id, base_offset, orig_tag)))?;
-                return Ok(Some(alloc_id));
+                return Ok(Some((alloc_id, min_offset, max_offset)));
             }
             // This pointer doesn't come with an AllocId. :shrug:
             log_creation(this, None)?;
@@ -716,7 +724,7 @@ trait EvalContextPrivExt<'mir: 'ecx, 'tcx: 'mir, 'ecx>: crate::MiriInterpCxExt<'
                     }
                     Ok(())
                 })?;
-                return Ok(Some(alloc_id));
+                return Ok(Some((alloc_id, min_offset, max_offset)));
             }
         };
 
@@ -747,7 +755,7 @@ trait EvalContextPrivExt<'mir: 'ecx, 'tcx: 'mir, 'ecx>: crate::MiriInterpCxExt<'
             }
         }
 
-        Ok(Some(alloc_id))
+        Ok(Some((alloc_id, min_offset, max_offset)))
     }
 
     /// Retags an indidual pointer, returning the retagged version.
@@ -781,10 +789,10 @@ trait EvalContextPrivExt<'mir: 'ecx, 'tcx: 'mir, 'ecx>: crate::MiriInterpCxExt<'
         let new_place = place.map_provenance(|p| {
             p.map(|prov| {
                 match alloc_id {
-                    Some(alloc_id) => {
+                    Some((alloc_id, min, max)) => {
                         // If `reborrow` could figure out the AllocId of this ptr, hard-code it into the new one.
                         // Even if we started out with a wildcard, this newly retagged pointer is tied to that allocation.
-                        Provenance::Concrete { alloc_id, tag: new_tag }
+                        Provenance::Concrete { alloc_id, tag: new_tag, allowed_range: (min, max) }
                     }
                     None => {
                         // Looks like this has to stay a wildcard pointer.

@@ -222,7 +222,7 @@ impl<'mir, 'tcx> GlobalStateInner {
     pub fn abs_ptr_to_rel(
         ecx: &MiriInterpCx<'mir, 'tcx>,
         ptr: Pointer<Provenance>,
-    ) -> Option<(AllocId, Size)> {
+    ) -> Option<(AllocId, Size, Size)> {
         let (tag, addr) = ptr.into_parts(); // addr is absolute (Tag provenance)
 
         let alloc_id = if let Provenance::Concrete { alloc_id, .. } = tag {
@@ -240,6 +240,7 @@ impl<'mir, 'tcx> GlobalStateInner {
         let neg_base_addr = (base_addr as i64).wrapping_neg();
         Some((
             alloc_id,
+            Size::from_bytes(base_addr),
             Size::from_bytes(dl.overflowing_signed_offset(addr.bytes(), neg_base_addr).0),
         ))
     }

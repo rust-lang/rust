@@ -1,7 +1,7 @@
 use super::{AllocId, InterpResult};
 
 use rustc_macros::HashStable;
-use rustc_target::abi::{HasDataLayout, Size};
+use rustc_target::abi::{HasDataLayout, Layout, Size};
 
 use std::convert::{TryFrom, TryInto};
 use std::fmt;
@@ -140,6 +140,8 @@ pub trait Provenance: Copy + fmt::Debug {
 
     /// Defines the 'join' of provenance: what happens when doing a pointer load and different bytes have different provenance.
     fn join(left: Option<Self>, right: Option<Self>) -> Option<Self>;
+
+    fn restrict_to_range(self, ptr: Pointer<Option<Self>>, field_layout: Layout<'_>) -> Self;
 }
 
 impl Provenance for AllocId {
@@ -167,6 +169,10 @@ impl Provenance for AllocId {
 
     fn join(_left: Option<Self>, _right: Option<Self>) -> Option<Self> {
         panic!("merging provenance is not supported when `OFFSET_IS_ADDR` is false")
+    }
+
+    fn restrict_to_range(self, _: Pointer<Option<Self>>, _: Layout<'_>) -> Self {
+        self
     }
 }
 

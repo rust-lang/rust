@@ -475,7 +475,7 @@ fn operation_summary(operation: &str, alloc_id: AllocId, alloc_range: AllocRange
 }
 
 fn error_cause(stack: &Stack, prov_extra: ProvenanceExtra) -> &'static str {
-    if let ProvenanceExtra::Concrete(tag) = prov_extra {
+    if let ProvenanceExtra::Concrete(tag, _, _) = prov_extra {
         if (0..stack.len())
             .map(|i| stack.get(i).unwrap())
             .any(|item| item.tag() == tag && item.perm() != Permission::Disabled)

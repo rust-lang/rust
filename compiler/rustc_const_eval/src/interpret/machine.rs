@@ -333,6 +333,16 @@ pub trait Machine<'mir, 'tcx>: Sized {
         throw_unsup_format!("inline assembly is not supported")
     }
 
+    #[inline(always)]
+    fn ptr_check_range(
+        _ecx: &InterpCx<'mir, 'tcx, Self>,
+        _range: AllocRange,
+        (_alloc_id, _prov_extra): (AllocId, Self::ProvenanceExtra),
+        _msg: super::CheckInAllocMsg,
+    ) -> InterpResult<'tcx> {
+        Ok(())
+    }
+
     /// Hook for performing extra checks on a memory read access.
     ///
     /// Takes read-only access to the allocation so we can keep all the memory read

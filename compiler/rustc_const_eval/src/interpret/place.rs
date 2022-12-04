@@ -249,6 +249,11 @@ impl<'tcx, Prov: Provenance> MPlaceTy<'tcx, Prov> {
             _ => bug!("vtable not supported on type {:?}", self.layout.ty),
         }
     }
+
+    /// Adjust the provenance of the main pointer (metadata is unaffected).
+    pub fn map_provenance(self, f: impl FnOnce(Option<Prov>) -> Option<Prov>) -> Self {
+        MPlaceTy { mplace: self.mplace.map_provenance(f), ..self }
+    }
 }
 
 // These are defined here because they produce a place.
