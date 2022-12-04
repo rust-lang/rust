@@ -407,7 +407,13 @@ fn collate_raw_dylibs(
     let all_libs = crate_info.used_libraries.iter().chain(crate_info.native_libraries.values().flatten());
     for lib in all_libs {
         if lib.kind == NativeLibKind::RawDylib {
-            let ext = if matches!(lib.verbatim, Some(true)) { "" } else { ".dll" };
+            let ext = if matches!(lib.verbatim, Some(true)) {
+                ""
+            } else if sess.target.is_like_osx {
+                ".dylib"
+            } else {
+                ".dll"
+            };
             let name = format!("{}{}", lib.name.expect("unnamed raw-dylib library"), ext);
             let imports = dylib_table.entry(name.clone()).or_default();
             for import in &lib.dll_imports {

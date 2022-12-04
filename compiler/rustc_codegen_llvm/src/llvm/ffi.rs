@@ -49,6 +49,19 @@ impl LLVMRustCOFFShortExport {
     }
 }
 
+// Rust version of the C struct with the same name in rustc_llvm/llvm-wrapper/RustWrapper.cpp.
+#[repr(C)]
+pub struct LLVMRustTbdExport {
+    pub name: *const c_char,
+    pub symbol_flags: u8,
+}
+
+impl LLVMRustTbdExport {
+    pub fn new(name: *const c_char, symbol_flags: u8) -> LLVMRustTbdExport {
+        LLVMRustTbdExport { name, symbol_flags }
+    }
+}
+
 /// Translation of LLVM's MachineTypes enum, defined in llvm\include\llvm\BinaryFormat\COFF.h.
 ///
 /// We include only architectures supported on Windows.
@@ -2552,4 +2565,13 @@ extern "C" {
     pub fn LLVMRustGetMangledName(V: &Value, out: &RustString);
 
     pub fn LLVMRustGetElementTypeArgIndex(CallSite: &Value) -> i32;
+
+    pub fn LLVMRustWriteTbdFile(
+        ImportName: *const c_char,
+        Path: *const c_char,
+        Exports: *const LLVMRustTbdExport,
+        NumExports: usize,
+        LlvmTriples: *const *const c_char,
+        NumLlvmTriples: usize,
+    ) -> LLVMRustResult;
 }

@@ -111,12 +111,12 @@ impl<'tcx> Collector<'tcx> {
                                 NativeLibKind::Framework { as_needed: None }
                             }
                             "raw-dylib" => {
-                                if !sess.target.is_like_windows {
+                                if !sess.target.is_like_windows && !sess.target.is_like_osx {
                                     struct_span_err!(
                                         sess,
                                         span,
                                         E0455,
-                                        "link kind `raw-dylib` is only supported on Windows targets"
+                                        "link kind `raw-dylib` is only supported on Windows and Apple targets"
                                     )
                                     .emit();
                                 } else if !features.raw_dylib {

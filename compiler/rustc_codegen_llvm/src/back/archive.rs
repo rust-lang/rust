@@ -9,7 +9,7 @@ use std::ptr;
 use std::str;
 
 use crate::llvm::archive_ro::{ArchiveRO, Child};
-use crate::llvm::{self, ArchiveKind, LLVMMachineType, LLVMRustCOFFShortExport};
+use crate::llvm::{self, ArchiveKind, LLVMMachineType, LLVMRustCOFFShortExport, LLVMRustTbdExport};
 use rustc_codegen_ssa::back::archive::{ArchiveBuilder, ArchiveBuilderBuilder};
 use rustc_session::cstore::{DllCallingConvention, DllImport};
 use rustc_session::Session;
@@ -104,33 +104,102 @@ impl ArchiveBuilderBuilder for LlvmArchiveBuilderBuilder {
         dll_imports: &[DllImport],
         tmpdir: &Path,
     ) -> PathBuf {
-        let output_path = {
-            let mut output_path: PathBuf = tmpdir.to_path_buf();
-            output_path.push(format!("{}_imports", lib_name));
-            output_path.with_extension("lib")
-        };
-
         let target = &sess.target;
-        let mingw_gnu_toolchain = target.vendor == "pc"
-            && target.os == "windows"
-            && target.env == "gnu"
-            && target.abi.is_empty();
+        let windows_toolchain = target.vendor == "pc" && target.os == "windows";
+        let mingw_gnu_toolchain = windows_toolchain && target.env == "gnu" && target.abi.is_empty();
+        let apple_toolchain = target.is_like_osx;
+
+        let output_path = {
+            let mut filename = lib_name.replace('/', "_");
+            if apple_toolchain {
+                filename.push_str("tbd");
+            } else {
+                filename.push_str("lib");
+            }
+            tmpdir.join(filename)
+        };
 
         let import_name_and_ordinal_vector: Vec<(String, Option<u16>)> = dll_imports
             .iter()
             .map(|import: &DllImport| {
-                if sess.target.arch == "x86" {
+                if sess.target.arch == "x86" && windows_toolchain {
                     (
                         LlvmArchiveBuilder::i686_decorated_name(import, mingw_gnu_toolchain),
                         import.ordinal,
                     )
+                } else if apple_toolchain {
+                    (format!("_{}", import.name), import.ordinal)
                 } else {
                     (import.name.to_string(), import.ordinal)
                 }
             })
             .collect();
 
-        if mingw_gnu_toolchain {
+        if apple_toolchain {
+            // we've checked for \0 characters in the library name already
+            let dll_name_z = CString::new(lib_name).unwrap();
+
+            let output_path_z = rustc_fs_util::path_to_c_string(&output_path);
+
+            tracing::info!("invoking LLVMRustWriteTbdFile");
+            tracing::info!("  dll_name {:#?}", dll_name_z);
+            tracing::info!("  output_path {}", output_path.display());
+            tracing::info!(
+                "  import names: {}",
+                dll_imports
+                    .iter()
+                    .map(|import| import.name.to_string())
+                    .collect::<Vec<_>>()
+                    .join(", "),
+            );
+
+            let cstring_import_name_vector: Vec<CString> = import_name_and_ordinal_vector
+                .into_iter()
+                .map(|(name, _ordinal)| CString::new(name).unwrap())
+                .collect();
+
+            let ffi_exports: Vec<LLVMRustTbdExport> = cstring_import_name_vector
+                .iter()
+                .map(|name_z| LLVMRustTbdExport::new(name_z.as_ptr(), 0))
+                .collect();
+
+            // Get LLVM architecture from the target triple.
+            let arch = sess.target.llvm_target.split("-").nth(0).unwrap();
+
+            let plat = match (&*target.options.os, &*target.options.abi) {
+                ("macos", "") => "macos",
+                ("ios", "") => "ios",
+                ("tvos", "") => "tvos",
+                ("watchos", "") => "watchos",
+                ("macos", "macabi") => "maccatalyst",
+                ("ios", "sim") => "ios-simulator",
+                ("tvos", "sim") => "tvos-simulator",
+                ("watchos", "sim") => "watchos-simulator",
+                _ => "unknown",
+            };
+
+            let target = CString::new(format!("{}-{}", arch, plat)).unwrap();
+            let ffi_targets = &[target.as_ptr()];
+
+            let result = unsafe {
+                crate::llvm::LLVMRustWriteTbdFile(
+                    dll_name_z.as_ptr(),
+                    output_path_z.as_ptr(),
+                    ffi_exports.as_ptr(),
+                    ffi_exports.len(),
+                    ffi_targets.as_ptr(),
+                    ffi_targets.len(),
+                )
+            };
+
+            if result == crate::llvm::LLVMRustResult::Failure {
+                sess.fatal(&format!(
+                    "Error creating apple import library for {}: {}",
+                    lib_name,
+                    llvm::last_error().unwrap_or("unknown LLVM error".to_string())
+                ));
+            }
+        } else if mingw_gnu_toolchain {
             // The binutils linker used on -windows-gnu targets cannot read the import
             // libraries generated by LLVM: in our attempts, the linker produced an .EXE
             // that loaded but crashed with an AV upon calling one of the imported

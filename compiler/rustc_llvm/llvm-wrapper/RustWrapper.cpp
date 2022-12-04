@@ -15,6 +15,8 @@
 #include "llvm/Bitcode/BitcodeWriterPass.h"
 #include "llvm/Support/Signals.h"
 #include "llvm/ADT/Optional.h"
+#include "llvm/TextAPI/InterfaceFile.h"
+#include "llvm/TextAPI/TextAPIWriter.h"
 
 #include <iostream>
 
@@ -1958,4 +1960,58 @@ extern "C" int32_t LLVMRustGetElementTypeArgIndex(LLVMValueRef CallSite) {
     }
 #endif
     return -1;
+}
+
+
+// This struct contains all necessary info about a symbol exported from a tbd.
+struct LLVMRustTbdExport {
+  const char* name;
+  uint8_t symbol_flags;
+};
+
+extern "C" LLVMRustResult LLVMRustWriteTbdFile(
+  const char* ImportName,
+  const char* Path,
+  const LLVMRustTbdExport* Exports,
+  size_t NumExports,
+  const char** LlvmTriples,
+  size_t NumLlvmTriples)
+{
+  llvm::MachO::InterfaceFile tbd;
+
+  tbd.setFileType(llvm::MachO::FileType::TBD_V4);
+  tbd.setTwoLevelNamespace();
+
+  llvm::MachO::TargetList targets;
+  for (size_t i = 0; i < NumLlvmTriples; ++i) {
+    printf("Target is %s\n", LlvmTriples[i]);
+    auto target = llvm::MachO::Target::create(LlvmTriples[i]);
+    if (!target) {
+      return LLVMRustResult::Failure;
+    }
+    targets.emplace_back(target.get());
+  }
+
+  for (auto target = targets.begin(); target != targets.end(); ++target) {
+    tbd.addTarget(*target);
+  }
+
+  tbd.setInstallName(StringRef(ImportName));
+
+  for (size_t i = 0; i < NumExports; ++i) {
+    auto symbol_kind = llvm::MachO::SymbolKind::GlobalSymbol;
+    auto flags = static_cast<llvm::MachO::SymbolFlags>(Exports[i].symbol_flags);
+    tbd.addSymbol(symbol_kind, StringRef(Exports[i].name), targets, flags);
+  }
+
+  std::error_code ec;
+  llvm::raw_fd_ostream fd(Path, ec);
+  if (ec) {
+    return LLVMRustResult::Failure;
+  }
+  llvm::Error err = llvm::MachO::TextAPIWriter::writeToStream(fd, tbd);
+  if (err) {
+    return LLVMRustResult::Failure;
+  }
+  return LLVMRustResult::Success;
 }
