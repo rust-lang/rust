@@ -1840,13 +1840,16 @@ impl<'a> Resolver<'a> {
 
             (format!("use of undeclared type `{}`", ident), suggestion)
         } else {
-            let suggestion = if ident.name == sym::alloc {
-                Some((
+            let mut suggestion = None;
+            if ident.name == sym::alloc {
+                suggestion = Some((
                     vec![],
                     String::from("add `extern crate alloc` to use the `alloc` crate"),
                     Applicability::MaybeIncorrect,
                 ))
-            } else {
+            }
+
+            suggestion = suggestion.or_else(|| {
                 self.find_similarly_named_module_or_crate(ident.name, &parent_scope.module).map(
                     |sugg| {
                         (
@@ -1856,7 +1859,7 @@ impl<'a> Resolver<'a> {
                         )
                     },
                 )
-            };
+            });
             (format!("use of undeclared crate or module `{}`", ident), suggestion)
         }
     }

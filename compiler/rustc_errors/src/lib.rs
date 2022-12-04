@@ -470,6 +470,7 @@ pub enum StashKey {
     /// Maybe there was a typo where a comma was forgotten before
     /// FRU syntax
     MaybeFruTypo,
+    CallAssocMethod,
 }
 
 fn default_track_diagnostic(_: &Diagnostic) {}
