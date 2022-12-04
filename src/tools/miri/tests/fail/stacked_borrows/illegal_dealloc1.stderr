@@ -1,8 +1,8 @@
-error: Undefined Behavior: attempting deallocation using <TAG> at ALLOC, but that tag does not exist in the borrow stack for this location
+error: Undefined Behavior: attempting deallocation using <TAG>[0x0..0x1] at ALLOC, but that tag does not exist in the borrow stack for this location
   --> RUSTLIB/alloc/src/alloc.rs:LL:CC
    |
 LL |     unsafe { __rust_dealloc(ptr, layout.size(), layout.align()) }
-   |              ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ attempting deallocation using <TAG> at ALLOC, but that tag does not exist in the borrow stack for this location
+   |              ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ attempting deallocation using <TAG>[0x0..0x1] at ALLOC, but that tag does not exist in the borrow stack for this location
    |
    = help: this indicates a potential bug in the program: it performed an invalid operation, but the Stacked Borrows rules it violated are still experimental
    = help: see https://github.com/rust-lang/unsafe-code-guidelines/blob/master/wip/stacked-borrows.md for further information

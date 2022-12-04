@@ -1,8 +1,8 @@
-error: Undefined Behavior: constructing invalid value: encountered $HEX[ALLOC]<TAG>, but expected a vtable pointer
+error: Undefined Behavior: constructing invalid value: encountered $HEX[ALLOC]<TAG>[$HEX..$HEX], but expected a vtable pointer
   --> $DIR/issue-miri-1112.rs:LL:CC
    |
 LL |         let obj = std::mem::transmute::<FatPointer, *mut FunnyPointer>(obj);
-   |                   ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ constructing invalid value: encountered $HEX[ALLOC]<TAG>, but expected a vtable pointer
+   |                   ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ constructing invalid value: encountered $HEX[ALLOC]<TAG>[$HEX..$HEX], but expected a vtable pointer
    |
    = help: this indicates a bug in the program: it performed an invalid operation, and caused Undefined Behavior
    = help: see https://doc.rust-lang.org/nightly/reference/behavior-considered-undefined.html for further information
