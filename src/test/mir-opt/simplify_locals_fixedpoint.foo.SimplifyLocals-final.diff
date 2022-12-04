@@ -1,5 +1,5 @@
-- // MIR for `foo` before SimplifyLocals
-+ // MIR for `foo` after SimplifyLocals
+- // MIR for `foo` before SimplifyLocals-final
++ // MIR for `foo` after SimplifyLocals-final
   
   fn foo() -> () {
       let mut _0: ();                      // return place in scope 0 at $DIR/simplify_locals_fixedpoint.rs:+0:13: +0:13

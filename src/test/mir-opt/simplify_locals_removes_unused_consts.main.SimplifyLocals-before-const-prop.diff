@@ -1,5 +1,5 @@
-- // MIR for `main` before SimplifyLocals
-+ // MIR for `main` after SimplifyLocals
+- // MIR for `main` before SimplifyLocals-before-const-prop
++ // MIR for `main` after SimplifyLocals-before-const-prop
   
   fn main() -> () {
       let mut _0: ();                      // return place in scope 0 at $DIR/simplify_locals_removes_unused_consts.rs:+0:11: +0:11

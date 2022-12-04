@@ -1,4 +1,4 @@
-// unit-test: SimplifyLocals
+// unit-test: SimplifyLocals-before-const-prop
 // compile-flags: -C overflow-checks=no
 
 fn use_zst(_: ((), ())) {}
@@ -9,7 +9,7 @@ struct Temp {
 
 fn use_u8(_: u8) {}
 
-// EMIT_MIR simplify_locals_removes_unused_consts.main.SimplifyLocals.diff
+// EMIT_MIR simplify_locals_removes_unused_consts.main.SimplifyLocals-before-const-prop.diff
 fn main() {
     let ((), ()) = ((), ());
     use_zst(((), ()));

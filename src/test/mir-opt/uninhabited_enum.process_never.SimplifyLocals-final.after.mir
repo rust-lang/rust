@@ -1,4 +1,4 @@
-// MIR for `process_never` after SimplifyLocals
+// MIR for `process_never` after SimplifyLocals-final
 
 fn process_never(_1: *const !) -> () {
     debug input => _1;                   // in scope 0 at $DIR/uninhabited_enum.rs:+0:22: +0:27

@@ -1,5 +1,5 @@
-- // MIR for `t2` before SimplifyLocals
-+ // MIR for `t2` after SimplifyLocals
+- // MIR for `t2` before SimplifyLocals-before-const-prop
++ // MIR for `t2` after SimplifyLocals-before-const-prop
   
   fn t2() -> () {
       let mut _0: ();                      // return place in scope 0 at $DIR/simplify_locals.rs:+0:9: +0:9

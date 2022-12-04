@@ -44,7 +44,7 @@ fn while_loop(_1: bool) -> () {
 
     bb5: {
         StorageDead(_4);                 // scope 0 at $DIR/while_storage.rs:+4:9: +4:10
-        goto -> bb8;                     // scope 0 at no-location
+        goto -> bb7;                     // scope 0 at no-location
     }
 
     bb6: {
@@ -54,10 +54,6 @@ fn while_loop(_1: bool) -> () {
     }
 
     bb7: {
-        goto -> bb8;                     // scope 0 at no-location
-    }
-
-    bb8: {
         StorageDead(_2);                 // scope 0 at $DIR/while_storage.rs:+5:5: +5:6
         return;                          // scope 0 at $DIR/while_storage.rs:+6:2: +6:2
     }

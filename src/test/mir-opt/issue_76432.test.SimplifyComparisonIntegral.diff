@@ -11,26 +11,19 @@
       let mut _6: T;                       // in scope 0 at $DIR/issue_76432.rs:+1:21: +1:22
       let mut _7: T;                       // in scope 0 at $DIR/issue_76432.rs:+1:24: +1:25
       let mut _8: T;                       // in scope 0 at $DIR/issue_76432.rs:+1:27: +1:28
-      let _9: [*const T; 3];               // in scope 0 at $DIR/issue_76432.rs:+2:5: +5:6
+      let mut _9: usize;                   // in scope 0 at $DIR/issue_76432.rs:+3:9: +3:33
       let mut _10: usize;                  // in scope 0 at $DIR/issue_76432.rs:+3:9: +3:33
-      let mut _11: usize;                  // in scope 0 at $DIR/issue_76432.rs:+3:9: +3:33
-      let mut _12: bool;                   // in scope 0 at $DIR/issue_76432.rs:+3:9: +3:33
-      let mut _16: *const T;               // in scope 0 at $DIR/issue_76432.rs:+3:38: +3:52
-      let mut _17: *const T;               // in scope 0 at $DIR/issue_76432.rs:+3:38: +3:52
-      let mut _18: *const T;               // in scope 0 at $DIR/issue_76432.rs:+3:54: +3:68
-      let mut _19: *const T;               // in scope 0 at $DIR/issue_76432.rs:+3:54: +3:68
-      let mut _20: *const T;               // in scope 0 at $DIR/issue_76432.rs:+3:70: +3:84
-      let mut _21: *const T;               // in scope 0 at $DIR/issue_76432.rs:+3:70: +3:84
-      let mut _22: !;                      // in scope 0 at $SRC_DIR/core/src/panic.rs:LL:COL
+      let mut _11: bool;                   // in scope 0 at $DIR/issue_76432.rs:+3:9: +3:33
+      let mut _15: !;                      // in scope 0 at $SRC_DIR/core/src/panic.rs:LL:COL
       scope 1 {
           debug v => _2;                   // in scope 1 at $DIR/issue_76432.rs:+1:9: +1:10
-          let _13: &T;                     // in scope 1 at $DIR/issue_76432.rs:+3:10: +3:16
-          let _14: &T;                     // in scope 1 at $DIR/issue_76432.rs:+3:18: +3:24
-          let _15: &T;                     // in scope 1 at $DIR/issue_76432.rs:+3:26: +3:32
+          let _12: &T;                     // in scope 1 at $DIR/issue_76432.rs:+3:10: +3:16
+          let _13: &T;                     // in scope 1 at $DIR/issue_76432.rs:+3:18: +3:24
+          let _14: &T;                     // in scope 1 at $DIR/issue_76432.rs:+3:26: +3:32
           scope 2 {
-              debug v1 => _13;             // in scope 2 at $DIR/issue_76432.rs:+3:10: +3:16
-              debug v2 => _14;             // in scope 2 at $DIR/issue_76432.rs:+3:18: +3:24
-              debug v3 => _15;             // in scope 2 at $DIR/issue_76432.rs:+3:26: +3:32
+              debug v1 => _12;             // in scope 2 at $DIR/issue_76432.rs:+3:10: +3:16
+              debug v2 => _13;             // in scope 2 at $DIR/issue_76432.rs:+3:18: +3:24
+              debug v3 => _14;             // in scope 2 at $DIR/issue_76432.rs:+3:26: +3:32
           }
       }
   
@@ -54,18 +47,17 @@
           _2 = move _3 as &[T] (Pointer(Unsize)); // scope 0 at $DIR/issue_76432.rs:+1:19: +1:29
           StorageDead(_3);                 // scope 0 at $DIR/issue_76432.rs:+1:28: +1:29
           StorageDead(_4);                 // scope 0 at $DIR/issue_76432.rs:+1:29: +1:30
-          StorageLive(_9);                 // scope 1 at $DIR/issue_76432.rs:+2:5: +5:6
-          _10 = Len((*_2));                // scope 1 at $DIR/issue_76432.rs:+3:9: +3:33
-          _11 = const 3_usize;             // scope 1 at $DIR/issue_76432.rs:+3:9: +3:33
--         _12 = Eq(move _10, const 3_usize); // scope 1 at $DIR/issue_76432.rs:+3:9: +3:33
--         switchInt(move _12) -> [0: bb1, otherwise: bb2]; // scope 1 at $DIR/issue_76432.rs:+3:9: +3:33
+          _9 = Len((*_2));                 // scope 1 at $DIR/issue_76432.rs:+3:9: +3:33
+          _10 = const 3_usize;             // scope 1 at $DIR/issue_76432.rs:+3:9: +3:33
+-         _11 = Eq(move _9, const 3_usize); // scope 1 at $DIR/issue_76432.rs:+3:9: +3:33
+-         switchInt(move _11) -> [0: bb1, otherwise: bb2]; // scope 1 at $DIR/issue_76432.rs:+3:9: +3:33
 +         nop;                             // scope 1 at $DIR/issue_76432.rs:+3:9: +3:33
-+         switchInt(move _10) -> [3: bb2, otherwise: bb1]; // scope 1 at $DIR/issue_76432.rs:+3:9: +3:33
++         switchInt(move _9) -> [3: bb2, otherwise: bb1]; // scope 1 at $DIR/issue_76432.rs:+3:9: +3:33
       }
   
       bb1: {
-          StorageLive(_22);                // scope 1 at $SRC_DIR/core/src/panic.rs:LL:COL
-          _22 = core::panicking::panic(const "internal error: entered unreachable code"); // scope 1 at $SRC_DIR/core/src/panic.rs:LL:COL
+          StorageLive(_15);                // scope 1 at $SRC_DIR/core/src/panic.rs:LL:COL
+          _15 = core::panicking::panic(const "internal error: entered unreachable code"); // scope 1 at $SRC_DIR/core/src/panic.rs:LL:COL
                                            // mir::Constant
                                            // + span: $SRC_DIR/core/src/panic.rs:LL:COL
                                            // + literal: Const { ty: fn(&'static str) -> ! {core::panicking::panic}, val: Value(<ZST>) }
@@ -75,35 +67,15 @@
       }
   
       bb2: {
-          StorageLive(_13);                // scope 1 at $DIR/issue_76432.rs:+3:10: +3:16
-          _13 = &(*_2)[0 of 3];            // scope 1 at $DIR/issue_76432.rs:+3:10: +3:16
-          StorageLive(_14);                // scope 1 at $DIR/issue_76432.rs:+3:18: +3:24
-          _14 = &(*_2)[1 of 3];            // scope 1 at $DIR/issue_76432.rs:+3:18: +3:24
-          StorageLive(_15);                // scope 1 at $DIR/issue_76432.rs:+3:26: +3:32
-          _15 = &(*_2)[2 of 3];            // scope 1 at $DIR/issue_76432.rs:+3:26: +3:32
-          StorageLive(_16);                // scope 2 at $DIR/issue_76432.rs:+3:38: +3:52
-          StorageLive(_17);                // scope 2 at $DIR/issue_76432.rs:+3:38: +3:52
-          _17 = &raw const (*_13);         // scope 2 at $DIR/issue_76432.rs:+3:38: +3:40
-          _16 = _17;                       // scope 2 at $DIR/issue_76432.rs:+3:38: +3:52
-          StorageLive(_18);                // scope 2 at $DIR/issue_76432.rs:+3:54: +3:68
-          StorageLive(_19);                // scope 2 at $DIR/issue_76432.rs:+3:54: +3:68
-          _19 = &raw const (*_14);         // scope 2 at $DIR/issue_76432.rs:+3:54: +3:56
-          _18 = _19;                       // scope 2 at $DIR/issue_76432.rs:+3:54: +3:68
-          StorageLive(_20);                // scope 2 at $DIR/issue_76432.rs:+3:70: +3:84
-          StorageLive(_21);                // scope 2 at $DIR/issue_76432.rs:+3:70: +3:84
-          _21 = &raw const (*_15);         // scope 2 at $DIR/issue_76432.rs:+3:70: +3:72
-          _20 = _21;                       // scope 2 at $DIR/issue_76432.rs:+3:70: +3:84
-          _9 = [move _16, move _18, move _20]; // scope 2 at $DIR/issue_76432.rs:+3:37: +3:85
-          StorageDead(_21);                // scope 2 at $DIR/issue_76432.rs:+3:84: +3:85
-          StorageDead(_20);                // scope 2 at $DIR/issue_76432.rs:+3:84: +3:85
-          StorageDead(_19);                // scope 2 at $DIR/issue_76432.rs:+3:84: +3:85
-          StorageDead(_18);                // scope 2 at $DIR/issue_76432.rs:+3:84: +3:85
-          StorageDead(_17);                // scope 2 at $DIR/issue_76432.rs:+3:84: +3:85
-          StorageDead(_16);                // scope 2 at $DIR/issue_76432.rs:+3:84: +3:85
-          StorageDead(_15);                // scope 1 at $DIR/issue_76432.rs:+3:84: +3:85
+          StorageLive(_12);                // scope 1 at $DIR/issue_76432.rs:+3:10: +3:16
+          _12 = &(*_2)[0 of 3];            // scope 1 at $DIR/issue_76432.rs:+3:10: +3:16
+          StorageLive(_13);                // scope 1 at $DIR/issue_76432.rs:+3:18: +3:24
+          _13 = &(*_2)[1 of 3];            // scope 1 at $DIR/issue_76432.rs:+3:18: +3:24
+          StorageLive(_14);                // scope 1 at $DIR/issue_76432.rs:+3:26: +3:32
+          _14 = &(*_2)[2 of 3];            // scope 1 at $DIR/issue_76432.rs:+3:26: +3:32
           StorageDead(_14);                // scope 1 at $DIR/issue_76432.rs:+3:84: +3:85
           StorageDead(_13);                // scope 1 at $DIR/issue_76432.rs:+3:84: +3:85
-          StorageDead(_9);                 // scope 1 at $DIR/issue_76432.rs:+5:6: +5:7
+          StorageDead(_12);                // scope 1 at $DIR/issue_76432.rs:+3:84: +3:85
           nop;                             // scope 0 at $DIR/issue_76432.rs:+0:44: +6:2
           StorageDead(_5);                 // scope 0 at $DIR/issue_76432.rs:+6:1: +6:2
           StorageDead(_2);                 // scope 0 at $DIR/issue_76432.rs:+6:1: +6:2

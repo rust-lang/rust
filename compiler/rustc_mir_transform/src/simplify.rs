@@ -379,9 +379,21 @@ fn save_unreachable_coverage(
     ));
 }
 
-pub struct SimplifyLocals;
+pub struct SimplifyLocals {
+    label: String,
+}
+
+impl SimplifyLocals {
+    pub fn new(label: &str) -> SimplifyLocals {
+        SimplifyLocals { label: format!("SimplifyLocals-{}", label) }
+    }
+}
 
 impl<'tcx> MirPass<'tcx> for SimplifyLocals {
+    fn name(&self) -> &str {
+        &self.label
+    }
+
     fn is_enabled(&self, sess: &rustc_session::Session) -> bool {
         sess.mir_opt_level() > 0
     }

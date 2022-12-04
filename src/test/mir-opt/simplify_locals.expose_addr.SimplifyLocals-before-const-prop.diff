@@ -1,5 +1,5 @@
-- // MIR for `expose_addr` before SimplifyLocals
-+ // MIR for `expose_addr` after SimplifyLocals
+- // MIR for `expose_addr` before SimplifyLocals-before-const-prop
++ // MIR for `expose_addr` after SimplifyLocals-before-const-prop
   
   fn expose_addr(_1: *const usize) -> () {
       debug p => _1;                       // in scope 0 at $DIR/simplify_locals.rs:+0:16: +0:17
