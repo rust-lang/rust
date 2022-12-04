@@ -34,7 +34,7 @@
   
       bb2: {
           StorageLive(_4);                 // scope 2 at $DIR/unreachable_diverging.rs:+2:17: +2:21
-          _4 = move ((_2 as Some).0: Empty); // scope 2 at $DIR/unreachable_diverging.rs:+2:17: +2:21
+          _4 = move ((_2 as Some).0: Empty, Strong); // scope 2 at $DIR/unreachable_diverging.rs:+2:17: +2:21
           StorageLive(_5);                 // scope 2 at $DIR/unreachable_diverging.rs:+3:9: +5:10
           StorageLive(_6);                 // scope 2 at $DIR/unreachable_diverging.rs:+3:12: +3:13
           _6 = _1;                         // scope 2 at $DIR/unreachable_diverging.rs:+3:12: +3:13

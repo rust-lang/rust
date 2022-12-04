@@ -6,11 +6,11 @@
 
     bb0: {
         _1 = CheckedAdd(const 1_usize, const 1_usize); // scope 0 at $DIR/issue_41697.rs:+0:19: +0:22
-        assert(!move (_1.1: bool), "attempt to compute `{} + {}`, which would overflow", const 1_usize, const 1_usize) -> [success: bb1, unwind: bb2]; // scope 0 at $DIR/issue_41697.rs:+0:19: +0:22
+        assert(!move (_1.1: bool, Strong), "attempt to compute `{} + {}`, which would overflow", const 1_usize, const 1_usize) -> [success: bb1, unwind: bb2]; // scope 0 at $DIR/issue_41697.rs:+0:19: +0:22
     }
 
     bb1: {
-        _0 = move (_1.0: usize);         // scope 0 at $DIR/issue_41697.rs:+0:19: +0:22
+        _0 = move (_1.0: usize, Strong); // scope 0 at $DIR/issue_41697.rs:+0:19: +0:22
         return;                          // scope 0 at $DIR/issue_41697.rs:+0:19: +0:22
     }
 

@@ -16,7 +16,7 @@ fn foo(_1: [(Never, u32); 1]) -> u32 {
     }
 
     bb1: {
-        _0 = (_1[_2].1: u32);            // scope 0 at $DIR/issue_72181.rs:+0:40: +0:47
+        _0 = (_1[_2].1: u32, Strong);    // scope 0 at $DIR/issue_72181.rs:+0:40: +0:47
         StorageDead(_2);                 // scope 0 at $DIR/issue_72181.rs:+0:48: +0:49
         return;                          // scope 0 at $DIR/issue_72181.rs:+0:49: +0:49
     }

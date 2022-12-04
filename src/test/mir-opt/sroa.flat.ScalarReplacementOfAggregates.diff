@@ -39,12 +39,12 @@
           Deinit(_6);                      // scope 0 at $DIR/sroa.rs:+1:45: +1:47
           StorageLive(_7);                 // scope 0 at $DIR/sroa.rs:+1:60: +1:68
           Deinit(_7);                      // scope 0 at $DIR/sroa.rs:+1:60: +1:68
-          ((_7 as Some).0: isize) = const -4_isize; // scope 0 at $DIR/sroa.rs:+1:60: +1:68
+          ((_7 as Some).0: isize, Strong) = const -4_isize; // scope 0 at $DIR/sroa.rs:+1:60: +1:68
           discriminant(_7) = 1;            // scope 0 at $DIR/sroa.rs:+1:60: +1:68
 -         Deinit(_5);                      // scope 0 at $DIR/sroa.rs:+1:30: +1:70
--         (_5.0: u8) = const 5_u8;         // scope 0 at $DIR/sroa.rs:+1:30: +1:70
--         (_5.1: ()) = move _6;            // scope 0 at $DIR/sroa.rs:+1:30: +1:70
--         (_5.2: &str) = const "a";        // scope 0 at $DIR/sroa.rs:+1:30: +1:70
+-         (_5.0: u8, Strong) = const 5_u8; // scope 0 at $DIR/sroa.rs:+1:30: +1:70
+-         (_5.1: (), Strong) = move _6;    // scope 0 at $DIR/sroa.rs:+1:30: +1:70
+-         (_5.2: &str, Strong) = const "a"; // scope 0 at $DIR/sroa.rs:+1:30: +1:70
 +         Deinit(_8);                      // scope 0 at $DIR/sroa.rs:+1:30: +1:70
 +         Deinit(_9);                      // scope 0 at $DIR/sroa.rs:+1:30: +1:70
 +         Deinit(_10);                     // scope 0 at $DIR/sroa.rs:+1:30: +1:70
@@ -55,21 +55,21 @@
                                            // mir::Constant
                                            // + span: $DIR/sroa.rs:57:52: 57:55
                                            // + literal: Const { ty: &str, val: Value(Slice(..)) }
--         (_5.3: std::option::Option<isize>) = move _7; // scope 0 at $DIR/sroa.rs:+1:30: +1:70
+-         (_5.3: std::option::Option<isize>, Strong) = move _7; // scope 0 at $DIR/sroa.rs:+1:30: +1:70
 +         _11 = move _7;                   // scope 0 at $DIR/sroa.rs:+1:30: +1:70
           StorageDead(_7);                 // scope 0 at $DIR/sroa.rs:+1:69: +1:70
           StorageDead(_6);                 // scope 0 at $DIR/sroa.rs:+1:69: +1:70
           StorageLive(_1);                 // scope 0 at $DIR/sroa.rs:+1:15: +1:16
--         _1 = (_5.0: u8);                 // scope 0 at $DIR/sroa.rs:+1:15: +1:16
+-         _1 = (_5.0: u8, Strong);         // scope 0 at $DIR/sroa.rs:+1:15: +1:16
 +         _1 = _8;                         // scope 0 at $DIR/sroa.rs:+1:15: +1:16
           StorageLive(_2);                 // scope 0 at $DIR/sroa.rs:+1:18: +1:19
--         _2 = (_5.1: ());                 // scope 0 at $DIR/sroa.rs:+1:18: +1:19
+-         _2 = (_5.1: (), Strong);         // scope 0 at $DIR/sroa.rs:+1:18: +1:19
 +         _2 = _9;                         // scope 0 at $DIR/sroa.rs:+1:18: +1:19
           StorageLive(_3);                 // scope 0 at $DIR/sroa.rs:+1:21: +1:22
--         _3 = (_5.2: &str);               // scope 0 at $DIR/sroa.rs:+1:21: +1:22
+-         _3 = (_5.2: &str, Strong);       // scope 0 at $DIR/sroa.rs:+1:21: +1:22
 +         _3 = _10;                        // scope 0 at $DIR/sroa.rs:+1:21: +1:22
           StorageLive(_4);                 // scope 0 at $DIR/sroa.rs:+1:24: +1:25
--         _4 = (_5.3: std::option::Option<isize>); // scope 0 at $DIR/sroa.rs:+1:24: +1:25
+-         _4 = (_5.3: std::option::Option<isize>, Strong); // scope 0 at $DIR/sroa.rs:+1:24: +1:25
 -         StorageDead(_5);                 // scope 0 at $DIR/sroa.rs:+1:70: +1:71
 +         _4 = _11;                        // scope 0 at $DIR/sroa.rs:+1:24: +1:25
 +         StorageDead(_8);                 // scope 0 at $DIR/sroa.rs:+1:70: +1:71

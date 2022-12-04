@@ -34,7 +34,7 @@
   
       bb4: {
           StorageLive(_5);                 // scope 0 at $DIR/early_otherwise_branch_soundness.rs:+4:18: +4:19
-          _5 = (((*_2) as Some).0: i32);   // scope 0 at $DIR/early_otherwise_branch_soundness.rs:+4:18: +4:19
+          _5 = (((*_2) as Some).0: i32, Strong); // scope 0 at $DIR/early_otherwise_branch_soundness.rs:+4:18: +4:19
           _0 = _5;                         // scope 1 at $DIR/early_otherwise_branch_soundness.rs:+4:24: +4:25
           StorageDead(_5);                 // scope 0 at $DIR/early_otherwise_branch_soundness.rs:+4:24: +4:25
           goto -> bb5;                     // scope 0 at $DIR/early_otherwise_branch_soundness.rs:+4:24: +4:25

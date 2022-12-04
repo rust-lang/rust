@@ -33,12 +33,12 @@ fn foo(_1: T, _2: &i32) -> i32 {
         StorageLive(_7);                 // scope 1 at $DIR/inline_closure_borrows_arg.rs:+5:10: +5:11
         _7 = &(*_2);                     // scope 1 at $DIR/inline_closure_borrows_arg.rs:+5:10: +5:11
         Deinit(_5);                      // scope 1 at $DIR/inline_closure_borrows_arg.rs:+5:5: +5:12
-        (_5.0: &i32) = move _6;          // scope 1 at $DIR/inline_closure_borrows_arg.rs:+5:5: +5:12
-        (_5.1: &i32) = move _7;          // scope 1 at $DIR/inline_closure_borrows_arg.rs:+5:5: +5:12
+        (_5.0: &i32, Strong) = move _6;  // scope 1 at $DIR/inline_closure_borrows_arg.rs:+5:5: +5:12
+        (_5.1: &i32, Strong) = move _7;  // scope 1 at $DIR/inline_closure_borrows_arg.rs:+5:5: +5:12
         StorageLive(_8);                 // scope 1 at $DIR/inline_closure_borrows_arg.rs:+5:5: +5:12
-        _8 = move (_5.0: &i32);          // scope 1 at $DIR/inline_closure_borrows_arg.rs:+5:5: +5:12
+        _8 = move (_5.0: &i32, Strong);  // scope 1 at $DIR/inline_closure_borrows_arg.rs:+5:5: +5:12
         StorageLive(_9);                 // scope 1 at $DIR/inline_closure_borrows_arg.rs:+5:5: +5:12
-        _9 = move (_5.1: &i32);          // scope 1 at $DIR/inline_closure_borrows_arg.rs:+5:5: +5:12
+        _9 = move (_5.1: &i32, Strong);  // scope 1 at $DIR/inline_closure_borrows_arg.rs:+5:5: +5:12
         _0 = (*_8);                      // scope 3 at $DIR/inline_closure_borrows_arg.rs:+3:9: +3:18
         StorageDead(_9);                 // scope 1 at $DIR/inline_closure_borrows_arg.rs:+5:5: +5:12
         StorageDead(_8);                 // scope 1 at $DIR/inline_closure_borrows_arg.rs:+5:5: +5:12

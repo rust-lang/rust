@@ -35,7 +35,7 @@ fn unwrap(_1: Option<T>) -> T {
 
     bb3: {
         StorageLive(_3);                 // scope 0 at $DIR/no_drop_for_inactive_variant.rs:+2:14: +2:15
-        _3 = move ((_1 as Some).0: T);   // scope 0 at $DIR/no_drop_for_inactive_variant.rs:+2:14: +2:15
+        _3 = move ((_1 as Some).0: T, Strong); // scope 0 at $DIR/no_drop_for_inactive_variant.rs:+2:14: +2:15
         _0 = move _3;                    // scope 1 at $DIR/no_drop_for_inactive_variant.rs:+2:20: +2:21
         StorageDead(_3);                 // scope 0 at $DIR/no_drop_for_inactive_variant.rs:+2:20: +2:21
         _5 = discriminant(_1);           // scope 0 at $DIR/no_drop_for_inactive_variant.rs:+5:1: +5:2

@@ -58,7 +58,7 @@ fn main() -> () {
     bb5: {
         StorageLive(_6);                 // scope 2 at $DIR/issue_41888.rs:+4:21: +4:23
         _9 = const false;                // scope 2 at $DIR/issue_41888.rs:+4:21: +4:23
-        _6 = move ((_1 as F).0: K);      // scope 2 at $DIR/issue_41888.rs:+4:21: +4:23
+        _6 = move ((_1 as F).0: K, Strong); // scope 2 at $DIR/issue_41888.rs:+4:21: +4:23
         _0 = const ();                   // scope 2 at $DIR/issue_41888.rs:+4:29: +7:10
         StorageDead(_6);                 // scope 1 at $DIR/issue_41888.rs:+7:9: +7:10
         goto -> bb8;                     // scope 1 at $DIR/issue_41888.rs:+4:9: +7:10

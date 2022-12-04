@@ -18,22 +18,22 @@
       bb0: {
           StorageLive(_1);                 // scope 0 at $DIR/repr_transparent.rs:+1:9: +1:10
           Deinit(_1);                      // scope 0 at $DIR/repr_transparent.rs:+1:13: +1:19
-          (_1.0: i32) = const 0_i32;       // scope 0 at $DIR/repr_transparent.rs:+1:13: +1:19
+          (_1.0: i32, Strong) = const 0_i32; // scope 0 at $DIR/repr_transparent.rs:+1:13: +1:19
           StorageLive(_2);                 // scope 1 at $DIR/repr_transparent.rs:+2:9: +2:10
           StorageLive(_3);                 // scope 1 at $DIR/repr_transparent.rs:+2:17: +2:26
           StorageLive(_4);                 // scope 1 at $DIR/repr_transparent.rs:+2:17: +2:20
--         _4 = (_1.0: i32);                // scope 1 at $DIR/repr_transparent.rs:+2:17: +2:20
+-         _4 = (_1.0: i32, Strong);        // scope 1 at $DIR/repr_transparent.rs:+2:17: +2:20
 +         _4 = const 0_i32;                // scope 1 at $DIR/repr_transparent.rs:+2:17: +2:20
           StorageLive(_5);                 // scope 1 at $DIR/repr_transparent.rs:+2:23: +2:26
--         _5 = (_1.0: i32);                // scope 1 at $DIR/repr_transparent.rs:+2:23: +2:26
+-         _5 = (_1.0: i32, Strong);        // scope 1 at $DIR/repr_transparent.rs:+2:23: +2:26
 -         _3 = Add(move _4, move _5);      // scope 1 at $DIR/repr_transparent.rs:+2:17: +2:26
 +         _5 = const 0_i32;                // scope 1 at $DIR/repr_transparent.rs:+2:23: +2:26
 +         _3 = const 0_i32;                // scope 1 at $DIR/repr_transparent.rs:+2:17: +2:26
           StorageDead(_5);                 // scope 1 at $DIR/repr_transparent.rs:+2:25: +2:26
           StorageDead(_4);                 // scope 1 at $DIR/repr_transparent.rs:+2:25: +2:26
           Deinit(_2);                      // scope 1 at $DIR/repr_transparent.rs:+2:13: +2:27
--         (_2.0: i32) = move _3;           // scope 1 at $DIR/repr_transparent.rs:+2:13: +2:27
-+         (_2.0: i32) = const 0_i32;       // scope 1 at $DIR/repr_transparent.rs:+2:13: +2:27
+-         (_2.0: i32, Strong) = move _3;   // scope 1 at $DIR/repr_transparent.rs:+2:13: +2:27
++         (_2.0: i32, Strong) = const 0_i32; // scope 1 at $DIR/repr_transparent.rs:+2:13: +2:27
           StorageDead(_3);                 // scope 1 at $DIR/repr_transparent.rs:+2:26: +2:27
           _0 = const ();                   // scope 0 at $DIR/repr_transparent.rs:+0:11: +3:2
           StorageDead(_2);                 // scope 1 at $DIR/repr_transparent.rs:+3:1: +3:2

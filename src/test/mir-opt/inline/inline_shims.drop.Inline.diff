@@ -50,7 +50,7 @@
 +     }
 + 
 +     bb3: {
-+         drop((((*_5) as Some).0: B)) -> bb2; // scope 3 at $SRC_DIR/core/src/ptr/mod.rs:LL:COL
++         drop((((*_5) as Some).0: B, Strong)) -> bb2; // scope 3 at $SRC_DIR/core/src/ptr/mod.rs:LL:COL
       }
   }
   

@@ -27,13 +27,13 @@
       bb0: {
           StorageLive(_1);                 // scope 0 at $DIR/optimizes_into_variable.rs:+1:9: +1:10
 -         _2 = CheckedAdd(const 2_i32, const 2_i32); // scope 0 at $DIR/optimizes_into_variable.rs:+1:13: +1:18
--         assert(!move (_2.1: bool), "attempt to compute `{} + {}`, which would overflow", const 2_i32, const 2_i32) -> bb1; // scope 0 at $DIR/optimizes_into_variable.rs:+1:13: +1:18
+-         assert(!move (_2.1: bool, Strong), "attempt to compute `{} + {}`, which would overflow", const 2_i32, const 2_i32) -> bb1; // scope 0 at $DIR/optimizes_into_variable.rs:+1:13: +1:18
 +         _2 = const (4_i32, false);       // scope 0 at $DIR/optimizes_into_variable.rs:+1:13: +1:18
 +         assert(!const false, "attempt to compute `{} + {}`, which would overflow", const 2_i32, const 2_i32) -> bb1; // scope 0 at $DIR/optimizes_into_variable.rs:+1:13: +1:18
       }
   
       bb1: {
--         _1 = move (_2.0: i32);           // scope 0 at $DIR/optimizes_into_variable.rs:+1:13: +1:18
+-         _1 = move (_2.0: i32, Strong);   // scope 0 at $DIR/optimizes_into_variable.rs:+1:13: +1:18
 +         _1 = const 4_i32;                // scope 0 at $DIR/optimizes_into_variable.rs:+1:13: +1:18
           StorageLive(_3);                 // scope 1 at $DIR/optimizes_into_variable.rs:+2:9: +2:10
           StorageLive(_4);                 // scope 1 at $DIR/optimizes_into_variable.rs:+2:13: +2:31

@@ -33,7 +33,7 @@
   
       bb2: {
 -         StorageLive(_3);                 // scope 1 at $DIR/unreachable.rs:+1:17: +1:19
--         _3 = move ((_1 as Some).0: Empty); // scope 1 at $DIR/unreachable.rs:+1:17: +1:19
+-         _3 = move ((_1 as Some).0: Empty, Strong); // scope 1 at $DIR/unreachable.rs:+1:17: +1:19
 -         StorageLive(_4);                 // scope 1 at $DIR/unreachable.rs:+2:13: +2:19
 -         StorageLive(_5);                 // scope 2 at $DIR/unreachable.rs:+4:9: +8:10
 -         StorageLive(_6);                 // scope 2 at $DIR/unreachable.rs:+4:12: +4:16

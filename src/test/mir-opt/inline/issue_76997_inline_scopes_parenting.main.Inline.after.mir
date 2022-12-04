@@ -27,9 +27,9 @@ fn main() -> () {
         StorageLive(_4);                 // scope 1 at $DIR/issue_76997_inline_scopes_parenting.rs:+2:7: +2:9
         Deinit(_4);                      // scope 1 at $DIR/issue_76997_inline_scopes_parenting.rs:+2:7: +2:9
         Deinit(_3);                      // scope 1 at $DIR/issue_76997_inline_scopes_parenting.rs:+2:5: +2:10
-        (_3.0: ()) = move _4;            // scope 1 at $DIR/issue_76997_inline_scopes_parenting.rs:+2:5: +2:10
+        (_3.0: (), Strong) = move _4;    // scope 1 at $DIR/issue_76997_inline_scopes_parenting.rs:+2:5: +2:10
         StorageLive(_5);                 // scope 1 at $DIR/issue_76997_inline_scopes_parenting.rs:+2:5: +2:10
-        _5 = move (_3.0: ());            // scope 1 at $DIR/issue_76997_inline_scopes_parenting.rs:+2:5: +2:10
+        _5 = move (_3.0: (), Strong);    // scope 1 at $DIR/issue_76997_inline_scopes_parenting.rs:+2:5: +2:10
         StorageLive(_6);                 // scope 2 at $DIR/issue_76997_inline_scopes_parenting.rs:+1:23: +1:24
         StorageDead(_6);                 // scope 2 at $DIR/issue_76997_inline_scopes_parenting.rs:+1:32: +1:33
         StorageDead(_5);                 // scope 1 at $DIR/issue_76997_inline_scopes_parenting.rs:+2:5: +2:10

@@ -29,7 +29,7 @@ fn foo(_1: Option<String>) -> i32 {
     }
 
     bb2: {
-        _2 = &((_1 as Some).0: std::string::String); // scope 0 at $DIR/string.rs:+2:14: +2:17
+        _2 = &((_1 as Some).0: std::string::String, Strong); // scope 0 at $DIR/string.rs:+2:14: +2:17
         _3 = <String as Deref>::deref(move _2) -> bb3; // scope 0 at $DIR/string.rs:+2:14: +2:17
                                          // mir::Constant
                                          // + span: $DIR/string.rs:9:14: 9:17

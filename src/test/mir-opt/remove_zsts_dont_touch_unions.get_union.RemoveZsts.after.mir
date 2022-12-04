@@ -8,7 +8,7 @@ fn get_union() -> Foo {
         StorageLive(_1);                 // scope 0 at $DIR/remove_zsts_dont_touch_unions.rs:+1:14: +1:16
         nop;                             // scope 0 at $DIR/remove_zsts_dont_touch_unions.rs:+1:14: +1:16
         Deinit(_0);                      // scope 0 at $DIR/remove_zsts_dont_touch_unions.rs:+1:5: +1:18
-        (_0.0: ()) = move _1;            // scope 0 at $DIR/remove_zsts_dont_touch_unions.rs:+1:5: +1:18
+        (_0.0: (), Strong) = move _1;    // scope 0 at $DIR/remove_zsts_dont_touch_unions.rs:+1:5: +1:18
         StorageDead(_1);                 // scope 0 at $DIR/remove_zsts_dont_touch_unions.rs:+1:17: +1:18
         return;                          // scope 0 at $DIR/remove_zsts_dont_touch_unions.rs:+2:2: +2:2
     }

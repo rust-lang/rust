@@ -24,11 +24,11 @@
       bb0: {
           StorageLive(_1);                 // scope 0 at $DIR/sibling_ptr.rs:+1:9: +1:14
           Deinit(_1);                      // scope 0 at $DIR/sibling_ptr.rs:+1:27: +1:33
-          (_1.0: u8) = const 0_u8;         // scope 0 at $DIR/sibling_ptr.rs:+1:27: +1:33
-          (_1.1: u8) = const 0_u8;         // scope 0 at $DIR/sibling_ptr.rs:+1:27: +1:33
+          (_1.0: u8, Strong) = const 0_u8; // scope 0 at $DIR/sibling_ptr.rs:+1:27: +1:33
+          (_1.1: u8, Strong) = const 0_u8; // scope 0 at $DIR/sibling_ptr.rs:+1:27: +1:33
           StorageLive(_2);                 // scope 1 at $DIR/sibling_ptr.rs:+2:5: +5:6
           StorageLive(_3);                 // scope 2 at $DIR/sibling_ptr.rs:+3:13: +3:14
-          _3 = &raw mut (_1.0: u8);        // scope 2 at $SRC_DIR/core/src/ptr/mod.rs:LL:COL
+          _3 = &raw mut (_1.0: u8, Strong); // scope 2 at $SRC_DIR/core/src/ptr/mod.rs:LL:COL
           StorageLive(_4);                 // scope 3 at $DIR/sibling_ptr.rs:+4:10: +4:18
           StorageLive(_5);                 // scope 3 at $DIR/sibling_ptr.rs:+4:10: +4:11
           _5 = _3;                         // scope 3 at $DIR/sibling_ptr.rs:+4:10: +4:11
@@ -46,7 +46,7 @@
           StorageDead(_3);                 // scope 2 at $DIR/sibling_ptr.rs:+5:5: +5:6
           StorageDead(_2);                 // scope 1 at $DIR/sibling_ptr.rs:+5:5: +5:6
           StorageLive(_6);                 // scope 1 at $DIR/sibling_ptr.rs:+6:9: +6:11
-          _6 = (_1.1: u8);                 // scope 1 at $DIR/sibling_ptr.rs:+6:14: +6:17
+          _6 = (_1.1: u8, Strong);         // scope 1 at $DIR/sibling_ptr.rs:+6:14: +6:17
           _0 = const ();                   // scope 0 at $DIR/sibling_ptr.rs:+0:11: +7:2
           StorageDead(_6);                 // scope 1 at $DIR/sibling_ptr.rs:+7:1: +7:2
           StorageDead(_1);                 // scope 0 at $DIR/sibling_ptr.rs:+7:1: +7:2

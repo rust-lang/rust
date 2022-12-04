@@ -54,7 +54,7 @@
           StorageLive(_1);                 // scope 0 at $DIR/issue_73223.rs:+1:9: +1:14
           StorageLive(_2);                 // scope 0 at $DIR/issue_73223.rs:+1:23: +1:30
           Deinit(_2);                      // scope 0 at $DIR/issue_73223.rs:+1:23: +1:30
-          ((_2 as Some).0: i32) = const 1_i32; // scope 0 at $DIR/issue_73223.rs:+1:23: +1:30
+          ((_2 as Some).0: i32, Strong) = const 1_i32; // scope 0 at $DIR/issue_73223.rs:+1:23: +1:30
           discriminant(_2) = 1;            // scope 0 at $DIR/issue_73223.rs:+1:23: +1:30
           _3 = const 1_isize;              // scope 0 at $DIR/issue_73223.rs:+1:23: +1:30
           goto -> bb3;                     // scope 0 at $DIR/issue_73223.rs:+1:17: +1:30
@@ -73,7 +73,7 @@
   
       bb3: {
           StorageLive(_4);                 // scope 0 at $DIR/issue_73223.rs:+2:14: +2:15
-          _4 = ((_2 as Some).0: i32);      // scope 0 at $DIR/issue_73223.rs:+2:14: +2:15
+          _4 = ((_2 as Some).0: i32, Strong); // scope 0 at $DIR/issue_73223.rs:+2:14: +2:15
           _1 = _4;                         // scope 2 at $DIR/issue_73223.rs:+2:20: +2:21
           StorageDead(_4);                 // scope 0 at $DIR/issue_73223.rs:+2:20: +2:21
           StorageDead(_2);                 // scope 0 at $DIR/issue_73223.rs:+4:6: +4:7
@@ -81,7 +81,7 @@
           StorageLive(_7);                 // scope 1 at $DIR/issue_73223.rs:+6:22: +6:27
           _7 = _1;                         // scope 1 at $DIR/issue_73223.rs:+6:22: +6:27
           Deinit(_6);                      // scope 1 at $DIR/issue_73223.rs:+6:17: +6:28
-          ((_6 as Some).0: i32) = move _7; // scope 1 at $DIR/issue_73223.rs:+6:17: +6:28
+          ((_6 as Some).0: i32, Strong) = move _7; // scope 1 at $DIR/issue_73223.rs:+6:17: +6:28
           discriminant(_6) = 1;            // scope 1 at $DIR/issue_73223.rs:+6:17: +6:28
           StorageDead(_7);                 // scope 1 at $DIR/issue_73223.rs:+6:27: +6:28
           StorageLive(_8);                 // scope 3 at $SRC_DIR/core/src/macros/mod.rs:LL:COL

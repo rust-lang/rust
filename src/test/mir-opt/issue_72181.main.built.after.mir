@@ -48,7 +48,7 @@ fn main() -> () {
     }
 
     bb2: {
-        _5 = (_2[_6].0: u64);            // scope 4 at $DIR/issue_72181.rs:+4:22: +4:28
+        _5 = (_2[_6].0: u64, Strong);    // scope 4 at $DIR/issue_72181.rs:+4:22: +4:28
         StorageDead(_6);                 // scope 2 at $DIR/issue_72181.rs:+4:30: +4:31
         StorageDead(_5);                 // scope 2 at $DIR/issue_72181.rs:+4:30: +4:31
         _0 = const ();                   // scope 0 at $DIR/issue_72181.rs:+0:11: +5:2

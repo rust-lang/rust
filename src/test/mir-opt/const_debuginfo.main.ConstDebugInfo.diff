@@ -94,7 +94,7 @@
           _18 = const 123_u32;             // scope 5 at $DIR/const_debuginfo.rs:+8:13: +8:34
           StorageLive(_11);                // scope 6 at $DIR/const_debuginfo.rs:+10:9: +10:10
           Deinit(_11);                     // scope 6 at $DIR/const_debuginfo.rs:+10:13: +10:24
-          ((_11 as Some).0: u16) = const 99_u16; // scope 6 at $DIR/const_debuginfo.rs:+10:13: +10:24
+          ((_11 as Some).0: u16, Strong) = const 99_u16; // scope 6 at $DIR/const_debuginfo.rs:+10:13: +10:24
           discriminant(_11) = 1;           // scope 6 at $DIR/const_debuginfo.rs:+10:13: +10:24
           StorageLive(_19);                // scope 7 at $DIR/const_debuginfo.rs:+12:9: +12:10
           StorageLive(_20);                // scope 7 at $DIR/const_debuginfo.rs:+12:9: +12:10

@@ -57,7 +57,7 @@ fn main() -> () {
     }
 
     bb5: {
-        _5 = ((_1 as Some).0: u8);       // scope 1 at $DIR/issue_101867.rs:+2:14: +2:15
+        _5 = ((_1 as Some).0: u8, Strong); // scope 1 at $DIR/issue_101867.rs:+2:14: +2:15
         _0 = const ();                   // scope 0 at $DIR/issue_101867.rs:+0:11: +5:2
         StorageDead(_5);                 // scope 1 at $DIR/issue_101867.rs:+5:1: +5:2
         StorageDead(_1);                 // scope 0 at $DIR/issue_101867.rs:+5:1: +5:2

@@ -24,7 +24,7 @@ fn main::{closure#0}(_1: *mut [generator@$DIR/generator_drop_cleanup.rs:10:15: 1
     let mut _7: ();                      // in scope 0 at $DIR/generator_drop_cleanup.rs:+0:15: +3:6
     let mut _8: u32;                     // in scope 0 at $DIR/generator_drop_cleanup.rs:+0:15: +3:6
     scope 1 {
-        debug _s => (((*_1) as variant#3).0: std::string::String); // in scope 1 at $DIR/generator_drop_cleanup.rs:+1:13: +1:15
+        debug _s => (((*_1) as variant#3).0: std::string::String, Strong); // in scope 1 at $DIR/generator_drop_cleanup.rs:+1:13: +1:15
     }
 
     bb0: {
@@ -35,7 +35,7 @@ fn main::{closure#0}(_1: *mut [generator@$DIR/generator_drop_cleanup.rs:10:15: 1
     bb1: {
         StorageDead(_5);                 // scope 1 at $DIR/generator_drop_cleanup.rs:+2:13: +2:14
         StorageDead(_4);                 // scope 1 at $DIR/generator_drop_cleanup.rs:+2:14: +2:15
-        drop((((*_1) as variant#3).0: std::string::String)) -> [return: bb2, unwind: bb5]; // scope 0 at $DIR/generator_drop_cleanup.rs:+3:5: +3:6
+        drop((((*_1) as variant#3).0: std::string::String, Strong)) -> [return: bb2, unwind: bb5]; // scope 0 at $DIR/generator_drop_cleanup.rs:+3:5: +3:6
     }
 
     bb2: {

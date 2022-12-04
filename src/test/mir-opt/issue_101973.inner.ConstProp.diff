@@ -39,20 +39,20 @@
           StorageLive(_12);                // scope 2 at $DIR/issue_101973.rs:7:12: 7:27
           StorageLive(_13);                // scope 2 at $DIR/issue_101973.rs:7:12: 7:20
           _14 = CheckedShr(_5, const 0_i32); // scope 2 at $DIR/issue_101973.rs:7:12: 7:20
-          assert(!move (_14.1: bool), "attempt to shift right by `{}`, which would overflow", const 0_i32) -> bb3; // scope 2 at $DIR/issue_101973.rs:7:12: 7:20
+          assert(!move (_14.1: bool, Strong), "attempt to shift right by `{}`, which would overflow", const 0_i32) -> bb3; // scope 2 at $DIR/issue_101973.rs:7:12: 7:20
       }
   
       bb1: {
-          _8 = move (_10.0: u32);          // scope 0 at $DIR/issue_101973.rs:+1:32: +1:45
+          _8 = move (_10.0: u32, Strong);  // scope 0 at $DIR/issue_101973.rs:+1:32: +1:45
           StorageDead(_9);                 // scope 0 at $DIR/issue_101973.rs:+1:44: +1:45
           _7 = BitAnd(move _8, const 15_u32); // scope 0 at $DIR/issue_101973.rs:+1:31: +1:52
           StorageDead(_8);                 // scope 0 at $DIR/issue_101973.rs:+1:51: +1:52
           _11 = CheckedShl(_7, const 1_i32); // scope 0 at $DIR/issue_101973.rs:+1:31: +1:57
-          assert(!move (_11.1: bool), "attempt to shift left by `{}`, which would overflow", const 1_i32) -> bb2; // scope 0 at $DIR/issue_101973.rs:+1:31: +1:57
+          assert(!move (_11.1: bool, Strong), "attempt to shift left by `{}`, which would overflow", const 1_i32) -> bb2; // scope 0 at $DIR/issue_101973.rs:+1:31: +1:57
       }
   
       bb2: {
-          _6 = move (_11.0: u32);          // scope 0 at $DIR/issue_101973.rs:+1:31: +1:57
+          _6 = move (_11.0: u32, Strong);  // scope 0 at $DIR/issue_101973.rs:+1:31: +1:57
           StorageDead(_7);                 // scope 0 at $DIR/issue_101973.rs:+1:56: +1:57
           StorageLive(_15);                // scope 3 at $SRC_DIR/core/src/num/uint_macros.rs:LL:COL
           _15 = _4;                        // scope 3 at $SRC_DIR/core/src/num/uint_macros.rs:LL:COL
@@ -65,7 +65,7 @@
       }
   
       bb3: {
-          _13 = move (_14.0: u32);         // scope 2 at $DIR/issue_101973.rs:7:12: 7:20
+          _13 = move (_14.0: u32, Strong); // scope 2 at $DIR/issue_101973.rs:7:12: 7:20
           _12 = BitAnd(move _13, const 255_u32); // scope 2 at $DIR/issue_101973.rs:7:12: 7:27
           StorageDead(_13);                // scope 2 at $DIR/issue_101973.rs:7:26: 7:27
           _4 = BitOr(const 0_u32, move _12); // scope 2 at $DIR/issue_101973.rs:7:5: 7:27
@@ -77,7 +77,7 @@
           StorageLive(_9);                 // scope 0 at $DIR/issue_101973.rs:+1:33: +1:39
           _9 = _1;                         // scope 0 at $DIR/issue_101973.rs:+1:33: +1:39
           _10 = CheckedShr(_9, const 8_i32); // scope 0 at $DIR/issue_101973.rs:+1:32: +1:45
-          assert(!move (_10.1: bool), "attempt to shift right by `{}`, which would overflow", const 8_i32) -> bb1; // scope 0 at $DIR/issue_101973.rs:+1:32: +1:45
+          assert(!move (_10.1: bool, Strong), "attempt to shift right by `{}`, which would overflow", const 8_i32) -> bb1; // scope 0 at $DIR/issue_101973.rs:+1:32: +1:45
       }
   
       bb4: {

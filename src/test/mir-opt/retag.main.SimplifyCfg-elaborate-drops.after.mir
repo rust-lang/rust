@@ -63,7 +63,7 @@ fn main() -> () {
         StorageLive(_4);                 // scope 1 at $DIR/retag.rs:+3:17: +3:36
         StorageLive(_5);                 // scope 1 at $DIR/retag.rs:+3:17: +3:24
         Deinit(_5);                      // scope 1 at $DIR/retag.rs:+3:17: +3:24
-        (_5.0: i32) = const 0_i32;       // scope 1 at $DIR/retag.rs:+3:17: +3:24
+        (_5.0: i32, Strong) = const 0_i32; // scope 1 at $DIR/retag.rs:+3:17: +3:24
         _4 = &_5;                        // scope 1 at $DIR/retag.rs:+3:17: +3:36
         Retag(_4);                       // scope 1 at $DIR/retag.rs:+3:17: +3:36
         StorageLive(_6);                 // scope 1 at $DIR/retag.rs:+3:29: +3:35
@@ -137,7 +137,7 @@ fn main() -> () {
         StorageLive(_20);                // scope 7 at $DIR/retag.rs:+18:5: +18:24
         StorageLive(_21);                // scope 7 at $DIR/retag.rs:+18:5: +18:12
         Deinit(_21);                     // scope 7 at $DIR/retag.rs:+18:5: +18:12
-        (_21.0: i32) = const 0_i32;      // scope 7 at $DIR/retag.rs:+18:5: +18:12
+        (_21.0: i32, Strong) = const 0_i32; // scope 7 at $DIR/retag.rs:+18:5: +18:12
         _20 = &_21;                      // scope 7 at $DIR/retag.rs:+18:5: +18:24
         Retag(_20);                      // scope 7 at $DIR/retag.rs:+18:5: +18:24
         StorageLive(_22);                // scope 7 at $DIR/retag.rs:+18:21: +18:23

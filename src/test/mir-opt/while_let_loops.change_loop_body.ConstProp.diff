@@ -30,7 +30,7 @@
       }
   
       bb1: {
-          switchInt(((_3 as Some).0: u32)) -> [0_u32: bb2, otherwise: bb3]; // scope 2 at $DIR/while_let_loops.rs:+2:15: +2:25
+          switchInt(((_3 as Some).0: u32, Strong)) -> [0_u32: bb2, otherwise: bb3]; // scope 2 at $DIR/while_let_loops.rs:+2:15: +2:25
       }
   
       bb2: {

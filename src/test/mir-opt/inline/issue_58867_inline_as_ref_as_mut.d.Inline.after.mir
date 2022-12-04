@@ -16,7 +16,7 @@ fn d(_1: &Box<T>) -> &T {
         StorageLive(_3);                 // scope 0 at $DIR/issue_58867_inline_as_ref_as_mut.rs:+1:5: +1:15
         _3 = &(*_1);                     // scope 0 at $DIR/issue_58867_inline_as_ref_as_mut.rs:+1:5: +1:15
         _4 = deref_copy (*_3);           // scope 1 at $SRC_DIR/alloc/src/boxed.rs:LL:COL
-        _5 = (((_4.0: std::ptr::Unique<T>).0: std::ptr::NonNull<T>).0: *const T); // scope 1 at $SRC_DIR/alloc/src/boxed.rs:LL:COL
+        _5 = (((_4.0: std::ptr::Unique<T>, Strong).0: std::ptr::NonNull<T>, Strong).0: *const T, Strong); // scope 1 at $SRC_DIR/alloc/src/boxed.rs:LL:COL
         _2 = &(*_5);                     // scope 1 at $SRC_DIR/alloc/src/boxed.rs:LL:COL
         _0 = &(*_2);                     // scope 0 at $DIR/issue_58867_inline_as_ref_as_mut.rs:+1:5: +1:15
         StorageDead(_3);                 // scope 0 at $DIR/issue_58867_inline_as_ref_as_mut.rs:+1:14: +1:15

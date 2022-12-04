@@ -32,18 +32,18 @@
   
       bb0: {
 -         FakeRead(ForMatchedPlace(None), _2); // scope 0 at $DIR/match_arm_scopes.rs:+1:11: +1:16
--         switchInt((_2.0: bool)) -> [false: bb1, otherwise: bb2]; // scope 0 at $DIR/match_arm_scopes.rs:+1:5: +1:16
-+         switchInt((_2.0: bool)) -> [false: bb5, otherwise: bb1]; // scope 0 at $DIR/match_arm_scopes.rs:+1:5: +1:16
+-         switchInt((_2.0: bool, Strong)) -> [false: bb1, otherwise: bb2]; // scope 0 at $DIR/match_arm_scopes.rs:+1:5: +1:16
++         switchInt((_2.0: bool, Strong)) -> [false: bb5, otherwise: bb1]; // scope 0 at $DIR/match_arm_scopes.rs:+1:5: +1:16
       }
   
       bb1: {
 -         falseEdge -> [real: bb8, imaginary: bb3]; // scope 0 at $DIR/match_arm_scopes.rs:+2:9: +2:22
-+         switchInt((_2.1: bool)) -> [false: bb10, otherwise: bb2]; // scope 0 at $DIR/match_arm_scopes.rs:+1:5: +1:16
++         switchInt((_2.1: bool, Strong)) -> [false: bb10, otherwise: bb2]; // scope 0 at $DIR/match_arm_scopes.rs:+1:5: +1:16
       }
   
       bb2: {
--         switchInt((_2.1: bool)) -> [false: bb3, otherwise: bb4]; // scope 0 at $DIR/match_arm_scopes.rs:+1:5: +1:16
-+         switchInt((_2.0: bool)) -> [false: bb3, otherwise: bb17]; // scope 0 at $DIR/match_arm_scopes.rs:+1:5: +1:16
+-         switchInt((_2.1: bool, Strong)) -> [false: bb3, otherwise: bb4]; // scope 0 at $DIR/match_arm_scopes.rs:+1:5: +1:16
++         switchInt((_2.0: bool, Strong)) -> [false: bb3, otherwise: bb17]; // scope 0 at $DIR/match_arm_scopes.rs:+1:5: +1:16
       }
   
       bb3: {
@@ -51,7 +51,7 @@
 -     }
 - 
 -     bb4: {
--         switchInt((_2.0: bool)) -> [false: bb6, otherwise: bb5]; // scope 0 at $DIR/match_arm_scopes.rs:+1:5: +1:16
+-         switchInt((_2.0: bool, Strong)) -> [false: bb6, otherwise: bb5]; // scope 0 at $DIR/match_arm_scopes.rs:+1:5: +1:16
 -     }
 - 
 -     bb5: {
@@ -60,9 +60,9 @@
 - 
 -     bb6: {
           StorageLive(_15);                // scope 0 at $DIR/match_arm_scopes.rs:+3:32: +3:33
-          _15 = (_2.1: bool);              // scope 0 at $DIR/match_arm_scopes.rs:+3:32: +3:33
+          _15 = (_2.1: bool, Strong);      // scope 0 at $DIR/match_arm_scopes.rs:+3:32: +3:33
           StorageLive(_16);                // scope 0 at $DIR/match_arm_scopes.rs:+3:35: +3:36
-          _16 = move (_2.2: std::string::String); // scope 0 at $DIR/match_arm_scopes.rs:+3:35: +3:36
+          _16 = move (_2.2: std::string::String, Strong); // scope 0 at $DIR/match_arm_scopes.rs:+3:35: +3:36
 -         goto -> bb19;                    // scope 0 at $DIR/match_arm_scopes.rs:+1:5: +4:6
 +         goto -> bb16;                    // scope 0 at $DIR/match_arm_scopes.rs:+1:5: +4:6
       }
@@ -77,11 +77,11 @@
 -     bb8: {
 +     bb5: {
           StorageLive(_6);                 // scope 0 at $DIR/match_arm_scopes.rs:+2:17: +2:18
-          _6 = &(_2.1: bool);              // scope 0 at $DIR/match_arm_scopes.rs:+2:17: +2:18
+          _6 = &(_2.1: bool, Strong);      // scope 0 at $DIR/match_arm_scopes.rs:+2:17: +2:18
           StorageLive(_8);                 // scope 0 at $DIR/match_arm_scopes.rs:+2:20: +2:21
-          _8 = &(_2.2: std::string::String); // scope 0 at $DIR/match_arm_scopes.rs:+2:20: +2:21
--         _3 = &shallow (_2.0: bool);      // scope 0 at $DIR/match_arm_scopes.rs:+1:11: +1:16
--         _4 = &shallow (_2.1: bool);      // scope 0 at $DIR/match_arm_scopes.rs:+1:11: +1:16
+          _8 = &(_2.2: std::string::String, Strong); // scope 0 at $DIR/match_arm_scopes.rs:+2:20: +2:21
+-         _3 = &shallow (_2.0: bool, Strong); // scope 0 at $DIR/match_arm_scopes.rs:+1:11: +1:16
+-         _4 = &shallow (_2.1: bool, Strong); // scope 0 at $DIR/match_arm_scopes.rs:+1:11: +1:16
           StorageLive(_9);                 // scope 0 at $DIR/match_arm_scopes.rs:+2:42: +2:73
           StorageLive(_10);                // scope 0 at $DIR/match_arm_scopes.rs:+2:45: +2:49
           _10 = _1;                        // scope 0 at $DIR/match_arm_scopes.rs:+2:45: +2:49
@@ -114,9 +114,9 @@
 -         FakeRead(ForGuardBinding, _6);   // scope 0 at $DIR/match_arm_scopes.rs:+2:72: +2:73
 -         FakeRead(ForGuardBinding, _8);   // scope 0 at $DIR/match_arm_scopes.rs:+2:72: +2:73
           StorageLive(_5);                 // scope 0 at $DIR/match_arm_scopes.rs:+2:17: +2:18
-          _5 = (_2.1: bool);               // scope 0 at $DIR/match_arm_scopes.rs:+2:17: +2:18
+          _5 = (_2.1: bool, Strong);       // scope 0 at $DIR/match_arm_scopes.rs:+2:17: +2:18
           StorageLive(_7);                 // scope 0 at $DIR/match_arm_scopes.rs:+2:20: +2:21
-          _7 = move (_2.2: std::string::String); // scope 0 at $DIR/match_arm_scopes.rs:+2:20: +2:21
+          _7 = move (_2.2: std::string::String, Strong); // scope 0 at $DIR/match_arm_scopes.rs:+2:20: +2:21
 -         goto -> bb7;                     // scope 0 at $DIR/match_arm_scopes.rs:+1:5: +4:6
 +         goto -> bb4;                     // scope 0 at $DIR/match_arm_scopes.rs:+1:5: +4:6
       }
@@ -134,11 +134,11 @@
 -     bb13: {
 +     bb10: {
           StorageLive(_6);                 // scope 0 at $DIR/match_arm_scopes.rs:+2:26: +2:27
-          _6 = &(_2.0: bool);              // scope 0 at $DIR/match_arm_scopes.rs:+2:26: +2:27
+          _6 = &(_2.0: bool, Strong);      // scope 0 at $DIR/match_arm_scopes.rs:+2:26: +2:27
           StorageLive(_8);                 // scope 0 at $DIR/match_arm_scopes.rs:+2:36: +2:37
-          _8 = &(_2.2: std::string::String); // scope 0 at $DIR/match_arm_scopes.rs:+2:36: +2:37
--         _3 = &shallow (_2.0: bool);      // scope 0 at $DIR/match_arm_scopes.rs:+1:11: +1:16
--         _4 = &shallow (_2.1: bool);      // scope 0 at $DIR/match_arm_scopes.rs:+1:11: +1:16
+          _8 = &(_2.2: std::string::String, Strong); // scope 0 at $DIR/match_arm_scopes.rs:+2:36: +2:37
+-         _3 = &shallow (_2.0: bool, Strong); // scope 0 at $DIR/match_arm_scopes.rs:+1:11: +1:16
+-         _4 = &shallow (_2.1: bool, Strong); // scope 0 at $DIR/match_arm_scopes.rs:+1:11: +1:16
           StorageLive(_12);                // scope 0 at $DIR/match_arm_scopes.rs:+2:42: +2:73
           StorageLive(_13);                // scope 0 at $DIR/match_arm_scopes.rs:+2:45: +2:49
           _13 = _1;                        // scope 0 at $DIR/match_arm_scopes.rs:+2:45: +2:49
@@ -171,9 +171,9 @@
 -         FakeRead(ForGuardBinding, _6);   // scope 0 at $DIR/match_arm_scopes.rs:+2:72: +2:73
 -         FakeRead(ForGuardBinding, _8);   // scope 0 at $DIR/match_arm_scopes.rs:+2:72: +2:73
           StorageLive(_5);                 // scope 0 at $DIR/match_arm_scopes.rs:+2:26: +2:27
-          _5 = (_2.0: bool);               // scope 0 at $DIR/match_arm_scopes.rs:+2:26: +2:27
+          _5 = (_2.0: bool, Strong);       // scope 0 at $DIR/match_arm_scopes.rs:+2:26: +2:27
           StorageLive(_7);                 // scope 0 at $DIR/match_arm_scopes.rs:+2:36: +2:37
-          _7 = move (_2.2: std::string::String); // scope 0 at $DIR/match_arm_scopes.rs:+2:36: +2:37
+          _7 = move (_2.2: std::string::String, Strong); // scope 0 at $DIR/match_arm_scopes.rs:+2:36: +2:37
 -         goto -> bb7;                     // scope 0 at $DIR/match_arm_scopes.rs:+1:5: +4:6
 +         goto -> bb4;                     // scope 0 at $DIR/match_arm_scopes.rs:+1:5: +4:6
       }
@@ -208,9 +208,9 @@
 -     bb20: {
 +     bb17: {
           StorageLive(_15);                // scope 0 at $DIR/match_arm_scopes.rs:+3:16: +3:17
-          _15 = (_2.1: bool);              // scope 0 at $DIR/match_arm_scopes.rs:+3:16: +3:17
+          _15 = (_2.1: bool, Strong);      // scope 0 at $DIR/match_arm_scopes.rs:+3:16: +3:17
           StorageLive(_16);                // scope 0 at $DIR/match_arm_scopes.rs:+3:19: +3:20
-          _16 = move (_2.2: std::string::String); // scope 0 at $DIR/match_arm_scopes.rs:+3:19: +3:20
+          _16 = move (_2.2: std::string::String, Strong); // scope 0 at $DIR/match_arm_scopes.rs:+3:19: +3:20
 -         goto -> bb19;                    // scope 0 at $DIR/match_arm_scopes.rs:+1:5: +4:6
 +         goto -> bb16;                    // scope 0 at $DIR/match_arm_scopes.rs:+1:5: +4:6
       }

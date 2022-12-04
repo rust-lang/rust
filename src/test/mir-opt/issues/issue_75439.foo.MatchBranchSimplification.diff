@@ -68,7 +68,7 @@
       bb7: {
           StorageDead(_6);                 // scope 4 at $DIR/issue_75439.rs:+5:35: +5:36
           Deinit(_0);                      // scope 3 at $DIR/issue_75439.rs:+5:9: +5:39
-          ((_0 as Some).0: [u8; 4]) = move _5; // scope 3 at $DIR/issue_75439.rs:+5:9: +5:39
+          ((_0 as Some).0: [u8; 4], Strong) = move _5; // scope 3 at $DIR/issue_75439.rs:+5:9: +5:39
           discriminant(_0) = 1;            // scope 3 at $DIR/issue_75439.rs:+5:9: +5:39
           StorageDead(_5);                 // scope 3 at $DIR/issue_75439.rs:+5:38: +5:39
           StorageDead(_4);                 // scope 1 at $DIR/issue_75439.rs:+6:5: +6:6

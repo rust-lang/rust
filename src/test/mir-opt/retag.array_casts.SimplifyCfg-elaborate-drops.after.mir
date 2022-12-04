@@ -129,16 +129,16 @@ fn array_casts() -> () {
         _18 = &(*_35);                   // scope 5 at $SRC_DIR/core/src/macros/mod.rs:LL:COL
         Retag(_18);                      // scope 5 at $SRC_DIR/core/src/macros/mod.rs:LL:COL
         Deinit(_13);                     // scope 5 at $SRC_DIR/core/src/macros/mod.rs:LL:COL
-        (_13.0: &usize) = move _14;      // scope 5 at $SRC_DIR/core/src/macros/mod.rs:LL:COL
-        (_13.1: &usize) = move _18;      // scope 5 at $SRC_DIR/core/src/macros/mod.rs:LL:COL
+        (_13.0: &usize, Strong) = move _14; // scope 5 at $SRC_DIR/core/src/macros/mod.rs:LL:COL
+        (_13.1: &usize, Strong) = move _18; // scope 5 at $SRC_DIR/core/src/macros/mod.rs:LL:COL
         Retag(_13);                      // scope 5 at $SRC_DIR/core/src/macros/mod.rs:LL:COL
         StorageDead(_18);                // scope 5 at $SRC_DIR/core/src/macros/mod.rs:LL:COL
         StorageDead(_14);                // scope 5 at $SRC_DIR/core/src/macros/mod.rs:LL:COL
         StorageLive(_20);                // scope 5 at $SRC_DIR/core/src/macros/mod.rs:LL:COL
-        _20 = (_13.0: &usize);           // scope 5 at $SRC_DIR/core/src/macros/mod.rs:LL:COL
+        _20 = (_13.0: &usize, Strong);   // scope 5 at $SRC_DIR/core/src/macros/mod.rs:LL:COL
         Retag(_20);                      // scope 5 at $SRC_DIR/core/src/macros/mod.rs:LL:COL
         StorageLive(_21);                // scope 5 at $SRC_DIR/core/src/macros/mod.rs:LL:COL
-        _21 = (_13.1: &usize);           // scope 5 at $SRC_DIR/core/src/macros/mod.rs:LL:COL
+        _21 = (_13.1: &usize, Strong);   // scope 5 at $SRC_DIR/core/src/macros/mod.rs:LL:COL
         Retag(_21);                      // scope 5 at $SRC_DIR/core/src/macros/mod.rs:LL:COL
         StorageLive(_22);                // scope 7 at $SRC_DIR/core/src/macros/mod.rs:LL:COL
         StorageLive(_23);                // scope 7 at $SRC_DIR/core/src/macros/mod.rs:LL:COL

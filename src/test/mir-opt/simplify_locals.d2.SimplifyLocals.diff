@@ -16,10 +16,10 @@
 -         Deinit(_3);                      // scope 0 at $DIR/simplify_locals.rs:+2:11: +2:15
 -         discriminant(_3) = 0;            // scope 0 at $DIR/simplify_locals.rs:+2:11: +2:15
 -         Deinit(_2);                      // scope 0 at $DIR/simplify_locals.rs:+2:6: +2:16
--         (_2.0: i32) = const 10_i32;      // scope 0 at $DIR/simplify_locals.rs:+2:6: +2:16
--         (_2.1: E) = move _3;             // scope 0 at $DIR/simplify_locals.rs:+2:6: +2:16
+-         (_2.0: i32, Strong) = const 10_i32; // scope 0 at $DIR/simplify_locals.rs:+2:6: +2:16
+-         (_2.1: E, Strong) = move _3;     // scope 0 at $DIR/simplify_locals.rs:+2:6: +2:16
 -         StorageDead(_3);                 // scope 0 at $DIR/simplify_locals.rs:+2:15: +2:16
--         (_2.1: E) = move _1;             // scope 0 at $DIR/simplify_locals.rs:+2:5: +2:26
+-         (_2.1: E, Strong) = move _1;     // scope 0 at $DIR/simplify_locals.rs:+2:5: +2:26
 -         StorageDead(_1);                 // scope 0 at $DIR/simplify_locals.rs:+2:25: +2:26
 -         StorageDead(_2);                 // scope 0 at $DIR/simplify_locals.rs:+2:26: +2:27
           _0 = const ();                   // scope 0 at $DIR/simplify_locals.rs:+0:9: +3:2

@@ -9,7 +9,7 @@ fn bar(_1: [(Never, u32); 1]) -> u32 {
 
     bb0: {
         StorageLive(_2);                 // scope 0 at $DIR/issue_72181.rs:+0:13: +0:14
-        _2 = (_1[0 of 1].1: u32);        // scope 0 at $DIR/issue_72181.rs:+0:13: +0:14
+        _2 = (_1[0 of 1].1: u32, Strong); // scope 0 at $DIR/issue_72181.rs:+0:13: +0:14
         _0 = _2;                         // scope 1 at $DIR/issue_72181.rs:+0:46: +0:47
         StorageDead(_2);                 // scope 0 at $DIR/issue_72181.rs:+0:48: +0:49
         return;                          // scope 0 at $DIR/issue_72181.rs:+0:49: +0:49

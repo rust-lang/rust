@@ -16,7 +16,7 @@
       }
   
       bb1: {
-          _4 = deref_copy (((*_1) as Some).0: &E<'_>); // scope 1 at $DIR/early_otherwise_branch_soundness.rs:+1:12: +1:31
+          _4 = deref_copy (((*_1) as Some).0: &E<'_>, Strong); // scope 1 at $DIR/early_otherwise_branch_soundness.rs:+1:12: +1:31
           _2 = discriminant((*_4));        // scope 1 at $DIR/early_otherwise_branch_soundness.rs:+1:12: +1:31
           switchInt(move _2) -> [1_isize: bb2, otherwise: bb3]; // scope 1 at $DIR/early_otherwise_branch_soundness.rs:+1:12: +1:31
       }

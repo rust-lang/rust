@@ -50,7 +50,7 @@ fn full_tested_match() -> () {
 
     bb5: {
         StorageLive(_6);                 // scope 0 at $DIR/match_false_edges.rs:+2:14: +2:15
-        _6 = &((_2 as Some).0: i32);     // scope 0 at $DIR/match_false_edges.rs:+2:14: +2:15
+        _6 = &((_2 as Some).0: i32, Strong); // scope 0 at $DIR/match_false_edges.rs:+2:14: +2:15
         _4 = &shallow _2;                // scope 0 at $DIR/match_false_edges.rs:+1:19: +1:27
         StorageLive(_7);                 // scope 0 at $DIR/match_false_edges.rs:+2:20: +2:27
         _7 = guard() -> [return: bb6, unwind: bb12]; // scope 0 at $DIR/match_false_edges.rs:+2:20: +2:27
@@ -68,7 +68,7 @@ fn full_tested_match() -> () {
         FakeRead(ForMatchGuard, _4);     // scope 0 at $DIR/match_false_edges.rs:+2:26: +2:27
         FakeRead(ForGuardBinding, _6);   // scope 0 at $DIR/match_false_edges.rs:+2:26: +2:27
         StorageLive(_5);                 // scope 0 at $DIR/match_false_edges.rs:+2:14: +2:15
-        _5 = ((_2 as Some).0: i32);      // scope 0 at $DIR/match_false_edges.rs:+2:14: +2:15
+        _5 = ((_2 as Some).0: i32, Strong); // scope 0 at $DIR/match_false_edges.rs:+2:14: +2:15
         StorageLive(_8);                 // scope 2 at $DIR/match_false_edges.rs:+2:35: +2:36
         _8 = _5;                         // scope 2 at $DIR/match_false_edges.rs:+2:35: +2:36
         _1 = (const 1_i32, move _8);     // scope 2 at $DIR/match_false_edges.rs:+2:31: +2:37
@@ -90,7 +90,7 @@ fn full_tested_match() -> () {
 
     bb10: {
         StorageLive(_9);                 // scope 0 at $DIR/match_false_edges.rs:+3:14: +3:15
-        _9 = ((_2 as Some).0: i32);      // scope 0 at $DIR/match_false_edges.rs:+3:14: +3:15
+        _9 = ((_2 as Some).0: i32, Strong); // scope 0 at $DIR/match_false_edges.rs:+3:14: +3:15
         StorageLive(_10);                // scope 3 at $DIR/match_false_edges.rs:+3:24: +3:25
         _10 = _9;                        // scope 3 at $DIR/match_false_edges.rs:+3:24: +3:25
         _1 = (const 2_i32, move _10);    // scope 3 at $DIR/match_false_edges.rs:+3:20: +3:26
