@@ -173,16 +173,11 @@ fn satisfied_from_param_env<'tcx>(
         type BreakTy = ();
         fn visit_const(&mut self, c: ty::Const<'tcx>) -> ControlFlow<Self::BreakTy> {
             debug!("is_const_evaluatable: candidate={:?}", c);
-            if let Ok(()) = self.infcx.commit_if_ok(|_| {
+            if self.infcx.probe(|_| {
                 let ocx = ObligationCtxt::new_in_snapshot(self.infcx);
-                if let Ok(()) = ocx.eq(&ObligationCause::dummy(), self.param_env, c.ty(), self.ct.ty())
-                    && let Ok(()) = ocx.eq(&ObligationCause::dummy(), self.param_env, c, self.ct)
+                ocx.eq(&ObligationCause::dummy(), self.param_env, c.ty(), self.ct.ty()).is_ok()
+                    && ocx.eq(&ObligationCause::dummy(), self.param_env, c, self.ct).is_ok()
                     && ocx.select_all_or_error().is_empty()
-                {
-                    Ok(())
-                } else {
-                    Err(())
-                }
             }) {
                 ControlFlow::BREAK
             } else if let ty::ConstKind::Expr(e) = c.kind() {
