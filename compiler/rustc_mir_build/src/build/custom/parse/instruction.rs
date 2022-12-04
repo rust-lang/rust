@@ -1,4 +1,5 @@
 use rustc_middle::mir::interpret::{ConstValue, Scalar};
+use rustc_middle::mir::tcx::PlaceTy;
 use rustc_middle::{mir::*, thir::*, ty};
 use rustc_span::Span;
 use rustc_target::abi::VariantIdx;
@@ -118,12 +119,42 @@ impl<'tcx, 'body> ParseCtxt<'tcx, 'body> {
     }
 
     fn parse_place(&self, expr_id: ExprId) -> PResult<Place<'tcx>> {
-        parse_by_kind!(self, expr_id, _, "place",
-            ExprKind::Deref { arg } => Ok(
-                self.parse_place(*arg)?.project_deeper(&[PlaceElem::Deref], self.tcx)
-            ),
-            _ => self.parse_local(expr_id).map(Place::from),
-        )
+        self.parse_place_inner(expr_id).map(|(x, _)| x)
+    }
+
+    fn parse_place_inner(&self, expr_id: ExprId) -> PResult<(Place<'tcx>, PlaceTy<'tcx>)> {
+        let (parent, proj) = parse_by_kind!(self, expr_id, expr, "place",
+            @call("mir_field", args) => {
+                let (parent, ty) = self.parse_place_inner(args[0])?;
+                let field = Field::from_u32(self.parse_integer_literal(args[1])? as u32);
+                let field_ty = ty.field_ty(self.tcx, field);
+                let proj = PlaceElem::Field(field, field_ty);
+                let place = parent.project_deeper(&[proj], self.tcx);
+                return Ok((place, PlaceTy::from_ty(field_ty)));
+            },
+            @call("mir_variant", args) => {
+                (args[0], PlaceElem::Downcast(
+                    None,
+                    VariantIdx::from_u32(self.parse_integer_literal(args[1])? as u32)
+                ))
+            },
+            ExprKind::Deref { arg } => {
+                parse_by_kind!(self, *arg, _, "does not matter",
+                    @call("mir_make_place", args) => return self.parse_place_inner(args[0]),
+                    _ => (*arg, PlaceElem::Deref),
+                )
+            },
+            ExprKind::Index { lhs, index } => (*lhs, PlaceElem::Index(self.parse_local(*index)?)),
+            ExprKind::Field { lhs, name: field, .. } => (*lhs, PlaceElem::Field(*field, expr.ty)),
+            _ => {
+                let place = self.parse_local(expr_id).map(Place::from)?;
+                return Ok((place, PlaceTy::from_ty(expr.ty)))
+            },
+        );
+        let (parent, ty) = self.parse_place_inner(parent)?;
+        let place = parent.project_deeper(&[proj], self.tcx);
+        let ty = ty.projection_ty(self.tcx, proj);
+        Ok((place, ty))
     }
 
     fn parse_local(&self, expr_id: ExprId) -> PResult<Local> {

@@ -88,6 +88,9 @@ define!(
     fn Discriminant<T>(place: T) -> <T as ::core::marker::DiscriminantKind>::Discriminant
 );
 define!("mir_set_discriminant", fn SetDiscriminant<T>(place: T, index: u32));
+define!("mir_field", fn Field<F>(place: (), field: u32) -> F);
+define!("mir_variant", fn Variant<T>(place: T, index: u32) -> ());
+define!("mir_make_place", fn __internal_make_place<T>(place: T) -> *mut T);
 
 /// Convenience macro for generating custom MIR.
 ///
@@ -143,6 +146,25 @@ pub macro mir {
             }
         }
     }}
+}
+
+/// Helper macro that allows you to treat a value expression like a place expression.
+///
+/// This is necessary in combination with the [`Field`] and [`Variant`] methods. Specifically,
+/// something like this won't compile on its own, reporting an error about not being able to assign
+/// to such an expression:
+///
+/// ```rust,ignore(syntax-highlighting-only)
+/// Field(something, 0) = 5;
+/// ```
+///
+/// Instead, you'll need to write
+///
+/// ```rust,ignore(syntax-highlighting-only)
+/// place!(Field(something, 0)) = 5;
+/// ```
+pub macro place($e:expr) {
+    (*::core::intrinsics::mir::__internal_make_place($e))
 }
 
 /// Helper macro that extracts the `let` declarations out of a bunch of statements.
