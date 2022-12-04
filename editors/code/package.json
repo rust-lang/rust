@@ -1788,6 +1788,12 @@
                     "group": "navigation@1000"
                 }
             ]
-        }
+        },
+        "jsonValidation": [
+            {
+                "fileMatch": "rust-project.json",
+                "url": "https://json.schemastore.org/rust-project.json"
+            }
+        ]
     }
 }
