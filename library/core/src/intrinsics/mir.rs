@@ -82,6 +82,12 @@ define!("mir_retag_raw", fn RetagRaw<T>(place: T));
 define!("mir_move", fn Move<T>(place: T) -> T);
 define!("mir_static", fn Static<T>(s: T) -> &'static T);
 define!("mir_static_mut", fn StaticMut<T>(s: T) -> *mut T);
+define!(
+    "mir_discriminant",
+    /// Gets the discriminant of a place.
+    fn Discriminant<T>(place: T) -> <T as ::core::marker::DiscriminantKind>::Discriminant
+);
+define!("mir_set_discriminant", fn SetDiscriminant<T>(place: T, index: u32));
 
 /// Convenience macro for generating custom MIR.
 ///

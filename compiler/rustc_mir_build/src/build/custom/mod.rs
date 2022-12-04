@@ -25,7 +25,7 @@ use rustc_index::vec::IndexVec;
 use rustc_middle::{
     mir::*,
     thir::*,
-    ty::{Ty, TyCtxt},
+    ty::{ParamEnv, Ty, TyCtxt},
 };
 use rustc_span::Span;
 
@@ -78,6 +78,7 @@ pub(super) fn build_custom_mir<'tcx>(
 
     let mut pctxt = ParseCtxt {
         tcx,
+        param_env: tcx.param_env(did),
         thir,
         source_scope: OUTERMOST_SOURCE_SCOPE,
         body: &mut body,
@@ -132,6 +133,7 @@ fn parse_attribute(attr: &Attribute) -> MirPhase {
 
 struct ParseCtxt<'tcx, 'body> {
     tcx: TyCtxt<'tcx>,
+    param_env: ParamEnv<'tcx>,
     thir: &'body Thir<'tcx>,
     source_scope: SourceScope,
 
