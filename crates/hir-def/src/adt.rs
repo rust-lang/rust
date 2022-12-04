@@ -36,6 +36,7 @@ pub struct StructData {
     pub variant_data: Arc<VariantData>,
     pub repr: Option<ReprData>,
     pub visibility: RawVisibility,
+    pub rustc_has_incoherent_inherent_impls: bool,
 }
 
 #[derive(Debug, Clone, PartialEq, Eq)]
@@ -44,6 +45,7 @@ pub struct EnumData {
     pub variants: Arena<EnumVariantData>,
     pub repr: Option<ReprData>,
     pub visibility: RawVisibility,
+    pub rustc_has_incoherent_inherent_impls: bool,
 }
 
 #[derive(Debug, Clone, PartialEq, Eq)]
@@ -157,6 +159,10 @@ impl StructData {
         let item_tree = loc.id.item_tree(db);
         let repr = repr_from_value(db, krate, &item_tree, ModItem::from(loc.id.value).into());
         let cfg_options = db.crate_graph()[loc.container.krate].cfg_options.clone();
+        let rustc_has_incoherent_inherent_impls = item_tree
+            .attrs(db, loc.container.krate, ModItem::from(loc.id.value).into())
+            .by_key("rustc_has_incoherent_inherent_impls")
+            .exists();
 
         let strukt = &item_tree[loc.id.value];
         let (variant_data, diagnostics) = lower_fields(
@@ -175,6 +181,7 @@ impl StructData {
                 variant_data: Arc::new(variant_data),
                 repr,
                 visibility: item_tree[strukt.visibility].clone(),
+                rustc_has_incoherent_inherent_impls,
             }),
             diagnostics.into(),
         )
@@ -194,6 +201,11 @@ impl StructData {
         let repr = repr_from_value(db, krate, &item_tree, ModItem::from(loc.id.value).into());
         let cfg_options = db.crate_graph()[loc.container.krate].cfg_options.clone();
 
+        let rustc_has_incoherent_inherent_impls = item_tree
+            .attrs(db, loc.container.krate, ModItem::from(loc.id.value).into())
+            .by_key("rustc_has_incoherent_inherent_impls")
+            .exists();
+
         let union = &item_tree[loc.id.value];
         let (variant_data, diagnostics) = lower_fields(
             db,
@@ -211,6 +223,7 @@ impl StructData {
                 variant_data: Arc::new(variant_data),
                 repr,
                 visibility: item_tree[union.visibility].clone(),
+                rustc_has_incoherent_inherent_impls,
             }),
             diagnostics.into(),
         )
@@ -231,6 +244,10 @@ impl EnumData {
         let item_tree = loc.id.item_tree(db);
         let cfg_options = db.crate_graph()[krate].cfg_options.clone();
         let repr = repr_from_value(db, krate, &item_tree, ModItem::from(loc.id.value).into());
+        let rustc_has_incoherent_inherent_impls = item_tree
+            .attrs(db, loc.container.krate, ModItem::from(loc.id.value).into())
+            .by_key("rustc_has_incoherent_inherent_impls")
+            .exists();
 
         let enum_ = &item_tree[loc.id.value];
         let mut variants = Arena::new();
@@ -271,6 +288,7 @@ impl EnumData {
                 variants,
                 repr,
                 visibility: item_tree[enum_.visibility].clone(),
+                rustc_has_incoherent_inherent_impls,
             }),
             diagnostics.into(),
         )

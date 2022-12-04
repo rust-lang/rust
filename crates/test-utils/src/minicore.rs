@@ -20,6 +20,7 @@
 //!     derive:
 //!     drop:
 //!     eq: sized
+//!     error: fmt
 //!     fmt: result
 //!     fn:
 //!     from: sized
@@ -34,8 +35,10 @@
 //!     pin:
 //!     range:
 //!     result:
+//!     send: sized
 //!     sized:
 //!     slice:
+//!     sync: sized
 //!     try:
 //!     unsize: sized
 
@@ -46,6 +49,24 @@ pub mod marker {
     #[rustc_specialization_trait]
     pub trait Sized {}
     // endregion:sized
+
+    // region:send
+    pub unsafe auto trait Send {}
+
+    impl<T: ?Sized> !Send for *const T {}
+    impl<T: ?Sized> !Send for *mut T {}
+    // region:sync
+    unsafe impl<T: Sync + ?Sized> Send for &T {}
+    unsafe impl<T: Send + ?Sized> Send for &mut T {}
+    // endregion:sync
+    // endregion:send
+
+    // region:sync
+    pub unsafe auto trait Sync {}
+
+    impl<T: ?Sized> !Sync for *const T {}
+    impl<T: ?Sized> !Sync for *mut T {}
+    // endregion:sync
 
     // region:unsize
     #[lang = "unsize"]
@@ -438,6 +459,9 @@ pub mod fmt {
     pub trait Debug {
         fn fmt(&self, f: &mut Formatter<'_>) -> Result;
     }
+    pub trait Display {
+        fn fmt(&self, f: &mut Formatter<'_>) -> Result;
+    }
 }
 // endregion:fmt
 
@@ -693,6 +717,17 @@ impl bool {
 }
 // endregion:bool_impl
 
+// region:error
+pub mod error {
+    #[rustc_has_incoherent_inherent_impls]
+    pub trait Error: crate::fmt::Debug + crate::fmt::Display {
+        fn source(&self) -> Option<&(dyn Error + 'static)> {
+            None
+        }
+    }
+}
+// endregion:error
+
 pub mod prelude {
     pub mod v1 {
         pub use crate::{
@@ -705,7 +740,9 @@ pub mod prelude {
             iter::{IntoIterator, Iterator},     // :iterator
             macros::builtin::derive,            // :derive
             marker::Copy,                       // :copy
+            marker::Send,                       // :send
             marker::Sized,                      // :sized
+            marker::Sync,                       // :sync
             mem::drop,                          // :drop
             ops::Drop,                          // :drop
             ops::{Fn, FnMut, FnOnce},           // :fn
