@@ -41,7 +41,7 @@ fn compute_slice_length<'tcx>(
 ) -> IndexVec<Local, Option<ty::Const<'tcx>>> {
     let mut slice_lengths = IndexVec::from_elem(None, &body.local_decls);
 
-    for (local, rvalue) in ssa.assignments(body) {
+    for (local, rvalue, _) in ssa.assignments(body) {
         match rvalue {
             Rvalue::Cast(
                 CastKind::Pointer(ty::adjustment::PointerCast::Unsize),

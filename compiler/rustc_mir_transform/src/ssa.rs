@@ -6,6 +6,7 @@ use rustc_middle::middle::resolve_bound_vars::Set1;
 use rustc_middle::mir::visit::*;
 use rustc_middle::mir::*;
 use rustc_middle::ty::{ParamEnv, TyCtxt};
+use rustc_mir_dataflow::storage::always_storage_live_locals;
 
 #[derive(Debug)]
 pub struct SsaLocals {
@@ -17,6 +18,12 @@ pub struct SsaLocals {
     assignment_order: Vec<Local>,
     /// Copy equivalence classes between locals. See `copy_classes` for documentation.
     copy_classes: IndexVec<Local, Local>,
+    /// Number of "direct" uses of each local, ie. uses that are not dereferences.
+    /// We ignore non-uses (Storage statements, debuginfo).
+    direct_uses: IndexVec<Local, u32>,
+    /// Set of "StorageLive" statements for each local. When the "StorageLive" statement does not
+    /// dominate all uses of the local, we mark it as `Set1::Many`.
+    storage_live: IndexVec<Local, Set1<LocationExtended>>,
 }
 
 /// We often encounter MIR bodies with 1 or 2 basic blocks. In those cases, it's unnecessary to
@@ -26,23 +33,31 @@ struct SmallDominators {
     inner: Option<Dominators<BasicBlock>>,
 }
 
-trait DomExt {
-    fn dominates(self, _other: Self, dominators: &SmallDominators) -> bool;
-}
-
-impl DomExt for Location {
-    fn dominates(self, other: Location, dominators: &SmallDominators) -> bool {
-        if self.block == other.block {
-            self.statement_index <= other.statement_index
+impl SmallDominators {
+    fn dominates(&self, first: Location, second: Location) -> bool {
+        if first.block == second.block {
+            first.statement_index <= second.statement_index
+        } else if let Some(inner) = &self.inner {
+            inner.dominates(first.block, second.block)
         } else {
-            dominators.dominates(self.block, other.block)
+            first.block < second.block
         }
     }
-}
 
-impl SmallDominators {
-    fn dominates(&self, dom: BasicBlock, node: BasicBlock) -> bool {
-        if let Some(inner) = &self.inner { inner.dominates(dom, node) } else { dom < node }
+    fn check_dominates(&mut self, set: &mut Set1<LocationExtended>, loc: Location) {
+        let assign_dominates = match *set {
+            Set1::Empty | Set1::Many => false,
+            Set1::One(LocationExtended::Arg) => true,
+            Set1::One(LocationExtended::Plain(assign)) => {
+                self.dominates(assign.successor_within_block(), loc)
+            }
+        };
+        // We are visiting a use that is not dominated by an assignment.
+        // Either there is a cycle involved, or we are reading for uninitialized local.
+        // Bail out.
+        if !assign_dominates {
+            *set = Set1::Many;
+        }
     }
 }
 
@@ -59,7 +74,11 @@ impl SsaLocals {
         let dominators =
             if body.basic_blocks.len() > 2 { Some(body.basic_blocks.dominators()) } else { None };
         let dominators = SmallDominators { inner: dominators };
-        let mut visitor = SsaVisitor { assignments, assignment_order, dominators };
+
+        let direct_uses = IndexVec::from_elem(0, &body.local_decls);
+        let storage_live = IndexVec::from_elem(Set1::Empty, &body.local_decls);
+        let mut visitor =
+            SsaVisitor { assignments, assignment_order, dominators, direct_uses, storage_live };
 
         for (local, decl) in body.local_decls.iter_enumerated() {
             if matches!(body.local_kind(local), LocalKind::Arg) {
@@ -68,6 +87,10 @@ impl SsaLocals {
             if borrowed_locals.contains(local) && !decl.ty.is_freeze(tcx, param_env) {
                 visitor.assignments[local] = Set1::Many;
             }
+        }
+
+        for local in always_storage_live_locals(body).iter() {
+            visitor.storage_live[local] = Set1::One(LocationExtended::Arg);
         }
 
         if body.basic_blocks.len() > 2 {
@@ -85,36 +108,66 @@ impl SsaLocals {
         }
 
         debug!(?visitor.assignments);
+        debug!(?visitor.direct_uses);
+        debug!(?visitor.storage_live);
 
         visitor
             .assignment_order
             .retain(|&local| matches!(visitor.assignments[local], Set1::One(_)));
         debug!(?visitor.assignment_order);
 
-        let copy_classes = compute_copy_classes(&visitor, body);
+        let copy_classes = compute_copy_classes(&mut visitor, body);
 
         SsaLocals {
             assignments: visitor.assignments,
             assignment_order: visitor.assignment_order,
+            direct_uses: visitor.direct_uses,
+            storage_live: visitor.storage_live,
             copy_classes,
         }
+    }
+
+    pub fn num_locals(&self) -> usize {
+        self.assignments.len()
+    }
+
+    pub fn locals(&self) -> impl Iterator<Item = Local> {
+        self.assignments.indices()
     }
 
     pub fn is_ssa(&self, local: Local) -> bool {
         matches!(self.assignments[local], Set1::One(_))
     }
 
+    /// Returns true iff we can use `p` as a pointee.
+    pub fn is_constant_place(&self, p: Place<'_>) -> bool {
+        // We only allow `Deref` as the first projection, to avoid surprises.
+        if p.projection.first() == Some(&PlaceElem::Deref) {
+            // `p == (*some_local).xxx`, it is constant only if `some_local` is constant.
+            // We approximate constness using SSAness.
+            self.is_ssa(p.local) && p.projection[1..].iter().all(PlaceElem::is_stable_offset)
+        } else {
+            matches!(self.storage_live[p.local], Set1::One(_))
+                && p.projection[..].iter().all(PlaceElem::is_stable_offset)
+        }
+    }
+
+    /// Return the number of uses if a local that are not "Deref".
+    pub fn num_direct_uses(&self, local: Local) -> u32 {
+        self.direct_uses[local]
+    }
+
     pub fn assignments<'a, 'tcx>(
         &'a self,
         body: &'a Body<'tcx>,
-    ) -> impl Iterator<Item = (Local, &'a Rvalue<'tcx>)> + 'a {
+    ) -> impl Iterator<Item = (Local, &'a Rvalue<'tcx>, Location)> + 'a {
         self.assignment_order.iter().filter_map(|&local| {
             if let Set1::One(LocationExtended::Plain(loc)) = self.assignments[local] {
                 // `loc` must point to a direct assignment to `local`.
                 let Either::Left(stmt) = body.stmt_at(loc) else { bug!() };
                 let Some((target, rvalue)) = stmt.kind.as_assign() else { bug!() };
                 assert_eq!(target.as_local(), Some(local));
-                Some((local, rvalue))
+                Some((local, rvalue, loc))
             } else {
                 None
             }
@@ -177,25 +230,8 @@ struct SsaVisitor {
     dominators: SmallDominators,
     assignments: IndexVec<Local, Set1<LocationExtended>>,
     assignment_order: Vec<Local>,
-}
-
-impl SsaVisitor {
-    fn check_assignment_dominates(&mut self, local: Local, loc: Location) {
-        let set = &mut self.assignments[local];
-        let assign_dominates = match *set {
-            Set1::Empty | Set1::Many => false,
-            Set1::One(LocationExtended::Arg) => true,
-            Set1::One(LocationExtended::Plain(assign)) => {
-                assign.successor_within_block().dominates(loc, &self.dominators)
-            }
-        };
-        // We are visiting a use that is not dominated by an assignment.
-        // Either there is a cycle involved, or we are reading for uninitialized local.
-        // Bail out.
-        if !assign_dominates {
-            *set = Set1::Many;
-        }
-    }
+    direct_uses: IndexVec<Local, u32>,
+    storage_live: IndexVec<Local, Set1<LocationExtended>>,
 }
 
 impl<'tcx> Visitor<'tcx> for SsaVisitor {
@@ -207,14 +243,23 @@ impl<'tcx> Visitor<'tcx> for SsaVisitor {
                     // Only record if SSA-like, to avoid growing the vector needlessly.
                     self.assignment_order.push(local);
                 }
+                self.dominators.check_dominates(&mut self.storage_live[local], loc);
             }
             // Anything can happen with raw pointers, so remove them.
             PlaceContext::NonMutatingUse(NonMutatingUseContext::AddressOf)
-            | PlaceContext::MutatingUse(_) => self.assignments[local] = Set1::Many,
+            | PlaceContext::MutatingUse(_) => {
+                self.assignments[local] = Set1::Many;
+                self.dominators.check_dominates(&mut self.storage_live[local], loc);
+            }
             // Immutable borrows are taken into account in `SsaLocals::new` by
             // removing non-freeze locals.
             PlaceContext::NonMutatingUse(_) => {
-                self.check_assignment_dominates(local, loc);
+                self.dominators.check_dominates(&mut self.assignments[local], loc);
+                self.dominators.check_dominates(&mut self.storage_live[local], loc);
+                self.direct_uses[local] += 1;
+            }
+            PlaceContext::NonUse(NonUseContext::StorageLive) => {
+                self.storage_live[local].insert(LocationExtended::Plain(loc));
             }
             PlaceContext::NonUse(_) => {}
         }
@@ -224,11 +269,12 @@ impl<'tcx> Visitor<'tcx> for SsaVisitor {
         if place.projection.first() == Some(&PlaceElem::Deref) {
             // Do not do anything for storage statements and debuginfo.
             if ctxt.is_use() {
-                // A use through a `deref` only reads from the local, and cannot write to it.
+                // Only change the context if it is a real use, not a "use" in debuginfo.
                 let new_ctxt = PlaceContext::NonMutatingUse(NonMutatingUseContext::Projection);
 
                 self.visit_projection(place.as_ref(), new_ctxt, loc);
-                self.check_assignment_dominates(place.local, loc);
+                self.dominators.check_dominates(&mut self.assignments[place.local], loc);
+                self.dominators.check_dominates(&mut self.storage_live[place.local], loc);
             }
             return;
         }
@@ -237,7 +283,7 @@ impl<'tcx> Visitor<'tcx> for SsaVisitor {
 }
 
 #[instrument(level = "trace", skip(ssa, body))]
-fn compute_copy_classes(ssa: &SsaVisitor, body: &Body<'_>) -> IndexVec<Local, Local> {
+fn compute_copy_classes(ssa: &mut SsaVisitor, body: &Body<'_>) -> IndexVec<Local, Local> {
     let mut copies = IndexVec::from_fn_n(|l| l, body.local_decls.len());
 
     for &local in &ssa.assignment_order {
@@ -267,9 +313,11 @@ fn compute_copy_classes(ssa: &SsaVisitor, body: &Body<'_>) -> IndexVec<Local, Lo
         // We visit in `assignment_order`, ie. reverse post-order, so `rhs` has been
         // visited before `local`, and we just have to copy the representing local.
         copies[local] = copies[rhs];
+        ssa.direct_uses[rhs] -= 1;
     }
 
     debug!(?copies);
+    debug!(?ssa.direct_uses);
 
     // Invariant: `copies` must point to the head of an equivalence class.
     #[cfg(debug_assertions)]
