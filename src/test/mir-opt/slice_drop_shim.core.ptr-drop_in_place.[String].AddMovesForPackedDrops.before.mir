@@ -37,7 +37,7 @@ fn std::ptr::drop_in_place(_1: *mut [String]) -> () {
 
     bb4 (cleanup): {
         _6 = Eq(_4, _3);                 // scope 0 at $SRC_DIR/core/src/ptr/mod.rs:+0:1: +0:56
-        switchInt(move _6) -> [false: bb3, otherwise: bb2]; // scope 0 at $SRC_DIR/core/src/ptr/mod.rs:+0:1: +0:56
+        switchInt(move _6) -> [0: bb3, otherwise: bb2]; // scope 0 at $SRC_DIR/core/src/ptr/mod.rs:+0:1: +0:56
     }
 
     bb5: {
@@ -48,7 +48,7 @@ fn std::ptr::drop_in_place(_1: *mut [String]) -> () {
 
     bb6: {
         _8 = Eq(_4, _3);                 // scope 0 at $SRC_DIR/core/src/ptr/mod.rs:+0:1: +0:56
-        switchInt(move _8) -> [false: bb5, otherwise: bb1]; // scope 0 at $SRC_DIR/core/src/ptr/mod.rs:+0:1: +0:56
+        switchInt(move _8) -> [0: bb5, otherwise: bb1]; // scope 0 at $SRC_DIR/core/src/ptr/mod.rs:+0:1: +0:56
     }
 
     bb7: {
@@ -68,7 +68,7 @@ fn std::ptr::drop_in_place(_1: *mut [String]) -> () {
 
     bb10 (cleanup): {
         _12 = Eq(_9, _10);               // scope 0 at $SRC_DIR/core/src/ptr/mod.rs:+0:1: +0:56
-        switchInt(move _12) -> [false: bb9, otherwise: bb2]; // scope 0 at $SRC_DIR/core/src/ptr/mod.rs:+0:1: +0:56
+        switchInt(move _12) -> [0: bb9, otherwise: bb2]; // scope 0 at $SRC_DIR/core/src/ptr/mod.rs:+0:1: +0:56
     }
 
     bb11: {
@@ -79,7 +79,7 @@ fn std::ptr::drop_in_place(_1: *mut [String]) -> () {
 
     bb12: {
         _14 = Eq(_9, _10);               // scope 0 at $SRC_DIR/core/src/ptr/mod.rs:+0:1: +0:56
-        switchInt(move _14) -> [false: bb11, otherwise: bb1]; // scope 0 at $SRC_DIR/core/src/ptr/mod.rs:+0:1: +0:56
+        switchInt(move _14) -> [0: bb11, otherwise: bb1]; // scope 0 at $SRC_DIR/core/src/ptr/mod.rs:+0:1: +0:56
     }
 
     bb13: {
@@ -96,6 +96,6 @@ fn std::ptr::drop_in_place(_1: *mut [String]) -> () {
     bb15: {
         _2 = SizeOf(std::string::String); // scope 0 at $SRC_DIR/core/src/ptr/mod.rs:+0:1: +0:56
         _3 = Len((*_1));                 // scope 0 at $SRC_DIR/core/src/ptr/mod.rs:+0:1: +0:56
-        switchInt(move _2) -> [0_usize: bb8, otherwise: bb14]; // scope 0 at $SRC_DIR/core/src/ptr/mod.rs:+0:1: +0:56
+        switchInt(move _2) -> [0: bb8, otherwise: bb14]; // scope 0 at $SRC_DIR/core/src/ptr/mod.rs:+0:1: +0:56
     }
 }

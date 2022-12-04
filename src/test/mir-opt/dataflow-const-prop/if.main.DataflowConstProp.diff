@@ -42,8 +42,8 @@
 +         _4 = const 1_i32;                // scope 1 at $DIR/if.rs:+2:16: +2:17
 +         _3 = const true;                 // scope 1 at $DIR/if.rs:+2:16: +2:22
           StorageDead(_4);                 // scope 1 at $DIR/if.rs:+2:21: +2:22
--         switchInt(move _3) -> [false: bb2, otherwise: bb1]; // scope 1 at $DIR/if.rs:+2:16: +2:22
-+         switchInt(const true) -> [false: bb2, otherwise: bb1]; // scope 1 at $DIR/if.rs:+2:16: +2:22
+-         switchInt(move _3) -> [0: bb2, otherwise: bb1]; // scope 1 at $DIR/if.rs:+2:16: +2:22
++         switchInt(const true) -> [0: bb2, otherwise: bb1]; // scope 1 at $DIR/if.rs:+2:16: +2:22
       }
   
       bb1: {
@@ -73,8 +73,8 @@
 +         _9 = const 1_i32;                // scope 3 at $DIR/if.rs:+5:16: +5:17
 +         _8 = const true;                 // scope 3 at $DIR/if.rs:+5:16: +5:22
           StorageDead(_9);                 // scope 3 at $DIR/if.rs:+5:21: +5:22
--         switchInt(move _8) -> [false: bb5, otherwise: bb4]; // scope 3 at $DIR/if.rs:+5:16: +5:22
-+         switchInt(const true) -> [false: bb5, otherwise: bb4]; // scope 3 at $DIR/if.rs:+5:16: +5:22
+-         switchInt(move _8) -> [0: bb5, otherwise: bb4]; // scope 3 at $DIR/if.rs:+5:16: +5:22
++         switchInt(const true) -> [0: bb5, otherwise: bb4]; // scope 3 at $DIR/if.rs:+5:16: +5:22
       }
   
       bb4: {

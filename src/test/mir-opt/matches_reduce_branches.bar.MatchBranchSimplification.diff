@@ -33,7 +33,7 @@
           StorageLive(_4);                 // scope 2 at $DIR/matches_reduce_branches.rs:+3:9: +3:10
           StorageLive(_5);                 // scope 3 at $DIR/matches_reduce_branches.rs:+4:9: +4:10
           StorageLive(_6);                 // scope 4 at $DIR/matches_reduce_branches.rs:+6:5: +21:6
--         switchInt(_1) -> [7_i32: bb2, otherwise: bb1]; // scope 4 at $DIR/matches_reduce_branches.rs:+6:5: +6:12
+-         switchInt(_1) -> [7: bb2, otherwise: bb1]; // scope 4 at $DIR/matches_reduce_branches.rs:+6:5: +6:12
 -     }
 - 
 -     bb1: {
