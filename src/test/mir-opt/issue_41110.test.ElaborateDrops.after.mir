@@ -96,6 +96,6 @@ fn test() -> () {
     }
 
     bb14 (cleanup): {
-        switchInt(_6) -> [false: bb10, otherwise: bb13]; // scope 0 at $DIR/issue_41110.rs:+5:1: +5:2
+        switchInt(_6) -> [0: bb10, otherwise: bb13]; // scope 0 at $DIR/issue_41110.rs:+5:1: +5:2
     }
 }

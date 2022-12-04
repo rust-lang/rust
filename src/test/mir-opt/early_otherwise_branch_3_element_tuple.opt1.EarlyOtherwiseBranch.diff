@@ -42,13 +42,13 @@
           StorageDead(_6);                 // scope 0 at $DIR/early_otherwise_branch_3_element_tuple.rs:+1:19: +1:20
           StorageDead(_5);                 // scope 0 at $DIR/early_otherwise_branch_3_element_tuple.rs:+1:19: +1:20
           _10 = discriminant((_4.0: std::option::Option<u32>)); // scope 0 at $DIR/early_otherwise_branch_3_element_tuple.rs:+1:11: +1:20
--         switchInt(move _10) -> [1_isize: bb2, otherwise: bb1]; // scope 0 at $DIR/early_otherwise_branch_3_element_tuple.rs:+1:5: +1:20
+-         switchInt(move _10) -> [1: bb2, otherwise: bb1]; // scope 0 at $DIR/early_otherwise_branch_3_element_tuple.rs:+1:5: +1:20
 +         StorageLive(_14);                // scope 0 at $DIR/early_otherwise_branch_3_element_tuple.rs:+1:5: +1:20
 +         _14 = discriminant((_4.1: std::option::Option<u32>)); // scope 0 at $DIR/early_otherwise_branch_3_element_tuple.rs:+1:5: +1:20
 +         StorageLive(_15);                // scope 0 at $DIR/early_otherwise_branch_3_element_tuple.rs:+1:5: +1:20
 +         _15 = Ne(_10, move _14);         // scope 0 at $DIR/early_otherwise_branch_3_element_tuple.rs:+1:5: +1:20
 +         StorageDead(_14);                // scope 0 at $DIR/early_otherwise_branch_3_element_tuple.rs:+1:5: +1:20
-+         switchInt(move _15) -> [false: bb5, otherwise: bb1]; // scope 0 at $DIR/early_otherwise_branch_3_element_tuple.rs:+1:5: +1:20
++         switchInt(move _15) -> [0: bb5, otherwise: bb1]; // scope 0 at $DIR/early_otherwise_branch_3_element_tuple.rs:+1:5: +1:20
       }
   
       bb1: {
@@ -61,13 +61,13 @@
   
       bb2: {
 -         _9 = discriminant((_4.1: std::option::Option<u32>)); // scope 0 at $DIR/early_otherwise_branch_3_element_tuple.rs:+1:11: +1:20
--         switchInt(move _9) -> [1_isize: bb3, otherwise: bb1]; // scope 0 at $DIR/early_otherwise_branch_3_element_tuple.rs:+1:5: +1:20
+-         switchInt(move _9) -> [1: bb3, otherwise: bb1]; // scope 0 at $DIR/early_otherwise_branch_3_element_tuple.rs:+1:5: +1:20
 -     }
 - 
 -     bb3: {
           _8 = discriminant((_4.2: std::option::Option<u32>)); // scope 0 at $DIR/early_otherwise_branch_3_element_tuple.rs:+1:11: +1:20
--         switchInt(move _8) -> [1_isize: bb4, otherwise: bb1]; // scope 0 at $DIR/early_otherwise_branch_3_element_tuple.rs:+1:5: +1:20
-+         switchInt(move _8) -> [1_isize: bb3, otherwise: bb1]; // scope 0 at $DIR/early_otherwise_branch_3_element_tuple.rs:+1:5: +1:20
+-         switchInt(move _8) -> [1: bb4, otherwise: bb1]; // scope 0 at $DIR/early_otherwise_branch_3_element_tuple.rs:+1:5: +1:20
++         switchInt(move _8) -> [1: bb3, otherwise: bb1]; // scope 0 at $DIR/early_otherwise_branch_3_element_tuple.rs:+1:5: +1:20
       }
   
 -     bb4: {
@@ -94,7 +94,7 @@
 + 
 +     bb5: {
 +         StorageDead(_15);                // scope 0 at $DIR/early_otherwise_branch_3_element_tuple.rs:+1:5: +1:20
-+         switchInt(_10) -> [1_isize: bb2, otherwise: bb1]; // scope 0 at $DIR/early_otherwise_branch_3_element_tuple.rs:+1:5: +1:20
++         switchInt(_10) -> [1: bb2, otherwise: bb1]; // scope 0 at $DIR/early_otherwise_branch_3_element_tuple.rs:+1:5: +1:20
       }
   }
   

@@ -72,7 +72,7 @@
 +         _7 = const false;                // scope 0 at $DIR/inline_generator.rs:+1:14: +1:46
 +         _10 = deref_copy (_2.0: &mut [generator@$DIR/inline_generator.rs:15:5: 15:8]); // scope 6 at $DIR/inline_generator.rs:15:5: 15:41
 +         _9 = discriminant((*_10));       // scope 6 at $DIR/inline_generator.rs:15:5: 15:41
-+         switchInt(move _9) -> [0_u32: bb3, 1_u32: bb8, 3_u32: bb7, otherwise: bb9]; // scope 6 at $DIR/inline_generator.rs:15:5: 15:41
++         switchInt(move _9) -> [0: bb3, 1: bb8, 3: bb7, otherwise: bb9]; // scope 6 at $DIR/inline_generator.rs:15:5: 15:41
       }
   
 -     bb3: {
@@ -92,7 +92,7 @@
 + 
 +     bb3: {
 +         StorageLive(_8);                 // scope 6 at $DIR/inline_generator.rs:15:17: 15:39
-+         switchInt(move _7) -> [false: bb5, otherwise: bb4]; // scope 6 at $DIR/inline_generator.rs:15:20: 15:21
++         switchInt(move _7) -> [0: bb5, otherwise: bb4]; // scope 6 at $DIR/inline_generator.rs:15:20: 15:21
 +     }
 + 
 +     bb4: {

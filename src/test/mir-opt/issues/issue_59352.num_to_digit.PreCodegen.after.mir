@@ -47,7 +47,7 @@ fn num_to_digit(_1: char) -> u32 {
 
     bb2: {
         _7 = discriminant(_2);           // scope 3 at $SRC_DIR/core/src/option.rs:LL:COL
-        switchInt(move _7) -> [0_isize: bb6, 1_isize: bb8, otherwise: bb7]; // scope 3 at $SRC_DIR/core/src/option.rs:LL:COL
+        switchInt(move _7) -> [0: bb6, 1: bb8, otherwise: bb7]; // scope 3 at $SRC_DIR/core/src/option.rs:LL:COL
     }
 
     bb3: {
@@ -66,7 +66,7 @@ fn num_to_digit(_1: char) -> u32 {
         StorageDead(_4);                 // scope 1 at $SRC_DIR/core/src/char/methods.rs:LL:COL
         StorageDead(_5);                 // scope 1 at $SRC_DIR/core/src/char/methods.rs:LL:COL
         StorageDead(_3);                 // scope 0 at $DIR/issue_59352.rs:+2:8: +2:23
-        switchInt(move _9) -> [1_isize: bb1, otherwise: bb3]; // scope 0 at $DIR/issue_59352.rs:+2:8: +2:23
+        switchInt(move _9) -> [1: bb1, otherwise: bb3]; // scope 0 at $DIR/issue_59352.rs:+2:8: +2:23
     }
 
     bb6: {
