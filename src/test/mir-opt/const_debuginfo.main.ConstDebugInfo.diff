@@ -108,7 +108,6 @@
           _11 = const 64_u32;              // scope 8 at $DIR/const_debuginfo.rs:+13:13: +13:22
           StorageDead(_13);                // scope 8 at $DIR/const_debuginfo.rs:+13:21: +13:22
           StorageDead(_12);                // scope 8 at $DIR/const_debuginfo.rs:+13:21: +13:22
-          nop;                             // scope 0 at $DIR/const_debuginfo.rs:+0:11: +14:2
           StorageDead(_11);                // scope 8 at $DIR/const_debuginfo.rs:+14:1: +14:2
           StorageDead(_17);                // scope 7 at $DIR/const_debuginfo.rs:+14:1: +14:2
           StorageDead(_18);                // scope 7 at $DIR/const_debuginfo.rs:+14:1: +14:2

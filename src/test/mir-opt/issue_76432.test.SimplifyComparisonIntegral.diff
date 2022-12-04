@@ -76,7 +76,6 @@
           StorageDead(_14);                // scope 1 at $DIR/issue_76432.rs:+3:84: +3:85
           StorageDead(_13);                // scope 1 at $DIR/issue_76432.rs:+3:84: +3:85
           StorageDead(_12);                // scope 1 at $DIR/issue_76432.rs:+3:84: +3:85
-          nop;                             // scope 0 at $DIR/issue_76432.rs:+0:44: +6:2
           StorageDead(_5);                 // scope 0 at $DIR/issue_76432.rs:+6:1: +6:2
           StorageDead(_2);                 // scope 0 at $DIR/issue_76432.rs:+6:1: +6:2
           return;                          // scope 0 at $DIR/issue_76432.rs:+6:2: +6:2

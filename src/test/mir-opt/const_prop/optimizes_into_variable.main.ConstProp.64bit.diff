@@ -57,7 +57,6 @@
 -         _8 = _9;                         // scope 2 at $DIR/optimizes_into_variable.rs:+3:13: +3:38
 +         _8 = const 42_u32;               // scope 2 at $DIR/optimizes_into_variable.rs:+3:13: +3:38
           StorageDead(_9);                 // scope 2 at $DIR/optimizes_into_variable.rs:+3:38: +3:39
-          nop;                             // scope 0 at $DIR/optimizes_into_variable.rs:+0:11: +4:2
           StorageDead(_8);                 // scope 2 at $DIR/optimizes_into_variable.rs:+4:1: +4:2
           StorageDead(_3);                 // scope 1 at $DIR/optimizes_into_variable.rs:+4:1: +4:2
           StorageDead(_1);                 // scope 0 at $DIR/optimizes_into_variable.rs:+4:1: +4:2

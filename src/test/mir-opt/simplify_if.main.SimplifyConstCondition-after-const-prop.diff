@@ -23,12 +23,10 @@
   
       bb2: {
           StorageDead(_2);                 // scope 0 at $DIR/simplify_if.rs:+2:15: +2:16
-          nop;                             // scope 0 at $DIR/simplify_if.rs:+1:14: +3:6
           goto -> bb4;                     // scope 0 at $DIR/simplify_if.rs:+1:5: +3:6
       }
   
       bb3: {
-          nop;                             // scope 0 at $DIR/simplify_if.rs:+3:6: +3:6
           goto -> bb4;                     // scope 0 at $DIR/simplify_if.rs:+1:5: +3:6
       }
   

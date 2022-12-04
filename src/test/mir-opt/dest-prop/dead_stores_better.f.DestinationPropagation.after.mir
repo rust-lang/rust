@@ -13,7 +13,6 @@ fn f(_1: usize) -> usize {
     bb0: {
         nop;                             // scope 0 at $DIR/dead_stores_better.rs:+1:9: +1:10
         nop;                             // scope 0 at $DIR/dead_stores_better.rs:+1:13: +1:14
-        nop;                             // scope 1 at $DIR/dead_stores_better.rs:+2:5: +2:10
         nop;                             // scope 1 at $DIR/dead_stores_better.rs:+3:9: +3:10
         nop;                             // scope 1 at $DIR/dead_stores_better.rs:+3:9: +3:10
         nop;                             // scope 1 at $DIR/dead_stores_better.rs:+3:5: +3:10

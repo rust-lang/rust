@@ -56,7 +56,6 @@
       }
   
       bb1: {
-          nop;                             // scope 0 at $DIR/issue_73223.rs:+3:17: +3:23
           StorageDead(_2);                 // scope 0 at $DIR/issue_73223.rs:+4:6: +4:7
           StorageDead(_1);                 // scope 0 at $DIR/issue_73223.rs:+8:1: +8:2
           return;                          // scope 0 at $DIR/issue_73223.rs:+8:2: +8:2
@@ -144,13 +143,11 @@
       }
   
       bb5: {
-          nop;                             // scope 4 at $SRC_DIR/core/src/macros/mod.rs:LL:COL
           StorageDead(_11);                // scope 4 at $SRC_DIR/core/src/macros/mod.rs:LL:COL
           StorageDead(_10);                // scope 3 at $SRC_DIR/core/src/macros/mod.rs:LL:COL
           StorageDead(_9);                 // scope 3 at $SRC_DIR/core/src/macros/mod.rs:LL:COL
           StorageDead(_24);                // scope 3 at $SRC_DIR/core/src/macros/mod.rs:LL:COL
           StorageDead(_25);                // scope 3 at $SRC_DIR/core/src/macros/mod.rs:LL:COL
-          nop;                             // scope 0 at $DIR/issue_73223.rs:+0:11: +8:2
           StorageDead(_5);                 // scope 1 at $DIR/issue_73223.rs:+8:1: +8:2
           StorageDead(_1);                 // scope 0 at $DIR/issue_73223.rs:+8:1: +8:2
           return;                          // scope 0 at $DIR/issue_73223.rs:+8:2: +8:2

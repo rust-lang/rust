@@ -36,7 +36,6 @@
           StorageDead(_2);                 // scope 0 at $DIR/read_immutable_static.rs:+1:21: +1:22
           StorageDead(_5);                 // scope 0 at $DIR/read_immutable_static.rs:+1:22: +1:23
           StorageDead(_3);                 // scope 0 at $DIR/read_immutable_static.rs:+1:22: +1:23
-          nop;                             // scope 0 at $DIR/read_immutable_static.rs:+0:11: +2:2
           StorageDead(_1);                 // scope 0 at $DIR/read_immutable_static.rs:+2:1: +2:2
           return;                          // scope 0 at $DIR/read_immutable_static.rs:+2:2: +2:2
       }
