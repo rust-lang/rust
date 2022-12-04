@@ -4,6 +4,8 @@
 // incremental
 // compile-flags:-Zprint-mono-items=lazy
 // compile-flags:-Zinline-in-all-cgus
+// To keep mir from doing any inlining
+// compile-flags:-Zmir-opt-level=0
 
 #![allow(dead_code)]
 #![crate_type="lib"]

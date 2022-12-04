@@ -45,15 +45,7 @@ impl<'tcx> MirPass<'tcx> for Inline {
             return enabled;
         }
 
-        match sess.mir_opt_level() {
-            0 | 1 => false,
-            2 => {
-                (sess.opts.optimize == OptLevel::Default
-                    || sess.opts.optimize == OptLevel::Aggressive)
-                    && sess.opts.incremental == None
-            }
-            _ => true,
-        }
+        sess.mir_opt_level() > 0
     }
 
     fn run_pass(&self, tcx: TyCtxt<'tcx>, body: &mut Body<'tcx>) {
@@ -341,7 +333,23 @@ impl<'tcx> Inliner<'tcx> {
     ) -> Result<(), &'static str> {
         match callee_attrs.inline {
             InlineAttr::Never => return Err("never inline hint"),
-            InlineAttr::Always | InlineAttr::Hint => {}
+            InlineAttr::Always => {}
+            InlineAttr::Hint => match self.tcx.sess.mir_opt_level() {
+                0 | 1 => return Err("at mir-opt-level=1, only #[inline(always)] is inlined"),
+                2 if self.tcx.sess.opts.optimize != OptLevel::Default
+                    && self.tcx.sess.opts.optimize != OptLevel::Aggressive =>
+                {
+                    return Err(
+                        "at mir-opt-level=2, only #[inline(always)] is inlined when opt-level<2",
+                    );
+                }
+                2 if self.tcx.sess.opts.incremental != None => {
+                    return Err(
+                        "at mir-opt-level=2, only #[inline(always)] is inlined when incremental compilation is enabled",
+                    );
+                }
+                _ => {}
+            },
             InlineAttr::None => {
                 if self.tcx.sess.mir_opt_level() <= 2 {
                     return Err("at mir-opt-level=2, only #[inline] is inlined");
