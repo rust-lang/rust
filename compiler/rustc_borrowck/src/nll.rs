@@ -73,7 +73,7 @@ pub(crate) fn replace_regions_in_mir<'tcx>(
     // Replace all remaining regions with fresh inference variables.
     renumber::renumber_mir(infcx, body, promoted);
 
-    dump_mir(infcx.tcx, None, "renumber", &0, body, |_, _| Ok(()));
+    dump_mir(infcx.tcx, false, "renumber", &0, body, |_, _| Ok(()));
 
     universal_regions
 }
@@ -331,7 +331,7 @@ pub(super) fn dump_mir_results<'tcx>(
         return;
     }
 
-    dump_mir(infcx.tcx, None, "nll", &0, body, |pass_where, out| {
+    dump_mir(infcx.tcx, false, "nll", &0, body, |pass_where, out| {
         match pass_where {
             // Before the CFG, dump out the values for each region variable.
             PassWhere::BeforeCFG => {
@@ -358,15 +358,13 @@ pub(super) fn dump_mir_results<'tcx>(
 
     // Also dump the inference graph constraints as a graphviz file.
     let _: io::Result<()> = try {
-        let mut file =
-            create_dump_file(infcx.tcx, "regioncx.all.dot", None, "nll", &0, body.source)?;
+        let mut file = create_dump_file(infcx.tcx, "regioncx.all.dot", false, "nll", &0, body)?;
         regioncx.dump_graphviz_raw_constraints(&mut file)?;
     };
 
     // Also dump the inference graph constraints as a graphviz file.
     let _: io::Result<()> = try {
-        let mut file =
-            create_dump_file(infcx.tcx, "regioncx.scc.dot", None, "nll", &0, body.source)?;
+        let mut file = create_dump_file(infcx.tcx, "regioncx.scc.dot", false, "nll", &0, body)?;
         regioncx.dump_graphviz_scc_constraints(&mut file)?;
     };
 }

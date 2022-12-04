@@ -1,6 +1,5 @@
 //! This pass just dumps MIR at a specified point.
 
-use std::borrow::Cow;
 use std::fs::File;
 use std::io;
 
@@ -13,8 +12,8 @@ use rustc_session::config::{OutputFilenames, OutputType};
 pub struct Marker(pub &'static str);
 
 impl<'tcx> MirPass<'tcx> for Marker {
-    fn name(&self) -> Cow<'_, str> {
-        Cow::Borrowed(self.0)
+    fn name(&self) -> &str {
+        self.0
     }
 
     fn run_pass(&self, _tcx: TyCtxt<'tcx>, _body: &mut Body<'tcx>) {}
