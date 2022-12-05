@@ -823,7 +823,6 @@ pub fn create_global_ctxt<'tcx>(
                 queries.on_disk_cache.as_ref().map(OnDiskCache::as_dyn),
                 queries.as_dyn(),
                 rustc_query_impl::query_callbacks(arena),
-                crate_name,
                 outputs,
             )
         })
@@ -834,6 +833,8 @@ pub fn create_global_ctxt<'tcx>(
         let feed = tcx.feed_unit_query();
         feed.resolver_for_lowering(tcx.arena.alloc(Steal::new(untracked_resolver_for_lowering)));
         feed.resolutions(tcx.arena.alloc(untracked_resolutions));
+        let feed = tcx.feed_local_crate();
+        feed.crate_name(crate_name);
     });
     qcx
 }

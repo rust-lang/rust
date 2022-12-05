@@ -363,6 +363,9 @@ impl<'tcx> TyCtxt<'tcx> {
     pub fn feed_unit_query(self) -> TyCtxtFeed<'tcx, ()> {
         TyCtxtFeed { tcx: self, key: () }
     }
+    pub fn feed_local_crate(self) -> TyCtxtFeed<'tcx, CrateNum> {
+        TyCtxtFeed { tcx: self, key: LOCAL_CRATE }
+    }
 }
 
 impl<'tcx, KEY: Copy> TyCtxtFeed<'tcx, KEY> {
@@ -455,10 +458,6 @@ pub struct GlobalCtxt<'tcx> {
     /// for things that do not have to do with the parameters in scope.
     /// Merge this with `selection_cache`?
     pub evaluation_cache: traits::EvaluationCache<'tcx>,
-
-    /// The definite name of the current crate after taking into account
-    /// attributes, commandline parameters, etc.
-    crate_name: Symbol,
 
     /// Data layout specification for the current target.
     pub data_layout: TargetDataLayout,
@@ -597,7 +596,6 @@ impl<'tcx> TyCtxt<'tcx> {
         on_disk_cache: Option<&'tcx dyn OnDiskCache<'tcx>>,
         queries: &'tcx dyn query::QueryEngine<'tcx>,
         query_kinds: &'tcx [DepKindStruct<'tcx>],
-        crate_name: Symbol,
         output_filenames: OutputFilenames,
     ) -> GlobalCtxt<'tcx> {
         let data_layout = s.target.parse_data_layout().unwrap_or_else(|err| {
@@ -629,7 +627,6 @@ impl<'tcx> TyCtxt<'tcx> {
             pred_rcache: Default::default(),
             selection_cache: Default::default(),
             evaluation_cache: Default::default(),
-            crate_name,
             data_layout,
             alloc_map: Lock::new(interpret::AllocMap::new()),
             output_filenames: Arc::new(output_filenames),
@@ -807,7 +804,7 @@ impl<'tcx> TyCtxt<'tcx> {
         // statements within the query system and we'd run into endless
         // recursion otherwise.
         let (crate_name, stable_crate_id) = if def_id.is_local() {
-            (self.crate_name, self.sess.local_stable_crate_id())
+            (self.crate_name(LOCAL_CRATE), self.sess.local_stable_crate_id())
         } else {
             let cstore = &*self.untracked.cstore;
             (cstore.crate_name(def_id.krate), cstore.stable_crate_id(def_id.krate))
@@ -2406,10 +2403,6 @@ fn ptr_eq<T, U>(t: *const T, u: *const U) -> bool {
 pub fn provide(providers: &mut ty::query::Providers) {
     providers.module_reexports =
         |tcx, id| tcx.resolutions(()).reexport_map.get(&id).map(|v| &v[..]);
-    providers.crate_name = |tcx, id| {
-        assert_eq!(id, LOCAL_CRATE);
-        tcx.crate_name
-    };
     providers.maybe_unused_trait_imports =
         |tcx, ()| &tcx.resolutions(()).maybe_unused_trait_imports;
     providers.maybe_unused_extern_crates =
