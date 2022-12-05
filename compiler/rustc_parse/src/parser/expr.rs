@@ -1543,15 +1543,16 @@ impl<'a> Parser<'a> {
             && (matches!(self.token.kind, token::CloseDelim(_) | token::Comma)
                 || self.token.is_op())
         {
-            let lit = self.recover_unclosed_char(label_.ident, |self_| {
-                self_.sess.create_err(UnexpectedTokenAfterLabel {
-                    span: self_.token.span,
-                    remove_label: None,
-                    enclose_in_block: None,
-                })
-            });
+            let (lit, _) =
+                self.recover_unclosed_char(label_.ident, Parser::mk_token_lit_char, |self_| {
+                    self_.sess.create_err(UnexpectedTokenAfterLabel {
+                        span: self_.token.span,
+                        remove_label: None,
+                        enclose_in_block: None,
+                    })
+                });
             consume_colon = false;
-            Ok(self.mk_expr(lo, ExprKind::Lit(lit.as_token_lit())))
+            Ok(self.mk_expr(lo, ExprKind::Lit(lit)))
         } else if !ate_colon
             && (self.check_noexpect(&TokenKind::Comma) || self.check_noexpect(&TokenKind::Gt))
         {
@@ -1626,12 +1627,13 @@ impl<'a> Parser<'a> {
         Ok(expr)
     }
 
-    /// Emit an error when a char is parsed as a lifetime because of a missing quote
-    pub(super) fn recover_unclosed_char(
+    /// Emit an error when a char is parsed as a lifetime because of a missing quote.
+    pub(super) fn recover_unclosed_char<L>(
         &self,
         lifetime: Ident,
+        mk_lit_char: impl FnOnce(Symbol, Span) -> L,
         err: impl FnOnce(&Self) -> DiagnosticBuilder<'a, ErrorGuaranteed>,
-    ) -> ast::MetaItemLit {
+    ) -> L {
         if let Some(mut diag) =
             self.sess.span_diagnostic.steal_diagnostic(lifetime.span, StashKey::LifetimeIsChar)
         {
@@ -1653,12 +1655,7 @@ impl<'a> Parser<'a> {
                 .emit();
         }
         let name = lifetime.without_first_quote().name;
-        ast::MetaItemLit {
-            symbol: name,
-            suffix: None,
-            kind: ast::LitKind::Char(name.as_str().chars().next().unwrap_or('_')),
-            span: lifetime.span,
-        }
+        mk_lit_char(name, lifetime.span)
     }
 
     /// Recover on the syntax `do catch { ... }` suggesting `try { ... }` instead.
@@ -1785,7 +1782,23 @@ impl<'a> Parser<'a> {
         }
     }
 
-    fn handle_missing_lit(&mut self) -> PResult<'a, MetaItemLit> {
+    pub(crate) fn mk_token_lit_char(name: Symbol, span: Span) -> (token::Lit, Span) {
+        (token::Lit { symbol: name, suffix: None, kind: token::Char }, span)
+    }
+
+    fn mk_meta_item_lit_char(name: Symbol, span: Span) -> MetaItemLit {
+        ast::MetaItemLit {
+            symbol: name,
+            suffix: None,
+            kind: ast::LitKind::Char(name.as_str().chars().next().unwrap_or('_')),
+            span,
+        }
+    }
+
+    fn handle_missing_lit<L>(
+        &mut self,
+        mk_lit_char: impl FnOnce(Symbol, Span) -> L,
+    ) -> PResult<'a, L> {
         if let token::Interpolated(inner) = &self.token.kind {
             let expr = match inner.as_ref() {
                 token::NtExpr(expr) => Some(expr),
@@ -1809,7 +1822,7 @@ impl<'a> Parser<'a> {
         // On an error path, eagerly consider a lifetime to be an unclosed character lit
         if self.token.is_lifetime() {
             let lt = self.expect_lifetime();
-            Ok(self.recover_unclosed_char(lt.ident, err))
+            Ok(self.recover_unclosed_char(lt.ident, mk_lit_char, err))
         } else {
             Err(err(self))
         }
@@ -1818,11 +1831,13 @@ impl<'a> Parser<'a> {
     pub(super) fn parse_token_lit(&mut self) -> PResult<'a, (token::Lit, Span)> {
         self.parse_opt_token_lit()
             .ok_or(())
-            .or_else(|()| self.handle_missing_lit().map(|lit| (lit.as_token_lit(), lit.span)))
+            .or_else(|()| self.handle_missing_lit(Parser::mk_token_lit_char))
     }
 
     pub(super) fn parse_meta_item_lit(&mut self) -> PResult<'a, MetaItemLit> {
-        self.parse_opt_meta_item_lit().ok_or(()).or_else(|()| self.handle_missing_lit())
+        self.parse_opt_meta_item_lit()
+            .ok_or(())
+            .or_else(|()| self.handle_missing_lit(Parser::mk_meta_item_lit_char))
     }
 
     fn recover_after_dot(&mut self) -> Option<Token> {
