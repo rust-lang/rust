@@ -1930,6 +1930,7 @@ impl<'o, 'tcx> dyn AstConv<'tcx> + 'o {
                     adt_substs,
                 );
                 let ty = tcx.bound_type_of(assoc_ty_did).subst(tcx, item_substs);
+                let ty = self.normalize_ty(span, ty);
                 return Ok((ty, DefKind::AssocTy, assoc_ty_did));
             }
         }
