@@ -3,12 +3,13 @@
 use crate::ast::{AttrArgs, AttrArgsEq, AttrId, AttrItem, AttrKind, AttrStyle, AttrVec, Attribute};
 use crate::ast::{DelimArgs, Expr, ExprKind, LitKind, MetaItemLit};
 use crate::ast::{MacDelimiter, MetaItem, MetaItemKind, NestedMetaItem, NormalAttr};
-use crate::ast::{Path, PathSegment, StrStyle, DUMMY_NODE_ID};
+use crate::ast::{Path, PathSegment, DUMMY_NODE_ID};
 use crate::ptr::P;
 use crate::token::{self, CommentKind, Delimiter, Token};
 use crate::tokenstream::{DelimSpan, Spacing, TokenTree};
 use crate::tokenstream::{LazyAttrTokenStream, TokenStream};
 use crate::util::comments;
+use crate::util::literal::escape_string_symbol;
 use rustc_data_structures::sync::WorkerLocal;
 use rustc_index::bit_set::GrowableBitSet;
 use rustc_span::symbol::{sym, Ident, Symbol};
@@ -395,7 +396,7 @@ pub fn mk_attr_name_value_str(
     val: Symbol,
     span: Span,
 ) -> Attribute {
-    let lit = LitKind::Str(val, StrStyle::Cooked).synthesize_token_lit();
+    let lit = token::Lit::new(token::Str, escape_string_symbol(val), None);
     let expr = P(Expr {
         id: DUMMY_NODE_ID,
         kind: ExprKind::Lit(lit),
