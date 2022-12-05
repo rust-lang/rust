@@ -20,7 +20,7 @@ use crate::mem::ManuallyDrop;
 /// #![feature(iter_repeat_n)]
 /// use std::iter;
 ///
-/// // four of the the number four:
+/// // four of the number four:
 /// let mut four_fours = iter::repeat_n(4, 4);
 ///
 /// assert_eq!(Some(4), four_fours.next());

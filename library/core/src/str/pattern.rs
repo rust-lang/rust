@@ -1894,7 +1894,7 @@ unsafe fn small_slice_eq(x: &[u8], y: &[u8]) -> bool {
     // Thus, derefencing both `px` and `py` in the loop below is safe.
     //
     // Moreover, we set `pxend` and `pyend` to be 4 bytes before the actual
-    // end of of `px` and `py`. Thus, the final dereference outside of the
+    // end of `px` and `py`. Thus, the final dereference outside of the
     // loop is guaranteed to be valid. (The final comparison will overlap with
     // the last comparison done in the loop for lengths that aren't multiples
     // of four.)
