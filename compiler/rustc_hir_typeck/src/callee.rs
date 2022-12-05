@@ -399,6 +399,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             }
             ty::FnPtr(sig) => (sig, None),
             _ => {
+                let mut skip_first_expr = false;
                 if let hir::ExprKind::Path(hir::QPath::Resolved(_, path)) = &callee_expr.kind
                     && let [segment] = path.segments
                     && let Some(mut diag) = self
@@ -421,24 +422,17 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                         return ty;
                     } else {
                         diag.emit();
+                        skip_first_expr = true;
                     }
                 }
 
                 self.report_invalid_callee(call_expr, callee_expr, callee_ty, arg_exprs);
 
-                // This is the "default" function signature, used in case of error.
-                // In that case, we check each argument against "error" in order to
-                // set up all the node type bindings.
-                (
-                    ty::Binder::dummy(self.tcx.mk_fn_sig(
-                        self.err_args(arg_exprs.len()).into_iter(),
-                        self.tcx.ty_error(),
-                        false,
-                        hir::Unsafety::Normal,
-                        abi::Abi::Rust,
-                    )),
-                    None,
-                )
+                for arg in arg_exprs.iter().skip(skip_first_expr as usize) {
+                    self.check_expr(arg);
+                }
+
+                return self.tcx.ty_error();
             }
         };
 
@@ -498,7 +492,9 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         expected: Expectation<'tcx>,
     ) -> Option<Ty<'tcx>> {
         if let [callee_expr, rest @ ..] = arg_exprs {
-            let callee_ty = self.check_expr(callee_expr);
+            // This may happen recursively -- if so, avoid repeatedly checking the expr.
+            let callee_ty = self.typeck_results.borrow().expr_ty_adjusted_opt(callee_expr);
+            let callee_ty = callee_ty.unwrap_or_else(|| self.check_expr(callee_expr));
             // First, do a probe with `IsSuggestion(true)` to avoid emitting
             // any strange errors. If it's successful, then we'll do a true
             // method lookup.
