@@ -14,10 +14,9 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
   libssl-dev \
   sudo \
   xz-utils \
-  tidy
+  tidy \
 
 # Install dependencies for chromium browser
-RUN apt-get install -y \
   gconf-service \
   libasound2 \
   libatk1.0-0 \
@@ -56,7 +55,8 @@ RUN apt-get install -y \
   libnss3 \
   lsb-release \
   xdg-utils \
-  wget
+  wget \
+  && rm -rf /var/lib/apt/lists/*
 
 COPY scripts/sccache.sh /scripts/
 RUN sh /scripts/sccache.sh

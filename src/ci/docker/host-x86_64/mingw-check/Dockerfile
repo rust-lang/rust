@@ -20,20 +20,20 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
   xz-utils \
   libssl-dev \
   pkg-config \
-  mingw-w64
+  mingw-w64 \
+  && rm -rf /var/lib/apt/lists/*
 
 RUN curl -sL https://nodejs.org/dist/v16.9.0/node-v16.9.0-linux-x64.tar.xz | tar -xJ
 ENV PATH="/node-v16.9.0-linux-x64/bin:${PATH}"
 # Install es-check
 # Pin its version to prevent unrelated CI failures due to future es-check versions.
-RUN npm install es-check@6.1.1 -g
-RUN npm install eslint@8.6.0 -g
+RUN npm install es-check@6.1.1 eslint@8.6.0 -g
 
 COPY scripts/sccache.sh /scripts/
 RUN sh /scripts/sccache.sh
 
 COPY host-x86_64/mingw-check/reuse-requirements.txt /tmp/
-RUN pip3 install --no-deps --require-hashes -r /tmp/reuse-requirements.txt
+RUN pip3 install --no-deps --no-cache-dir --require-hashes -r /tmp/reuse-requirements.txt
 
 COPY host-x86_64/mingw-check/validate-toolstate.sh /scripts/
 COPY host-x86_64/mingw-check/validate-error-codes.sh /scripts/

@@ -32,7 +32,8 @@ RUN yum upgrade -y && \
       wget \
       xz \
       zlib-devel.i686 \
-      zlib-devel.x86_64
+      zlib-devel.x86_64 \
+      && yum clean all
 
 RUN mkdir -p /rustroot/bin && ln -s /usr/bin/cmake3 /rustroot/bin/cmake
 
