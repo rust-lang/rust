@@ -7,6 +7,10 @@ wait-for: 50
 // This is now collapsed so there shouldn't be the "open" attribute on details.
 assert-attribute-false: ("#main-content > details.top-doc", {"open": ""})
 assert-text: ("#toggle-all-docs", "[+]")
+assert-css: (
+    "#main-content > details.top-doc > summary",
+    {"font-family": '"Fira Sans", Arial, NanumBarunGothic, sans-serif'},
+)
 click: "#toggle-all-docs"
 // Not collapsed anymore so the "open" attribute should be back.
 wait-for-attribute: ("#main-content > details.top-doc", {"open": ""})
