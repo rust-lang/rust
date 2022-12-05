@@ -255,7 +255,7 @@ pub unsafe trait StableOrd: Ord {}
 /// here in this module.
 ///
 /// Use `#[derive(HashStable_Generic)]` instead.
-macro_rules! impl_stable_ord_and_stable_hash_via_hash {
+macro_rules! impl_stable_traits_for_trivial_type {
     ($t:ty) => {
         impl<CTX> $crate::stable_hasher::HashStable<CTX> for $t {
             #[inline]
@@ -268,23 +268,23 @@ macro_rules! impl_stable_ord_and_stable_hash_via_hash {
     };
 }
 
-impl_stable_ord_and_stable_hash_via_hash!(i8);
-impl_stable_ord_and_stable_hash_via_hash!(i16);
-impl_stable_ord_and_stable_hash_via_hash!(i32);
-impl_stable_ord_and_stable_hash_via_hash!(i64);
-impl_stable_ord_and_stable_hash_via_hash!(isize);
+impl_stable_traits_for_trivial_type!(i8);
+impl_stable_traits_for_trivial_type!(i16);
+impl_stable_traits_for_trivial_type!(i32);
+impl_stable_traits_for_trivial_type!(i64);
+impl_stable_traits_for_trivial_type!(isize);
 
-impl_stable_ord_and_stable_hash_via_hash!(u8);
-impl_stable_ord_and_stable_hash_via_hash!(u16);
-impl_stable_ord_and_stable_hash_via_hash!(u32);
-impl_stable_ord_and_stable_hash_via_hash!(u64);
-impl_stable_ord_and_stable_hash_via_hash!(usize);
+impl_stable_traits_for_trivial_type!(u8);
+impl_stable_traits_for_trivial_type!(u16);
+impl_stable_traits_for_trivial_type!(u32);
+impl_stable_traits_for_trivial_type!(u64);
+impl_stable_traits_for_trivial_type!(usize);
 
-impl_stable_ord_and_stable_hash_via_hash!(u128);
-impl_stable_ord_and_stable_hash_via_hash!(i128);
+impl_stable_traits_for_trivial_type!(u128);
+impl_stable_traits_for_trivial_type!(i128);
 
-impl_stable_ord_and_stable_hash_via_hash!(char);
-impl_stable_ord_and_stable_hash_via_hash!(());
+impl_stable_traits_for_trivial_type!(char);
+impl_stable_traits_for_trivial_type!(());
 
 impl<CTX> HashStable<CTX> for ! {
     fn hash_stable(&self, _ctx: &mut CTX, _hasher: &mut StableHasher) {
@@ -590,8 +590,8 @@ where
     }
 }
 
-impl_stable_ord_and_stable_hash_via_hash!(::std::path::Path);
-impl_stable_ord_and_stable_hash_via_hash!(::std::path::PathBuf);
+impl_stable_traits_for_trivial_type!(::std::path::Path);
+impl_stable_traits_for_trivial_type!(::std::path::PathBuf);
 
 impl<K, V, R, HCX> HashStable<HCX> for ::std::collections::HashMap<K, V, R>
 where
@@ -635,7 +635,7 @@ where
     }
 }
 
-impl<K: StableOrd, HCX> HashStable<HCX> for ::std::collections::BTreeSet<K>
+impl<K, HCX> HashStable<HCX> for ::std::collections::BTreeSet<K>
 where
     K: HashStable<HCX> + StableOrd,
 {
