@@ -8,6 +8,26 @@ use rustc_span::Span;
 use std::ascii;
 use std::str;
 
+// Escapes a string, represented as a symbol. Reuses the original symbol,
+// avoiding interning, if no changes are required.
+pub fn escape_string_symbol(symbol: Symbol) -> Symbol {
+    let s = symbol.as_str();
+    let escaped = s.escape_default().to_string();
+    if s == escaped { symbol } else { Symbol::intern(&escaped) }
+}
+
+// Escapes a char.
+pub fn escape_char_symbol(ch: char) -> Symbol {
+    let s: String = ch.escape_default().map(Into::<char>::into).collect();
+    Symbol::intern(&s)
+}
+
+// Escapes a byte string.
+pub fn escape_byte_str_symbol(bytes: &[u8]) -> Symbol {
+    let s = bytes.escape_ascii().to_string();
+    Symbol::intern(&s)
+}
+
 #[derive(Debug)]
 pub enum LitError {
     LexerError,
@@ -149,16 +169,11 @@ impl LitKind {
     pub fn synthesize_token_lit(&self) -> token::Lit {
         let (kind, symbol, suffix) = match *self {
             LitKind::Str(symbol, ast::StrStyle::Cooked) => {
-                // Don't re-intern unless the escaped string is different.
-                let s = symbol.as_str();
-                let escaped = s.escape_default().to_string();
-                let symbol = if s == escaped { symbol } else { Symbol::intern(&escaped) };
-                (token::Str, symbol, None)
+                (token::Str, escape_string_symbol(symbol), None)
             }
             LitKind::Str(symbol, ast::StrStyle::Raw(n)) => (token::StrRaw(n), symbol, None),
             LitKind::ByteStr(ref bytes, ast::StrStyle::Cooked) => {
-                let string = bytes.escape_ascii().to_string();
-                (token::ByteStr, Symbol::intern(&string), None)
+                (token::ByteStr, escape_byte_str_symbol(bytes), None)
             }
             LitKind::ByteStr(ref bytes, ast::StrStyle::Raw(n)) => {
                 // Unwrap because raw byte string literals can only contain ASCII.
@@ -169,10 +184,7 @@ impl LitKind {
                 let string: String = ascii::escape_default(byte).map(Into::<char>::into).collect();
                 (token::Byte, Symbol::intern(&string), None)
             }
-            LitKind::Char(ch) => {
-                let string: String = ch.escape_default().map(Into::<char>::into).collect();
-                (token::Char, Symbol::intern(&string), None)
-            }
+            LitKind::Char(ch) => (token::Char, escape_char_symbol(ch), None),
             LitKind::Int(n, ty) => {
                 let suffix = match ty {
                     ast::LitIntType::Unsigned(ty) => Some(ty.name()),

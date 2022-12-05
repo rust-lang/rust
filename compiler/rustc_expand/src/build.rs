@@ -1,8 +1,7 @@
 use crate::base::ExtCtxt;
-use rustc_ast::attr;
 use rustc_ast::ptr::P;
 use rustc_ast::{self as ast, AttrVec, BlockCheckMode, Expr, LocalKind, PatKind, UnOp};
-use rustc_data_structures::sync::Lrc;
+use rustc_ast::{attr, token, util::literal};
 use rustc_span::source_map::Spanned;
 use rustc_span::symbol::{kw, sym, Ident, Symbol};
 use rustc_span::Span;
@@ -332,36 +331,36 @@ impl<'a> ExtCtxt<'a> {
         self.expr_struct(span, self.path_ident(span, id), fields)
     }
 
-    fn expr_lit(&self, span: Span, lit_kind: ast::LitKind) -> P<ast::Expr> {
-        let token_lit = lit_kind.synthesize_token_lit();
-        self.expr(span, ast::ExprKind::Lit(token_lit))
+    pub fn expr_usize(&self, span: Span, n: usize) -> P<ast::Expr> {
+        let suffix = Some(ast::UintTy::Usize.name());
+        let lit = token::Lit::new(token::Integer, sym::integer(n), suffix);
+        self.expr(span, ast::ExprKind::Lit(lit))
     }
 
-    pub fn expr_usize(&self, span: Span, i: usize) -> P<ast::Expr> {
-        self.expr_lit(
-            span,
-            ast::LitKind::Int(i as u128, ast::LitIntType::Unsigned(ast::UintTy::Usize)),
-        )
+    pub fn expr_u32(&self, span: Span, n: u32) -> P<ast::Expr> {
+        let suffix = Some(ast::UintTy::U32.name());
+        let lit = token::Lit::new(token::Integer, sym::integer(n), suffix);
+        self.expr(span, ast::ExprKind::Lit(lit))
     }
 
-    pub fn expr_u32(&self, sp: Span, u: u32) -> P<ast::Expr> {
-        self.expr_lit(sp, ast::LitKind::Int(u as u128, ast::LitIntType::Unsigned(ast::UintTy::U32)))
+    pub fn expr_bool(&self, span: Span, value: bool) -> P<ast::Expr> {
+        let lit = token::Lit::new(token::Bool, if value { kw::True } else { kw::False }, None);
+        self.expr(span, ast::ExprKind::Lit(lit))
     }
 
-    pub fn expr_bool(&self, sp: Span, value: bool) -> P<ast::Expr> {
-        self.expr_lit(sp, ast::LitKind::Bool(value))
+    pub fn expr_str(&self, span: Span, s: Symbol) -> P<ast::Expr> {
+        let lit = token::Lit::new(token::Str, literal::escape_string_symbol(s), None);
+        self.expr(span, ast::ExprKind::Lit(lit))
     }
 
-    pub fn expr_str(&self, sp: Span, s: Symbol) -> P<ast::Expr> {
-        self.expr_lit(sp, ast::LitKind::Str(s, ast::StrStyle::Cooked))
+    pub fn expr_char(&self, span: Span, ch: char) -> P<ast::Expr> {
+        let lit = token::Lit::new(token::Char, literal::escape_char_symbol(ch), None);
+        self.expr(span, ast::ExprKind::Lit(lit))
     }
 
-    pub fn expr_char(&self, sp: Span, ch: char) -> P<ast::Expr> {
-        self.expr_lit(sp, ast::LitKind::Char(ch))
-    }
-
-    pub fn expr_byte_str(&self, sp: Span, bytes: Vec<u8>) -> P<ast::Expr> {
-        self.expr_lit(sp, ast::LitKind::ByteStr(Lrc::from(bytes), ast::StrStyle::Cooked))
+    pub fn expr_byte_str(&self, span: Span, bytes: Vec<u8>) -> P<ast::Expr> {
+        let lit = token::Lit::new(token::ByteStr, literal::escape_byte_str_symbol(&bytes), None);
+        self.expr(span, ast::ExprKind::Lit(lit))
     }
 
     /// `[expr1, expr2, ...]`
