@@ -1,6 +1,10 @@
 //! Implements "Stacked Borrows".  See <https://github.com/rust-lang/unsafe-code-guidelines/blob/master/wip/stacked-borrows.md>
 //! for further information.
 
+mod item;
+mod stack;
+pub mod diagnostics;
+
 use log::trace;
 use std::cmp;
 use std::fmt::{self, Write};
@@ -15,15 +19,13 @@ use rustc_target::abi::{Abi, Size};
 
 use crate::borrow_tracker::{
     stacked_borrows::diagnostics::{AllocHistory, DiagnosticCx, DiagnosticCxBuilder, TagHistory},
-    AccessKind, GlobalStateInner, ProtectorKind, RetagCause, RetagFields,
+    AccessKind, GlobalStateInner, ProtectorKind, RetagFields,
 };
 use crate::*;
 
-mod item;
 pub use item::{Item, Permission};
-mod stack;
 pub use stack::Stack;
-pub mod diagnostics;
+use diagnostics::RetagCause;
 
 pub type AllocState = Stacks;
 
@@ -807,7 +809,34 @@ trait EvalContextPrivExt<'mir: 'ecx, 'tcx: 'mir, 'ecx>: crate::MiriInterpCxExt<'
 
 impl<'mir, 'tcx: 'mir> EvalContextExt<'mir, 'tcx> for crate::MiriInterpCx<'mir, 'tcx> {}
 pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriInterpCxExt<'mir, 'tcx> {
-    fn sb_retag(
+    fn sb_retag_ptr_value(
+        &mut self,
+        kind: RetagKind,
+        val: &ImmTy<'tcx, Provenance>,
+    ) -> InterpResult<'tcx, ImmTy<'tcx, Provenance>> {
+        let this = self.eval_context_mut();
+        let ref_kind = match val.layout.ty.kind() {
+            ty::Ref(_, _, mutbl) => {
+                match mutbl {
+                    Mutability::Mut =>
+                        RefKind::Unique { two_phase: kind == RetagKind::TwoPhase },
+                    Mutability::Not => RefKind::Shared,
+                }
+            }
+            ty::RawPtr(tym) => {
+                RefKind::Raw { mutable: tym.mutbl == Mutability::Mut }
+            }
+            _ => unreachable!(),
+        };
+        let retag_cause = match kind {
+            RetagKind::TwoPhase { .. } => RetagCause::TwoPhase,
+            RetagKind::FnEntry => unreachable!(),
+            RetagKind::Raw | RetagKind::Default => RetagCause::Normal,
+        };
+        this.sb_retag_reference(&val, ref_kind, retag_cause, None)
+    }
+
+    fn sb_retag_place_contents(
         &mut self,
         kind: RetagKind,
         place: &PlaceTy<'tcx, Provenance>,
@@ -815,9 +844,9 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriInterpCxExt<'mir, 'tcx> {
         let this = self.eval_context_mut();
         let retag_fields = this.machine.borrow_tracker.as_mut().unwrap().get_mut().retag_fields;
         let retag_cause = match kind {
-            RetagKind::TwoPhase { .. } => RetagCause::TwoPhase,
+            RetagKind::Raw | RetagKind::TwoPhase { .. } => unreachable!(),
             RetagKind::FnEntry => RetagCause::FnEntry,
-            RetagKind::Raw | RetagKind::Default => RetagCause::Normal,
+            RetagKind::Default => RetagCause::Normal,
         };
         let mut visitor = RetagVisitor { ecx: this, kind, retag_cause, retag_fields };
         return visitor.visit_value(place);
@@ -831,7 +860,7 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriInterpCxExt<'mir, 'tcx> {
         }
         impl<'ecx, 'mir, 'tcx> RetagVisitor<'ecx, 'mir, 'tcx> {
             #[inline(always)] // yes this helps in our benchmarks
-            fn retag_place(
+            fn retag_ptr_inplace(
                 &mut self,
                 place: &PlaceTy<'tcx, Provenance>,
                 ref_kind: RefKind,
@@ -856,7 +885,7 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriInterpCxExt<'mir, 'tcx> {
 
             fn visit_box(&mut self, place: &PlaceTy<'tcx, Provenance>) -> InterpResult<'tcx> {
                 // Boxes get a weak protectors, since they may be deallocated.
-                self.retag_place(
+                self.retag_ptr_inplace(
                     place,
                     RefKind::Box,
                     self.retag_cause,
@@ -879,10 +908,10 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriInterpCxExt<'mir, 'tcx> {
                     ty::Ref(_, _, mutbl) => {
                         let ref_kind = match mutbl {
                             Mutability::Mut =>
-                                RefKind::Unique { two_phase: self.kind == RetagKind::TwoPhase },
+                                RefKind::Unique { two_phase: false },
                             Mutability::Not => RefKind::Shared,
                         };
-                        self.retag_place(
+                        self.retag_ptr_inplace(
                             place,
                             ref_kind,
                             self.retag_cause,
@@ -891,21 +920,11 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriInterpCxExt<'mir, 'tcx> {
                                 .then_some(ProtectorKind::StrongProtector),
                         )?;
                     }
-                    ty::RawPtr(tym) => {
-                        // We definitely do *not* want to recurse into raw pointers -- wide raw
-                        // pointers have fields, and for dyn Trait pointees those can have reference
-                        // type!
-                        if self.kind == RetagKind::Raw {
-                            // Raw pointers need to be enabled.
-                            self.retag_place(
-                                place,
-                                RefKind::Raw { mutable: tym.mutbl == Mutability::Mut },
-                                self.retag_cause,
-                                /*protector*/ None,
-                            )?;
-                        }
+                    ty::RawPtr(..) => {
+                        // We do *not* want to recurse into raw pointers -- wide raw pointers have
+                        // fields, and for dyn Trait pointees those can have reference type!
                     }
-                    _ if place.layout.ty.ty_adt_def().is_some_and(|adt| adt.is_box()) => {
+                    ty::Adt(adt, _) if adt.is_box() => {
                         // Recurse for boxes, they require some tricky handling and will end up in `visit_box` above.
                         // (Yes this means we technically also recursively retag the allocator itself
                         // even if field retagging is not enabled. *shrug*)
