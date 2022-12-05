@@ -5,7 +5,7 @@ struct Foo {
 
 impl PartialEq for Foo {
     fn eq(&self, _: &Foo) -> bool {
-        false // ha ha sucker!
+        false // ha ha!
     }
 }
 
