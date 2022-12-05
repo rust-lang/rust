@@ -8,11 +8,13 @@ use rustc_span::Span;
 declare_clippy_lint! {
     /// ### What it does
     ///
-    /// Suggests moving the semicolon from a block inside of the block to its kast expression.
+    /// Suggests moving the semicolon after a block to the inside of the block, after its last
+    /// expression.
     ///
     /// ### Why is this bad?
     ///
-    /// For consistency it's best to have the semicolon inside/outside the block. Either way is fine and this lint suggests inside the block.
+    /// For consistency it's best to have the semicolon inside/outside the block. Either way is fine
+    /// and this lint suggests inside the block.
     /// Take a look at `semicolon_outside_block` for the other alternative.
     ///
     /// ### Example
@@ -40,7 +42,8 @@ declare_clippy_lint! {
     ///
     /// ### Why is this bad?
     ///
-    /// For consistency it's best to have the semicolon inside/outside the block. Either way is fine and this lint suggests outside the block.
+    /// For consistency it's best to have the semicolon inside/outside the block. Either way is fine
+    /// and this lint suggests outside the block.
     /// Take a look at `semicolon_inside_block` for the other alternative.
     ///
     /// ### Example

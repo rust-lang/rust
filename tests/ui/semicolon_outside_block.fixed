@@ -79,5 +79,7 @@ fn main() {
         unit_fn_block()
     };
 
+    { unit_fn_block(); };
+
     unit_fn_block()
 }
