@@ -555,6 +555,7 @@ impl<'tcx> TypeErrCtxtExt<'tcx> for TypeErrCtxt<'_, 'tcx> {
                 // can get a better error message by performing HIR-based well-formedness checking.
                 if let ObligationCauseCode::WellFormed(Some(wf_loc)) =
                     root_obligation.cause.code().peel_derives()
+                    && !obligation.predicate.has_non_region_infer()
                 {
                     if let Some(cause) = self
                         .tcx
