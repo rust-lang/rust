@@ -818,7 +818,6 @@ pub fn create_global_ctxt<'tcx>(
                 arena,
                 hir_arena,
                 untracked,
-                krate,
                 dep_graph,
                 queries.on_disk_cache.as_ref().map(OnDiskCache::as_dyn),
                 queries.as_dyn(),
@@ -831,7 +830,9 @@ pub fn create_global_ctxt<'tcx>(
     let mut qcx = QueryContext { gcx };
     qcx.enter(|tcx| {
         let feed = tcx.feed_unit_query();
-        feed.resolver_for_lowering(tcx.arena.alloc(Steal::new(untracked_resolver_for_lowering)));
+        feed.resolver_for_lowering(
+            tcx.arena.alloc(Steal::new((untracked_resolver_for_lowering, krate))),
+        );
         feed.resolutions(tcx.arena.alloc(untracked_resolutions));
         let feed = tcx.feed_local_crate();
         feed.crate_name(crate_name);

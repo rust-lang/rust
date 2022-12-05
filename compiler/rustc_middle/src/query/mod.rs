@@ -32,7 +32,7 @@ rustc_queries! {
         desc { "getting the resolver outputs" }
     }
 
-    query resolver_for_lowering(_: ()) -> &'tcx Steal<ty::ResolverAstLowering> {
+    query resolver_for_lowering(_: ()) -> &'tcx Steal<(ty::ResolverAstLowering, Lrc<ast::Crate>)> {
         feedable
         no_hash
         desc { "getting the resolver for lowering" }
