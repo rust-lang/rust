@@ -817,7 +817,6 @@ pub fn create_global_ctxt<'tcx>(
                 lint_store,
                 arena,
                 hir_arena,
-                untracked_resolutions,
                 untracked,
                 krate,
                 dep_graph,
@@ -832,8 +831,9 @@ pub fn create_global_ctxt<'tcx>(
 
     let mut qcx = QueryContext { gcx };
     qcx.enter(|tcx| {
-        tcx.feed_unit_query()
-            .resolver_for_lowering(tcx.arena.alloc(Steal::new(untracked_resolver_for_lowering)))
+        let feed = tcx.feed_unit_query();
+        feed.resolver_for_lowering(tcx.arena.alloc(Steal::new(untracked_resolver_for_lowering)));
+        feed.resolutions(tcx.arena.alloc(untracked_resolutions));
     });
     qcx
 }

@@ -428,8 +428,7 @@ pub struct GlobalCtxt<'tcx> {
     pub consts: CommonConsts<'tcx>,
 
     untracked: Untracked,
-    /// Output of the resolver.
-    pub(crate) untracked_resolutions: ty::ResolverGlobalCtxt,
+
     /// The entire crate as AST. This field serves as the input for the hir_crate query,
     /// which lowers it from AST to HIR. It must not be read or used by anything else.
     pub untracked_crate: Steal<Lrc<ast::Crate>>,
@@ -592,7 +591,6 @@ impl<'tcx> TyCtxt<'tcx> {
         lint_store: Lrc<dyn Any + sync::Send + sync::Sync>,
         arena: &'tcx WorkerLocal<Arena<'tcx>>,
         hir_arena: &'tcx WorkerLocal<hir::Arena<'tcx>>,
-        untracked_resolutions: ty::ResolverGlobalCtxt,
         untracked: Untracked,
         krate: Lrc<ast::Crate>,
         dep_graph: DepGraph,
@@ -622,7 +620,6 @@ impl<'tcx> TyCtxt<'tcx> {
             lifetimes: common_lifetimes,
             consts: common_consts,
             untracked,
-            untracked_resolutions,
             untracked_crate: Steal::new(krate),
             on_disk_cache,
             queries,
@@ -2407,7 +2404,6 @@ fn ptr_eq<T, U>(t: *const T, u: *const U) -> bool {
 }
 
 pub fn provide(providers: &mut ty::query::Providers) {
-    providers.resolutions = |tcx, ()| &tcx.untracked_resolutions;
     providers.module_reexports =
         |tcx, id| tcx.resolutions(()).reexport_map.get(&id).map(|v| &v[..]);
     providers.crate_name = |tcx, id| {
