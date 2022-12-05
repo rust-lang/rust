@@ -3485,6 +3485,10 @@ impl<T> [T] {
     /// matter, such as a sanitizer attempting to find alignment bugs. Regular code running
     /// in a default (debug or release) execution *will* return a maximal middle part.
     ///
+    /// If this behavior is not what you desire, as you don't want fallback paths for the bytes
+    /// outside the aligned part, consider using [aligned_subslice] or [transmute_elements] instead,
+    /// as these have stronger guarantees.
+    ///
     /// This method has no purpose when either input element `T` or output element `U` are
     /// zero-sized and will return the original slice without splitting anything.
     ///
@@ -3547,6 +3551,10 @@ impl<T> [T] {
     /// matter, such as a sanitizer attempting to find alignment bugs. Regular code running
     /// in a default (debug or release) execution *will* return a maximal middle part.
     ///
+    /// If this behavior is not what you desire, as you don't want fallback paths for the bytes
+    /// outside the aligned part, consider using [aligned_subslice_mut] or [transmute_elements_mut]
+    /// instead, as these have stronger guarantees.
+    ///
     /// This method has no purpose when either input element `T` or output element `U` are
     /// zero-sized and will return the original slice without splitting anything.
     ///
@@ -3605,6 +3613,200 @@ impl<T> [T] {
                 )
             }
         }
+    }
+
+    /// Get a subslice where the first element is aligned to a given alignment and the size
+    /// of the slice is a multiple of the alignment.
+    ///
+    /// # Panics
+    ///
+    /// This method requires the alignment to be a multiple (larger than 1) of the alignment of
+    /// the slice element's alignment.
+    ///
+    /// # Examples
+    ///
+    /// Basic usage:
+    ///
+    /// ```
+    /// #![feature(slice_align_to_ish)]
+    /// let bytes: [u8; 7] = [1, 2, 3, 4, 5, 6, 7];
+    /// let ints = bytes.aligned_subslice(std::mem::align_of::<u32>());
+    /// assert_eq!(ints.len(), 1);
+    /// ```
+    #[must_use]
+    #[unstable(feature = "slice_align_to_ish", issue = "none")]
+    #[inline]
+    pub fn aligned_subslice(&self, align: usize) -> &[T] {
+        let size = crate::mem::size_of::<T>();
+        assert!(
+            size < align,
+            "aligned_subslice does nothing for alignments below or at the element type's alignment"
+        );
+        assert!(
+            align % size == 0,
+            "aligned_subslice only works for alignments that are multiples of the element's size"
+        );
+        let offset = self.as_ptr().addr() % align;
+        // SAFETY: See the `align_to_mut` method for the detailed safety comment.
+        let end_offset = unsafe { self.as_ptr().offset(self.len() as isize) }.addr() % align;
+        let end = self.len() - (align / size - end_offset);
+        &self[offset..end]
+    }
+
+    /// Get a subslice where the first element is aligned to a given alignment and the size
+    /// of the slice is a multiple of the alignment.
+    ///
+    /// # Panics
+    ///
+    /// This method requires the alignment to be a multiple (larger than 1) of the alignment of
+    /// the slice element's alignment.
+    ///
+    /// # Examples
+    ///
+    /// Basic usage:
+    ///
+    /// ```
+    /// #![feature(slice_align_to_ish)]
+    /// let mut bytes: [u8; 7] = [1, 2, 3, 4, 5, 6, 7];
+    /// let ints = bytes.aligned_subslice_mut(std::mem::align_of::<u32>());
+    /// assert_eq!(ints.len(), 1);
+    /// ```
+    #[must_use]
+    #[unstable(feature = "slice_align_to_ish", issue = "none")]
+    #[inline]
+    pub fn aligned_subslice_mut(&mut self, align: usize) -> &mut [T] {
+        let size = crate::mem::size_of::<T>();
+        assert!(
+            size < align,
+            "aligned_subslice does nothing for alignments below or at the element type's alignment"
+        );
+        assert!(
+            align % size == 0,
+            "aligned_subslice only works for alignments that are multiples of the element's size"
+        );
+        let offset = self.as_ptr().addr() % align;
+        // SAFETY: See the `align_to_mut` method for the detailed safety comment.
+        let end_offset = unsafe { self.as_ptr().offset(self.len() as isize) }.addr() % align;
+        let end = self.len() - (align / size - end_offset);
+        &mut self[offset..end]
+    }
+
+    /// Transmute the slice elements to another type.
+    ///
+    /// If the target element type is smaller than the source element type, the
+    /// returned slice will have multiple elements per element of the original slice.
+    ///
+    /// Cannot be used to go to an element type with higher alignment requirements.
+    /// Use `aligned_subslice` for that instead.
+    ///
+    /// # Panics
+    ///
+    /// The element sizes and the slice length must be such that all elements of the source
+    /// slice fit exactly into a slice of the destination element type. Resize your input slice
+    /// before invoking `transmute_elements` to uphold this checked requirement.
+    ///
+    /// # Safety
+    ///
+    /// This method is essentially a `transmute` between different elements, and even from
+    /// multiple elements into a single one or vice versa, so all the usual caveats
+    /// pertaining to `transmute::<T, U>` also apply here.
+    ///
+    /// # Examples
+    ///
+    /// Basic usage:
+    ///
+    /// ```
+    /// unsafe {
+    ///     let ints: [u32; 2] = [1, 2];
+    ///     let smaller_ints = ints.transmute_elements::<u16>();
+    ///     assert_eq!(smaller_ints.len(), 4);
+    /// }
+    /// ```
+    #[must_use]
+    #[unstable(feature = "slice_align_to_ish", issue = "none")]
+    #[track_caller]
+    pub const unsafe fn transmute_elements<U>(&self) -> &[U] {
+        const {
+            let align_u = crate::mem::align_of::<U>();
+            let align_t = crate::mem::align_of::<T>();
+            assert!(align_u <= align_t, "use `aligned_subslice` instead");
+        };
+        let size_u = crate::mem::size_of::<U>();
+        let size_t = crate::mem::size_of::<T>();
+        if size_u > size_t {
+            assert!(
+                self.len() * size_u % size_t == 0,
+                "input slice does not fit exactly into a slice of the output element type"
+            );
+        } else {
+            assert!(
+                self.len() * size_t % size_u == 0,
+                "input slice does not fit exactly into a slice of the output element type"
+            );
+        }
+        // SAFETY: The size of the slice is such that with the new element size, all new
+        // elements are still within the bounds of the original slice. The change in element
+        // type is something the caller needs to make sure is sound.
+        unsafe { from_raw_parts(self.as_ptr() as *const _, self.len() * size_t / size_u) }
+    }
+
+    /// Transmute the slice elements to another type.
+    ///
+    /// If the target element type is smaller than the source element type, the
+    /// returned slice will have multiple elements per element of the original slice.
+    ///
+    /// Cannot be used to go to an element type with higher alignment requirements.
+    /// Use `aligned_subslice_mut` for that instead.
+    ///
+    /// # Panics
+    ///
+    /// The element sizes and the slice length must be such that all elements of the source
+    /// slice fit exactly into a slice of the destination element type. Resize your input slice
+    /// before invoking `transmute_elements_mut` to uphold this checked requirement.
+    ///
+    /// # Safety
+    ///
+    /// This method is essentially a `transmute` between different elements, and even from
+    /// multiple elements into a single one or vice versa, so all the usual caveats
+    /// pertaining to `transmute::<T, U>` also apply here.
+    ///
+    /// # Examples
+    ///
+    /// Basic usage:
+    ///
+    /// ```
+    /// unsafe {
+    ///     let mut ints: [u32; 2] = [1, 2];
+    ///     let smaller_ints = ints.transmute_elements_mut::<u16>();
+    ///     assert_eq!(smaller_ints.len(), 4);
+    /// }
+    /// ```
+    #[must_use]
+    #[unstable(feature = "slice_align_to_ish", issue = "none")]
+    #[track_caller]
+    pub const unsafe fn transmute_elements_mut<U>(&mut self) -> &mut [U] {
+        const {
+            let align_u = crate::mem::align_of::<U>();
+            let align_t = crate::mem::align_of::<T>();
+            assert!(align_u <= align_t, "use `aligned_subslice_mut` instead");
+        };
+        let size_u = crate::mem::size_of::<U>();
+        let size_t = crate::mem::size_of::<T>();
+        if size_u > size_t {
+            assert!(
+                self.len() * size_u % size_t == 0,
+                "input slice does not fit exactly into a slice of the output element type"
+            );
+        } else {
+            assert!(
+                self.len() * size_t % size_u == 0,
+                "input slice does not fit exactly into a slice of the output element type"
+            );
+        }
+        // SAFETY: The size of the slice is such that with the new element size, all new
+        // elements are still within the bounds of the original slice. The change in element
+        // type is something the caller needs to make sure is sound.
+        unsafe { from_raw_parts_mut(self.as_mut_ptr() as *mut _, self.len() * size_t / size_u) }
     }
 
     /// Split a slice into a prefix, a middle of aligned SIMD types, and a suffix.
