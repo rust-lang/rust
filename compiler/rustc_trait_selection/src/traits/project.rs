@@ -2321,11 +2321,10 @@ fn assoc_ty_own_obligations<'cx, 'tcx>(
     nested: &mut Vec<PredicateObligation<'tcx>>,
 ) {
     let tcx = selcx.tcx();
-    for predicate in tcx
+    let own = tcx
         .predicates_of(obligation.predicate.item_def_id)
-        .instantiate_own(tcx, obligation.predicate.substs)
-        .predicates
-    {
+        .instantiate_own(tcx, obligation.predicate.substs);
+    for (predicate, span) in std::iter::zip(own.predicates, own.spans) {
         let normalized = normalize_with_depth_to(
             selcx,
             obligation.param_env,
@@ -2334,9 +2333,30 @@ fn assoc_ty_own_obligations<'cx, 'tcx>(
             predicate,
             nested,
         );
+
+        let nested_cause = if matches!(
+            obligation.cause.code(),
+            super::CompareImplItemObligation { .. }
+                | super::CheckAssociatedTypeBounds { .. }
+                | super::AscribeUserTypeProvePredicate(..)
+        ) {
+            obligation.cause.clone()
+        } else if span.is_dummy() {
+            ObligationCause::new(
+                obligation.cause.span,
+                obligation.cause.body_id,
+                super::ItemObligation(obligation.predicate.item_def_id),
+            )
+        } else {
+            ObligationCause::new(
+                obligation.cause.span,
+                obligation.cause.body_id,
+                super::BindingObligation(obligation.predicate.item_def_id, span),
+            )
+        };
         nested.push(Obligation::with_depth(
             tcx,
-            obligation.cause.clone(),
+            nested_cause,
             obligation.recursion_depth + 1,
             obligation.param_env,
             normalized,
