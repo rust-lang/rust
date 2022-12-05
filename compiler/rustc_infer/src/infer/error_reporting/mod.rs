@@ -341,7 +341,15 @@ pub fn unexpected_hidden_region_diagnostic<'tcx>(
 
 impl<'tcx> InferCtxt<'tcx> {
     pub fn get_impl_future_output_ty(&self, ty: Ty<'tcx>) -> Option<Ty<'tcx>> {
-        let ty::Opaque(def_id, substs) = *ty.kind() else { return None; };
+        let (def_id, substs) = match *ty.kind() {
+            ty::Opaque(def_id, substs) => (def_id, substs),
+            ty::Projection(data)
+                if self.tcx.def_kind(data.item_def_id) == DefKind::ImplTraitPlaceholder =>
+            {
+                (data.item_def_id, data.substs)
+            }
+            _ => return None,
+        };
 
         let future_trait = self.tcx.require_lang_item(LangItem::Future, None);
         let item_def_id = self.tcx.associated_item_def_ids(future_trait)[0];
