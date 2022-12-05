@@ -32,18 +32,18 @@
   
       bb0: {
 -         FakeRead(ForMatchedPlace(None), _2); // scope 0 at $DIR/match_arm_scopes.rs:+1:11: +1:16
--         switchInt((_2.0: bool)) -> [false: bb1, otherwise: bb2]; // scope 0 at $DIR/match_arm_scopes.rs:+1:5: +1:16
-+         switchInt((_2.0: bool)) -> [false: bb5, otherwise: bb1]; // scope 0 at $DIR/match_arm_scopes.rs:+1:5: +1:16
+-         switchInt((_2.0: bool)) -> [0: bb1, otherwise: bb2]; // scope 0 at $DIR/match_arm_scopes.rs:+1:5: +1:16
++         switchInt((_2.0: bool)) -> [0: bb5, otherwise: bb1]; // scope 0 at $DIR/match_arm_scopes.rs:+1:5: +1:16
       }
   
       bb1: {
 -         falseEdge -> [real: bb8, imaginary: bb3]; // scope 0 at $DIR/match_arm_scopes.rs:+2:9: +2:22
-+         switchInt((_2.1: bool)) -> [false: bb10, otherwise: bb2]; // scope 0 at $DIR/match_arm_scopes.rs:+1:5: +1:16
++         switchInt((_2.1: bool)) -> [0: bb10, otherwise: bb2]; // scope 0 at $DIR/match_arm_scopes.rs:+1:5: +1:16
       }
   
       bb2: {
--         switchInt((_2.1: bool)) -> [false: bb3, otherwise: bb4]; // scope 0 at $DIR/match_arm_scopes.rs:+1:5: +1:16
-+         switchInt((_2.0: bool)) -> [false: bb3, otherwise: bb17]; // scope 0 at $DIR/match_arm_scopes.rs:+1:5: +1:16
+-         switchInt((_2.1: bool)) -> [0: bb3, otherwise: bb4]; // scope 0 at $DIR/match_arm_scopes.rs:+1:5: +1:16
++         switchInt((_2.0: bool)) -> [0: bb3, otherwise: bb17]; // scope 0 at $DIR/match_arm_scopes.rs:+1:5: +1:16
       }
   
       bb3: {
@@ -51,7 +51,7 @@
 -     }
 - 
 -     bb4: {
--         switchInt((_2.0: bool)) -> [false: bb6, otherwise: bb5]; // scope 0 at $DIR/match_arm_scopes.rs:+1:5: +1:16
+-         switchInt((_2.0: bool)) -> [0: bb6, otherwise: bb5]; // scope 0 at $DIR/match_arm_scopes.rs:+1:5: +1:16
 -     }
 - 
 -     bb5: {
@@ -85,8 +85,8 @@
           StorageLive(_9);                 // scope 0 at $DIR/match_arm_scopes.rs:+2:42: +2:73
           StorageLive(_10);                // scope 0 at $DIR/match_arm_scopes.rs:+2:45: +2:49
           _10 = _1;                        // scope 0 at $DIR/match_arm_scopes.rs:+2:45: +2:49
--         switchInt(move _10) -> [false: bb10, otherwise: bb9]; // scope 0 at $DIR/match_arm_scopes.rs:+2:45: +2:49
-+         switchInt(move _10) -> [false: bb7, otherwise: bb6]; // scope 0 at $DIR/match_arm_scopes.rs:+2:45: +2:49
+-         switchInt(move _10) -> [0: bb10, otherwise: bb9]; // scope 0 at $DIR/match_arm_scopes.rs:+2:45: +2:49
++         switchInt(move _10) -> [0: bb7, otherwise: bb6]; // scope 0 at $DIR/match_arm_scopes.rs:+2:45: +2:49
       }
   
 -     bb9: {
@@ -101,8 +101,8 @@
 -     bb10: {
 +     bb7: {
           _9 = (*_6);                      // scope 0 at $DIR/match_arm_scopes.rs:+2:70: +2:71
--         switchInt(move _9) -> [false: bb12, otherwise: bb11]; // scope 0 at $DIR/match_arm_scopes.rs:+2:42: +2:73
-+         switchInt(move _9) -> [false: bb9, otherwise: bb8]; // scope 0 at $DIR/match_arm_scopes.rs:+2:42: +2:73
+-         switchInt(move _9) -> [0: bb12, otherwise: bb11]; // scope 0 at $DIR/match_arm_scopes.rs:+2:42: +2:73
++         switchInt(move _9) -> [0: bb9, otherwise: bb8]; // scope 0 at $DIR/match_arm_scopes.rs:+2:42: +2:73
       }
   
 -     bb11: {
@@ -142,8 +142,8 @@
           StorageLive(_12);                // scope 0 at $DIR/match_arm_scopes.rs:+2:42: +2:73
           StorageLive(_13);                // scope 0 at $DIR/match_arm_scopes.rs:+2:45: +2:49
           _13 = _1;                        // scope 0 at $DIR/match_arm_scopes.rs:+2:45: +2:49
--         switchInt(move _13) -> [false: bb15, otherwise: bb14]; // scope 0 at $DIR/match_arm_scopes.rs:+2:45: +2:49
-+         switchInt(move _13) -> [false: bb12, otherwise: bb11]; // scope 0 at $DIR/match_arm_scopes.rs:+2:45: +2:49
+-         switchInt(move _13) -> [0: bb15, otherwise: bb14]; // scope 0 at $DIR/match_arm_scopes.rs:+2:45: +2:49
++         switchInt(move _13) -> [0: bb12, otherwise: bb11]; // scope 0 at $DIR/match_arm_scopes.rs:+2:45: +2:49
       }
   
 -     bb14: {
@@ -158,8 +158,8 @@
 -     bb15: {
 +     bb12: {
           _12 = (*_6);                     // scope 0 at $DIR/match_arm_scopes.rs:+2:70: +2:71
--         switchInt(move _12) -> [false: bb17, otherwise: bb16]; // scope 0 at $DIR/match_arm_scopes.rs:+2:42: +2:73
-+         switchInt(move _12) -> [false: bb14, otherwise: bb13]; // scope 0 at $DIR/match_arm_scopes.rs:+2:42: +2:73
+-         switchInt(move _12) -> [0: bb17, otherwise: bb16]; // scope 0 at $DIR/match_arm_scopes.rs:+2:42: +2:73
++         switchInt(move _12) -> [0: bb14, otherwise: bb13]; // scope 0 at $DIR/match_arm_scopes.rs:+2:42: +2:73
       }
   
 -     bb16: {

@@ -18,7 +18,7 @@
 -         _5 = const false;                // scope 0 at $DIR/simplify_locals_removes_unused_discriminant_reads.rs:+1:11: +1:12
 -         _5 = const true;                 // scope 0 at $DIR/simplify_locals_removes_unused_discriminant_reads.rs:+1:11: +1:12
           _2 = discriminant(_1);           // scope 0 at $DIR/simplify_locals_removes_unused_discriminant_reads.rs:+1:11: +1:12
-          switchInt(move _2) -> [0_isize: bb3, 1_isize: bb1, otherwise: bb2]; // scope 0 at $DIR/simplify_locals_removes_unused_discriminant_reads.rs:+1:5: +1:12
+          switchInt(move _2) -> [0: bb3, 1: bb1, otherwise: bb2]; // scope 0 at $DIR/simplify_locals_removes_unused_discriminant_reads.rs:+1:5: +1:12
       }
   
       bb1: {

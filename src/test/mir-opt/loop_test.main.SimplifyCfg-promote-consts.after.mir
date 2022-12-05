@@ -16,7 +16,7 @@ fn main() -> () {
         StorageLive(_1);                 // scope 0 at $DIR/loop_test.rs:+4:5: +6:6
         StorageLive(_2);                 // scope 0 at $DIR/loop_test.rs:+4:8: +4:12
         _2 = const true;                 // scope 0 at $DIR/loop_test.rs:+4:8: +4:12
-        switchInt(move _2) -> [false: bb2, otherwise: bb1]; // scope 0 at $DIR/loop_test.rs:+4:8: +4:12
+        switchInt(move _2) -> [0: bb2, otherwise: bb1]; // scope 0 at $DIR/loop_test.rs:+4:8: +4:12
     }
 
     bb1: {

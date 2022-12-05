@@ -62,7 +62,7 @@
       bb3: {
           StorageDead(_8);                 // scope 1 at $DIR/derefer_complex_case.rs:+1:25: +1:26
           _10 = discriminant(_7);          // scope 1 at $DIR/derefer_complex_case.rs:+1:17: +1:26
-          switchInt(move _10) -> [0_isize: bb6, 1_isize: bb4, otherwise: bb5]; // scope 1 at $DIR/derefer_complex_case.rs:+1:17: +1:26
+          switchInt(move _10) -> [0: bb6, 1: bb4, otherwise: bb5]; // scope 1 at $DIR/derefer_complex_case.rs:+1:17: +1:26
       }
   
       bb4: {

@@ -23,10 +23,10 @@
 -         StorageLive(_5);                 // scope 0 at $DIR/const_goto_storage.rs:+2:21: +2:52
 -         StorageLive(_6);                 // scope 0 at $DIR/const_goto_storage.rs:+2:24: +2:28
 -         _6 = const true;                 // scope 0 at $DIR/const_goto_storage.rs:+2:24: +2:28
--         switchInt(move _6) -> [false: bb2, otherwise: bb1]; // scope 0 at $DIR/const_goto_storage.rs:+2:24: +2:28
+-         switchInt(move _6) -> [0: bb2, otherwise: bb1]; // scope 0 at $DIR/const_goto_storage.rs:+2:24: +2:28
 +         StorageLive(_2);                 // scope 0 at $DIR/const_goto_storage.rs:+2:24: +2:28
 +         _2 = const true;                 // scope 0 at $DIR/const_goto_storage.rs:+2:24: +2:28
-+         switchInt(move _2) -> [false: bb2, otherwise: bb1]; // scope 0 at $DIR/const_goto_storage.rs:+2:24: +2:28
++         switchInt(move _2) -> [0: bb2, otherwise: bb1]; // scope 0 at $DIR/const_goto_storage.rs:+2:24: +2:28
       }
   
       bb1: {
@@ -41,7 +41,7 @@
 - 
 -     bb3: {
 -         StorageDead(_6);                 // scope 0 at $DIR/const_goto_storage.rs:+2:51: +2:52
--         switchInt(move _5) -> [false: bb5, otherwise: bb4]; // scope 0 at $DIR/const_goto_storage.rs:+2:21: +2:52
+-         switchInt(move _5) -> [0: bb5, otherwise: bb4]; // scope 0 at $DIR/const_goto_storage.rs:+2:21: +2:52
 -     }
 - 
 -     bb4: {
@@ -56,7 +56,7 @@
 - 
 -     bb6: {
 -         StorageDead(_5);                 // scope 0 at $DIR/const_goto_storage.rs:+2:75: +2:76
--         switchInt(move _4) -> [false: bb8, otherwise: bb7]; // scope 0 at $DIR/const_goto_storage.rs:+2:18: +2:76
+-         switchInt(move _4) -> [0: bb8, otherwise: bb7]; // scope 0 at $DIR/const_goto_storage.rs:+2:18: +2:76
 -     }
 - 
 -     bb7: {
@@ -70,7 +70,7 @@
 -     }
 - 
 -     bb9: {
--         switchInt(move _3) -> [false: bb11, otherwise: bb10]; // scope 0 at $DIR/const_goto_storage.rs:+2:15: +6:10
+-         switchInt(move _3) -> [0: bb11, otherwise: bb10]; // scope 0 at $DIR/const_goto_storage.rs:+2:15: +6:10
 -     }
 - 
 -     bb10: {

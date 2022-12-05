@@ -307,12 +307,10 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
         helper: TerminatorCodegenHelper<'tcx>,
         bx: &mut Bx,
         discr: &mir::Operand<'tcx>,
-        switch_ty: Ty<'tcx>,
         targets: &SwitchTargets,
     ) {
         let discr = self.codegen_operand(bx, &discr);
-        // `switch_ty` is redundant, sanity-check that.
-        assert_eq!(discr.layout.ty, switch_ty);
+        let switch_ty = discr.layout.ty;
         let mut target_iter = targets.iter();
         if target_iter.len() == 1 {
             // If there are two targets (one conditional, one fallback), emit `br` instead of
@@ -1293,8 +1291,8 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
                 helper.funclet_br(self, bx, target, mergeable_succ())
             }
 
-            mir::TerminatorKind::SwitchInt { ref discr, switch_ty, ref targets } => {
-                self.codegen_switchint_terminator(helper, bx, discr, switch_ty, targets);
+            mir::TerminatorKind::SwitchInt { ref discr, ref targets } => {
+                self.codegen_switchint_terminator(helper, bx, discr, targets);
                 MergingSucc::False
             }
 

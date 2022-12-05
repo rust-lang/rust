@@ -33,7 +33,7 @@ fn main() -> () {
     }
 
     bb1: {
-        switchInt(move _2) -> [false: bb7, otherwise: bb2]; // scope 1 at $DIR/issue_41888.rs:+2:8: +2:14
+        switchInt(move _2) -> [0: bb7, otherwise: bb2]; // scope 1 at $DIR/issue_41888.rs:+2:8: +2:14
     }
 
     bb2: {
@@ -52,7 +52,7 @@ fn main() -> () {
     bb4: {
         StorageDead(_3);                 // scope 1 at $DIR/issue_41888.rs:+3:19: +3:20
         _5 = discriminant(_1);           // scope 2 at $DIR/issue_41888.rs:+4:16: +4:24
-        switchInt(move _5) -> [0_isize: bb5, otherwise: bb6]; // scope 2 at $DIR/issue_41888.rs:+4:16: +4:24
+        switchInt(move _5) -> [0: bb5, otherwise: bb6]; // scope 2 at $DIR/issue_41888.rs:+4:16: +4:24
     }
 
     bb5: {
@@ -134,19 +134,19 @@ fn main() -> () {
 
     bb19: {
         _10 = discriminant(_1);          // scope 0 at $DIR/issue_41888.rs:+9:1: +9:2
-        switchInt(move _10) -> [0_isize: bb15, otherwise: bb17]; // scope 0 at $DIR/issue_41888.rs:+9:1: +9:2
+        switchInt(move _10) -> [0: bb15, otherwise: bb17]; // scope 0 at $DIR/issue_41888.rs:+9:1: +9:2
     }
 
     bb20: {
-        switchInt(_7) -> [false: bb15, otherwise: bb19]; // scope 0 at $DIR/issue_41888.rs:+9:1: +9:2
+        switchInt(_7) -> [0: bb15, otherwise: bb19]; // scope 0 at $DIR/issue_41888.rs:+9:1: +9:2
     }
 
     bb21 (cleanup): {
         _11 = discriminant(_1);          // scope 0 at $DIR/issue_41888.rs:+9:1: +9:2
-        switchInt(move _11) -> [0_isize: bb16, otherwise: bb18]; // scope 0 at $DIR/issue_41888.rs:+9:1: +9:2
+        switchInt(move _11) -> [0: bb16, otherwise: bb18]; // scope 0 at $DIR/issue_41888.rs:+9:1: +9:2
     }
 
     bb22 (cleanup): {
-        switchInt(_7) -> [false: bb12, otherwise: bb21]; // scope 0 at $DIR/issue_41888.rs:+9:1: +9:2
+        switchInt(_7) -> [0: bb12, otherwise: bb21]; // scope 0 at $DIR/issue_41888.rs:+9:1: +9:2
     }
 }

@@ -15,10 +15,10 @@
           _3 = _1;                         // scope 0 at $DIR/if_condition_int.rs:+1:8: +1:9
 -         _2 = Eq(move _3, const 42_u32);  // scope 0 at $DIR/if_condition_int.rs:+1:8: +1:15
 -         StorageDead(_3);                 // scope 0 at $DIR/if_condition_int.rs:+1:14: +1:15
--         switchInt(move _2) -> [false: bb2, otherwise: bb1]; // scope 0 at $DIR/if_condition_int.rs:+1:8: +1:15
+-         switchInt(move _2) -> [0: bb2, otherwise: bb1]; // scope 0 at $DIR/if_condition_int.rs:+1:8: +1:15
 +         nop;                             // scope 0 at $DIR/if_condition_int.rs:+1:8: +1:15
 +         nop;                             // scope 0 at $DIR/if_condition_int.rs:+1:14: +1:15
-+         switchInt(move _3) -> [42_u32: bb1, otherwise: bb2]; // scope 0 at $DIR/if_condition_int.rs:+1:8: +1:15
++         switchInt(move _3) -> [42: bb1, otherwise: bb2]; // scope 0 at $DIR/if_condition_int.rs:+1:8: +1:15
       }
   
       bb1: {
@@ -34,10 +34,10 @@
           _5 = _1;                         // scope 0 at $DIR/if_condition_int.rs:+3:15: +3:16
 -         _4 = Ne(move _5, const 21_u32);  // scope 0 at $DIR/if_condition_int.rs:+3:15: +3:22
 -         StorageDead(_5);                 // scope 0 at $DIR/if_condition_int.rs:+3:21: +3:22
--         switchInt(move _4) -> [false: bb4, otherwise: bb3]; // scope 0 at $DIR/if_condition_int.rs:+3:15: +3:22
+-         switchInt(move _4) -> [0: bb4, otherwise: bb3]; // scope 0 at $DIR/if_condition_int.rs:+3:15: +3:22
 +         nop;                             // scope 0 at $DIR/if_condition_int.rs:+3:15: +3:22
 +         nop;                             // scope 0 at $DIR/if_condition_int.rs:+3:21: +3:22
-+         switchInt(move _5) -> [21_u32: bb4, otherwise: bb3]; // scope 0 at $DIR/if_condition_int.rs:+3:15: +3:22
++         switchInt(move _5) -> [21: bb4, otherwise: bb3]; // scope 0 at $DIR/if_condition_int.rs:+3:15: +3:22
       }
   
       bb3: {
