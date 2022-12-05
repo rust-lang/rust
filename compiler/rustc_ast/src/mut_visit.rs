@@ -736,8 +736,7 @@ pub fn visit_token<T: MutVisitor>(t: &mut Token, vis: &mut T) {
             return; // Avoid visiting the span for the second time.
         }
         token::Interpolated(nt) => {
-            let mut nt = Lrc::make_mut(nt);
-            visit_nonterminal(&mut nt, vis);
+            visit_nonterminal(Lrc::make_mut(nt), vis);
         }
         _ => {}
     }
@@ -1368,6 +1367,7 @@ pub fn noop_visit_expr<T: MutVisitor>(
             fn_decl,
             body,
             fn_decl_span,
+            fn_arg_span: _,
         }) => {
             vis.visit_closure_binder(binder);
             vis.visit_asyncness(asyncness);

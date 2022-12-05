@@ -201,7 +201,7 @@ cfg_if! {
 
             #[inline(always)]
             fn deref(&self) -> &T {
-                &*self.0
+                &self.0
             }
         }
 

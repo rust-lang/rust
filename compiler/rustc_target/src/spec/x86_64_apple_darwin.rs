@@ -1,4 +1,4 @@
-use super::apple_base::{macos_link_env_remove, macos_llvm_target, opts, Arch};
+use super::apple_base::{macos_llvm_target, opts, Arch};
 use crate::spec::{Cc, FramePointer, LinkerFlavor, Lld, SanitizerSet};
 use crate::spec::{StackProbeType, Target, TargetOptions};
 
@@ -8,7 +8,6 @@ pub fn target() -> Target {
     base.max_atomic_width = Some(128); // core2 supports cmpxchg16b
     base.frame_pointer = FramePointer::Always;
     base.add_pre_link_args(LinkerFlavor::Darwin(Cc::Yes, Lld::No), &["-m64"]);
-    base.link_env_remove.to_mut().extend(macos_link_env_remove());
     base.stack_probes = StackProbeType::X86;
     base.supported_sanitizers =
         SanitizerSet::ADDRESS | SanitizerSet::CFI | SanitizerSet::LEAK | SanitizerSet::THREAD;

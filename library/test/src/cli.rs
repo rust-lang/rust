@@ -26,6 +26,10 @@ pub struct TestOpts {
     pub test_threads: Option<usize>,
     pub skip: Vec<String>,
     pub time_options: Option<TestTimeOptions>,
+    /// Stop at first failing test.
+    /// May run a few more tests due to threading, but will
+    /// abort as soon as possible.
+    pub fail_fast: bool,
     pub options: Options,
 }
 
@@ -296,6 +300,7 @@ fn parse_opts_impl(matches: getopts::Matches) -> OptRes {
         skip,
         time_options,
         options,
+        fail_fast: false,
     };
 
     Ok(test_opts)

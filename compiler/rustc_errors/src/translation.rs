@@ -59,13 +59,13 @@ pub trait Translate {
         trace!(?message, ?args);
         let (identifier, attr) = match message {
             DiagnosticMessage::Str(msg) | DiagnosticMessage::Eager(msg) => {
-                return Cow::Borrowed(&msg);
+                return Cow::Borrowed(msg);
             }
             DiagnosticMessage::FluentIdentifier(identifier, attr) => (identifier, attr),
         };
 
         let translate_with_bundle = |bundle: &'a FluentBundle| -> Option<(Cow<'_, str>, Vec<_>)> {
-            let message = bundle.get_message(&identifier)?;
+            let message = bundle.get_message(identifier)?;
             let value = match attr {
                 Some(attr) => message.get_attribute(attr)?.value(),
                 None => message.value()?,
@@ -73,7 +73,7 @@ pub trait Translate {
             debug!(?message, ?value);
 
             let mut errs = vec![];
-            let translated = bundle.format_pattern(value, Some(&args), &mut errs);
+            let translated = bundle.format_pattern(value, Some(args), &mut errs);
             debug!(?translated, ?errs);
             Some((translated, errs))
         };

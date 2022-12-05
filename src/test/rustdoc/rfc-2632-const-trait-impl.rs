@@ -61,7 +61,7 @@ impl<T> S<T> {
     // @has - '//section[@id="method.foo"]/h4[@class="code-header"]/a[@class="trait"]' 'Clone'
     // @!has - '//section[@id="method.foo"]/h4[@class="code-header"]/span[@class="where"]' '~const'
     // @has - '//section[@id="method.foo"]/h4[@class="code-header"]/span[@class="where fmt-newline"]' ': Clone'
-    pub const fn foo<B: ~const Clone + ~const Destruct>()
+    pub const fn foo<B, C: ~const Clone + ~const Destruct>()
     where
         B: ~const Clone + ~const Destruct,
     {

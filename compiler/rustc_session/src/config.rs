@@ -622,7 +622,7 @@ impl OutputFilenames {
     /// should be placed on disk.
     pub fn output_path(&self, flavor: OutputType) -> PathBuf {
         let extension = flavor.extension();
-        self.with_directory_and_extension(&self.out_directory, &extension)
+        self.with_directory_and_extension(&self.out_directory, extension)
     }
 
     /// Gets the path where a compilation artifact of the given type for the
@@ -659,7 +659,7 @@ impl OutputFilenames {
 
         let temps_directory = self.temps_directory.as_ref().unwrap_or(&self.out_directory);
 
-        self.with_directory_and_extension(&temps_directory, &extension)
+        self.with_directory_and_extension(temps_directory, &extension)
     }
 
     pub fn with_extension(&self, extension: &str) -> PathBuf {
@@ -1159,7 +1159,7 @@ impl CrateCheckConfig {
                 values_target_family
                     .extend(target.options.families.iter().map(|family| Symbol::intern(family)));
                 values_target_arch.insert(Symbol::intern(&target.arch));
-                values_target_endian.insert(Symbol::intern(&target.options.endian.as_str()));
+                values_target_endian.insert(Symbol::intern(target.options.endian.as_str()));
                 values_target_env.insert(Symbol::intern(&target.options.env));
                 values_target_abi.insert(Symbol::intern(&target.options.abi));
                 values_target_vendor.insert(Symbol::intern(&target.options.vendor));
@@ -1846,7 +1846,7 @@ pub fn parse_target_triple(
     match matches.opt_str("target") {
         Some(target) if target.ends_with(".json") => {
             let path = Path::new(&target);
-            TargetTriple::from_path(&path).unwrap_or_else(|_| {
+            TargetTriple::from_path(path).unwrap_or_else(|_| {
                 early_error(error_format, &format!("target file {path:?} does not exist"))
             })
         }
@@ -1992,7 +1992,7 @@ fn parse_native_lib_modifiers(
 ) -> (NativeLibKind, Option<bool>) {
     let mut verbatim = None;
     for modifier in modifiers.split(',') {
-        let (modifier, value) = match modifier.strip_prefix(&['+', '-']) {
+        let (modifier, value) = match modifier.strip_prefix(['+', '-']) {
             Some(m) => (m, modifier.starts_with('+')),
             None => early_error(
                 error_format,
@@ -2421,7 +2421,7 @@ pub fn build_session_options(matches: &getopts::Matches) -> Options {
 
     let mut search_paths = vec![];
     for s in &matches.opt_strs("L") {
-        search_paths.push(SearchPath::from_cli_opt(&s, error_format));
+        search_paths.push(SearchPath::from_cli_opt(s, error_format));
     }
 
     let libs = parse_libs(matches, error_format);

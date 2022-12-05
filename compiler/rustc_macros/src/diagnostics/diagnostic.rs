@@ -29,8 +29,8 @@ impl<'a> DiagnosticDerive<'a> {
         let DiagnosticDerive { mut structure, mut builder } = self;
 
         let implementation = builder.each_variant(&mut structure, |mut builder, variant| {
-            let preamble = builder.preamble(&variant);
-            let body = builder.body(&variant);
+            let preamble = builder.preamble(variant);
+            let body = builder.body(variant);
 
             let diag = &builder.parent.diag;
             let DiagnosticDeriveKind::Diagnostic { handler } = &builder.parent.kind else {
@@ -39,7 +39,7 @@ impl<'a> DiagnosticDerive<'a> {
             let init = match builder.slug.value_ref() {
                 None => {
                     span_err(builder.span, "diagnostic slug not specified")
-                        .help(&format!(
+                        .help(format!(
                             "specify the slug as the first argument to the `#[diag(...)]` \
                             attribute, such as `#[diag(hir_analysis_example_error)]`",
                         ))
@@ -48,10 +48,10 @@ impl<'a> DiagnosticDerive<'a> {
                 }
                 Some(slug) if let Some( Mismatch { slug_name, crate_name, slug_prefix }) = Mismatch::check(slug) => {
                     span_err(slug.span().unwrap(), "diagnostic slug and crate name do not match")
-                        .note(&format!(
+                        .note(format!(
                             "slug is `{slug_name}` but the crate name is `{crate_name}`"
                         ))
-                        .help(&format!(
+                        .help(format!(
                             "expected a slug starting with `{slug_prefix}_...`"
                         ))
                         .emit();
@@ -113,8 +113,8 @@ impl<'a> LintDiagnosticDerive<'a> {
         let LintDiagnosticDerive { mut structure, mut builder } = self;
 
         let implementation = builder.each_variant(&mut structure, |mut builder, variant| {
-            let preamble = builder.preamble(&variant);
-            let body = builder.body(&variant);
+            let preamble = builder.preamble(variant);
+            let body = builder.body(variant);
 
             let diag = &builder.parent.diag;
             let formatting_init = &builder.formatting_init;
@@ -128,28 +128,28 @@ impl<'a> LintDiagnosticDerive<'a> {
 
         let msg = builder.each_variant(&mut structure, |mut builder, variant| {
             // Collect the slug by generating the preamble.
-            let _ = builder.preamble(&variant);
+            let _ = builder.preamble(variant);
 
             match builder.slug.value_ref() {
                 None => {
                     span_err(builder.span, "diagnostic slug not specified")
-                        .help(&format!(
+                        .help(format!(
                             "specify the slug as the first argument to the attribute, such as \
                             `#[diag(compiletest_example)]`",
                         ))
                         .emit();
-                    return DiagnosticDeriveError::ErrorHandled.to_compile_error();
+                    DiagnosticDeriveError::ErrorHandled.to_compile_error()
                 }
                 Some(slug) if let Some( Mismatch { slug_name, crate_name, slug_prefix }) = Mismatch::check(slug) => {
                     span_err(slug.span().unwrap(), "diagnostic slug and crate name do not match")
-                        .note(&format!(
+                        .note(format!(
                             "slug is `{slug_name}` but the crate name is `{crate_name}`"
                         ))
-                        .help(&format!(
+                        .help(format!(
                             "expected a slug starting with `{slug_prefix}_...`"
                         ))
                         .emit();
-                    return DiagnosticDeriveError::ErrorHandled.to_compile_error();
+                    DiagnosticDeriveError::ErrorHandled.to_compile_error()
                 }
                 Some(slug) => {
                     quote! {

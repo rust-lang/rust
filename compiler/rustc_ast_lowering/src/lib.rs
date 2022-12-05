@@ -487,6 +487,7 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
         parent: LocalDefId,
         node_id: ast::NodeId,
         data: DefPathData,
+        span: Span,
     ) -> LocalDefId {
         debug_assert_ne!(node_id, ast::DUMMY_NODE_ID);
         assert!(
@@ -497,7 +498,7 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
             self.tcx.hir().def_key(self.local_def_id(node_id)),
         );
 
-        let def_id = self.tcx.create_def(parent, data).def_id();
+        let def_id = self.tcx.at(span).create_def(parent, data).def_id();
 
         debug!("create_def: def_id_to_node_id[{:?}] <-> {:?}", def_id, node_id);
         self.resolver.node_id_to_def_id.insert(node_id, def_id);
@@ -823,6 +824,7 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
                     self.current_hir_id_owner.def_id,
                     param,
                     DefPathData::LifetimeNs(kw::UnderscoreLifetime),
+                    ident.span,
                 );
                 debug!(?_def_id);
 
@@ -1151,15 +1153,16 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
 
                                 let parent_def_id = self.current_hir_id_owner;
                                 let node_id = self.next_node_id();
+                                let span = self.lower_span(ty.span);
 
                                 // Add a definition for the in-band const def.
                                 let def_id = self.create_def(
                                     parent_def_id.def_id,
                                     node_id,
                                     DefPathData::AnonConst,
+                                    span,
                                 );
 
-                                let span = self.lower_span(ty.span);
                                 let path_expr = Expr {
                                     id: ty.id,
                                     kind: ExprKind::Path(qself.clone(), path.clone()),
@@ -1353,12 +1356,13 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
                         itctx,
                     ),
                     ImplTraitContext::Universal => {
+                        let span = t.span;
                         self.create_def(
                             self.current_hir_id_owner.def_id,
                             *def_node_id,
                             DefPathData::ImplTrait,
+                            span,
                         );
-                        let span = t.span;
                         let ident = Ident::from_str_and_span(&pprust::ty_to_string(t), span);
                         let (param, bounds, path) =
                             self.lower_generic_and_bounds(*def_node_id, span, ident, bounds);
@@ -1455,6 +1459,7 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
             self.current_hir_id_owner.def_id,
             opaque_ty_node_id,
             DefPathData::ImplTrait,
+            opaque_ty_span,
         );
         debug!(?opaque_ty_def_id);
 
@@ -1608,6 +1613,7 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
                             parent_def_id,
                             node_id,
                             DefPathData::LifetimeNs(lifetime.ident.name),
+                            lifetime.ident.span,
                         );
                         remapping.insert(old_def_id, new_def_id);
 
@@ -1624,6 +1630,7 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
                             parent_def_id,
                             node_id,
                             DefPathData::LifetimeNs(kw::UnderscoreLifetime),
+                            lifetime.ident.span,
                         );
                         remapping.insert(old_def_id, new_def_id);
 
@@ -1806,7 +1813,7 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
         let fn_def_id = self.local_def_id(fn_node_id);
 
         let opaque_ty_def_id =
-            self.create_def(fn_def_id, opaque_ty_node_id, DefPathData::ImplTrait);
+            self.create_def(fn_def_id, opaque_ty_node_id, DefPathData::ImplTrait, opaque_ty_span);
 
         // When we create the opaque type for this async fn, it is going to have
         // to capture all the lifetimes involved in the signature (including in the
@@ -1866,6 +1873,7 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
                 opaque_ty_def_id,
                 inner_node_id,
                 DefPathData::LifetimeNs(ident.name),
+                ident.span,
             );
             new_remapping.insert(outer_def_id, inner_def_id);
 

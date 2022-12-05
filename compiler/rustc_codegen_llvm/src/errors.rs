@@ -73,12 +73,6 @@ pub(crate) struct LinkageConstOrMutType {
 pub(crate) struct SanitizerMemtagRequiresMte;
 
 #[derive(Diagnostic)]
-#[diag(codegen_llvm_archive_build_failure)]
-pub(crate) struct ArchiveBuildFailure {
-    pub error: std::io::Error,
-}
-
-#[derive(Diagnostic)]
 #[diag(codegen_llvm_error_writing_def_file)]
 pub(crate) struct ErrorWritingDEFFile {
     pub error: std::io::Error,
@@ -95,12 +89,6 @@ pub(crate) struct ErrorCallingDllTool {
 pub(crate) struct DlltoolFailImportLibrary<'a> {
     pub stdout: Cow<'a, str>,
     pub stderr: Cow<'a, str>,
-}
-
-#[derive(Diagnostic)]
-#[diag(codegen_llvm_unknown_archive_kind)]
-pub(crate) struct UnknownArchiveKind<'a> {
-    pub kind: &'a str,
 }
 
 #[derive(Diagnostic)]

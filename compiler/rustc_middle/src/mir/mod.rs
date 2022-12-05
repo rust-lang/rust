@@ -100,13 +100,9 @@ impl<'tcx> HasLocalDecls<'tcx> for Body<'tcx> {
 /// pass will be named after the type, and it will consist of a main
 /// loop that goes over each available MIR and applies `run_pass`.
 pub trait MirPass<'tcx> {
-    fn name(&self) -> Cow<'_, str> {
+    fn name(&self) -> &str {
         let name = std::any::type_name::<Self>();
-        if let Some(tail) = name.rfind(':') {
-            Cow::from(&name[tail + 1..])
-        } else {
-            Cow::from(name)
-        }
+        if let Some((_, tail)) = name.rsplit_once(':') { tail } else { name }
     }
 
     /// Returns `true` if this pass is enabled with the current combination of compiler flags.
@@ -178,35 +174,6 @@ impl RuntimePhase {
             "post_cleanup" | "post-cleanup" | "postcleanup" => Self::PostCleanup,
             "optimized" => Self::Optimized,
             _ => panic!("Unknown runtime phase {}", phase),
-        }
-    }
-}
-
-impl Display for MirPhase {
-    fn fmt(&self, f: &mut Formatter<'_>) -> fmt::Result {
-        match self {
-            MirPhase::Built => write!(f, "built"),
-            MirPhase::Analysis(p) => write!(f, "analysis-{}", p),
-            MirPhase::Runtime(p) => write!(f, "runtime-{}", p),
-        }
-    }
-}
-
-impl Display for AnalysisPhase {
-    fn fmt(&self, f: &mut Formatter<'_>) -> fmt::Result {
-        match self {
-            AnalysisPhase::Initial => write!(f, "initial"),
-            AnalysisPhase::PostCleanup => write!(f, "post_cleanup"),
-        }
-    }
-}
-
-impl Display for RuntimePhase {
-    fn fmt(&self, f: &mut Formatter<'_>) -> fmt::Result {
-        match self {
-            RuntimePhase::Initial => write!(f, "initial"),
-            RuntimePhase::PostCleanup => write!(f, "post_cleanup"),
-            RuntimePhase::Optimized => write!(f, "optimized"),
         }
     }
 }
@@ -368,7 +335,7 @@ impl<'tcx> Body<'tcx> {
 
         let mut body = Body {
             phase: MirPhase::Built,
-            pass_count: 1,
+            pass_count: 0,
             source,
             basic_blocks: BasicBlocks::new(basic_blocks),
             source_scopes,
@@ -403,7 +370,7 @@ impl<'tcx> Body<'tcx> {
     pub fn new_cfg_only(basic_blocks: IndexVec<BasicBlock, BasicBlockData<'tcx>>) -> Self {
         let mut body = Body {
             phase: MirPhase::Built,
-            pass_count: 1,
+            pass_count: 0,
             source: MirSource::item(CRATE_DEF_ID.to_def_id()),
             basic_blocks: BasicBlocks::new(basic_blocks),
             source_scopes: IndexVec::new(),

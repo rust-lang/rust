@@ -90,7 +90,6 @@
     -Z                             no-analysis=val -- parse and expand the source, but run no analysis
     -Z                              no-codegen=val -- run all passes except codegen; no output
     -Z              no-generate-arange-section=val -- omit DWARF address ranges that give faster lookups
-    -Z                     no-interleave-lints=val -- execute lints separately; allows benchmarking individual lints
     -Z                           no-leak-check=val -- disable the 'leak check' for subtyping; unsound, but useful for tests
     -Z                                 no-link=val -- compile without linking
     -Z                        no-parallel-llvm=val -- run LLVM in non-parallel mode (while keeping codegen-units and ThinLTO)

@@ -95,6 +95,7 @@ pub mod nice_region_error;
 pub struct TypeErrCtxt<'a, 'tcx> {
     pub infcx: &'a InferCtxt<'tcx>,
     pub typeck_results: Option<std::cell::Ref<'a, ty::TypeckResults<'tcx>>>,
+    pub normalize_fn_sig: Box<dyn Fn(ty::PolyFnSig<'tcx>) -> ty::PolyFnSig<'tcx> + 'a>,
     pub fallback_has_occurred: bool,
 }
 
@@ -1007,22 +1008,14 @@ impl<'tcx> TypeErrCtxt<'_, 'tcx> {
         }
     }
 
-    fn normalize_fn_sig_for_diagnostic(&self, sig: ty::PolyFnSig<'tcx>) -> ty::PolyFnSig<'tcx> {
-        if let Some(normalize) = &self.normalize_fn_sig_for_diagnostic {
-            normalize(self, sig)
-        } else {
-            sig
-        }
-    }
-
     /// Given two `fn` signatures highlight only sub-parts that are different.
     fn cmp_fn_sig(
         &self,
         sig1: &ty::PolyFnSig<'tcx>,
         sig2: &ty::PolyFnSig<'tcx>,
     ) -> (DiagnosticStyledString, DiagnosticStyledString) {
-        let sig1 = &self.normalize_fn_sig_for_diagnostic(*sig1);
-        let sig2 = &self.normalize_fn_sig_for_diagnostic(*sig2);
+        let sig1 = &(self.normalize_fn_sig)(*sig1);
+        let sig2 = &(self.normalize_fn_sig)(*sig2);
 
         let get_lifetimes = |sig| {
             use rustc_hir::def::Namespace;
@@ -1262,7 +1255,7 @@ impl<'tcx> TypeErrCtxt<'_, 'tcx> {
                     let num_display_types = consts_offset - regions_len;
                     for (i, (ta1, ta2)) in type_arguments.take(num_display_types).enumerate() {
                         let i = i + regions_len;
-                        if ta1 == ta2 {
+                        if ta1 == ta2 && !self.tcx.sess.verbose() {
                             values.0.push_normal("_");
                             values.1.push_normal("_");
                         } else {
@@ -1278,7 +1271,7 @@ impl<'tcx> TypeErrCtxt<'_, 'tcx> {
                     let const_arguments = sub1.consts().zip(sub2.consts());
                     for (i, (ca1, ca2)) in const_arguments.enumerate() {
                         let i = i + consts_offset;
-                        if ca1 == ca2 {
+                        if ca1 == ca2 && !self.tcx.sess.verbose() {
                             values.0.push_normal("_");
                             values.1.push_normal("_");
                         } else {
@@ -1457,7 +1450,7 @@ impl<'tcx> TypeErrCtxt<'_, 'tcx> {
             (ty::FnPtr(sig1), ty::FnPtr(sig2)) => self.cmp_fn_sig(sig1, sig2),
 
             _ => {
-                if t1 == t2 {
+                if t1 == t2 && !self.tcx.sess.verbose() {
                     // The two types are the same, elide and don't highlight.
                     (DiagnosticStyledString::normal("_"), DiagnosticStyledString::normal("_"))
                 } else {

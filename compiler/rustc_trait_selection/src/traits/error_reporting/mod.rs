@@ -9,7 +9,7 @@ use super::{
 };
 use crate::infer::error_reporting::{TyCategory, TypeAnnotationNeeded as ErrorCode};
 use crate::infer::type_variable::{TypeVariableOrigin, TypeVariableOriginKind};
-use crate::infer::{self, InferCtxt, TyCtxtInferExt};
+use crate::infer::{self, InferCtxt};
 use crate::traits::query::evaluate_obligation::InferCtxtExt as _;
 use crate::traits::query::normalize::QueryNormalizeExt as _;
 use crate::traits::specialize::to_pretty_impl_header;
@@ -71,7 +71,7 @@ pub trait InferCtxtExt<'tcx> {
     /// returns a span and `ArgKind` information that describes the
     /// arguments it expects. This can be supplied to
     /// `report_arg_count_mismatch`.
-    fn get_fn_like_arguments(&self, node: Node<'_>) -> Option<(Span, Vec<ArgKind>)>;
+    fn get_fn_like_arguments(&self, node: Node<'_>) -> Option<(Span, Option<Span>, Vec<ArgKind>)>;
 
     /// Reports an error when the number of arguments needed by a
     /// trait match doesn't match the number that the expression
@@ -83,6 +83,7 @@ pub trait InferCtxtExt<'tcx> {
         expected_args: Vec<ArgKind>,
         found_args: Vec<ArgKind>,
         is_closure: bool,
+        closure_pipe_span: Option<Span>,
     ) -> DiagnosticBuilder<'tcx, ErrorGuaranteed>;
 
     /// Checks if the type implements one of `Fn`, `FnMut`, or `FnOnce`
@@ -135,15 +136,16 @@ impl<'tcx> InferCtxtExt<'tcx> for InferCtxt<'tcx> {
     /// returns a span and `ArgKind` information that describes the
     /// arguments it expects. This can be supplied to
     /// `report_arg_count_mismatch`.
-    fn get_fn_like_arguments(&self, node: Node<'_>) -> Option<(Span, Vec<ArgKind>)> {
+    fn get_fn_like_arguments(&self, node: Node<'_>) -> Option<(Span, Option<Span>, Vec<ArgKind>)> {
         let sm = self.tcx.sess.source_map();
         let hir = self.tcx.hir();
         Some(match node {
             Node::Expr(&hir::Expr {
-                kind: hir::ExprKind::Closure(&hir::Closure { body, fn_decl_span, .. }),
+                kind: hir::ExprKind::Closure(&hir::Closure { body, fn_decl_span, fn_arg_span, .. }),
                 ..
             }) => (
                 fn_decl_span,
+                fn_arg_span,
                 hir.body(body)
                     .params
                     .iter()
@@ -174,6 +176,7 @@ impl<'tcx> InferCtxtExt<'tcx> for InferCtxt<'tcx> {
                 kind: hir::TraitItemKind::Fn(ref sig, _), ..
             }) => (
                 sig.span,
+                None,
                 sig.decl
                     .inputs
                     .iter()
@@ -188,7 +191,7 @@ impl<'tcx> InferCtxtExt<'tcx> for InferCtxt<'tcx> {
             ),
             Node::Ctor(ref variant_data) => {
                 let span = variant_data.ctor_hir_id().map_or(DUMMY_SP, |id| hir.span(id));
-                (span, vec![ArgKind::empty(); variant_data.fields().len()])
+                (span, None, vec![ArgKind::empty(); variant_data.fields().len()])
             }
             _ => panic!("non-FnLike node found: {:?}", node),
         })
@@ -204,6 +207,7 @@ impl<'tcx> InferCtxtExt<'tcx> for InferCtxt<'tcx> {
         expected_args: Vec<ArgKind>,
         found_args: Vec<ArgKind>,
         is_closure: bool,
+        closure_arg_span: Option<Span>,
     ) -> DiagnosticBuilder<'tcx, ErrorGuaranteed> {
         let kind = if is_closure { "closure" } else { "function" };
 
@@ -241,24 +245,13 @@ impl<'tcx> InferCtxtExt<'tcx> for InferCtxt<'tcx> {
         if let Some(found_span) = found_span {
             err.span_label(found_span, format!("takes {}", found_str));
 
-            // move |_| { ... }
-            // ^^^^^^^^-- def_span
-            //
-            // move |_| { ... }
-            // ^^^^^-- prefix
-            let prefix_span = self.tcx.sess.source_map().span_until_non_whitespace(found_span);
-            // move |_| { ... }
-            //      ^^^-- pipe_span
-            let pipe_span =
-                if let Some(span) = found_span.trim_start(prefix_span) { span } else { found_span };
-
             // Suggest to take and ignore the arguments with expected_args_length `_`s if
             // found arguments is empty (assume the user just wants to ignore args in this case).
             // For example, if `expected_args_length` is 2, suggest `|_, _|`.
             if found_args.is_empty() && is_closure {
                 let underscores = vec!["_"; expected_args.len()].join(", ");
                 err.span_suggestion_verbose(
-                    pipe_span,
+                    closure_arg_span.unwrap_or(found_span),
                     &format!(
                         "consider changing the closure to take and ignore the expected argument{}",
                         pluralize!(expected_args.len())
@@ -1252,13 +1245,14 @@ impl<'tcx> TypeErrCtxtExt<'tcx> for TypeErrCtxt<'_, 'tcx> {
                         obligation.cause.code(),
                     )
                 } else {
-                    let (closure_span, found) = found_did
+                    let (closure_span, closure_arg_span, found) = found_did
                         .and_then(|did| {
                             let node = self.tcx.hir().get_if_local(did)?;
-                            let (found_span, found) = self.get_fn_like_arguments(node)?;
-                            Some((Some(found_span), found))
+                            let (found_span, closure_arg_span, found) =
+                                self.get_fn_like_arguments(node)?;
+                            Some((Some(found_span), closure_arg_span, found))
                         })
-                        .unwrap_or((found_span, found));
+                        .unwrap_or((found_span, None, found));
 
                     self.report_arg_count_mismatch(
                         span,
@@ -1266,6 +1260,7 @@ impl<'tcx> TypeErrCtxtExt<'tcx> for TypeErrCtxt<'_, 'tcx> {
                         expected,
                         found,
                         found_trait_ty.is_closure(),
+                        closure_arg_span,
                     )
                 }
             }
@@ -1577,32 +1572,26 @@ impl<'tcx> InferCtxtPrivExt<'tcx> for TypeErrCtxt<'_, 'tcx> {
         }
 
         self.probe(|_| {
-            let mut err = error.err;
-            let mut values = None;
+            let ocx = ObligationCtxt::new_in_snapshot(self);
 
             // try to find the mismatched types to report the error with.
             //
             // this can fail if the problem was higher-ranked, in which
             // cause I have no idea for a good error message.
             let bound_predicate = predicate.kind();
-            if let ty::PredicateKind::Clause(ty::Clause::Projection(data)) =
+            let (values, err) = if let ty::PredicateKind::Clause(ty::Clause::Projection(data)) =
                 bound_predicate.skip_binder()
             {
-                let mut selcx = SelectionContext::new(self);
                 let data = self.replace_bound_vars_with_fresh_vars(
                     obligation.cause.span,
                     infer::LateBoundRegionConversionTime::HigherRankedType,
                     bound_predicate.rebind(data),
                 );
-                let mut obligations = vec![];
-                // FIXME(normalization): Change this to use `At::normalize`
-                let normalized_ty = super::normalize_projection_type(
-                    &mut selcx,
+                let normalized_ty = ocx.normalize(
+                    &obligation.cause,
                     obligation.param_env,
-                    data.projection_ty,
-                    obligation.cause.clone(),
-                    0,
-                    &mut obligations,
+                    self.tcx
+                        .mk_projection(data.projection_ty.item_def_id, data.projection_ty.substs),
                 );
 
                 debug!(?obligation.cause, ?obligation.param_env);
@@ -1618,19 +1607,34 @@ impl<'tcx> InferCtxtPrivExt<'tcx> for TypeErrCtxt<'_, 'tcx> {
                         | ObligationCauseCode::ObjectCastObligation(..)
                         | ObligationCauseCode::OpaqueType
                 );
-                if let Err(new_err) = self.at(&obligation.cause, obligation.param_env).eq_exp(
+                let expected_ty = data.term.ty().unwrap();
+
+                // constrain inference variables a bit more to nested obligations from normalize so
+                // we can have more helpful errors.
+                ocx.select_where_possible();
+
+                if let Err(new_err) = ocx.eq_exp(
+                    &obligation.cause,
+                    obligation.param_env,
                     is_normalized_ty_expected,
                     normalized_ty,
-                    data.term,
+                    expected_ty,
                 ) {
-                    values = Some((data, is_normalized_ty_expected, normalized_ty, data.term));
-                    err = new_err;
+                    (Some((data, is_normalized_ty_expected, normalized_ty, expected_ty)), new_err)
+                } else {
+                    (None, error.err)
                 }
-            }
+            } else {
+                (None, error.err)
+            };
 
             let msg = values
                 .and_then(|(predicate, _, normalized_ty, expected_ty)| {
-                    self.maybe_detailed_projection_msg(predicate, normalized_ty, expected_ty)
+                    self.maybe_detailed_projection_msg(
+                        predicate,
+                        normalized_ty.into(),
+                        expected_ty.into(),
+                    )
                 })
                 .unwrap_or_else(|| format!("type mismatch resolving `{}`", predicate));
             let mut diag = struct_span_err!(self.tcx.sess, obligation.cause.span, E0271, "{msg}");
@@ -1672,11 +1676,11 @@ impl<'tcx> InferCtxtPrivExt<'tcx> for TypeErrCtxt<'_, 'tcx> {
                 &mut diag,
                 &obligation.cause,
                 secondary_span,
-                values.map(|(_, is_normalized_ty_expected, normalized_ty, term)| {
+                values.map(|(_, is_normalized_ty_expected, normalized_ty, expected_ty)| {
                     infer::ValuePairs::Terms(ExpectedFound::new(
                         is_normalized_ty_expected,
-                        normalized_ty,
-                        term,
+                        normalized_ty.into(),
+                        expected_ty.into(),
                     ))
                 }),
                 err,
@@ -1930,14 +1934,6 @@ impl<'tcx> InferCtxtPrivExt<'tcx> for TypeErrCtxt<'_, 'tcx> {
             return report(normalized_impl_candidates, err);
         }
 
-        let normalize = |candidate| {
-            let infcx = self.tcx.infer_ctxt().build();
-            infcx
-                .at(&ObligationCause::dummy(), ty::ParamEnv::empty())
-                .query_normalize(candidate)
-                .map_or(candidate, |normalized| normalized.value)
-        };
-
         // Sort impl candidates so that ordering is consistent for UI tests.
         // because the ordering of `impl_candidates` may not be deterministic:
         // https://github.com/rust-lang/rust/pull/57475#issuecomment-455519507
@@ -1947,7 +1943,11 @@ impl<'tcx> InferCtxtPrivExt<'tcx> for TypeErrCtxt<'_, 'tcx> {
         let mut normalized_impl_candidates_and_similarities = impl_candidates
             .into_iter()
             .map(|ImplCandidate { trait_ref, similarity }| {
-                let normalized = normalize(trait_ref);
+                // FIXME(compiler-errors): This should be using `NormalizeExt::normalize`
+                let normalized = self
+                    .at(&ObligationCause::dummy(), ty::ParamEnv::empty())
+                    .query_normalize(trait_ref)
+                    .map_or(trait_ref, |normalized| normalized.value);
                 (similarity, normalized)
             })
             .collect::<Vec<_>>();

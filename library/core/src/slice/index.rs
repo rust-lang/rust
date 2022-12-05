@@ -31,9 +31,8 @@ where
     }
 }
 
-#[cfg_attr(not(feature = "panic_immediate_abort"), inline(never))]
+#[cfg_attr(not(feature = "panic_immediate_abort"), inline(never), cold)]
 #[cfg_attr(feature = "panic_immediate_abort", inline)]
-#[cold]
 #[track_caller]
 #[rustc_const_unstable(feature = "const_slice_index", issue = "none")]
 const fn slice_start_index_len_fail(index: usize, len: usize) -> ! {
@@ -48,19 +47,20 @@ const fn slice_start_index_len_fail(index: usize, len: usize) -> ! {
 }
 
 // FIXME const-hack
+#[inline]
 #[track_caller]
 fn slice_start_index_len_fail_rt(index: usize, len: usize) -> ! {
     panic!("range start index {index} out of range for slice of length {len}");
 }
 
+#[inline]
 #[track_caller]
 const fn slice_start_index_len_fail_ct(_: usize, _: usize) -> ! {
     panic!("slice start index is out of range for slice");
 }
 
-#[cfg_attr(not(feature = "panic_immediate_abort"), inline(never))]
+#[cfg_attr(not(feature = "panic_immediate_abort"), inline(never), cold)]
 #[cfg_attr(feature = "panic_immediate_abort", inline)]
-#[cold]
 #[track_caller]
 #[rustc_const_unstable(feature = "const_slice_index", issue = "none")]
 const fn slice_end_index_len_fail(index: usize, len: usize) -> ! {
@@ -71,19 +71,20 @@ const fn slice_end_index_len_fail(index: usize, len: usize) -> ! {
 }
 
 // FIXME const-hack
+#[inline]
 #[track_caller]
 fn slice_end_index_len_fail_rt(index: usize, len: usize) -> ! {
     panic!("range end index {index} out of range for slice of length {len}");
 }
 
+#[inline]
 #[track_caller]
 const fn slice_end_index_len_fail_ct(_: usize, _: usize) -> ! {
     panic!("slice end index is out of range for slice");
 }
 
-#[cfg_attr(not(feature = "panic_immediate_abort"), inline(never))]
+#[cfg_attr(not(feature = "panic_immediate_abort"), inline(never), cold)]
 #[cfg_attr(feature = "panic_immediate_abort", inline)]
-#[cold]
 #[track_caller]
 #[rustc_const_unstable(feature = "const_slice_index", issue = "none")]
 const fn slice_index_order_fail(index: usize, end: usize) -> ! {
@@ -92,27 +93,27 @@ const fn slice_index_order_fail(index: usize, end: usize) -> ! {
 }
 
 // FIXME const-hack
+#[inline]
 #[track_caller]
 fn slice_index_order_fail_rt(index: usize, end: usize) -> ! {
     panic!("slice index starts at {index} but ends at {end}");
 }
 
+#[inline]
 #[track_caller]
 const fn slice_index_order_fail_ct(_: usize, _: usize) -> ! {
     panic!("slice index start is larger than end");
 }
 
-#[cfg_attr(not(feature = "panic_immediate_abort"), inline(never))]
+#[cfg_attr(not(feature = "panic_immediate_abort"), inline(never), cold)]
 #[cfg_attr(feature = "panic_immediate_abort", inline)]
-#[cold]
 #[track_caller]
 const fn slice_start_index_overflow_fail() -> ! {
     panic!("attempted to index slice from after maximum usize");
 }
 
-#[cfg_attr(not(feature = "panic_immediate_abort"), inline(never))]
+#[cfg_attr(not(feature = "panic_immediate_abort"), inline(never), cold)]
 #[cfg_attr(feature = "panic_immediate_abort", inline)]
-#[cold]
 #[track_caller]
 const fn slice_end_index_overflow_fail() -> ! {
     panic!("attempted to index slice up to maximum usize");

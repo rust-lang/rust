@@ -2060,7 +2060,7 @@ impl<'a> Parser<'a> {
         };
 
         let capture_clause = self.parse_capture_clause()?;
-        let fn_decl = self.parse_fn_block_decl()?;
+        let (fn_decl, fn_arg_span) = self.parse_fn_block_decl()?;
         let decl_hi = self.prev_token.span;
         let mut body = match fn_decl.output {
             FnRetTy::Default(_) => {
@@ -2101,6 +2101,7 @@ impl<'a> Parser<'a> {
                 fn_decl,
                 body,
                 fn_decl_span: lo.to(decl_hi),
+                fn_arg_span,
             })),
         );
 
@@ -2129,7 +2130,9 @@ impl<'a> Parser<'a> {
     }
 
     /// Parses the `|arg, arg|` header of a closure.
-    fn parse_fn_block_decl(&mut self) -> PResult<'a, P<FnDecl>> {
+    fn parse_fn_block_decl(&mut self) -> PResult<'a, (P<FnDecl>, Span)> {
+        let arg_start = self.token.span.lo();
+
         let inputs = if self.eat(&token::OrOr) {
             Vec::new()
         } else {
@@ -2145,10 +2148,11 @@ impl<'a> Parser<'a> {
             self.expect_or()?;
             args
         };
+        let arg_span = self.prev_token.span.with_lo(arg_start);
         let output =
             self.parse_ret_ty(AllowPlus::Yes, RecoverQPath::Yes, RecoverReturnSign::Yes)?;
 
-        Ok(P(FnDecl { inputs, output }))
+        Ok((P(FnDecl { inputs, output }), arg_span))
     }
 
     /// Parses a parameter in a closure header (e.g., `|arg, arg|`).

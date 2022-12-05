@@ -1877,7 +1877,7 @@ impl<S: Encoder> Encodable<S> for Symbol {
 impl<D: Decoder> Decodable<D> for Symbol {
     #[inline]
     default fn decode(d: &mut D) -> Symbol {
-        Symbol::intern(&d.read_str())
+        Symbol::intern(d.read_str())
     }
 }
 

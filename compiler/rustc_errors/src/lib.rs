@@ -470,6 +470,7 @@ pub enum StashKey {
     /// Maybe there was a typo where a comma was forgotten before
     /// FRU syntax
     MaybeFruTypo,
+    CallAssocMethod,
 }
 
 fn default_track_diagnostic(_: &Diagnostic) {}
@@ -1328,7 +1329,7 @@ impl HandlerInner {
 
             diagnostic.children.drain_filter(already_emitted_sub).for_each(|_| {});
 
-            self.emitter.emit_diagnostic(&diagnostic);
+            self.emitter.emit_diagnostic(diagnostic);
             if diagnostic.is_error() {
                 self.deduplicated_err_count += 1;
             } else if let Warning(_) = diagnostic.level {

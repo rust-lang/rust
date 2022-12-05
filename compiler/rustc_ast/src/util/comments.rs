@@ -110,7 +110,7 @@ pub fn beautify_doc_string(data: Symbol, kind: CommentKind) -> Symbol {
         } else {
             &mut lines
         };
-        if let Some(horizontal) = get_horizontal_trim(&lines, kind) {
+        if let Some(horizontal) = get_horizontal_trim(lines, kind) {
             changes = true;
             // remove a "[ \t]*\*" block from each line, if possible
             for line in lines.iter_mut() {
@@ -147,7 +147,7 @@ fn all_whitespace(s: &str, col: CharPos) -> Option<usize> {
 
 fn trim_whitespace_prefix(s: &str, col: CharPos) -> &str {
     let len = s.len();
-    match all_whitespace(&s, col) {
+    match all_whitespace(s, col) {
         Some(col) => {
             if col < len {
                 &s[col..]

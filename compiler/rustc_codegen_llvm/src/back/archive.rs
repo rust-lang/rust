@@ -1,31 +1,30 @@
 //! A helper class for dealing with static archives
 
 use std::env;
-use std::ffi::{CStr, CString, OsString};
-use std::fs;
-use std::io::{self, Write};
+use std::ffi::{c_char, c_void, CStr, CString, OsString};
+use std::io;
 use std::mem;
 use std::path::{Path, PathBuf};
 use std::ptr;
 use std::str;
 
-use object::read::macho::FatArch;
-
 use crate::common;
 use crate::errors::{
-    ArchiveBuildFailure, DlltoolFailImportLibrary, ErrorCallingDllTool, ErrorCreatingImportLibrary,
-    ErrorWritingDEFFile, UnknownArchiveKind,
+    DlltoolFailImportLibrary, ErrorCallingDllTool, ErrorCreatingImportLibrary, ErrorWritingDEFFile,
 };
 use crate::llvm::archive_ro::{ArchiveRO, Child};
 use crate::llvm::{self, ArchiveKind, LLVMMachineType, LLVMRustCOFFShortExport};
-use rustc_codegen_ssa::back::archive::{ArchiveBuilder, ArchiveBuilderBuilder};
-use rustc_data_structures::memmap::Mmap;
+use rustc_codegen_ssa::back::archive::{
+    get_native_object_symbols, try_extract_macho_fat_archive, ArArchiveBuilder,
+    ArchiveBuildFailure, ArchiveBuilder, ArchiveBuilderBuilder, UnknownArchiveKind,
+};
+
 use rustc_session::cstore::DllImport;
 use rustc_session::Session;
 
 /// Helper for adding many files to an archive.
 #[must_use = "must call build() to finish building the archive"]
-pub struct LlvmArchiveBuilder<'a> {
+pub(crate) struct LlvmArchiveBuilder<'a> {
     sess: &'a Session,
     additions: Vec<Addition>,
 }
@@ -58,57 +57,6 @@ fn llvm_machine_type(cpu: &str) -> LLVMMachineType {
         "aarch64" => LLVMMachineType::ARM64,
         "arm" => LLVMMachineType::ARM,
         _ => panic!("unsupported cpu type {}", cpu),
-    }
-}
-
-fn try_filter_fat_archs(
-    archs: object::read::Result<&[impl FatArch]>,
-    target_arch: object::Architecture,
-    archive_path: &Path,
-    archive_map_data: &[u8],
-) -> io::Result<Option<PathBuf>> {
-    let archs = archs.map_err(|e| io::Error::new(io::ErrorKind::Other, e))?;
-
-    let desired = match archs.iter().filter(|a| a.architecture() == target_arch).next() {
-        Some(a) => a,
-        None => return Ok(None),
-    };
-
-    let (mut new_f, extracted_path) = tempfile::Builder::new()
-        .suffix(archive_path.file_name().unwrap())
-        .tempfile()?
-        .keep()
-        .unwrap();
-
-    new_f.write_all(
-        desired.data(archive_map_data).map_err(|e| io::Error::new(io::ErrorKind::Other, e))?,
-    )?;
-
-    Ok(Some(extracted_path))
-}
-
-fn try_extract_macho_fat_archive(
-    sess: &Session,
-    archive_path: &Path,
-) -> io::Result<Option<PathBuf>> {
-    let archive_map = unsafe { Mmap::map(fs::File::open(&archive_path)?)? };
-    let target_arch = match sess.target.arch.as_ref() {
-        "aarch64" => object::Architecture::Aarch64,
-        "x86_64" => object::Architecture::X86_64,
-        _ => return Ok(None),
-    };
-
-    match object::macho::FatHeader::parse(&*archive_map) {
-        Ok(h) if h.magic.get(object::endian::BigEndian) == object::macho::FAT_MAGIC => {
-            let archs = object::macho::FatHeader::parse_arch32(&*archive_map);
-            try_filter_fat_archs(archs, target_arch, archive_path, &*archive_map)
-        }
-        Ok(h) if h.magic.get(object::endian::BigEndian) == object::macho::FAT_MAGIC_64 => {
-            let archs = object::macho::FatHeader::parse_arch64(&*archive_map);
-            try_filter_fat_archs(archs, target_arch, archive_path, &*archive_map)
-        }
-        // Not a FatHeader at all, just return None.
-        _ => Ok(None),
     }
 }
 
@@ -160,7 +108,11 @@ pub struct LlvmArchiveBuilderBuilder;
 
 impl ArchiveBuilderBuilder for LlvmArchiveBuilderBuilder {
     fn new_archive_builder<'a>(&self, sess: &'a Session) -> Box<dyn ArchiveBuilder<'a> + 'a> {
-        Box::new(LlvmArchiveBuilder { sess, additions: Vec::new() })
+        if sess.target.arch == "wasm32" || sess.target.arch == "wasm64" {
+            Box::new(LlvmArchiveBuilder { sess, additions: Vec::new() })
+        } else {
+            Box::new(ArArchiveBuilder::new(sess, get_llvm_object_symbols))
+        }
     }
 
     fn create_dll_import_lib(
@@ -306,6 +258,61 @@ impl ArchiveBuilderBuilder for LlvmArchiveBuilderBuilder {
         };
 
         output_path
+    }
+}
+
+// The object crate doesn't know how to get symbols for LLVM bitcode and COFF bigobj files.
+// As such we need to use LLVM for them.
+#[deny(unsafe_op_in_unsafe_fn)]
+fn get_llvm_object_symbols(
+    buf: &[u8],
+    f: &mut dyn FnMut(&[u8]) -> io::Result<()>,
+) -> io::Result<bool> {
+    let is_bitcode = unsafe { llvm::LLVMRustIsBitcode(buf.as_ptr(), buf.len()) };
+
+    // COFF bigobj file, msvc LTO file or import library. See
+    // https://github.com/llvm/llvm-project/blob/453f27bc9/llvm/lib/BinaryFormat/Magic.cpp#L38-L51
+    let is_unsupported_windows_obj_file = buf.get(0..4) == Some(b"\0\0\xFF\xFF");
+
+    if is_bitcode || is_unsupported_windows_obj_file {
+        let mut state = Box::new(f);
+
+        let err = unsafe {
+            llvm::LLVMRustGetSymbols(
+                buf.as_ptr(),
+                buf.len(),
+                &mut *state as *mut &mut _ as *mut c_void,
+                callback,
+                error_callback,
+            )
+        };
+
+        if err.is_null() {
+            return Ok(true);
+        } else {
+            return Err(unsafe { *Box::from_raw(err as *mut io::Error) });
+        }
+
+        unsafe extern "C" fn callback(
+            state: *mut c_void,
+            symbol_name: *const c_char,
+        ) -> *mut c_void {
+            let f = unsafe { &mut *(state as *mut &mut dyn FnMut(&[u8]) -> io::Result<()>) };
+            match f(unsafe { CStr::from_ptr(symbol_name) }.to_bytes()) {
+                Ok(()) => std::ptr::null_mut(),
+                Err(err) => Box::into_raw(Box::new(err)) as *mut c_void,
+            }
+        }
+
+        unsafe extern "C" fn error_callback(error: *const c_char) -> *mut c_void {
+            let error = unsafe { CStr::from_ptr(error) };
+            Box::into_raw(Box::new(io::Error::new(
+                io::ErrorKind::Other,
+                format!("LLVM error: {}", error.to_string_lossy()),
+            ))) as *mut c_void
+        }
+    } else {
+        get_native_object_symbols(buf, f)
     }
 }
 

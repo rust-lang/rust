@@ -1,5 +1,4 @@
-// check-fail
-// known-bug: #102682
+// check-pass
 // edition: 2021
 
 #![feature(async_fn_in_trait)]

@@ -27,10 +27,6 @@ gccjit = { git = "https://github.com/antoyo/gccjit.rs" }
 # Local copy.
 #gccjit = { path = "../gccjit.rs" }
 
-target-lexicon = "0.10.0"
-
-ar = "0.8.0"
-
 [dev-dependencies]
 lang_tester = "0.3.9"
 tempfile = "3.1.0"
