@@ -7,7 +7,8 @@ use rustc_arena::DroplessArena;
 use rustc_hir::def::DefKind;
 use rustc_hir::def_id::{DefId, LocalDefId};
 use rustc_middle::ty::query::Providers;
-use rustc_middle::ty::{self, CrateVariancesMap, TyCtxt, TypeSuperVisitable, TypeVisitable};
+use rustc_middle::ty::{self, CrateVariancesMap, SubstsRef, Ty, TyCtxt};
+use rustc_middle::ty::{DefIdTree, TypeSuperVisitable, TypeVisitable};
 use std::ops::ControlFlow;
 
 /// Defines the `TermsContext` basically houses an arena where we can
@@ -75,17 +76,49 @@ fn variance_of_opaque(tcx: TyCtxt<'_>, item_def_id: LocalDefId) -> &[ty::Varianc
     // type Foo<'a, 'b, 'c> = impl Trait<'a> + 'b;
     // ```
     // we may not use `'c` in the hidden type.
-    struct OpaqueTypeLifetimeCollector {
+    struct OpaqueTypeLifetimeCollector<'tcx> {
+        tcx: TyCtxt<'tcx>,
+        root_def_id: DefId,
         variances: Vec<ty::Variance>,
     }
 
-    impl<'tcx> ty::TypeVisitor<'tcx> for OpaqueTypeLifetimeCollector {
+    impl<'tcx> OpaqueTypeLifetimeCollector<'tcx> {
+        #[instrument(level = "trace", skip(self), ret)]
+        fn visit_opaque(&mut self, def_id: DefId, substs: SubstsRef<'tcx>) -> ControlFlow<!> {
+            if def_id != self.root_def_id && self.tcx.is_descendant_of(def_id, self.root_def_id) {
+                let child_variances = self.tcx.variances_of(def_id);
+                for (a, v) in substs.iter().zip(child_variances) {
+                    if *v != ty::Bivariant {
+                        a.visit_with(self)?;
+                    }
+                }
+                ControlFlow::CONTINUE
+            } else {
+                substs.visit_with(self)
+            }
+        }
+    }
+
+    impl<'tcx> ty::TypeVisitor<'tcx> for OpaqueTypeLifetimeCollector<'tcx> {
         #[instrument(level = "trace", skip(self), ret)]
         fn visit_region(&mut self, r: ty::Region<'tcx>) -> ControlFlow<Self::BreakTy> {
             if let ty::RegionKind::ReEarlyBound(ebr) = r.kind() {
                 self.variances[ebr.index as usize] = ty::Invariant;
             }
             r.super_visit_with(self)
+        }
+
+        #[instrument(level = "trace", skip(self), ret)]
+        fn visit_ty(&mut self, t: Ty<'tcx>) -> ControlFlow<Self::BreakTy> {
+            match t.kind() {
+                ty::Opaque(def_id, substs) => self.visit_opaque(*def_id, substs),
+                ty::Projection(proj)
+                    if self.tcx.def_kind(proj.item_def_id) == DefKind::ImplTraitPlaceholder =>
+                {
+                    self.visit_opaque(proj.item_def_id, proj.substs)
+                }
+                _ => t.super_visit_with(self),
+            }
         }
     }
 
@@ -111,7 +144,8 @@ fn variance_of_opaque(tcx: TyCtxt<'_>, item_def_id: LocalDefId) -> &[ty::Varianc
         }
     }
 
-    let mut collector = OpaqueTypeLifetimeCollector { variances };
+    let mut collector =
+        OpaqueTypeLifetimeCollector { tcx, root_def_id: item_def_id.to_def_id(), variances };
     let id_substs = ty::InternalSubsts::identity_for_item(tcx, item_def_id.to_def_id());
     for pred in tcx.bound_explicit_item_bounds(item_def_id.to_def_id()).transpose_iter() {
         let pred = pred.map_bound(|(pred, _)| *pred).subst(tcx, id_substs);
