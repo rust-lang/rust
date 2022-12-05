@@ -212,7 +212,7 @@ impl<'a> InferenceContext<'a> {
             AssocItemId::TypeAliasId(_) => unreachable!(),
         };
 
-        self.write_assoc_resolution(id, item);
+        self.write_assoc_resolution(id, item, Some(trait_ref.substitution.clone()));
         Some((def, Some(trait_ref.substitution)))
     }
 
@@ -273,7 +273,7 @@ impl<'a> InferenceContext<'a> {
                     ItemContainerId::ModuleId(_) | ItemContainerId::ExternBlockId(_) => None,
                 };
 
-                self.write_assoc_resolution(id, item);
+                self.write_assoc_resolution(id, item, substs.clone());
                 Some((def, substs))
             },
         )

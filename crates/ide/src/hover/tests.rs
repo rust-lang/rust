@@ -3636,6 +3636,163 @@ enum E {
 
 #[test]
 fn hover_const_eval() {
+    check(
+        r#"
+trait T {
+    const B: bool = false;
+}
+impl T for <()> {
+    /// true
+    const B: bool = true;
+}
+fn main() {
+    <()>::B$0;
+}
+"#,
+        expect![[r#"
+        *B*
+
+        ```rust
+        test
+        ```
+
+        ```rust
+        const B: bool = true
+        ```
+
+        ---
+
+        true
+    "#]],
+    );
+
+    check(
+        r#"
+struct A {
+    i: i32
+};
+
+trait T {
+    const AA: A = A {
+        i: 1
+    };
+}
+impl T for i32 {
+    const AA: A = A {
+        i: 2
+    }
+}
+fn main() {
+    <i32>::AA$0;
+}
+"#,
+        expect![[r#"
+        *AA*
+
+        ```rust
+        test
+        ```
+
+        ```rust
+        const AA: A = A {
+                i: 2
+            }
+        ```
+    "#]],
+    );
+
+    check(
+        r#"
+trait T {
+    /// false
+    const B: bool = false;
+}
+impl T for () {
+    /// true
+    const B: bool = true;
+}
+fn main() {
+    T::B$0;
+}
+"#,
+        expect![[r#"
+            *B*
+
+            ```rust
+            test
+            ```
+
+            ```rust
+            const B: bool = false
+            ```
+
+            ---
+
+            false
+        "#]],
+    );
+
+    check(
+        r#"
+trait T {
+    /// false
+    const B: bool = false;
+}
+impl T for () {
+}
+fn main() {
+    <()>::B$0;
+}
+"#,
+        expect![[r#"
+            *B*
+
+            ```rust
+            test
+            ```
+
+            ```rust
+            const B: bool = false
+            ```
+
+            ---
+
+            false
+        "#]],
+    );
+
+    check(
+        r#"
+trait T {
+    /// false
+    const B: bool = false;
+}
+impl T for () {
+    /// true
+    const B: bool = true;
+}
+impl T for i32 {}
+fn main() {
+    <i32>::B$0;
+}
+"#,
+        expect![[r#"
+            *B*
+
+            ```rust
+            test
+            ```
+
+            ```rust
+            const B: bool = false
+            ```
+
+            ---
+
+            false
+        "#]],
+    );
+
     // show hex for <10
     check(
         r#"

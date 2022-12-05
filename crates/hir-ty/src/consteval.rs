@@ -351,6 +351,7 @@ pub fn eval_const(
                         .infer
                         .assoc_resolutions_for_expr(expr_id)
                         .ok_or(ConstEvalError::SemanticError("unresolved assoc item"))?
+                        .0
                     {
                         hir_def::AssocItemId::FunctionId(_) => {
                             Err(ConstEvalError::NotSupported("assoc function"))

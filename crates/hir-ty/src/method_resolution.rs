@@ -642,6 +642,30 @@ pub(crate) fn iterate_method_candidates<T>(
     slot
 }
 
+pub fn lookup_impl_const(
+    db: &dyn HirDatabase,
+    env: Arc<TraitEnvironment>,
+    const_id: ConstId,
+    subs: Substitution,
+) -> ConstId {
+    let trait_id = match const_id.lookup(db.upcast()).container {
+        ItemContainerId::TraitId(id) => id,
+        _ => return const_id,
+    };
+    let substitution = Substitution::from_iter(Interner, subs.iter(Interner));
+    let trait_ref = TraitRef { trait_id: to_chalk_trait_id(trait_id), substitution };
+
+    let const_data = db.const_data(const_id);
+    let name = match const_data.name.as_ref() {
+        Some(name) => name,
+        None => return const_id,
+    };
+
+    lookup_impl_assoc_item_for_trait_ref(trait_ref, db, env, name)
+        .and_then(|assoc| if let AssocItemId::ConstId(id) = assoc { Some(id) } else { None })
+        .unwrap_or(const_id)
+}
+
 /// Looks up the impl method that actually runs for the trait method `func`.
 ///
 /// Returns `func` if it's not a method defined in a trait or the lookup failed.
@@ -663,15 +687,17 @@ pub fn lookup_impl_method(
     };
 
     let name = &db.function_data(func).name;
-    lookup_impl_method_for_trait_ref(trait_ref, db, env, name).unwrap_or(func)
+    lookup_impl_assoc_item_for_trait_ref(trait_ref, db, env, name)
+        .and_then(|assoc| if let AssocItemId::FunctionId(id) = assoc { Some(id) } else { None })
+        .unwrap_or(func)
 }
 
-fn lookup_impl_method_for_trait_ref(
+fn lookup_impl_assoc_item_for_trait_ref(
     trait_ref: TraitRef,
     db: &dyn HirDatabase,
     env: Arc<TraitEnvironment>,
     name: &Name,
-) -> Option<FunctionId> {
+) -> Option<AssocItemId> {
     let self_ty = trait_ref.self_type_parameter(Interner);
     let self_ty_fp = TyFingerprint::for_trait_impl(&self_ty)?;
     let impls = db.trait_impls_in_deps(env.krate);
@@ -681,7 +707,15 @@ fn lookup_impl_method_for_trait_ref(
 
     let impl_data = find_matching_impl(impls, table, trait_ref)?;
     impl_data.items.iter().find_map(|it| match it {
-        AssocItemId::FunctionId(f) => (db.function_data(*f).name == *name).then(|| *f),
+        AssocItemId::FunctionId(f) => {
+            (db.function_data(*f).name == *name).then(|| AssocItemId::FunctionId(*f))
+        }
+        AssocItemId::ConstId(c) => db
+            .const_data(*c)
+            .name
+            .as_ref()
+            .map(|n| *n == *name)
+            .and_then(|result| if result { Some(AssocItemId::ConstId(*c)) } else { None }),
         _ => None,
     })
 }
