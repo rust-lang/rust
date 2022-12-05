@@ -10,7 +10,6 @@ use std::{cmp, fmt, iter};
 use arrayvec::ArrayVec;
 use thin_vec::ThinVec;
 
-use rustc_ast::attr;
 use rustc_ast::util::comments::beautify_doc_string;
 use rustc_ast::{self as ast, AttrStyle};
 use rustc_attr::{ConstStability, Deprecation, Stability, StabilityLevel};
@@ -27,7 +26,6 @@ use rustc_middle::ty::fast_reject::SimplifiedType;
 use rustc_middle::ty::{self, DefIdTree, TyCtxt, Visibility};
 use rustc_session::Session;
 use rustc_span::hygiene::MacroKind;
-use rustc_span::source_map::DUMMY_SP;
 use rustc_span::symbol::{kw, sym, Ident, Symbol};
 use rustc_span::{self, FileName, Loc};
 use rustc_target::abi::VariantIdx;
@@ -979,12 +977,12 @@ impl AttributesExt for [ast::Attribute] {
         // #[doc(cfg(target_feature = "feat"))] attributes as well
         for attr in self.lists(sym::target_feature) {
             if attr.has_name(sym::enable) {
-                if let Some(feat) = attr.value_str() {
-                    let meta = attr::mk_name_value_item_str(
-                        Ident::with_dummy_span(sym::target_feature),
-                        feat,
-                        DUMMY_SP,
-                    );
+                if attr.value_str().is_some() {
+                    // Clone `enable = "feat"`, change to `target_feature = "feat"`.
+                    // Unwrap is safe because `value_str` succeeded above.
+                    let mut meta = attr.meta_item().unwrap().clone();
+                    meta.path = ast::Path::from_ident(Ident::with_dummy_span(sym::target_feature));
+
                     if let Ok(feat_cfg) = Cfg::parse(&meta) {
                         cfg &= feat_cfg;
                     }

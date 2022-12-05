@@ -1,6 +1,5 @@
 //! Functions dealing with attributes and meta items.
 
-use crate::ast;
 use crate::ast::{AttrArgs, AttrArgsEq, AttrId, AttrItem, AttrKind, AttrStyle, AttrVec, Attribute};
 use crate::ast::{DelimArgs, Expr, ExprKind, LitKind, MetaItemLit};
 use crate::ast::{MacDelimiter, MetaItem, MetaItemKind, NestedMetaItem, NormalAttr};
@@ -319,20 +318,6 @@ impl Attribute {
             )]),
         }
     }
-}
-
-/* Constructors */
-
-pub fn mk_name_value_item_str(ident: Ident, str: Symbol, str_span: Span) -> MetaItem {
-    mk_name_value_item(ident, LitKind::Str(str, ast::StrStyle::Cooked), str_span)
-}
-
-pub fn mk_name_value_item(ident: Ident, kind: LitKind, lit_span: Span) -> MetaItem {
-    let token_lit = kind.synthesize_token_lit();
-    let lit =
-        MetaItemLit { symbol: token_lit.symbol, suffix: token_lit.suffix, kind, span: lit_span };
-    let span = ident.span.to(lit_span);
-    MetaItem { path: Path::from_ident(ident), kind: MetaItemKind::NameValue(lit), span }
 }
 
 pub struct AttrIdGenerator(WorkerLocal<Cell<u32>>);
