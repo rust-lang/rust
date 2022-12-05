@@ -55,10 +55,9 @@ impl<'tcx> MirPass<'tcx> for MatchBranchSimplification {
                 continue;
             }
 
-            let (discr, val, switch_ty, first, second) = match bbs[bb_idx].terminator().kind {
+            let (discr, val, first, second) = match bbs[bb_idx].terminator().kind {
                 TerminatorKind::SwitchInt {
                     discr: ref discr @ (Operand::Copy(_) | Operand::Move(_)),
-                    switch_ty,
                     ref targets,
                     ..
                 } if targets.iter().len() == 1 => {
@@ -66,7 +65,7 @@ impl<'tcx> MirPass<'tcx> for MatchBranchSimplification {
                     if target == targets.otherwise() {
                         continue;
                     }
-                    (discr, value, switch_ty, target, targets.otherwise())
+                    (discr, value, target, targets.otherwise())
                 }
                 // Only optimize switch int statements
                 _ => continue,
@@ -105,10 +104,11 @@ impl<'tcx> MirPass<'tcx> for MatchBranchSimplification {
             }
             // Take ownership of items now that we know we can optimize.
             let discr = discr.clone();
+            let discr_ty = discr.ty(&body.local_decls, tcx);
 
             // Introduce a temporary for the discriminant value.
             let source_info = bbs[bb_idx].terminator().source_info;
-            let discr_local = body.local_decls.push(LocalDecl::new(switch_ty, source_info.span));
+            let discr_local = body.local_decls.push(LocalDecl::new(discr_ty, source_info.span));
 
             // We already checked that first and second are different blocks,
             // and bb_idx has a different terminator from both of them.
@@ -130,10 +130,10 @@ impl<'tcx> MirPass<'tcx> for MatchBranchSimplification {
                             (*f).clone()
                         } else {
                             // Different value between blocks. Make value conditional on switch condition.
-                            let size = tcx.layout_of(param_env.and(switch_ty)).unwrap().size;
+                            let size = tcx.layout_of(param_env.and(discr_ty)).unwrap().size;
                             let const_cmp = Operand::const_from_scalar(
                                 tcx,
-                                switch_ty,
+                                discr_ty,
                                 rustc_const_eval::interpret::Scalar::from_uint(val, size),
                                 rustc_span::DUMMY_SP,
                             );

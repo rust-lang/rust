@@ -65,6 +65,6 @@ fn main() -> () {
     }
 
     bb8 (cleanup): {
-        switchInt(_5) -> [false: bb6, otherwise: bb7]; // scope 0 at $DIR/issue_41110.rs:+1:27: +1:28
+        switchInt(_5) -> [0: bb6, otherwise: bb7]; // scope 0 at $DIR/issue_41110.rs:+1:27: +1:28
     }
 }

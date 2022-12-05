@@ -27,8 +27,8 @@
   
       bb1: {
           _2 = discriminant(_1);           // scope 1 at $DIR/unreachable.rs:+1:12: +1:20
--         switchInt(move _2) -> [1_isize: bb2, otherwise: bb6]; // scope 1 at $DIR/unreachable.rs:+1:12: +1:20
-+         switchInt(move _2) -> [1_isize: bb2, otherwise: bb3]; // scope 1 at $DIR/unreachable.rs:+1:12: +1:20
+-         switchInt(move _2) -> [1: bb2, otherwise: bb6]; // scope 1 at $DIR/unreachable.rs:+1:12: +1:20
++         switchInt(move _2) -> [1: bb2, otherwise: bb3]; // scope 1 at $DIR/unreachable.rs:+1:12: +1:20
       }
   
       bb2: {
@@ -38,7 +38,7 @@
 -         StorageLive(_5);                 // scope 2 at $DIR/unreachable.rs:+4:9: +8:10
 -         StorageLive(_6);                 // scope 2 at $DIR/unreachable.rs:+4:12: +4:16
 -         _6 = const true;                 // scope 2 at $DIR/unreachable.rs:+4:12: +4:16
--         switchInt(move _6) -> [false: bb4, otherwise: bb3]; // scope 2 at $DIR/unreachable.rs:+4:12: +4:16
+-         switchInt(move _6) -> [0: bb4, otherwise: bb3]; // scope 2 at $DIR/unreachable.rs:+4:12: +4:16
 +         unreachable;                     // scope 2 at $DIR/unreachable.rs:+4:12: +4:16
       }
   

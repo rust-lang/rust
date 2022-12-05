@@ -25,7 +25,7 @@ fn main() -> () {
         StorageLive(_3);                 // scope 0 at $DIR/issue_49232.rs:+3:19: +3:23
         _3 = const true;                 // scope 0 at $DIR/issue_49232.rs:+3:19: +3:23
         FakeRead(ForMatchedPlace(None), _3); // scope 0 at $DIR/issue_49232.rs:+3:19: +3:23
-        switchInt(_3) -> [false: bb3, otherwise: bb4]; // scope 0 at $DIR/issue_49232.rs:+3:13: +3:23
+        switchInt(_3) -> [0: bb3, otherwise: bb4]; // scope 0 at $DIR/issue_49232.rs:+3:13: +3:23
     }
 
     bb3: {

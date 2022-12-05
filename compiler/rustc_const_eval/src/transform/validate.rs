@@ -682,17 +682,8 @@ impl<'a, 'tcx> Visitor<'tcx> for TypeChecker<'a, 'tcx> {
             TerminatorKind::Goto { target } => {
                 self.check_edge(location, *target, EdgeKind::Normal);
             }
-            TerminatorKind::SwitchInt { targets, switch_ty, discr } => {
-                let ty = discr.ty(&self.body.local_decls, self.tcx);
-                if ty != *switch_ty {
-                    self.fail(
-                        location,
-                        format!(
-                            "encountered `SwitchInt` terminator with type mismatch: {:?} != {:?}",
-                            ty, switch_ty,
-                        ),
-                    );
-                }
+            TerminatorKind::SwitchInt { targets, discr } => {
+                let switch_ty = discr.ty(&self.body.local_decls, self.tcx);
 
                 let target_width = self.tcx.sess.target.pointer_width;
 

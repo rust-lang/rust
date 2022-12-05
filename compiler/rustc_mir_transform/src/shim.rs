@@ -558,7 +558,6 @@ impl<'tcx> CloneShimBuilder<'tcx> {
                 statements.push(statement);
                 *kind = TerminatorKind::SwitchInt {
                     discr: Operand::Move(temp),
-                    switch_ty: discr_ty,
                     targets: SwitchTargets::new(cases.into_iter(), unreachable),
                 };
             }
