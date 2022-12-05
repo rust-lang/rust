@@ -3,14 +3,11 @@ use std::io::ErrorKind;
 use std::process::{Command, Stdio};
 
 pub fn check(bad: &mut bool) {
-    let result = Command::new("x")
-        .arg("--version")
-        .stdout(Stdio::piped())
-        .spawn();
+    let result = Command::new("x").arg("--version").stdout(Stdio::piped()).spawn();
     let child = match result {
         Ok(child) => child,
         Err(e) => match e.kind() {
-            ErrorKind::NotFound => return (),
+            ErrorKind::NotFound => return,
             _ => return tidy_error!(bad, "{}", e),
         },
     };
@@ -28,7 +25,10 @@ pub fn check(bad: &mut bool) {
             build: BuildMetadata::EMPTY,
         };
         if version < expected {
-            return tidy_error!(bad, "Current version of x is {version} Consider updating to the newer version of x by running `cargo install --path src/tools/x`");
+            return tidy_error!(
+                bad,
+                "Current version of x is {version} Consider updating to the newer version of x by running `cargo install --path src/tools/x`"
+            );
         }
     } else {
         return tidy_error!(bad, "{}", output.status);
