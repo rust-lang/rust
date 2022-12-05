@@ -363,10 +363,6 @@ impl<'tcx> Inliner<'tcx> {
             return Err("C variadic");
         }
 
-        if callee_attrs.flags.contains(CodegenFnAttrFlags::NAKED) {
-            return Err("naked");
-        }
-
         if callee_attrs.flags.contains(CodegenFnAttrFlags::COLD) {
             return Err("cold");
         }

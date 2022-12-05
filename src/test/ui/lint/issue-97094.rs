@@ -1,12 +1,3 @@
-// revisions: interleaved nointerleaved
-// [nointerleaved]compile-flags: -Z no-interleave-lints
-
-// This test has two revisions because the logic change
-// needed to make this test pass had to be adjusted
-// for no-interleave-lints. Should the debug option
-// be removed one day, please don't remove this
-// test entirely, just remove the revision from it.
-
 #![deny(warnings)]
 
 // Ensure that unknown lints inside cfg-attr's are linted for

@@ -528,6 +528,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             self.resolve_ty_and_res_fully_qualified_call(qpath, expr.hir_id, expr.span);
         let ty = match res {
             Res::Err => {
+                self.suggest_assoc_method_call(segs);
                 let e =
                     self.tcx.sess.delay_span_bug(qpath.span(), "`Res::Err` but no error emitted");
                 self.set_tainted_by_errors(e);

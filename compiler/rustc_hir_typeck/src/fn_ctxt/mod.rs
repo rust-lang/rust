@@ -22,7 +22,7 @@ use rustc_middle::ty::{self, Const, Ty, TyCtxt};
 use rustc_session::Session;
 use rustc_span::symbol::Ident;
 use rustc_span::{self, Span};
-use rustc_trait_selection::traits::{ObligationCause, ObligationCauseCode};
+use rustc_trait_selection::traits::{ObligationCause, ObligationCauseCode, ObligationCtxt};
 
 use std::cell::{Cell, RefCell};
 use std::ops::Deref;
@@ -162,6 +162,23 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             infcx: &self.infcx,
             typeck_results: Some(self.typeck_results.borrow()),
             fallback_has_occurred: self.fallback_has_occurred.get(),
+            normalize_fn_sig: Box::new(|fn_sig| {
+                if fn_sig.has_escaping_bound_vars() {
+                    return fn_sig;
+                }
+                self.probe(|_| {
+                    let ocx = ObligationCtxt::new_in_snapshot(self);
+                    let normalized_fn_sig =
+                        ocx.normalize(&ObligationCause::dummy(), self.param_env, fn_sig);
+                    if ocx.select_all_or_error().is_empty() {
+                        let normalized_fn_sig = self.resolve_vars_if_possible(normalized_fn_sig);
+                        if !normalized_fn_sig.needs_infer() {
+                            return normalized_fn_sig;
+                        }
+                    }
+                    fn_sig
+                })
+            }),
         }
     }
 

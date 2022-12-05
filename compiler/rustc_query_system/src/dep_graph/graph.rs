@@ -532,7 +532,8 @@ impl<K: DepKind> DepGraph<K> {
             let mut edges = SmallVec::new();
             K::read_deps(|task_deps| match task_deps {
                 TaskDepsRef::Allow(deps) => edges.extend(deps.lock().reads.iter().copied()),
-                TaskDepsRef::Ignore | TaskDepsRef::Forbid => {
+                TaskDepsRef::Ignore => {} // During HIR lowering, we have no dependencies.
+                TaskDepsRef::Forbid => {
                     panic!("Cannot summarize when dependencies are not recorded.")
                 }
             });

@@ -1,5 +1,3 @@
-use std::borrow::Cow;
-
 use rustc_middle::mir::{self, Body, MirPhase, RuntimePhase};
 use rustc_middle::ty::TyCtxt;
 use rustc_session::Session;
@@ -8,13 +6,9 @@ use crate::{validate, MirPass};
 
 /// Just like `MirPass`, except it cannot mutate `Body`.
 pub trait MirLint<'tcx> {
-    fn name(&self) -> Cow<'_, str> {
+    fn name(&self) -> &str {
         let name = std::any::type_name::<Self>();
-        if let Some(tail) = name.rfind(':') {
-            Cow::from(&name[tail + 1..])
-        } else {
-            Cow::from(name)
-        }
+        if let Some((_, tail)) = name.rsplit_once(':') { tail } else { name }
     }
 
     fn is_enabled(&self, _sess: &Session) -> bool {
@@ -32,7 +26,7 @@ impl<'tcx, T> MirPass<'tcx> for Lint<T>
 where
     T: MirLint<'tcx>,
 {
-    fn name(&self) -> Cow<'_, str> {
+    fn name(&self) -> &str {
         self.0.name()
     }
 
@@ -55,7 +49,7 @@ impl<'tcx, T> MirPass<'tcx> for WithMinOptLevel<T>
 where
     T: MirPass<'tcx>,
 {
-    fn name(&self) -> Cow<'_, str> {
+    fn name(&self) -> &str {
         self.1.name()
     }
 
@@ -146,10 +140,11 @@ fn run_passes_inner<'tcx>(
         }
 
         body.phase = new_phase;
+        body.pass_count = 0;
 
         dump_mir_for_phase_change(tcx, body);
         if validate || new_phase == MirPhase::Runtime(RuntimePhase::Optimized) {
-            validate_body(tcx, body, format!("after phase change to {}", new_phase));
+            validate_body(tcx, body, format!("after phase change to {}", new_phase.name()));
         }
 
         body.pass_count = 1;
@@ -166,11 +161,9 @@ pub fn dump_mir_for_pass<'tcx>(
     pass_name: &str,
     is_after: bool,
 ) {
-    let phase_index = body.phase.phase_index();
-
     mir::dump_mir(
         tcx,
-        Some(&format_args!("{:03}-{:03}", phase_index, body.pass_count)),
+        true,
         pass_name,
         if is_after { &"after" } else { &"before" },
         body,
@@ -179,14 +172,6 @@ pub fn dump_mir_for_pass<'tcx>(
 }
 
 pub fn dump_mir_for_phase_change<'tcx>(tcx: TyCtxt<'tcx>, body: &Body<'tcx>) {
-    let phase_index = body.phase.phase_index();
-
-    mir::dump_mir(
-        tcx,
-        Some(&format_args!("{:03}-000", phase_index)),
-        &format!("{}", body.phase),
-        &"after",
-        body,
-        |_, _| Ok(()),
-    )
+    assert_eq!(body.pass_count, 0);
+    mir::dump_mir(tcx, true, body.phase.name(), &"after", body, |_, _| Ok(()))
 }

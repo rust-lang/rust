@@ -2,8 +2,6 @@ use crate::MirPass;
 use rustc_middle::mir::*;
 use rustc_middle::ty::TyCtxt;
 
-use std::borrow::Cow;
-
 /// A pass that replaces a branch with a goto when its condition is known.
 pub struct SimplifyConstCondition {
     label: String,
@@ -16,8 +14,8 @@ impl SimplifyConstCondition {
 }
 
 impl<'tcx> MirPass<'tcx> for SimplifyConstCondition {
-    fn name(&self) -> Cow<'_, str> {
-        Cow::Borrowed(&self.label)
+    fn name(&self) -> &str {
+        &self.label
     }
 
     fn run_pass(&self, tcx: TyCtxt<'tcx>, body: &mut Body<'tcx>) {

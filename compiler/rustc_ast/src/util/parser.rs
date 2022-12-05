@@ -384,7 +384,7 @@ pub fn contains_exterior_struct_lit(value: &ast::Expr) -> bool {
         | ast::ExprKind::AssignOp(_, lhs, rhs)
         | ast::ExprKind::Binary(_, lhs, rhs) => {
             // X { y: 1 } + X { y: 2 }
-            contains_exterior_struct_lit(&lhs) || contains_exterior_struct_lit(&rhs)
+            contains_exterior_struct_lit(lhs) || contains_exterior_struct_lit(rhs)
         }
         ast::ExprKind::Await(x)
         | ast::ExprKind::Unary(_, x)
@@ -393,12 +393,12 @@ pub fn contains_exterior_struct_lit(value: &ast::Expr) -> bool {
         | ast::ExprKind::Field(x, _)
         | ast::ExprKind::Index(x, _) => {
             // &X { y: 1 }, X { y: 1 }.y
-            contains_exterior_struct_lit(&x)
+            contains_exterior_struct_lit(x)
         }
 
         ast::ExprKind::MethodCall(box ast::MethodCall { receiver, .. }) => {
             // X { y: 1 }.bar(...)
-            contains_exterior_struct_lit(&receiver)
+            contains_exterior_struct_lit(receiver)
         }
 
         _ => false,

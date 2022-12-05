@@ -238,7 +238,7 @@ impl RealFileName {
     pub fn remapped_path_if_available(&self) -> &Path {
         match self {
             RealFileName::LocalPath(p)
-            | RealFileName::Remapped { local_path: _, virtual_name: p } => &p,
+            | RealFileName::Remapped { local_path: _, virtual_name: p } => p,
         }
     }
 

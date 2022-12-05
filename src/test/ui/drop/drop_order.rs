@@ -43,7 +43,7 @@ impl DropOrderCollector {
         }
 
         if {
-            if self.option_loud_drop(7).is_some() && self.option_loud_drop(6).is_some() {
+            if self.option_loud_drop(6).is_some() && self.option_loud_drop(7).is_some() {
                 self.loud_drop(8);
                 true
             } else {
@@ -118,17 +118,85 @@ impl DropOrderCollector {
         }
     }
 
+    fn and_chain(&self) {
+        // issue-103107
+        if self.option_loud_drop(1).is_some() // 1
+            && self.option_loud_drop(2).is_some() // 2
+            && self.option_loud_drop(3).is_some() // 3
+            && self.option_loud_drop(4).is_some() // 4
+            && self.option_loud_drop(5).is_some() // 5
+        {
+            self.print(6); // 6
+        }
+
+        let _ = self.option_loud_drop(7).is_some() // 1
+            && self.option_loud_drop(8).is_some() // 2
+            && self.option_loud_drop(9).is_some(); // 3
+        self.print(10); // 4
+
+        // Test associativity
+        if self.option_loud_drop(11).is_some() // 1
+            && (self.option_loud_drop(12).is_some() // 2
+            && self.option_loud_drop(13).is_some() // 3
+            && self.option_loud_drop(14).is_some()) // 4
+            && self.option_loud_drop(15).is_some() // 5
+        {
+            self.print(16); // 6
+        }
+    }
+
+    fn or_chain(&self) {
+        // issue-103107
+        if self.option_loud_drop(1).is_none() // 1
+            || self.option_loud_drop(2).is_none() // 2
+            || self.option_loud_drop(3).is_none() // 3
+            || self.option_loud_drop(4).is_none() // 4
+            || self.option_loud_drop(5).is_some() // 5
+        {
+            self.print(6); // 6
+        }
+
+        let _ = self.option_loud_drop(7).is_none() // 1
+            || self.option_loud_drop(8).is_none() // 2
+            || self.option_loud_drop(9).is_none(); // 3
+        self.print(10); // 4
+
+        // Test associativity
+        if self.option_loud_drop(11).is_none() // 1
+            || (self.option_loud_drop(12).is_none() // 2
+            || self.option_loud_drop(13).is_none() // 3
+            || self.option_loud_drop(14).is_none()) // 4
+            || self.option_loud_drop(15).is_some() // 5
+        {
+            self.print(16); // 6
+        }
+    }
+
+    fn mixed_and_or_chain(&self) {
+        // issue-103107
+        if self.option_loud_drop(1).is_none() // 1
+            || self.option_loud_drop(2).is_none() // 2
+            || self.option_loud_drop(3).is_some() // 3
+            && self.option_loud_drop(4).is_some() // 4
+            && self.option_loud_drop(5).is_none() // 5
+            || self.option_loud_drop(6).is_none() // 6
+            || self.option_loud_drop(7).is_some() // 7
+        {
+            self.print(8); // 8
+        }
+    }
+
     fn let_chain(&self) {
         // take the "then" branch
-        if self.option_loud_drop(2).is_some() // 2
-            && self.option_loud_drop(1).is_some() // 1
+        if self.option_loud_drop(1).is_some() // 1
+            && self.option_loud_drop(2).is_some() // 2
             && let Some(_d) = self.option_loud_drop(4) { // 4
             self.print(3); // 3
         }
 
         // take the "else" branch
-        if self.option_loud_drop(6).is_some() // 2
-            && self.option_loud_drop(5).is_some() // 1
+        if self.option_loud_drop(5).is_some() // 1
+            && self.option_loud_drop(6).is_some() // 2
             && let None = self.option_loud_drop(8) { // 4
             unreachable!();
         } else {
@@ -152,8 +220,8 @@ impl DropOrderCollector {
             }
 
         // let exprs last
-        if self.option_loud_drop(20).is_some() // 2
-            && self.option_loud_drop(19).is_some() // 1
+        if self.option_loud_drop(19).is_some() // 1
+            && self.option_loud_drop(20).is_some() // 2
             && let Some(_d) = self.option_loud_drop(23) // 5
             && let Some(_e) = self.option_loud_drop(22) { // 4
                 self.print(21); // 3
@@ -185,6 +253,21 @@ fn main() {
     println!("-- if --");
     let collector = DropOrderCollector::default();
     collector.if_();
+    collector.assert_sorted();
+
+    println!("-- and chain --");
+    let collector = DropOrderCollector::default();
+    collector.and_chain();
+    collector.assert_sorted();
+
+    println!("-- or chain --");
+    let collector = DropOrderCollector::default();
+    collector.or_chain();
+    collector.assert_sorted();
+
+    println!("-- mixed and/or chain --");
+    let collector = DropOrderCollector::default();
+    collector.mixed_and_or_chain();
     collector.assert_sorted();
 
     println!("-- if let --");

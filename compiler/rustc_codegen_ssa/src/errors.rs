@@ -534,3 +534,17 @@ pub struct ReadFileError {
 #[derive(Diagnostic)]
 #[diag(codegen_ssa_unsupported_link_self_contained)]
 pub struct UnsupportedLinkSelfContained;
+
+#[derive(Diagnostic)]
+#[diag(codegen_ssa_archive_build_failure)]
+// Public for rustc_codegen_llvm::back::archive
+pub struct ArchiveBuildFailure {
+    pub error: std::io::Error,
+}
+
+#[derive(Diagnostic)]
+#[diag(codegen_ssa_unknown_archive_kind)]
+// Public for rustc_codegen_llvm::back::archive
+pub struct UnknownArchiveKind<'a> {
+    pub kind: &'a str,
+}

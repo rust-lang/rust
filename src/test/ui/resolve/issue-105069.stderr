@@ -1,0 +1,21 @@
+error[E0659]: `V` is ambiguous
+  --> $DIR/issue-105069.rs:2:5
+   |
+LL | use V;
+   |     ^ ambiguous name
+   |
+   = note: ambiguous because of multiple potential import sources
+note: `V` could refer to the variant imported here
+  --> $DIR/issue-105069.rs:1:5
+   |
+LL | use self::A::*;
+   |     ^^^^^^^^^^
+note: `V` could also refer to the variant imported here
+  --> $DIR/issue-105069.rs:3:5
+   |
+LL | use self::B::*;
+   |     ^^^^^^^^^^
+
+error: aborting due to previous error
+
+For more information about this error, try `rustc --explain E0659`.

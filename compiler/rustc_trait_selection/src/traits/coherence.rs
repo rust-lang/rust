@@ -11,8 +11,8 @@ use crate::traits::select::IntercrateAmbiguityCause;
 use crate::traits::util::impl_subject_and_oblig;
 use crate::traits::SkipLeakCheck;
 use crate::traits::{
-    self, Normalized, Obligation, ObligationCause, ObligationCtxt, PredicateObligation,
-    PredicateObligations, SelectionContext,
+    self, Obligation, ObligationCause, ObligationCtxt, PredicateObligation, PredicateObligations,
+    SelectionContext,
 };
 use rustc_data_structures::fx::FxIndexSet;
 use rustc_errors::Diagnostic;
@@ -29,6 +29,8 @@ use rustc_span::DUMMY_SP;
 use std::fmt::Debug;
 use std::iter;
 use std::ops::ControlFlow;
+
+use super::NormalizeExt;
 
 /// Whether we do the orphan check relative to this crate or
 /// to some remote crate.
@@ -128,8 +130,8 @@ fn with_fresh_ty_vars<'cx, 'tcx>(
         predicates: tcx.predicates_of(impl_def_id).instantiate(tcx, impl_substs).predicates,
     };
 
-    let Normalized { value: mut header, obligations } =
-        traits::normalize(selcx, param_env, ObligationCause::dummy(), header);
+    let InferOk { value: mut header, obligations } =
+        selcx.infcx.at(&ObligationCause::dummy(), param_env).normalize(header);
 
     header.predicates.extend(obligations.into_iter().map(|o| o.predicate));
     header

@@ -647,10 +647,23 @@ impl Build {
         if !update(true).status().map_or(false, |status| status.success()) {
             self.run(&mut update(false));
         }
-        self.run(Command::new("git").args(&["stash", "push"]).current_dir(&absolute_path));
+
+        // Save any local changes, but avoid running `git stash pop` if there are none (since it will exit with an error).
+        let has_local_modifications = !self.try_run(
+            Command::new("git")
+                .args(&["diff-index", "--quiet", "HEAD"])
+                .current_dir(&absolute_path),
+        );
+        if has_local_modifications {
+            self.run(Command::new("git").args(&["stash", "push"]).current_dir(&absolute_path));
+        }
+
         self.run(Command::new("git").args(&["reset", "-q", "--hard"]).current_dir(&absolute_path));
         self.run(Command::new("git").args(&["clean", "-qdfx"]).current_dir(&absolute_path));
-        self.run(Command::new("git").args(&["stash", "pop"]).current_dir(absolute_path));
+
+        if has_local_modifications {
+            self.run(Command::new("git").args(&["stash", "pop"]).current_dir(absolute_path));
+        }
     }
 
     /// If any submodule has been initialized already, sync it unconditionally.

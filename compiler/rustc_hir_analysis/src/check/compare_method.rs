@@ -173,13 +173,11 @@ fn compare_predicate_entailment<'tcx>(
         impl_to_placeholder_substs.rebase_onto(tcx, impl_m.container_id(tcx), trait_to_impl_substs);
     debug!("compare_impl_method: trait_to_placeholder_substs={:?}", trait_to_placeholder_substs);
 
-    let impl_m_generics = tcx.generics_of(impl_m.def_id);
-    let trait_m_generics = tcx.generics_of(trait_m.def_id);
     let impl_m_predicates = tcx.predicates_of(impl_m.def_id);
     let trait_m_predicates = tcx.predicates_of(trait_m.def_id);
 
     // Check region bounds.
-    check_region_bounds_on_impl_item(tcx, impl_m, trait_m, &trait_m_generics, &impl_m_generics)?;
+    check_region_bounds_on_impl_item(tcx, impl_m, trait_m, false)?;
 
     // Create obligations for each predicate declared by the impl
     // definition in the context of the trait's parameter
@@ -338,6 +336,7 @@ pub fn collect_trait_impl_trait_tys<'tcx>(
     // First, check a few of the same thing as `compare_impl_method`, just so we don't ICE during substitutions later.
     compare_number_of_generics(tcx, impl_m, trait_m, tcx.hir().span_if_local(impl_m.def_id), true)?;
     compare_generic_param_kinds(tcx, impl_m, trait_m, true)?;
+    check_region_bounds_on_impl_item(tcx, impl_m, trait_m, true)?;
 
     let trait_to_impl_substs = impl_trait_ref.substs;
 
@@ -722,11 +721,13 @@ fn check_region_bounds_on_impl_item<'tcx>(
     tcx: TyCtxt<'tcx>,
     impl_m: &ty::AssocItem,
     trait_m: &ty::AssocItem,
-    trait_generics: &ty::Generics,
-    impl_generics: &ty::Generics,
+    delay: bool,
 ) -> Result<(), ErrorGuaranteed> {
-    let trait_params = trait_generics.own_counts().lifetimes;
+    let impl_generics = tcx.generics_of(impl_m.def_id);
     let impl_params = impl_generics.own_counts().lifetimes;
+
+    let trait_generics = tcx.generics_of(trait_m.def_id);
+    let trait_params = trait_generics.own_counts().lifetimes;
 
     debug!(
         "check_region_bounds_on_impl_item: \
@@ -761,12 +762,16 @@ fn check_region_bounds_on_impl_item<'tcx>(
             None
         };
 
-        let reported = tcx.sess.emit_err(LifetimesOrBoundsMismatchOnTrait {
-            span,
-            item_kind: assoc_item_kind_str(impl_m),
-            ident: impl_m.ident(tcx),
-            generics_span,
-        });
+        let reported = tcx
+            .sess
+            .create_err(LifetimesOrBoundsMismatchOnTrait {
+                span,
+                item_kind: assoc_item_kind_str(impl_m),
+                ident: impl_m.ident(tcx),
+                generics_span,
+            })
+            .emit_unless(delay);
+
         return Err(reported);
     }
 
@@ -1504,18 +1509,10 @@ fn compare_type_predicate_entailment<'tcx>(
     let trait_to_impl_substs =
         impl_substs.rebase_onto(tcx, impl_ty.container_id(tcx), impl_trait_ref.substs);
 
-    let impl_ty_generics = tcx.generics_of(impl_ty.def_id);
-    let trait_ty_generics = tcx.generics_of(trait_ty.def_id);
     let impl_ty_predicates = tcx.predicates_of(impl_ty.def_id);
     let trait_ty_predicates = tcx.predicates_of(trait_ty.def_id);
 
-    check_region_bounds_on_impl_item(
-        tcx,
-        impl_ty,
-        trait_ty,
-        &trait_ty_generics,
-        &impl_ty_generics,
-    )?;
+    check_region_bounds_on_impl_item(tcx, impl_ty, trait_ty, false)?;
 
     let impl_ty_own_bounds = impl_ty_predicates.instantiate_own(tcx, impl_substs);
 

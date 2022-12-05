@@ -787,7 +787,7 @@ fn dest_prop_mir_dump<'body, 'tcx>(
     round: usize,
 ) {
     let mut reachable = None;
-    dump_mir(tcx, None, "DestinationPropagation-dataflow", &round, body, |pass_where, w| {
+    dump_mir(tcx, false, "DestinationPropagation-dataflow", &round, body, |pass_where, w| {
         let reachable = reachable.get_or_insert_with(|| traversal::reachable_as_bitset(body));
 
         match pass_where {

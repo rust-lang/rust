@@ -1249,12 +1249,11 @@ macro_rules! nonzero_bits {
                 /// # Examples
                 ///
                 /// ```
-                /// #![feature(nonzero_bits)]
                 #[doc = concat!("# use std::num::", stringify!($Ty), ";")]
                 ///
                 #[doc = concat!("assert_eq!(", stringify!($Ty), "::BITS, ", stringify!($Int), "::BITS);")]
                 /// ```
-                #[unstable(feature = "nonzero_bits", issue = "94881")]
+                #[stable(feature = "nonzero_bits", since = "CURRENT_RUSTC_VERSION")]
                 pub const BITS: u32 = <$Int>::BITS;
             }
         )+

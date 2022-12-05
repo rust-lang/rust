@@ -294,14 +294,7 @@ where
         None if tcx.sess.opts.unstable_opts.dump_mir_dataflow
             && dump_enabled(tcx, A::NAME, def_id) =>
         {
-            create_dump_file(
-                tcx,
-                ".dot",
-                None,
-                A::NAME,
-                &pass_name.unwrap_or("-----"),
-                body.source,
-            )?
+            create_dump_file(tcx, ".dot", false, A::NAME, &pass_name.unwrap_or("-----"), body)?
         }
 
         _ => return Ok(()),

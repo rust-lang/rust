@@ -25,8 +25,6 @@ use rustc_session::Session;
 use rustc_span::symbol::Ident;
 use rustc_span::Span;
 
-use std::slice;
-
 macro_rules! run_early_pass { ($cx:expr, $f:ident, $($args:expr),*) => ({
     $cx.pass.$f(&$cx.context, $($args),*);
 }) }
@@ -300,20 +298,14 @@ impl LintPass for EarlyLintPassObjects<'_> {
     }
 }
 
-macro_rules! expand_early_lint_pass_impl_methods {
-    ([$($(#[$attr:meta])* fn $name:ident($($param:ident: $arg:ty),*);)*]) => (
-        $(fn $name(&mut self, context: &EarlyContext<'_>, $($param: $arg),*) {
-            for obj in self.lints.iter_mut() {
-                obj.$name(context, $($param),*);
-            }
-        })*
-    )
-}
-
 macro_rules! early_lint_pass_impl {
-    ([], [$($methods:tt)*]) => (
+    ([], [$($(#[$attr:meta])* fn $name:ident($($param:ident: $arg:ty),*);)*]) => (
         impl EarlyLintPass for EarlyLintPassObjects<'_> {
-            expand_early_lint_pass_impl_methods!([$($methods)*]);
+            $(fn $name(&mut self, context: &EarlyContext<'_>, $($param: $arg),*) {
+                for obj in self.lints.iter_mut() {
+                    obj.$name(context, $($param),*);
+                }
+            })*
         }
     )
 }
@@ -371,87 +363,36 @@ impl<'a> EarlyCheckNode<'a> for (ast::NodeId, &'a [ast::Attribute], &'a [P<ast::
     }
 }
 
-fn early_lint_node<'a>(
-    sess: &Session,
-    warn_about_weird_lints: bool,
-    lint_store: &LintStore,
-    registered_tools: &RegisteredTools,
-    buffered: LintBuffer,
-    pass: impl EarlyLintPass,
-    check_node: impl EarlyCheckNode<'a>,
-) -> LintBuffer {
-    let mut cx = EarlyContextAndPass {
-        context: EarlyContext::new(
-            sess,
-            warn_about_weird_lints,
-            lint_store,
-            registered_tools,
-            buffered,
-        ),
-        pass,
-    };
-
-    cx.with_lint_attrs(check_node.id(), check_node.attrs(), |cx| check_node.check(cx));
-    cx.context.buffered
-}
-
 pub fn check_ast_node<'a>(
     sess: &Session,
     pre_expansion: bool,
     lint_store: &LintStore,
     registered_tools: &RegisteredTools,
     lint_buffer: Option<LintBuffer>,
-    builtin_lints: impl EarlyLintPass,
+    builtin_lints: impl EarlyLintPass + 'static,
     check_node: impl EarlyCheckNode<'a>,
 ) {
     let passes =
         if pre_expansion { &lint_store.pre_expansion_passes } else { &lint_store.early_passes };
     let mut passes: Vec<_> = passes.iter().map(|p| (p)()).collect();
-    let mut buffered = lint_buffer.unwrap_or_default();
+    passes.push(Box::new(builtin_lints));
 
-    if sess.opts.unstable_opts.no_interleave_lints {
-        for (i, pass) in passes.iter_mut().enumerate() {
-            buffered =
-                sess.prof.verbose_generic_activity_with_arg("run_lint", pass.name()).run(|| {
-                    early_lint_node(
-                        sess,
-                        !pre_expansion && i == 0,
-                        lint_store,
-                        registered_tools,
-                        buffered,
-                        EarlyLintPassObjects { lints: slice::from_mut(pass) },
-                        check_node,
-                    )
-                });
-        }
-    } else {
-        buffered = early_lint_node(
+    let mut cx = EarlyContextAndPass {
+        context: EarlyContext::new(
             sess,
             !pre_expansion,
             lint_store,
             registered_tools,
-            buffered,
-            builtin_lints,
-            check_node,
-        );
-
-        if !passes.is_empty() {
-            buffered = early_lint_node(
-                sess,
-                false,
-                lint_store,
-                registered_tools,
-                buffered,
-                EarlyLintPassObjects { lints: &mut passes[..] },
-                check_node,
-            );
-        }
-    }
+            lint_buffer.unwrap_or_default(),
+        ),
+        pass: EarlyLintPassObjects { lints: &mut passes[..] },
+    };
+    cx.with_lint_attrs(check_node.id(), check_node.attrs(), |cx| check_node.check(cx));
 
     // All of the buffered lints should have been emitted at this point.
     // If not, that means that we somehow buffered a lint for a node id
     // that was not lint-checked (perhaps it doesn't exist?). This is a bug.
-    for (id, lints) in buffered.map {
+    for (id, lints) in cx.context.buffered.map {
         for early_lint in lints {
             sess.delay_span_bug(
                 early_lint.span,

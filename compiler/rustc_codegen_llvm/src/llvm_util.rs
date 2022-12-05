@@ -494,6 +494,11 @@ pub(crate) fn global_llvm_features(sess: &Session, diagnostics: bool) -> Vec<Str
         .flatten();
     features.extend(feats);
 
+    // FIXME: Move v8a to target definition list when earliest supported LLVM is 14.
+    if get_version() >= (14, 0, 0) && sess.target.arch == "aarch64" {
+        features.push("+v8a".into());
+    }
+
     if diagnostics && let Some(f) = check_tied_features(sess, &featsmap) {
         sess.emit_err(TargetFeatureDisableOrEnable {
             features: f,

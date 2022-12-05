@@ -126,6 +126,7 @@ fn iter_exprs(depth: usize, f: &mut dyn FnMut(P<Expr>)) {
                         fn_decl: decl.clone(),
                         body: e,
                         fn_decl_span: DUMMY_SP,
+                        fn_arg_span: DUMMY_SP,
                     })))
                 });
             }

@@ -347,7 +347,7 @@ impl<'o, 'tcx> dyn AstConv<'tcx> + 'o {
                 assert!(self_ty.is_some());
             }
         } else {
-            assert!(self_ty.is_none() && parent_substs.is_empty());
+            assert!(self_ty.is_none());
         }
 
         let arg_count = Self::check_generic_arg_count(
@@ -1821,7 +1821,7 @@ impl<'o, 'tcx> dyn AstConv<'tcx> + 'o {
 
         // Check if we have an enum variant.
         let mut variant_resolution = None;
-        if let ty::Adt(adt_def, _) = qself_ty.kind() {
+        if let ty::Adt(adt_def, adt_substs) = qself_ty.kind() {
             if adt_def.is_enum() {
                 let variant_def = adt_def
                     .variants()
@@ -1923,8 +1923,13 @@ impl<'o, 'tcx> dyn AstConv<'tcx> + 'o {
                 let Some(assoc_ty_did) = self.lookup_assoc_ty(assoc_ident, hir_ref_id, span, impl_) else {
                     continue;
                 };
-                // FIXME(inherent_associated_types): This does not substitute parameters.
-                let ty = tcx.type_of(assoc_ty_did);
+                let item_substs = self.create_substs_for_associated_item(
+                    span,
+                    assoc_ty_did,
+                    assoc_segment,
+                    adt_substs,
+                );
+                let ty = tcx.bound_type_of(assoc_ty_did).subst(tcx, item_substs);
                 return Ok((ty, DefKind::AssocTy, assoc_ty_did));
             }
         }

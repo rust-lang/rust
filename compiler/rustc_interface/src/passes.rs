@@ -207,10 +207,7 @@ pub fn register_plugins<'a>(
         });
     }
 
-    let mut lint_store = rustc_lint::new_lint_store(
-        sess.opts.unstable_opts.no_interleave_lints,
-        sess.enable_internal_lints(),
-    );
+    let mut lint_store = rustc_lint::new_lint_store(sess.enable_internal_lints());
     register_lints(sess, &mut lint_store);
 
     let registrars =

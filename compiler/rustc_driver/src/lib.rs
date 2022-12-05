@@ -245,10 +245,8 @@ fn run_compiler(
                 interface::run_compiler(config, |compiler| {
                     let sopts = &compiler.session().opts;
                     if sopts.describe_lints {
-                        let mut lint_store = rustc_lint::new_lint_store(
-                            sopts.unstable_opts.no_interleave_lints,
-                            compiler.session().enable_internal_lints(),
-                        );
+                        let mut lint_store =
+                            rustc_lint::new_lint_store(compiler.session().enable_internal_lints());
                         let registered_lints =
                             if let Some(register_lints) = compiler.register_lints() {
                                 register_lints(compiler.session(), &mut lint_store);

@@ -51,6 +51,7 @@ impl TestOpts {
             skip: vec![],
             time_options: None,
             options: Options::new(),
+            fail_fast: false,
         }
     }
 }

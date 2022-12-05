@@ -1,0 +1,14 @@
+error[E0433]: failed to resolve: use of undeclared crate or module `rect`
+  --> $DIR/issue-101749.rs:17:13
+   |
+LL |     let _ = rect::area();
+   |             ^^^^ use of undeclared crate or module `rect`
+   |
+help: you may have meant to call an instance method
+   |
+LL |     let _ = rect.area();
+   |                 ~
+
+error: aborting due to previous error
+
+For more information about this error, try `rustc --explain E0433`.

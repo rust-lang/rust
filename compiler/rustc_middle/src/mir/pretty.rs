@@ -16,7 +16,6 @@ use rustc_middle::mir::interpret::{
     Pointer, Provenance,
 };
 use rustc_middle::mir::visit::Visitor;
-use rustc_middle::mir::MirSource;
 use rustc_middle::mir::*;
 use rustc_middle::ty::{self, TyCtxt};
 use rustc_target::abi::Size;
@@ -74,7 +73,7 @@ pub enum PassWhere {
 #[inline]
 pub fn dump_mir<'tcx, F>(
     tcx: TyCtxt<'tcx>,
-    pass_num: Option<&dyn Display>,
+    pass_num: bool,
     pass_name: &str,
     disambiguator: &dyn Display,
     body: &Body<'tcx>,
@@ -111,7 +110,7 @@ pub fn dump_enabled<'tcx>(tcx: TyCtxt<'tcx>, pass_name: &str, def_id: DefId) -> 
 
 fn dump_matched_mir_node<'tcx, F>(
     tcx: TyCtxt<'tcx>,
-    pass_num: Option<&dyn Display>,
+    pass_num: bool,
     pass_name: &str,
     disambiguator: &dyn Display,
     body: &Body<'tcx>,
@@ -120,8 +119,7 @@ fn dump_matched_mir_node<'tcx, F>(
     F: FnMut(PassWhere, &mut dyn Write) -> io::Result<()>,
 {
     let _: io::Result<()> = try {
-        let mut file =
-            create_dump_file(tcx, "mir", pass_num, pass_name, disambiguator, body.source)?;
+        let mut file = create_dump_file(tcx, "mir", pass_num, pass_name, disambiguator, body)?;
         // see notes on #41697 above
         let def_path =
             ty::print::with_forced_impl_filename_line!(tcx.def_path_str(body.source.def_id()));
@@ -143,16 +141,14 @@ fn dump_matched_mir_node<'tcx, F>(
 
     if tcx.sess.opts.unstable_opts.dump_mir_graphviz {
         let _: io::Result<()> = try {
-            let mut file =
-                create_dump_file(tcx, "dot", pass_num, pass_name, disambiguator, body.source)?;
+            let mut file = create_dump_file(tcx, "dot", pass_num, pass_name, disambiguator, body)?;
             write_mir_fn_graphviz(tcx, body, false, &mut file)?;
         };
     }
 
     if let Some(spanview) = tcx.sess.opts.unstable_opts.dump_mir_spanview {
         let _: io::Result<()> = try {
-            let file_basename =
-                dump_file_basename(tcx, pass_num, pass_name, disambiguator, body.source);
+            let file_basename = dump_file_basename(tcx, pass_num, pass_name, disambiguator, body);
             let mut file = create_dump_file_with_basename(tcx, &file_basename, "html")?;
             if body.source.def_id().is_local() {
                 write_mir_fn_spanview(tcx, body, spanview, &file_basename, &mut file)?;
@@ -165,11 +161,12 @@ fn dump_matched_mir_node<'tcx, F>(
 /// where we should dump a MIR representation output files.
 fn dump_file_basename<'tcx>(
     tcx: TyCtxt<'tcx>,
-    pass_num: Option<&dyn Display>,
+    pass_num: bool,
     pass_name: &str,
     disambiguator: &dyn Display,
-    source: MirSource<'tcx>,
+    body: &Body<'tcx>,
 ) -> String {
+    let source = body.source;
     let promotion_id = match source.promoted {
         Some(id) => format!("-{:?}", id),
         None => String::new(),
@@ -178,9 +175,10 @@ fn dump_file_basename<'tcx>(
     let pass_num = if tcx.sess.opts.unstable_opts.dump_mir_exclude_pass_number {
         String::new()
     } else {
-        match pass_num {
-            None => ".-------".to_string(),
-            Some(pass_num) => format!(".{}", pass_num),
+        if pass_num {
+            format!(".{:03}-{:03}", body.phase.phase_index(), body.pass_count)
+        } else {
+            ".-------".to_string()
         }
     };
 
@@ -250,14 +248,14 @@ fn create_dump_file_with_basename(
 pub fn create_dump_file<'tcx>(
     tcx: TyCtxt<'tcx>,
     extension: &str,
-    pass_num: Option<&dyn Display>,
+    pass_num: bool,
     pass_name: &str,
     disambiguator: &dyn Display,
-    source: MirSource<'tcx>,
+    body: &Body<'tcx>,
 ) -> io::Result<io::BufWriter<fs::File>> {
     create_dump_file_with_basename(
         tcx,
-        &dump_file_basename(tcx, pass_num, pass_name, disambiguator, source),
+        &dump_file_basename(tcx, pass_num, pass_name, disambiguator, body),
         extension,
     )
 }
