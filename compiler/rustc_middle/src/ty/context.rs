@@ -51,7 +51,7 @@ use rustc_macros::HashStable;
 use rustc_query_system::dep_graph::DepNodeIndex;
 use rustc_query_system::ich::StableHashingContext;
 use rustc_serialize::opaque::{FileEncodeResult, FileEncoder};
-use rustc_session::config::{CrateType, OutputFilenames};
+use rustc_session::config::CrateType;
 use rustc_session::cstore::{CrateStoreDyn, Untracked};
 use rustc_session::lint::Lint;
 use rustc_session::Limit;
@@ -74,7 +74,6 @@ use std::hash::{Hash, Hasher};
 use std::iter;
 use std::mem;
 use std::ops::{Bound, Deref};
-use std::sync::Arc;
 
 pub trait OnDiskCache<'tcx>: rustc_data_structures::sync::Sync {
     /// Creates a new `OnDiskCache` instance from the serialized data in `data`.
@@ -460,8 +459,6 @@ pub struct GlobalCtxt<'tcx> {
 
     /// Stores memory for globals (statics/consts).
     pub(crate) alloc_map: Lock<interpret::AllocMap<'tcx>>,
-
-    output_filenames: Arc<OutputFilenames>,
 }
 
 impl<'tcx> TyCtxt<'tcx> {
@@ -591,7 +588,6 @@ impl<'tcx> TyCtxt<'tcx> {
         on_disk_cache: Option<&'tcx dyn OnDiskCache<'tcx>>,
         queries: &'tcx dyn query::QueryEngine<'tcx>,
         query_kinds: &'tcx [DepKindStruct<'tcx>],
-        output_filenames: OutputFilenames,
     ) -> GlobalCtxt<'tcx> {
         let data_layout = s.target.parse_data_layout().unwrap_or_else(|err| {
             s.emit_fatal(err);
@@ -623,7 +619,6 @@ impl<'tcx> TyCtxt<'tcx> {
             evaluation_cache: Default::default(),
             data_layout,
             alloc_map: Lock::new(interpret::AllocMap::new()),
-            output_filenames: Arc::new(output_filenames),
         }
     }
 
@@ -2407,7 +2402,6 @@ pub fn provide(providers: &mut ty::query::Providers) {
 
     providers.extern_mod_stmt_cnum =
         |tcx, id| tcx.resolutions(()).extern_crate_map.get(&id).cloned();
-    providers.output_filenames = |tcx, ()| &tcx.output_filenames;
     providers.features_query = |tcx, ()| tcx.sess.features_untracked();
     providers.is_panic_runtime = |tcx, cnum| {
         assert_eq!(cnum, LOCAL_CRATE);

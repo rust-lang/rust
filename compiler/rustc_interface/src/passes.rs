@@ -822,7 +822,6 @@ pub fn create_global_ctxt<'tcx>(
                 queries.on_disk_cache.as_ref().map(OnDiskCache::as_dyn),
                 queries.as_dyn(),
                 rustc_query_impl::query_callbacks(arena),
-                outputs,
             )
         })
     });
@@ -834,6 +833,7 @@ pub fn create_global_ctxt<'tcx>(
             tcx.arena.alloc(Steal::new((untracked_resolver_for_lowering, krate))),
         );
         feed.resolutions(tcx.arena.alloc(untracked_resolutions));
+        feed.output_filenames(tcx.arena.alloc(std::sync::Arc::new(outputs)));
         let feed = tcx.feed_local_crate();
         feed.crate_name(crate_name);
     });

@@ -34,6 +34,7 @@ macro_rules! arena_types {
                 rustc_middle::ty::ResolverAstLowering,
                 rustc_data_structures::sync::Lrc<rustc_ast::Crate>,
             )>,
+            [] output_filenames: std::sync::Arc<rustc_session::config::OutputFilenames>,
             [] resolutions: rustc_middle::ty::ResolverGlobalCtxt,
             [decode] unsafety_check_result: rustc_middle::mir::UnsafetyCheckResult,
             [decode] code_region: rustc_middle::mir::coverage::CodeRegion,

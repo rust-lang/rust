@@ -1857,7 +1857,7 @@ rustc_queries! {
     /// This query returns an `&Arc` because codegen backends need the value even after the `TyCtxt`
     /// has been destroyed.
     query output_filenames(_: ()) -> &'tcx Arc<OutputFilenames> {
-        eval_always
+        feedable
         desc { "getting output filenames" }
     }
 
