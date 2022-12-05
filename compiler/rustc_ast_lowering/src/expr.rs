@@ -1013,6 +1013,8 @@ impl<'hir> LoweringContext<'_, 'hir> {
 
                 let async_body = this.make_async_expr(
                     capture_clause,
+                    // FIXME(nbdd0121): This should also use a proper HIR id so `#[track_caller]`
+                    // can be applied on async closures as well.
                     None,
                     inner_closure_id,
                     async_ret_ty,
