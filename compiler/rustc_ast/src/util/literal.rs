@@ -5,8 +5,7 @@ use crate::token::{self, Token};
 use rustc_lexer::unescape::{byte_from_char, unescape_byte, unescape_char, unescape_literal, Mode};
 use rustc_span::symbol::{kw, sym, Symbol};
 use rustc_span::Span;
-use std::ascii;
-use std::str;
+use std::{ascii, fmt, str};
 
 // Escapes a string, represented as a symbol. Reuses the original symbol,
 // avoiding interning, if no changes are required.
@@ -162,54 +161,60 @@ impl LitKind {
             token::Err => LitKind::Err,
         })
     }
+}
 
-    /// Synthesizes a token from a semantic literal.
-    /// This function is used when the original token doesn't exist (e.g. the literal is created
-    /// by an AST-based macro) or unavailable (e.g. from HIR pretty-printing).
-    pub fn synthesize_token_lit(&self) -> token::Lit {
-        let (kind, symbol, suffix) = match *self {
-            LitKind::Str(symbol, ast::StrStyle::Cooked) => {
-                (token::Str, escape_string_symbol(symbol), None)
+impl fmt::Display for LitKind {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        match *self {
+            LitKind::Byte(b) => {
+                let b: String = ascii::escape_default(b).map(Into::<char>::into).collect();
+                write!(f, "b'{}'", b)?;
             }
-            LitKind::Str(symbol, ast::StrStyle::Raw(n)) => (token::StrRaw(n), symbol, None),
-            LitKind::ByteStr(ref bytes, ast::StrStyle::Cooked) => {
-                (token::ByteStr, escape_byte_str_symbol(bytes), None)
+            LitKind::Char(ch) => write!(f, "'{}'", escape_char_symbol(ch))?,
+            LitKind::Str(sym, StrStyle::Cooked) => write!(f, "\"{}\"", escape_string_symbol(sym))?,
+            LitKind::Str(sym, StrStyle::Raw(n)) => write!(
+                f,
+                "r{delim}\"{string}\"{delim}",
+                delim = "#".repeat(n as usize),
+                string = sym
+            )?,
+            LitKind::ByteStr(ref bytes, StrStyle::Cooked) => {
+                write!(f, "b\"{}\"", escape_byte_str_symbol(bytes))?
             }
-            LitKind::ByteStr(ref bytes, ast::StrStyle::Raw(n)) => {
+            LitKind::ByteStr(ref bytes, StrStyle::Raw(n)) => {
                 // Unwrap because raw byte string literals can only contain ASCII.
-                let string = str::from_utf8(bytes).unwrap();
-                (token::ByteStrRaw(n), Symbol::intern(&string), None)
+                let symbol = str::from_utf8(bytes).unwrap();
+                write!(
+                    f,
+                    "br{delim}\"{string}\"{delim}",
+                    delim = "#".repeat(n as usize),
+                    string = symbol
+                )?;
             }
-            LitKind::Byte(byte) => {
-                let string: String = ascii::escape_default(byte).map(Into::<char>::into).collect();
-                (token::Byte, Symbol::intern(&string), None)
-            }
-            LitKind::Char(ch) => (token::Char, escape_char_symbol(ch), None),
             LitKind::Int(n, ty) => {
-                let suffix = match ty {
-                    ast::LitIntType::Unsigned(ty) => Some(ty.name()),
-                    ast::LitIntType::Signed(ty) => Some(ty.name()),
-                    ast::LitIntType::Unsuffixed => None,
-                };
-                (token::Integer, sym::integer(n), suffix)
+                write!(f, "{}", n)?;
+                match ty {
+                    ast::LitIntType::Unsigned(ty) => write!(f, "{}", ty.name())?,
+                    ast::LitIntType::Signed(ty) => write!(f, "{}", ty.name())?,
+                    ast::LitIntType::Unsuffixed => {}
+                }
             }
             LitKind::Float(symbol, ty) => {
-                let suffix = match ty {
-                    ast::LitFloatType::Suffixed(ty) => Some(ty.name()),
-                    ast::LitFloatType::Unsuffixed => None,
-                };
-                (token::Float, symbol, suffix)
+                write!(f, "{}", symbol)?;
+                match ty {
+                    ast::LitFloatType::Suffixed(ty) => write!(f, "{}", ty.name())?,
+                    ast::LitFloatType::Unsuffixed => {}
+                }
             }
-            LitKind::Bool(value) => {
-                let symbol = if value { kw::True } else { kw::False };
-                (token::Bool, symbol, None)
+            LitKind::Bool(b) => write!(f, "{}", if b { "true" } else { "false" })?,
+            LitKind::Err => {
+                // This only shows up in places like `-Zunpretty=hir` output, so we
+                // don't bother to produce something useful.
+                write!(f, "<bad-literal>")?;
             }
-            // This only shows up in places like `-Zunpretty=hir` output, so we
-            // don't bother to produce something useful.
-            LitKind::Err => (token::Err, Symbol::intern("<bad-literal>"), None),
-        };
+        }
 
-        token::Lit::new(kind, symbol, suffix)
+        Ok(())
     }
 }
 
