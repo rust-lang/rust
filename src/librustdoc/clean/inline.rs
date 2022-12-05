@@ -427,8 +427,9 @@ pub(crate) fn build_impl(
     let document_hidden = cx.render_options.document_hidden;
     let predicates = tcx.explicit_predicates_of(did);
     let (trait_items, generics) = match impl_item {
-        Some(impl_) => (
-            impl_
+        Some(impl_) => {
+            let generics = clean_generics(impl_.generics, cx, &[], &[]);
+            let trait_items = impl_
                 .items
                 .iter()
                 .map(|item| tcx.hir().impl_item(item.id))
@@ -462,10 +463,10 @@ pub(crate) fn build_impl(
                         true
                     }
                 })
-                .map(|item| clean_impl_item(item, cx))
-                .collect::<Vec<_>>(),
-            clean_generics(impl_.generics, cx),
-        ),
+                .map(|item| clean_impl_item(item, cx, &generics.params, &generics.where_predicates))
+                .collect::<Vec<_>>();
+            (trait_items, generics)
+        }
         None => (
             tcx.associated_items(did)
                 .in_definition_order()

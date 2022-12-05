@@ -250,13 +250,69 @@ pub(crate) fn clean_middle_region<'tcx>(region: ty::Region<'tcx>) -> Option<Life
 fn clean_where_predicate<'tcx>(
     predicate: &hir::WherePredicate<'tcx>,
     cx: &mut DocContext<'tcx>,
+    parent_params: &[GenericParamDef],
+    parent_where_predicates: &[WherePredicate],
 ) -> Option<WherePredicate> {
     if !predicate.in_where_clause() {
         return None;
     }
+
     Some(match *predicate {
+        // There can be duplicates with parent predicates in this case so we dedup them. For
+        // example:
+        //
+        // ```
+        // pub trait Foo<T: Debug> {
+        //     fn bar() where T: Debug {} // This is valid but completely unneeded as `T` already
+        //                                // has this restriction.
+        //     fn foo() where T: Display {} // This item will only be available if `Self` implements
+        //                                  // both `Debug` and `Display`.
+        // }
+        // ```
         hir::WherePredicate::BoundPredicate(ref wbp) => {
-            let bound_params = wbp
+            let ty = clean_ty(wbp.bounded_ty, cx);
+
+            let (check_not_in_parent_bounds, check_not_in_parent_params): (
+                Box<dyn Fn(&GenericBound) -> bool>,
+                Box<dyn Fn(&Lifetime) -> bool>,
+            ) = if let Some((bounds, bound_params)) =
+                parent_where_predicates.iter().find_map(|pred| match pred {
+                    WherePredicate::BoundPredicate { ty: parent_ty, bounds, bound_params }
+                        if *parent_ty == ty =>
+                    {
+                        Some((bounds, bound_params))
+                    }
+                    _ => None,
+                }) {
+                (
+                    Box::new(move |bound: &GenericBound| !bounds.contains(&bound)),
+                    Box::new(move |bound_param: &Lifetime| !bound_params.contains(&bound_param)),
+                )
+            } else {
+                (Box::new(|_: &GenericBound| true), Box::new(|_: &Lifetime| true))
+            };
+
+            let (check_not_in_parent_tys, check_not_in_parent_lifetimes): (
+                Box<dyn Fn(&GenericBound) -> bool>,
+                Box<dyn Fn(&Lifetime) -> bool>,
+            ) = if let Some(parent_bound) =
+                parent_params.iter().filter(|gen| Type::Generic(gen.name) == ty).next()
+            {
+                (
+                    Box::new(move |bound: &GenericBound| match &parent_bound.kind {
+                        GenericParamDefKind::Type { bounds, .. } => !bounds.contains(&bound),
+                        _ => true,
+                    }),
+                    Box::new(move |bound: &Lifetime| match &parent_bound.kind {
+                        GenericParamDefKind::Lifetime { outlives } => !outlives.contains(&bound),
+                        _ => true,
+                    }),
+                )
+            } else {
+                (Box::new(|_: &GenericBound| true), Box::new(|_: &Lifetime| true))
+            };
+
+            let bound_params: Vec<Lifetime> = wbp
                 .bound_generic_params
                 .iter()
                 .map(|param| {
@@ -268,18 +324,52 @@ fn clean_where_predicate<'tcx>(
                     );
                     Lifetime(param.name.ident().name)
                 })
+                .filter(check_not_in_parent_params)
+                .filter(check_not_in_parent_lifetimes)
                 .collect();
-            WherePredicate::BoundPredicate {
-                ty: clean_ty(wbp.bounded_ty, cx),
-                bounds: wbp.bounds.iter().filter_map(|x| clean_generic_bound(x, cx)).collect(),
-                bound_params,
+            let bounds: Vec<GenericBound> = wbp
+                .bounds
+                .iter()
+                .filter_map(|x| clean_generic_bound(x, cx))
+                .filter(check_not_in_parent_bounds)
+                .filter(check_not_in_parent_tys)
+                .collect();
+
+            // If all bounds were removed, no need to it.
+            if bounds.is_empty() && bound_params.is_empty() {
+                return None;
             }
+
+            WherePredicate::BoundPredicate { ty, bounds, bound_params }
         }
 
-        hir::WherePredicate::RegionPredicate(ref wrp) => WherePredicate::RegionPredicate {
-            lifetime: clean_lifetime(wrp.lifetime, cx),
-            bounds: wrp.bounds.iter().filter_map(|x| clean_generic_bound(x, cx)).collect(),
-        },
+        hir::WherePredicate::RegionPredicate(ref wrp) => {
+            let lifetime = clean_lifetime(wrp.lifetime, cx);
+
+            let check_not_in_parent_bounds: Box<dyn Fn(&GenericBound) -> bool> =
+                if let Some(bounds) = parent_where_predicates.iter().find_map(|pred| match pred {
+                    WherePredicate::RegionPredicate { lifetime: parent_lifetime, bounds }
+                        if *parent_lifetime == lifetime =>
+                    {
+                        Some(bounds)
+                    }
+                    _ => None,
+                }) {
+                    Box::new(move |bound: &GenericBound| !bounds.contains(bound))
+                } else {
+                    Box::new(|_: &GenericBound| true)
+                };
+
+            WherePredicate::RegionPredicate {
+                lifetime,
+                bounds: wrp
+                    .bounds
+                    .iter()
+                    .filter_map(|x| clean_generic_bound(x, cx))
+                    .filter(check_not_in_parent_bounds)
+                    .collect(),
+            }
+        }
 
         hir::WherePredicate::EqPredicate(ref wrp) => WherePredicate::EqPredicate {
             lhs: Box::new(clean_ty(wrp.lhs_ty, cx)),
@@ -580,6 +670,8 @@ fn is_elided_lifetime(param: &hir::GenericParam<'_>) -> bool {
 pub(crate) fn clean_generics<'tcx>(
     gens: &hir::Generics<'tcx>,
     cx: &mut DocContext<'tcx>,
+    parent_params: &[GenericParamDef],
+    parent_where_predicates: &[WherePredicate],
 ) -> Generics {
     let impl_trait_params = gens
         .params
@@ -601,7 +693,11 @@ pub(crate) fn clean_generics<'tcx>(
     let mut bound_predicates = FxIndexMap::default();
     let mut region_predicates = FxIndexMap::default();
     let mut eq_predicates = ThinVec::default();
-    for pred in gens.predicates.iter().filter_map(|x| clean_where_predicate(x, cx)) {
+    for pred in gens
+        .predicates
+        .iter()
+        .filter_map(|x| clean_where_predicate(x, cx, parent_params, parent_where_predicates))
+    {
         match pred {
             WherePredicate::BoundPredicate { ty, bounds, bound_params } => {
                 match bound_predicates.entry(ty) {
@@ -648,6 +744,16 @@ pub(crate) fn clean_generics<'tcx>(
     // In this loop, we gather the generic parameters (`<'a, B: 'a>`) and check if they have
     // bounds in the where predicates. If so, we move their bounds into the where predicates
     // while also preventing duplicates.
+    //
+    // We don't need to add checks with the parent predicates in here since there can't be
+    // duplicates with the parent in generic predicates because otherwise it'd be a compiler error.
+    // For example:
+    //
+    // ```
+    // pub trait Foo<T: Debug> {
+    //     fn foo<T: Display>() {} // ERROR
+    // }
+    // ```
     for p in gens.params.iter().filter(|p| !is_impl_trait(p) && !is_elided_lifetime(p)) {
         let mut p = clean_generic_param(cx, Some(gens), p);
         match &mut p.kind {
@@ -935,7 +1041,7 @@ fn clean_fn_or_proc_macro<'tcx>(
             ProcMacroItem(ProcMacro { kind, helpers })
         }
         None => {
-            let mut func = clean_function(cx, sig, generics, FunctionArgs::Body(body_id));
+            let mut func = clean_function(cx, sig, generics, FunctionArgs::Body(body_id), &[], &[]);
             clean_fn_decl_legacy_const_generics(&mut func, attrs);
             FunctionItem(func)
         }
@@ -982,10 +1088,12 @@ fn clean_function<'tcx>(
     sig: &hir::FnSig<'tcx>,
     generics: &hir::Generics<'tcx>,
     args: FunctionArgs<'tcx>,
+    parent_params: &[GenericParamDef],
+    parent_where_predicates: &[WherePredicate],
 ) -> Box<Function> {
     let (generics, decl) = enter_impl_trait(cx, |cx| {
         // NOTE: generics must be cleaned before args
-        let generics = clean_generics(generics, cx);
+        let generics = clean_generics(generics, cx, parent_params, parent_where_predicates);
         let args = match args {
             FunctionArgs::Body(body_id) => {
                 clean_args_from_types_and_body_id(cx, sig.decl.inputs, body_id)
@@ -1114,7 +1222,12 @@ fn clean_poly_trait_ref<'tcx>(
     }
 }
 
-fn clean_trait_item<'tcx>(trait_item: &hir::TraitItem<'tcx>, cx: &mut DocContext<'tcx>) -> Item {
+fn clean_trait_item<'tcx>(
+    trait_item: &hir::TraitItem<'tcx>,
+    cx: &mut DocContext<'tcx>,
+    parent_params: &[GenericParamDef],
+    parent_where_predicates: &[WherePredicate],
+) -> Item {
     let local_did = trait_item.owner_id.to_def_id();
     cx.with_param_env(local_did, |cx| {
         let inner = match trait_item.kind {
@@ -1124,15 +1237,31 @@ fn clean_trait_item<'tcx>(trait_item: &hir::TraitItem<'tcx>, cx: &mut DocContext
             ),
             hir::TraitItemKind::Const(ty, None) => TyAssocConstItem(clean_ty(ty, cx)),
             hir::TraitItemKind::Fn(ref sig, hir::TraitFn::Provided(body)) => {
-                let m = clean_function(cx, sig, trait_item.generics, FunctionArgs::Body(body));
+                let m = clean_function(
+                    cx,
+                    sig,
+                    trait_item.generics,
+                    FunctionArgs::Body(body),
+                    parent_params,
+                    parent_where_predicates,
+                );
                 MethodItem(m, None)
             }
             hir::TraitItemKind::Fn(ref sig, hir::TraitFn::Required(names)) => {
-                let m = clean_function(cx, sig, trait_item.generics, FunctionArgs::Names(names));
+                let m = clean_function(
+                    cx,
+                    sig,
+                    trait_item.generics,
+                    FunctionArgs::Names(names),
+                    parent_params,
+                    parent_where_predicates,
+                );
                 TyMethodItem(m)
             }
             hir::TraitItemKind::Type(bounds, Some(default)) => {
-                let generics = enter_impl_trait(cx, |cx| clean_generics(trait_item.generics, cx));
+                let generics = enter_impl_trait(cx, |cx| {
+                    clean_generics(trait_item.generics, cx, parent_params, parent_where_predicates)
+                });
                 let bounds = bounds.iter().filter_map(|x| clean_generic_bound(x, cx)).collect();
                 let item_type = clean_middle_ty(hir_ty_to_ty(cx.tcx, default), cx, None);
                 AssocTypeItem(
@@ -1145,7 +1274,9 @@ fn clean_trait_item<'tcx>(trait_item: &hir::TraitItem<'tcx>, cx: &mut DocContext
                 )
             }
             hir::TraitItemKind::Type(bounds, None) => {
-                let generics = enter_impl_trait(cx, |cx| clean_generics(trait_item.generics, cx));
+                let generics = enter_impl_trait(cx, |cx| {
+                    clean_generics(trait_item.generics, cx, parent_params, parent_where_predicates)
+                });
                 let bounds = bounds.iter().filter_map(|x| clean_generic_bound(x, cx)).collect();
                 TyAssocTypeItem(generics, bounds)
             }
@@ -1157,6 +1288,8 @@ fn clean_trait_item<'tcx>(trait_item: &hir::TraitItem<'tcx>, cx: &mut DocContext
 pub(crate) fn clean_impl_item<'tcx>(
     impl_: &hir::ImplItem<'tcx>,
     cx: &mut DocContext<'tcx>,
+    parent_params: &[GenericParamDef],
+    parent_where_predicates: &[WherePredicate],
 ) -> Item {
     let local_did = impl_.owner_id.to_def_id();
     cx.with_param_env(local_did, |cx| {
@@ -1166,13 +1299,21 @@ pub(crate) fn clean_impl_item<'tcx>(
                 AssocConstItem(clean_ty(ty, cx), default)
             }
             hir::ImplItemKind::Fn(ref sig, body) => {
-                let m = clean_function(cx, sig, impl_.generics, FunctionArgs::Body(body));
+                let m = clean_function(
+                    cx,
+                    sig,
+                    impl_.generics,
+                    FunctionArgs::Body(body),
+                    parent_params,
+                    parent_where_predicates,
+                );
                 let defaultness = cx.tcx.impl_defaultness(impl_.owner_id);
                 MethodItem(m, Some(defaultness))
             }
             hir::ImplItemKind::Type(hir_ty) => {
                 let type_ = clean_ty(hir_ty, cx);
-                let generics = clean_generics(impl_.generics, cx);
+                let generics =
+                    clean_generics(impl_.generics, cx, parent_params, parent_where_predicates);
                 let item_type = clean_middle_ty(hir_ty_to_ty(cx.tcx, hir_ty), cx, None);
                 AssocTypeItem(
                     Box::new(Typedef { type_, generics, item_type: Some(item_type) }),
@@ -2096,32 +2237,32 @@ fn clean_maybe_renamed_item<'tcx>(
             }),
             ItemKind::OpaqueTy(ref ty) => OpaqueTyItem(OpaqueTy {
                 bounds: ty.bounds.iter().filter_map(|x| clean_generic_bound(x, cx)).collect(),
-                generics: clean_generics(ty.generics, cx),
+                generics: clean_generics(ty.generics, cx, &[], &[]),
             }),
             ItemKind::TyAlias(hir_ty, generics) => {
                 let rustdoc_ty = clean_ty(hir_ty, cx);
                 let ty = clean_middle_ty(hir_ty_to_ty(cx.tcx, hir_ty), cx, None);
                 TypedefItem(Box::new(Typedef {
                     type_: rustdoc_ty,
-                    generics: clean_generics(generics, cx),
+                    generics: clean_generics(generics, cx, &[], &[]),
                     item_type: Some(ty),
                 }))
             }
             ItemKind::Enum(ref def, generics) => EnumItem(Enum {
                 variants: def.variants.iter().map(|v| clean_variant(v, cx)).collect(),
-                generics: clean_generics(generics, cx),
+                generics: clean_generics(generics, cx, &[], &[]),
             }),
             ItemKind::TraitAlias(generics, bounds) => TraitAliasItem(TraitAlias {
-                generics: clean_generics(generics, cx),
+                generics: clean_generics(generics, cx, &[], &[]),
                 bounds: bounds.iter().filter_map(|x| clean_generic_bound(x, cx)).collect(),
             }),
             ItemKind::Union(ref variant_data, generics) => UnionItem(Union {
-                generics: clean_generics(generics, cx),
+                generics: clean_generics(generics, cx, &[], &[]),
                 fields: variant_data.fields().iter().map(|x| clean_field(x, cx)).collect(),
             }),
             ItemKind::Struct(ref variant_data, generics) => StructItem(Struct {
                 ctor_kind: variant_data.ctor_kind(),
-                generics: clean_generics(generics, cx),
+                generics: clean_generics(generics, cx, &[], &[]),
                 fields: variant_data.fields().iter().map(|x| clean_field(x, cx)).collect(),
             }),
             ItemKind::Impl(impl_) => return clean_impl(impl_, item.hir_id(), cx),
@@ -2136,15 +2277,23 @@ fn clean_maybe_renamed_item<'tcx>(
                 })
             }
             ItemKind::Trait(_, _, generics, bounds, item_ids) => {
+                let generics = clean_generics(generics, cx, &[], &[]);
                 let items = item_ids
                     .iter()
-                    .map(|ti| clean_trait_item(cx.tcx.hir().trait_item(ti.id), cx))
+                    .map(|ti| {
+                        clean_trait_item(
+                            cx.tcx.hir().trait_item(ti.id),
+                            cx,
+                            &generics.params,
+                            &generics.where_predicates,
+                        )
+                    })
                     .collect();
 
                 TraitItem(Box::new(Trait {
                     def_id,
                     items,
-                    generics: clean_generics(generics, cx),
+                    generics,
                     bounds: bounds.iter().filter_map(|x| clean_generic_bound(x, cx)).collect(),
                 }))
             }
@@ -2196,10 +2345,18 @@ fn clean_impl<'tcx>(
     let tcx = cx.tcx;
     let mut ret = Vec::new();
     let trait_ = impl_.of_trait.as_ref().map(|t| clean_trait_ref(t, cx));
+    let generics = clean_generics(impl_.generics, cx, &[], &[]);
     let items = impl_
         .items
         .iter()
-        .map(|ii| clean_impl_item(tcx.hir().impl_item(ii.id), cx))
+        .map(|ii| {
+            clean_impl_item(
+                tcx.hir().impl_item(ii.id),
+                cx,
+                &generics.params,
+                &generics.where_predicates,
+            )
+        })
         .collect::<Vec<_>>();
     let def_id = tcx.hir().local_def_id(hir_id);
 
@@ -2214,10 +2371,10 @@ fn clean_impl<'tcx>(
         DefKind::TyAlias => Some(clean_middle_ty(tcx.type_of(did), cx, Some(did))),
         _ => None,
     });
-    let mut make_item = |trait_: Option<Path>, for_: Type, items: Vec<Item>| {
+    let mut make_item = |trait_: Option<Path>, for_: Type, items: Vec<Item>, generics: Generics| {
         let kind = ImplItem(Box::new(Impl {
             unsafety: impl_.unsafety,
-            generics: clean_generics(impl_.generics, cx),
+            generics,
             trait_,
             for_,
             items,
@@ -2231,9 +2388,9 @@ fn clean_impl<'tcx>(
         Item::from_hir_id_and_parts(hir_id, None, kind, cx)
     };
     if let Some(type_alias) = type_alias {
-        ret.push(make_item(trait_.clone(), type_alias, items.clone()));
+        ret.push(make_item(trait_.clone(), type_alias, items.clone(), generics.clone()));
     }
-    ret.push(make_item(trait_, for_, items));
+    ret.push(make_item(trait_, for_, items, generics));
     ret
 }
 
@@ -2435,7 +2592,7 @@ fn clean_maybe_renamed_foreign_item<'tcx>(
             hir::ForeignItemKind::Fn(decl, names, generics) => {
                 let (generics, decl) = enter_impl_trait(cx, |cx| {
                     // NOTE: generics must be cleaned before args
-                    let generics = clean_generics(generics, cx);
+                    let generics = clean_generics(generics, cx, &[], &[]);
                     let args = clean_args_from_types_and_names(cx, decl.inputs, names);
                     let decl = clean_fn_decl_with_args(cx, decl, args);
                     (generics, decl)
