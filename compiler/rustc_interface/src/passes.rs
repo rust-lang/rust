@@ -834,6 +834,7 @@ pub fn create_global_ctxt<'tcx>(
         );
         feed.resolutions(tcx.arena.alloc(untracked_resolutions));
         feed.output_filenames(tcx.arena.alloc(std::sync::Arc::new(outputs)));
+        feed.features_query(sess.features_untracked());
         let feed = tcx.feed_local_crate();
         feed.crate_name(crate_name);
     });

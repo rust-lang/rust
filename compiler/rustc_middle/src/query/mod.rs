@@ -2041,7 +2041,7 @@ rustc_queries! {
     }
 
     query features_query(_: ()) -> &'tcx rustc_feature::Features {
-        eval_always
+        feedable
         desc { "looking up enabled feature gates" }
     }
 
