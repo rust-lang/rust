@@ -367,12 +367,9 @@ pub fn collect_trait_impl_trait_tys<'tcx>(
     let impl_sig = ocx.normalize(
         &norm_cause,
         param_env,
-        infcx.replace_bound_vars_with_fresh_vars(
-            return_span,
-            infer::HigherRankedType,
-            tcx.fn_sig(impl_m.def_id),
-        ),
+        tcx.liberate_late_bound_regions(impl_m.def_id, tcx.fn_sig(impl_m.def_id)),
     );
+    debug!(?impl_sig);
     let impl_return_ty = impl_sig.output();
 
     // Normalize the trait signature with liberated bound vars, passing it through
@@ -380,13 +377,19 @@ pub fn collect_trait_impl_trait_tys<'tcx>(
     // them with inference variables.
     // We will use these inference variables to collect the hidden types of RPITITs.
     let mut collector = ImplTraitInTraitCollector::new(&ocx, return_span, param_env, impl_m_hir_id);
-    let unnormalized_trait_sig = tcx
-        .liberate_late_bound_regions(
-            impl_m.def_id,
+    let unnormalized_trait_sig = infcx
+        .replace_bound_vars_with_fresh_vars(
+            return_span,
+            infer::HigherRankedType,
             tcx.bound_fn_sig(trait_m.def_id).subst(tcx, trait_to_placeholder_substs),
         )
         .fold_with(&mut collector);
+    if collector.types.is_empty() {
+        return Ok(&*tcx.arena.alloc(FxHashMap::default()));
+    }
+
     let trait_sig = ocx.normalize(&norm_cause, param_env, unnormalized_trait_sig);
+    debug!(?trait_sig);
     let trait_return_ty = trait_sig.output();
 
     let wf_tys = FxIndexSet::from_iter(
@@ -422,7 +425,7 @@ pub fn collect_trait_impl_trait_tys<'tcx>(
         }
     }
 
-    debug!(?trait_sig, ?impl_sig, "equating function signatures");
+    debug!("equating function signatures");
 
     let trait_fty = tcx.mk_fn_ptr(ty::Binder::dummy(trait_sig));
     let impl_fty = tcx.mk_fn_ptr(ty::Binder::dummy(impl_sig));
@@ -461,86 +464,167 @@ pub fn collect_trait_impl_trait_tys<'tcx>(
 
     // Finally, resolve all regions. This catches wily misuses of
     // lifetime parameters.
+    debug!("check_region_obligations");
     let outlives_environment = OutlivesEnvironment::with_bounds(
         param_env,
         Some(infcx),
         infcx.implied_bounds_tys(param_env, impl_m_hir_id, wf_tys),
     );
+    debug!(region_bound_pairs=?outlives_environment.region_bound_pairs());
     infcx.check_region_obligations_and_report_errors(
         impl_m.def_id.expect_local(),
         &outlives_environment,
     );
 
+    debug!("resolve collected");
     let mut collected_tys = FxHashMap::default();
-    for (def_id, (ty, substs)) in collector.types {
-        match infcx.fully_resolve(ty) {
-            Ok(ty) => {
-                // `ty` contains free regions that we created earlier while liberating the
-                // trait fn signature.  However, projection normalization expects `ty` to
-                // contains `def_id`'s early-bound regions.
-                let id_substs = InternalSubsts::identity_for_item(tcx, def_id);
-                debug!(?id_substs, ?substs);
-                let map: FxHashMap<ty::GenericArg<'tcx>, ty::GenericArg<'tcx>> =
-                    std::iter::zip(substs, id_substs).collect();
-                debug!(?map);
+    for (def_id, (raw_ty, substs)) in collector.types {
+        debug!(?def_id);
 
-                // NOTE(compiler-errors): RPITITs, like all other RPITs, have early-bound
-                // region substs that are synthesized during AST lowering. These are substs
-                // that are appended to the parent substs (trait and trait method). However,
-                // we're trying to infer the unsubstituted type value of the RPITIT inside
-                // the *impl*, so we can later use the impl's method substs to normalize
-                // an RPITIT to a concrete type (`confirm_impl_trait_in_trait_candidate`).
-                //
-                // Due to the design of RPITITs, during AST lowering, we have no idea that
-                // an impl method corresponds to a trait method with RPITITs in it. Therefore,
-                // we don't have a list of early-bound region substs for the RPITIT in the impl.
-                // Since early region parameters are index-based, we can't just rebase these
-                // (trait method) early-bound region substs onto the impl, and there's no
-                // guarantee that the indices from the trait substs and impl substs line up.
-                // So to fix this, we subtract the number of trait substs and add the number of
-                // impl substs to *renumber* these early-bound regions to their corresponding
-                // indices in the impl's substitutions list.
-                //
-                // Also, we only need to account for a difference in trait and impl substs,
-                // since we previously enforce that the trait method and impl method have the
-                // same generics.
-                let num_trait_substs = trait_to_impl_substs.len();
-                let num_impl_substs = tcx.generics_of(impl_m.container_id(tcx)).params.len();
-                let ty = tcx.fold_regions(ty, |region, _| {
-                    match region.kind() {
-                        // Remap all free regions, which correspond to late-bound regions in the function.
-                        ty::ReFree(_) => {}
-                        // Remap early-bound regions as long as they don't come from the `impl` itself.
-                        ty::ReEarlyBound(ebr) if tcx.parent(ebr.def_id) != impl_m.container_id(tcx) => {}
-                        _ => return region,
-                    }
-                    let Some(ty::ReEarlyBound(e)) = map.get(&region.into()).map(|r| r.expect_region().kind())
-                    else {
-                        tcx
-                            .sess
-                            .delay_span_bug(
-                                return_span,
-                                "expected ReFree to map to ReEarlyBound"
-                            );
-                        return tcx.lifetimes.re_static;
-                    };
-                    tcx.mk_region(ty::ReEarlyBound(ty::EarlyBoundRegion {
-                        def_id: e.def_id,
-                        name: e.name,
-                        index: (e.index as usize - num_trait_substs + num_impl_substs) as u32,
-                    }))
-                });
-                debug!(%ty);
-                collected_tys.insert(def_id, ty);
-            }
+        let substs = match infcx.fully_resolve(substs) {
+            Ok(substs) => substs,
             Err(err) => {
-                let reported = tcx.sess.delay_span_bug(
-                    return_span,
-                    format!("could not fully resolve: {ty} => {err:?}"),
+                collected_tys.insert(
+                    def_id,
+                    tcx.ty_error_with_message(
+                        return_span,
+                        &format!("could not fully resolve: {substs:?} => {err:?}"),
+                    ),
                 );
-                collected_tys.insert(def_id, tcx.ty_error_with_guaranteed(reported));
+                continue;
             }
+        };
+        debug!(?substs);
+
+        let raw_ty = match infcx.fully_resolve(raw_ty) {
+            Ok(raw_ty) => raw_ty,
+            Err(err) => {
+                collected_tys.insert(
+                    def_id,
+                    tcx.ty_error_with_message(
+                        return_span,
+                        &format!("could not fully resolve: {raw_ty} => {err:?}"),
+                    ),
+                );
+                continue;
+            }
+        };
+        debug!(?raw_ty);
+
+        // `raw_ty` contains free regions that we created earlier while liberating the
+        // trait fn signature.  However, projection normalization expects `raw_ty` to
+        // contains `def_id`'s early-bound regions.
+        let id_substs = InternalSubsts::identity_for_item(tcx, def_id);
+        debug!(?id_substs, ?substs);
+
+        let variances = tcx.variances_of(def_id);
+        debug!(?variances);
+
+        // Opaque types may only use regions that are bound. So for
+        // ```rust
+        // type Foo<'a, 'b, 'c> = impl Trait<'a> + 'b;
+        // ```
+        // we may not use `'c` in the hidden type.
+        let map: FxHashMap<ty::GenericArg<'tcx>, ty::GenericArg<'tcx>> =
+            std::iter::zip(substs, id_substs)
+                .filter(|(_, v)| {
+                    let ty::GenericArgKind::Lifetime(lt) = v.unpack() else { return true };
+                    let ty::ReEarlyBound(ebr) = lt.kind() else { bug!() };
+                    variances[ebr.index as usize] == ty::Variance::Invariant
+                })
+                .collect();
+        debug!(?map);
+
+        // NOTE(compiler-errors): RPITITs, like all other RPITs, have early-bound
+        // region substs that are synthesized during AST lowering. These are substs
+        // that are appended to the parent substs (trait and trait method). However,
+        // we're trying to infer the unsubstituted type value of the RPITIT inside
+        // the *impl*, so we can later use the impl's method substs to normalize
+        // an RPITIT to a concrete type (`confirm_impl_trait_in_trait_candidate`).
+        //
+        // Due to the design of RPITITs, during AST lowering, we have no idea that
+        // an impl method corresponds to a trait method with RPITITs in it. Therefore,
+        // we don't have a list of early-bound region substs for the RPITIT in the impl.
+        // Since early region parameters are index-based, we can't just rebase these
+        // (trait method) early-bound region substs onto the impl, and there's no
+        // guarantee that the indices from the trait substs and impl substs line up.
+        // So to fix this, we subtract the number of trait substs and add the number of
+        // impl substs to *renumber* these early-bound regions to their corresponding
+        // indices in the impl's substitutions list.
+        //
+        // Also, we only need to account for a difference in trait and impl substs,
+        // since we previously enforce that the trait method and impl method have the
+        // same generics.
+        let num_trait_substs = trait_to_impl_substs.len();
+        let num_impl_substs = tcx.generics_of(impl_m.def_id).parent_count;
+        debug!(?num_trait_substs, ?num_impl_substs);
+
+        let mut bad_regions = vec![];
+
+        let ty = tcx.fold_regions(raw_ty, |region, _| {
+            debug!(?region);
+            match region.kind() {
+                // Remap all free regions, which correspond to late-bound regions in the function.
+                ty::ReFree(_) => {}
+                // Remap early-bound regions as long as they don't come from the `impl` itself.
+                ty::ReEarlyBound(ebr) if (ebr.index as usize) >= num_impl_substs => {}
+                _ => return region,
+            }
+            debug!(mapped = ?map.get(&region.into()));
+            let Some(ty::ReEarlyBound(e)) = map.get(&region.into()).map(|r| r.expect_region().kind())
+            else {
+                bad_regions.push(region);
+                return tcx.lifetimes.re_static;
+            };
+            tcx.mk_region(ty::ReEarlyBound(ty::EarlyBoundRegion {
+                def_id: e.def_id,
+                name: e.name,
+                index: (e.index as usize - num_trait_substs + num_impl_substs) as u32,
+            }))
+        });
+
+        if !bad_regions.is_empty() {
+            let mut err = tcx.sess.struct_span_err(
+                return_span,
+                "`impl` item return type captures lifetime that doesn't appear in `trait` item bounds",
+            );
+            for r in bad_regions {
+                let span = match r.kind() {
+                    ty::ReEarlyBound(ebr) => tcx.def_span(ebr.def_id),
+                    ty::ReFree(fr) => fr.bound_region.opt_span(tcx).unwrap(),
+                    _ => bug!(),
+                };
+                let name = if r.has_name() {
+                    format!("lifetime `{r}`")
+                } else {
+                    "the anonymous lifetime".to_string()
+                };
+                err.span_label(span, format!("type `{raw_ty}` captures {name} defined here"));
+            }
+
+            let generics = tcx.generics_of(def_id);
+            match &generics.params[..] {
+                [] => {
+                    err.span_label(tcx.def_span(def_id), "type declared not to capture lifetimes");
+                }
+                [param] => {
+                    err.span_label(
+                        tcx.def_span(param.def_id),
+                        "type can only capture this lifetime",
+                    );
+                }
+                params => {
+                    err.span_labels(
+                        params.iter().map(|param| tcx.def_span(param.def_id)),
+                        "type can only capture lifetimes enumerated here",
+                    );
+                }
+            };
+            err.emit();
         }
+
+        debug!(?ty);
+        collected_tys.insert(def_id, ty);
     }
 
     Ok(&*tcx.arena.alloc(collected_tys))

@@ -67,7 +67,7 @@ LL |     fn early<'late, T>(_: &'late ()) {}
    |                     -     ^^^^^^^^^
    |                     |     |
    |                     |     expected type parameter `T`, found `()`
-   |                     |     help: change the parameter type to match the trait: `&'early T`
+   |                     |     help: change the parameter type to match the trait: `&T`
    |                     this type parameter
    |
 note: type in trait
@@ -75,8 +75,8 @@ note: type in trait
    |
 LL |     fn early<'early, T>(x: &'early T) -> impl Sized;
    |                            ^^^^^^^^^
-   = note: expected fn pointer `fn(&'early T)`
-              found fn pointer `fn(&())`
+   = note: expected fn pointer `fn(&T)`
+              found fn pointer `fn(&'late ())`
 
 error: aborting due to 5 previous errors
 

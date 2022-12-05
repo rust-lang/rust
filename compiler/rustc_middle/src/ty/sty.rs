@@ -100,6 +100,14 @@ impl BoundRegionKind {
 
         None
     }
+
+    pub fn opt_span(&self, tcx: TyCtxt<'_>) -> Option<Span> {
+        match *self {
+            ty::BrAnon(_, opt_span) => opt_span,
+            ty::BrNamed(def_id, _) => Some(tcx.def_span(def_id)),
+            ty::BrEnv => None,
+        }
+    }
 }
 
 pub trait Article {

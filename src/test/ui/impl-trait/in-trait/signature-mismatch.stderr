@@ -1,16 +1,67 @@
-error: `impl` item signature doesn't match `trait` item signature
-  --> $DIR/signature-mismatch.rs:15:5
+error: `impl` item return type captures lifetime that doesn't appear in `trait` item bounds
+  --> $DIR/signature-mismatch.rs:31:47
    |
 LL |     fn async_fn(&self, buff: &[u8]) -> impl Future<Output = Vec<u8>>;
-   |     ----------------------------------------------------------------- expected `fn(&'1 Struct, &'2 [u8]) -> impl Future<Output = Vec<u8>> + 'static`
+   |                                        ----------------------------- type declared not to capture lifetimes
 ...
 LL |     fn async_fn<'a>(&self, buff: &'a [u8]) -> impl Future<Output = Vec<u8>> + 'a {
-   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ found `fn(&'1 Struct, &'2 [u8]) -> impl Future<Output = Vec<u8>> + '2`
+   |                 --                            ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |                 |
+   |                 type `impl Future<Output = Vec<u8>> + 'a` captures lifetime `'a` defined here
+
+error: `impl` item return type captures lifetime that doesn't appear in `trait` item bounds
+  --> $DIR/signature-mismatch.rs:36:57
    |
-   = note: expected `fn(&'1 Struct, &'2 [u8]) -> impl Future<Output = Vec<u8>> + 'static`
-              found `fn(&'1 Struct, &'2 [u8]) -> impl Future<Output = Vec<u8>> + '2`
-   = help: the lifetime requirements from the `impl` do not correspond to the requirements in the `trait`
-   = help: verify the lifetime relationships in the `trait` and `impl` between the `self` argument, the other inputs and its output
+LL |     fn async_fn_early<'a: 'a>(&self, buff: &'a [u8]) -> impl Future<Output = Vec<u8>>;
+   |                                                         ----------------------------- type declared not to capture lifetimes
+...
+LL |     fn async_fn_early<'a: 'a>(&self, buff: &'a [u8]) -> impl Future<Output = Vec<u8>> + 'a {
+   |                       --                                ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |                       |
+   |                       type `impl Future<Output = Vec<u8>> + 'a` captures lifetime `'a` defined here
+   |                       type `impl Future<Output = Vec<u8>> + 'a` captures lifetime `'a` defined here
 
-error: aborting due to previous error
+error[E0623]: lifetime mismatch
+  --> $DIR/signature-mismatch.rs:44:10
+   |
+LL |         buff: &'b [u8],
+   |               -------- this parameter and the return type are declared with different lifetimes...
+LL |     ) -> impl Future<Output = Vec<u8>> + Captures<'a> + Captures<'b> {
+   |          ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |          |
+   |          ...but data from `self` is returned here
 
+error: `impl` item return type captures lifetime that doesn't appear in `trait` item bounds
+  --> $DIR/signature-mismatch.rs:44:10
+   |
+LL |         -> impl Future<Output = Vec<u8>> + Captures<'a>;
+   |                                                     -- type can only capture this lifetime
+...
+LL |     fn async_fn_multiple<'a, 'b>(
+   |                          --  -- type `impl Future<Output = Vec<u8>> + Captures<'a> + Captures<'b>` captures lifetime `'b` defined here
+   |                          |
+   |                          type `impl Future<Output = Vec<u8>> + Captures<'a> + Captures<'b>` captures lifetime `'a` defined here
+...
+LL |     ) -> impl Future<Output = Vec<u8>> + Captures<'a> + Captures<'b> {
+   |          ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+error[E0309]: the parameter type `T` may not live long enough
+  --> $DIR/signature-mismatch.rs:54:10
+   |
+LL |     ) -> impl Future<Output = Vec<u8>> {
+   |          ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ ...so that the type `impl Future<Output = Vec<u8>>` will meet its required lifetime bounds...
+   |
+note: ...that is required by this bound
+  --> $DIR/signature-mismatch.rs:20:42
+   |
+LL |     ) -> impl Future<Output = Vec<u8>> + 'a;
+   |                                          ^^
+help: consider adding an explicit lifetime bound...
+   |
+LL |     fn async_fn_reduce_outlive<'a, 'b, T: 'a>(
+   |                                         ++++
+
+error: aborting due to 5 previous errors
+
+Some errors have detailed explanations: E0309, E0623.
+For more information about an error, try `rustc --explain E0309`.
