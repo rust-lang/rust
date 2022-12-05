@@ -4,16 +4,7 @@ error[E0277]: the trait bound `&'static mut isize: Copy` is not satisfied
 LL |     assert_copy::<&'static mut isize>();
    |                   ^^^^^^^^^^^^^^^^^^ the trait `Copy` is not implemented for `&'static mut isize`
    |
-   = help: the following other types implement trait `Copy`:
-             f32
-             f64
-             i128
-             i16
-             i32
-             i64
-             i8
-             isize
-           and 6 others
+   = help: the trait `Copy` is implemented for `isize`
 note: required by a bound in `assert_copy`
   --> $DIR/kindck-copy.rs:5:18
    |
@@ -26,16 +17,7 @@ error[E0277]: the trait bound `&'a mut isize: Copy` is not satisfied
 LL |     assert_copy::<&'a mut isize>();
    |                   ^^^^^^^^^^^^^ the trait `Copy` is not implemented for `&'a mut isize`
    |
-   = help: the following other types implement trait `Copy`:
-             f32
-             f64
-             i128
-             i16
-             i32
-             i64
-             i8
-             isize
-           and 6 others
+   = help: the trait `Copy` is implemented for `isize`
 note: required by a bound in `assert_copy`
   --> $DIR/kindck-copy.rs:5:18
    |
