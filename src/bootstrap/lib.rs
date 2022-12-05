@@ -579,6 +579,8 @@ impl Build {
             for s in rust_submodules {
                 build.update_submodule(Path::new(s));
             }
+            // Now, update all existing submodules.
+            build.update_existing_submodules();
 
             build.verbose("learning about cargo");
             metadata::build(&mut build);
@@ -674,7 +676,7 @@ impl Build {
 
     /// If any submodule has been initialized already, sync it unconditionally.
     /// This avoids contributors checking in a submodule change by accident.
-    pub fn maybe_update_submodules(&self) {
+    pub fn update_existing_submodules(&self) {
         // Avoid running git when there isn't a git checkout.
         if !self.config.submodules(&self.rust_info()) {
             return;
@@ -702,8 +704,6 @@ impl Build {
         unsafe {
             job::setup(self);
         }
-
-        self.maybe_update_submodules();
 
         if let Subcommand::Format { check, paths } = &self.config.cmd {
             return format::format(&builder::Builder::new(&self), *check, &paths);
