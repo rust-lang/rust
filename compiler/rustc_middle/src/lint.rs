@@ -173,16 +173,6 @@ impl TyCtxt<'_> {
     /// Walks upwards from `id` to find a node which might change lint levels with attributes.
     /// It stops at `bound` and just returns it if reached.
     pub fn maybe_lint_level_root_bounded(self, mut id: HirId, bound: HirId) -> HirId {
-        // Some consumers of rustc need to map MIR locations back to HIR nodes. Currently the
-        // the only part of rustc that tracks MIR -> HIR is the `SourceScopeLocalData::lint_root`
-        // field that tracks lint levels for MIR locations.  Normally the number of source scopes
-        // is limited to the set of nodes with lint  annotations. The -Zmaximal-hir-to-mir-coverage
-        // flag changes this behavior to maximize the number of source scopes, increasing the
-        // granularity of the MIR->HIR mapping.
-        if self.sess.opts.unstable_opts.maximal_hir_to_mir_coverage {
-            return id;
-        }
-
         let hir = self.hir();
         loop {
             if id == bound {
