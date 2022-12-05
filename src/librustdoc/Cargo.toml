@@ -32,7 +32,7 @@ features = ["fmt", "env-filter", "smallvec", "parking_lot", "ansi"]
 rayon = "1.5.1"
 
 [dev-dependencies]
-expect-test = "1.0"
+expect-test = "1.4.0"
 
 [features]
 jemalloc = []
