@@ -29,8 +29,7 @@ use crate::marker::StructuralPartialEq;
 
 use self::Ordering::*;
 
-/// Trait for equality comparisons which are [partial equivalence
-/// relations](https://en.wikipedia.org/wiki/Partial_equivalence_relation).
+/// Trait for equality comparisons.
 ///
 /// `x.eq(y)` can also be written `x == y`, and `x.ne(y)` can be written `x != y`.
 /// We use the easier-to-read infix notation in the remainder of this documentation.
@@ -38,6 +37,8 @@ use self::Ordering::*;
 /// This trait allows for partial equality, for types that do not have a full
 /// equivalence relation. For example, in floating point numbers `NaN != NaN`,
 /// so floating point types implement `PartialEq` but not [`trait@Eq`].
+/// Formally speaking, when `Rhs == Self`, this trait corresponds to a [partial equivalence
+/// relation](https://en.wikipedia.org/wiki/Partial_equivalence_relation).
 ///
 /// Implementations must ensure that `eq` and `ne` are consistent with each other:
 ///

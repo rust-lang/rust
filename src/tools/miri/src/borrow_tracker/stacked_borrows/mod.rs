@@ -45,7 +45,9 @@ pub struct Stacks {
 /// new pointer.
 #[derive(Copy, Clone, Hash, PartialEq, Eq)]
 enum RefKind {
-    /// `&mut` and `Box`.
+    /// `Box`.
+    Box,
+    /// `&mut`.
     Unique { two_phase: bool },
     /// `&` with or without interior mutability.
     Shared,
@@ -56,6 +58,7 @@ enum RefKind {
 impl fmt::Display for RefKind {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         match self {
+            RefKind::Box => write!(f, "Box"),
             RefKind::Unique { two_phase: false } => write!(f, "unique reference"),
             RefKind::Unique { two_phase: true } => write!(f, "unique reference (two-phase)"),
             RefKind::Shared => write!(f, "shared reference"),
@@ -654,15 +657,17 @@ trait EvalContextPrivExt<'mir: 'ecx, 'tcx: 'mir, 'ecx>: crate::MiriInterpCxExt<'
         let (perm, access) = match kind {
             RefKind::Unique { two_phase } => {
                 // Permission is Unique only if the type is `Unpin` and this is not twophase
-                let perm = if !two_phase && place.layout.ty.is_unpin(*this.tcx, this.param_env()) {
-                    Permission::Unique
+                if !two_phase && place.layout.ty.is_unpin(*this.tcx, this.param_env()) {
+                    (Permission::Unique, Some(AccessKind::Write))
                 } else {
-                    Permission::SharedReadWrite
-                };
-                // We do an access for all full borrows, even if `!Unpin`.
-                let access = if !two_phase { Some(AccessKind::Write) } else { None };
-                (perm, access)
+                    // FIXME: We emit `dereferenceable` for `!Unpin` mutable references, so we
+                    // should do fake accesses here. But then we run into
+                    // <https://github.com/rust-lang/unsafe-code-guidelines/issues/381>, so for now
+                    // we don't do that.
+                    (Permission::SharedReadWrite, None)
+                }
             }
+            RefKind::Box => (Permission::Unique, Some(AccessKind::Write)),
             RefKind::Raw { mutable: true } => {
                 // Creating a raw ptr does not count as an access
                 (Permission::SharedReadWrite, None)
@@ -853,7 +858,7 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriInterpCxExt<'mir, 'tcx> {
                 // Boxes get a weak protectors, since they may be deallocated.
                 self.retag_place(
                     place,
-                    RefKind::Unique { two_phase: false },
+                    RefKind::Box,
                     self.retag_cause,
                     /*protector*/
                     (self.kind == RetagKind::FnEntry).then_some(ProtectorKind::WeakProtector),
