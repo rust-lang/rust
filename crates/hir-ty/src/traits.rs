@@ -18,7 +18,7 @@ use crate::{
 };
 
 /// This controls how much 'time' we give the Chalk solver before giving up.
-const CHALK_SOLVER_FUEL: i32 = 100;
+const CHALK_SOLVER_FUEL: i32 = 1000;
 
 #[derive(Debug, Copy, Clone)]
 pub(crate) struct ChalkContext<'a> {
