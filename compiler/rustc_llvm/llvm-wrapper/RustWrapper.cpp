@@ -17,7 +17,9 @@
 #include "llvm/Pass.h"
 #include "llvm/Bitcode/BitcodeWriter.h"
 #include "llvm/Support/Signals.h"
+#if LLVM_VERSION_LT(16, 0)
 #include "llvm/ADT/Optional.h"
+#endif
 
 #include <iostream>
 
@@ -708,7 +710,11 @@ enum class LLVMRustChecksumKind {
   SHA256,
 };
 
+#if LLVM_VERSION_LT(16, 0)
 static Optional<DIFile::ChecksumKind> fromRust(LLVMRustChecksumKind Kind) {
+#else
+static std::optional<DIFile::ChecksumKind> fromRust(LLVMRustChecksumKind Kind) {
+#endif
   switch (Kind) {
   case LLVMRustChecksumKind::None:
     return None;
@@ -787,8 +793,18 @@ extern "C" LLVMMetadataRef LLVMRustDIBuilderCreateFile(
     const char *Filename, size_t FilenameLen,
     const char *Directory, size_t DirectoryLen, LLVMRustChecksumKind CSKind,
     const char *Checksum, size_t ChecksumLen) {
+
+#if LLVM_VERSION_LT(16, 0)
   Optional<DIFile::ChecksumKind> llvmCSKind = fromRust(CSKind);
+#else
+  std::optional<DIFile::ChecksumKind> llvmCSKind = fromRust(CSKind);
+#endif
+
+#if LLVM_VERSION_LT(16, 0)
   Optional<DIFile::ChecksumInfo<StringRef>> CSInfo{};
+#else
+  std::optional<DIFile::ChecksumInfo<StringRef>> CSInfo{};
+#endif
   if (llvmCSKind)
     CSInfo.emplace(*llvmCSKind, StringRef{Checksum, ChecksumLen});
   return wrap(Builder->createFile(StringRef(Filename, FilenameLen),
