@@ -213,6 +213,11 @@ impl<'tcx> TypeRelation<'tcx> for Sub<'_, '_, 'tcx> {
     where
         T: Relate<'tcx>,
     {
+        // A binder is always a subtype of itself if it's structually equal to itself
+        if a == b {
+            return Ok(a);
+        }
+
         self.fields.higher_ranked_sub(a, b, self.a_is_expected)?;
         Ok(a)
     }

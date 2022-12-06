@@ -106,7 +106,7 @@ pub trait TypeRelation<'tcx>: Sized {
         T: Relate<'tcx>;
 }
 
-pub trait Relate<'tcx>: TypeFoldable<'tcx> + Copy {
+pub trait Relate<'tcx>: TypeFoldable<'tcx> + PartialEq + Copy {
     fn relate<R: TypeRelation<'tcx>>(
         relation: &mut R,
         a: Self,
@@ -351,7 +351,7 @@ impl<'tcx> Relate<'tcx> for ty::ExistentialTraitRef<'tcx> {
     }
 }
 
-#[derive(Copy, Debug, Clone, TypeFoldable, TypeVisitable)]
+#[derive(PartialEq, Copy, Debug, Clone, TypeFoldable, TypeVisitable)]
 struct GeneratorWitness<'tcx>(&'tcx ty::List<Ty<'tcx>>);
 
 impl<'tcx> Relate<'tcx> for GeneratorWitness<'tcx> {
