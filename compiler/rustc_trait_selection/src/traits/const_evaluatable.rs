@@ -64,7 +64,7 @@ pub fn is_const_evaluatable<'tcx>(
             ty::ConstKind::Expr(_) => {
                 // FIXME(generic_const_exprs): we have a `ConstKind::Expr` which is fully concrete, but
                 // currently it is not possible to evaluate `ConstKind::Expr` so we are unable to tell if it
-                // is evaluatable or not. For now we just ICE until this is implemented this.
+                // is evaluatable or not. For now we just ICE until this is implemented.
                 Err(NotConstEvaluatable::Error(tcx.sess.delay_span_bug(
                     span,
                     "evaluating `ConstKind::Expr` is not currently supported",
