@@ -274,7 +274,7 @@ impl Ord for DefId {
 impl PartialOrd for DefId {
     #[inline]
     fn partial_cmp(&self, other: &DefId) -> Option<std::cmp::Ordering> {
-        Some(Ord::cmp(self, other))
+        Some(self.cmp(other))
     }
 }
 
