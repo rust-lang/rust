@@ -273,6 +273,7 @@ const PERMITTED_RUSTC_DEPENDENCIES: &[&str] = &[
     "zerovec",
     "zerovec-derive",
     "r-efi",
+    "r-efi-alloc",
 ];
 
 const PERMITTED_CRANELIFT_DEPENDENCIES: &[&str] = &[

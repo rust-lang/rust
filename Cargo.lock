@@ -2954,6 +2954,17 @@ dependencies = [
 ]
 
 [[package]]
+name = "r-efi-alloc"
+version = "1.0.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "31d6f09fe2b6ad044bc3d2c34ce4979796581afd2f1ebc185837e02421e02fd7"
+dependencies = [
+ "compiler_builtins",
+ "r-efi",
+ "rustc-std-workspace-core",
+]
+
+[[package]]
 name = "rand"
 version = "0.7.3"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -4909,6 +4920,7 @@ dependencies = [
  "panic_unwind",
  "profiler_builtins",
  "r-efi",
+ "r-efi-alloc",
  "rand 0.7.3",
  "rustc-demangle",
  "std_detect",

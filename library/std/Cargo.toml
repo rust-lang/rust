@@ -49,6 +49,7 @@ wasi = { version = "0.11.0", features = ['rustc-dep-of-std'], default-features =
 
 [target.'cfg(target_os = "uefi")'.dependencies]
 r-efi = { version = "4.1.0", features = ['rustc-dep-of-std', 'efiapi']}
+r-efi-alloc = { version = "1.0.0", features = ['rustc-dep-of-std']}
 
 [features]
 backtrace = [
