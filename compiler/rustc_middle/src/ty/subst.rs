@@ -352,6 +352,22 @@ impl<'tcx> InternalSubsts<'tcx> {
         }
     }
 
+    // Extend an `original_substs` list to the full number of substs expected by `def_id`,
+    // filling in the missing parameters with error ty/ct or 'static regions.
+    pub fn extend_with_error(
+        tcx: TyCtxt<'tcx>,
+        def_id: DefId,
+        original_substs: &[GenericArg<'tcx>],
+    ) -> SubstsRef<'tcx> {
+        ty::InternalSubsts::for_item(tcx, def_id, |def, substs| {
+            if let Some(subst) = original_substs.get(def.index as usize) {
+                *subst
+            } else {
+                def.to_error(tcx, substs)
+            }
+        })
+    }
+
     #[inline]
     pub fn types(&'tcx self) -> impl DoubleEndedIterator<Item = Ty<'tcx>> + 'tcx {
         self.iter()
