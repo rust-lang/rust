@@ -943,6 +943,10 @@ impl<'a> Parser<'a> {
                                 Err(e) => {
                                     // Parsing failed, therefore it must be something more serious
                                     // than just a missing separator.
+                                    for xx in &e.children {
+                                        // propagate the help message from sub error 'e' to main error 'expect_err;
+                                        expect_err.children.push(xx.clone());
+                                    }
                                     expect_err.emit();
 
                                     e.cancel();
