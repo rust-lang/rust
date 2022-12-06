@@ -24,6 +24,8 @@ pub fn current_target_data_layout_query(db: &dyn HirDatabase) -> Arc<TargetDataL
             },
             _ => 8,
         });
+    // FIXME: These values are incorrect for many architectures, at least for aarch64 and riscv64,
+    // use `rustc +nightly -Z unstable-options --print target-spec-json` or something similar instead.
     Arc::new(TargetDataLayout {
         endian,
         i1_align: AbiAndPrefAlign::new(Align::from_bytes(1).unwrap()),
