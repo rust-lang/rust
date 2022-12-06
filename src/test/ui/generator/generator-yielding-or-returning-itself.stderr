@@ -9,7 +9,7 @@ LL | |
 LL | |         if false { yield None.unwrap(); }
 LL | |         None.unwrap()
 LL | |     })
-   | |_____^ cyclic type of infinite size
+   | |_____^ cyclic type of infinite size `[generator@$DIR/generator-yielding-or-returning-itself.rs:15:34: 15:36]`
    |
    = note: closures cannot capture themselves or take themselves as argument;
            this error may be the result of a recent compiler bug-fix,
@@ -34,7 +34,7 @@ LL | |
 LL | |         if false { yield None.unwrap(); }
 LL | |         None.unwrap()
 LL | |     })
-   | |_____^ cyclic type of infinite size
+   | |_____^ cyclic type of infinite size `[generator@$DIR/generator-yielding-or-returning-itself.rs:28:33: 28:35]`
    |
    = note: closures cannot capture themselves or take themselves as argument;
            this error may be the result of a recent compiler bug-fix,

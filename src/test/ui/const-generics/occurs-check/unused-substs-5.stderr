@@ -4,7 +4,7 @@ error[E0308]: mismatched types
 LL |     x = q::<_, N>(x);
    |         ^^^^^^^^^^^^- help: try using a conversion method: `.to_vec()`
    |         |
-   |         cyclic type of infinite size
+   |         cyclic type of infinite size `[u8; _]`
 
 error: aborting due to previous error
 

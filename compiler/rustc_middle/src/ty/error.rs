@@ -116,7 +116,7 @@ impl<'tcx> fmt::Display for TypeError<'tcx> {
         };
 
         match *self {
-            CyclicTy(_) => write!(f, "cyclic type of infinite size"),
+            CyclicTy(ty) => write!(f, "cyclic type of infinite size `{ty}`"),
             CyclicConst(_) => write!(f, "encountered a self-referencing constant"),
             Mismatch => write!(f, "types differ"),
             ConstnessMismatch(values) => {

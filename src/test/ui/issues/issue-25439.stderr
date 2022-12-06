@@ -2,7 +2,7 @@ error[E0644]: closure/generator type that references itself
   --> $DIR/issue-25439.rs:8:9
    |
 LL |     fix(|_, x| x);
-   |         ^^^^^^^^ cyclic type of infinite size
+   |         ^^^^^^^^ cyclic type of infinite size `[closure@$DIR/issue-25439.rs:8:9: 8:15]`
    |
    = note: closures cannot capture themselves or take themselves as argument;
            this error may be the result of a recent compiler bug-fix,
