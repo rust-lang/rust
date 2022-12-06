@@ -751,17 +751,45 @@ fn check_region_bounds_on_impl_item<'tcx>(
             .get_generics(impl_m.def_id.expect_local())
             .expect("expected impl item to have generics or else we can't compare them")
             .span;
-        let generics_span = if let Some(local_def_id) = trait_m.def_id.as_local() {
-            Some(
-                tcx.hir()
-                    .get_generics(local_def_id)
-                    .expect("expected trait item to have generics or else we can't compare them")
-                    .span,
-            )
-        } else {
-            None
-        };
 
+        let mut generics_span = None;
+        let mut bounds_span = vec![];
+        let mut where_span = None;
+        if let Some(trait_node) = tcx.hir().get_if_local(trait_m.def_id)
+            && let Some(trait_generics) = trait_node.generics()
+        {
+            generics_span = Some(trait_generics.span);
+            // FIXME: we could potentially look at the impl's bounds to not point at bounds that
+            // *are* present in the impl.
+            for p in trait_generics.predicates {
+                if let hir::WherePredicate::BoundPredicate(pred) = p {
+                    for b in pred.bounds {
+                        if let hir::GenericBound::Outlives(lt) = b {
+                            bounds_span.push(lt.ident.span);
+                        }
+                    }
+                }
+            }
+            if let Some(impl_node) = tcx.hir().get_if_local(impl_m.def_id)
+                && let Some(impl_generics) = impl_node.generics()
+            {
+                let mut impl_bounds = 0;
+                for p in impl_generics.predicates {
+                    if let hir::WherePredicate::BoundPredicate(pred) = p {
+                        for b in pred.bounds {
+                            if let hir::GenericBound::Outlives(_) = b {
+                                impl_bounds += 1;
+                            }
+                        }
+                    }
+                }
+                if impl_bounds == bounds_span.len() {
+                    bounds_span = vec![];
+                } else if impl_generics.has_where_clause_predicates {
+                    where_span = Some(impl_generics.where_clause_span);
+                }
+            }
+        }
         let reported = tcx
             .sess
             .create_err(LifetimesOrBoundsMismatchOnTrait {
@@ -769,9 +797,10 @@ fn check_region_bounds_on_impl_item<'tcx>(
                 item_kind: assoc_item_kind_str(impl_m),
                 ident: impl_m.ident(tcx),
                 generics_span,
+                bounds_span,
+                where_span,
             })
             .emit_unless(delay);
-
         return Err(reported);
     }
 

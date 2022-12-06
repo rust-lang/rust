@@ -17,6 +17,8 @@ hir_analysis_lifetimes_or_bounds_mismatch_on_trait =
     lifetime parameters or bounds on {$item_kind} `{$ident}` do not match the trait declaration
     .label = lifetimes do not match {$item_kind} in trait
     .generics_label = lifetimes in impl do not match this {$item_kind} in trait
+    .where_label = this `where` clause might not match the one in the trait
+    .bounds_label = this bound might be missing in the impl
 
 hir_analysis_drop_impl_on_wrong_item =
     the `Drop` trait may only be implemented for local structs, enums, and unions
