@@ -1177,22 +1177,14 @@ impl<'tcx> ToPredicate<'tcx, Predicate<'tcx>> for Binder<'tcx, TraitRef<'tcx>> {
 impl<'tcx> ToPredicate<'tcx, TraitPredicate<'tcx>> for TraitRef<'tcx> {
     #[inline(always)]
     fn to_predicate(self, _: TyCtxt<'tcx>) -> TraitPredicate<'tcx> {
-        TraitPredicate {
-            trait_ref: self,
-            constness: ty::BoundConstness::NotConst,
-            polarity: ty::ImplPolarity::Positive,
-        }
+        self.without_const()
     }
 }
 
 impl<'tcx> ToPredicate<'tcx, PolyTraitPredicate<'tcx>> for Binder<'tcx, TraitRef<'tcx>> {
     #[inline(always)]
     fn to_predicate(self, _: TyCtxt<'tcx>) -> PolyTraitPredicate<'tcx> {
-        self.map_bound(|trait_ref| TraitPredicate {
-            trait_ref,
-            constness: ty::BoundConstness::NotConst,
-            polarity: ty::ImplPolarity::Positive,
-        })
+        self.without_const()
     }
 }
 
