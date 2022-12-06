@@ -95,7 +95,6 @@ pub(crate) fn run(options: RustdocOptions) -> Result<(), ErrorGuaranteed> {
         crate_cfg: interface::parse_cfgspecs(cfgs),
         crate_check_cfg: interface::parse_check_cfg(options.check_cfgs.clone()),
         input,
-        input_path: None,
         output_file: None,
         output_dir: None,
         file_loader: None,

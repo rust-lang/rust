@@ -686,7 +686,7 @@ pub fn prepare_outputs(
         generated_output_paths(sess, &outputs, compiler.output_file.is_some(), crate_name);
 
     // Ensure the source file isn't accidentally overwritten during compilation.
-    if let Some(ref input_path) = compiler.input_path {
+    if let Some(ref input_path) = compiler.input.opt_path() {
         if sess.opts.will_create_output_file() {
             if output_contains_path(&output_paths, input_path) {
                 let reported = sess.emit_err(InputFileWouldBeOverWritten { path: input_path });

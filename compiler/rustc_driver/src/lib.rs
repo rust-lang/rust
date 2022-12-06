@@ -219,7 +219,6 @@ fn run_compiler(
         crate_cfg: cfg,
         crate_check_cfg: check_cfg,
         input: Input::File(PathBuf::new()),
-        input_path: None,
         output_file: ofile,
         output_dir: odir,
         file_loader,
@@ -237,9 +236,8 @@ fn run_compiler(
 
     match make_input(config.opts.error_format, &matches.free) {
         Err(reported) => return Err(reported),
-        Ok(Some((input, input_file_path))) => {
+        Ok(Some(input)) => {
             config.input = input;
-            config.input_path = input_file_path;
 
             callbacks.config(&mut config);
         }
@@ -437,7 +435,7 @@ fn make_output(matches: &getopts::Matches) -> (Option<PathBuf>, Option<PathBuf>)
 fn make_input(
     error_format: ErrorOutputType,
     free_matches: &[String],
-) -> Result<Option<(Input, Option<PathBuf>)>, ErrorGuaranteed> {
+) -> Result<Option<Input>, ErrorGuaranteed> {
     if free_matches.len() == 1 {
         let ifile = &free_matches[0];
         if ifile == "-" {
@@ -459,12 +457,12 @@ fn make_input(
                 let line = isize::from_str_radix(&line, 10)
                     .expect("UNSTABLE_RUSTDOC_TEST_LINE needs to be an number");
                 let file_name = FileName::doc_test_source_code(PathBuf::from(path), line);
-                Ok(Some((Input::Str { name: file_name, input: src }, None)))
+                Ok(Some(Input::Str { name: file_name, input: src }))
             } else {
-                Ok(Some((Input::Str { name: FileName::anon_source_code(&src), input: src }, None)))
+                Ok(Some(Input::Str { name: FileName::anon_source_code(&src), input: src }))
             }
         } else {
-            Ok(Some((Input::File(PathBuf::from(ifile)), Some(PathBuf::from(ifile)))))
+            Ok(Some(Input::File(PathBuf::from(ifile))))
         }
     } else {
         Ok(None)

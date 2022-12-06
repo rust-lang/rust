@@ -591,6 +591,24 @@ impl Input {
             Input::Str { ref name, .. } => name.clone(),
         }
     }
+
+    pub fn opt_path(&self) -> Option<PathBuf> {
+        match self {
+            Input::File(file) => Some(file.clone()),
+            Input::Str { name, .. } => match name {
+                FileName::Real(real) => real.local_path().map(|p| p.to_owned()),
+                FileName::QuoteExpansion(_) => None,
+                FileName::Anon(_) => None,
+                FileName::MacroExpansion(_) => None,
+                FileName::ProcMacroSourceCode(_) => None,
+                FileName::CfgSpec(_) => None,
+                FileName::CliCrateAttr(_) => None,
+                FileName::Custom(_) => None,
+                FileName::DocTest(path, _) => Some(path.to_owned()),
+                FileName::InlineAsm(_) => None,
+            },
+        }
+    }
 }
 
 #[derive(Clone, Hash, Debug, HashStable_Generic)]
