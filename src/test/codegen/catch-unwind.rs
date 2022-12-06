@@ -8,6 +8,8 @@
 // On riscv the closure is another function, placed before fn foo so CHECK can't
 // find it
 // ignore-riscv64 FIXME
+// On s390x the closure is also in another function
+// ignore-s390x FIXME
 
 #![crate_type = "lib"]
 #![feature(c_unwind)]
