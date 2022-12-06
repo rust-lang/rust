@@ -53,7 +53,7 @@ pub struct Obligation<'tcx, T> {
 }
 
 pub type PredicateObligation<'tcx> = Obligation<'tcx, ty::Predicate<'tcx>>;
-pub type TraitObligation<'tcx> = Obligation<'tcx, ty::PolyTraitPredicate<'tcx>>;
+pub type TraitObligation<'tcx> = Obligation<'tcx, ty::TraitPredicate<'tcx>>;
 
 impl<'tcx> PredicateObligation<'tcx> {
     /// Flips the polarity of the inner predicate.
@@ -80,7 +80,7 @@ impl<'tcx> PredicateObligation<'tcx> {
 impl<'tcx> TraitObligation<'tcx> {
     /// Returns `true` if the trait predicate is considered `const` in its ParamEnv.
     pub fn is_const(&self) -> bool {
-        match (self.predicate.skip_binder().constness, self.param_env.constness()) {
+        match (self.predicate.constness, self.param_env.constness()) {
             (ty::BoundConstness::ConstIfConst, hir::Constness::Const) => true,
             _ => false,
         }
@@ -90,7 +90,7 @@ impl<'tcx> TraitObligation<'tcx> {
         &self,
         variant: impl FnOnce(DerivedObligationCause<'tcx>) -> ObligationCauseCode<'tcx>,
     ) -> ObligationCause<'tcx> {
-        self.cause.clone().derived_cause(self.predicate, variant)
+        self.cause.clone().derived_cause(ty::Binder::dummy(self.predicate), variant)
     }
 }
 
@@ -169,15 +169,5 @@ impl<'tcx> FulfillmentError<'tcx> {
         root_obligation: PredicateObligation<'tcx>,
     ) -> FulfillmentError<'tcx> {
         FulfillmentError { obligation, code, root_obligation }
-    }
-}
-
-impl<'tcx> TraitObligation<'tcx> {
-    pub fn polarity(&self) -> ty::ImplPolarity {
-        self.predicate.skip_binder().polarity
-    }
-
-    pub fn self_ty(&self) -> ty::Binder<'tcx, Ty<'tcx>> {
-        self.predicate.map_bound(|p| p.self_ty())
     }
 }

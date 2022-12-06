@@ -2051,12 +2051,12 @@ impl<'tcx> InferCtxtPrivExt<'tcx> for TypeErrCtxt<'_, 'tcx> {
         // Ambiguity errors are often caused as fallout from earlier errors.
         // We ignore them if this `infcx` is tainted in some cases below.
 
-        let bound_predicate = predicate.kind();
-        let mut err = match bound_predicate.skip_binder() {
+        let kind = predicate
+            .kind()
+            .no_bound_vars()
+            .expect("ambiguity before replacing bound vars with placeholders");
+        let mut err = match kind {
             ty::PredicateKind::Clause(ty::Clause::Trait(data)) => {
-                let trait_ref = bound_predicate.rebind(data.trait_ref);
-                debug!(?trait_ref);
-
                 if predicate.references_error() {
                     return;
                 }
@@ -2076,12 +2076,12 @@ impl<'tcx> InferCtxtPrivExt<'tcx> for TypeErrCtxt<'_, 'tcx> {
                 // avoid inundating the user with unnecessary errors, but we now
                 // check upstream for type errors and don't add the obligations to
                 // begin with in those cases.
-                if self.tcx.lang_items().sized_trait() == Some(trait_ref.def_id()) {
+                if self.tcx.lang_items().sized_trait() == Some(data.trait_ref.def_id) {
                     if let None = self.tainted_by_errors() {
                         self.emit_inference_failure_err(
                             body_id,
                             span,
-                            trait_ref.self_ty().skip_binder().into(),
+                            data.self_ty().into(),
                             ErrorCode::E0282,
                             false,
                         )
@@ -2117,13 +2117,13 @@ impl<'tcx> InferCtxtPrivExt<'tcx> for TypeErrCtxt<'_, 'tcx> {
                     )
                 };
 
-                let obligation = obligation.with(self.tcx, trait_ref);
+                let obligation = obligation.with(self.tcx, data.trait_ref);
                 let mut selcx = SelectionContext::new(&self);
                 match selcx.select_from_obligation(&obligation) {
                     Ok(None) => {
                         let impls = ambiguity::recompute_applicable_impls(self.infcx, &obligation);
                         let has_non_region_infer =
-                            trait_ref.skip_binder().substs.types().any(|t| !t.is_ty_infer());
+                            data.trait_ref.substs.types().any(|t| !t.is_ty_infer());
                         // It doesn't make sense to talk about applicable impls if there are more
                         // than a handful of them.
                         if impls.len() > 1 && impls.len() < 5 && has_non_region_infer {
@@ -2146,7 +2146,7 @@ impl<'tcx> InferCtxtPrivExt<'tcx> for TypeErrCtxt<'_, 'tcx> {
                 }
 
                 if let ObligationCauseCode::ItemObligation(def_id) | ObligationCauseCode::ExprItemObligation(def_id, ..) = *obligation.cause.code() {
-                    self.suggest_fully_qualified_path(&mut err, def_id, span, trait_ref.def_id());
+                    self.suggest_fully_qualified_path(&mut err, def_id, span, data.def_id());
                 } else if let Ok(snippet) = &self.tcx.sess.source_map().span_to_snippet(span)
                     && let ObligationCauseCode::BindingObligation(def_id, _) | ObligationCauseCode::ExprBindingObligation(def_id, ..)
                         = *obligation.cause.code()

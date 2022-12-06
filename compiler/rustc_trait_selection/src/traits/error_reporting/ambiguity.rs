@@ -14,10 +14,8 @@ pub fn recompute_applicable_impls<'tcx>(
     let dummy_cause = ObligationCause::dummy();
     let impl_may_apply = |impl_def_id| {
         let ocx = ObligationCtxt::new_in_snapshot(infcx);
-        let placeholder_obligation =
-            infcx.replace_bound_vars_with_placeholders(obligation.predicate);
         let obligation_trait_ref =
-            ocx.normalize(dummy_cause.clone(), param_env, placeholder_obligation.trait_ref);
+            ocx.normalize(dummy_cause.clone(), param_env, obligation.predicate.trait_ref);
 
         let impl_substs = infcx.fresh_substs_for_item(DUMMY_SP, impl_def_id);
         let impl_trait_ref = tcx.bound_impl_trait_ref(impl_def_id).unwrap().subst(tcx, impl_substs);
@@ -41,7 +39,7 @@ pub fn recompute_applicable_impls<'tcx>(
     let mut impls = Vec::new();
     tcx.for_each_relevant_impl(
         obligation.predicate.def_id(),
-        obligation.predicate.skip_binder().trait_ref.self_ty(),
+        obligation.predicate.self_ty(),
         |impl_def_id| {
             if infcx.probe(move |_snapshot| impl_may_apply(impl_def_id)) {
                 impls.push(impl_def_id)

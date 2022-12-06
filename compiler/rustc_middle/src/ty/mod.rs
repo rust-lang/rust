@@ -945,7 +945,6 @@ pub struct SubtypePredicate<'tcx> {
     pub a: Ty<'tcx>,
     pub b: Ty<'tcx>,
 }
-pub type PolySubtypePredicate<'tcx> = ty::Binder<'tcx, SubtypePredicate<'tcx>>;
 
 /// Encodes that we have to coerce *from* the `a` type to the `b` type.
 #[derive(Clone, Copy, PartialEq, Eq, Hash, Debug, TyEncodable, TyDecodable)]
@@ -954,7 +953,6 @@ pub struct CoercePredicate<'tcx> {
     pub a: Ty<'tcx>,
     pub b: Ty<'tcx>,
 }
-pub type PolyCoercePredicate<'tcx> = ty::Binder<'tcx, CoercePredicate<'tcx>>;
 
 #[derive(Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash)]
 pub struct Term<'tcx> {
@@ -1140,6 +1138,7 @@ impl<'tcx> PolyProjectionPredicate<'tcx> {
     }
 }
 
+// FIXME: Remove this trait and use inherent methods instead.
 pub trait ToPolyTraitRef<'tcx> {
     fn to_poly_trait_ref(&self) -> PolyTraitRef<'tcx>;
 }
@@ -1172,6 +1171,17 @@ impl<'tcx> ToPredicate<'tcx, Predicate<'tcx>> for Binder<'tcx, TraitRef<'tcx>> {
     fn to_predicate(self, tcx: TyCtxt<'tcx>) -> Predicate<'tcx> {
         let pred: PolyTraitPredicate<'tcx> = self.to_predicate(tcx);
         pred.to_predicate(tcx)
+    }
+}
+
+impl<'tcx> ToPredicate<'tcx, TraitPredicate<'tcx>> for TraitRef<'tcx> {
+    #[inline(always)]
+    fn to_predicate(self, _: TyCtxt<'tcx>) -> TraitPredicate<'tcx> {
+        TraitPredicate {
+            trait_ref: self,
+            constness: ty::BoundConstness::NotConst,
+            polarity: ty::ImplPolarity::Positive,
+        }
     }
 }
 
@@ -1791,6 +1801,18 @@ impl<'tcx> ParamEnv<'tcx> {
 
 // FIXME(ecstaticmorse): Audit all occurrences of `without_const().to_predicate(tcx)` to ensure that
 // the constness of trait bounds is being propagated correctly.
+impl<'tcx> TraitRef<'tcx> {
+    #[inline]
+    pub fn with_constness(self, constness: BoundConstness) -> TraitPredicate<'tcx> {
+        ty::TraitPredicate { trait_ref: self, constness, polarity: ty::ImplPolarity::Positive }
+    }
+
+    #[inline]
+    pub fn without_const(self) -> TraitPredicate<'tcx> {
+        self.with_constness(BoundConstness::NotConst)
+    }
+}
+
 impl<'tcx> PolyTraitRef<'tcx> {
     #[inline]
     pub fn with_constness(self, constness: BoundConstness) -> PolyTraitPredicate<'tcx> {

@@ -1228,7 +1228,7 @@ rustc_queries! {
     }
 
     query codegen_select_candidate(
-        key: (ty::ParamEnv<'tcx>, ty::PolyTraitRef<'tcx>)
+        key: (ty::ParamEnv<'tcx>, ty::TraitRef<'tcx>)
     ) -> Result<&'tcx ImplSource<'tcx, ()>, traits::CodegenObligationError> {
         cache_on_disk_if { true }
         desc { |tcx| "computing candidate for `{}`", key.1 }

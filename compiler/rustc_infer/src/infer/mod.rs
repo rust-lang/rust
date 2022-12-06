@@ -974,13 +974,10 @@ impl<'tcx> InferCtxt<'tcx> {
         &self,
         cause: &ObligationCause<'tcx>,
         param_env: ty::ParamEnv<'tcx>,
-        predicate: ty::PolyCoercePredicate<'tcx>,
+        ty::CoercePredicate { a, b }: ty::CoercePredicate<'tcx>,
     ) -> Result<InferResult<'tcx, ()>, (TyVid, TyVid)> {
-        let subtype_predicate = predicate.map_bound(|p| ty::SubtypePredicate {
-            a_is_expected: false, // when coercing from `a` to `b`, `b` is expected
-            a: p.a,
-            b: p.b,
-        });
+        // when coercing from `a` to `b`, `b` is expected
+        let subtype_predicate = ty::SubtypePredicate { a_is_expected: false, a, b };
         self.subtype_predicate(cause, param_env, subtype_predicate)
     }
 
@@ -988,7 +985,7 @@ impl<'tcx> InferCtxt<'tcx> {
         &self,
         cause: &ObligationCause<'tcx>,
         param_env: ty::ParamEnv<'tcx>,
-        predicate: ty::PolySubtypePredicate<'tcx>,
+        ty::SubtypePredicate { a_is_expected, a, b }: ty::SubtypePredicate<'tcx>,
     ) -> Result<InferResult<'tcx, ()>, (TyVid, TyVid)> {
         // Check for two unresolved inference variables, in which case we can
         // make no progress. This is partly a micro-optimization, but it's
@@ -1003,9 +1000,9 @@ impl<'tcx> InferCtxt<'tcx> {
         //
         // Note that this sub here is not just for diagnostics - it has semantic
         // effects as well.
-        let r_a = self.shallow_resolve(predicate.skip_binder().a);
-        let r_b = self.shallow_resolve(predicate.skip_binder().b);
-        match (r_a.kind(), r_b.kind()) {
+        let a = self.shallow_resolve(a);
+        let b = self.shallow_resolve(b);
+        match (a.kind(), b.kind()) {
             (&ty::Infer(ty::TyVar(a_vid)), &ty::Infer(ty::TyVar(b_vid))) => {
                 self.inner.borrow_mut().type_variables().sub(a_vid, b_vid);
                 return Err((a_vid, b_vid));
@@ -1013,25 +1010,17 @@ impl<'tcx> InferCtxt<'tcx> {
             _ => {}
         }
 
-        Ok(self.commit_if_ok(|_snapshot| {
-            let ty::SubtypePredicate { a_is_expected, a, b } =
-                self.replace_bound_vars_with_placeholders(predicate);
-
-            let ok = self.at(cause, param_env).sub_exp(a_is_expected, a, b)?;
-
-            Ok(ok.unit())
-        }))
+        Ok(self.commit_if_ok(|_snapshot| self.at(cause, param_env).sub_exp(a_is_expected, a, b)))
     }
 
     pub fn region_outlives_predicate(
         &self,
         cause: &traits::ObligationCause<'tcx>,
-        predicate: ty::PolyRegionOutlivesPredicate<'tcx>,
+        ty::OutlivesPredicate(a, b): ty::RegionOutlivesPredicate<'tcx>,
     ) {
-        let ty::OutlivesPredicate(r_a, r_b) = self.replace_bound_vars_with_placeholders(predicate);
         let origin =
             SubregionOrigin::from_obligation_cause(cause, || RelateRegionParamBound(cause.span));
-        self.sub_regions(origin, r_b, r_a); // `b : a` ==> `a <= b`
+        self.sub_regions(origin, b, a); // `b : a` ==> `a <= b`
     }
 
     /// Number of type variables created so far.

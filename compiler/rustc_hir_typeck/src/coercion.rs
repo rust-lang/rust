@@ -609,7 +609,8 @@ impl<'f, 'tcx> Coerce<'f, 'tcx> {
             let obligation = queue.remove(0);
             debug!("coerce_unsized resolve step: {:?}", obligation);
             let bound_predicate = obligation.predicate.kind();
-            let trait_pred = match bound_predicate.skip_binder() {
+            let kind = self.infcx.replace_bound_vars_with_placeholders(bound_predicate);
+            let trait_pred = match kind {
                 ty::PredicateKind::Clause(ty::Clause::Trait(trait_pred))
                     if traits.contains(&trait_pred.def_id()) =>
                 {
@@ -628,7 +629,7 @@ impl<'f, 'tcx> Coerce<'f, 'tcx> {
                             has_unsized_tuple_coercion = true;
                         }
                     }
-                    bound_predicate.rebind(trait_pred)
+                    trait_pred
                 }
                 _ => {
                     coercion.obligations.push(obligation);
@@ -640,8 +641,8 @@ impl<'f, 'tcx> Coerce<'f, 'tcx> {
                 Ok(None) => {
                     if trait_pred.def_id() == unsize_did {
                         let trait_pred = self.resolve_vars_if_possible(trait_pred);
-                        let self_ty = trait_pred.skip_binder().self_ty();
-                        let unsize_ty = trait_pred.skip_binder().trait_ref.substs[1].expect_ty();
+                        let self_ty = trait_pred.self_ty();
+                        let unsize_ty = trait_pred.trait_ref.substs[1].expect_ty();
                         debug!("coerce_unsized: ambiguous unsize case for {:?}", trait_pred);
                         match (&self_ty.kind(), &unsize_ty.kind()) {
                             (ty::Infer(ty::TyVar(v)), ty::Dynamic(..))

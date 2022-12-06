@@ -31,7 +31,7 @@ use rustc_infer::infer::resolve::OpportunisticRegionResolver;
 use rustc_infer::traits::ImplSourceBuiltinData;
 use rustc_middle::traits::select::OverflowError;
 use rustc_middle::ty::fold::{TypeFoldable, TypeFolder, TypeSuperFoldable};
-use rustc_middle::ty::visit::{MaxUniverse, TypeVisitable};
+use rustc_middle::ty::visit::TypeVisitable;
 use rustc_middle::ty::DefIdTree;
 use rustc_middle::ty::{self, Term, ToPredicate, Ty, TyCtxt};
 use rustc_span::symbol::sym;
@@ -39,8 +39,6 @@ use rustc_span::symbol::sym;
 use std::collections::BTreeMap;
 
 pub use rustc_middle::traits::Reveal;
-
-pub type PolyProjectionObligation<'tcx> = Obligation<'tcx, ty::PolyProjectionPredicate<'tcx>>;
 
 pub type ProjectionObligation<'tcx> = Obligation<'tcx, ty::ProjectionPredicate<'tcx>>;
 
@@ -158,7 +156,7 @@ impl<'tcx> ProjectionCandidateSet<'tcx> {
     }
 }
 
-/// States returned from `poly_project_and_unify_type`. Takes the place
+/// States returned from `project_and_unify_type`. Takes the place
 /// of the old return type, which was:
 /// ```ignore (not-rust)
 /// Result<
@@ -175,7 +173,7 @@ pub(super) enum ProjectAndUnifyResult<'tcx> {
     /// The projection cannot be normalized due to ambiguity. Resolving some
     /// inference variables in the projection may fix this.
     FailedNormalization,
-    /// The project cannot be normalized because `poly_project_and_unify_type`
+    /// The project cannot be normalized because `project_and_unify_type`
     /// is called recursively while normalizing the same projection.
     Recursive,
     // the projection can be normalized, but is not equal to the expected type.
@@ -185,66 +183,12 @@ pub(super) enum ProjectAndUnifyResult<'tcx> {
 
 /// Evaluates constraints of the form:
 /// ```ignore (not-rust)
-/// for<...> <T as Trait>::U == V
+/// <T as Trait>::U == V
 /// ```
 /// If successful, this may result in additional obligations. Also returns
 /// the projection cache key used to track these additional obligations.
 #[instrument(level = "debug", skip(selcx))]
-pub(super) fn poly_project_and_unify_type<'cx, 'tcx>(
-    selcx: &mut SelectionContext<'cx, 'tcx>,
-    obligation: &PolyProjectionObligation<'tcx>,
-) -> ProjectAndUnifyResult<'tcx> {
-    let infcx = selcx.infcx;
-    let r = infcx.commit_if_ok(|_snapshot| {
-        let old_universe = infcx.universe();
-        let placeholder_predicate =
-            infcx.replace_bound_vars_with_placeholders(obligation.predicate);
-        let new_universe = infcx.universe();
-
-        let placeholder_obligation = obligation.with(infcx.tcx, placeholder_predicate);
-        match project_and_unify_type(selcx, &placeholder_obligation) {
-            ProjectAndUnifyResult::MismatchedProjectionTypes(e) => Err(e),
-            ProjectAndUnifyResult::Holds(obligations)
-                if old_universe != new_universe
-                    && selcx.tcx().features().generic_associated_types_extended =>
-            {
-                // If the `generic_associated_types_extended` feature is active, then we ignore any
-                // obligations references lifetimes from any universe greater than or equal to the
-                // universe just created. Otherwise, we can end up with something like `for<'a> I: 'a`,
-                // which isn't quite what we want. Ideally, we want either an implied
-                // `for<'a where I: 'a> I: 'a` or we want to "lazily" check these hold when we
-                // substitute concrete regions. There is design work to be done here; until then,
-                // however, this allows experimenting potential GAT features without running into
-                // well-formedness issues.
-                let new_obligations = obligations
-                    .into_iter()
-                    .filter(|obligation| {
-                        let mut visitor = MaxUniverse::new();
-                        obligation.predicate.visit_with(&mut visitor);
-                        visitor.max_universe() < new_universe
-                    })
-                    .collect();
-                Ok(ProjectAndUnifyResult::Holds(new_obligations))
-            }
-            other => Ok(other),
-        }
-    });
-
-    match r {
-        Ok(inner) => inner,
-        Err(err) => ProjectAndUnifyResult::MismatchedProjectionTypes(err),
-    }
-}
-
-/// Evaluates constraints of the form:
-/// ```ignore (not-rust)
-/// <T as Trait>::U == V
-/// ```
-/// If successful, this may result in additional obligations.
-///
-/// See [poly_project_and_unify_type] for an explanation of the return value.
-#[instrument(level = "debug", skip(selcx))]
-fn project_and_unify_type<'cx, 'tcx>(
+pub(super) fn project_and_unify_type<'cx, 'tcx>(
     selcx: &mut SelectionContext<'cx, 'tcx>,
     obligation: &ProjectionObligation<'tcx>,
 ) -> ProjectAndUnifyResult<'tcx> {
@@ -1323,12 +1267,10 @@ fn assemble_candidate_for_impl_trait_in_trait<'cx, 'tcx>(
         let trait_def_id = tcx.parent(trait_fn_def_id);
         let trait_substs =
             obligation.predicate.substs.truncate_to(tcx, tcx.generics_of(trait_def_id));
-        // FIXME(named-returns): Binders
-        let trait_predicate =
-            ty::Binder::dummy(ty::TraitRef { def_id: trait_def_id, substs: trait_substs });
+        let trait_ref = ty::TraitRef { def_id: trait_def_id, substs: trait_substs };
 
         let _ = selcx.infcx.commit_if_ok(|_| {
-            match selcx.select(&obligation.with(tcx, trait_predicate)) {
+            match selcx.select(&obligation.with(tcx, trait_ref)) {
                 Ok(Some(super::ImplSource::UserDefined(data))) => {
                     candidate_set.push_candidate(ProjectionCandidate::ImplTraitInTrait(
                         ImplTraitInTraitCandidate::Impl(data),
@@ -1524,8 +1466,8 @@ fn assemble_candidates_from_impls<'cx, 'tcx>(
 
     // If we are resolving `<T as TraitRef<...>>::Item == Type`,
     // start out by selecting the predicate `T as TraitRef<...>`:
-    let poly_trait_ref = ty::Binder::dummy(obligation.predicate.trait_ref(selcx.tcx()));
-    let trait_obligation = obligation.with(selcx.tcx(), poly_trait_ref);
+    let trait_ref = obligation.predicate.trait_ref(selcx.tcx());
+    let trait_obligation = obligation.with(selcx.tcx(), trait_ref);
     let _ = selcx.infcx.commit_if_ok(|_| {
         let impl_source = match selcx.select(&trait_obligation) {
             Ok(Some(impl_source)) => impl_source,
@@ -1583,9 +1525,9 @@ fn assemble_candidates_from_impls<'cx, 'tcx>(
                     // get a result which isn't correct for all monomorphizations.
                     if obligation.param_env.reveal() == Reveal::All {
                         // NOTE(eddyb) inference variables can resolve to parameters, so
-                        // assume `poly_trait_ref` isn't monomorphic, if it contains any.
-                        let poly_trait_ref = selcx.infcx.resolve_vars_if_possible(poly_trait_ref);
-                        !poly_trait_ref.still_further_specializable()
+                        // assume `trait_ref` isn't monomorphic, if it contains any.
+                        let trait_ref = selcx.infcx.resolve_vars_if_possible(trait_ref);
+                        !trait_ref.still_further_specializable()
                     } else {
                         debug!(
                             assoc_ty = ?selcx.tcx().def_path_str(node_item.item.def_id),
@@ -1603,7 +1545,7 @@ fn assemble_candidates_from_impls<'cx, 'tcx>(
                 let self_ty = selcx.infcx.shallow_resolve(obligation.predicate.self_ty());
 
                 let lang_items = selcx.tcx().lang_items();
-                if lang_items.discriminant_kind_trait() == Some(poly_trait_ref.def_id()) {
+                if lang_items.discriminant_kind_trait() == Some(trait_ref.def_id) {
                     match self_ty.kind() {
                         ty::Bool
                         | ty::Char
@@ -1638,7 +1580,7 @@ fn assemble_candidates_from_impls<'cx, 'tcx>(
                         | ty::Infer(..)
                         | ty::Error(_) => false,
                     }
-                } else if lang_items.pointee_trait() == Some(poly_trait_ref.def_id()) {
+                } else if lang_items.pointee_trait() == Some(trait_ref.def_id) {
                     let tail = selcx.tcx().struct_tail_with_normalize(
                         self_ty,
                         |ty| {
@@ -1715,7 +1657,7 @@ fn assemble_candidates_from_impls<'cx, 'tcx>(
                         }
                     }
                 } else {
-                    bug!("unexpected builtin trait with associated type: {poly_trait_ref:?}")
+                    bug!("unexpected builtin trait with associated type: {trait_ref:?}")
                 }
             }
             super::ImplSource::Param(..) => {
@@ -2405,32 +2347,5 @@ fn assoc_def(
             tcx.item_name(assoc_def_id),
             tcx.def_path_str(impl_def_id)
         )
-    }
-}
-
-pub(crate) trait ProjectionCacheKeyExt<'cx, 'tcx>: Sized {
-    fn from_poly_projection_predicate(
-        selcx: &mut SelectionContext<'cx, 'tcx>,
-        predicate: ty::PolyProjectionPredicate<'tcx>,
-    ) -> Option<Self>;
-}
-
-impl<'cx, 'tcx> ProjectionCacheKeyExt<'cx, 'tcx> for ProjectionCacheKey<'tcx> {
-    fn from_poly_projection_predicate(
-        selcx: &mut SelectionContext<'cx, 'tcx>,
-        predicate: ty::PolyProjectionPredicate<'tcx>,
-    ) -> Option<Self> {
-        let infcx = selcx.infcx;
-        // We don't do cross-snapshot caching of obligations with escaping regions,
-        // so there's no cache key to use
-        predicate.no_bound_vars().map(|predicate| {
-            ProjectionCacheKey::new(
-                // We don't attempt to match up with a specific type-variable state
-                // from a specific call to `opt_normalize_projection_type` - if
-                // there's no precise match, the original cache entry is "stranded"
-                // anyway.
-                infcx.resolve_vars_if_possible(predicate.projection_ty),
-            )
-        })
     }
 }

@@ -1,22 +1,46 @@
-error[E0277]: expected a `FnOnce<(&mut UIView<'_, T>,)>` closure, found `F`
-  --> $DIR/issue-100690.rs:37:23
+error: lifetime may not live long enough
+  --> $DIR/issue-100690.rs:37:9
    |
+LL | impl<'a, T: 'a> Handle<'a, T, UIView<'a, T>, Result<(), io::Error>> for TUIHandle<T> {
+   |      -- lifetime `'a` defined here
+...
 LL |         real_dispatch(f)
-   |         ------------- ^ expected an `FnOnce<(&mut UIView<'_, T>,)>` closure, found `F`
-   |         |
-   |         required by a bound introduced by this call
+   |         ^^^^^^^^^^^^^^^^ requires that `'a` must outlive `'static`
    |
-   = note: expected a closure with arguments `(&mut UIView<'a, T>,)`
-              found a closure with arguments `(&mut UIView<'_, T>,)`
-note: required by a bound in `real_dispatch`
+note: due to current limitations in the borrow checker, this implies a `'static` lifetime
   --> $DIR/issue-100690.rs:9:8
    |
-LL | fn real_dispatch<T, F>(f: F) -> Result<(), io::Error>
-   |    ------------- required by a bound in this
-...
 LL |     F: FnOnce(&mut UIView<T>) -> Result<(), io::Error> + Send + 'static,
-   |        ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ required by this bound in `real_dispatch`
+   |        ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
-error: aborting due to previous error
+error[E0308]: mismatched types
+  --> $DIR/issue-100690.rs:37:9
+   |
+LL |         real_dispatch(f)
+   |         ^^^^^^^^^^^^^^^^ one type is more general than the other
+   |
+   = note: expected trait `for<'a, 'b> FnOnce<(&'a mut UIView<'b, T>,)>`
+              found trait `for<'a> FnOnce<(&'a mut UIView<'_, T>,)>`
+note: the lifetime requirement is introduced here
+  --> $DIR/issue-100690.rs:9:8
+   |
+LL |     F: FnOnce(&mut UIView<T>) -> Result<(), io::Error> + Send + 'static,
+   |        ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
-For more information about this error, try `rustc --explain E0277`.
+error[E0308]: mismatched types
+  --> $DIR/issue-100690.rs:37:9
+   |
+LL |         real_dispatch(f)
+   |         ^^^^^^^^^^^^^^^^ one type is more general than the other
+   |
+   = note: expected associated type `<F as FnOnce<(&mut UIView<'_, T>,)>>::Output`
+              found associated type `<F as FnOnce<(&mut UIView<'_, T>,)>>::Output`
+note: the lifetime requirement is introduced here
+  --> $DIR/issue-100690.rs:9:34
+   |
+LL |     F: FnOnce(&mut UIView<T>) -> Result<(), io::Error> + Send + 'static,
+   |                                  ^^^^^^^^^^^^^^^^^^^^^
+
+error: aborting due to 3 previous errors
+
+For more information about this error, try `rustc --explain E0308`.

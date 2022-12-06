@@ -95,7 +95,7 @@ impl<'tcx> AutoTraitFinder<'tcx> {
                 tcx,
                 ObligationCause::dummy(),
                 orig_env,
-                ty::Binder::dummy(ty::TraitPredicate {
+                ty::TraitPredicate {
                     trait_ref,
                     constness: ty::BoundConstness::NotConst,
                     polarity: if polarity {
@@ -103,7 +103,7 @@ impl<'tcx> AutoTraitFinder<'tcx> {
                     } else {
                         ImplPolarity::Negative
                     },
-                }),
+                },
             ));
             if let Ok(Some(ImplSource::UserDefined(_))) = result {
                 debug!(
@@ -262,13 +262,13 @@ impl<'tcx> AutoTraitFinder<'tcx> {
 
         let mut already_visited = FxHashSet::default();
         let mut predicates = VecDeque::new();
-        predicates.push_back(ty::Binder::dummy(ty::TraitPredicate {
+        predicates.push_back(ty::TraitPredicate {
             trait_ref: infcx.tcx.mk_trait_ref(trait_did, [ty]),
 
             constness: ty::BoundConstness::NotConst,
             // Auto traits are positive
             polarity: ty::ImplPolarity::Positive,
-        }));
+        });
 
         let computed_preds = param_env.caller_bounds().iter();
         let mut user_computed_preds: FxIndexSet<_> = user_env.caller_bounds().iter().collect();
@@ -329,17 +329,18 @@ impl<'tcx> AutoTraitFinder<'tcx> {
                 }
                 Ok(None) => {}
                 Err(SelectionError::Unimplemented) => {
-                    if self.is_param_no_infer(pred.skip_binder().trait_ref.substs) {
+                    if self.is_param_no_infer(pred.trait_ref.substs) {
                         already_visited.remove(&pred);
-                        self.add_user_pred(&mut user_computed_preds, pred.to_predicate(self.tcx));
+                        self.add_user_pred(
+                            &mut user_computed_preds,
+                            ty::Binder::dummy(pred).to_predicate(self.tcx),
+                        );
                         predicates.push_back(pred);
                     } else {
                         debug!(
                             "evaluate_nested_obligations: `Unimplemented` found, bailing: \
                              {:?} {:?} {:?}",
-                            ty,
-                            pred,
-                            pred.skip_binder().trait_ref.substs
+                            ty, pred, pred.trait_ref.substs
                         );
                         return None;
                     }
@@ -406,7 +407,8 @@ impl<'tcx> AutoTraitFinder<'tcx> {
             if let (
                 ty::PredicateKind::Clause(ty::Clause::Trait(new_trait)),
                 ty::PredicateKind::Clause(ty::Clause::Trait(old_trait)),
-            ) = (new_pred.kind().skip_binder(), old_pred.kind().skip_binder())
+            ) =
+                (new_pred.kind().no_bound_vars().unwrap(), old_pred.kind().no_bound_vars().unwrap())
             {
                 if new_trait.def_id() == old_trait.def_id() {
                     let new_substs = new_trait.trait_ref.substs;
@@ -424,9 +426,9 @@ impl<'tcx> AutoTraitFinder<'tcx> {
                         match (*new_region, *old_region) {
                             // If both predicates have an `ReLateBound` (a HRTB) in the
                             // same spot, we do nothing.
-                            (ty::ReLateBound(_, _), ty::ReLateBound(_, _)) => {}
+                            (ty::RePlaceholder(_), ty::RePlaceholder(_)) => {}
 
-                            (ty::ReLateBound(_, _), _) | (_, ty::ReVar(_)) => {
+                            (ty::RePlaceholder(_), _) | (_, ty::ReVar(_)) => {
                                 // One of these is true:
                                 // The new predicate has a HRTB in a spot where the old
                                 // predicate does not (if they both had a HRTB, the previous
@@ -452,7 +454,7 @@ impl<'tcx> AutoTraitFinder<'tcx> {
                                 // `user_computed_preds`.
                                 return false;
                             }
-                            (_, ty::ReLateBound(_, _)) | (ty::ReVar(_), _) => {
+                            (_, ty::RePlaceholder(_)) | (ty::ReVar(_), _) => {
                                 // This is the opposite situation as the previous arm.
                                 // One of these is true:
                                 //
@@ -584,9 +586,9 @@ impl<'tcx> AutoTraitFinder<'tcx> {
         }
     }
 
-    fn is_self_referential_projection(&self, p: ty::PolyProjectionPredicate<'_>) -> bool {
-        if let Some(ty) = p.term().skip_binder().ty() {
-            matches!(ty.kind(), ty::Projection(proj) if proj == &p.skip_binder().projection_ty)
+    fn is_self_referential_projection(&self, p: ty::ProjectionPredicate<'_>) -> bool {
+        if let Some(ty) = p.term.ty() {
+            matches!(ty.kind(), &ty::Projection(proj) if proj == p.projection_ty)
         } else {
             false
         }
@@ -598,7 +600,7 @@ impl<'tcx> AutoTraitFinder<'tcx> {
         nested: impl Iterator<Item = Obligation<'tcx, ty::Predicate<'tcx>>>,
         computed_preds: &mut FxIndexSet<ty::Predicate<'tcx>>,
         fresh_preds: &mut FxHashSet<ty::Predicate<'tcx>>,
-        predicates: &mut VecDeque<ty::PolyTraitPredicate<'tcx>>,
+        predicates: &mut VecDeque<ty::TraitPredicate<'tcx>>,
         selcx: &mut SelectionContext<'_, 'tcx>,
         only_projections: bool,
     ) -> bool {
@@ -624,17 +626,16 @@ impl<'tcx> AutoTraitFinder<'tcx> {
             // We check this by calling is_of_param on the relevant types
             // from the various possible predicates
 
-            let bound_predicate = predicate.kind();
-            match bound_predicate.skip_binder() {
+            let kind = selcx.infcx.replace_bound_vars_with_placeholders(predicate.kind());
+            match kind {
                 ty::PredicateKind::Clause(ty::Clause::Trait(p)) => {
                     // Add this to `predicates` so that we end up calling `select`
                     // with it. If this predicate ends up being unimplemented,
                     // then `evaluate_predicates` will handle adding it the `ParamEnv`
                     // if possible.
-                    predicates.push_back(bound_predicate.rebind(p));
+                    predicates.push_back(p);
                 }
                 ty::PredicateKind::Clause(ty::Clause::Projection(p)) => {
-                    let p = bound_predicate.rebind(p);
                     debug!(
                         "evaluate_nested_obligations: examining projection predicate {:?}",
                         predicate
@@ -645,8 +646,8 @@ impl<'tcx> AutoTraitFinder<'tcx> {
                     // an inference variable.
                     // Additionally, we check if we've seen this predicate before,
                     // to avoid rendering duplicate bounds to the user.
-                    if self.is_param_no_infer(p.skip_binder().projection_ty.substs)
-                        && !p.term().skip_binder().has_infer_types()
+                    if self.is_param_no_infer(p.projection_ty.substs)
+                        && !p.term.has_infer_types()
                         && is_new_pred
                     {
                         debug!(
@@ -660,7 +661,7 @@ impl<'tcx> AutoTraitFinder<'tcx> {
                         // <T as MyType>::Value == <T as MyType>::Value
                         // Not only is displaying this to the user pointless,
                         // having it in the ParamEnv will cause an issue if we try to call
-                        // poly_project_and_unify_type on the predicate, since this kind of
+                        // project_and_unify_type on the predicate, since this kind of
                         // predicate will normally never end up in a ParamEnv.
                         //
                         // For these reasons, we ignore these weird predicates,
@@ -717,8 +718,7 @@ impl<'tcx> AutoTraitFinder<'tcx> {
                     // and turn them into an explicit negative impl for our type.
                     debug!("Projecting and unifying projection predicate {:?}", predicate);
 
-                    match project::poly_project_and_unify_type(selcx, &obligation.with(self.tcx, p))
-                    {
+                    match project::project_and_unify_type(selcx, &obligation.with(self.tcx, p)) {
                         ProjectAndUnifyResult::MismatchedProjectionTypes(e) => {
                             debug!(
                                 "evaluate_nested_obligations: Unable to unify predicate \
@@ -736,7 +736,7 @@ impl<'tcx> AutoTraitFinder<'tcx> {
                             // when we started out trying to unify
                             // some inference variables. See the comment above
                             // for more information
-                            if p.term().skip_binder().has_infer_types() {
+                            if p.term.has_infer_types() {
                                 if !self.evaluate_nested_obligations(
                                     ty,
                                     v.into_iter(),
@@ -758,38 +758,26 @@ impl<'tcx> AutoTraitFinder<'tcx> {
                             // However, we should always make progress (either by generating
                             // subobligations or getting an error) when we started off with
                             // inference variables
-                            if p.term().skip_binder().has_infer_types() {
+                            if p.term.has_infer_types() {
                                 panic!("Unexpected result when selecting {:?} {:?}", ty, obligation)
                             }
                         }
                     }
                 }
-                ty::PredicateKind::Clause(ty::Clause::RegionOutlives(binder)) => {
-                    let binder = bound_predicate.rebind(binder);
-                    selcx.infcx.region_outlives_predicate(&dummy_cause, binder)
+                ty::PredicateKind::Clause(ty::Clause::RegionOutlives(outlives)) => {
+                    selcx.infcx.region_outlives_predicate(&dummy_cause, outlives)
                 }
-                ty::PredicateKind::Clause(ty::Clause::TypeOutlives(binder)) => {
-                    let binder = bound_predicate.rebind(binder);
-                    match (
-                        binder.no_bound_vars(),
-                        binder.map_bound_ref(|pred| pred.0).no_bound_vars(),
-                    ) {
-                        (None, Some(t_a)) => {
-                            selcx.infcx.register_region_obligation_with_cause(
-                                t_a,
-                                selcx.infcx.tcx.lifetimes.re_static,
-                                &dummy_cause,
-                            );
-                        }
-                        (Some(ty::OutlivesPredicate(t_a, r_b)), _) => {
-                            selcx.infcx.register_region_obligation_with_cause(
-                                t_a,
-                                r_b,
-                                &dummy_cause,
-                            );
-                        }
-                        _ => {}
-                    };
+                ty::PredicateKind::Clause(ty::Clause::TypeOutlives(outlives)) => {
+                    let ty::OutlivesPredicate(t_a, r_b) = outlives;
+                    if let ty::RePlaceholder(_) = r_b.kind() {
+                        selcx.infcx.register_region_obligation_with_cause(
+                            t_a,
+                            selcx.infcx.tcx.lifetimes.re_static,
+                            &dummy_cause,
+                        );
+                    } else {
+                        selcx.infcx.register_region_obligation_with_cause(t_a, r_b, &dummy_cause);
+                    }
                 }
                 ty::PredicateKind::ConstEquate(c1, c2) => {
                     let evaluate = |c: ty::Const<'tcx>| {

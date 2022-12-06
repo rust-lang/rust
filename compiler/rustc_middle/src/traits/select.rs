@@ -23,7 +23,7 @@ pub type SelectionCache<'tcx> = Cache<
 pub type EvaluationCache<'tcx> = Cache<
     // See above: this cache does not use `ParamEnvAnd` in its keys due to sometimes incorrectly
     // caching with the wrong `ParamEnv`.
-    (ty::ParamEnv<'tcx>, ty::PolyTraitPredicate<'tcx>),
+    (ty::ParamEnv<'tcx>, ty::TraitPredicate<'tcx>),
     EvaluationResult,
 >;
 
