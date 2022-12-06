@@ -245,7 +245,7 @@ impl<'a> CrateLoader<'a> {
     pub fn new(
         sess: &'a Session,
         metadata_loader: Box<MetadataLoaderDyn>,
-        local_crate_name: &str,
+        local_crate_name: Symbol,
     ) -> Self {
         let mut stable_crate_ids = FxHashMap::default();
         stable_crate_ids.insert(sess.local_stable_crate_id(), LOCAL_CRATE);
@@ -253,7 +253,7 @@ impl<'a> CrateLoader<'a> {
         CrateLoader {
             sess,
             metadata_loader,
-            local_crate_name: Symbol::intern(local_crate_name),
+            local_crate_name,
             cstore: CStore {
                 // We add an empty entry for LOCAL_CRATE (which maps to zero) in
                 // order to make array indices in `metas` match with the
@@ -1000,7 +1000,7 @@ impl<'a> CrateLoader<'a> {
                 );
                 let name = match orig_name {
                     Some(orig_name) => {
-                        validate_crate_name(self.sess, orig_name.as_str(), Some(item.span));
+                        validate_crate_name(self.sess, orig_name, Some(item.span));
                         orig_name
                     }
                     None => item.ident.name,

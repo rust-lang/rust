@@ -61,8 +61,7 @@ pub fn encode_and_write_metadata(tcx: TyCtxt<'_>) -> (EncodedMetadata, bool) {
         .unwrap_or(MetadataKind::None);
 
     let crate_name = tcx.crate_name(LOCAL_CRATE);
-    let out_filename =
-        filename_for_metadata(tcx.sess, crate_name.as_str(), tcx.output_filenames(()));
+    let out_filename = filename_for_metadata(tcx.sess, crate_name, tcx.output_filenames(()));
     // To avoid races with another rustc process scanning the output directory,
     // we need to write the file somewhere else and atomically move it to its
     // final destination, with an `fs::rename` call. In order for the rename to

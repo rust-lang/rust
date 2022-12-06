@@ -1281,7 +1281,7 @@ impl<'tcx> TyCtxt<'tcx> {
         on_disk_cache: Option<&'tcx dyn OnDiskCache<'tcx>>,
         queries: &'tcx dyn query::QueryEngine<'tcx>,
         query_kinds: &'tcx [DepKindStruct<'tcx>],
-        crate_name: &str,
+        crate_name: Symbol,
         output_filenames: OutputFilenames,
     ) -> GlobalCtxt<'tcx> {
         let data_layout = s.target.parse_data_layout().unwrap_or_else(|err| {
@@ -1321,7 +1321,7 @@ impl<'tcx> TyCtxt<'tcx> {
             pred_rcache: Default::default(),
             selection_cache: Default::default(),
             evaluation_cache: Default::default(),
-            crate_name: Symbol::intern(crate_name),
+            crate_name,
             data_layout,
             alloc_map: Lock::new(interpret::AllocMap::new()),
             output_filenames: Arc::new(output_filenames),
