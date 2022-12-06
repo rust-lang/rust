@@ -2313,7 +2313,7 @@ impl<'a, 'b> ImportResolver<'a, 'b> {
                 } else {
                     // If the root import is module-relative, add the import separately
                     corrections.push((
-                        source_map.start_point(import.use_span).shrink_to_lo(),
+                        import.use_span.shrink_to_lo(),
                         format!("use {module_name}::{import_snippet};\n"),
                     ));
                 }
