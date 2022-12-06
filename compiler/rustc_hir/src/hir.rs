@@ -3524,6 +3524,13 @@ impl<'hir> Node<'hir> {
         }
     }
 
+    pub fn alias_ty(self) -> Option<&'hir Ty<'hir>> {
+        match self {
+            Node::Item(Item { kind: ItemKind::TyAlias(ty, ..), .. }) => Some(ty),
+            _ => None,
+        }
+    }
+
     pub fn body_id(&self) -> Option<BodyId> {
         match self {
             Node::TraitItem(TraitItem {
