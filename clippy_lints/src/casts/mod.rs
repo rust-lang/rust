@@ -85,7 +85,7 @@ declare_clippy_lint! {
     /// ### Why is this bad?
     /// In some problem domains, it is good practice to avoid
     /// truncation. This lint can be activated to help assess where additional
-    /// checks could be beneficial.
+    /// checks could be beneficial, and suggests implementing TryFrom trait.
     ///
     /// ### Example
     /// ```rust

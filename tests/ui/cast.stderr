@@ -42,13 +42,24 @@ error: casting `f32` to `i32` may truncate the value
 LL |     1f32 as i32;
    |     ^^^^^^^^^^^
    |
+   = help: if this is intentional allow the lint with `#[allow(clippy::cast_precision_loss)]` ...
    = note: `-D clippy::cast-possible-truncation` implied by `-D warnings`
+help: ... or use `try_from` and handle the error accordingly
+   |
+LL |     i32::try_from(1f32);
+   |     ~~~~~~~~~~~~~~~~~~~
 
 error: casting `f32` to `u32` may truncate the value
   --> $DIR/cast.rs:25:5
    |
 LL |     1f32 as u32;
    |     ^^^^^^^^^^^
+   |
+   = help: if this is intentional allow the lint with `#[allow(clippy::cast_precision_loss)]` ...
+help: ... or use `try_from` and handle the error accordingly
+   |
+LL |     u32::try_from(1f32);
+   |     ~~~~~~~~~~~~~~~~~~~
 
 error: casting `f32` to `u32` may lose the sign of the value
   --> $DIR/cast.rs:25:5
@@ -63,30 +74,60 @@ error: casting `f64` to `f32` may truncate the value
    |
 LL |     1f64 as f32;
    |     ^^^^^^^^^^^
+   |
+   = help: if this is intentional allow the lint with `#[allow(clippy::cast_precision_loss)]` ...
+help: ... or use `try_from` and handle the error accordingly
+   |
+LL |     f32::try_from(1f64);
+   |     ~~~~~~~~~~~~~~~~~~~
 
 error: casting `i32` to `i8` may truncate the value
   --> $DIR/cast.rs:27:5
    |
 LL |     1i32 as i8;
    |     ^^^^^^^^^^
+   |
+   = help: if this is intentional allow the lint with `#[allow(clippy::cast_precision_loss)]` ...
+help: ... or use `try_from` and handle the error accordingly
+   |
+LL |     i8::try_from(1i32);
+   |     ~~~~~~~~~~~~~~~~~~
 
 error: casting `i32` to `u8` may truncate the value
   --> $DIR/cast.rs:28:5
    |
 LL |     1i32 as u8;
    |     ^^^^^^^^^^
+   |
+   = help: if this is intentional allow the lint with `#[allow(clippy::cast_precision_loss)]` ...
+help: ... or use `try_from` and handle the error accordingly
+   |
+LL |     u8::try_from(1i32);
+   |     ~~~~~~~~~~~~~~~~~~
 
 error: casting `f64` to `isize` may truncate the value
   --> $DIR/cast.rs:29:5
    |
 LL |     1f64 as isize;
    |     ^^^^^^^^^^^^^
+   |
+   = help: if this is intentional allow the lint with `#[allow(clippy::cast_precision_loss)]` ...
+help: ... or use `try_from` and handle the error accordingly
+   |
+LL |     isize::try_from(1f64);
+   |     ~~~~~~~~~~~~~~~~~~~~~
 
 error: casting `f64` to `usize` may truncate the value
   --> $DIR/cast.rs:30:5
    |
 LL |     1f64 as usize;
    |     ^^^^^^^^^^^^^
+   |
+   = help: if this is intentional allow the lint with `#[allow(clippy::cast_precision_loss)]` ...
+help: ... or use `try_from` and handle the error accordingly
+   |
+LL |     usize::try_from(1f64);
+   |     ~~~~~~~~~~~~~~~~~~~~~
 
 error: casting `f64` to `usize` may lose the sign of the value
   --> $DIR/cast.rs:30:5
@@ -143,18 +184,36 @@ error: casting `i64` to `i8` may truncate the value
    |
 LL |     (-99999999999i64).min(1) as i8; // should be linted because signed
    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+   = help: if this is intentional allow the lint with `#[allow(clippy::cast_precision_loss)]` ...
+help: ... or use `try_from` and handle the error accordingly
+   |
+LL |     i8::try_from((-99999999999i64).min(1)); // should be linted because signed
+   |     ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 error: casting `u64` to `u8` may truncate the value
   --> $DIR/cast.rs:120:5
    |
 LL |     999999u64.clamp(0, 256) as u8; // should still be linted
    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+   = help: if this is intentional allow the lint with `#[allow(clippy::cast_precision_loss)]` ...
+help: ... or use `try_from` and handle the error accordingly
+   |
+LL |     u8::try_from(999999u64.clamp(0, 256)); // should still be linted
+   |     ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 error: casting `main::E2` to `u8` may truncate the value
   --> $DIR/cast.rs:141:21
    |
 LL |             let _ = self as u8;
    |                     ^^^^^^^^^^
+   |
+   = help: if this is intentional allow the lint with `#[allow(clippy::cast_precision_loss)]` ...
+help: ... or use `try_from` and handle the error accordingly
+   |
+LL |             let _ = u8::try_from(self);
+   |                     ~~~~~~~~~~~~~~~~~~
 
 error: casting `main::E2::B` to `u8` will truncate the value
   --> $DIR/cast.rs:142:21
@@ -169,6 +228,12 @@ error: casting `main::E5` to `i8` may truncate the value
    |
 LL |             let _ = self as i8;
    |                     ^^^^^^^^^^
+   |
+   = help: if this is intentional allow the lint with `#[allow(clippy::cast_precision_loss)]` ...
+help: ... or use `try_from` and handle the error accordingly
+   |
+LL |             let _ = i8::try_from(self);
+   |                     ~~~~~~~~~~~~~~~~~~
 
 error: casting `main::E5::A` to `i8` will truncate the value
   --> $DIR/cast.rs:179:21
@@ -181,30 +246,60 @@ error: casting `main::E6` to `i16` may truncate the value
    |
 LL |             let _ = self as i16;
    |                     ^^^^^^^^^^^
+   |
+   = help: if this is intentional allow the lint with `#[allow(clippy::cast_precision_loss)]` ...
+help: ... or use `try_from` and handle the error accordingly
+   |
+LL |             let _ = i16::try_from(self);
+   |                     ~~~~~~~~~~~~~~~~~~~
 
 error: casting `main::E7` to `usize` may truncate the value on targets with 32-bit wide pointers
   --> $DIR/cast.rs:208:21
    |
 LL |             let _ = self as usize;
    |                     ^^^^^^^^^^^^^
+   |
+   = help: if this is intentional allow the lint with `#[allow(clippy::cast_precision_loss)]` ...
+help: ... or use `try_from` and handle the error accordingly
+   |
+LL |             let _ = usize::try_from(self);
+   |                     ~~~~~~~~~~~~~~~~~~~~~
 
 error: casting `main::E10` to `u16` may truncate the value
   --> $DIR/cast.rs:249:21
    |
 LL |             let _ = self as u16;
    |                     ^^^^^^^^^^^
+   |
+   = help: if this is intentional allow the lint with `#[allow(clippy::cast_precision_loss)]` ...
+help: ... or use `try_from` and handle the error accordingly
+   |
+LL |             let _ = u16::try_from(self);
+   |                     ~~~~~~~~~~~~~~~~~~~
 
 error: casting `u32` to `u8` may truncate the value
   --> $DIR/cast.rs:257:13
    |
 LL |     let c = (q >> 16) as u8;
    |             ^^^^^^^^^^^^^^^
+   |
+   = help: if this is intentional allow the lint with `#[allow(clippy::cast_precision_loss)]` ...
+help: ... or use `try_from` and handle the error accordingly
+   |
+LL |     let c = u8::try_from((q >> 16));
+   |             ~~~~~~~~~~~~~~~~~~~~~~~
 
 error: casting `u32` to `u8` may truncate the value
   --> $DIR/cast.rs:260:13
    |
 LL |     let c = (q / 1000) as u8;
    |             ^^^^^^^^^^^^^^^^
+   |
+   = help: if this is intentional allow the lint with `#[allow(clippy::cast_precision_loss)]` ...
+help: ... or use `try_from` and handle the error accordingly
+   |
+LL |     let c = u8::try_from((q / 1000));
+   |             ~~~~~~~~~~~~~~~~~~~~~~~~
 
 error: aborting due to 33 previous errors
 
