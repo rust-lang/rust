@@ -232,12 +232,8 @@ impl<'tcx> LayoutLlvmExt<'tcx> for TyAndLayout<'tcx> {
                 return llty;
             }
             let llty = match *self.ty.kind() {
-                ty::Ref(_, ty, _) | ty::RawPtr(ty::TypeAndMut { ty, .. }) => {
-                    cx.type_ptr_to(cx.layout_of(ty).llvm_type(cx))
-                }
-                ty::Adt(def, _) if def.is_box() => {
-                    cx.type_ptr_to(cx.layout_of(self.ty.boxed_ty()).llvm_type(cx))
-                }
+                ty::Ref(..) | ty::RawPtr(ty::TypeAndMut { .. }) => cx.type_ptr(),
+                ty::Adt(def, _) if def.is_box() => cx.type_ptr(),
                 ty::FnPtr(sig) => {
                     cx.fn_ptr_backend_type(cx.fn_abi_of_fn_ptr(sig, ty::List::empty()))
                 }
@@ -313,14 +309,12 @@ impl<'tcx> LayoutLlvmExt<'tcx> for TyAndLayout<'tcx> {
             F32 => cx.type_f32(),
             F64 => cx.type_f64(),
             Pointer => {
-                // If we know the alignment, pick something better than i8.
-                let (pointee, address_space) =
-                    if let Some(pointee) = self.pointee_info_at(cx, offset) {
-                        (cx.type_pointee_for_align(pointee.align), pointee.address_space)
-                    } else {
-                        (cx.type_i8(), AddressSpace::DATA)
-                    };
-                cx.type_ptr_to_ext(pointee, address_space)
+                let address_space = if let Some(pointee) = self.pointee_info_at(cx, offset) {
+                    pointee.address_space
+                } else {
+                    AddressSpace::DATA
+                };
+                cx.type_ptr_in(address_space)
             }
         }
     }

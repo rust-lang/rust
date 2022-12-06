@@ -23,7 +23,7 @@ impl<'a, 'tcx> VirtualIndex {
         // Load the data pointer from the object.
         debug!("get_fn({llvtable:?}, {ty:?}, {self:?})");
         let llty = bx.fn_ptr_backend_type(fn_abi);
-        let llvtable = bx.pointercast(llvtable, bx.type_ptr_to(llty));
+        let llvtable = bx.pointercast(llvtable, bx.type_ptr());
 
         if bx.cx().sess().opts.unstable_opts.virtual_function_elimination
             && bx.cx().sess().lto() == Lto::Fat
@@ -54,7 +54,7 @@ impl<'a, 'tcx> VirtualIndex {
         debug!("get_int({:?}, {:?})", llvtable, self);
 
         let llty = bx.type_isize();
-        let llvtable = bx.pointercast(llvtable, bx.type_ptr_to(llty));
+        let llvtable = bx.pointercast(llvtable, bx.type_ptr());
         let usize_align = bx.tcx().data_layout.pointer_align.abi;
         let gep = bx.inbounds_gep(llty, llvtable, &[bx.const_usize(self.0)]);
         let ptr = bx.load(llty, gep, usize_align);

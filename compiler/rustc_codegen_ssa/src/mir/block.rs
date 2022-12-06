@@ -426,7 +426,7 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
                     }
                 };
                 let ty = bx.cast_backend_type(cast_ty);
-                let addr = bx.pointercast(llslot, bx.type_ptr_to(ty));
+                let addr = bx.pointercast(llslot, bx.type_ptr());
                 bx.load(ty, addr, self.fn_abi.ret.layout.align.abi)
             }
         };
@@ -529,7 +529,7 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
                 let data_ty = bx.cx().backend_type(place.layout);
                 let vtable_ptr =
                     bx.gep(data_ty, data, &[bx.cx().const_i32(0), bx.cx().const_i32(1)]);
-                let vtable = bx.load(bx.type_i8p(), vtable_ptr, abi::Align::ONE);
+                let vtable = bx.load(bx.type_ptr(), vtable_ptr, abi::Align::ONE);
                 // Truncate vtable off of args list
                 args = &args[..1];
                 debug!("args' = {:?}", args);
@@ -857,9 +857,7 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
             Some(intrinsic) => {
                 let dest = match ret_dest {
                     _ if fn_abi.ret.is_indirect() => llargs[0],
-                    ReturnDest::Nothing => {
-                        bx.const_undef(bx.type_ptr_to(bx.arg_memory_ty(&fn_abi.ret)))
-                    }
+                    ReturnDest::Nothing => bx.const_undef(bx.type_ptr()),
                     ReturnDest::IndirectOperand(dst, _) | ReturnDest::Store(dst) => dst.llval,
                     ReturnDest::DirectOperand(_) => {
                         bug!("Cannot use direct operand with an intrinsic call")
@@ -1448,7 +1446,7 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
             // Have to load the argument, maybe while casting it.
             if let PassMode::Cast(ty, _) = &arg.mode {
                 let llty = bx.cast_backend_type(ty);
-                let addr = bx.pointercast(llval, bx.type_ptr_to(llty));
+                let addr = bx.pointercast(llval, bx.type_ptr());
                 llval = bx.load(llty, addr, align.min(arg.layout.align.abi));
             } else {
                 // We can't use `PlaceRef::load` here because the argument
@@ -1613,7 +1611,7 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
                     // represents that this is a catch-all block.
                     let mut cp_bx = Bx::build(self.cx, cp_llbb);
                     let null = cp_bx.const_null(
-                        cp_bx.type_i8p_ext(cp_bx.cx().data_layout().instruction_address_space),
+                        cp_bx.type_ptr_in(cp_bx.cx().data_layout().instruction_address_space),
                     );
                     let sixty_four = cp_bx.const_i32(64);
                     funclet = cp_bx.catch_pad(cs, &[null, sixty_four, null]);
@@ -1650,7 +1648,7 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
 
     fn landing_pad_type(&self) -> Bx::Type {
         let cx = self.cx;
-        cx.type_struct(&[cx.type_i8p(), cx.type_i32()], false)
+        cx.type_struct(&[cx.type_ptr(), cx.type_i32()], false)
     }
 
     fn unreachable_block(&mut self) -> Bx::BasicBlock {
@@ -1828,8 +1826,7 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
             _ => {}
         }
 
-        let llty = bx.backend_type(src.layout);
-        let cast_ptr = bx.pointercast(dst.llval, bx.type_ptr_to(llty));
+        let cast_ptr = bx.pointercast(dst.llval, bx.type_ptr());
         let align = src.layout.align.abi.min(dst.align);
         src.val.store(bx, PlaceRef::new_sized_aligned(cast_ptr, src.layout, align));
     }

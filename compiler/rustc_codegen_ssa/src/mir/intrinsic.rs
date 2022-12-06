@@ -381,7 +381,7 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
 
             sym::const_allocate => {
                 // returns a null pointer at runtime.
-                bx.const_null(bx.type_i8p())
+                bx.const_null(bx.type_ptr())
             }
 
             sym::const_deallocate => {
@@ -435,7 +435,7 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
                             if ty.is_unsafe_ptr() {
                                 // Some platforms do not support atomic operations on pointers,
                                 // so we cast to integer first.
-                                let ptr_llty = bx.type_ptr_to(bx.type_isize());
+                                let ptr_llty = bx.type_ptr();
                                 dst = bx.pointercast(dst, ptr_llty);
                                 cmp = bx.ptrtoint(cmp, bx.type_isize());
                                 src = bx.ptrtoint(src, bx.type_isize());
@@ -466,7 +466,7 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
                                 // Some platforms do not support atomic operations on pointers,
                                 // so we cast to integer first...
                                 let llty = bx.type_isize();
-                                let ptr_llty = bx.type_ptr_to(llty);
+                                let ptr_llty = bx.type_ptr();
                                 source = bx.pointercast(source, ptr_llty);
                                 let result = bx.atomic_load(llty, source, parse_ordering(bx, ordering), size);
                                 // ... and then cast the result back to a pointer
@@ -488,7 +488,7 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
                             if ty.is_unsafe_ptr() {
                                 // Some platforms do not support atomic operations on pointers,
                                 // so we cast to integer first.
-                                let ptr_llty = bx.type_ptr_to(bx.type_isize());
+                                let ptr_llty = bx.type_ptr();
                                 ptr = bx.pointercast(ptr, ptr_llty);
                                 val = bx.ptrtoint(val, bx.type_isize());
                             }
@@ -533,7 +533,7 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
                             if ty.is_unsafe_ptr() {
                                 // Some platforms do not support atomic operations on pointers,
                                 // so we cast to integer first.
-                                let ptr_llty = bx.type_ptr_to(bx.type_isize());
+                                let ptr_llty = bx.type_ptr();
                                 ptr = bx.pointercast(ptr, ptr_llty);
                                 val = bx.ptrtoint(val, bx.type_isize());
                             }
@@ -589,8 +589,8 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
         };
 
         if !fn_abi.ret.is_ignore() {
-            if let PassMode::Cast(ty, _) = &fn_abi.ret.mode {
-                let ptr_llty = bx.type_ptr_to(bx.cast_backend_type(ty));
+            if let PassMode::Cast(_, _) = &fn_abi.ret.mode {
+                let ptr_llty = bx.type_ptr();
                 let ptr = bx.pointercast(result.llval, ptr_llty);
                 bx.store(llval, ptr, result.align);
             } else {

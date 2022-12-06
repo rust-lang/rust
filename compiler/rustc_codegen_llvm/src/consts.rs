@@ -114,7 +114,7 @@ pub fn const_alloc_to_llvm<'ll>(cx: &CodegenCx<'ll, '_>, alloc: ConstAllocation<
                 value: Primitive::Pointer,
                 valid_range: WrappingRange::full(dl.pointer_size),
             },
-            cx.type_i8p_ext(address_space),
+            cx.type_ptr_in(address_space),
         ));
         next_offset = offset + pointer_size;
     }
@@ -267,7 +267,7 @@ impl<'ll> CodegenCx<'ll, '_> {
         let g = if def_id.is_local() && !self.tcx.is_foreign_item(def_id) {
             let llty = self.layout_of(ty).llvm_type(self);
             if let Some(g) = self.get_declared_value(sym) {
-                if self.val_ty(g) != self.type_ptr_to(llty) {
+                if self.val_ty(g) != self.type_ptr() {
                     span_bug!(self.tcx.def_span(def_id), "Conflicting types for static");
                 }
             }
@@ -570,16 +570,16 @@ impl<'ll> StaticMethods for CodegenCx<'ll, '_> {
         }
     }
 
-    /// Add a global value to a list to be stored in the `llvm.used` variable, an array of i8*.
+    /// Add a global value to a list to be stored in the `llvm.used` variable, an array of ptr.
     fn add_used_global(&self, global: &'ll Value) {
-        let cast = unsafe { llvm::LLVMConstPointerCast(global, self.type_i8p()) };
+        let cast = unsafe { llvm::LLVMConstPointerCast(global, self.type_ptr()) };
         self.used_statics.borrow_mut().push(cast);
     }
 
     /// Add a global value to a list to be stored in the `llvm.compiler.used` variable,
-    /// an array of i8*.
+    /// an array of ptr.
     fn add_compiler_used_global(&self, global: &'ll Value) {
-        let cast = unsafe { llvm::LLVMConstPointerCast(global, self.type_i8p()) };
+        let cast = unsafe { llvm::LLVMConstPointerCast(global, self.type_ptr()) };
         self.compiler_used_statics.borrow_mut().push(cast);
     }
 }

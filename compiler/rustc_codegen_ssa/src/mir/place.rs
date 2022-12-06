@@ -107,7 +107,7 @@ impl<'a, 'tcx, V: CodegenObject> PlaceRef<'tcx, V> {
                 }
                 Abi::Scalar(_) | Abi::ScalarPair(..) | Abi::Vector { .. } if field.is_zst() => {
                     // ZST fields are not included in Scalar, ScalarPair, and Vector layouts, so manually offset the pointer.
-                    let byte_ptr = bx.pointercast(self.llval, bx.cx().type_i8p());
+                    let byte_ptr = bx.pointercast(self.llval, bx.type_ptr());
                     bx.gep(bx.cx().type_i8(), byte_ptr, &[bx.const_usize(offset.bytes())])
                 }
                 Abi::Scalar(_) | Abi::ScalarPair(..) => {
@@ -126,7 +126,7 @@ impl<'a, 'tcx, V: CodegenObject> PlaceRef<'tcx, V> {
             };
             PlaceRef {
                 // HACK(eddyb): have to bitcast pointers until LLVM removes pointee types.
-                llval: bx.pointercast(llval, bx.cx().type_ptr_to(bx.cx().backend_type(field))),
+                llval: bx.pointercast(llval, bx.type_ptr()),
                 llextra: if bx.cx().type_has_metadata(field.ty) { self.llextra } else { None },
                 layout: field,
                 align: effective_field_align,
@@ -187,7 +187,7 @@ impl<'a, 'tcx, V: CodegenObject> PlaceRef<'tcx, V> {
         debug!("struct_field_ptr: DST field offset: {:?}", offset);
 
         // Cast and adjust pointer.
-        let byte_ptr = bx.pointercast(self.llval, bx.cx().type_i8p());
+        let byte_ptr = bx.pointercast(self.llval, bx.type_ptr());
         let byte_ptr = bx.gep(bx.cx().type_i8(), byte_ptr, &[offset]);
 
         // Finally, cast back to the type expected.
@@ -195,7 +195,7 @@ impl<'a, 'tcx, V: CodegenObject> PlaceRef<'tcx, V> {
         debug!("struct_field_ptr: Field type is {:?}", ll_fty);
 
         PlaceRef {
-            llval: bx.pointercast(byte_ptr, bx.cx().type_ptr_to(ll_fty)),
+            llval: bx.pointercast(byte_ptr, bx.type_ptr()),
             llextra: self.llextra,
             layout: field,
             align: effective_field_align,
@@ -499,8 +499,7 @@ impl<'a, 'tcx, V: CodegenObject> PlaceRef<'tcx, V> {
         downcast.layout = self.layout.for_variant(bx.cx(), variant_index);
 
         // Cast to the appropriate variant struct type.
-        let variant_ty = bx.cx().backend_type(downcast.layout);
-        downcast.llval = bx.pointercast(downcast.llval, bx.cx().type_ptr_to(variant_ty));
+        downcast.llval = bx.pointercast(downcast.llval, bx.type_ptr());
 
         downcast
     }
@@ -514,8 +513,7 @@ impl<'a, 'tcx, V: CodegenObject> PlaceRef<'tcx, V> {
         downcast.layout = bx.cx().layout_of(ty);
 
         // Cast to the appropriate type.
-        let variant_ty = bx.cx().backend_type(downcast.layout);
-        downcast.llval = bx.pointercast(downcast.llval, bx.cx().type_ptr_to(variant_ty));
+        downcast.llval = bx.pointercast(downcast.llval, bx.type_ptr());
 
         downcast
     }
@@ -595,10 +593,7 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
 
                     // Cast the place pointer type to the new
                     // array or slice type (`*[%_; new_len]`).
-                    subslice.llval = bx.pointercast(
-                        subslice.llval,
-                        bx.cx().type_ptr_to(bx.cx().backend_type(subslice.layout)),
-                    );
+                    subslice.llval = bx.pointercast(subslice.llval, bx.cx().type_ptr());
 
                     subslice
                 }

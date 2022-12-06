@@ -169,10 +169,10 @@ pub fn unsized_info<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>>(
                 cx.tcx().vtable_trait_upcasting_coercion_new_vptr_slot((source, target));
 
             if let Some(entry_idx) = vptr_entry_idx {
-                let ptr_ty = cx.type_i8p();
+                let ptr_ty = cx.type_ptr();
                 let ptr_align = cx.tcx().data_layout.pointer_align.abi;
                 let vtable_ptr_ty = vtable_ptr_ty(cx, target, target_dyn_kind);
-                let llvtable = bx.pointercast(old_info, bx.type_ptr_to(ptr_ty));
+                let llvtable = bx.pointercast(old_info, bx.type_ptr());
                 let gep = bx.inbounds_gep(
                     ptr_ty,
                     llvtable,
@@ -226,7 +226,7 @@ pub fn unsize_ptr<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>>(
         (&ty::Ref(_, a, _), &ty::Ref(_, b, _) | &ty::RawPtr(ty::TypeAndMut { ty: b, .. }))
         | (&ty::RawPtr(ty::TypeAndMut { ty: a, .. }), &ty::RawPtr(ty::TypeAndMut { ty: b, .. })) => {
             assert_eq!(bx.cx().type_is_sized(a), old_info.is_none());
-            let ptr_ty = bx.cx().type_ptr_to(bx.cx().backend_type(bx.cx().layout_of(b)));
+            let ptr_ty = bx.type_ptr();
             (bx.pointercast(src, ptr_ty), unsized_info(bx, a, b, old_info))
         }
         (&ty::Adt(def_a, _), &ty::Adt(def_b, _)) => {
@@ -433,7 +433,7 @@ pub fn maybe_create_entry_wrapper<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>>(
         // The entry function is either `int main(void)` or `int main(int argc, char **argv)`,
         // depending on whether the target needs `argc` and `argv` to be passed in.
         let llfty = if cx.sess().target.main_needs_argc_argv {
-            cx.type_func(&[cx.type_int(), cx.type_ptr_to(cx.type_i8p())], cx.type_int())
+            cx.type_func(&[cx.type_int(), cx.type_ptr()], cx.type_int())
         } else {
             cx.type_func(&[], cx.type_int())
         };
@@ -470,7 +470,7 @@ pub fn maybe_create_entry_wrapper<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>>(
         bx.insert_reference_to_gdb_debug_scripts_section_global();
 
         let isize_ty = cx.type_isize();
-        let i8pp_ty = cx.type_ptr_to(cx.type_i8p());
+        let i8pp_ty = cx.type_ptr();
         let (arg_argc, arg_argv) = get_argc_argv(cx, &mut bx);
 
         let (start_fn, start_ty, args) = if let EntryFnType::Main { sigpipe } = entry_type {
@@ -521,7 +521,7 @@ fn get_argc_argv<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>>(
     } else {
         // The Rust start function doesn't need `argc` and `argv`, so just pass zeros.
         let arg_argc = bx.const_int(cx.type_int(), 0);
-        let arg_argv = bx.const_null(cx.type_ptr_to(cx.type_i8p()));
+        let arg_argv = bx.const_null(cx.type_ptr());
         (arg_argc, arg_argv)
     }
 }

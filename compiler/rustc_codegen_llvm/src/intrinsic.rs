@@ -165,7 +165,7 @@ impl<'ll, 'tcx> IntrinsicCallMethods<'tcx> for Builder<'_, 'll, 'tcx> {
                 let ptr = args[0].immediate();
                 let load = if let PassMode::Cast(ty, _) = &fn_abi.ret.mode {
                     let llty = ty.llvm_type(self);
-                    let ptr = self.pointercast(ptr, self.type_ptr_to(llty));
+                    let ptr = self.pointercast(ptr, self.type_ptr());
                     self.volatile_load(llty, ptr)
                 } else {
                     self.volatile_load(self.layout_of(tp_ty).llvm_type(self), ptr)
@@ -319,16 +319,16 @@ impl<'ll, 'tcx> IntrinsicCallMethods<'tcx> for Builder<'_, 'll, 'tcx> {
                     self.const_bool(true)
                 } else if use_integer_compare {
                     let integer_ty = self.type_ix(layout.size().bits());
-                    let ptr_ty = self.type_ptr_to(integer_ty);
+                    let ptr_ty = self.type_ptr();
                     let a_ptr = self.bitcast(a, ptr_ty);
                     let a_val = self.load(integer_ty, a_ptr, layout.align().abi);
                     let b_ptr = self.bitcast(b, ptr_ty);
                     let b_val = self.load(integer_ty, b_ptr, layout.align().abi);
                     self.icmp(IntPredicate::IntEQ, a_val, b_val)
                 } else {
-                    let i8p_ty = self.type_i8p();
-                    let a_ptr = self.bitcast(a, i8p_ty);
-                    let b_ptr = self.bitcast(b, i8p_ty);
+                    let ptr_ty = self.type_ptr();
+                    let a_ptr = self.bitcast(a, ptr_ty);
+                    let b_ptr = self.bitcast(b, ptr_ty);
                     let n = self.const_usize(layout.size().bytes());
                     let cmp = self.call_intrinsic("memcmp", &[a_ptr, b_ptr, n]);
                     match self.cx.sess().target.arch.as_ref() {
@@ -385,8 +385,8 @@ impl<'ll, 'tcx> IntrinsicCallMethods<'tcx> for Builder<'_, 'll, 'tcx> {
         };
 
         if !fn_abi.ret.is_ignore() {
-            if let PassMode::Cast(ty, _) = &fn_abi.ret.mode {
-                let ptr_llty = self.type_ptr_to(ty.llvm_type(self));
+            if let PassMode::Cast(_, _) = &fn_abi.ret.mode {
+                let ptr_llty = self.type_ptr();
                 let ptr = self.pointercast(result.llval, ptr_llty);
                 self.store(llval, ptr, result.align);
             } else {
@@ -412,8 +412,8 @@ impl<'ll, 'tcx> IntrinsicCallMethods<'tcx> for Builder<'_, 'll, 'tcx> {
     fn type_test(&mut self, pointer: Self::Value, typeid: Self::Value) -> Self::Value {
         // Test the called operand using llvm.type.test intrinsic. The LowerTypeTests link-time
         // optimization pass replaces calls to this intrinsic with code to test type membership.
-        let i8p_ty = self.type_i8p();
-        let bitcast = self.bitcast(pointer, i8p_ty);
+        let ptr_ty = self.type_ptr();
+        let bitcast = self.bitcast(pointer, ptr_ty);
         self.call_intrinsic("llvm.type.test", &[bitcast, typeid])
     }
 
@@ -444,7 +444,7 @@ fn try_intrinsic<'ll>(
     dest: &'ll Value,
 ) {
     if bx.sess().panic_strategy() == PanicStrategy::Abort {
-        let try_func_ty = bx.type_func(&[bx.type_i8p()], bx.type_void());
+        let try_func_ty = bx.type_func(&[bx.type_ptr()], bx.type_void());
         bx.call(try_func_ty, None, try_func, &[data], None);
         // Return 0 unconditionally from the intrinsic call;
         // we can never unwind.
@@ -542,8 +542,8 @@ fn codegen_msvc_try<'ll>(
         //
         // More information can be found in libstd's seh.rs implementation.
         let ptr_align = bx.tcx().data_layout.pointer_align.abi;
-        let slot = bx.alloca(bx.type_i8p(), ptr_align);
-        let try_func_ty = bx.type_func(&[bx.type_i8p()], bx.type_void());
+        let slot = bx.alloca(bx.type_ptr(), ptr_align);
+        let try_func_ty = bx.type_func(&[bx.type_ptr()], bx.type_void());
         bx.invoke(try_func_ty, None, try_func, &[data], normal, catchswitch, None);
 
         bx.switch_to_block(normal);
@@ -566,10 +566,10 @@ fn codegen_msvc_try<'ll>(
         //
         // When modifying, make sure that the type_name string exactly matches
         // the one used in src/libpanic_unwind/seh.rs.
-        let type_info_vtable = bx.declare_global("??_7type_info@@6B@", bx.type_i8p());
+        let type_info_vtable = bx.declare_global("??_7type_info@@6B@", bx.type_ptr());
         let type_name = bx.const_bytes(b"rust_panic\0");
         let type_info =
-            bx.const_struct(&[type_info_vtable, bx.const_null(bx.type_i8p()), type_name], false);
+            bx.const_struct(&[type_info_vtable, bx.const_null(bx.type_ptr()), type_name], false);
         let tydesc = bx.declare_global("__rust_panic_type_info", bx.val_ty(type_info));
         unsafe {
             llvm::LLVMRustSetLinkage(tydesc, llvm::Linkage::LinkOnceODRLinkage);
@@ -586,15 +586,15 @@ fn codegen_msvc_try<'ll>(
         bx.switch_to_block(catchpad_rust);
         let flags = bx.const_i32(8);
         let funclet = bx.catch_pad(cs, &[tydesc, flags, slot]);
-        let ptr = bx.load(bx.type_i8p(), slot, ptr_align);
-        let catch_ty = bx.type_func(&[bx.type_i8p(), bx.type_i8p()], bx.type_void());
+        let ptr = bx.load(bx.type_ptr(), slot, ptr_align);
+        let catch_ty = bx.type_func(&[bx.type_ptr(), bx.type_ptr()], bx.type_void());
         bx.call(catch_ty, None, catch_func, &[data, ptr], Some(&funclet));
         bx.catch_ret(&funclet, caught);
 
         // The flag value of 64 indicates a "catch-all".
         bx.switch_to_block(catchpad_foreign);
         let flags = bx.const_i32(64);
-        let null = bx.const_null(bx.type_i8p());
+        let null = bx.const_null(bx.type_ptr());
         let funclet = bx.catch_pad(cs, &[null, flags, null]);
         bx.call(catch_ty, None, catch_func, &[data, null], Some(&funclet));
         bx.catch_ret(&funclet, caught);
@@ -647,7 +647,7 @@ fn codegen_gnu_try<'ll>(
         let try_func = llvm::get_param(bx.llfn(), 0);
         let data = llvm::get_param(bx.llfn(), 1);
         let catch_func = llvm::get_param(bx.llfn(), 2);
-        let try_func_ty = bx.type_func(&[bx.type_i8p()], bx.type_void());
+        let try_func_ty = bx.type_func(&[bx.type_ptr()], bx.type_void());
         bx.invoke(try_func_ty, None, try_func, &[data], then, catch, None);
 
         bx.switch_to_block(then);
@@ -660,12 +660,12 @@ fn codegen_gnu_try<'ll>(
         // the landing pad clauses the exception's type had been matched to.
         // rust_try ignores the selector.
         bx.switch_to_block(catch);
-        let lpad_ty = bx.type_struct(&[bx.type_i8p(), bx.type_i32()], false);
+        let lpad_ty = bx.type_struct(&[bx.type_ptr(), bx.type_i32()], false);
         let vals = bx.landing_pad(lpad_ty, bx.eh_personality(), 1);
-        let tydesc = bx.const_null(bx.type_i8p());
+        let tydesc = bx.const_null(bx.type_ptr());
         bx.add_clause(vals, tydesc);
         let ptr = bx.extract_value(vals, 0);
-        let catch_ty = bx.type_func(&[bx.type_i8p(), bx.type_i8p()], bx.type_void());
+        let catch_ty = bx.type_func(&[bx.type_ptr(), bx.type_ptr()], bx.type_void());
         bx.call(catch_ty, None, catch_func, &[data, ptr], None);
         bx.ret(bx.const_i32(1));
     });
@@ -711,7 +711,7 @@ fn codegen_emcc_try<'ll>(
         let try_func = llvm::get_param(bx.llfn(), 0);
         let data = llvm::get_param(bx.llfn(), 1);
         let catch_func = llvm::get_param(bx.llfn(), 2);
-        let try_func_ty = bx.type_func(&[bx.type_i8p()], bx.type_void());
+        let try_func_ty = bx.type_func(&[bx.type_ptr()], bx.type_void());
         bx.invoke(try_func_ty, None, try_func, &[data], then, catch, None);
 
         bx.switch_to_block(then);
@@ -724,10 +724,10 @@ fn codegen_emcc_try<'ll>(
         // the landing pad clauses the exception's type had been matched to.
         bx.switch_to_block(catch);
         let tydesc = bx.eh_catch_typeinfo();
-        let lpad_ty = bx.type_struct(&[bx.type_i8p(), bx.type_i32()], false);
+        let lpad_ty = bx.type_struct(&[bx.type_ptr(), bx.type_i32()], false);
         let vals = bx.landing_pad(lpad_ty, bx.eh_personality(), 2);
         bx.add_clause(vals, tydesc);
-        bx.add_clause(vals, bx.const_null(bx.type_i8p()));
+        bx.add_clause(vals, bx.const_null(bx.type_ptr()));
         let ptr = bx.extract_value(vals, 0);
         let selector = bx.extract_value(vals, 1);
 
@@ -740,7 +740,7 @@ fn codegen_emcc_try<'ll>(
         // create an alloca and pass a pointer to that.
         let ptr_align = bx.tcx().data_layout.pointer_align.abi;
         let i8_align = bx.tcx().data_layout.i8_align.abi;
-        let catch_data_type = bx.type_struct(&[bx.type_i8p(), bx.type_bool()], false);
+        let catch_data_type = bx.type_struct(&[bx.type_ptr(), bx.type_bool()], false);
         let catch_data = bx.alloca(catch_data_type, ptr_align);
         let catch_data_0 =
             bx.inbounds_gep(catch_data_type, catch_data, &[bx.const_usize(0), bx.const_usize(0)]);
@@ -748,9 +748,9 @@ fn codegen_emcc_try<'ll>(
         let catch_data_1 =
             bx.inbounds_gep(catch_data_type, catch_data, &[bx.const_usize(0), bx.const_usize(1)]);
         bx.store(is_rust_panic, catch_data_1, i8_align);
-        let catch_data = bx.bitcast(catch_data, bx.type_i8p());
+        let catch_data = bx.bitcast(catch_data, bx.type_ptr());
 
-        let catch_ty = bx.type_func(&[bx.type_i8p(), bx.type_i8p()], bx.type_void());
+        let catch_ty = bx.type_func(&[bx.type_ptr(), bx.type_ptr()], bx.type_void());
         bx.call(catch_ty, None, catch_func, &[data, catch_data], None);
         bx.ret(bx.const_i32(1));
     });
@@ -897,7 +897,7 @@ fn generic_simd_intrinsic<'ll, 'tcx>(
                 let place = PlaceRef::alloca(bx, args[0].layout);
                 args[0].val.store(bx, place);
                 let int_ty = bx.type_ix(expected_bytes * 8);
-                let ptr = bx.pointercast(place.llval, bx.cx.type_ptr_to(int_ty));
+                let ptr = bx.pointercast(place.llval, bx.cx.type_ptr());
                 bx.load(int_ty, ptr, Align::ONE)
             }
             _ => return_error!(
@@ -1145,7 +1145,7 @@ fn generic_simd_intrinsic<'ll, 'tcx>(
                 let ptr = bx.alloca(bx.type_ix(expected_bytes * 8), Align::ONE);
                 bx.store(ze, ptr, Align::ONE);
                 let array_ty = bx.type_array(bx.type_i8(), expected_bytes);
-                let ptr = bx.pointercast(ptr, bx.cx.type_ptr_to(array_ty));
+                let ptr = bx.pointercast(ptr, bx.cx.type_ptr());
                 return Ok(bx.load(array_ty, ptr, Align::ONE));
             }
             _ => return_error!(
@@ -1293,7 +1293,7 @@ fn generic_simd_intrinsic<'ll, 'tcx>(
         cx: &CodegenCx<'ll, '_>,
         elem_ty: Ty<'_>,
         vec_len: u64,
-        mut no_pointers: usize,
+        no_pointers: usize,
     ) -> &'ll Type {
         // FIXME: use cx.layout_of(ty).llvm_type() ?
         let mut elem_ty = match *elem_ty.kind() {
@@ -1302,9 +1302,8 @@ fn generic_simd_intrinsic<'ll, 'tcx>(
             ty::Float(v) => cx.type_float_from_ty(v),
             _ => unreachable!(),
         };
-        while no_pointers > 0 {
-            elem_ty = cx.type_ptr_to(elem_ty);
-            no_pointers -= 1;
+        if no_pointers > 0 {
+            elem_ty = cx.type_ptr();
         }
         cx.type_vector(elem_ty, vec_len)
     }

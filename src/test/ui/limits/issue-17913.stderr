@@ -1,4 +1,8 @@
 error: values of the type `[&usize; N]` are too big for the current architecture
+  --> $SRC_DIR/alloc/src/boxed.rs:LL:COL
+   |
+LL |     pub fn new(x: T) -> Self {
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^
 
 error: aborting due to previous error
 

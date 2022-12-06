@@ -641,7 +641,7 @@ impl<'a, 'll, 'tcx> BuilderMethods<'a, 'tcx> for Builder<'a, 'll, 'tcx> {
         flags: MemFlags,
     ) -> &'ll Value {
         debug!("Store {:?} -> {:?} ({:?})", val, ptr, flags);
-        let ptr = self.check_store(val, ptr);
+        let ptr = self.check_store(ptr);
         unsafe {
             let store = llvm::LLVMBuildStore(self.llbuilder, val, ptr);
             let align =
@@ -671,7 +671,7 @@ impl<'a, 'll, 'tcx> BuilderMethods<'a, 'tcx> for Builder<'a, 'll, 'tcx> {
         size: Size,
     ) {
         debug!("Store {:?} -> {:?}", val, ptr);
-        let ptr = self.check_store(val, ptr);
+        let ptr = self.check_store(ptr);
         unsafe {
             let store = llvm::LLVMRustBuildAtomicStore(
                 self.llbuilder,
@@ -854,8 +854,8 @@ impl<'a, 'll, 'tcx> BuilderMethods<'a, 'tcx> for Builder<'a, 'll, 'tcx> {
         assert!(!flags.contains(MemFlags::NONTEMPORAL), "non-temporal memcpy not supported");
         let size = self.intcast(size, self.type_isize(), false);
         let is_volatile = flags.contains(MemFlags::VOLATILE);
-        let dst = self.pointercast(dst, self.type_i8p());
-        let src = self.pointercast(src, self.type_i8p());
+        let dst = self.pointercast(dst, self.type_ptr());
+        let src = self.pointercast(src, self.type_ptr());
         unsafe {
             llvm::LLVMRustBuildMemCpy(
                 self.llbuilder,
@@ -881,8 +881,8 @@ impl<'a, 'll, 'tcx> BuilderMethods<'a, 'tcx> for Builder<'a, 'll, 'tcx> {
         assert!(!flags.contains(MemFlags::NONTEMPORAL), "non-temporal memmove not supported");
         let size = self.intcast(size, self.type_isize(), false);
         let is_volatile = flags.contains(MemFlags::VOLATILE);
-        let dst = self.pointercast(dst, self.type_i8p());
-        let src = self.pointercast(src, self.type_i8p());
+        let dst = self.pointercast(dst, self.type_ptr());
+        let src = self.pointercast(src, self.type_ptr());
         unsafe {
             llvm::LLVMRustBuildMemMove(
                 self.llbuilder,
@@ -905,7 +905,7 @@ impl<'a, 'll, 'tcx> BuilderMethods<'a, 'tcx> for Builder<'a, 'll, 'tcx> {
         flags: MemFlags,
     ) {
         let is_volatile = flags.contains(MemFlags::VOLATILE);
-        let ptr = self.pointercast(ptr, self.type_i8p());
+        let ptr = self.pointercast(ptr, self.type_ptr());
         unsafe {
             llvm::LLVMRustBuildMemSet(
                 self.llbuilder,
@@ -1130,7 +1130,7 @@ impl<'a, 'll, 'tcx> BuilderMethods<'a, 'tcx> for Builder<'a, 'll, 'tcx> {
 
         let llfn = unsafe { llvm::LLVMRustGetInstrProfIncrementIntrinsic(self.cx().llmod) };
         let llty = self.cx.type_func(
-            &[self.cx.type_i8p(), self.cx.type_i64(), self.cx.type_i32(), self.cx.type_i32()],
+            &[self.cx.type_ptr(), self.cx.type_i64(), self.cx.type_i32(), self.cx.type_i32()],
             self.cx.type_void(),
         );
         let args = &[fn_name, hash, num_counters, index];
@@ -1340,10 +1340,9 @@ impl<'a, 'll, 'tcx> Builder<'a, 'll, 'tcx> {
         ret.expect("LLVM does not have support for catchret")
     }
 
-    fn check_store(&mut self, val: &'ll Value, ptr: &'ll Value) -> &'ll Value {
+    fn check_store(&mut self, ptr: &'ll Value) -> &'ll Value {
         let dest_ptr_ty = self.cx.val_ty(ptr);
-        let stored_ty = self.cx.val_ty(val);
-        let stored_ptr_ty = self.cx.type_ptr_to(stored_ty);
+        let stored_ptr_ty = self.cx.type_ptr();
 
         assert_eq!(self.cx.type_kind(dest_ptr_ty), TypeKind::Pointer);
 
@@ -1421,7 +1420,7 @@ impl<'a, 'll, 'tcx> Builder<'a, 'll, 'tcx> {
             return;
         }
 
-        let ptr = self.pointercast(ptr, self.cx.type_i8p());
+        let ptr = self.pointercast(ptr, self.cx.type_ptr());
         self.call_intrinsic(intrinsic, &[self.cx.const_u64(size), ptr]);
     }
 

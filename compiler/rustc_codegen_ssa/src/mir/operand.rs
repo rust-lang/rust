@@ -292,7 +292,7 @@ impl<'a, 'tcx, V: CodegenObject> OperandValue<V> {
                 if flags.contains(MemFlags::NONTEMPORAL) {
                     // HACK(nox): This is inefficient but there is no nontemporal memcpy.
                     let ty = bx.backend_type(dest.layout);
-                    let ptr = bx.pointercast(r, bx.type_ptr_to(ty));
+                    let ptr = bx.pointercast(r, bx.type_ptr());
                     let val = bx.load(ty, ptr, source_align);
                     bx.store_with_flags(val, dest.llval, dest.align, flags);
                     return;
