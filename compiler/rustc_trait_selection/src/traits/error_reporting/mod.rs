@@ -1810,7 +1810,8 @@ impl<'tcx> InferCtxtPrivExt<'tcx> for TypeErrCtxt<'_, 'tcx> {
         &self,
         trait_pred: ty::PolyTraitPredicate<'tcx>,
     ) -> Vec<ImplCandidate<'tcx>> {
-        self.tcx
+        let mut candidates: Vec<_> = self
+            .tcx
             .all_impls(trait_pred.def_id())
             .filter_map(|def_id| {
                 if self.tcx.impl_polarity(def_id) == ty::ImplPolarity::Negative
@@ -1826,7 +1827,14 @@ impl<'tcx> InferCtxtPrivExt<'tcx> for TypeErrCtxt<'_, 'tcx> {
                 self.fuzzy_match_tys(trait_pred.skip_binder().self_ty(), imp.self_ty(), false)
                     .map(|similarity| ImplCandidate { trait_ref: imp, similarity })
             })
-            .collect()
+            .collect();
+        if candidates.iter().any(|c| matches!(c.similarity, CandidateSimilarity::Exact { .. })) {
+            // If any of the candidates is a perfect match, we don't want to show all of them.
+            // This is particularly relevant for the case of numeric types (as they all have the
+            // same cathegory).
+            candidates.retain(|c| matches!(c.similarity, CandidateSimilarity::Exact { .. }));
+        }
+        candidates
     }
 
     fn report_similar_impl_candidates(
