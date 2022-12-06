@@ -179,6 +179,7 @@ mod handlers {
     mod remove_dbg;
     mod remove_mut;
     mod remove_unused_param;
+    mod remove_parentheses;
     mod reorder_fields;
     mod reorder_impl_items;
     mod replace_try_expr_with_match;
@@ -280,6 +281,7 @@ mod handlers {
             remove_dbg::remove_dbg,
             remove_mut::remove_mut,
             remove_unused_param::remove_unused_param,
+            remove_parentheses::remove_parentheses,
             reorder_fields::reorder_fields,
             reorder_impl_items::reorder_impl_items,
             replace_try_expr_with_match::replace_try_expr_with_match,

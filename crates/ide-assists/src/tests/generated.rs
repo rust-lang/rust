@@ -1979,6 +1979,23 @@ impl Walrus {
 }
 
 #[test]
+fn doctest_remove_parentheses() {
+    check_doc_test(
+        "remove_parentheses",
+        r#####"
+fn main() {
+    _ = $0(2) + 2;
+}
+"#####,
+        r#####"
+fn main() {
+    _ = 2 + 2;
+}
+"#####,
+    )
+}
+
+#[test]
 fn doctest_remove_unused_param() {
     check_doc_test(
         "remove_unused_param",
