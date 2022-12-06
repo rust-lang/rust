@@ -34,6 +34,10 @@ error[E0277]: the trait bound `i32: Sum<()>` is not satisfied
    |
 LL | /         vec![0, 1]
 LL | |             .iter()
+LL | |             .map(|x| x * 2)
+LL | |             .map(|x| x as f64)
+...  |
+LL | |             .map(|x| { x + 1 })
 LL | |             .map(|x| { x; })
    | |____________________________^ the trait `Sum<()>` is not implemented for `i32`
 LL |               .sum::<i32>(),
@@ -42,13 +46,23 @@ LL |               .sum::<i32>(),
    = help: the following other types implement trait `Sum<A>`:
              <i32 as Sum<&'a i32>>
              <i32 as Sum>
-note: the expression is of type `Map<std::slice::Iter<'_, {integer}>, [closure@$DIR/invalid-iterator-chain.rs:12:18: 12:21]>`
-  --> $DIR/invalid-iterator-chain.rs:12:14
+note: the expression is of type `Map<Map<Filter<Map<Map<Map<std::slice::Iter<'_, {integer}>, [closure@$DIR/invalid-iterator-chain.rs:12:18: 12:21]>, [closure@$DIR/invalid-iterator-chain.rs:13:18: 13:21]>, [closure@$DIR/invalid-iterator-chain.rs:14:18: 14:21]>, [closure@$DIR/invalid-iterator-chain.rs:15:21: 15:24]>, [closure@$DIR/invalid-iterator-chain.rs:16:18: 16:21]>, [closure@$DIR/invalid-iterator-chain.rs:17:18: 17:21]>`
+  --> $DIR/invalid-iterator-chain.rs:17:14
    |
 LL |         vec![0, 1]
    |         ---------- this expression has type `Vec<{integer}>`
 LL |             .iter()
    |              ------ associated type `std::iter::Iterator::Item` is `&{integer}` here
+LL |             .map(|x| x * 2)
+   |              -------------- associated type `std::iter::Iterator::Item` is `{integer}` here
+LL |             .map(|x| x as f64)
+   |              ----------------- associated type `std::iter::Iterator::Item` is `f64` here
+LL |             .map(|x| x as i64)
+   |              ----------------- associated type `std::iter::Iterator::Item` is `i64` here
+LL |             .filter(|x| *x > 0)
+   |              ------------------ associated type `std::iter::Iterator::Item` is `i64` here
+LL |             .map(|x| { x + 1 })
+   |              ------------------ associated type `std::iter::Iterator::Item` is `i64` here
 LL |             .map(|x| { x; })
    |              ^^^^^^^^^^^^^^^ associated type `std::iter::Iterator::Item` is `()` here
 note: required by a bound in `std::iter::Iterator::sum`
@@ -58,7 +72,7 @@ LL |         S: Sum<Self::Item>,
    |            ^^^^^^^^^^^^^^^ required by this bound in `std::iter::Iterator::sum`
 
 error[E0277]: the trait bound `i32: Sum<()>` is not satisfied
-  --> $DIR/invalid-iterator-chain.rs:15:20
+  --> $DIR/invalid-iterator-chain.rs:20:20
    |
 LL |     println!("{}", vec![0, 1].iter().map(|x| { x; }).sum::<i32>());
    |                    ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ --- required by a bound introduced by this call
@@ -68,8 +82,8 @@ LL |     println!("{}", vec![0, 1].iter().map(|x| { x; }).sum::<i32>());
    = help: the following other types implement trait `Sum<A>`:
              <i32 as Sum<&'a i32>>
              <i32 as Sum>
-note: the expression is of type `Map<std::slice::Iter<'_, {integer}>, [closure@$DIR/invalid-iterator-chain.rs:15:42: 15:45]>`
-  --> $DIR/invalid-iterator-chain.rs:15:38
+note: the expression is of type `Map<std::slice::Iter<'_, {integer}>, [closure@$DIR/invalid-iterator-chain.rs:20:42: 20:45]>`
+  --> $DIR/invalid-iterator-chain.rs:20:38
    |
 LL |     println!("{}", vec![0, 1].iter().map(|x| { x; }).sum::<i32>());
    |                    ---------- ------ ^^^^^^^^^^^^^^^ associated type `std::iter::Iterator::Item` is `()` here
@@ -83,7 +97,7 @@ LL |         S: Sum<Self::Item>,
    |            ^^^^^^^^^^^^^^^ required by this bound in `std::iter::Iterator::sum`
 
 error[E0277]: the trait bound `i32: Sum<&()>` is not satisfied
-  --> $DIR/invalid-iterator-chain.rs:16:20
+  --> $DIR/invalid-iterator-chain.rs:21:20
    |
 LL |     println!("{}", vec![(), ()].iter().sum::<i32>());
    |                    ^^^^^^^^^^^^^^^^^^^ --- required by a bound introduced by this call
@@ -94,7 +108,7 @@ LL |     println!("{}", vec![(), ()].iter().sum::<i32>());
              <i32 as Sum<&'a i32>>
              <i32 as Sum>
 note: the expression is of type `std::slice::Iter<'_, ()>`
-  --> $DIR/invalid-iterator-chain.rs:16:33
+  --> $DIR/invalid-iterator-chain.rs:21:33
    |
 LL |     println!("{}", vec![(), ()].iter().sum::<i32>());
    |                    ------------ ^^^^^^ associated type `std::iter::Iterator::Item` is `&()` here
