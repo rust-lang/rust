@@ -43,6 +43,10 @@ pub struct LifetimesOrBoundsMismatchOnTrait {
     pub span: Span,
     #[label(generics_label)]
     pub generics_span: Option<Span>,
+    #[label(where_label)]
+    pub where_span: Option<Span>,
+    #[label(bounds_label)]
+    pub bounds_span: Vec<Span>,
     pub item_kind: &'static str,
     pub ident: Ident,
 }

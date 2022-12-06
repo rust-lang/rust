@@ -722,8 +722,17 @@ impl<'tcx> PolyExistentialPredicate<'tcx> {
                 self.rebind(p.with_self_ty(tcx, self_ty)).to_predicate(tcx)
             }
             ExistentialPredicate::AutoTrait(did) => {
-                let trait_ref = self.rebind(tcx.mk_trait_ref(did, [self_ty]));
-                trait_ref.without_const().to_predicate(tcx)
+                let generics = tcx.generics_of(did);
+                let trait_ref = if generics.params.len() == 1 {
+                    tcx.mk_trait_ref(did, [self_ty])
+                } else {
+                    // If this is an ill-formed auto trait, then synthesize
+                    // new error substs for the missing generics.
+                    let err_substs =
+                        ty::InternalSubsts::extend_with_error(tcx, did, &[self_ty.into()]);
+                    tcx.mk_trait_ref(did, err_substs)
+                };
+                self.rebind(trait_ref).without_const().to_predicate(tcx)
             }
         }
     }

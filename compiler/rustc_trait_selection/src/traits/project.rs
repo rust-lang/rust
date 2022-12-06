@@ -504,14 +504,12 @@ impl<'a, 'b, 'tcx> TypeFolder<'tcx> for AssocTypeNormalizer<'a, 'b, 'tcx> {
                     Reveal::All => {
                         let recursion_limit = self.tcx().recursion_limit();
                         if !recursion_limit.value_within_limit(self.depth) {
-                            let obligation = Obligation::with_depth(
-                                self.tcx(),
-                                self.cause.clone(),
-                                recursion_limit.0,
-                                self.param_env,
-                                ty,
+                            self.selcx.infcx.err_ctxt().report_overflow_error(
+                                &ty,
+                                self.cause.span,
+                                true,
+                                |_| {},
                             );
-                            self.selcx.infcx.err_ctxt().report_overflow_error(&obligation, true);
                         }
 
                         let substs = substs.fold_with(self);
