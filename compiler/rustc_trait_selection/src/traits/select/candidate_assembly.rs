@@ -1005,17 +1005,18 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
         candidates: &mut SelectionCandidateSet<'tcx>,
     ) {
         // The regions of a type don't affect the size of the type
-        let self_ty = obligation.predicate.self_ty();
+        let param_env_and =
+            self.tcx().erase_regions(obligation.param_env.and(obligation.predicate.self_ty()));
 
         // But if there are inference variables, we have to wait until it's resolved.
-        if self_ty.has_non_region_infer() {
+        if param_env_and.has_non_region_infer() {
             candidates.ambiguous = true;
             return;
         }
 
         let usize_layout =
             self.tcx().layout_of(ty::ParamEnv::empty().and(self.tcx().types.usize)).unwrap().layout;
-        if let Ok(layout) = self.tcx().layout_of(obligation.param_env.and(self_ty))
+        if let Ok(layout) = self.tcx().layout_of(param_env_and)
             && layout.layout.size() == usize_layout.size()
             && layout.layout.align().abi == usize_layout.align().abi
         {
