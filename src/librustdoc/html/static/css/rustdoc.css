@@ -195,8 +195,7 @@ h1, h2, h3, h4, h5, h6,
 span.since,
 a.srclink,
 #help-button > a,
-details.rustdoc-toggle.top-doc > summary,
-details.rustdoc-toggle.non-exhaustive > summary,
+summary.hideme,
 .scraped-example-list,
 /* This selector is for the items listed in the "all items" page. */
 ul.all-items {
@@ -1484,6 +1483,7 @@ details.rustdoc-toggle {
 	"Expand description" or "Show methods". */
 details.rustdoc-toggle > summary.hideme {
 	cursor: pointer;
+	font-size: 1rem;
 }
 
 details.rustdoc-toggle > summary {
@@ -1544,13 +1544,6 @@ details.rustdoc-toggle > summary:focus-visible::before {
 	*/
 	outline: 1px dotted #000;
 	outline-offset: 1px;
-}
-
-details.rustdoc-toggle.top-doc > summary,
-details.rustdoc-toggle.top-doc > summary::before,
-details.rustdoc-toggle.non-exhaustive > summary,
-details.rustdoc-toggle.non-exhaustive > summary::before {
-	font-size: 1rem;
 }
 
 details.non-exhaustive {
