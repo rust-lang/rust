@@ -8,7 +8,7 @@ use crate::sys::common::small_c_string::run_path_with_cstr;
 use crate::sys::cvt;
 use crate::sys::hermit::abi;
 use crate::sys::hermit::abi::{O_APPEND, O_CREAT, O_EXCL, O_RDONLY, O_RDWR, O_TRUNC, O_WRONLY};
-use crate::sys::hermit::fd::FileDesc;
+use crate::sys::hermit::fd::{FileDesc, FromRawFd};
 use crate::sys::time::SystemTime;
 use crate::sys::unsupported;
 
@@ -283,7 +283,7 @@ impl File {
         }
 
         let fd = unsafe { cvt(abi::open(path.as_ptr(), flags, mode))? };
-        Ok(File(FileDesc::new(fd as i32)))
+        Ok(File(unsafe { FileDesc::from_raw_fd(fd as i32) }))
     }
 
     pub fn file_attr(&self) -> io::Result<FileAttr> {

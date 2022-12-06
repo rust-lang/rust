@@ -13,7 +13,7 @@
 //! compiling for wasm. That way it's a compile time error for something that's
 //! guaranteed to be a runtime error!
 
-#![allow(unsafe_op_in_unsafe_fn)]
+#![allow(missing_docs, nonstandard_style, unsafe_op_in_unsafe_fn)]
 
 use crate::intrinsics;
 use crate::os::raw::c_char;
@@ -131,25 +131,72 @@ pub unsafe extern "C" fn runtime_entry(
 
 pub fn decode_error_kind(errno: i32) -> ErrorKind {
     match errno {
-        x if x == 13 as i32 => ErrorKind::PermissionDenied,
-        x if x == 98 as i32 => ErrorKind::AddrInUse,
-        x if x == 99 as i32 => ErrorKind::AddrNotAvailable,
-        x if x == 11 as i32 => ErrorKind::WouldBlock,
-        x if x == 103 as i32 => ErrorKind::ConnectionAborted,
-        x if x == 111 as i32 => ErrorKind::ConnectionRefused,
-        x if x == 104 as i32 => ErrorKind::ConnectionReset,
-        x if x == 17 as i32 => ErrorKind::AlreadyExists,
-        x if x == 4 as i32 => ErrorKind::Interrupted,
-        x if x == 22 as i32 => ErrorKind::InvalidInput,
-        x if x == 2 as i32 => ErrorKind::NotFound,
-        x if x == 107 as i32 => ErrorKind::NotConnected,
-        x if x == 1 as i32 => ErrorKind::PermissionDenied,
-        x if x == 32 as i32 => ErrorKind::BrokenPipe,
-        x if x == 110 as i32 => ErrorKind::TimedOut,
+        abi::errno::EACCES => ErrorKind::PermissionDenied,
+        abi::errno::EADDRINUSE => ErrorKind::AddrInUse,
+        abi::errno::EADDRNOTAVAIL => ErrorKind::AddrNotAvailable,
+        abi::errno::EAGAIN => ErrorKind::WouldBlock,
+        abi::errno::ECONNABORTED => ErrorKind::ConnectionAborted,
+        abi::errno::ECONNREFUSED => ErrorKind::ConnectionRefused,
+        abi::errno::ECONNRESET => ErrorKind::ConnectionReset,
+        abi::errno::EEXIST => ErrorKind::AlreadyExists,
+        abi::errno::EINTR => ErrorKind::Interrupted,
+        abi::errno::EINVAL => ErrorKind::InvalidInput,
+        abi::errno::ENOENT => ErrorKind::NotFound,
+        abi::errno::ENOTCONN => ErrorKind::NotConnected,
+        abi::errno::EPERM => ErrorKind::PermissionDenied,
+        abi::errno::EPIPE => ErrorKind::BrokenPipe,
+        abi::errno::ETIMEDOUT => ErrorKind::TimedOut,
         _ => ErrorKind::Uncategorized,
     }
 }
 
-pub fn cvt(result: i32) -> crate::io::Result<usize> {
-    if result < 0 { Err(crate::io::Error::from_raw_os_error(-result)) } else { Ok(result as usize) }
+#[doc(hidden)]
+pub trait IsNegative {
+    fn is_negative(&self) -> bool;
+    fn negate(&self) -> i32;
+}
+
+macro_rules! impl_is_negative {
+    ($($t:ident)*) => ($(impl IsNegative for $t {
+        fn is_negative(&self) -> bool {
+            *self < 0
+        }
+
+        fn negate(&self) -> i32 {
+            i32::try_from(-(*self)).unwrap()
+        }
+    })*)
+}
+
+impl IsNegative for i32 {
+    fn is_negative(&self) -> bool {
+        *self < 0
+    }
+
+    fn negate(&self) -> i32 {
+        -(*self)
+    }
+}
+impl_is_negative! { i8 i16 i64 isize }
+
+pub fn cvt<T: IsNegative>(t: T) -> crate::io::Result<T> {
+    if t.is_negative() {
+        let e = decode_error_kind(t.negate());
+        Err(crate::io::Error::from(e))
+    } else {
+        Ok(t)
+    }
+}
+
+pub fn cvt_r<T, F>(mut f: F) -> crate::io::Result<T>
+where
+    T: IsNegative,
+    F: FnMut() -> T,
+{
+    loop {
+        match cvt(f()) {
+            Err(ref e) if e.kind() == ErrorKind::Interrupted => {}
+            other => return other,
+        }
+    }
 }
