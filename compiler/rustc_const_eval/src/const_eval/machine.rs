@@ -240,7 +240,7 @@ impl<'mir, 'tcx: 'mir> CompileTimeEvalContext<'mir, 'tcx> {
                     let align = ImmTy::from_uint(target_align, args[1].layout).into();
                     let fn_abi = self.fn_abi_of_instance(instance, ty::List::empty())?;
 
-                    // We replace the entire entire function call with a "tail call".
+                    // We replace the entire function call with a "tail call".
                     // Note that this happens before the frame of the original function
                     // is pushed on the stack.
                     self.eval_fn_call(

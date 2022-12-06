@@ -406,7 +406,7 @@ impl<V: Clone> Clone for StateData<V> {
 /// The dataflow state for an instance of [`ValueAnalysis`].
 ///
 /// Every instance specifies a lattice that represents the possible values of a single tracked
-/// place. If we call this lattice `V` and set set of tracked places `P`, then a [`State`] is an
+/// place. If we call this lattice `V` and set of tracked places `P`, then a [`State`] is an
 /// element of `{unreachable} ∪ (P -> V)`. This again forms a lattice, where the bottom element is
 /// `unreachable` and the top element is the mapping `p ↦ ⊤`. Note that the mapping `p ↦ ⊥` is not
 /// the bottom element (because joining an unreachable and any other reachable state yields a
