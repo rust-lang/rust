@@ -1,8 +1,10 @@
 error[E0277]: the trait bound `T: GlUniformScalar` is not satisfied
-  --> $DIR/assoc-const-as-fn.rs:14:5
+  --> $DIR/assoc-const-as-fn.rs:14:40
    |
 LL |     <T as GlUniformScalar>::FACTORY(1, value);
-   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ the trait `GlUniformScalar` is not implemented for `T`
+   |     -------------------------------    ^^^^^ the trait `GlUniformScalar` is not implemented for `T`
+   |     |
+   |     required by a bound introduced by this call
    |
 help: consider further restricting this bound
    |
