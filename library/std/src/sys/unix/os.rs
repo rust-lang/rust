@@ -451,7 +451,7 @@ pub fn current_exe() -> io::Result<PathBuf> {
     super::unsupported::unsupported()
 }
 
-#[cfg(target_os = "fuchsia")]
+#[cfg(target_os = "fuchsia", target_os = "aix")]
 pub fn current_exe() -> io::Result<PathBuf> {
     use crate::io::ErrorKind;
 
@@ -468,31 +468,19 @@ pub fn current_exe() -> io::Result<PathBuf> {
     let path = PathBuf::from(exe_path);
 
     // Prepend the current working directory to the path if it's not absolute.
-    if !path.is_absolute() { getcwd().map(|cwd| cwd.join(path)) } else { Ok(path) }
-}
+    if cfg!(target_os = "fuchsia") {
+        if !path.is_absolute() { getcwd().map(|cwd| cwd.join(path)) } else { Ok(path) }
+    }
 
-#[cfg(target_os = "aix")]
-pub fn current_exe() -> io::Result<PathBuf> {
-    use crate::io::ErrorKind;
-
-    #[cfg(test)]
-    use realstd::env;
-
-    #[cfg(not(test))]
-    use crate::env;
-
-    let exe_path = env::args().next().ok_or(io::const_io_error!(
-        ErrorKind::Uncategorized,
-        "an executable path was not found because no arguments were provided through argv"
-    ))?;
-    let path = PathBuf::from(exe_path);
     if path.is_absolute() {
         return path.canonicalize();
     }
+
     // Search PWD to infer current_exe.
     if let Some(pstr) = path.to_str() && pstr.contains("/") {
         return getcwd().map(|cwd| cwd.join(path))?.canonicalize();
     }
+
     // Search PATH to infer current_exe.
     if let Some(p) = getenv(OsStr::from_bytes("PATH".as_bytes())) {
         for search_path in split_paths(&p) {
@@ -503,9 +491,8 @@ pub fn current_exe() -> io::Result<PathBuf> {
             }
         }
     }
-    return Err(io::const_io_error!(
-        ErrorKind::Uncategorized,
-        "an executable path was not found"));
+
+    return Err(io::const_io_error!(ErrorKind::Uncategorized, "an executable path was not found"));
 }
 
 pub struct Env {
