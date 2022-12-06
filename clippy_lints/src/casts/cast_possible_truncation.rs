@@ -3,8 +3,6 @@ use clippy_utils::diagnostics::{span_lint, span_lint_and_then};
 use clippy_utils::expr_or_init;
 use clippy_utils::source::snippet;
 use clippy_utils::ty::{get_discriminant_value, is_isize_or_usize};
-use rustc_ast::ast;
-use rustc_attr::IntType;
 use rustc_errors::{Applicability, SuggestionStyle};
 use rustc_hir::def::{DefKind, Res};
 use rustc_hir::{BinOpKind, Expr, ExprKind};
@@ -157,8 +155,8 @@ pub(super) fn check(cx: &LateContext<'_>, expr: &Expr<'_>, cast_expr: &Expr<'_>,
         _ => return,
     };
 
-    let snippet = snippet(cx, expr.span, "x");
-    let name_of_cast_from = snippet.split(" as").next().unwrap_or("x");
+    let snippet = snippet(cx, expr.span, "..");
+    let name_of_cast_from = snippet.split(" as").next().unwrap_or("..");
     let suggestion = format!("{cast_to}::try_from({name_of_cast_from})");
 
     span_lint_and_then(cx, CAST_POSSIBLE_TRUNCATION, expr.span, &msg, |diag| {

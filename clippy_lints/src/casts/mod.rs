@@ -94,6 +94,21 @@ declare_clippy_lint! {
     ///     x as u8
     /// }
     /// ```
+    /// Use instead:
+    /// ```
+    /// fn as_u8(x: u64) -> u8 {
+    ///     if let Ok(x) = u8::try_from(x) {
+    ///         x
+    ///     } else {
+    ///         todo!();
+    ///     }
+    /// }
+    /// // Or
+    /// #[allow(clippy::cast_possible_truncation)]
+    /// fn as_u16(x: u64) -> u16 {
+    ///     x as u16
+    /// }
+    /// ```
     #[clippy::version = "pre 1.29.0"]
     pub CAST_POSSIBLE_TRUNCATION,
     pedantic,
