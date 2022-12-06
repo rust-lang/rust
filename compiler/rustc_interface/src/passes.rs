@@ -12,6 +12,7 @@ use rustc_ast::{self as ast, visit};
 use rustc_borrowck as mir_borrowck;
 use rustc_codegen_ssa::traits::CodegenBackend;
 use rustc_data_structures::parallel;
+use rustc_data_structures::steal::Steal;
 use rustc_data_structures::sync::{Lrc, OnceCell, WorkerLocal};
 use rustc_errors::{ErrorGuaranteed, PResult};
 use rustc_expand::base::{ExtCtxt, LintStoreExpand, ResolverExpand};
@@ -801,6 +802,12 @@ pub fn create_global_ctxt<'tcx>(
         TcxQueries::new(local_providers, extern_providers, query_result_on_disk_cache)
     });
 
+    let ty::ResolverOutputs {
+        definitions,
+        global_ctxt: untracked_resolutions,
+        ast_lowering: untracked_resolver_for_lowering,
+    } = resolver_outputs;
+
     let gcx = sess.time("setup_global_ctxt", || {
         global_ctxt.get_or_init(move || {
             TyCtxt::create_global_ctxt(
@@ -808,7 +815,8 @@ pub fn create_global_ctxt<'tcx>(
                 lint_store,
                 arena,
                 hir_arena,
-                resolver_outputs,
+                definitions,
+                untracked_resolutions,
                 krate,
                 dep_graph,
                 queries.on_disk_cache.as_ref().map(OnDiskCache::as_dyn),
@@ -820,7 +828,12 @@ pub fn create_global_ctxt<'tcx>(
         })
     });
 
-    QueryContext { gcx }
+    let mut qcx = QueryContext { gcx };
+    qcx.enter(|tcx| {
+        tcx.feed_unit_query()
+            .resolver_for_lowering(tcx.arena.alloc(Steal::new(untracked_resolver_for_lowering)))
+    });
+    qcx
 }
 
 /// Runs the resolution, type-checking, region checking and other
@@ -965,12 +978,10 @@ fn analysis(tcx: TyCtxt<'_>, (): ()) -> Result<()> {
 pub fn start_codegen<'tcx>(
     codegen_backend: &dyn CodegenBackend,
     tcx: TyCtxt<'tcx>,
-    outputs: &OutputFilenames,
 ) -> Box<dyn Any> {
     info!("Pre-codegen\n{:?}", tcx.debug_stats());
 
-    let (metadata, need_metadata_module) =
-        rustc_metadata::fs::encode_and_write_metadata(tcx, outputs);
+    let (metadata, need_metadata_module) = rustc_metadata::fs::encode_and_write_metadata(tcx);
 
     let codegen = tcx.sess.time("codegen_crate", move || {
         codegen_backend.codegen_crate(tcx, metadata, need_metadata_module)
@@ -986,7 +997,7 @@ pub fn start_codegen<'tcx>(
     info!("Post-codegen\n{:?}", tcx.debug_stats());
 
     if tcx.sess.opts.output_types.contains_key(&OutputType::Mir) {
-        if let Err(error) = rustc_mir_transform::dump_mir::emit_mir(tcx, outputs) {
+        if let Err(error) = rustc_mir_transform::dump_mir::emit_mir(tcx) {
             tcx.sess.emit_err(CantEmitMIR { error });
             tcx.sess.abort_if_errors();
         }

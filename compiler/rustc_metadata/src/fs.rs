@@ -6,7 +6,7 @@ use crate::{encode_metadata, EncodedMetadata};
 use rustc_data_structures::temp_dir::MaybeTempDir;
 use rustc_hir::def_id::LOCAL_CRATE;
 use rustc_middle::ty::TyCtxt;
-use rustc_session::config::{CrateType, OutputFilenames, OutputType};
+use rustc_session::config::{CrateType, OutputType};
 use rustc_session::output::filename_for_metadata;
 use rustc_session::Session;
 use tempfile::Builder as TempFileBuilder;
@@ -38,10 +38,7 @@ pub fn emit_wrapper_file(
     out_filename
 }
 
-pub fn encode_and_write_metadata(
-    tcx: TyCtxt<'_>,
-    outputs: &OutputFilenames,
-) -> (EncodedMetadata, bool) {
+pub fn encode_and_write_metadata(tcx: TyCtxt<'_>) -> (EncodedMetadata, bool) {
     #[derive(PartialEq, Eq, PartialOrd, Ord)]
     enum MetadataKind {
         None,
@@ -64,7 +61,8 @@ pub fn encode_and_write_metadata(
         .unwrap_or(MetadataKind::None);
 
     let crate_name = tcx.crate_name(LOCAL_CRATE);
-    let out_filename = filename_for_metadata(tcx.sess, crate_name.as_str(), outputs);
+    let out_filename =
+        filename_for_metadata(tcx.sess, crate_name.as_str(), tcx.output_filenames(()));
     // To avoid races with another rustc process scanning the output directory,
     // we need to write the file somewhere else and atomically move it to its
     // final destination, with an `fs::rename` call. In order for the rename to

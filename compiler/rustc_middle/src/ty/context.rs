@@ -81,7 +81,7 @@ use std::mem;
 use std::ops::{Bound, Deref};
 use std::sync::Arc;
 
-use super::{ImplPolarity, ResolverOutputs, RvalueScopes};
+use super::{ImplPolarity, RvalueScopes};
 
 pub trait OnDiskCache<'tcx>: rustc_data_structures::sync::Sync {
     /// Creates a new `OnDiskCache` instance from the serialized data in `data`.
@@ -1034,16 +1034,29 @@ pub struct FreeRegionInfo {
 
 /// This struct should only be created by `create_def`.
 #[derive(Copy, Clone)]
-pub struct TyCtxtFeed<'tcx> {
+pub struct TyCtxtFeed<'tcx, KEY: Copy> {
     pub tcx: TyCtxt<'tcx>,
     // Do not allow direct access, as downstream code must not mutate this field.
-    def_id: LocalDefId,
+    key: KEY,
 }
 
-impl<'tcx> TyCtxtFeed<'tcx> {
+impl<'tcx> TyCtxt<'tcx> {
+    pub fn feed_unit_query(self) -> TyCtxtFeed<'tcx, ()> {
+        TyCtxtFeed { tcx: self, key: () }
+    }
+}
+
+impl<'tcx, KEY: Copy> TyCtxtFeed<'tcx, KEY> {
+    #[inline(always)]
+    pub fn key(&self) -> KEY {
+        self.key
+    }
+}
+
+impl<'tcx> TyCtxtFeed<'tcx, LocalDefId> {
     #[inline(always)]
     pub fn def_id(&self) -> LocalDefId {
-        self.def_id
+        self.key
     }
 }
 
@@ -1099,7 +1112,6 @@ pub struct GlobalCtxt<'tcx> {
 
     /// Output of the resolver.
     pub(crate) untracked_resolutions: ty::ResolverGlobalCtxt,
-    untracked_resolver_for_lowering: Steal<ty::ResolverAstLowering>,
     /// The entire crate as AST. This field serves as the input for the hir_crate query,
     /// which lowers it from AST to HIR. It must not be read or used by anything else.
     pub untracked_crate: Steal<Lrc<ast::Crate>>,
@@ -1262,7 +1274,8 @@ impl<'tcx> TyCtxt<'tcx> {
         lint_store: Lrc<dyn Any + sync::Send + sync::Sync>,
         arena: &'tcx WorkerLocal<Arena<'tcx>>,
         hir_arena: &'tcx WorkerLocal<hir::Arena<'tcx>>,
-        resolver_outputs: ResolverOutputs,
+        definitions: Definitions,
+        untracked_resolutions: ty::ResolverGlobalCtxt,
         krate: Lrc<ast::Crate>,
         dep_graph: DepGraph,
         on_disk_cache: Option<&'tcx dyn OnDiskCache<'tcx>>,
@@ -1271,11 +1284,6 @@ impl<'tcx> TyCtxt<'tcx> {
         crate_name: &str,
         output_filenames: OutputFilenames,
     ) -> GlobalCtxt<'tcx> {
-        let ResolverOutputs {
-            definitions,
-            global_ctxt: untracked_resolutions,
-            ast_lowering: untracked_resolver_for_lowering,
-        } = resolver_outputs;
         let data_layout = s.target.parse_data_layout().unwrap_or_else(|err| {
             s.emit_fatal(err);
         });
@@ -1304,7 +1312,6 @@ impl<'tcx> TyCtxt<'tcx> {
             lifetimes: common_lifetimes,
             consts: common_consts,
             untracked_resolutions,
-            untracked_resolver_for_lowering: Steal::new(untracked_resolver_for_lowering),
             untracked_crate: Steal::new(krate),
             on_disk_cache,
             queries,
@@ -1515,7 +1522,7 @@ impl<'tcx> TyCtxtAt<'tcx> {
         self,
         parent: LocalDefId,
         data: hir::definitions::DefPathData,
-    ) -> TyCtxtFeed<'tcx> {
+    ) -> TyCtxtFeed<'tcx, LocalDefId> {
         // This function modifies `self.definitions` using a side-effect.
         // We need to ensure that these side effects are re-run by the incr. comp. engine.
         // Depending on the forever-red node will tell the graph that the calling query
@@ -1536,9 +1543,9 @@ impl<'tcx> TyCtxtAt<'tcx> {
         // This is fine because:
         // - those queries are `eval_always` so we won't miss their result changing;
         // - this write will have happened before these queries are called.
-        let def_id = self.definitions.write().create_def(parent, data);
+        let key = self.definitions.write().create_def(parent, data);
 
-        let feed = TyCtxtFeed { tcx: self.tcx, def_id };
+        let feed = TyCtxtFeed { tcx: self.tcx, key };
         feed.def_span(self.span);
         feed
     }
@@ -3107,7 +3114,6 @@ fn ptr_eq<T, U>(t: *const T, u: *const U) -> bool {
 
 pub fn provide(providers: &mut ty::query::Providers) {
     providers.resolutions = |tcx, ()| &tcx.untracked_resolutions;
-    providers.resolver_for_lowering = |tcx, ()| &tcx.untracked_resolver_for_lowering;
     providers.module_reexports =
         |tcx, id| tcx.resolutions(()).reexport_map.get(&id).map(|v| &v[..]);
     providers.crate_name = |tcx, id| {
