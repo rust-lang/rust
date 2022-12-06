@@ -1150,8 +1150,8 @@ impl<'tcx> ToPolyTraitRef<'tcx> for PolyTraitPredicate<'tcx> {
     }
 }
 
-pub trait ToPredicate<'tcx, Predicate> {
-    fn to_predicate(self, tcx: TyCtxt<'tcx>) -> Predicate;
+pub trait ToPredicate<'tcx, P = Predicate<'tcx>> {
+    fn to_predicate(self, tcx: TyCtxt<'tcx>) -> P;
 }
 
 impl<'tcx, T> ToPredicate<'tcx, T> for T {
@@ -1160,21 +1160,21 @@ impl<'tcx, T> ToPredicate<'tcx, T> for T {
     }
 }
 
-impl<'tcx> ToPredicate<'tcx, Predicate<'tcx>> for Binder<'tcx, PredicateKind<'tcx>> {
+impl<'tcx> ToPredicate<'tcx> for Binder<'tcx, PredicateKind<'tcx>> {
     #[inline(always)]
     fn to_predicate(self, tcx: TyCtxt<'tcx>) -> Predicate<'tcx> {
         tcx.mk_predicate(self)
     }
 }
 
-impl<'tcx> ToPredicate<'tcx, Predicate<'tcx>> for Clause<'tcx> {
+impl<'tcx> ToPredicate<'tcx> for Clause<'tcx> {
     #[inline(always)]
     fn to_predicate(self, tcx: TyCtxt<'tcx>) -> Predicate<'tcx> {
         tcx.mk_predicate(ty::Binder::dummy(ty::PredicateKind::Clause(self)))
     }
 }
 
-impl<'tcx> ToPredicate<'tcx, Predicate<'tcx>> for Binder<'tcx, TraitRef<'tcx>> {
+impl<'tcx> ToPredicate<'tcx> for Binder<'tcx, TraitRef<'tcx>> {
     #[inline(always)]
     fn to_predicate(self, tcx: TyCtxt<'tcx>) -> Predicate<'tcx> {
         let pred: PolyTraitPredicate<'tcx> = self.to_predicate(tcx);
@@ -1193,25 +1193,25 @@ impl<'tcx> ToPredicate<'tcx, PolyTraitPredicate<'tcx>> for Binder<'tcx, TraitRef
     }
 }
 
-impl<'tcx> ToPredicate<'tcx, Predicate<'tcx>> for PolyTraitPredicate<'tcx> {
+impl<'tcx> ToPredicate<'tcx> for PolyTraitPredicate<'tcx> {
     fn to_predicate(self, tcx: TyCtxt<'tcx>) -> Predicate<'tcx> {
         self.map_bound(|p| PredicateKind::Clause(Clause::Trait(p))).to_predicate(tcx)
     }
 }
 
-impl<'tcx> ToPredicate<'tcx, Predicate<'tcx>> for PolyRegionOutlivesPredicate<'tcx> {
+impl<'tcx> ToPredicate<'tcx> for PolyRegionOutlivesPredicate<'tcx> {
     fn to_predicate(self, tcx: TyCtxt<'tcx>) -> Predicate<'tcx> {
         self.map_bound(|p| PredicateKind::Clause(Clause::RegionOutlives(p))).to_predicate(tcx)
     }
 }
 
-impl<'tcx> ToPredicate<'tcx, Predicate<'tcx>> for PolyTypeOutlivesPredicate<'tcx> {
+impl<'tcx> ToPredicate<'tcx> for PolyTypeOutlivesPredicate<'tcx> {
     fn to_predicate(self, tcx: TyCtxt<'tcx>) -> Predicate<'tcx> {
         self.map_bound(|p| PredicateKind::Clause(Clause::TypeOutlives(p))).to_predicate(tcx)
     }
 }
 
-impl<'tcx> ToPredicate<'tcx, Predicate<'tcx>> for PolyProjectionPredicate<'tcx> {
+impl<'tcx> ToPredicate<'tcx> for PolyProjectionPredicate<'tcx> {
     fn to_predicate(self, tcx: TyCtxt<'tcx>) -> Predicate<'tcx> {
         self.map_bound(|p| PredicateKind::Clause(Clause::Projection(p))).to_predicate(tcx)
     }
