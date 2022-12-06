@@ -854,8 +854,6 @@ impl<'a, 'll, 'tcx> BuilderMethods<'a, 'tcx> for Builder<'a, 'll, 'tcx> {
         assert!(!flags.contains(MemFlags::NONTEMPORAL), "non-temporal memcpy not supported");
         let size = self.intcast(size, self.type_isize(), false);
         let is_volatile = flags.contains(MemFlags::VOLATILE);
-        let dst = self.pointercast(dst, self.type_ptr());
-        let src = self.pointercast(src, self.type_ptr());
         unsafe {
             llvm::LLVMRustBuildMemCpy(
                 self.llbuilder,
@@ -881,8 +879,6 @@ impl<'a, 'll, 'tcx> BuilderMethods<'a, 'tcx> for Builder<'a, 'll, 'tcx> {
         assert!(!flags.contains(MemFlags::NONTEMPORAL), "non-temporal memmove not supported");
         let size = self.intcast(size, self.type_isize(), false);
         let is_volatile = flags.contains(MemFlags::VOLATILE);
-        let dst = self.pointercast(dst, self.type_ptr());
-        let src = self.pointercast(src, self.type_ptr());
         unsafe {
             llvm::LLVMRustBuildMemMove(
                 self.llbuilder,
@@ -905,7 +901,6 @@ impl<'a, 'll, 'tcx> BuilderMethods<'a, 'tcx> for Builder<'a, 'll, 'tcx> {
         flags: MemFlags,
     ) {
         let is_volatile = flags.contains(MemFlags::VOLATILE);
-        let ptr = self.pointercast(ptr, self.type_ptr());
         unsafe {
             llvm::LLVMRustBuildMemSet(
                 self.llbuilder,
@@ -1342,20 +1337,10 @@ impl<'a, 'll, 'tcx> Builder<'a, 'll, 'tcx> {
 
     fn check_store(&mut self, ptr: &'ll Value) -> &'ll Value {
         let dest_ptr_ty = self.cx.val_ty(ptr);
-        let stored_ptr_ty = self.cx.type_ptr();
 
         assert_eq!(self.cx.type_kind(dest_ptr_ty), TypeKind::Pointer);
 
-        if dest_ptr_ty == stored_ptr_ty {
-            ptr
-        } else {
-            debug!(
-                "type mismatch in store. \
-                    Expected {:?}, got {:?}; inserting bitcast",
-                dest_ptr_ty, stored_ptr_ty
-            );
-            self.bitcast(ptr, stored_ptr_ty)
-        }
+        ptr
     }
 
     fn check_call<'b>(
@@ -1420,7 +1405,6 @@ impl<'a, 'll, 'tcx> Builder<'a, 'll, 'tcx> {
             return;
         }
 
-        let ptr = self.pointercast(ptr, self.cx.type_ptr());
         self.call_intrinsic(intrinsic, &[self.cx.const_u64(size), ptr]);
     }
 

@@ -123,8 +123,7 @@ pub fn compile_codegen_unit(tcx: TyCtxt<'_>, cgu_name: Symbol) -> (ModuleCodegen
             // happen after the llvm.used variables are created.
             for &(old_g, new_g) in cx.statics_to_rauw().borrow().iter() {
                 unsafe {
-                    let bitcast = llvm::LLVMConstPointerCast(new_g, cx.val_ty(old_g));
-                    llvm::LLVMReplaceAllUsesWith(old_g, bitcast);
+                    llvm::LLVMReplaceAllUsesWith(old_g, new_g);
                     llvm::LLVMDeleteGlobal(old_g);
                 }
             }

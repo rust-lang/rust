@@ -32,12 +32,7 @@ fn emit_direct_ptr_va_arg<'ll, 'tcx>(
     allow_higher_align: bool,
 ) -> (&'ll Value, Align) {
     let va_list_ty = bx.type_ptr();
-    let va_list_ptr_ty = bx.type_ptr();
-    let va_list_addr = if list.layout.llvm_type(bx.cx) != va_list_ptr_ty {
-        bx.bitcast(list.immediate(), va_list_ptr_ty)
-    } else {
-        list.immediate()
-    };
+    let va_list_addr = list.immediate();
 
     let ptr = bx.load(va_list_ty, va_list_addr, bx.tcx().data_layout.pointer_align.abi);
 
@@ -55,9 +50,9 @@ fn emit_direct_ptr_va_arg<'ll, 'tcx>(
     if size.bytes() < slot_size.bytes() && bx.tcx().sess.target.endian == Endian::Big {
         let adjusted_size = bx.cx().const_i32((slot_size.bytes() - size.bytes()) as i32);
         let adjusted = bx.inbounds_gep(bx.type_i8(), addr, &[adjusted_size]);
-        (bx.bitcast(adjusted, bx.type_ptr()), addr_align)
+        (adjusted, addr_align)
     } else {
-        (bx.bitcast(addr, bx.type_ptr()), addr_align)
+        (addr, addr_align)
     }
 }
 
@@ -157,7 +152,6 @@ fn emit_aapcs_va_arg<'ll, 'tcx>(
         reg_addr = bx.gep(bx.type_i8(), reg_addr, &[offset]);
     }
     let reg_type = layout.llvm_type(bx);
-    let reg_addr = bx.bitcast(reg_addr, bx.type_ptr());
     let reg_value = bx.load(reg_type, reg_addr, layout.align.abi);
     bx.br(end);
 

@@ -171,46 +171,23 @@ pub fn unsized_info<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>>(
             if let Some(entry_idx) = vptr_entry_idx {
                 let ptr_ty = cx.type_ptr();
                 let ptr_align = cx.tcx().data_layout.pointer_align.abi;
-                let vtable_ptr_ty = vtable_ptr_ty(cx, target, target_dyn_kind);
-                let llvtable = bx.pointercast(old_info, bx.type_ptr());
                 let gep = bx.inbounds_gep(
                     ptr_ty,
-                    llvtable,
+                    old_info,
                     &[bx.const_usize(u64::try_from(entry_idx).unwrap())],
                 );
                 let new_vptr = bx.load(ptr_ty, gep, ptr_align);
                 bx.nonnull_metadata(new_vptr);
                 // VTable loads are invariant.
                 bx.set_invariant_load(new_vptr);
-                bx.pointercast(new_vptr, vtable_ptr_ty)
+                new_vptr
             } else {
                 old_info
             }
         }
-        (_, &ty::Dynamic(ref data, _, target_dyn_kind)) => {
-            let vtable_ptr_ty = vtable_ptr_ty(cx, target, target_dyn_kind);
-            cx.const_ptrcast(meth::get_vtable(cx, source, data.principal()), vtable_ptr_ty)
-        }
+        (_, &ty::Dynamic(ref data, _, _)) => meth::get_vtable(cx, source, data.principal()),
         _ => bug!("unsized_info: invalid unsizing {:?} -> {:?}", source, target),
     }
-}
-
-// Returns the vtable pointer type of a `dyn` or `dyn*` type
-fn vtable_ptr_ty<'tcx, Cx: CodegenMethods<'tcx>>(
-    cx: &Cx,
-    target: Ty<'tcx>,
-    kind: ty::DynKind,
-) -> <Cx as BackendTypes>::Type {
-    cx.scalar_pair_element_backend_type(
-        cx.layout_of(match kind {
-            // vtable is the second field of `*mut dyn Trait`
-            ty::Dyn => cx.tcx().mk_mut_ptr(target),
-            // vtable is the second field of `dyn* Trait`
-            ty::DynStar => target,
-        }),
-        1,
-        true,
-    )
 }
 
 /// Coerces `src` to `dst_ty`. `src_ty` must be a pointer.
@@ -226,8 +203,7 @@ pub fn unsize_ptr<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>>(
         (&ty::Ref(_, a, _), &ty::Ref(_, b, _) | &ty::RawPtr(ty::TypeAndMut { ty: b, .. }))
         | (&ty::RawPtr(ty::TypeAndMut { ty: a, .. }), &ty::RawPtr(ty::TypeAndMut { ty: b, .. })) => {
             assert_eq!(bx.cx().type_is_sized(a), old_info.is_none());
-            let ptr_ty = bx.type_ptr();
-            (bx.pointercast(src, ptr_ty), unsized_info(bx, a, b, old_info))
+            (src, unsized_info(bx, a, b, old_info))
         }
         (&ty::Adt(def_a, _), &ty::Adt(def_b, _)) => {
             assert_eq!(def_a, def_b);

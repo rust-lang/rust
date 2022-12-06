@@ -165,7 +165,6 @@ impl<'ll, 'tcx> IntrinsicCallMethods<'tcx> for Builder<'_, 'll, 'tcx> {
                 let ptr = args[0].immediate();
                 let load = if let PassMode::Cast(ty, _) = &fn_abi.ret.mode {
                     let llty = ty.llvm_type(self);
-                    let ptr = self.pointercast(ptr, self.type_ptr());
                     self.volatile_load(llty, ptr)
                 } else {
                     self.volatile_load(self.layout_of(tp_ty).llvm_type(self), ptr)
@@ -319,18 +318,12 @@ impl<'ll, 'tcx> IntrinsicCallMethods<'tcx> for Builder<'_, 'll, 'tcx> {
                     self.const_bool(true)
                 } else if use_integer_compare {
                     let integer_ty = self.type_ix(layout.size().bits());
-                    let ptr_ty = self.type_ptr();
-                    let a_ptr = self.bitcast(a, ptr_ty);
-                    let a_val = self.load(integer_ty, a_ptr, layout.align().abi);
-                    let b_ptr = self.bitcast(b, ptr_ty);
-                    let b_val = self.load(integer_ty, b_ptr, layout.align().abi);
+                    let a_val = self.load(integer_ty, a, layout.align().abi);
+                    let b_val = self.load(integer_ty, b, layout.align().abi);
                     self.icmp(IntPredicate::IntEQ, a_val, b_val)
                 } else {
-                    let ptr_ty = self.type_ptr();
-                    let a_ptr = self.bitcast(a, ptr_ty);
-                    let b_ptr = self.bitcast(b, ptr_ty);
                     let n = self.const_usize(layout.size().bytes());
-                    let cmp = self.call_intrinsic("memcmp", &[a_ptr, b_ptr, n]);
+                    let cmp = self.call_intrinsic("memcmp", &[a, b, n]);
                     match self.cx.sess().target.arch.as_ref() {
                         "avr" | "msp430" => self.icmp(IntPredicate::IntEQ, cmp, self.const_i16(0)),
                         _ => self.icmp(IntPredicate::IntEQ, cmp, self.const_i32(0)),
@@ -386,9 +379,7 @@ impl<'ll, 'tcx> IntrinsicCallMethods<'tcx> for Builder<'_, 'll, 'tcx> {
 
         if !fn_abi.ret.is_ignore() {
             if let PassMode::Cast(_, _) = &fn_abi.ret.mode {
-                let ptr_llty = self.type_ptr();
-                let ptr = self.pointercast(result.llval, ptr_llty);
-                self.store(llval, ptr, result.align);
+                self.store(llval, result.llval, result.align);
             } else {
                 OperandRef::from_immediate_or_packed_pair(self, llval, result.layout)
                     .val
@@ -412,9 +403,7 @@ impl<'ll, 'tcx> IntrinsicCallMethods<'tcx> for Builder<'_, 'll, 'tcx> {
     fn type_test(&mut self, pointer: Self::Value, typeid: Self::Value) -> Self::Value {
         // Test the called operand using llvm.type.test intrinsic. The LowerTypeTests link-time
         // optimization pass replaces calls to this intrinsic with code to test type membership.
-        let ptr_ty = self.type_ptr();
-        let bitcast = self.bitcast(pointer, ptr_ty);
-        self.call_intrinsic("llvm.type.test", &[bitcast, typeid])
+        self.call_intrinsic("llvm.type.test", &[pointer, typeid])
     }
 
     fn type_checked_load(
@@ -748,7 +737,6 @@ fn codegen_emcc_try<'ll>(
         let catch_data_1 =
             bx.inbounds_gep(catch_data_type, catch_data, &[bx.const_usize(0), bx.const_usize(1)]);
         bx.store(is_rust_panic, catch_data_1, i8_align);
-        let catch_data = bx.bitcast(catch_data, bx.type_ptr());
 
         let catch_ty = bx.type_func(&[bx.type_ptr(), bx.type_ptr()], bx.type_void());
         bx.call(catch_ty, None, catch_func, &[data, catch_data], None);
@@ -897,8 +885,7 @@ fn generic_simd_intrinsic<'ll, 'tcx>(
                 let place = PlaceRef::alloca(bx, args[0].layout);
                 args[0].val.store(bx, place);
                 let int_ty = bx.type_ix(expected_bytes * 8);
-                let ptr = bx.pointercast(place.llval, bx.cx.type_ptr());
-                bx.load(int_ty, ptr, Align::ONE)
+                bx.load(int_ty, place.llval, Align::ONE)
             }
             _ => return_error!(
                 "invalid bitmask `{}`, expected `u{}` or `[u8; {}]`",
@@ -1145,7 +1132,6 @@ fn generic_simd_intrinsic<'ll, 'tcx>(
                 let ptr = bx.alloca(bx.type_ix(expected_bytes * 8), Align::ONE);
                 bx.store(ze, ptr, Align::ONE);
                 let array_ty = bx.type_array(bx.type_i8(), expected_bytes);
-                let ptr = bx.pointercast(ptr, bx.cx.type_ptr());
                 return Ok(bx.load(array_ty, ptr, Align::ONE));
             }
             _ => return_error!(
@@ -1763,11 +1749,7 @@ unsupported {} from `{}` with element `{}` of size `{}` to `{}`"#,
             _ => return_error!("expected pointer, got `{}`", out_elem),
         }
 
-        if in_elem == out_elem {
-            return Ok(args[0].immediate());
-        } else {
-            return Ok(bx.pointercast(args[0].immediate(), llret_ty));
-        }
+        return Ok(args[0].immediate());
     }
 
     if name == sym::simd_expose_addr {

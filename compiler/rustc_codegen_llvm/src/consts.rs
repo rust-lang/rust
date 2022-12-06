@@ -209,10 +209,6 @@ fn check_and_apply_linkage<'ll, 'tcx>(
     }
 }
 
-pub fn ptrcast<'ll>(val: &'ll Value, ty: &'ll Type) -> &'ll Value {
-    unsafe { llvm::LLVMConstPointerCast(val, ty) }
-}
-
 impl<'ll> CodegenCx<'ll, '_> {
     pub(crate) fn const_bitcast(&self, val: &'ll Value, ty: &'ll Type) -> &'ll Value {
         unsafe { llvm::LLVMConstBitCast(val, ty) }
@@ -572,14 +568,12 @@ impl<'ll> StaticMethods for CodegenCx<'ll, '_> {
 
     /// Add a global value to a list to be stored in the `llvm.used` variable, an array of ptr.
     fn add_used_global(&self, global: &'ll Value) {
-        let cast = unsafe { llvm::LLVMConstPointerCast(global, self.type_ptr()) };
-        self.used_statics.borrow_mut().push(cast);
+        self.used_statics.borrow_mut().push(global);
     }
 
     /// Add a global value to a list to be stored in the `llvm.compiler.used` variable,
     /// an array of ptr.
     fn add_compiler_used_global(&self, global: &'ll Value) {
-        let cast = unsafe { llvm::LLVMConstPointerCast(global, self.type_ptr()) };
-        self.compiler_used_statics.borrow_mut().push(cast);
+        self.compiler_used_statics.borrow_mut().push(global);
     }
 }

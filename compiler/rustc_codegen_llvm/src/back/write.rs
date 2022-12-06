@@ -4,7 +4,6 @@ use crate::back::profiling::{
 };
 use crate::base;
 use crate::common;
-use crate::consts;
 use crate::llvm::{self, DiagnosticInfo, PassManager};
 use crate::llvm_util;
 use crate::type_::Type;
@@ -948,7 +947,7 @@ fn create_msvc_imps(
 
         for (imp_name, val) in globals {
             let imp = llvm::LLVMAddGlobal(llmod, ptr_ty, imp_name.as_ptr().cast());
-            llvm::LLVMSetInitializer(imp, consts::ptrcast(val, ptr_ty));
+            llvm::LLVMSetInitializer(imp, val);
             llvm::LLVMRustSetLinkage(imp, llvm::Linkage::ExternalLinkage);
         }
     }

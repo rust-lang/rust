@@ -1,6 +1,6 @@
 //! Code that is useful in various codegen modules.
 
-use crate::consts::{self, const_alloc_to_llvm};
+use crate::consts::const_alloc_to_llvm;
 pub use crate::context::CodegenCx;
 use crate::llvm::{self, BasicBlock, Bool, ConstantInt, False, OperandBundleDef, True};
 use crate::type_::Type;
@@ -202,8 +202,7 @@ impl<'ll, 'tcx> ConstMethods<'tcx> for CodegenCx<'ll, 'tcx> {
             })
             .1;
         let len = s.len();
-        let cs = consts::ptrcast(str_global, self.type_ptr());
-        (cs, self.const_usize(len as u64))
+        (str_global, self.const_usize(len as u64))
     }
 
     fn const_struct(&self, elts: &[&'ll Value], packed: bool) -> &'ll Value {
@@ -312,18 +311,14 @@ impl<'ll, 'tcx> ConstMethods<'tcx> for CodegenCx<'ll, 'tcx> {
             let llval = unsafe {
                 llvm::LLVMRustConstInBoundsGEP2(
                     self.type_i8(),
-                    self.const_bitcast(base_addr, self.type_ptr()),
+                    base_addr,
                     &self.const_usize(offset.bytes()),
                     1,
                 )
             };
-            self.const_bitcast(llval, llty)
+            llval
         };
         PlaceRef::new_sized(llval, layout)
-    }
-
-    fn const_ptrcast(&self, val: &'ll Value, ty: &'ll Type) -> &'ll Value {
-        consts::ptrcast(val, ty)
     }
 }
 

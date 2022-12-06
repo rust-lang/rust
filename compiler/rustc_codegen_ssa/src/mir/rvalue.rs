@@ -249,18 +249,11 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
                     {
                         if let OperandValue::Pair(data_ptr, meta) = operand.val {
                             if bx.cx().is_backend_scalar_pair(cast) {
-                                let data_cast = bx.pointercast(
-                                    data_ptr,
-                                    bx.cx().scalar_pair_element_backend_type(cast, 0, true),
-                                );
-                                OperandValue::Pair(data_cast, meta)
+                                OperandValue::Pair(data_ptr, meta)
                             } else {
                                 // cast to thin-ptr
-                                // Cast of fat-ptr to thin-ptr is an extraction of data-ptr and
-                                // pointer-cast of that pointer to desired pointer type.
-                                let llcast_ty = bx.cx().immediate_backend_type(cast);
-                                let llval = bx.pointercast(data_ptr, llcast_ty);
-                                OperandValue::Immediate(llval)
+                                // Cast of fat-ptr to thin-ptr is an extraction of data-ptr.
+                                OperandValue::Immediate(data_ptr)
                             }
                         } else {
                             bug!("unexpected non-pair operand");
@@ -325,7 +318,7 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
                                 }
                             }
                             (CastTy::Ptr(_) | CastTy::FnPtr, CastTy::Ptr(_)) => {
-                                bx.pointercast(llval, ll_t_out)
+                                llval
                             }
                             (CastTy::Int(i), CastTy::Ptr(_)) => {
                                 let usize_llval =
@@ -477,10 +470,8 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
 
                 let content_ty = self.monomorphize(content_ty);
                 let box_layout = bx.cx().layout_of(bx.tcx().mk_box(content_ty));
-                let llty_ptr = bx.cx().backend_type(box_layout);
 
-                let val = bx.pointercast(lloperand, llty_ptr);
-                OperandRef { val: OperandValue::Immediate(val), layout: box_layout }
+                OperandRef { val: OperandValue::Immediate(lloperand), layout: box_layout }
             }
         }
     }
