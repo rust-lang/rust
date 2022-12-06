@@ -80,12 +80,13 @@ declare_clippy_lint! {
     /// ### What it does
     /// Checks for casts between numerical types that may
     /// truncate large values. This is expected behavior, so the cast is `Allow` by
-    /// default.
+    /// default. It suggests user either explicitly ignore the lint,
+    /// or use `try_from()` and handle the truncation, default, or panic explicitly.
     ///
     /// ### Why is this bad?
     /// In some problem domains, it is good practice to avoid
     /// truncation. This lint can be activated to help assess where additional
-    /// checks could be beneficial, and suggests implementing TryFrom trait.
+    /// checks could be beneficial.
     ///
     /// ### Example
     /// ```rust
