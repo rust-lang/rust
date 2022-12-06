@@ -634,6 +634,8 @@ fn generate_macro_def_id_path(
     Ok((url, ItemType::Macro, fqp))
 }
 
+/// Find the link to the node with [DefId], it returns the link string, "short type description",
+/// and the fully qualified name of that node. The `root_path` will be prepended to the link string if exists.
 pub(crate) fn href_with_root_path(
     did: DefId,
     cx: &Context<'_>,
@@ -716,6 +718,7 @@ pub(crate) fn href_with_root_path(
     Ok((url_parts.finish(), shortty, fqp.to_vec()))
 }
 
+/// Equivalent to [href_with_root_path] with empty `root_path`.
 pub(crate) fn href(
     did: DefId,
     cx: &Context<'_>,

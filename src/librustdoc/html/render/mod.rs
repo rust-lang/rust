@@ -54,7 +54,7 @@ use rustc_hir::def_id::DefId;
 use rustc_hir::Mutability;
 use rustc_middle::middle::stability;
 use rustc_middle::ty;
-use rustc_middle::ty::TyCtxt;
+use rustc_middle::ty::{DefIdTree, TyCtxt};
 use rustc_span::{
     symbol::{sym, Symbol},
     BytePos, FileName, RealFileName,
@@ -2076,6 +2076,67 @@ pub(crate) fn sidebar_render_assoc_items(
     synthetic: Vec<&Impl>,
     blanket_impl: Vec<&Impl>,
 ) {
+    let format_impls_grouped = |impls: Vec<&Impl>, id_map: &mut IdMap| {
+        let mut links_dedup = FxHashSet::default();
+        let mut mod_groups = FxHashMap::default();
+
+        // group by module id
+        for it in &impls {
+            if let Some(did) = it.trait_did() {
+                let mod_did = cx.shared.tcx.parent(did);
+                mod_groups.entry(mod_did).or_insert(Vec::new()).push(it);
+            }
+        }
+
+        let mut res = mod_groups
+            .into_iter()
+            .map(|(mod_did, group)| {
+                // render each implementation item
+                let mut rendered = group
+                    .into_iter()
+                    .filter_map(|it| {
+                        let trait_ = it.inner_impl().trait_.as_ref().unwrap();
+                        let encoded =
+                            id_map.derive(get_id_for_impl(&it.inner_impl().for_, Some(trait_), cx));
+
+                        let i_display = format!("{:#}", trait_.print(cx));
+                        let out = Escape(&i_display);
+                        let prefix = match it.inner_impl().polarity {
+                            ty::ImplPolarity::Positive | ty::ImplPolarity::Reservation => "",
+                            ty::ImplPolarity::Negative => "!",
+                        };
+                        let generated = format!("<a href=\"#{}\">{}{}</a>", encoded, prefix, out);
+                        if links_dedup.insert(generated.clone()) { Some(generated) } else { None }
+                    })
+                    .collect::<Vec<String>>();
+
+                rendered.sort();
+
+                // render the module name
+                let tcx = &cx.shared.tcx;
+                let crate_name = tcx.crate_name(mod_did.krate).as_str().to_owned();
+                let module_name = tcx.def_path(mod_did).to_string_no_crate_verbose();
+                let title = crate_name + &module_name;
+
+                (title, rendered)
+            })
+            .collect::<Vec<(String, Vec<String>)>>();
+
+        res.sort();
+        res
+    };
+
+    let concrete_format = format_impls_grouped(concrete, id_map);
+
+    for (mod_name, items) in concrete_format {
+        print_sidebar_block(
+            out,
+            "trait-implementations",
+            &format!("Implemented Traits from {}", mod_name),
+            items.iter(),
+        );
+    }
+
     let format_impls = |impls: Vec<&Impl>, id_map: &mut IdMap| {
         let mut links = FxHashSet::default();
 
@@ -2095,23 +2156,14 @@ pub(crate) fn sidebar_render_assoc_items(
                 let generated = format!("<a href=\"#{}\">{}{}</a>", encoded, prefix, out);
                 if links.insert(generated.clone()) { Some(generated) } else { None }
             })
+            .into_iter()
             .collect::<Vec<String>>();
         ret.sort();
         ret
     };
 
-    let concrete_format = format_impls(concrete, id_map);
     let synthetic_format = format_impls(synthetic, id_map);
     let blanket_format = format_impls(blanket_impl, id_map);
-
-    if !concrete_format.is_empty() {
-        print_sidebar_block(
-            out,
-            "trait-implementations",
-            "Trait Implementations",
-            concrete_format.iter(),
-        );
-    }
 
     if !synthetic_format.is_empty() {
         print_sidebar_block(
