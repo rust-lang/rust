@@ -2865,11 +2865,8 @@ impl<'tcx> TypeErrCtxtExt<'tcx> for TypeErrCtxt<'_, 'tcx> {
                         }
                     }
 
-                    let span = expr.span;
-                    let mut multi_span: MultiSpan = match expr.kind {
-                        hir::ExprKind::MethodCall(_, _, _, span) => span.into(),
-                        _ => span.into(),
-                    };
+                    let mut primary_spans = vec![];
+                    let mut span_labels = vec![];
 
                     // FIXME: visit the ty to see if there's any closure involved, and if there is,
                     // check whether its evaluated return type is the same as the one corresponding
@@ -2897,12 +2894,14 @@ impl<'tcx> TypeErrCtxtExt<'tcx> for TypeErrCtxt<'_, 'tcx> {
                         }
                     }
                     let point_at_chain = |expr: &hir::Expr<'_>| {
+                        let mut assocs = vec![];
+                        // We still want to point at the different methods even if there hasn't
+                        // been a change of assoc type.
+                        let mut call_spans = vec![];
                         let mut expr = expr;
                         let mut prev_ty = self.resolve_vars_if_possible(
                             typeck_results.expr_ty_adjusted_opt(expr).unwrap_or(tcx.ty_error()),
                         );
-                        let outer_ty = prev_ty;
-                        let mut assoc_seen = 0;
                         while let hir::ExprKind::MethodCall(_path_segment, rcvr_expr, _args, span) =
                             expr.kind
                         {
@@ -2910,12 +2909,13 @@ impl<'tcx> TypeErrCtxtExt<'tcx> for TypeErrCtxt<'_, 'tcx> {
                             // vec![1, 2, 3].iter().map(mapper).sum<i32>()
                             //               ^^^^^^ ^^^^^^^^^^^
                             expr = rcvr_expr;
+                            let mut assocs_in_this_method = Vec::with_capacity(type_diffs.len());
+                            call_spans.push(span);
 
                             let ocx = ObligationCtxt::new_in_snapshot(self.infcx);
                             for diff in &type_diffs {
                                 let Sorts(expected_found) = diff else { continue; };
                                 let ty::Projection(proj) = expected_found.expected.kind() else { continue; };
-                                assoc_seen += 1;
 
                                 let origin = TypeVariableOrigin {
                                     kind: TypeVariableOriginKind::TypeInference,
@@ -2963,23 +2963,17 @@ impl<'tcx> TypeErrCtxtExt<'tcx> for TypeErrCtxt<'_, 'tcx> {
                                 if ocx.select_where_possible().is_empty() {
                                     // `ty_var` now holds the type that `Item` is for `ExprTy`.
                                     let assoc = self.tcx.def_path_str(proj.item_def_id);
-                                    multi_span.push_span_label(
-                                        span,
-                                        &format!(
-                                            "associated type `{assoc}` is `{}` here",
-                                            self.resolve_vars_if_possible(ty_var),
-                                        ),
-                                    );
+                                    let ty_var = self.resolve_vars_if_possible(ty_var);
+                                    assocs_in_this_method.push(Some((span, (assoc, ty_var))));
                                 } else {
                                     // `<ExprTy as Iterator>` didn't select, so likely we've
                                     // reached the end of the iterator chain, like the originating
                                     // `Vec<_>`.
-                                    multi_span.push_span_label(
-                                        span,
-                                        format!("this call has type `{prev_ty}`"),
-                                    );
+                                    // Keep the space consistent for later zipping.
+                                    assocs_in_this_method.push(None);
                                 }
                             }
+                            assocs.push(assocs_in_this_method);
                             prev_ty = self.resolve_vars_if_possible(
                                 typeck_results.expr_ty_adjusted_opt(expr).unwrap_or(tcx.ty_error()),
                             );
@@ -2992,17 +2986,65 @@ impl<'tcx> TypeErrCtxtExt<'tcx> for TypeErrCtxt<'_, 'tcx> {
                             // Point at the root expression
                             // vec![1, 2, 3].iter().map(mapper).sum<i32>()
                             // ^^^^^^^^^^^^^
-                            multi_span.push_span_label(
-                                expr.span,
-                                format!("this expression has type `{ty}`"),
-                            );
+                            span_labels
+                                .push((expr.span, format!("this expression has type `{ty}`")));
                         };
-                        if assoc_seen > 0 {
-                            // Only show this if it is not a "trivial" expression (not a method
-                            // chain) and there are associated types to talk about.
+                        // Only show this if it is not a "trivial" expression (not a method
+                        // chain) and there are associated types to talk about.
+                        let mut assocs = assocs.into_iter().peekable();
+                        while let Some(assocs_in_method) = assocs.next() {
+                            let Some(prev_assoc_in_method) = assocs.peek() else {
+                                for entry in assocs_in_method {
+                                    let Some((span, (assoc, ty))) = entry else { continue; };
+                                    primary_spans.push(span);
+                                    span_labels.push((
+                                        span,
+                                        format!("associated type `{assoc}` is `{ty}` here"),
+                                    ));
+                                }
+                                break;
+                            };
+                            for (entry, prev_entry) in
+                                assocs_in_method.into_iter().zip(prev_assoc_in_method.into_iter())
+                            {
+                                match (entry, prev_entry) {
+                                    (Some((span, (assoc, ty))), Some((_, (_, prev_ty)))) => {
+                                        if ty != *prev_ty {
+                                            primary_spans.push(span);
+                                            span_labels.push((
+                                                span,
+                                                format!("associated type `{assoc}` changed to `{ty}` here"),
+                                            ));
+                                        }
+                                    }
+                                    (Some((span, (assoc, ty))), None) => {
+                                        span_labels.push((
+                                            span,
+                                            format!("associated type `{assoc}` is `{ty}` here"),
+                                        ));
+                                    }
+                                    (None, Some(_)) | (None, None) => {}
+                                }
+                            }
+                        }
+                        for span in call_spans {
+                            if span_labels.iter().find(|(s, _)| *s == span).is_none() {
+                                // Ensure we are showing the entire chain, even if the assoc types
+                                // haven't changed.
+                                span_labels.push((span, String::new()));
+                            }
+                        }
+                        if !primary_spans.is_empty() {
+                            let mut multi_span: MultiSpan = primary_spans.into();
+                            for (span, label) in span_labels {
+                                multi_span.push_span_label(span, label);
+                            }
                             err.span_note(
                                 multi_span,
-                                format!("the expression is of type `{outer_ty}`"),
+                                format!(
+                                    "the method call chain might not have had the expected \
+                                        associated types",
+                                ),
                             );
                         }
                     };

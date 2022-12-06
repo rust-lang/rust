@@ -22,11 +22,11 @@ LL |     let sr2: Vec<(u32, _, _)> = sr.iter().map(|(faction, th_sender, th_rece
    |
    = help: the trait `FromIterator<()>` is not implemented for `Vec<(u32, _, _)>`
    = help: the trait `FromIterator<T>` is implemented for `Vec<T>`
-note: the expression is of type `Map<std::slice::Iter<'_, (_, _, _)>, [closure@$DIR/issue-34334.rs:5:47: 5:82]>`
-  --> $DIR/issue-34334.rs:5:43
+note: the method call chain might not have had the expected associated types
+  --> $DIR/issue-34334.rs:5:36
    |
 LL |     let sr2: Vec<(u32, _, _)> = sr.iter().map(|(faction, th_sender, th_receiver)| {}).collect();
-   |                                 -- ------ ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ associated type `std::iter::Iterator::Item` is `()` here
+   |                                 -- ^^^^^^ ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ associated type `std::iter::Iterator::Item` changed to `()` here
    |                                 |  |
    |                                 |  associated type `std::iter::Iterator::Item` is `&(_, _, _)` here
    |                                 this expression has type `Vec<(_, _, _)>`
