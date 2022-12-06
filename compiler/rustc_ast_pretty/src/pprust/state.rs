@@ -64,7 +64,6 @@ impl<'a> Comments<'a> {
         Comments { sm, comments, current: 0 }
     }
 
-    // FIXME: This shouldn't probably clone lmao
     pub fn next(&self) -> Option<Comment> {
         self.comments.get(self.current).cloned()
     }
@@ -306,7 +305,7 @@ pub trait PrintState<'a>: std::ops::Deref<Target = pp::Printer> + std::ops::Dere
             }
             CommentStyle::Isolated => {
                 self.hardbreak_if_not_bol();
-                for line in &cmnt.lines {
+                for line in &*cmnt.lines {
                     // Don't print empty lines because they will end up as trailing
                     // whitespace.
                     if !line.is_empty() {
@@ -324,7 +323,7 @@ pub trait PrintState<'a>: std::ops::Deref<Target = pp::Printer> + std::ops::Dere
                     self.hardbreak()
                 } else {
                     self.visual_align();
-                    for line in &cmnt.lines {
+                    for line in &*cmnt.lines {
                         if !line.is_empty() {
                             self.word(line.clone());
                         }

@@ -1,4 +1,7 @@
+use std::iter;
+
 use crate::token::CommentKind;
+use rustc_data_structures::sync::Lrc;
 use rustc_span::source_map::SourceMap;
 use rustc_span::{BytePos, CharPos, FileName, Pos, Symbol};
 
@@ -20,7 +23,7 @@ pub enum CommentStyle {
 #[derive(Clone)]
 pub struct Comment {
     pub style: CommentStyle,
-    pub lines: Vec<String>,
+    pub lines: Lrc<[String]>,
     pub pos: BytePos,
 }
 
@@ -159,7 +162,7 @@ fn trim_whitespace_prefix(s: &str, col: CharPos) -> &str {
     }
 }
 
-fn split_block_comment_into_lines(text: &str, col: CharPos) -> Vec<String> {
+fn split_block_comment_into_lines(text: &str, col: CharPos) -> Lrc<[String]> {
     let mut res: Vec<String> = vec![];
     let mut lines = text.lines();
     // just push the first line
@@ -168,7 +171,7 @@ fn split_block_comment_into_lines(text: &str, col: CharPos) -> Vec<String> {
     for line in lines {
         res.push(trim_whitespace_prefix(line, col).to_string())
     }
-    res
+    res.into()
 }
 
 // it appears this function is called only from pprust... that's
@@ -187,7 +190,7 @@ pub fn gather_comments(sm: &SourceMap, path: FileName, src: String) -> Vec<Comme
     if let Some(shebang_len) = rustc_lexer::strip_shebang(text) {
         comments.push(Comment {
             style: CommentStyle::Isolated,
-            lines: vec![text[..shebang_len].to_string()],
+            lines: [text[..shebang_len].to_string()].into_iter().collect(),
             pos: start_bpos,
         });
         pos += shebang_len;
@@ -203,7 +206,7 @@ pub fn gather_comments(sm: &SourceMap, path: FileName, src: String) -> Vec<Comme
                         idx += 1 + next_newline;
                         comments.push(Comment {
                             style: CommentStyle::BlankLine,
-                            lines: vec![],
+                            lines: iter::empty().collect(),
                             pos: start_bpos + BytePos((pos + idx) as u32),
                         });
                     }
@@ -239,7 +242,7 @@ pub fn gather_comments(sm: &SourceMap, path: FileName, src: String) -> Vec<Comme
                         } else {
                             CommentStyle::Isolated
                         },
-                        lines: vec![token_text.to_string()],
+                        lines: [token_text.to_string()].into_iter().collect(),
                         pos: start_bpos + BytePos(pos as u32),
                     })
                 }
