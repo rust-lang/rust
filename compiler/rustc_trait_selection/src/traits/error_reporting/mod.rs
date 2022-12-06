@@ -1607,7 +1607,7 @@ impl<'tcx> InferCtxtPrivExt<'tcx> for TypeErrCtxt<'_, 'tcx> {
                         | ObligationCauseCode::ObjectCastObligation(..)
                         | ObligationCauseCode::OpaqueType
                 );
-                let expected_ty = data.term.ty().unwrap();
+                let expected_ty = data.term.ty().unwrap_or_else(|| self.tcx.ty_error());
 
                 // constrain inference variables a bit more to nested obligations from normalize so
                 // we can have more helpful errors.
