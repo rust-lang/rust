@@ -20,7 +20,7 @@ use rustc_serialize::{
     opaque::{FileEncoder, MemDecoder},
     Decodable, Encodable,
 };
-use rustc_session::{config::CrateType, getopts};
+use rustc_session::getopts;
 use rustc_span::{
     def_id::{CrateNum, DefPathHash, LOCAL_CRATE},
     edition::Edition,
@@ -123,7 +123,7 @@ struct FindCalls<'a, 'tcx> {
     cx: Context<'tcx>,
     target_crates: Vec<CrateNum>,
     calls: &'a mut AllCallLocations,
-    crate_types: Vec<CrateType>,
+    bin_crate: bool,
 }
 
 impl<'a, 'tcx> Visitor<'tcx> for FindCalls<'a, 'tcx>
@@ -247,7 +247,7 @@ where
                 let mk_call_data = || {
                     let display_name = file_path.display().to_string();
                     let edition = call_span.edition();
-                    let is_bin = self.crate_types.contains(&CrateType::Executable);
+                    let is_bin = self.bin_crate;
 
                     CallData { locations: Vec::new(), url, display_name, edition, is_bin }
                 };
@@ -278,7 +278,7 @@ pub(crate) fn run(
     cache: formats::cache::Cache,
     tcx: TyCtxt<'_>,
     options: ScrapeExamplesOptions,
-    crate_types: Vec<CrateType>,
+    bin_crate: bool,
 ) -> interface::Result<()> {
     let inner = move || -> Result<(), String> {
         // Generates source files for examples
@@ -306,7 +306,7 @@ pub(crate) fn run(
         // Run call-finder on all items
         let mut calls = FxHashMap::default();
         let mut finder =
-            FindCalls { calls: &mut calls, tcx, map: tcx.hir(), cx, target_crates, crate_types };
+            FindCalls { calls: &mut calls, tcx, map: tcx.hir(), cx, target_crates, bin_crate };
         tcx.hir().visit_all_item_likes_in_crate(&mut finder);
 
         // The visitor might have found a type error, which we need to

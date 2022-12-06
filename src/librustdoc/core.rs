@@ -203,7 +203,7 @@ pub(crate) fn create_config(
     RustdocOptions {
         input,
         crate_name,
-        crate_types,
+        proc_macro_crate,
         error_format,
         diagnostic_width,
         libs,
@@ -247,7 +247,8 @@ pub(crate) fn create_config(
         Some((lint.name_lower(), lint::Allow))
     });
 
-    let crate_types = if crate_types.is_empty() { vec![CrateType::Rlib] } else { crate_types };
+    let crate_types =
+        if proc_macro_crate { vec![CrateType::ProcMacro] } else { vec![CrateType::Rlib] };
     let test = scrape_examples_options.map(|opts| opts.scrape_tests).unwrap_or(false);
     // plays with error output here!
     let sessopts = config::Options {

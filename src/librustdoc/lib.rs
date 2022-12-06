@@ -774,7 +774,7 @@ fn main_args(at_args: &[String]) -> MainResult {
     let output_format = options.output_format;
     let externs = options.externs.clone();
     let scrape_examples_options = options.scrape_examples_options.clone();
-    let crate_types = options.crate_types.clone();
+    let bin_crate = options.bin_crate;
 
     let config = core::create_config(options);
 
@@ -839,7 +839,7 @@ fn main_args(at_args: &[String]) -> MainResult {
                         cache,
                         tcx,
                         options,
-                        crate_types,
+                        bin_crate,
                     );
                 }
 

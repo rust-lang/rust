@@ -68,11 +68,8 @@ pub(crate) fn run(options: RustdocOptions) -> Result<(), ErrorGuaranteed> {
 
     debug!(?lint_opts);
 
-    let crate_types = if options.crate_types.is_empty() {
-        vec![CrateType::Rlib]
-    } else {
-        options.crate_types.clone()
-    };
+    let crate_types =
+        if options.proc_macro_crate { vec![CrateType::ProcMacro] } else { vec![CrateType::Rlib] };
 
     let sessopts = config::Options {
         maybe_sysroot: options.maybe_sysroot.clone(),
