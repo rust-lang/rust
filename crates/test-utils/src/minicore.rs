@@ -112,7 +112,7 @@ pub mod default {
         fn default() -> Self;
     }
     // region:derive
-    #[rustc_builtin_macro]
+    #[rustc_builtin_macro(Default, attributes(default))]
     pub macro Default($item:item) {}
     // endregion:derive
 }
