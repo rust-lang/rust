@@ -16,18 +16,19 @@ types for equality: for each interned type `X`, we implemented [`PartialEq for
 X`][peqimpl], so we can just compare pointers. The [`CtxtInterners`] type
 contains a bunch of maps of interned types and the arena itself.
 
-[peqimpl]: https://doc.rust-lang.org/nightly/nightly-rustc/rustc_middle/ty/struct.TyS.html#implementations
+[peqimpl]: https://doc.rust-lang.org/nightly/nightly-rustc/rustc_middle/ty/struct.Ty.html#implementations
 [`CtxtInterners`]: https://doc.rust-lang.org/nightly/nightly-rustc/rustc_middle/ty/struct.CtxtInterners.html#structfield.arena
 
-### Example: `ty::TyS`
+### Example: `ty::TyKind`
 
-Taking the example of [`ty::TyS`] which represents a type in the compiler (you
+Taking the example of [`ty::TyKind`] which represents a type in the compiler (you
 can read more [here](./ty.md)).  Each time we want to construct a type, the
 compiler doesn’t naively allocate from the buffer.  Instead, we check if that
 type was already constructed. If it was, we just get the same pointer we had
 before, otherwise we make a fresh pointer. With this schema if we want to know
 if two types are the same, all we need to do is compare the pointers which is
-efficient. `TyS` is carefully setup so you never construct them on the stack.
+efficient. `TyKind` should never be constructed on the stack, and it would be unusable
+if done so.
 You always allocate them from this arena and you always intern them so they are
 unique.
 
@@ -52,7 +53,7 @@ allocate, and which are found in this module. Here are a few examples:
 [`TraitRef`]: https://doc.rust-lang.org/nightly/nightly-rustc/rustc_middle/ty/struct.TraitRef.html
 [`Predicate`]: https://doc.rust-lang.org/nightly/nightly-rustc/rustc_middle/ty/struct.Predicate.html
 
-[`ty::TyS`]: https://doc.rust-lang.org/nightly/nightly-rustc/rustc_middle/ty/struct.TyS.html
+[`ty::TyKind`]: https://doc.rust-lang.org/nightly/nightly-rustc/rustc_middle/ty/sty/type.TyKind.html
 
 ## The tcx and how it uses lifetimes
 

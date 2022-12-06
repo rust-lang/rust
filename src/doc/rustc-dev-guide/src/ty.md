@@ -119,23 +119,20 @@ or `fn(i32) -> i32` (with type aliases fully expanded).
 
 ## `ty::Ty` implementation
 
-[`rustc_middle::ty::Ty`][ty_ty] is actually a type alias to [`&TyS`][tys].
-This type, which is short for "Type Structure", is where the main functionality is located.
-You can ignore `TyS` struct in general; you will basically never access it explicitly.
-We always pass it by reference using the `Ty` alias.
-The only exception is to define inherent methods on types. In particular, `TyS` has a [`kind`][kind]
-field of type [`TyKind`][tykind], which represents the key type information. `TyKind` is a big enum
+[`rustc_middle::ty::Ty`][ty_ty] is actually a wrapper around
+[`Interned<WithCachedTypeInfo<TyKind>>`][tykind].
+You can ignore `Interned` in general; you will basically never access it explicitly.
+We always hide them within `Ty` and skip over it via `Deref` impls or methods.
+`TyKind` is a big enum
 with variants to represent many different Rust types
 (e.g. primitives, references, abstract data types, generics, lifetimes, etc).
-`TyS` also has 2 more fields, `flags` and `outer_exclusive_binder`. They
+`WithCachedTypeInfo` has a few cached values like `flags` and `outer_exclusive_binder`. They
 are convenient hacks for efficiency and summarize information about the type that we may want to
-know, but they don’t come into the picture as much here. Finally, `ty::TyS`s
-are [interned](./memory.md), so that the `ty::Ty` can be a thin pointer-like
+know, but they don’t come into the picture as much here. Finally, [`Interned`](./memory.md) allows
+the `ty::Ty` to be a thin pointer-like
 type. This allows us to do cheap comparisons for equality, along with the other
 benefits of interning.
 
-[tys]: https://doc.rust-lang.org/nightly/nightly-rustc/rustc_middle/ty/struct.TyS.html
-[kind]: https://doc.rust-lang.org/nightly/nightly-rustc/rustc_middle/ty/struct.TyS.html#structfield.kind
 [tykind]: https://doc.rust-lang.org/nightly/nightly-rustc/rustc_middle/ty/enum.TyKind.html
 
 ## Allocating and working with types
