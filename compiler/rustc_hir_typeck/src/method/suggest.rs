@@ -1482,15 +1482,17 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             ident_name: Symbol,
         }
 
+        // FIXME: This really should be taking scoping, etc into account.
         impl<'v> Visitor<'v> for LetVisitor<'v> {
             fn visit_stmt(&mut self, ex: &'v hir::Stmt<'v>) {
-                if let hir::StmtKind::Local(hir::Local { pat, init, .. }) = &ex.kind {
-                    if let Binding(_, _, ident, ..) = pat.kind &&
-                        ident.name == self.ident_name {
-                        self.result = *init;
-                    }
+                if let hir::StmtKind::Local(hir::Local { pat, init, .. }) = &ex.kind
+                    && let Binding(_, _, ident, ..) = pat.kind
+                    && ident.name == self.ident_name
+                {
+                    self.result = *init;
+                } else {
+                    hir::intravisit::walk_stmt(self, ex);
                 }
-                hir::intravisit::walk_stmt(self, ex);
             }
         }
 
@@ -1498,9 +1500,10 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         visitor.visit_body(&body);
 
         let parent = self.tcx.hir().get_parent_node(seg1.hir_id);
-        if let Some(Node::Expr(call_expr)) = self.tcx.hir().find(parent) &&
-            let Some(expr) = visitor.result {
-            let self_ty = self.node_ty(expr.hir_id);
+        if let Some(Node::Expr(call_expr)) = self.tcx.hir().find(parent)
+            && let Some(expr) = visitor.result
+            && let Some(self_ty) = self.node_ty_opt(expr.hir_id)
+        {
             let probe = self.lookup_probe(
                 seg2.ident,
                 self_ty,
@@ -1513,7 +1516,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                     sm.span_extend_while(seg1.ident.span.shrink_to_hi(), |c| c == ':').unwrap(),
                     "you may have meant to call an instance method",
                     ".".to_string(),
-                    Applicability::MaybeIncorrect
+                    Applicability::MaybeIncorrect,
                 );
             }
         }
