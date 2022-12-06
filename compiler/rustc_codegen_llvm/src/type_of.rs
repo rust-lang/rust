@@ -63,9 +63,10 @@ fn uncached_llvm_type<'a, 'tcx>(
             }
             Some(name)
         }
-        // Use identified structure types for ADT. Due to pointee types in LLVM IR their definition
+        // In LLVM < 15, use identified structure types for ADT. Due to pointee types in LLVM IR their definition
         // might be recursive. Other cases are non-recursive and we can use literal structure types.
-        ty::Adt(..) => Some(String::new()),
+        // In LLVM 15, we use opaque pointers, so there are no pointee types and no potential recursion.
+        ty::Adt(..) if get_version() < (15, 0, 0) => Some(String::new()),
         _ => None,
     };
 
