@@ -2286,26 +2286,10 @@ impl<'a, 'b> ImportResolver<'a, 'b> {
                 let source_map = self.r.session.source_map();
 
                 // Make sure this is actually crate-relative.
-                let use_and_crate = import.use_span.with_hi(after_crate_name.lo());
-                let is_definitely_crate =
-                    source_map.span_to_snippet(use_and_crate).map_or(false, |s| {
-                        let mut s = s.trim();
-                        debug!("check_for_module_export_macro: s={s:?}",);
-                        s = s
-                            .split_whitespace()
-                            .rev()
-                            .next()
-                            .expect("split_whitespace always yields at least once");
-                        debug!("check_for_module_export_macro: s={s:?}",);
-                        if s.ends_with("::") {
-                            s = &s[..s.len() - 2];
-                        } else {
-                            return false;
-                        }
-                        s = s.trim();
-                        debug!("check_for_module_export_macro: s={s:?}",);
-                        s != "self" && s != "super"
-                    });
+                let is_definitely_crate = import
+                    .module_path
+                    .first()
+                    .map_or(false, |f| f.ident.name != kw::SelfLower && f.ident.name != kw::Super);
 
                 // Add the import to the start, with a `{` if required.
                 let start_point = source_map.start_point(after_crate_name);
