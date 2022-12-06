@@ -1978,7 +1978,9 @@ in storage.js
 }
 
 .scraped-example .code-wrapper .example-wrap {
-	flex: 1;
+	display: grid;
+	grid-template-columns: max-content auto;
+	width: 100%;
 	overflow-x: auto;
 	overflow-y: hidden;
 	margin-bottom: 0;

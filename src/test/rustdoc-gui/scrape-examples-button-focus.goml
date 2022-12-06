@@ -1,4 +1,17 @@
 goto: "file://" + |DOC_PATH| + "/scrape_examples/fn.test.html"
+
+store-property: (initialScrollTop, ".scraped-example-list > .scraped-example pre", "scrollTop")
+focus: ".scraped-example-list > .scraped-example .next"
+press-key: "Enter"
+assert-property-false: (".scraped-example-list > .scraped-example pre", {
+	"scrollTop": |initialScrollTop|
+})
+focus: ".scraped-example-list > .scraped-example .prev"
+press-key: "Enter"
+assert-property: (".scraped-example-list > .scraped-example pre", {
+	"scrollTop": |initialScrollTop|
+})
+
 store-property: (smallOffsetHeight, ".scraped-example-list > .scraped-example pre", "offsetHeight")
 assert-property-false: (".scraped-example-list > .scraped-example pre", {
 	"scrollHeight": |smallOffsetHeight|
