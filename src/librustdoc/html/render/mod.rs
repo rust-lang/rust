@@ -2957,14 +2957,15 @@ fn render_call_locations(w: &mut Buffer, cx: &mut Context<'_>, item: &clean::Ite
 
     // The call locations are output in sequence, so that sequence needs to be determined.
     // Ideally the most "relevant" examples would be shown first, but there's no general algorithm
-    // for determining relevance. We instead make a proxy for relevance with the following heuristics:
+    // for determining relevance. We instead proxy relevance with the following heuristics:
     //   1. Code written to be an example is better than code not written to be an example, e.g.
-    //      a snippet from examples/foo.rs is better than src/lib.rs. We don't know the Cargo directory
-    //      structure in Rustdoc, so we proxy this by prioriting code that comes from a --crate-type bin.
-    //   2. Smaller examples are better than large examples. So we prioritize snippets that have the
-    //      smallest line span for their enclosing item.
-    //   3. Finally we sort by the displayed file name, which is arbitrary but prevents the ordering
-    //      of examples from randomly changing between Rustdoc invocations.
+    //      a snippet from examples/foo.rs is better than src/lib.rs. We don't know the Cargo
+    //      directory structure in Rustdoc, so we proxy this by prioritizing code that comes from
+    //      a --crate-type bin.
+    //   2. Smaller examples are better than large examples. So we prioritize snippets that have
+    //      the smallest number of lines in their enclosing item.
+    //   3. Finally we sort by the displayed file name, which is arbitrary but prevents the
+    //      ordering of examples from randomly changing between Rustdoc invocations.
     let ordered_locations = {
         fn sort_criterion<'a>(
             (_, call_data): &(&PathBuf, &'a CallData),
