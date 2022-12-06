@@ -466,61 +466,67 @@ fn test_type(cx: &ExtCtxt<'_>) -> TestType {
 fn has_test_signature(cx: &ExtCtxt<'_>, i: &ast::Item) -> bool {
     let has_should_panic_attr = cx.sess.contains_name(&i.attrs, sym::should_panic);
     let sd = &cx.sess.parse_sess.span_diagnostic;
-    if let ast::ItemKind::Fn(box ast::Fn { ref sig, ref generics, .. }) = i.kind {
-        if let ast::Unsafe::Yes(span) = sig.header.unsafety {
-            sd.struct_span_err(i.span, "unsafe functions cannot be used for tests")
-                .span_label(span, "`unsafe` because of this")
-                .emit();
-            return false;
-        }
-        if let ast::Async::Yes { span, .. } = sig.header.asyncness {
-            sd.struct_span_err(i.span, "async functions cannot be used for tests")
-                .span_label(span, "`async` because of this")
-                .emit();
-            return false;
-        }
-
-        // If the termination trait is active, the compiler will check that the output
-        // type implements the `Termination` trait as `libtest` enforces that.
-        let has_output = match sig.decl.output {
-            ast::FnRetTy::Default(..) => false,
-            ast::FnRetTy::Ty(ref t) if t.kind.is_unit() => false,
-            _ => true,
-        };
-
-        if !sig.decl.inputs.is_empty() {
-            sd.span_err(i.span, "functions used as tests can not have any arguments");
-            return false;
-        }
-
-        match (has_output, has_should_panic_attr) {
-            (true, true) => {
-                sd.span_err(i.span, "functions using `#[should_panic]` must return `()`");
-                false
+    match &i.kind {
+        ast::ItemKind::Fn(box ast::Fn { sig, generics, .. }) => {
+            if let ast::Unsafe::Yes(span) = sig.header.unsafety {
+                sd.struct_span_err(i.span, "unsafe functions cannot be used for tests")
+                    .span_label(span, "`unsafe` because of this")
+                    .emit();
+                return false;
             }
-            (true, false) => {
-                if !generics.params.is_empty() {
-                    sd.span_err(i.span, "functions used as tests must have signature fn() -> ()");
+            if let ast::Async::Yes { span, .. } = sig.header.asyncness {
+                sd.struct_span_err(i.span, "async functions cannot be used for tests")
+                    .span_label(span, "`async` because of this")
+                    .emit();
+                return false;
+            }
+
+            // If the termination trait is active, the compiler will check that the output
+            // type implements the `Termination` trait as `libtest` enforces that.
+            let has_output = match &sig.decl.output {
+                ast::FnRetTy::Default(..) => false,
+                ast::FnRetTy::Ty(t) if t.kind.is_unit() => false,
+                _ => true,
+            };
+
+            if !sig.decl.inputs.is_empty() {
+                sd.span_err(i.span, "functions used as tests can not have any arguments");
+                return false;
+            }
+
+            match (has_output, has_should_panic_attr) {
+                (true, true) => {
+                    sd.span_err(i.span, "functions using `#[should_panic]` must return `()`");
                     false
-                } else {
-                    true
                 }
+                (true, false) => {
+                    if !generics.params.is_empty() {
+                        sd.span_err(
+                            i.span,
+                            "functions used as tests must have signature fn() -> ()",
+                        );
+                        false
+                    } else {
+                        true
+                    }
+                }
+                (false, _) => true,
             }
-            (false, _) => true,
         }
-    } else {
-        // should be unreachable because `is_test_fn_item` should catch all non-fn items
-        false
+        _ => {
+            // should be unreachable because `is_test_fn_item` should catch all non-fn items
+            debug_assert!(false);
+            false
+        }
     }
 }
 
 fn has_bench_signature(cx: &ExtCtxt<'_>, i: &ast::Item) -> bool {
-    let has_sig = if let ast::ItemKind::Fn(box ast::Fn { ref sig, .. }) = i.kind {
+    let has_sig = match &i.kind {
         // N.B., inadequate check, but we're running
         // well before resolve, can't get too deep.
-        sig.decl.inputs.len() == 1
-    } else {
-        false
+        ast::ItemKind::Fn(box ast::Fn { sig, .. }) => sig.decl.inputs.len() == 1,
+        _ => false,
     };
 
     if !has_sig {

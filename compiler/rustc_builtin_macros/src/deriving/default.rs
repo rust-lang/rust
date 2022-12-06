@@ -62,15 +62,12 @@ fn default_struct_substructure(
     let default_call = |span| cx.expr_call_global(span, default_ident.clone(), Vec::new());
 
     let expr = match summary {
-        Unnamed(ref fields, is_tuple) => {
-            if !is_tuple {
-                cx.expr_ident(trait_span, substr.type_ident)
-            } else {
-                let exprs = fields.iter().map(|sp| default_call(*sp)).collect();
-                cx.expr_call_ident(trait_span, substr.type_ident, exprs)
-            }
+        Unnamed(_, false) => cx.expr_ident(trait_span, substr.type_ident),
+        Unnamed(fields, true) => {
+            let exprs = fields.iter().map(|sp| default_call(*sp)).collect();
+            cx.expr_call_ident(trait_span, substr.type_ident, exprs)
         }
-        Named(ref fields) => {
+        Named(fields) => {
             let default_fields = fields
                 .iter()
                 .map(|&(ident, span)| cx.field_imm(span, ident, default_call(span)))

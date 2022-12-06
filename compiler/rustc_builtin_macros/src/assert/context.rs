@@ -191,19 +191,19 @@ impl<'cx, 'a> Context<'cx, 'a> {
     ///
     /// See [Self::manage_initial_capture] and [Self::manage_try_capture]
     fn manage_cond_expr(&mut self, expr: &mut P<Expr>) {
-        match (*expr).kind {
-            ExprKind::AddrOf(_, mutability, ref mut local_expr) => {
+        match &mut expr.kind {
+            ExprKind::AddrOf(_, mutability, local_expr) => {
                 self.with_is_consumed_management(
                     matches!(mutability, Mutability::Mut),
                     |this| this.manage_cond_expr(local_expr)
                 );
             }
-            ExprKind::Array(ref mut local_exprs) => {
+            ExprKind::Array(local_exprs) => {
                 for local_expr in local_exprs {
                     self.manage_cond_expr(local_expr);
                 }
             }
-            ExprKind::Binary(ref op, ref mut lhs, ref mut rhs) => {
+            ExprKind::Binary(op, lhs, rhs) => {
                 self.with_is_consumed_management(
                     matches!(
                         op.node,
@@ -226,56 +226,56 @@ impl<'cx, 'a> Context<'cx, 'a> {
                     }
                 );
             }
-            ExprKind::Call(_, ref mut local_exprs) => {
+            ExprKind::Call(_, local_exprs) => {
                 for local_expr in local_exprs {
                     self.manage_cond_expr(local_expr);
                 }
             }
-            ExprKind::Cast(ref mut local_expr, _) => {
+            ExprKind::Cast(local_expr, _) => {
                 self.manage_cond_expr(local_expr);
             }
-            ExprKind::Index(ref mut prefix, ref mut suffix) => {
+            ExprKind::Index(prefix, suffix) => {
                 self.manage_cond_expr(prefix);
                 self.manage_cond_expr(suffix);
             }
-            ExprKind::MethodCall(ref mut call) => {
-                for arg in call.args.iter_mut() {
+            ExprKind::MethodCall(call) => {
+                for arg in &mut call.args {
                     self.manage_cond_expr(arg);
                 }
             }
-            ExprKind::Path(_, Path { ref segments, .. }) if let &[ref path_segment] = &segments[..] => {
+            ExprKind::Path(_, Path { segments, .. }) if let [path_segment] = &segments[..] => {
                 let path_ident = path_segment.ident;
                 self.manage_initial_capture(expr, path_ident);
             }
-            ExprKind::Paren(ref mut local_expr) => {
+            ExprKind::Paren(local_expr) => {
                 self.manage_cond_expr(local_expr);
             }
-            ExprKind::Range(ref mut prefix, ref mut suffix, _) => {
-                if let Some(ref mut elem) = prefix {
+            ExprKind::Range(prefix, suffix, _) => {
+                if let Some(elem) = prefix {
                     self.manage_cond_expr(elem);
                 }
-                if let Some(ref mut elem) = suffix {
+                if let Some(elem) = suffix {
                     self.manage_cond_expr(elem);
                 }
             }
-            ExprKind::Repeat(ref mut local_expr, ref mut elem) => {
+            ExprKind::Repeat(local_expr, elem) => {
                 self.manage_cond_expr(local_expr);
                 self.manage_cond_expr(&mut elem.value);
             }
-            ExprKind::Struct(ref mut elem) => {
+            ExprKind::Struct(elem) => {
                 for field in &mut elem.fields {
                     self.manage_cond_expr(&mut field.expr);
                 }
-                if let StructRest::Base(ref mut local_expr) = elem.rest {
+                if let StructRest::Base(local_expr) = &mut elem.rest {
                     self.manage_cond_expr(local_expr);
                 }
             }
-            ExprKind::Tup(ref mut local_exprs) => {
+            ExprKind::Tup(local_exprs) => {
                 for local_expr in local_exprs {
                     self.manage_cond_expr(local_expr);
                 }
             }
-            ExprKind::Unary(un_op, ref mut local_expr) => {
+            ExprKind::Unary(un_op, local_expr) => {
                 self.with_is_consumed_management(
                     matches!(un_op, UnOp::Neg | UnOp::Not),
                     |this| this.manage_cond_expr(local_expr)
