@@ -1815,6 +1815,19 @@ in storage.js
 	}
 }
 
+/* Should have min-width: (N + 1)px where N is the mobile breakpoint above. */
+@media (min-width: 701px) {
+	.scraped-example-title {
+		position: absolute;
+		z-index: 1000;
+		background: var(--main-background-color);
+		bottom: 8px;
+		right: 5px;
+		padding: 2px 4px;
+		box-shadow: 0 0 4px var(--main-background-color);
+	}
+}
+
 @media print {
 	nav.sidebar, nav.sub, .out-of-band, a.srclink, #copy-path,
 	details.rustdoc-toggle[open] > summary::before, details.rustdoc-toggle > summary::before,
@@ -1911,16 +1924,6 @@ in storage.js
 	flex-direction: row;
 	flex-wrap: wrap;
 	width: 100%;
-}
-
-.scraped-example-title {
-	position: absolute;
-	z-index: 1000;
-	background: white;
-	bottom: 8px;
-	right: 5px;
-	padding: 2px 4px;
-	box-shadow: 0 0 4px white;
 }
 
 .scraped-example:not(.expanded) .code-wrapper {
