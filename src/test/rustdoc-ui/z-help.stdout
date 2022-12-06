@@ -77,6 +77,7 @@
     -Z                         location-detail=val -- what location details should be tracked when using caller_location, either `none`, or a comma separated list of location details, for which valid options are `file`, `line`, and `column` (default: `file,line,column`)
     -Z                                      ls=val -- list the symbols defined by a library crate (default: no)
     -Z                         macro-backtrace=val -- show macro backtraces (default: no)
+    -Z             maximal-hir-to-mir-coverage=val -- save as much information as possible about the correspondence between MIR and HIR as source scopes (default: no)
     -Z                         merge-functions=val -- control the operation of the MergeFunctions LLVM pass, taking the same values as the target option of the same name
     -Z                              meta-stats=val -- gather metadata statistics (default: no)
     -Z                          mir-emit-retag=val -- emit Retagging MIR statements, interpreted e.g., by miri; implies -Zmir-opt-level=0 (default: no)
