@@ -3,10 +3,10 @@ error[E0311]: the parameter type `Self` may not live long enough
    = help: consider adding an explicit lifetime bound `Self: 'a`...
    = note: ...so that the type `Self` will meet its required lifetime bounds...
 note: ...that is required by this bound
-  --> $DIR/object-safety-supertrait-mentions-GAT.rs:9:39
+  --> $DIR/object-safety-supertrait-mentions-GAT.rs:6:15
    |
-LL | trait SuperTrait<T>: for<'a> GatTrait<Gat<'a> = T> {
-   |                                       ^^^^^^^^^^^
+LL |         Self: 'a;
+   |               ^^
 
 error: associated item referring to unboxed trait object for its own trait
   --> $DIR/object-safety-supertrait-mentions-GAT.rs:10:20

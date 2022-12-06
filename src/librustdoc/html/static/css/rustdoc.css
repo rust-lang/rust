@@ -1660,8 +1660,6 @@ in storage.js
 		/* Hide the sidebar offscreen while not in use. Doing this instead of display: none means
 		   the sidebar stays visible for screen readers, which is useful for navigation. */
 		left: -1000px;
-		margin: 0;
-		padding: 0;
 		z-index: 11;
 		/* Reduce height slightly to account for mobile topbar. */
 		height: calc(100vh - 45px);
@@ -1978,7 +1976,9 @@ in storage.js
 }
 
 .scraped-example .code-wrapper .example-wrap {
-	flex: 1;
+	display: grid;
+	grid-template-columns: max-content auto;
+	width: 100%;
 	overflow-x: auto;
 	overflow-y: hidden;
 	margin-bottom: 0;
