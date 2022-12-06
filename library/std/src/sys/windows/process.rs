@@ -252,10 +252,6 @@ impl Command {
     ) -> io::Result<(Process, StdioPipes)> {
         let maybe_env = self.env.capture_if_changed();
 
-        let mut si = zeroed_startupinfo();
-        si.cb = mem::size_of::<c::STARTUPINFO>() as c::DWORD;
-        si.dwFlags = c::STARTF_USESTDHANDLES;
-
         let child_paths = if let Some(env) = maybe_env.as_ref() {
             env.get(&EnvKey::new("PATH")).map(|s| s.as_os_str())
         } else {
@@ -314,9 +310,21 @@ impl Command {
         let stdin = stdin.to_handle(c::STD_INPUT_HANDLE, &mut pipes.stdin)?;
         let stdout = stdout.to_handle(c::STD_OUTPUT_HANDLE, &mut pipes.stdout)?;
         let stderr = stderr.to_handle(c::STD_ERROR_HANDLE, &mut pipes.stderr)?;
-        si.hStdInput = stdin.as_raw_handle();
-        si.hStdOutput = stdout.as_raw_handle();
-        si.hStdError = stderr.as_raw_handle();
+
+        let mut si = zeroed_startupinfo();
+        si.cb = mem::size_of::<c::STARTUPINFO>() as c::DWORD;
+
+        // If at least one of stdin, stdout or stderr are set (i.e. are non null)
+        // then set the `hStd` fields in `STARTUPINFO`.
+        // Otherwise skip this and allow the OS to apply its default behaviour.
+        // This provides more consistent behaviour between Win7 and Win8+.
+        let is_set = |stdio: &Handle| !stdio.as_raw_handle().is_null();
+        if is_set(&stderr) || is_set(&stdout) || is_set(&stdin) {
+            si.dwFlags |= c::STARTF_USESTDHANDLES;
+            si.hStdInput = stdin.as_raw_handle();
+            si.hStdOutput = stdout.as_raw_handle();
+            si.hStdError = stderr.as_raw_handle();
+        }
 
         unsafe {
             cvt(c::CreateProcessW(
