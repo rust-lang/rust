@@ -17,7 +17,7 @@
         // If the block is greater than the size of the viewer,
         // then scroll to the top of the block. Otherwise scroll
         // to the middle of the block.
-        let maxLines = isHidden ? HIDDEN_MAX_LINES : DEFAULT_MAX_LINES;
+        const maxLines = isHidden ? HIDDEN_MAX_LINES : DEFAULT_MAX_LINES;
         if (loc[1] - loc[0] > maxLines) {
             const line = Math.max(0, loc[0] - 1);
             scrollOffset = lines.children[line].offsetTop;
