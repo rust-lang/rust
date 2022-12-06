@@ -1015,7 +1015,6 @@ so that we can apply CSS-filters to change the arrow color in themes */
 .import-item .stab {
 	border-radius: 3px;
 	display: inline-block;
-	font-size: 0.875rem;
 	line-height: 1.2;
 	margin-bottom: 0;
 	margin-left: 0.3125em;
