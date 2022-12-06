@@ -85,6 +85,7 @@ use std::mem;
 
 use crate::build::{BlockAnd, BlockAndExtension, BlockFrame, Builder, CFG};
 use rustc_data_structures::fx::FxHashMap;
+use rustc_hir::HirId;
 use rustc_index::vec::IndexVec;
 use rustc_middle::middle::region;
 use rustc_middle::mir::*;
@@ -567,25 +568,10 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
         F: FnOnce(&mut Builder<'a, 'tcx>) -> BlockAnd<R>,
     {
         let source_scope = self.source_scope;
-        let tcx = self.tcx;
         if let LintLevel::Explicit(current_hir_id) = lint_level {
-            // Use `maybe_lint_level_root_bounded` with `root_lint_level` as a bound
-            // to avoid adding Hir dependencies on our parents.
-            // We estimate the true lint roots here to avoid creating a lot of source scopes.
-
-            let parent_root = tcx.maybe_lint_level_root_bounded(
-                self.source_scopes[source_scope].local_data.as_ref().assert_crate_local().lint_root,
-                self.hir_id,
-            );
-            let current_root = tcx.maybe_lint_level_root_bounded(current_hir_id, self.hir_id);
-
-            if parent_root != current_root {
-                self.source_scope = self.new_source_scope(
-                    region_scope.1.span,
-                    LintLevel::Explicit(current_root),
-                    None,
-                );
-            }
+            let parent_id =
+                self.source_scopes[source_scope].local_data.as_ref().assert_crate_local().lint_root;
+            self.maybe_new_source_scope(region_scope.1.span, None, current_hir_id, parent_id);
         }
         self.push_scope(region_scope);
         let mut block;
@@ -756,6 +742,40 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
             is_generator && needs_cleanup,
             self.arg_count,
         ))
+    }
+
+    /// Possibly creates a new source scope if `current_root` and `parent_root`
+    /// are different, or if -Zmaximal-hir-to-mir-coverage is enabled.
+    pub(crate) fn maybe_new_source_scope(
+        &mut self,
+        span: Span,
+        safety: Option<Safety>,
+        current_id: HirId,
+        parent_id: HirId,
+    ) {
+        let (current_root, parent_root) =
+            if self.tcx.sess.opts.unstable_opts.maximal_hir_to_mir_coverage {
+                // Some consumers of rustc need to map MIR locations back to HIR nodes. Currently the
+                // the only part of rustc that tracks MIR -> HIR is the `SourceScopeLocalData::lint_root`
+                // field that tracks lint levels for MIR locations.  Normally the number of source scopes
+                // is limited to the set of nodes with lint annotations. The -Zmaximal-hir-to-mir-coverage
+                // flag changes this behavior to maximize the number of source scopes, increasing the
+                // granularity of the MIR->HIR mapping.
+                (current_id, parent_id)
+            } else {
+                // Use `maybe_lint_level_root_bounded` with `self.hir_id` as a bound
+                // to avoid adding Hir dependencies on our parents.
+                // We estimate the true lint roots here to avoid creating a lot of source scopes.
+                (
+                    self.tcx.maybe_lint_level_root_bounded(current_id, self.hir_id),
+                    self.tcx.maybe_lint_level_root_bounded(parent_id, self.hir_id),
+                )
+            };
+
+        if current_root != parent_root {
+            let lint_level = LintLevel::Explicit(current_root);
+            self.source_scope = self.new_source_scope(span, lint_level, safety);
+        }
     }
 
     /// Creates a new source scope, nested in the current one.
