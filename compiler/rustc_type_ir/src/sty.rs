@@ -330,7 +330,14 @@ impl<I: Interner> PartialEq for TyKind<I> {
                 (Placeholder(a_p), Placeholder(b_p)) => a_p == b_p,
                 (Infer(a_t), Infer(b_t)) => a_t == b_t,
                 (Error(a_e), Error(b_e)) => a_e == b_e,
-                _ => true, // unreachable
+                (Bool, Bool) | (Char, Char) | (Str, Str) | (Never, Never) => true,
+                _ => {
+                    debug_assert!(
+                        false,
+                        "This branch must be unreachable, maybe the match is missing an arm? self = self = {self:?}, other = {other:?}"
+                    );
+                    true
+                }
             }
     }
 }
@@ -381,7 +388,11 @@ impl<I: Interner> Ord for TyKind<I> {
                 (Placeholder(a_p), Placeholder(b_p)) => a_p.cmp(b_p),
                 (Infer(a_t), Infer(b_t)) => a_t.cmp(b_t),
                 (Error(a_e), Error(b_e)) => a_e.cmp(b_e),
-                _ => Ordering::Equal, // unreachable
+                (Bool, Bool) | (Char, Char) | (Str, Str) | (Never, Never) => Ordering::Equal,
+                _ => {
+                    debug_assert!(false, "This branch must be unreachable, maybe the match is missing an arm? self = self = {self:?}, other = {other:?}");
+                    Ordering::Equal
+                }
             }
         })
     }
@@ -977,7 +988,13 @@ impl<I: Interner> PartialEq for RegionKind<I> {
                 (ReVar(a_r), ReVar(b_r)) => a_r == b_r,
                 (RePlaceholder(a_r), RePlaceholder(b_r)) => a_r == b_r,
                 (ReErased, ReErased) => true,
-                _ => true, // unreachable
+                _ => {
+                    debug_assert!(
+                        false,
+                        "This branch must be unreachable, maybe the match is missing an arm? self = self = {self:?}, other = {other:?}"
+                    );
+                    true
+                }
             }
     }
 }
@@ -1008,7 +1025,10 @@ impl<I: Interner> Ord for RegionKind<I> {
                 (ReVar(a_r), ReVar(b_r)) => a_r.cmp(b_r),
                 (RePlaceholder(a_r), RePlaceholder(b_r)) => a_r.cmp(b_r),
                 (ReErased, ReErased) => Ordering::Equal,
-                _ => Ordering::Equal, // unreachable
+                _ => {
+                    debug_assert!(false, "This branch must be unreachable, maybe the match is missing an arm? self = self = {self:?}, other = {other:?}");
+                    Ordering::Equal
+                }
             }
         })
     }
