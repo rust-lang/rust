@@ -107,6 +107,7 @@ pub struct Command {
     #[cfg(target_os = "linux")]
     create_pidfd: bool,
     pgroup: Option<pid_t>,
+    setsid: bool,
 }
 
 // Create a new type for argv, so that we can make it `Send` and `Sync`
@@ -197,6 +198,7 @@ impl Command {
             stdout: None,
             stderr: None,
             pgroup: None,
+            setsid: false,
         }
     }
 
@@ -222,6 +224,7 @@ impl Command {
             stderr: None,
             create_pidfd: false,
             pgroup: None,
+            setsid: false,
         }
     }
 
@@ -259,6 +262,10 @@ impl Command {
     }
     pub fn pgroup(&mut self, pgroup: pid_t) {
         self.pgroup = Some(pgroup);
+    }
+
+    pub fn setsid(&mut self) {
+        self.setsid = true;
     }
 
     #[cfg(target_os = "linux")]
@@ -331,6 +338,11 @@ impl Command {
     #[allow(dead_code)]
     pub fn get_pgroup(&self) -> Option<pid_t> {
         self.pgroup
+    }
+
+    #[allow(dead_code)]
+    pub fn get_setsid(&self) -> bool {
+        self.setsid
     }
 
     pub fn get_closures(&mut self) -> &mut Vec<Box<dyn FnMut() -> io::Result<()> + Send + Sync>> {

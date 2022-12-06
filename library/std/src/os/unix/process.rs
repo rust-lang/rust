@@ -179,6 +179,9 @@ pub trait CommandExt: Sealed {
     /// ```
     #[stable(feature = "process_set_process_group", since = "1.64.0")]
     fn process_group(&mut self, pgroup: i32) -> &mut process::Command;
+
+    #[unstable(feature = "process_setsid", issue = "105376")]
+    fn setsid(&mut self) -> &mut process::Command;
 }
 
 #[stable(feature = "rust1", since = "1.0.0")]
@@ -222,6 +225,11 @@ impl CommandExt for process::Command {
 
     fn process_group(&mut self, pgroup: i32) -> &mut process::Command {
         self.as_inner_mut().pgroup(pgroup);
+        self
+    }
+
+    fn setsid(&mut self) -> &mut process::Command {
+        self.as_inner_mut().setsid();
         self
     }
 }
