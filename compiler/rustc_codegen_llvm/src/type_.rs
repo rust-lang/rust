@@ -69,6 +69,14 @@ impl<'ll> CodegenCx<'ll, '_> {
         unsafe { llvm::LLVMVectorType(ty, len as c_uint) }
     }
 
+    pub(crate) fn type_ptr(&self) -> &'ll Type {
+        self.type_ptr_ext(AddressSpace::DATA)
+    }
+
+    pub(crate) fn type_ptr_ext(&self, address_space: AddressSpace) -> &'ll Type {
+        unsafe { llvm::LLVMPointerTypeInContext(self.llcx, address_space.0) }
+    }
+
     pub(crate) fn func_params_types(&self, ty: &'ll Type) -> Vec<&'ll Type> {
         unsafe {
             let n_args = llvm::LLVMCountParamTypes(ty) as usize;
@@ -110,12 +118,6 @@ impl<'ll> CodegenCx<'ll, '_> {
             ty::FloatTy::F32 => self.type_f32(),
             ty::FloatTy::F64 => self.type_f64(),
         }
-    }
-
-    pub(crate) fn type_pointee_for_align(&self, align: Align) -> &'ll Type {
-        // FIXME(eddyb) We could find a better approximation if ity.align < align.
-        let ity = Integer::approximate_align(self, align);
-        self.type_from_integer(ity)
     }
 
     /// Return a LLVM type that has at most the required alignment,
@@ -189,17 +191,12 @@ impl<'ll, 'tcx> BaseTypeMethods<'tcx> for CodegenCx<'ll, 'tcx> {
         unsafe { llvm::LLVMRustGetTypeKind(ty).to_generic() }
     }
 
-    fn type_ptr_to(&self, ty: &'ll Type) -> &'ll Type {
-        assert_ne!(
-            self.type_kind(ty),
-            TypeKind::Function,
-            "don't call ptr_to on function types, use ptr_to_llvm_type on FnAbi instead or explicitly specify an address space if it makes sense"
-        );
-        ty.ptr_to(AddressSpace::DATA)
+    fn type_ptr_to(&self, _ty: &'ll Type) -> &'ll Type {
+        self.type_ptr()
     }
 
-    fn type_ptr_to_ext(&self, ty: &'ll Type, address_space: AddressSpace) -> &'ll Type {
-        ty.ptr_to(address_space)
+    fn type_ptr_to_ext(&self, _ty: &'ll Type, address_space: AddressSpace) -> &'ll Type {
+        self.type_ptr_ext(address_space)
     }
 
     fn element_type(&self, ty: &'ll Type) -> &'ll Type {
@@ -247,12 +244,8 @@ impl Type {
         unsafe { llvm::LLVMIntTypeInContext(llcx, num_bits as c_uint) }
     }
 
-    pub fn i8p_llcx(llcx: &llvm::Context) -> &Type {
-        Type::i8_llcx(llcx).ptr_to(AddressSpace::DATA)
-    }
-
-    fn ptr_to(&self, address_space: AddressSpace) -> &Type {
-        unsafe { llvm::LLVMPointerType(self, address_space.0) }
+    pub fn ptr_llcx(llcx: &llvm::Context) -> &Type {
+        unsafe { llvm::LLVMPointerTypeInContext(llcx, AddressSpace::DATA.0) }
     }
 }
 
