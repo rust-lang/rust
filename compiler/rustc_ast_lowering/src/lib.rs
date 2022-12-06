@@ -1670,9 +1670,7 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
     // Lowers a function declaration.
     //
     // `decl`: the unlowered (AST) function declaration.
-    // `fn_def_id`: if `Some`, impl Trait arguments are lowered into generic parameters on the
-    //      given DefId, otherwise impl Trait is disallowed. Must be `Some` if
-    //      `make_ret_async` is also `Some`.
+    // `fn_node_id`: `impl Trait` arguments are lowered into generic parameters on the given `NodeId`.
     // `make_ret_async`: if `Some`, converts `-> T` into `-> impl Future<Output = T>` in the
     //      return type. This is used for `async fn` declarations. The `NodeId` is the ID of the
     //      return type `impl Trait` item, and the `Span` points to the `async` keyword.
@@ -1796,7 +1794,7 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
     //     type OpaqueTy<generics_from_parent_fn> = impl Future<Output = T>;
     //
     // `output`: unlowered output type (`T` in `-> T`)
-    // `fn_def_id`: `DefId` of the parent function (used to create child impl trait definition)
+    // `fn_node_id`: `NodeId` of the parent function (used to create child impl trait definition)
     // `opaque_ty_node_id`: `NodeId` of the opaque `impl Trait` type that should be created
     #[instrument(level = "debug", skip(self))]
     fn lower_async_fn_ret_ty(
