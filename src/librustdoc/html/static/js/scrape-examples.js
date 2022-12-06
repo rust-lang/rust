@@ -3,7 +3,9 @@
 "use strict";
 
 (function() {
-    // Number of lines shown when code viewer is not expanded
+    // Number of lines shown when code viewer is not expanded.
+    // DEFAULT is the first example shown by default, while HIDDEN is
+    // the examples hidden beneath the "More examples" toggle.
     const DEFAULT_MAX_LINES = 5;
     const HIDDEN_MAX_LINES = 10;
 

@@ -1817,9 +1817,12 @@ in storage.js
 
 /* Should have min-width: (N + 1)px where N is the mobile breakpoint above. */
 @media (min-width: 701px) {
+	/* Places file-link for a scraped example on top of the example to save space.
+	   We only do this on large screens so the file-link doesn't overlap too much
+		 with the example's content. */
 	.scraped-example-title {
 		position: absolute;
-		z-index: 1000;
+		z-index: 10;
 		background: var(--main-background-color);
 		bottom: 8px;
 		right: 5px;
@@ -1915,6 +1918,7 @@ in storage.js
 }
 
 .scraped-example {
+	/* So .scraped-example-title can be positioned absolutely */
 	position: relative;
 }
 
