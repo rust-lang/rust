@@ -49,6 +49,17 @@ fn check_fail(ra_fixture: &str, e: LayoutError) {
 }
 
 macro_rules! size_and_align {
+    (minicore: $($x:tt),*;$($t:tt)*) => {
+        {
+            #[allow(dead_code)]
+            $($t)*
+            check_size_and_align(
+                &format!("//- minicore: {}\n{}", stringify!($($x),*), stringify!($($t)*)),
+                ::std::mem::size_of::<Goal>() as u64,
+                ::std::mem::align_of::<Goal>() as u64,
+            );
+        }
+    };
     ($($t:tt)*) => {
         {
             #[allow(dead_code)]
@@ -67,7 +78,6 @@ fn hello_world() {
     size_and_align! {
         struct Goal(i32);
     }
-    //check_size_and_align(r#"struct Goal(i32)"#, 4, 4);
 }
 
 #[test]
@@ -148,33 +158,39 @@ fn tuple() {
 
 #[test]
 fn non_zero() {
-    check_size_and_align(
-        r#"
-    //- minicore: non_zero, option
-    use core::num::NonZeroU8;
-    struct Goal(Option<NonZeroU8>);
-    "#,
-        1,
-        1,
-    );
+    size_and_align! {
+        minicore: non_zero, option;
+        use core::num::NonZeroU8;
+        struct Goal(Option<NonZeroU8>);
+    }
 }
 
 #[test]
 fn niche_optimization() {
-    check_size_and_align(
-        r#"
-    //- minicore: option
-    struct Goal(Option<&i32>);
-    "#,
-        8,
-        8,
-    );
-    check_size_and_align(
-        r#"
-    //- minicore: option
-    struct Goal(Option<Option<bool>>);
-    "#,
-        1,
-        1,
-    );
+    size_and_align! {
+        minicore: option;
+        struct Goal(Option<&'static i32>);
+    }
+    size_and_align! {
+        minicore: option;
+        struct Goal(Option<Option<bool>>);
+    }
+}
+
+#[test]
+fn enums_with_discriminants() {
+    size_and_align! {
+        enum Goal {
+            A = 1000,
+            B = 2000,
+            C = 3000,
+        }
+    }
+    size_and_align! {
+        enum Goal {
+            A = 254,
+            B,
+            C, // implicitly becomes 256, so we need two bytes
+        }
+    }
 }

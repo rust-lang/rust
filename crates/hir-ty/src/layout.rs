@@ -1,12 +1,15 @@
 //! Compute the binary representation of a type
 
+use std::sync::Arc;
+
 use chalk_ir::{AdtId, TyKind};
 pub(self) use hir_def::layout::*;
 use hir_def::LocalFieldId;
+use stdx::never;
 
 use crate::{db::HirDatabase, Interner, Substitution, Ty};
 
-use self::adt::univariant;
+use self::adt::struct_variant_idx;
 pub use self::{
     adt::{layout_of_adt_query, layout_of_adt_recover},
     target::current_target_data_layout_query,
@@ -21,6 +24,22 @@ macro_rules! user_error {
 mod adt;
 mod target;
 
+struct LayoutCx<'a> {
+    db: &'a dyn HirDatabase,
+}
+
+impl LayoutCalculator for LayoutCx<'_> {
+    type TargetDataLayoutRef = Arc<TargetDataLayout>;
+
+    fn delay_bug(&self, txt: &str) {
+        never!("{}", txt);
+    }
+
+    fn current_data_layout(&self) -> Arc<TargetDataLayout> {
+        self.db.current_target_data_layout()
+    }
+}
+
 fn scalar_unit(dl: &TargetDataLayout, value: Primitive) -> Scalar {
     Scalar::Initialized { value, valid_range: WrappingRange::full(value.size(dl)) }
 }
@@ -29,34 +48,9 @@ fn scalar(dl: &TargetDataLayout, value: Primitive) -> Layout {
     Layout::scalar(dl, scalar_unit(dl, value))
 }
 
-fn scalar_pair(dl: &TargetDataLayout, a: Scalar, b: Scalar) -> Layout {
-    let b_align = b.align(dl);
-    let align = a.align(dl).max(b_align).max(dl.aggregate_align);
-    let b_offset = a.size(dl).align_to(b_align.abi);
-    let size = b_offset.checked_add(b.size(dl), dl).unwrap().align_to(align.abi);
-
-    // HACK(nox): We iter on `b` and then `a` because `max_by_key`
-    // returns the last maximum.
-    let largest_niche = Niche::from_scalar(dl, b_offset, b)
-        .into_iter()
-        .chain(Niche::from_scalar(dl, Size::ZERO, a))
-        .max_by_key(|niche| niche.available(dl));
-
-    Layout {
-        variants: Variants::Single,
-        fields: FieldsShape::Arbitrary {
-            offsets: vec![Size::ZERO, b_offset],
-            memory_index: vec![0, 1],
-        },
-        abi: Abi::ScalarPair(a, b),
-        largest_niche,
-        align,
-        size,
-    }
-}
-
 pub fn layout_of_ty(db: &dyn HirDatabase, ty: &Ty) -> Result<Layout, LayoutError> {
     let dl = &*db.current_target_data_layout();
+    let cx = LayoutCx { db };
     Ok(match ty.kind(Interner) {
         TyKind::Adt(AdtId(def), subst) => db.layout_of_adt(*def, subst.clone())?,
         TyKind::Scalar(s) => match s {
@@ -113,14 +107,13 @@ pub fn layout_of_ty(db: &dyn HirDatabase, ty: &Ty) -> Result<Layout, LayoutError
         TyKind::Tuple(len, tys) => {
             let kind = if *len == 0 { StructKind::AlwaysSized } else { StructKind::MaybeUnsized };
 
-            univariant(
-                dl,
-                &tys.iter(Interner)
-                    .map(|k| layout_of_ty(db, k.assert_ty_ref(Interner)))
-                    .collect::<Result<Vec<_>, _>>()?,
-                &ReprOptions::default(),
-                kind,
-            )?
+            let fields = tys
+                .iter(Interner)
+                .map(|k| layout_of_ty(db, k.assert_ty_ref(Interner)))
+                .collect::<Result<Vec<_>, _>>()?;
+            let fields = fields.iter().collect::<Vec<_>>();
+            let fields = fields.iter().collect::<Vec<_>>();
+            cx.univariant(dl, &fields, &ReprOptions::default(), kind).ok_or(LayoutError::Unknown)?
         }
         TyKind::Array(element, count) => {
             let count = match count.data(Interner).value {
@@ -146,7 +139,7 @@ pub fn layout_of_ty(db: &dyn HirDatabase, ty: &Ty) -> Result<Layout, LayoutError
             let largest_niche = if count != 0 { element.largest_niche } else { None };
 
             Layout {
-                variants: Variants::Single,
+                variants: Variants::Single { index: struct_variant_idx() },
                 fields: FieldsShape::Array { stride: element.size, count },
                 abi,
                 largest_niche,
@@ -157,7 +150,7 @@ pub fn layout_of_ty(db: &dyn HirDatabase, ty: &Ty) -> Result<Layout, LayoutError
         TyKind::Slice(element) => {
             let element = layout_of_ty(db, element)?;
             Layout {
-                variants: Variants::Single,
+                variants: Variants::Single { index: struct_variant_idx() },
                 fields: FieldsShape::Array { stride: element.size, count: 0 },
                 abi: Abi::Aggregate { sized: false },
                 largest_niche: None,
@@ -194,13 +187,11 @@ pub fn layout_of_ty(db: &dyn HirDatabase, ty: &Ty) -> Result<Layout, LayoutError
             };
 
             // Effectively a (ptr, meta) tuple.
-            scalar_pair(dl, data_ptr, metadata)
+            cx.scalar_pair(data_ptr, metadata)
         }
-        TyKind::FnDef(_, _) => {
-            univariant(dl, &[], &ReprOptions::default(), StructKind::AlwaysSized)?
-        }
+        TyKind::FnDef(_, _) => layout_of_unit(&cx, dl)?,
         TyKind::Str => Layout {
-            variants: Variants::Single,
+            variants: Variants::Single { index: struct_variant_idx() },
             fields: FieldsShape::Array { stride: Size::from_bytes(1), count: 0 },
             abi: Abi::Aggregate { sized: false },
             largest_niche: None,
@@ -208,7 +199,7 @@ pub fn layout_of_ty(db: &dyn HirDatabase, ty: &Ty) -> Result<Layout, LayoutError
             size: Size::ZERO,
         },
         TyKind::Never => Layout {
-            variants: Variants::Single,
+            variants: Variants::Single { index: struct_variant_idx() },
             fields: FieldsShape::Primitive,
             abi: Abi::Uninhabited,
             largest_niche: None,
@@ -216,7 +207,7 @@ pub fn layout_of_ty(db: &dyn HirDatabase, ty: &Ty) -> Result<Layout, LayoutError
             size: Size::ZERO,
         },
         TyKind::Dyn(_) | TyKind::Foreign(_) => {
-            let mut unit = univariant(dl, &[], &ReprOptions::default(), StructKind::AlwaysSized)?;
+            let mut unit = layout_of_unit(&cx, dl)?;
             match unit.abi {
                 Abi::Aggregate { ref mut sized } => *sized = false,
                 _ => user_error!("bug"),
@@ -239,6 +230,16 @@ pub fn layout_of_ty(db: &dyn HirDatabase, ty: &Ty) -> Result<Layout, LayoutError
         | TyKind::BoundVar(_)
         | TyKind::InferenceVar(_, _) => return Err(LayoutError::HasPlaceholder),
     })
+}
+
+fn layout_of_unit(cx: &LayoutCx<'_>, dl: &TargetDataLayout) -> Result<Layout, LayoutError> {
+    cx.univariant::<RustcEnumVariantIdx, &&Layout>(
+        &dl,
+        &[],
+        &ReprOptions::default(),
+        StructKind::AlwaysSized,
+    )
+    .ok_or(LayoutError::Unknown)
 }
 
 fn struct_tail_erasing_lifetimes(db: &dyn HirDatabase, pointee: Ty) -> Ty {

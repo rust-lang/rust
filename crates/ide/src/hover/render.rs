@@ -3,8 +3,7 @@ use std::fmt::Display;
 
 use either::Either;
 use hir::{
-    db::HirDatabase, Adt, AsAssocItem, AttributeTemplate, HasAttrs, HasSource, HirDisplay,
-    Semantics, TypeInfo,
+    Adt, AsAssocItem, AttributeTemplate, HasAttrs, HasSource, HirDisplay, Semantics, TypeInfo,
 };
 use ide_db::{
     base_db::SourceDatabase,
@@ -398,7 +397,7 @@ pub(super) fn definition(
             let offset = match var_def {
                 hir::VariantDef::Struct(s) => {
                     let layout = Adt::from(s).layout(db).ok()?;
-                    layout.fields.offset(id, &db.current_target_data_layout())
+                    layout.fields.offset(id)
                 }
                 _ => return None,
             };

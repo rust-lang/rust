@@ -9,6 +9,7 @@ use hir_expand::{
     HirFileId, InFile,
 };
 use la_arena::{Arena, ArenaMap};
+use rustc_abi::{Integer, IntegerType};
 use syntax::ast::{self, HasName, HasVisibility};
 use tt::{Delimiter, DelimiterKind, Leaf, Subtree, TokenTree};
 
@@ -127,7 +128,24 @@ fn parse_repr_tt(tt: &Subtree) -> Option<ReprOptions> {
                         .map(Either::Left)
                         .or_else(|| BuiltinUint::from_suffix(repr).map(Either::Right))
                     {
-                        int = Some(builtin);
+                        int = Some(match builtin {
+                            Either::Left(bi) => match bi {
+                                BuiltinInt::Isize => IntegerType::Pointer(true),
+                                BuiltinInt::I8 => IntegerType::Fixed(Integer::I8, true),
+                                BuiltinInt::I16 => IntegerType::Fixed(Integer::I16, true),
+                                BuiltinInt::I32 => IntegerType::Fixed(Integer::I32, true),
+                                BuiltinInt::I64 => IntegerType::Fixed(Integer::I64, true),
+                                BuiltinInt::I128 => IntegerType::Fixed(Integer::I128, true),
+                            },
+                            Either::Right(bu) => match bu {
+                                BuiltinUint::Usize => IntegerType::Pointer(false),
+                                BuiltinUint::U8 => IntegerType::Fixed(Integer::I8, false),
+                                BuiltinUint::U16 => IntegerType::Fixed(Integer::I16, false),
+                                BuiltinUint::U32 => IntegerType::Fixed(Integer::I32, false),
+                                BuiltinUint::U64 => IntegerType::Fixed(Integer::I64, false),
+                                BuiltinUint::U128 => IntegerType::Fixed(Integer::I128, false),
+                            },
+                        });
                     }
                     ReprFlags::empty()
                 }
@@ -135,7 +153,7 @@ fn parse_repr_tt(tt: &Subtree) -> Option<ReprOptions> {
         }
     }
 
-    Some(ReprOptions { int, align: max_align, pack: min_pack, flags })
+    Some(ReprOptions { int, align: max_align, pack: min_pack, flags, field_shuffle_seed: 0 })
 }
 
 impl StructData {
@@ -276,10 +294,10 @@ impl EnumData {
         Some(id)
     }
 
-    pub fn variant_body_type(&self) -> Either<BuiltinInt, BuiltinUint> {
+    pub fn variant_body_type(&self) -> IntegerType {
         match self.repr {
             Some(ReprOptions { int: Some(builtin), .. }) => builtin,
-            _ => Either::Left(BuiltinInt::Isize),
+            _ => IntegerType::Pointer(true),
         }
     }
 }

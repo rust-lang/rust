@@ -994,8 +994,30 @@ impl Enum {
         Type::new_for_crate(
             self.id.lookup(db.upcast()).container.krate(),
             TyBuilder::builtin(match db.enum_data(self.id).variant_body_type() {
-                Either::Left(builtin) => hir_def::builtin_type::BuiltinType::Int(builtin),
-                Either::Right(builtin) => hir_def::builtin_type::BuiltinType::Uint(builtin),
+                hir_def::layout::IntegerType::Pointer(sign) => match sign {
+                    true => hir_def::builtin_type::BuiltinType::Int(
+                        hir_def::builtin_type::BuiltinInt::Isize,
+                    ),
+                    false => hir_def::builtin_type::BuiltinType::Uint(
+                        hir_def::builtin_type::BuiltinUint::Usize,
+                    ),
+                },
+                hir_def::layout::IntegerType::Fixed(i, sign) => match sign {
+                    true => hir_def::builtin_type::BuiltinType::Int(match i {
+                        hir_def::layout::Integer::I8 => hir_def::builtin_type::BuiltinInt::I8,
+                        hir_def::layout::Integer::I16 => hir_def::builtin_type::BuiltinInt::I16,
+                        hir_def::layout::Integer::I32 => hir_def::builtin_type::BuiltinInt::I32,
+                        hir_def::layout::Integer::I64 => hir_def::builtin_type::BuiltinInt::I64,
+                        hir_def::layout::Integer::I128 => hir_def::builtin_type::BuiltinInt::I128,
+                    }),
+                    false => hir_def::builtin_type::BuiltinType::Uint(match i {
+                        hir_def::layout::Integer::I8 => hir_def::builtin_type::BuiltinUint::U8,
+                        hir_def::layout::Integer::I16 => hir_def::builtin_type::BuiltinUint::U16,
+                        hir_def::layout::Integer::I32 => hir_def::builtin_type::BuiltinUint::U32,
+                        hir_def::layout::Integer::I64 => hir_def::builtin_type::BuiltinUint::U64,
+                        hir_def::layout::Integer::I128 => hir_def::builtin_type::BuiltinUint::U128,
+                    }),
+                },
             }),
         )
     }

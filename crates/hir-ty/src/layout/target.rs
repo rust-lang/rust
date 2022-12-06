@@ -35,7 +35,7 @@ pub fn current_target_data_layout_query(db: &dyn HirDatabase) -> Arc<TargetDataL
         f32_align: AbiAndPrefAlign::new(Align::from_bytes(4).unwrap()),
         f64_align: AbiAndPrefAlign::new(Align::from_bytes(8).unwrap()),
         pointer_size,
-        pointer_align: AbiAndPrefAlign::new(Align::from_bytes(8).unwrap()),
+        pointer_align: AbiAndPrefAlign::new(Align::from_bytes(pointer_size.bytes()).unwrap()),
         aggregate_align: AbiAndPrefAlign::new(Align::from_bytes(1).unwrap()),
         vector_align: vec![],
         instruction_address_space: AddressSpace(0),

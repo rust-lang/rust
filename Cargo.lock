@@ -510,6 +510,8 @@ dependencies = [
  "fst",
  "hashbrown",
  "hir-expand",
+ "hkalbasi-rustc-ap-rustc_abi",
+ "hkalbasi-rustc-ap-rustc_index",
  "indexmap",
  "itertools",
  "la-arena",
@@ -564,6 +566,7 @@ dependencies = [
  "expect-test",
  "hir-def",
  "hir-expand",
+ "hkalbasi-rustc-ap-rustc_index",
  "itertools",
  "la-arena",
  "limit",
@@ -579,6 +582,27 @@ dependencies = [
  "tracing-subscriber",
  "tracing-tree",
  "typed-arena",
+]
+
+[[package]]
+name = "hkalbasi-rustc-ap-rustc_abi"
+version = "0.0.20221125"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "29c8368a30e518c0102d670d8515f7d424d875ee615ec7a7b6d29217b57a0371"
+dependencies = [
+ "bitflags",
+ "hkalbasi-rustc-ap-rustc_index",
+ "tracing",
+]
+
+[[package]]
+name = "hkalbasi-rustc-ap-rustc_index"
+version = "0.0.20221125"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "c07bba80d7f6a8e1efb0f3e2115ef1eecbf97292dc8cad84e4982226b9aa12e2"
+dependencies = [
+ "arrayvec",
+ "smallvec",
 ]
 
 [[package]]
