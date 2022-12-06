@@ -332,7 +332,7 @@ pub struct FileTimes {
     modified: Option<SystemTime>,
 }
 
-#[derive(Copy, Clone, Eq, Hash, Debug)]
+#[derive(Copy, Clone, Eq, Debug)]
 pub struct FileType {
     mode: mode_t,
 }
@@ -342,6 +342,13 @@ impl PartialEq for FileType {
         self.masked() == other.masked()
     }
 }
+
+impl core::hash::Hash for FileType {
+    fn hash<H: core::hash::Hasher>(&self, state: &mut H) {
+        self.masked().hash(state);
+    }
+}
+
 #[derive(Debug)]
 pub struct DirBuilder {
     mode: mode_t,
