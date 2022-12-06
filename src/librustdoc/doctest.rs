@@ -12,7 +12,7 @@ use rustc_middle::hir::nested_filter;
 use rustc_middle::ty::TyCtxt;
 use rustc_parse::maybe_new_parser_from_source_str;
 use rustc_parse::parser::attr::InnerAttrPolicy;
-use rustc_session::config::{self, ErrorOutputType};
+use rustc_session::config::{self, CrateType, ErrorOutputType};
 use rustc_session::parse::ParseSess;
 use rustc_session::{lint, Session};
 use rustc_span::edition::Edition;
@@ -68,7 +68,11 @@ pub(crate) fn run(options: RustdocOptions) -> Result<(), ErrorGuaranteed> {
 
     debug!(?lint_opts);
 
-    let crate_types = options.crate_types.clone();
+    let crate_types = if options.crate_types.is_empty() {
+        vec![CrateType::Rlib]
+    } else {
+        options.crate_types.clone()
+    };
 
     let sessopts = config::Options {
         maybe_sysroot: options.maybe_sysroot.clone(),

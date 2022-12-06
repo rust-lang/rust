@@ -1948,6 +1948,7 @@ in storage.js
 .scraped-example .code-wrapper .next,
 .scraped-example .code-wrapper .prev,
 .scraped-example .code-wrapper .expand {
+	color: var(--main-color);
 	position: absolute;
 	top: 0.25em;
 	z-index: 1;
