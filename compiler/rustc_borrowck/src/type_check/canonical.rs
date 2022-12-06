@@ -121,9 +121,7 @@ impl<'a, 'tcx> TypeChecker<'a, 'tcx> {
 
     pub(super) fn prove_predicates(
         &mut self,
-        predicates: impl IntoIterator<
-            Item = impl ToPredicate<'tcx, ty::Predicate<'tcx>> + std::fmt::Debug,
-        >,
+        predicates: impl IntoIterator<Item = impl ToPredicate<'tcx> + std::fmt::Debug>,
         locations: Locations,
         category: ConstraintCategory<'tcx>,
     ) {
@@ -135,7 +133,7 @@ impl<'a, 'tcx> TypeChecker<'a, 'tcx> {
     #[instrument(skip(self), level = "debug")]
     pub(super) fn prove_predicate(
         &mut self,
-        predicate: impl ToPredicate<'tcx, ty::Predicate<'tcx>> + std::fmt::Debug,
+        predicate: impl ToPredicate<'tcx> + std::fmt::Debug,
         locations: Locations,
         category: ConstraintCategory<'tcx>,
     ) {

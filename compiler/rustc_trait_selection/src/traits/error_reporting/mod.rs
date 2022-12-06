@@ -99,16 +99,12 @@ pub trait InferCtxtExt<'tcx> {
 }
 
 pub trait TypeErrCtxtExt<'tcx> {
-    fn report_fulfillment_errors(
-        &self,
-        errors: &[FulfillmentError<'tcx>],
-        body_id: Option<hir::BodyId>,
-    ) -> ErrorGuaranteed;
-
     fn report_overflow_error<T>(
         &self,
-        obligation: &Obligation<'tcx, T>,
+        predicate: &T,
+        span: Span,
         suggest_increasing_limit: bool,
+        mutate: impl FnOnce(&mut Diagnostic),
     ) -> !
     where
         T: fmt::Display
@@ -116,9 +112,23 @@ pub trait TypeErrCtxtExt<'tcx> {
             + Print<'tcx, FmtPrinter<'tcx, 'tcx>, Output = FmtPrinter<'tcx, 'tcx>>,
         <T as Print<'tcx, FmtPrinter<'tcx, 'tcx>>>::Error: std::fmt::Debug;
 
+    fn report_fulfillment_errors(
+        &self,
+        errors: &[FulfillmentError<'tcx>],
+        body_id: Option<hir::BodyId>,
+    ) -> ErrorGuaranteed;
+
+    fn report_overflow_obligation<T>(
+        &self,
+        obligation: &Obligation<'tcx, T>,
+        suggest_increasing_limit: bool,
+    ) -> !
+    where
+        T: ToPredicate<'tcx> + Clone;
+
     fn suggest_new_overflow_limit(&self, err: &mut Diagnostic);
 
-    fn report_overflow_error_cycle(&self, cycle: &[PredicateObligation<'tcx>]) -> !;
+    fn report_overflow_obligation_cycle(&self, cycle: &[PredicateObligation<'tcx>]) -> !;
 
     /// The `root_obligation` parameter should be the `root_obligation` field
     /// from a `FulfillmentError`. If no `FulfillmentError` is available,
@@ -458,8 +468,10 @@ impl<'tcx> TypeErrCtxtExt<'tcx> for TypeErrCtxt<'_, 'tcx> {
     /// occurrences in any case.
     fn report_overflow_error<T>(
         &self,
-        obligation: &Obligation<'tcx, T>,
+        predicate: &T,
+        span: Span,
         suggest_increasing_limit: bool,
+        mutate: impl FnOnce(&mut Diagnostic),
     ) -> !
     where
         T: fmt::Display
@@ -467,8 +479,9 @@ impl<'tcx> TypeErrCtxtExt<'tcx> for TypeErrCtxt<'_, 'tcx> {
             + Print<'tcx, FmtPrinter<'tcx, 'tcx>, Output = FmtPrinter<'tcx, 'tcx>>,
         <T as Print<'tcx, FmtPrinter<'tcx, 'tcx>>>::Error: std::fmt::Debug,
     {
-        let predicate = self.resolve_vars_if_possible(obligation.predicate.clone());
+        let predicate = self.resolve_vars_if_possible(predicate.clone());
         let mut pred_str = predicate.to_string();
+
         if pred_str.len() > 50 {
             // We don't need to save the type to a file, we will be talking about this type already
             // in a separate note when we explain the obligation, so it will be available that way.
@@ -483,7 +496,7 @@ impl<'tcx> TypeErrCtxtExt<'tcx> for TypeErrCtxt<'_, 'tcx> {
         }
         let mut err = struct_span_err!(
             self.tcx.sess,
-            obligation.cause.span,
+            span,
             E0275,
             "overflow evaluating the requirement `{}`",
             pred_str,
@@ -493,18 +506,44 @@ impl<'tcx> TypeErrCtxtExt<'tcx> for TypeErrCtxt<'_, 'tcx> {
             self.suggest_new_overflow_limit(&mut err);
         }
 
-        self.note_obligation_cause_code(
-            &mut err,
-            &obligation.predicate,
-            obligation.param_env,
-            obligation.cause.code(),
-            &mut vec![],
-            &mut Default::default(),
-        );
+        mutate(&mut err);
 
         err.emit();
         self.tcx.sess.abort_if_errors();
         bug!();
+    }
+
+    /// Reports that an overflow has occurred and halts compilation. We
+    /// halt compilation unconditionally because it is important that
+    /// overflows never be masked -- they basically represent computations
+    /// whose result could not be truly determined and thus we can't say
+    /// if the program type checks or not -- and they are unusual
+    /// occurrences in any case.
+    fn report_overflow_obligation<T>(
+        &self,
+        obligation: &Obligation<'tcx, T>,
+        suggest_increasing_limit: bool,
+    ) -> !
+    where
+        T: ToPredicate<'tcx> + Clone,
+    {
+        let predicate = obligation.predicate.clone().to_predicate(self.tcx);
+        let predicate = self.resolve_vars_if_possible(predicate);
+        self.report_overflow_error(
+            &predicate,
+            obligation.cause.span,
+            suggest_increasing_limit,
+            |err| {
+                self.note_obligation_cause_code(
+                    err,
+                    &predicate,
+                    obligation.param_env,
+                    obligation.cause.code(),
+                    &mut vec![],
+                    &mut Default::default(),
+                );
+            },
+        );
     }
 
     fn suggest_new_overflow_limit(&self, err: &mut Diagnostic) {
@@ -521,11 +560,11 @@ impl<'tcx> TypeErrCtxtExt<'tcx> for TypeErrCtxt<'_, 'tcx> {
     }
 
     /// Reports that a cycle was detected which led to overflow and halts
-    /// compilation. This is equivalent to `report_overflow_error` except
+    /// compilation. This is equivalent to `report_overflow_obligation` except
     /// that we can give a more helpful error message (and, in particular,
     /// we do not suggest increasing the overflow limit, which is not
     /// going to help).
-    fn report_overflow_error_cycle(&self, cycle: &[PredicateObligation<'tcx>]) -> ! {
+    fn report_overflow_obligation_cycle(&self, cycle: &[PredicateObligation<'tcx>]) -> ! {
         let cycle = self.resolve_vars_if_possible(cycle.to_owned());
         assert!(!cycle.is_empty());
 
@@ -533,7 +572,10 @@ impl<'tcx> TypeErrCtxtExt<'tcx> for TypeErrCtxt<'_, 'tcx> {
 
         // The 'deepest' obligation is most likely to have a useful
         // cause 'backtrace'
-        self.report_overflow_error(cycle.iter().max_by_key(|p| p.recursion_depth).unwrap(), false);
+        self.report_overflow_obligation(
+            cycle.iter().max_by_key(|p| p.recursion_depth).unwrap(),
+            false,
+        );
     }
 
     fn report_selection_error(
@@ -1554,7 +1596,7 @@ impl<'tcx> InferCtxtPrivExt<'tcx> for TypeErrCtxt<'_, 'tcx> {
                 diag.emit();
             }
             FulfillmentErrorCode::CodeCycle(ref cycle) => {
-                self.report_overflow_error_cycle(cycle);
+                self.report_overflow_obligation_cycle(cycle);
             }
         }
     }

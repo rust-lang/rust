@@ -150,7 +150,7 @@ pub fn type_known_to_meet_bound_modulo_regions<'tcx>(
 fn pred_known_to_hold_modulo_regions<'tcx>(
     infcx: &InferCtxt<'tcx>,
     param_env: ty::ParamEnv<'tcx>,
-    pred: impl ToPredicate<'tcx, ty::Predicate<'tcx>> + TypeVisitable<'tcx>,
+    pred: impl ToPredicate<'tcx> + TypeVisitable<'tcx>,
     span: Span,
 ) -> bool {
     let has_non_region_infer = pred.has_non_region_infer();
