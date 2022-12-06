@@ -60,6 +60,7 @@ pub mod crt_objects;
 mod aix_base;
 mod android_base;
 mod apple_base;
+pub use apple_base::deployment_target as current_apple_deployment_target;
 mod avr_gnu_base;
 mod bpf_base;
 mod dragonfly_base;
