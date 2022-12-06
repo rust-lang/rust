@@ -66,15 +66,6 @@ impl<'tcx> LowerInto<'tcx, SubstsRef<'tcx>> for &chalk_ir::Substitution<RustInte
     }
 }
 
-impl<'tcx> LowerInto<'tcx, chalk_ir::AliasTy<RustInterner<'tcx>>> for ty::AliasTy<'tcx> {
-    fn lower_into(self, interner: RustInterner<'tcx>) -> chalk_ir::AliasTy<RustInterner<'tcx>> {
-        chalk_ir::AliasTy::Projection(chalk_ir::ProjectionTy {
-            associated_ty_id: chalk_ir::AssocTypeId(self.def_id),
-            substitution: self.substs.lower_into(interner),
-        })
-    }
-}
-
 impl<'tcx> LowerInto<'tcx, chalk_ir::InEnvironment<chalk_ir::Goal<RustInterner<'tcx>>>>
     for ChalkEnvironmentAndGoal<'tcx>
 {
@@ -255,7 +246,10 @@ impl<'tcx> LowerInto<'tcx, chalk_ir::AliasEq<RustInterner<'tcx>>>
         // FIXME(associated_const_equality): teach chalk about terms for alias eq.
         chalk_ir::AliasEq {
             ty: self.term.ty().unwrap().lower_into(interner),
-            alias: self.projection_ty.lower_into(interner),
+            alias: chalk_ir::AliasTy::Projection(chalk_ir::ProjectionTy {
+                associated_ty_id: chalk_ir::AssocTypeId(self.projection_ty.def_id),
+                substitution: self.projection_ty.substs.lower_into(interner),
+            }),
         }
     }
 }
@@ -353,7 +347,12 @@ impl<'tcx> LowerInto<'tcx, chalk_ir::Ty<RustInterner<'tcx>>> for Ty<'tcx> {
             ty::Tuple(types) => {
                 chalk_ir::TyKind::Tuple(types.len(), types.as_substs().lower_into(interner))
             }
-            ty::Alias(ty::Projection, proj) => chalk_ir::TyKind::Alias(proj.lower_into(interner)),
+            ty::Alias(ty::Projection, ty::AliasTy { def_id, substs }) => {
+                chalk_ir::TyKind::Alias(chalk_ir::AliasTy::Projection(chalk_ir::ProjectionTy {
+                    associated_ty_id: chalk_ir::AssocTypeId(def_id),
+                    substitution: substs.lower_into(interner),
+                }))
+            }
             ty::Alias(ty::Opaque, ty::AliasTy { def_id, substs }) => {
                 chalk_ir::TyKind::Alias(chalk_ir::AliasTy::Opaque(chalk_ir::OpaqueTy {
                     opaque_ty_id: chalk_ir::OpaqueTyId(def_id),
