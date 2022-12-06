@@ -451,7 +451,7 @@ pub fn current_exe() -> io::Result<PathBuf> {
     super::unsupported::unsupported()
 }
 
-#[cfg(target_os = "fuchsia", target_os = "aix")]
+#[cfg(any(target_os = "fuchsia", target_os = "aix"))]
 pub fn current_exe() -> io::Result<PathBuf> {
     use crate::io::ErrorKind;
 
@@ -469,7 +469,11 @@ pub fn current_exe() -> io::Result<PathBuf> {
 
     // Prepend the current working directory to the path if it's not absolute.
     if cfg!(target_os = "fuchsia") {
-        if !path.is_absolute() { getcwd().map(|cwd| cwd.join(path)) } else { Ok(path) }
+        if !path.is_absolute() {
+            return getcwd().map(|cwd| cwd.join(path));
+        } else {
+            return Ok(path);
+        }
     }
 
     if path.is_absolute() {
