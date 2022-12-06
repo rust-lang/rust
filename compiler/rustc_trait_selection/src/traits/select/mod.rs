@@ -43,7 +43,6 @@ use rustc_middle::mir::interpret::ErrorHandled;
 use rustc_middle::ty::abstract_const::NotConstEvaluatable;
 use rustc_middle::ty::fast_reject::{DeepRejectCtxt, TreatParams};
 use rustc_middle::ty::fold::BottomUpFolder;
-use rustc_middle::ty::print::{FmtPrinter, Print};
 use rustc_middle::ty::relate::TypeRelation;
 use rustc_middle::ty::SubstsRef;
 use rustc_middle::ty::{self, EarlyBinder, PolyProjectionPredicate, ToPolyTraitRef, ToPredicate};
@@ -1313,10 +1312,7 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
         error_obligation: &Obligation<'tcx, T>,
     ) -> Result<(), OverflowError>
     where
-        T: fmt::Display
-            + TypeFoldable<'tcx>
-            + Print<'tcx, FmtPrinter<'tcx, 'tcx>, Output = FmtPrinter<'tcx, 'tcx>>,
-        <T as Print<'tcx, FmtPrinter<'tcx, 'tcx>>>::Error: std::fmt::Debug,
+        T: ToPredicate<'tcx> + Clone,
     {
         if !self.infcx.tcx.recursion_limit().value_within_limit(depth) {
             match self.query_mode {
@@ -1324,7 +1320,7 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
                     if let Some(e) = self.infcx.tainted_by_errors() {
                         return Err(OverflowError::Error(e));
                     }
-                    self.infcx.err_ctxt().report_overflow_error(error_obligation, true);
+                    self.infcx.err_ctxt().report_overflow_obligation(error_obligation, true);
                 }
                 TraitQueryMode::Canonical => {
                     return Err(OverflowError::Canonical);
@@ -1345,10 +1341,7 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
         error_obligation: &Obligation<'tcx, V>,
     ) -> Result<(), OverflowError>
     where
-        V: fmt::Display
-            + TypeFoldable<'tcx>
-            + Print<'tcx, FmtPrinter<'tcx, 'tcx>, Output = FmtPrinter<'tcx, 'tcx>>,
-        <V as Print<'tcx, FmtPrinter<'tcx, 'tcx>>>::Error: std::fmt::Debug,
+        V: ToPredicate<'tcx> + Clone,
     {
         self.check_recursion_depth(obligation.recursion_depth, error_obligation)
     }
