@@ -15,7 +15,7 @@ pub fn helper(_: usize) {
 pub fn scalar_layout(s: &(u64, ())) {
 // CHECK: getelementptr i8, {{.+}}, [[USIZE]] 8
     let x = &s.1;
-    &x; // keep variable in an alloca
+    witness(&x); // keep variable in an alloca
 }
 
 // Check that we correctly generate a GEP for a ZST that is not included in ScalarPair layout
@@ -24,7 +24,7 @@ pub fn scalar_layout(s: &(u64, ())) {
 pub fn scalarpair_layout(s: &(u64, u32, ())) {
 // CHECK: getelementptr i8, {{.+}}, [[USIZE]] 12
     let x = &s.2;
-    &x; // keep variable in an alloca
+    witness(&x); // keep variable in an alloca
 }
 
 #[repr(simd)]
@@ -36,5 +36,8 @@ pub struct U64x4(u64, u64, u64, u64);
 pub fn vector_layout(s: &(U64x4, ())) {
 // CHECK: getelementptr i8, {{.+}}, [[USIZE]] 32
     let x = &s.1;
-    &x; // keep variable in an alloca
+    witness(&x); // keep variable in an alloca
 }
+
+#[inline(never)]
+fn witness(_: &impl Sized) {}
