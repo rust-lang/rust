@@ -13,7 +13,9 @@ use crate::{
     intern::Interned,
     item_tree::{self, AssocItem, FnFlags, ItemTree, ItemTreeId, ModItem, Param, TreeId},
     nameres::{
-        attr_resolution::ResolvedAttr, diagnostics::DefDiagnostic, proc_macro::ProcMacroKind,
+        attr_resolution::ResolvedAttr,
+        diagnostics::DefDiagnostic,
+        proc_macro::{parse_macro_name_and_helper_attrs, ProcMacroKind},
         DefMap,
     },
     type_ref::{TraitRef, TypeBound, TypeRef},
@@ -348,6 +350,10 @@ impl ImplData {
 pub struct Macro2Data {
     pub name: Name,
     pub visibility: RawVisibility,
+    // It's a bit wasteful as currently this is only for builtin `Default` derive macro, but macro2
+    // are rarely used in practice so I think it's okay for now.
+    /// Derive helpers, if this is a derive rustc_builtin_macro
+    pub helpers: Option<Box<[Name]>>,
 }
 
 impl Macro2Data {
@@ -356,9 +362,18 @@ impl Macro2Data {
         let item_tree = loc.id.item_tree(db);
         let makro = &item_tree[loc.id.value];
 
+        let helpers = item_tree
+            .attrs(db, loc.container.krate(), ModItem::from(loc.id.value).into())
+            .by_key("rustc_builtin_macro")
+            .tt_values()
+            .next()
+            .and_then(|attr| parse_macro_name_and_helper_attrs(&attr.token_trees))
+            .map(|(_, helpers)| helpers);
+
         Arc::new(Macro2Data {
             name: makro.name.clone(),
             visibility: item_tree[makro.visibility].clone(),
+            helpers,
         })
     }
 }

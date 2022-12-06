@@ -2349,12 +2349,14 @@ impl DeriveHelper {
 
     pub fn name(&self, db: &dyn HirDatabase) -> Name {
         match self.derive {
-            MacroId::Macro2Id(_) => None,
+            MacroId::Macro2Id(it) => {
+                db.macro2_data(it).helpers.as_deref().and_then(|it| it.get(self.idx)).cloned()
+            }
             MacroId::MacroRulesId(_) => None,
             MacroId::ProcMacroId(proc_macro) => db
                 .proc_macro_data(proc_macro)
                 .helpers
-                .as_ref()
+                .as_deref()
                 .and_then(|it| it.get(self.idx))
                 .cloned(),
         }
