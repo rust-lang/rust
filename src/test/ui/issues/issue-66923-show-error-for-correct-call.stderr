@@ -8,6 +8,13 @@ LL |     let x2: Vec<f64> = x1.into_iter().collect();
    |
    = help: the trait `FromIterator<&f64>` is not implemented for `Vec<f64>`
    = help: the trait `FromIterator<T>` is implemented for `Vec<T>`
+note: the expression is of type `std::slice::Iter<'_, f64>`
+  --> $DIR/issue-66923-show-error-for-correct-call.rs:8:27
+   |
+LL |     let x2: Vec<f64> = x1.into_iter().collect();
+   |                        -- ^^^^^^^^^^^ associated type `std::iter::Iterator::Item` is `&f64` here
+   |                        |
+   |                        this expression has type `&[f64]`
 note: required by a bound in `collect`
   --> $SRC_DIR/core/src/iter/traits/iterator.rs:LL:COL
    |
@@ -24,6 +31,13 @@ LL |     let x3 = x1.into_iter().collect::<Vec<f64>>();
    |
    = help: the trait `FromIterator<&f64>` is not implemented for `Vec<f64>`
    = help: the trait `FromIterator<T>` is implemented for `Vec<T>`
+note: the expression is of type `std::slice::Iter<'_, f64>`
+  --> $DIR/issue-66923-show-error-for-correct-call.rs:12:17
+   |
+LL |     let x3 = x1.into_iter().collect::<Vec<f64>>();
+   |              -- ^^^^^^^^^^^ associated type `std::iter::Iterator::Item` is `&f64` here
+   |              |
+   |              this expression has type `&[f64]`
 note: required by a bound in `collect`
   --> $SRC_DIR/core/src/iter/traits/iterator.rs:LL:COL
    |

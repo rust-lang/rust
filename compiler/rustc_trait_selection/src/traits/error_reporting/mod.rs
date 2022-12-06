@@ -536,7 +536,7 @@ impl<'tcx> TypeErrCtxtExt<'tcx> for TypeErrCtxt<'_, 'tcx> {
             |err| {
                 self.note_obligation_cause_code(
                     err,
-                    &predicate,
+                    predicate,
                     obligation.param_env,
                     obligation.cause.code(),
                     &mut vec![],
@@ -1586,7 +1586,7 @@ impl<'tcx> InferCtxtPrivExt<'tcx> for TypeErrCtxt<'_, 'tcx> {
                 {
                     self.note_obligation_cause_code(
                         &mut diag,
-                        &error.obligation.predicate,
+                        error.obligation.predicate,
                         error.obligation.param_env,
                         code,
                         &mut vec![],
@@ -2601,7 +2601,7 @@ impl<'tcx> InferCtxtPrivExt<'tcx> for TypeErrCtxt<'_, 'tcx> {
         if !self.maybe_note_obligation_cause_for_async_await(err, obligation) {
             self.note_obligation_cause_code(
                 err,
-                &obligation.predicate,
+                obligation.predicate,
                 obligation.param_env,
                 obligation.cause.code(),
                 &mut vec![],

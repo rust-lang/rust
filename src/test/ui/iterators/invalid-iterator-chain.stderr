@@ -1,0 +1,111 @@
+error[E0277]: the trait bound `i32: Sum<()>` is not satisfied
+  --> $DIR/invalid-iterator-chain.rs:7:20
+   |
+LL |     println!("{}", scores.sum::<i32>());
+   |                    ^^^^^^ --- required by a bound introduced by this call
+   |                    |
+   |                    the trait `Sum<()>` is not implemented for `i32`
+   |
+   = help: the following other types implement trait `Sum<A>`:
+             <i32 as Sum<&'a i32>>
+             <i32 as Sum>
+note: the expression is of type `Map<std::slice::Iter<'_, ({integer}, {integer})>, [closure@$DIR/invalid-iterator-chain.rs:4:14: 4:22]>`
+  --> $DIR/invalid-iterator-chain.rs:7:20
+   |
+LL |       let scores = vec![(0, 0)]
+   |                    ------------ this expression has type `Vec<({integer}, {integer})>`
+LL |           .iter()
+   |            ------ associated type `std::iter::Iterator::Item` is `&({integer}, {integer})` here
+LL |           .map(|(a, b)| {
+   |  __________-
+LL | |             a + b;
+LL | |         });
+   | |__________- associated type `std::iter::Iterator::Item` is `()` here
+LL |       println!("{}", scores.sum::<i32>());
+   |                      ^^^^^^
+note: required by a bound in `std::iter::Iterator::sum`
+  --> $SRC_DIR/core/src/iter/traits/iterator.rs:LL:COL
+   |
+LL |         S: Sum<Self::Item>,
+   |            ^^^^^^^^^^^^^^^ required by this bound in `std::iter::Iterator::sum`
+
+error[E0277]: the trait bound `i32: Sum<()>` is not satisfied
+  --> $DIR/invalid-iterator-chain.rs:10:9
+   |
+LL | /         vec![0, 1]
+LL | |             .iter()
+LL | |             .map(|x| { x; })
+   | |____________________________^ the trait `Sum<()>` is not implemented for `i32`
+LL |               .sum::<i32>(),
+   |                --- required by a bound introduced by this call
+   |
+   = help: the following other types implement trait `Sum<A>`:
+             <i32 as Sum<&'a i32>>
+             <i32 as Sum>
+note: the expression is of type `Map<std::slice::Iter<'_, {integer}>, [closure@$DIR/invalid-iterator-chain.rs:12:18: 12:21]>`
+  --> $DIR/invalid-iterator-chain.rs:12:14
+   |
+LL |         vec![0, 1]
+   |         ---------- this expression has type `Vec<{integer}>`
+LL |             .iter()
+   |              ------ associated type `std::iter::Iterator::Item` is `&{integer}` here
+LL |             .map(|x| { x; })
+   |              ^^^^^^^^^^^^^^^ associated type `std::iter::Iterator::Item` is `()` here
+note: required by a bound in `std::iter::Iterator::sum`
+  --> $SRC_DIR/core/src/iter/traits/iterator.rs:LL:COL
+   |
+LL |         S: Sum<Self::Item>,
+   |            ^^^^^^^^^^^^^^^ required by this bound in `std::iter::Iterator::sum`
+
+error[E0277]: the trait bound `i32: Sum<()>` is not satisfied
+  --> $DIR/invalid-iterator-chain.rs:15:20
+   |
+LL |     println!("{}", vec![0, 1].iter().map(|x| { x; }).sum::<i32>());
+   |                    ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ --- required by a bound introduced by this call
+   |                    |
+   |                    the trait `Sum<()>` is not implemented for `i32`
+   |
+   = help: the following other types implement trait `Sum<A>`:
+             <i32 as Sum<&'a i32>>
+             <i32 as Sum>
+note: the expression is of type `Map<std::slice::Iter<'_, {integer}>, [closure@$DIR/invalid-iterator-chain.rs:15:42: 15:45]>`
+  --> $DIR/invalid-iterator-chain.rs:15:38
+   |
+LL |     println!("{}", vec![0, 1].iter().map(|x| { x; }).sum::<i32>());
+   |                    ---------- ------ ^^^^^^^^^^^^^^^ associated type `std::iter::Iterator::Item` is `()` here
+   |                    |          |
+   |                    |          associated type `std::iter::Iterator::Item` is `&{integer}` here
+   |                    this expression has type `Vec<{integer}>`
+note: required by a bound in `std::iter::Iterator::sum`
+  --> $SRC_DIR/core/src/iter/traits/iterator.rs:LL:COL
+   |
+LL |         S: Sum<Self::Item>,
+   |            ^^^^^^^^^^^^^^^ required by this bound in `std::iter::Iterator::sum`
+
+error[E0277]: the trait bound `i32: Sum<&()>` is not satisfied
+  --> $DIR/invalid-iterator-chain.rs:16:20
+   |
+LL |     println!("{}", vec![(), ()].iter().sum::<i32>());
+   |                    ^^^^^^^^^^^^^^^^^^^ --- required by a bound introduced by this call
+   |                    |
+   |                    the trait `Sum<&()>` is not implemented for `i32`
+   |
+   = help: the following other types implement trait `Sum<A>`:
+             <i32 as Sum<&'a i32>>
+             <i32 as Sum>
+note: the expression is of type `std::slice::Iter<'_, ()>`
+  --> $DIR/invalid-iterator-chain.rs:16:33
+   |
+LL |     println!("{}", vec![(), ()].iter().sum::<i32>());
+   |                    ------------ ^^^^^^ associated type `std::iter::Iterator::Item` is `&()` here
+   |                    |
+   |                    this expression has type `Vec<()>`
+note: required by a bound in `std::iter::Iterator::sum`
+  --> $SRC_DIR/core/src/iter/traits/iterator.rs:LL:COL
+   |
+LL |         S: Sum<Self::Item>,
+   |            ^^^^^^^^^^^^^^^ required by this bound in `std::iter::Iterator::sum`
+
+error: aborting due to 4 previous errors
+
+For more information about this error, try `rustc --explain E0277`.
