@@ -12,7 +12,7 @@ Specification].
 
 Example:
 
-```rust
+```rust,ignore (not-all-targets-support-uefi)
 #![feature(abi_efiapi)]
 
 extern "efiapi" { fn f1(); }
