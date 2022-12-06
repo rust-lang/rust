@@ -13,7 +13,7 @@ use rustc_incremental::DepGraphFuture;
 use rustc_lint::LintStore;
 use rustc_middle::arena::Arena;
 use rustc_middle::dep_graph::DepGraph;
-use rustc_middle::ty::{GlobalCtxt, TyCtxt};
+use rustc_middle::ty::{self, GlobalCtxt, TyCtxt};
 use rustc_query_impl::Queries as TcxQueries;
 use rustc_session::config::{self, OutputFilenames, OutputType};
 use rustc_session::{output::find_crate_name, Session};
@@ -222,19 +222,35 @@ impl<'tcx> Queries<'tcx> {
                 crate_name,
             )?;
 
-            Ok(passes::create_global_ctxt(
+            let ty::ResolverOutputs {
+                untracked,
+                global_ctxt: untracked_resolutions,
+                ast_lowering: untracked_resolver_for_lowering,
+            } = BoxedResolver::to_resolver_outputs(resolver);
+
+            let mut qcx = passes::create_global_ctxt(
                 self.compiler,
                 lint_store,
-                krate,
                 self.dep_graph()?.steal(),
-                resolver,
-                outputs,
-                crate_name,
+                untracked,
                 &self.queries,
                 &self.gcx,
                 &self.arena,
                 &self.hir_arena,
-            ))
+            );
+
+            qcx.enter(|tcx| {
+                let feed = tcx.feed_unit_query();
+                feed.resolver_for_lowering(
+                    tcx.arena.alloc(Steal::new((untracked_resolver_for_lowering, krate))),
+                );
+                feed.resolutions(tcx.arena.alloc(untracked_resolutions));
+                feed.output_filenames(tcx.arena.alloc(std::sync::Arc::new(outputs)));
+                feed.features_query(tcx.sess.features_untracked());
+                let feed = tcx.feed_local_crate();
+                feed.crate_name(crate_name);
+            });
+            Ok(qcx)
         })
     }
 

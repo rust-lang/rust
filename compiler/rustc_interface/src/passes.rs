@@ -13,7 +13,6 @@ use rustc_ast::{self as ast, visit};
 use rustc_borrowck as mir_borrowck;
 use rustc_codegen_ssa::traits::CodegenBackend;
 use rustc_data_structures::parallel;
-use rustc_data_structures::steal::Steal;
 use rustc_data_structures::sync::{Lrc, OnceCell, WorkerLocal};
 use rustc_errors::{ErrorGuaranteed, PResult};
 use rustc_expand::base::{ExtCtxt, LintStoreExpand, ResolverExpand};
@@ -31,7 +30,7 @@ use rustc_plugin_impl as plugin;
 use rustc_query_impl::{OnDiskCache, Queries as TcxQueries};
 use rustc_resolve::{Resolver, ResolverArenas};
 use rustc_session::config::{CrateType, Input, OutputFilenames, OutputType};
-use rustc_session::cstore::{MetadataLoader, MetadataLoaderDyn};
+use rustc_session::cstore::{MetadataLoader, MetadataLoaderDyn, Untracked};
 use rustc_session::output::filename_for_input;
 use rustc_session::search_paths::PathKind;
 use rustc_session::{Limit, Session};
@@ -775,11 +774,8 @@ impl<'tcx> QueryContext<'tcx> {
 pub fn create_global_ctxt<'tcx>(
     compiler: &'tcx Compiler,
     lint_store: Lrc<LintStore>,
-    krate: Lrc<ast::Crate>,
     dep_graph: DepGraph,
-    resolver: Rc<RefCell<BoxedResolver>>,
-    outputs: OutputFilenames,
-    crate_name: Symbol,
+    untracked: Untracked,
     queries: &'tcx OnceCell<TcxQueries<'tcx>>,
     global_ctxt: &'tcx OnceCell<GlobalCtxt<'tcx>>,
     arena: &'tcx WorkerLocal<Arena<'tcx>>,
@@ -789,8 +785,6 @@ pub fn create_global_ctxt<'tcx>(
     // read, since we haven't even constructed the *input* to
     // incr. comp. yet.
     dep_graph.assert_ignored();
-
-    let resolver_outputs = BoxedResolver::to_resolver_outputs(resolver);
 
     let sess = &compiler.session();
     let query_result_on_disk_cache = rustc_incremental::load_query_result_cache(sess);
@@ -810,12 +804,6 @@ pub fn create_global_ctxt<'tcx>(
         TcxQueries::new(local_providers, extern_providers, query_result_on_disk_cache)
     });
 
-    let ty::ResolverOutputs {
-        global_ctxt: untracked_resolutions,
-        ast_lowering: untracked_resolver_for_lowering,
-        untracked,
-    } = resolver_outputs;
-
     let gcx = sess.time("setup_global_ctxt", || {
         global_ctxt.get_or_init(move || {
             TyCtxt::create_global_ctxt(
@@ -832,19 +820,7 @@ pub fn create_global_ctxt<'tcx>(
         })
     });
 
-    let mut qcx = QueryContext { gcx };
-    qcx.enter(|tcx| {
-        let feed = tcx.feed_unit_query();
-        feed.resolver_for_lowering(
-            tcx.arena.alloc(Steal::new((untracked_resolver_for_lowering, krate))),
-        );
-        feed.resolutions(tcx.arena.alloc(untracked_resolutions));
-        feed.output_filenames(tcx.arena.alloc(std::sync::Arc::new(outputs)));
-        feed.features_query(sess.features_untracked());
-        let feed = tcx.feed_local_crate();
-        feed.crate_name(crate_name);
-    });
-    qcx
+    QueryContext { gcx }
 }
 
 /// Runs the resolution, type-checking, region checking and other
