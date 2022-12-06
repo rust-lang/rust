@@ -9,6 +9,8 @@ use std::ops::{Add, AddAssign, Mul, RangeInclusive, Sub};
 use std::str::FromStr;
 
 use bitflags::bitflags;
+#[cfg(feature = "nightly")]
+use rustc_data_structures::stable_hasher::StableOrd;
 use rustc_index::vec::{Idx, IndexVec};
 #[cfg(feature = "nightly")]
 use rustc_macros::HashStable_Generic;
@@ -402,6 +404,11 @@ impl FromStr for Endian {
 pub struct Size {
     raw: u64,
 }
+
+// Safety: Ord is implement as just comparing numerical values and numerical values
+// are not changed by (de-)serialization.
+#[cfg(feature = "nightly")]
+unsafe impl StableOrd for Size {}
 
 // This is debug-printed a lot in larger structs, don't waste too much space there
 impl fmt::Debug for Size {

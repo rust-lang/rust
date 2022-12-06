@@ -10,7 +10,7 @@ use crate::{lint, HashStableContext};
 
 use rustc_data_structures::fx::{FxHashMap, FxHashSet};
 
-use rustc_data_structures::stable_hasher::ToStableHashKey;
+use rustc_data_structures::stable_hasher::{StableOrd, ToStableHashKey};
 use rustc_target::abi::Align;
 use rustc_target::spec::{PanicStrategy, SanitizerSet, SplitDebuginfo};
 use rustc_target::spec::{Target, TargetTriple, TargetWarnings, TARGETS};
@@ -287,6 +287,9 @@ pub enum OutputType {
     Exe,
     DepInfo,
 }
+
+// Safety: Trivial C-Style enums have a stable sort order across compilation sessions.
+unsafe impl StableOrd for OutputType {}
 
 impl<HCX: HashStableContext> ToStableHashKey<HCX> for OutputType {
     type KeyType = Self;

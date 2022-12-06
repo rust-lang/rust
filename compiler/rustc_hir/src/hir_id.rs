@@ -1,5 +1,5 @@
 use crate::def_id::{DefId, DefIndex, LocalDefId, CRATE_DEF_ID};
-use rustc_data_structures::stable_hasher::{HashStable, StableHasher, ToStableHashKey};
+use rustc_data_structures::stable_hasher::{HashStable, StableHasher, StableOrd, ToStableHashKey};
 use rustc_span::{def_id::DefPathHash, HashStableContext};
 use std::fmt;
 
@@ -145,6 +145,10 @@ impl ItemLocalId {
     /// Signal local id which should never be used.
     pub const INVALID: ItemLocalId = ItemLocalId::MAX;
 }
+
+// Safety: Ord is implement as just comparing the LocalItemId's numerical
+// values and these are not changed by (de-)serialization.
+unsafe impl StableOrd for ItemLocalId {}
 
 /// The `HirId` corresponding to `CRATE_NODE_ID` and `CRATE_DEF_ID`.
 pub const CRATE_HIR_ID: HirId =
