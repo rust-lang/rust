@@ -362,15 +362,13 @@ fn run_compiler(
                 return early_exit();
             }
 
-            queries.prepare_outputs()?;
+            queries.global_ctxt()?;
 
             if sess.opts.output_types.contains_key(&OutputType::DepInfo)
                 && sess.opts.output_types.len() == 1
             {
                 return early_exit();
             }
-
-            queries.global_ctxt()?;
 
             if sess.opts.unstable_opts.no_analysis {
                 return early_exit();

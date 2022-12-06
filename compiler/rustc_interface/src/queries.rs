@@ -90,7 +90,6 @@ pub struct Queries<'tcx> {
     register_plugins: Query<(ast::Crate, Lrc<LintStore>)>,
     expansion: Query<(Lrc<ast::Crate>, Rc<RefCell<BoxedResolver>>, Lrc<LintStore>)>,
     dep_graph: Query<DepGraph>,
-    prepare_outputs: Query<OutputFilenames>,
     global_ctxt: Query<QueryContext<'tcx>>,
     ongoing_codegen: Query<Box<dyn Any>>,
 }
@@ -109,7 +108,6 @@ impl<'tcx> Queries<'tcx> {
             register_plugins: Default::default(),
             expansion: Default::default(),
             dep_graph: Default::default(),
-            prepare_outputs: Default::default(),
             global_ctxt: Default::default(),
             ongoing_codegen: Default::default(),
         }
@@ -211,32 +209,24 @@ impl<'tcx> Queries<'tcx> {
         })
     }
 
-    pub fn prepare_outputs(&self) -> Result<QueryResult<'_, OutputFilenames>> {
-        self.prepare_outputs.compute(|| {
-            let expansion = self.expansion()?;
-            let (krate, boxed_resolver, _) = &*expansion.borrow();
-            let crate_name = *self.crate_name()?.borrow();
-            passes::prepare_outputs(
-                self.session(),
-                self.compiler,
-                krate,
-                &*boxed_resolver,
-                crate_name,
-            )
-        })
-    }
-
     pub fn global_ctxt(&'tcx self) -> Result<QueryResult<'_, QueryContext<'tcx>>> {
         self.global_ctxt.compute(|| {
             let crate_name = *self.crate_name()?.borrow();
-            let outputs = self.prepare_outputs()?.steal();
-            let dep_graph = self.dep_graph()?.borrow().clone();
             let (krate, resolver, lint_store) = self.expansion()?.steal();
+
+            let outputs = passes::prepare_outputs(
+                self.session(),
+                self.compiler,
+                &krate,
+                &resolver,
+                crate_name,
+            )?;
+
             Ok(passes::create_global_ctxt(
                 self.compiler,
                 lint_store,
                 krate,
-                dep_graph,
+                self.dep_graph()?.steal(),
                 resolver,
                 outputs,
                 crate_name,
