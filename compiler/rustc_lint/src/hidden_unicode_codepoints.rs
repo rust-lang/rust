@@ -121,6 +121,7 @@ impl EarlyLintPass for HiddenUnicodeCodepoints {
         }
     }
 
+    #[inline]
     fn check_expr(&mut self, cx: &EarlyContext<'_>, expr: &ast::Expr) {
         // byte strings are already handled well enough by `EscapeError::NonAsciiCharInByteString`
         match &expr.kind {

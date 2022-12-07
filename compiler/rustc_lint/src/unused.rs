@@ -946,6 +946,7 @@ impl UnusedParens {
 }
 
 impl EarlyLintPass for UnusedParens {
+    #[inline]
     fn check_expr(&mut self, cx: &EarlyContext<'_>, e: &ast::Expr) {
         match e.kind {
             ExprKind::Let(ref pat, _, _) | ExprKind::ForLoop(ref pat, ..) => {
@@ -1164,6 +1165,7 @@ impl EarlyLintPass for UnusedBraces {
         <Self as UnusedDelimLint>::check_stmt(self, cx, s)
     }
 
+    #[inline]
     fn check_expr(&mut self, cx: &EarlyContext<'_>, e: &ast::Expr) {
         <Self as UnusedDelimLint>::check_expr(self, cx, e);
 
