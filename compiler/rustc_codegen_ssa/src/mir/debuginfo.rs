@@ -3,12 +3,12 @@ use rustc_index::vec::IndexVec;
 use rustc_middle::middle::codegen_fn_attrs::CodegenFnAttrFlags;
 use rustc_middle::mir;
 use rustc_middle::ty;
+use rustc_middle::ty::layout::TyAndLayout;
 use rustc_middle::ty::layout::{HasTyCtxt, LayoutOf};
 use rustc_session::config::DebugInfo;
 use rustc_span::symbol::{kw, Symbol};
 use rustc_span::{BytePos, Span};
-use rustc_target::abi::Abi;
-use rustc_target::abi::Size;
+use rustc_target::abi::{Abi, Size, VariantIdx};
 
 use super::operand::{OperandRef, OperandValue};
 use super::place::PlaceRef;
@@ -76,6 +76,33 @@ impl<'tcx, S: Copy, L: Copy> DebugScope<S, L> {
     }
 }
 
+trait DebugInfoOffsetLocation<'tcx, Bx> {
+    fn deref(&self, bx: &mut Bx) -> Self;
+    fn layout(&self) -> TyAndLayout<'tcx>;
+    fn project_field(&self, bx: &mut Bx, field: mir::Field) -> Self;
+    fn downcast(&self, bx: &mut Bx, variant: VariantIdx) -> Self;
+}
+
+impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> DebugInfoOffsetLocation<'tcx, Bx>
+    for PlaceRef<'tcx, Bx::Value>
+{
+    fn deref(&self, bx: &mut Bx) -> Self {
+        bx.load_operand(*self).deref(bx.cx())
+    }
+
+    fn layout(&self) -> TyAndLayout<'tcx> {
+        self.layout
+    }
+
+    fn project_field(&self, bx: &mut Bx, field: mir::Field) -> Self {
+        PlaceRef::project_field(*self, bx, field.index())
+    }
+
+    fn downcast(&self, bx: &mut Bx, variant: VariantIdx) -> Self {
+        self.project_downcast(bx, variant)
+    }
+}
+
 struct DebugInfoOffset<T> {
     /// Offset from the `base` used to calculate the debuginfo offset.
     direct_offset: Size,
@@ -86,12 +113,17 @@ struct DebugInfoOffset<T> {
     result: T,
 }
 
-fn calculate_debuginfo_offset<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>>(
+fn calculate_debuginfo_offset<
+    'a,
+    'tcx,
+    Bx: BuilderMethods<'a, 'tcx>,
+    L: DebugInfoOffsetLocation<'tcx, Bx>,
+>(
     bx: &mut Bx,
     local: mir::Local,
     var: &PerLocalVarDebugInfo<'tcx, Bx::DIVariable>,
-    base: PlaceRef<'tcx, Bx::Value>,
-) -> DebugInfoOffset<PlaceRef<'tcx, Bx::Value>> {
+    base: L,
+) -> DebugInfoOffset<L> {
     let mut direct_offset = Size::ZERO;
     // FIXME(eddyb) use smallvec here.
     let mut indirect_offsets = vec![];
@@ -101,16 +133,15 @@ fn calculate_debuginfo_offset<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>>(
         match *elem {
             mir::ProjectionElem::Deref => {
                 indirect_offsets.push(Size::ZERO);
-                place = bx.load_operand(place).deref(bx.cx());
+                place = place.deref(bx);
             }
             mir::ProjectionElem::Field(field, _) => {
-                let i = field.index();
                 let offset = indirect_offsets.last_mut().unwrap_or(&mut direct_offset);
-                *offset += place.layout.fields.offset(i);
-                place = place.project_field(bx, i);
+                *offset += place.layout().fields.offset(field.index());
+                place = place.project_field(bx, field);
             }
             mir::ProjectionElem::Downcast(_, variant) => {
-                place = place.project_downcast(bx, variant);
+                place = place.downcast(bx, variant);
             }
             _ => span_bug!(
                 var.source_info.span,
