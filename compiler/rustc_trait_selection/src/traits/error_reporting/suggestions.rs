@@ -3008,7 +3008,17 @@ impl<'tcx> TypeErrCtxtExt<'tcx> for TypeErrCtxt<'_, 'tcx> {
                             let Some(prev_assoc_in_method) = assocs.peek() else {
                                 for entry in assocs_in_method {
                                     let Some((span, (assoc, ty))) = entry else { continue; };
-                                    primary_spans.push(span);
+                                    if type_diffs.iter().any(|diff| {
+                                        let Sorts(expected_found) = diff else { return false; };
+                                        self.can_eq(param_env, expected_found.found, ty).is_ok()
+                                    }) {
+                                        // FIXME: this doesn't quite work for `Iterator::collect`
+                                        // because we have `Vec<i32>` and `()`, but we'd want `i32`
+                                        // to point at the `.into_iter()` call, but as long as we
+                                        // still point at the other method calls that might have
+                                        // introduced the issue, this is fine for now.
+                                        primary_spans.push(span);
+                                    }
                                     span_labels.push((
                                         span,
                                         format!("`{assoc}` is `{ty}` here"),
@@ -3022,7 +3032,12 @@ impl<'tcx> TypeErrCtxtExt<'tcx> for TypeErrCtxt<'_, 'tcx> {
                                 match (entry, prev_entry) {
                                     (Some((span, (assoc, ty))), Some((_, (_, prev_ty)))) => {
                                         if ty != *prev_ty {
-                                            primary_spans.push(span);
+                                            if type_diffs.iter().any(|diff| {
+                                                let Sorts(expected_found) = diff else { return false; };
+                                                self.can_eq(param_env, expected_found.found, ty).is_ok()
+                                            }) {
+                                                primary_spans.push(span);
+                                            }
                                             span_labels.push((
                                                 span,
                                                 format!("`{assoc}` changed to `{ty}` here"),

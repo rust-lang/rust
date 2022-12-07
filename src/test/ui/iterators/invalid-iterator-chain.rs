@@ -17,6 +17,16 @@ fn main() {
             .map(|x| { x; })
             .sum::<i32>(),
     );
+    println!(
+        "{}",
+        vec![0, 1] //~ ERROR E0277
+            .iter()
+            .map(|x| x * 2)
+            .map(|x| x as f64)
+            .filter(|x| *x > 0.0)
+            .map(|x| { x + 1.0 })
+            .sum::<i32>(),
+    );
     println!("{}", vec![0, 1].iter().map(|x| { x; }).sum::<i32>()); //~ ERROR E0277
     println!("{}", vec![(), ()].iter().sum::<i32>()); //~ ERROR E0277
     let a = vec![0];

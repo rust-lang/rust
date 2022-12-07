@@ -10,12 +10,12 @@ LL |     println!("{}", scores.sum::<i32>());
              <i32 as Sum<&'a i32>>
              <i32 as Sum>
 note: the method call chain might not have had the expected associated types
-  --> $DIR/invalid-iterator-chain.rs:3:10
+  --> $DIR/invalid-iterator-chain.rs:4:10
    |
 LL |       let scores = vec![(0, 0)]
    |                    ------------ this expression has type `Vec<({integer}, {integer})>`
 LL |           .iter()
-   |            ^^^^^^ `std::iter::Iterator::Item` is `&({integer}, {integer})` here
+   |            ------ `std::iter::Iterator::Item` is `&({integer}, {integer})` here
 LL |           .map(|(a, b)| {
    |  __________^
 LL | |             a + b;
@@ -45,18 +45,18 @@ LL |               .sum::<i32>(),
              <i32 as Sum<&'a i32>>
              <i32 as Sum>
 note: the method call chain might not have had the expected associated types
-  --> $DIR/invalid-iterator-chain.rs:11:14
+  --> $DIR/invalid-iterator-chain.rs:12:14
    |
 LL |         vec![0, 1]
    |         ---------- this expression has type `Vec<{integer}>`
 LL |             .iter()
-   |              ^^^^^^ `std::iter::Iterator::Item` is `&{integer}` here
+   |              ------ `std::iter::Iterator::Item` is `&{integer}` here
 LL |             .map(|x| x * 2)
    |              ^^^^^^^^^^^^^^ `std::iter::Iterator::Item` changed to `{integer}` here
 LL |             .map(|x| x as f64)
-   |              ^^^^^^^^^^^^^^^^^ `std::iter::Iterator::Item` changed to `f64` here
+   |              ----------------- `std::iter::Iterator::Item` changed to `f64` here
 LL |             .map(|x| x as i64)
-   |              ^^^^^^^^^^^^^^^^^ `std::iter::Iterator::Item` changed to `i64` here
+   |              ----------------- `std::iter::Iterator::Item` changed to `i64` here
 LL |             .filter(|x| *x > 0)
    |              ------------------ `std::iter::Iterator::Item` remains `i64` here
 LL |             .map(|x| { x + 1 })
@@ -69,8 +69,45 @@ note: required by a bound in `std::iter::Iterator::sum`
 LL |         S: Sum<Self::Item>,
    |            ^^^^^^^^^^^^^^^ required by this bound in `std::iter::Iterator::sum`
 
+error[E0277]: the trait bound `i32: Sum<f64>` is not satisfied
+  --> $DIR/invalid-iterator-chain.rs:22:9
+   |
+LL | /         vec![0, 1]
+LL | |             .iter()
+LL | |             .map(|x| x * 2)
+LL | |             .map(|x| x as f64)
+LL | |             .filter(|x| *x > 0.0)
+LL | |             .map(|x| { x + 1.0 })
+   | |_________________________________^ the trait `Sum<f64>` is not implemented for `i32`
+LL |               .sum::<i32>(),
+   |                --- required by a bound introduced by this call
+   |
+   = help: the following other types implement trait `Sum<A>`:
+             <i32 as Sum<&'a i32>>
+             <i32 as Sum>
+note: the method call chain might not have had the expected associated types
+  --> $DIR/invalid-iterator-chain.rs:24:14
+   |
+LL |         vec![0, 1]
+   |         ---------- this expression has type `Vec<{integer}>`
+LL |             .iter()
+   |              ------ `std::iter::Iterator::Item` is `&{integer}` here
+LL |             .map(|x| x * 2)
+   |              ^^^^^^^^^^^^^^ `std::iter::Iterator::Item` changed to `{integer}` here
+LL |             .map(|x| x as f64)
+   |              ^^^^^^^^^^^^^^^^^ `std::iter::Iterator::Item` changed to `f64` here
+LL |             .filter(|x| *x > 0.0)
+   |              -------------------- `std::iter::Iterator::Item` remains `f64` here
+LL |             .map(|x| { x + 1.0 })
+   |              -------------------- `std::iter::Iterator::Item` remains `f64` here
+note: required by a bound in `std::iter::Iterator::sum`
+  --> $SRC_DIR/core/src/iter/traits/iterator.rs:LL:COL
+   |
+LL |         S: Sum<Self::Item>,
+   |            ^^^^^^^^^^^^^^^ required by this bound in `std::iter::Iterator::sum`
+
 error[E0277]: the trait bound `i32: Sum<()>` is not satisfied
-  --> $DIR/invalid-iterator-chain.rs:20:20
+  --> $DIR/invalid-iterator-chain.rs:30:20
    |
 LL |     println!("{}", vec![0, 1].iter().map(|x| { x; }).sum::<i32>());
    |                    ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ --- required by a bound introduced by this call
@@ -81,10 +118,10 @@ LL |     println!("{}", vec![0, 1].iter().map(|x| { x; }).sum::<i32>());
              <i32 as Sum<&'a i32>>
              <i32 as Sum>
 note: the method call chain might not have had the expected associated types
-  --> $DIR/invalid-iterator-chain.rs:20:31
+  --> $DIR/invalid-iterator-chain.rs:30:38
    |
 LL |     println!("{}", vec![0, 1].iter().map(|x| { x; }).sum::<i32>());
-   |                    ---------- ^^^^^^ ^^^^^^^^^^^^^^^ `std::iter::Iterator::Item` changed to `()` here
+   |                    ---------- ------ ^^^^^^^^^^^^^^^ `std::iter::Iterator::Item` changed to `()` here
    |                    |          |
    |                    |          `std::iter::Iterator::Item` is `&{integer}` here
    |                    this expression has type `Vec<{integer}>`
@@ -95,7 +132,7 @@ LL |         S: Sum<Self::Item>,
    |            ^^^^^^^^^^^^^^^ required by this bound in `std::iter::Iterator::sum`
 
 error[E0277]: the trait bound `i32: Sum<&()>` is not satisfied
-  --> $DIR/invalid-iterator-chain.rs:21:20
+  --> $DIR/invalid-iterator-chain.rs:31:20
    |
 LL |     println!("{}", vec![(), ()].iter().sum::<i32>());
    |                    ^^^^^^^^^^^^^^^^^^^ --- required by a bound introduced by this call
@@ -106,7 +143,7 @@ LL |     println!("{}", vec![(), ()].iter().sum::<i32>());
              <i32 as Sum<&'a i32>>
              <i32 as Sum>
 note: the method call chain might not have had the expected associated types
-  --> $DIR/invalid-iterator-chain.rs:21:33
+  --> $DIR/invalid-iterator-chain.rs:31:33
    |
 LL |     println!("{}", vec![(), ()].iter().sum::<i32>());
    |                    ------------ ^^^^^^ `std::iter::Iterator::Item` is `&()` here
@@ -119,7 +156,7 @@ LL |         S: Sum<Self::Item>,
    |            ^^^^^^^^^^^^^^^ required by this bound in `std::iter::Iterator::sum`
 
 error[E0277]: a value of type `Vec<i32>` cannot be built from an iterator over elements of type `()`
-  --> $DIR/invalid-iterator-chain.rs:30:23
+  --> $DIR/invalid-iterator-chain.rs:40:23
    |
 LL |     let g: Vec<i32> = f.collect();
    |                       ^ ------- required by a bound introduced by this call
@@ -129,12 +166,12 @@ LL |     let g: Vec<i32> = f.collect();
    = help: the trait `FromIterator<()>` is not implemented for `Vec<i32>`
    = help: the trait `FromIterator<T>` is implemented for `Vec<T>`
 note: the method call chain might not have had the expected associated types
-  --> $DIR/invalid-iterator-chain.rs:23:15
+  --> $DIR/invalid-iterator-chain.rs:36:15
    |
 LL |       let a = vec![0];
    |               ------- this expression has type `Vec<{integer}>`
 LL |       let b = a.into_iter();
-   |                 ^^^^^^^^^^^ `std::iter::Iterator::Item` is `{integer}` here
+   |                 ----------- `std::iter::Iterator::Item` is `{integer}` here
 LL |       let c = b.map(|x| x + 1);
    |                 -------------- `std::iter::Iterator::Item` remains `{integer}` here
 LL |       let d = c.filter(|x| *x > 10 );
@@ -152,6 +189,6 @@ note: required by a bound in `collect`
 LL |     fn collect<B: FromIterator<Self::Item>>(self) -> B
    |                   ^^^^^^^^^^^^^^^^^^^^^^^^ required by this bound in `collect`
 
-error: aborting due to 5 previous errors
+error: aborting due to 6 previous errors
 
 For more information about this error, try `rustc --explain E0277`.
