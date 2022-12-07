@@ -59,7 +59,7 @@ async fn foo_track_caller() {
 struct Foo;
 
 impl Foo {
-    #[track_caller]
+    #[track_caller] //[nofeat]~ WARN `#[track_caller]` on async functions is a no-op
     async fn bar_assoc() {
         panic!();
     }
@@ -104,9 +104,4 @@ fn main() {
     assert_eq!(panicked_at(|| block_on(foo_assoc())), 69);
     #[cfg(nofeat)]
     assert_eq!(panicked_at(|| block_on(foo_assoc())), 64);
-
-    #[cfg(feat)]
-    assert_eq!(panicked_at(|| block_on(foo_closure())), 76);
-    #[cfg(feat)]
-    assert_eq!(panicked_at(|| block_on(foo_closure())), 74);
 }

@@ -656,34 +656,35 @@ impl<'hir> LoweringContext<'_, 'hir> {
             hir::ExprKind::Closure(c)
         };
 
-        let track_caller = self
-            .attrs
-            .get(&outer_hir_id.local_id)
-            .map_or(false, |attrs| attrs.into_iter().any(|attr| attr.has_name(sym::track_caller)));
-
         let hir_id = self.lower_node_id(closure_node_id);
-        if track_caller {
-            let unstable_span = self.mark_span_with_reason(
-                DesugaringKind::Async,
-                span,
-                self.allow_gen_future.clone(),
-            );
-            self.lower_attrs(
-                hir_id,
-                &[Attribute {
-                    kind: AttrKind::Normal(ptr::P(NormalAttr {
-                        item: AttrItem {
-                            path: Path::from_ident(Ident::new(sym::track_caller, span)),
-                            args: AttrArgs::Empty,
+        let unstable_span = self.mark_span_with_reason(
+            DesugaringKind::Async,
+            span,
+            self.allow_gen_future.clone(),
+        );
+        if self.tcx.features().closure_track_caller {
+            let track_caller = self
+                .attrs
+                .get(&outer_hir_id.local_id)
+                .map_or(false, |attrs| attrs.into_iter().any(|attr| attr.has_name(sym::track_caller)));
+            if track_caller {
+                self.lower_attrs(
+                    hir_id,
+                    &[Attribute {
+                        kind: AttrKind::Normal(ptr::P(NormalAttr {
+                            item: AttrItem {
+                                path: Path::from_ident(Ident::new(sym::track_caller, span)),
+                                args: AttrArgs::Empty,
+                                tokens: None,
+                            },
                             tokens: None,
-                        },
-                        tokens: None,
-                    })),
-                    id: self.tcx.sess.parse_sess.attr_id_generator.mk_attr_id(),
-                    style: AttrStyle::Outer,
-                    span: unstable_span,
-                }],
-            );
+                        })),
+                        id: self.tcx.sess.parse_sess.attr_id_generator.mk_attr_id(),
+                        style: AttrStyle::Outer,
+                        span: unstable_span,
+                    }],
+                    );
+            }
         }
 
         let generator = hir::Expr { hir_id, kind: generator_kind, span: self.lower_span(span) };
