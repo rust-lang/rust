@@ -1375,7 +1375,26 @@ impl<'tcx> LateLintPass<'tcx> for UnstableFeatures {
 }
 
 declare_lint! {
-    /// `#[track_caller]` is a no-op without corresponding feature flag
+    /// The `ungated_async_fn_track_caller` lint warns when the
+    /// `#[track_caller]` attribute is used on an async function, method, or
+    /// closure, without enabling the corresponding unstable feature flag.
+    ///
+    /// ### Example
+    ///
+    /// ```rust
+    /// #[track_caller]
+    /// async fn foo() {}
+    /// ```
+    ///
+    /// {{produces}}
+    ///
+    /// ### Explanation
+    ///
+    /// The attribute must be used in conjunction with the
+    /// [`closure_track_caller` feature flag]. Otherwise, the `#[track_caller]`
+    /// annotation will function as as no-op.
+    ///
+    /// [`closure_track_caller` feature flag]: https://doc.rust-lang.org/beta/unstable-book/language-features/closure-track-caller.html
     UNGATED_ASYNC_FN_TRACK_CALLER,
     Warn,
     "enabling track_caller on an async fn is a no-op unless the closure_track_caller feature is enabled"
