@@ -439,8 +439,10 @@ fn gen_partial_eq(adt: &ast::Adt, func: &ast::Fn) -> Option<()> {
             let eq_check =
                 make::expr_bin_op(lhs, BinaryOp::CmpOp(CmpOp::Eq { negated: false }), rhs);
 
+            let mut n_cases = 0;
             let mut arms = vec![];
             for variant in enum_.variant_list()?.variants() {
+                n_cases += 1;
                 match variant.field_list() {
                     // => (Self::Bar { bin: l_bin }, Self::Bar { bin: r_bin }) => l_bin == r_bin,
                     Some(ast::FieldList::RecordFieldList(list)) => {
@@ -514,8 +516,19 @@ fn gen_partial_eq(adt: &ast::Adt, func: &ast::Fn) -> Option<()> {
 
             let expr = match arms.len() {
                 0 => eq_check,
-                _ => {
-                    arms.push(make::match_arm(Some(make::wildcard_pat().into()), None, eq_check));
+                arms_len => {
+                    // Generate the fallback arm when this enum has >1 variants.
+                    // The fallback arm will be `_ => false,` if we've already gone through every case where the variants of self and other match,
+                    // and `_ => std::mem::discriminant(self) == std::mem::discriminant(other),` otherwise.
+                    if n_cases > 1 {
+                        let lhs = make::wildcard_pat().into();
+                        let rhs = if arms_len == n_cases {
+                            make::expr_literal("false").into()
+                        } else {
+                            eq_check
+                        };
+                        arms.push(make::match_arm(Some(lhs), None, rhs));
+                    }
 
                     let match_target = make::expr_tuple(vec![lhs_name, rhs_name]);
                     let list = make::match_arm_list(arms).indent(ast::edit::IndentLevel(1));
