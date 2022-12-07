@@ -6,6 +6,8 @@
     // Number of lines shown when code viewer is not expanded.
     // DEFAULT is the first example shown by default, while HIDDEN is
     // the examples hidden beneath the "More examples" toggle.
+    //
+    // NOTE: these values MUST be synchronized with certain rules in rustdoc.css!
     const DEFAULT_MAX_LINES = 5;
     const HIDDEN_MAX_LINES = 10;
 
@@ -24,8 +26,10 @@
         } else {
             const wrapper = elt.querySelector(".code-wrapper");
             const halfHeight = wrapper.offsetHeight / 2;
-            const offsetMid = (lines.children[loc[0]].offsetTop
-                             + lines.children[loc[1]].offsetTop) / 2;
+            const offsetTop = lines.children[loc[0]].offsetTop;
+            const lastLine = lines.children[loc[1]];
+            const offsetBot = lastLine.offsetTop + lastLine.offsetHeight;
+            const offsetMid = (offsetTop + offsetBot) / 2;
             scrollOffset = offsetMid - halfHeight;
         }
 

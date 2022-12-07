@@ -1931,18 +1931,24 @@ in storage.js
 }
 
 .scraped-example:not(.expanded) .code-wrapper {
-	max-height: 120px;
+	/* scrape-examples.js has a constant DEFAULT_MAX_LINES (call it N) for the number
+	 * of lines shown in the un-expanded example code viewer. This pre needs to have
+	 * a max-height equal to line-height * N. The line-height is currently 1.5em,
+	 * and we include additional 10px for padding. */
+	 max-height: calc(1.5em * 5 + 10px);
 }
 
 .scraped-example:not(.expanded) .code-wrapper pre {
 	overflow-y: hidden;
-	max-height: 120px;
 	padding-bottom: 0;
+	/* See above comment, should be the same max-height. */
+	max-height: calc(1.5em * 5 + 10px);
 }
 
 .more-scraped-examples .scraped-example:not(.expanded) .code-wrapper,
 .more-scraped-examples .scraped-example:not(.expanded) .code-wrapper pre {
-	max-height: 240px;
+	/* See above comment, except this height is based on HIDDEN_MAX_LINES. */
+	max-height: calc(1.5em * 10 + 10px);
 }
 
 .scraped-example .code-wrapper .next,
