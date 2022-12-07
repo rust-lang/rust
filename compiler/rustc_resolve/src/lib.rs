@@ -46,7 +46,7 @@ use rustc_middle::span_bug;
 use rustc_middle::ty::{self, DefIdTree, MainDefinition, RegisteredTools};
 use rustc_middle::ty::{ResolverGlobalCtxt, ResolverOutputs};
 use rustc_query_system::ich::StableHashingContext;
-use rustc_session::cstore::{CrateStore, MetadataLoaderDyn};
+use rustc_session::cstore::{CrateStore, MetadataLoaderDyn, Untracked};
 use rustc_session::lint::LintBuffer;
 use rustc_session::Session;
 use rustc_span::hygiene::{ExpnId, LocalExpnId, MacroKind, SyntaxContext, Transparency};
@@ -869,8 +869,6 @@ pub struct Resolver<'a> {
     definitions: Definitions,
     /// Item with a given `LocalDefId` was defined during macro expansion with ID `ExpnId`.
     expn_that_defined: FxHashMap<LocalDefId, ExpnId>,
-    /// Reference span for definitions.
-    source_span: IndexVec<LocalDefId, Span>,
 
     graph_root: Module<'a>,
 
@@ -956,7 +954,7 @@ pub struct Resolver<'a> {
 
     local_crate_name: Symbol,
     metadata_loader: Box<MetadataLoaderDyn>,
-    cstore: CStore,
+    untracked: Untracked,
     used_extern_options: FxHashSet<Symbol>,
     macro_names: FxHashSet<Ident>,
     builtin_macros: FxHashMap<Symbol, BuiltinMacroState>,
@@ -1132,7 +1130,7 @@ impl DefIdTree for ResolverTree<'_> {
 impl<'a, 'b> DefIdTree for &'a Resolver<'b> {
     #[inline]
     fn opt_parent(self, id: DefId) -> Option<DefId> {
-        ResolverTree(&self.definitions, &self.cstore).opt_parent(id)
+        ResolverTree(&self.definitions, self.cstore()).opt_parent(id)
     }
 }
 
@@ -1171,7 +1169,7 @@ impl Resolver<'_> {
 
         // A relative span's parent must be an absolute span.
         debug_assert_eq!(span.data_untracked().parent, None);
-        let _id = self.source_span.push(span);
+        let _id = self.untracked.source_span.push(span);
         debug_assert_eq!(_id, def_id);
 
         // Some things for which we allocate `LocalDefId`s don't correspond to
@@ -1263,7 +1261,6 @@ impl<'a> Resolver<'a> {
 
             definitions,
             expn_that_defined: Default::default(),
-            source_span,
 
             // The outermost module has def ID 0; this is not reflected in the
             // AST.
@@ -1317,7 +1314,7 @@ impl<'a> Resolver<'a> {
             metadata_loader,
             local_crate_name: crate_name,
             used_extern_options: Default::default(),
-            cstore: CStore::new(session),
+            untracked: Untracked { cstore: Box::new(CStore::new(session)), source_span },
             macro_names: FxHashSet::default(),
             builtin_macros: Default::default(),
             builtin_macro_kinds: Default::default(),
@@ -1409,8 +1406,6 @@ impl<'a> Resolver<'a> {
     pub fn into_outputs(self) -> ResolverOutputs {
         let proc_macros = self.proc_macros.iter().map(|id| self.local_def_id(*id)).collect();
         let definitions = self.definitions;
-        let cstore = Box::new(self.cstore);
-        let source_span = self.source_span;
         let expn_that_defined = self.expn_that_defined;
         let visibilities = self.visibilities;
         let has_pub_restricted = self.has_pub_restricted;
@@ -1422,9 +1417,8 @@ impl<'a> Resolver<'a> {
         let main_def = self.main_def;
         let confused_type_with_std_module = self.confused_type_with_std_module;
         let effective_visibilities = self.effective_visibilities;
+        let untracked = self.untracked;
         let global_ctxt = ResolverGlobalCtxt {
-            cstore,
-            source_span,
             expn_that_defined,
             visibilities,
             has_pub_restricted,
@@ -1459,16 +1453,15 @@ impl<'a> Resolver<'a> {
             builtin_macro_kinds: self.builtin_macro_kinds,
             lifetime_elision_allowed: self.lifetime_elision_allowed,
         };
-        ResolverOutputs { definitions, global_ctxt, ast_lowering }
+        ResolverOutputs { definitions, global_ctxt, ast_lowering, untracked }
     }
 
     pub fn clone_outputs(&self) -> ResolverOutputs {
         let proc_macros = self.proc_macros.iter().map(|id| self.local_def_id(*id)).collect();
         let definitions = self.definitions.clone();
         let cstore = Box::new(self.cstore().clone());
+        let untracked = Untracked { cstore, source_span: self.untracked.source_span.clone() };
         let global_ctxt = ResolverGlobalCtxt {
-            cstore,
-            source_span: self.source_span.clone(),
             expn_that_defined: self.expn_that_defined.clone(),
             visibilities: self.visibilities.clone(),
             has_pub_restricted: self.has_pub_restricted,
@@ -1503,11 +1496,11 @@ impl<'a> Resolver<'a> {
             builtin_macro_kinds: self.builtin_macro_kinds.clone(),
             lifetime_elision_allowed: self.lifetime_elision_allowed.clone(),
         };
-        ResolverOutputs { definitions, global_ctxt, ast_lowering }
+        ResolverOutputs { definitions, global_ctxt, ast_lowering, untracked }
     }
 
     fn create_stable_hashing_context(&self) -> StableHashingContext<'_> {
-        StableHashingContext::new(self.session, &self.definitions, &self.cstore, &self.source_span)
+        StableHashingContext::new(self.session, &self.definitions, &self.untracked)
     }
 
     pub fn crate_loader(&mut self) -> CrateLoader<'_> {
@@ -1515,14 +1508,14 @@ impl<'a> Resolver<'a> {
             &self.session,
             &*self.metadata_loader,
             self.local_crate_name,
-            &mut self.cstore,
+            &mut *self.untracked.cstore.untracked_as_any().downcast_mut().unwrap(),
             &self.definitions,
             &mut self.used_extern_options,
         )
     }
 
     pub fn cstore(&self) -> &CStore {
-        &self.cstore
+        self.untracked.cstore.as_any().downcast_ref().unwrap()
     }
 
     fn dummy_ext(&self, macro_kind: MacroKind) -> Lrc<SyntaxExtension> {
@@ -1958,7 +1951,7 @@ impl<'a> Resolver<'a> {
     /// Retrieves the span of the given `DefId` if `DefId` is in the local crate.
     #[inline]
     pub fn opt_span(&self, def_id: DefId) -> Option<Span> {
-        def_id.as_local().map(|def_id| self.source_span[def_id])
+        def_id.as_local().map(|def_id| self.untracked.source_span[def_id])
     }
 
     /// Retrieves the name of the given `DefId`.

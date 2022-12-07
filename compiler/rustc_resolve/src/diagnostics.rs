@@ -153,7 +153,7 @@ impl<'a> Resolver<'a> {
             if !candidates.is_empty() {
                 show_candidates(
                     &self.session,
-                    &self.source_span,
+                    &self.untracked.source_span,
                     &mut err,
                     span,
                     &candidates,
@@ -682,7 +682,7 @@ impl<'a> Resolver<'a> {
                     }
                     show_candidates(
                         &self.session,
-                        &self.source_span,
+                        &self.untracked.source_span,
                         &mut err,
                         Some(span),
                         &import_suggestions,
@@ -1335,7 +1335,7 @@ impl<'a> Resolver<'a> {
             self.lookup_import_candidates(ident, Namespace::MacroNS, parent_scope, is_expected);
         show_candidates(
             &self.session,
-            &self.source_span,
+            &self.untracked.source_span,
             err,
             None,
             &import_suggestions,
