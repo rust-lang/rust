@@ -3027,6 +3027,11 @@ impl<'tcx> TypeErrCtxtExt<'tcx> for TypeErrCtxt<'_, 'tcx> {
                                                 span,
                                                 format!("`{assoc}` changed to `{ty}` here"),
                                             ));
+                                        } else {
+                                            span_labels.push((
+                                                span,
+                                                format!("`{assoc}` remains `{ty}` here"),
+                                            ));
                                         }
                                     }
                                     (Some((span, (assoc, ty))), None) => {

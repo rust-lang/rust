@@ -58,9 +58,9 @@ LL |             .map(|x| x as f64)
 LL |             .map(|x| x as i64)
    |              ^^^^^^^^^^^^^^^^^ `std::iter::Iterator::Item` changed to `i64` here
 LL |             .filter(|x| *x > 0)
-   |              ------------------
+   |              ------------------ `std::iter::Iterator::Item` remains `i64` here
 LL |             .map(|x| { x + 1 })
-   |              ------------------
+   |              ------------------ `std::iter::Iterator::Item` remains `i64` here
 LL |             .map(|x| { x; })
    |              ^^^^^^^^^^^^^^^ `std::iter::Iterator::Item` changed to `()` here
 note: required by a bound in `std::iter::Iterator::sum`
@@ -136,16 +136,16 @@ LL |       let a = vec![0];
 LL |       let b = a.into_iter();
    |                 ^^^^^^^^^^^ `std::iter::Iterator::Item` is `{integer}` here
 LL |       let c = b.map(|x| x + 1);
-   |                 --------------
+   |                 -------------- `std::iter::Iterator::Item` remains `{integer}` here
 LL |       let d = c.filter(|x| *x > 10 );
-   |                 --------------------
+   |                 -------------------- `std::iter::Iterator::Item` remains `{integer}` here
 LL |       let e = d.map(|x| {
    |  _______________^
 LL | |         x + 1;
 LL | |     });
    | |______^ `std::iter::Iterator::Item` changed to `()` here
 LL |       let f = e.filter(|_| false);
-   |                 -----------------
+   |                 ----------------- `std::iter::Iterator::Item` remains `()` here
 note: required by a bound in `collect`
   --> $SRC_DIR/core/src/iter/traits/iterator.rs:LL:COL
    |
