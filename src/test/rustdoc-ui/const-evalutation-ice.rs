@@ -7,4 +7,5 @@ pub struct S {
     s: Cell<usize>
 }
 
-pub const N: usize = 0 - (mem::size_of::<S>() != 4) as usize;
+pub const N: usize = 0 - (mem::size_of::<S>() != 400) as usize;
+//~^ ERROR evaluation of constant value failed
