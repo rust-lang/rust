@@ -81,8 +81,8 @@ impl LateLintPass<'_> for HardwiredLints {}
 
 #[macro_export]
 macro_rules! expand_combined_late_lint_pass_method {
-    ([$($passes:ident),*], $self: ident, $name: ident, $params:tt) => ({
-        $($self.$passes.$name $params;)*
+    ([$($pass:ident),*], $self: ident, $name: ident, $params:tt) => ({
+        $($self.$pass.$name $params;)*
     })
 }
 
@@ -97,28 +97,28 @@ macro_rules! expand_combined_late_lint_pass_methods {
 
 #[macro_export]
 macro_rules! declare_combined_late_lint_pass {
-    ([$v:vis $name:ident, [$($passes:ident: $constructor:expr,)*]], $methods:tt) => (
+    ([$v:vis $name:ident, [$($pass:ident: $constructor:expr,)*]], $methods:tt) => (
         #[allow(non_snake_case)]
         $v struct $name {
-            $($passes: $passes,)*
+            $($pass: $pass,)*
         }
 
         impl $name {
             $v fn new() -> Self {
                 Self {
-                    $($passes: $constructor,)*
+                    $($pass: $constructor,)*
                 }
             }
 
             $v fn get_lints() -> LintArray {
                 let mut lints = Vec::new();
-                $(lints.extend_from_slice(&$passes::get_lints());)*
+                $(lints.extend_from_slice(&$pass::get_lints());)*
                 lints
             }
         }
 
         impl<'tcx> LateLintPass<'tcx> for $name {
-            expand_combined_late_lint_pass_methods!([$($passes),*], $methods);
+            expand_combined_late_lint_pass_methods!([$($pass),*], $methods);
         }
 
         #[allow(rustc::lint_pass_impl_without_macro)]
@@ -184,8 +184,8 @@ early_lint_methods!(declare_early_lint_pass, []);
 
 #[macro_export]
 macro_rules! expand_combined_early_lint_pass_method {
-    ([$($passes:ident),*], $self: ident, $name: ident, $params:tt) => ({
-        $($self.$passes.$name $params;)*
+    ([$($pass:ident),*], $self: ident, $name: ident, $params:tt) => ({
+        $($self.$pass.$name $params;)*
     })
 }
 
@@ -200,28 +200,28 @@ macro_rules! expand_combined_early_lint_pass_methods {
 
 #[macro_export]
 macro_rules! declare_combined_early_lint_pass {
-    ([$v:vis $name:ident, [$($passes:ident: $constructor:expr,)*]], $methods:tt) => (
+    ([$v:vis $name:ident, [$($pass:ident: $constructor:expr,)*]], $methods:tt) => (
         #[allow(non_snake_case)]
         $v struct $name {
-            $($passes: $passes,)*
+            $($pass: $pass,)*
         }
 
         impl $name {
             $v fn new() -> Self {
                 Self {
-                    $($passes: $constructor,)*
+                    $($pass: $constructor,)*
                 }
             }
 
             $v fn get_lints() -> LintArray {
                 let mut lints = Vec::new();
-                $(lints.extend_from_slice(&$passes::get_lints());)*
+                $(lints.extend_from_slice(&$pass::get_lints());)*
                 lints
             }
         }
 
         impl EarlyLintPass for $name {
-            expand_combined_early_lint_pass_methods!([$($passes),*], $methods);
+            expand_combined_early_lint_pass_methods!([$($pass),*], $methods);
         }
 
         #[allow(rustc::lint_pass_impl_without_macro)]
