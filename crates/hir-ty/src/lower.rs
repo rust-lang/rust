@@ -1190,9 +1190,9 @@ pub fn associated_type_shorthand_candidates<R>(
     db: &dyn HirDatabase,
     def: GenericDefId,
     res: TypeNs,
-    cb: impl FnMut(&Name, &TraitRef, TypeAliasId) -> Option<R>,
+    mut cb: impl FnMut(&Name, TypeAliasId) -> Option<R>,
 ) -> Option<R> {
-    named_associated_type_shorthand_candidates(db, def, res, None, cb)
+    named_associated_type_shorthand_candidates(db, def, res, None, |name, _, id| cb(name, id))
 }
 
 fn named_associated_type_shorthand_candidates<R>(
@@ -1202,6 +1202,9 @@ fn named_associated_type_shorthand_candidates<R>(
     def: GenericDefId,
     res: TypeNs,
     assoc_name: Option<Name>,
+    // Do NOT let `cb` touch `TraitRef` outside of `TyLoweringContext`. Its substitution contains
+    // free `BoundVar`s that need to be shifted and only `TyLoweringContext` knows how to do that
+    // properly (see `TyLoweringContext::select_associated_type()`).
     mut cb: impl FnMut(&Name, &TraitRef, TypeAliasId) -> Option<R>,
 ) -> Option<R> {
     let mut search = |t| {
