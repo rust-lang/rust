@@ -44,6 +44,7 @@ pub mod int;
 
 #[cfg(any(
     all(target_family = "wasm", target_os = "unknown"),
+    all(target_arch = "x86_64", target_os = "none"),
     all(target_arch = "x86_64", target_os = "uefi"),
     all(target_arch = "arm", target_os = "none"),
     target_os = "xous",
