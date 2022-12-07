@@ -328,7 +328,7 @@ fn run_compiler(
                 }
             }
 
-            queries.expansion()?;
+            queries.global_ctxt()?;
             if callbacks.after_expansion(compiler, queries) == Compilation::Stop {
                 return early_exit();
             }
