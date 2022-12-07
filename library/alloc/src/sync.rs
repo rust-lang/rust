@@ -1392,6 +1392,29 @@ impl<T: ?Sized> Deref for Arc<T> {
     }
 }
 
+#[stable(feature = "rc_closure_impls", since = "CURRENT_RUSTC_VERSION")]
+impl<Args, F: Fn<Args> + ?Sized> Fn<Args> for Arc<F> {
+    extern "rust-call" fn call(&self, args: Args) -> Self::Output {
+        <F as Fn<Args>>::call(self, args)
+    }
+}
+
+#[stable(feature = "rc_closure_impls", since = "CURRENT_RUSTC_VERSION")]
+impl<Args, F: Fn<Args> + ?Sized> FnMut<Args> for Arc<F> {
+    extern "rust-call" fn call_mut(&mut self, args: Args) -> Self::Output {
+        <F as Fn<Args>>::call(self, args)
+    }
+}
+
+#[stable(feature = "rc_closure_impls", since = "CURRENT_RUSTC_VERSION")]
+impl<Args, F: Fn<Args> + ?Sized> FnOnce<Args> for Arc<F> {
+    type Output = F::Output;
+
+    extern "rust-call" fn call_once(self, args: Args) -> Self::Output {
+        <F as Fn<Args>>::call(&self, args)
+    }
+}
+
 #[unstable(feature = "receiver_trait", issue = "none")]
 impl<T: ?Sized> Receiver for Arc<T> {}
 
