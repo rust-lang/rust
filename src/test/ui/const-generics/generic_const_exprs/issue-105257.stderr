@@ -1,0 +1,8 @@
+error: defaults for const parameters are only allowed in `struct`, `enum`, `type`, or `trait` definitions
+  --> $DIR/issue-105257.rs:5:12
+   |
+LL |     fn fnc<const N: usize = "">(&self) {}
+   |            ^^^^^^^^^^^^^^^^^^^
+
+error: aborting due to previous error
+

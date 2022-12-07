@@ -1,0 +1,8 @@
+#![feature(generic_const_exprs)]
+#![allow(incomplete_features)]
+
+trait Trait<T> {
+    fn fnc<const N: usize = "">(&self) {} //~ERROR defaults for const parameters are only allowed in `struct`, `enum`, `type`, or `trait` definitions
+}
+
+fn main() {}

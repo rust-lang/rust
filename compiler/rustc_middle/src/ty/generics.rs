@@ -220,6 +220,15 @@ impl<'tcx> Generics {
         }
     }
 
+    pub fn param_to(&'tcx self, param_index: usize, tcx: TyCtxt<'tcx>) -> &'tcx [GenericParamDef] {
+        if let Some(index) = param_index.checked_sub(self.parent_count) {
+            &self.params[..index]
+        } else {
+            tcx.generics_of(self.parent.expect("parent_count > 0 but no parent?"))
+                .param_to(param_index, tcx)
+        }
+    }
+
     /// Returns the `GenericParamDef` associated with this `EarlyBoundRegion`.
     pub fn region_param(
         &'tcx self,
