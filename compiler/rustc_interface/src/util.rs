@@ -17,6 +17,7 @@ use rustc_span::edition::Edition;
 use rustc_span::lev_distance::find_best_match_for_name;
 use rustc_span::source_map::FileLoader;
 use rustc_span::symbol::{sym, Symbol};
+use session::CompilerIO;
 use std::env;
 use std::env::consts::{DLL_PREFIX, DLL_SUFFIX};
 use std::mem;
@@ -24,8 +25,6 @@ use std::path::{Path, PathBuf};
 use std::sync::atomic::{AtomicBool, Ordering};
 use std::sync::OnceLock;
 use std::thread;
-
-use crate::interface::CompilerIO;
 
 /// Function pointer type that constructs a new CodegenBackend.
 pub type MakeBackendFn = fn() -> Box<dyn CodegenBackend>;
@@ -60,7 +59,7 @@ pub fn create_session(
     cfg: FxHashSet<(String, Option<String>)>,
     check_cfg: CheckCfg,
     file_loader: Option<Box<dyn FileLoader + Send + Sync + 'static>>,
-    input_path: Option<PathBuf>,
+    io: CompilerIO,
     lint_caps: FxHashMap<lint::LintId, lint::Level>,
     make_codegen_backend: Option<
         Box<dyn FnOnce(&config::Options) -> Box<dyn CodegenBackend> + Send>,
@@ -91,7 +90,7 @@ pub fn create_session(
 
     let mut sess = session::build_session(
         sopts,
-        input_path,
+        io,
         bundle,
         descriptions,
         lint_caps,
@@ -488,17 +487,13 @@ pub fn collect_crate_types(session: &Session, attrs: &[ast::Attribute]) -> Vec<C
     base
 }
 
-pub fn build_output_filenames(
-    io: &CompilerIO,
-    attrs: &[ast::Attribute],
-    sess: &Session,
-) -> OutputFilenames {
-    match io.output_file {
+pub fn build_output_filenames(attrs: &[ast::Attribute], sess: &Session) -> OutputFilenames {
+    match sess.io.output_file {
         None => {
             // "-" as input file will cause the parser to read from stdin so we
             // have to make up a name
             // We want to toss everything after the final '.'
-            let dirpath = io.output_dir.clone().unwrap_or_default();
+            let dirpath = sess.io.output_dir.clone().unwrap_or_default();
 
             // If a crate name is present, we use it as the link name
             let stem = sess
@@ -506,13 +501,13 @@ pub fn build_output_filenames(
                 .crate_name
                 .clone()
                 .or_else(|| rustc_attr::find_crate_name(sess, attrs).map(|n| n.to_string()))
-                .unwrap_or_else(|| io.input.filestem().to_owned());
+                .unwrap_or_else(|| sess.io.input.filestem().to_owned());
 
             OutputFilenames::new(
                 dirpath,
                 stem,
                 None,
-                io.temps_dir.clone(),
+                sess.io.temps_dir.clone(),
                 sess.opts.cg.extra_filename.clone(),
                 sess.opts.output_types.clone(),
             )
@@ -533,7 +528,7 @@ pub fn build_output_filenames(
                 }
                 Some(out_file.clone())
             };
-            if io.output_dir != None {
+            if sess.io.output_dir != None {
                 sess.warn("ignoring --out-dir flag due to -o flag");
             }
 
@@ -541,7 +536,7 @@ pub fn build_output_filenames(
                 out_file.parent().unwrap_or_else(|| Path::new("")).to_path_buf(),
                 out_file.file_stem().unwrap_or_default().to_str().unwrap().to_string(),
                 ofile,
-                io.temps_dir.clone(),
+                sess.io.temps_dir.clone(),
                 sess.opts.cg.extra_filename.clone(),
                 sess.opts.output_types.clone(),
             )

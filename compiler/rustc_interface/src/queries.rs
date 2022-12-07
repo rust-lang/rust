@@ -128,10 +128,8 @@ impl<'tcx> Queries<'tcx> {
     }
 
     pub fn parse(&self) -> Result<QueryResult<'_, ast::Crate>> {
-        self.parse.compute(|| {
-            passes::parse(self.session(), &self.compiler.io.input)
-                .map_err(|mut parse_error| parse_error.emit())
-        })
+        self.parse
+            .compute(|| passes::parse(self.session()).map_err(|mut parse_error| parse_error.emit()))
     }
 
     pub fn register_plugins(&self) -> Result<QueryResult<'_, (ast::Crate, Lrc<LintStore>)>> {
@@ -165,7 +163,7 @@ impl<'tcx> Queries<'tcx> {
                 let parse_result = self.parse()?;
                 let krate = parse_result.borrow();
                 // parse `#[crate_name]` even if `--crate-name` was passed, to make sure it matches.
-                find_crate_name(self.session(), &krate.attrs, &self.compiler.io.input)
+                find_crate_name(self.session(), &krate.attrs)
             })
         })
     }
@@ -214,13 +212,7 @@ impl<'tcx> Queries<'tcx> {
             let crate_name = *self.crate_name()?.borrow();
             let (krate, resolver, lint_store) = self.expansion()?.steal();
 
-            let outputs = passes::prepare_outputs(
-                self.session(),
-                self.compiler,
-                &krate,
-                &resolver,
-                crate_name,
-            )?;
+            let outputs = passes::prepare_outputs(self.session(), &krate, &resolver, crate_name)?;
 
             let ty::ResolverOutputs {
                 untracked,

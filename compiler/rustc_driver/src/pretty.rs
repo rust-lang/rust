@@ -6,18 +6,16 @@ use rustc_ast_pretty::pprust;
 use rustc_errors::ErrorGuaranteed;
 use rustc_hir as hir;
 use rustc_hir_pretty as pprust_hir;
-use rustc_interface::interface::CompilerIO;
 use rustc_middle::hir::map as hir_map;
 use rustc_middle::mir::{write_mir_graphviz, write_mir_pretty};
 use rustc_middle::ty::{self, TyCtxt};
-use rustc_session::config::{Input, PpAstTreeMode, PpHirMode, PpMode, PpSourceMode};
+use rustc_session::config::{PpAstTreeMode, PpHirMode, PpMode, PpSourceMode};
 use rustc_session::Session;
 use rustc_span::symbol::Ident;
 use rustc_span::FileName;
 
 use std::cell::Cell;
 use std::fmt::Write;
-use std::path::PathBuf;
 
 pub use self::PpMode::*;
 pub use self::PpSourceMode::*;
@@ -346,8 +344,8 @@ impl<'tcx> pprust_hir::PpAnn for TypedAnnotation<'tcx> {
     }
 }
 
-fn get_source(input: &Input, sess: &Session) -> (String, FileName) {
-    let src_name = input.source_name();
+fn get_source(sess: &Session) -> (String, FileName) {
+    let src_name = sess.io.input.source_name();
     let src = String::clone(
         sess.source_map()
             .get_source_file(&src_name)
@@ -359,8 +357,8 @@ fn get_source(input: &Input, sess: &Session) -> (String, FileName) {
     (src, src_name)
 }
 
-fn write_or_print(out: &str, ofile: &Option<PathBuf>, sess: &Session) {
-    match ofile {
+fn write_or_print(out: &str, sess: &Session) {
+    match &sess.io.output_file {
         None => print!("{out}"),
         Some(p) => {
             if let Err(e) = std::fs::write(p, out) {
@@ -373,8 +371,8 @@ fn write_or_print(out: &str, ofile: &Option<PathBuf>, sess: &Session) {
     }
 }
 
-pub fn print_after_parsing(sess: &Session, io: &CompilerIO, krate: &ast::Crate, ppm: PpMode) {
-    let (src, src_name) = get_source(&io.input, sess);
+pub fn print_after_parsing(sess: &Session, krate: &ast::Crate, ppm: PpMode) {
+    let (src, src_name) = get_source(sess);
 
     let out = match ppm {
         Source(s) => {
@@ -402,21 +400,16 @@ pub fn print_after_parsing(sess: &Session, io: &CompilerIO, krate: &ast::Crate, 
         _ => unreachable!(),
     };
 
-    write_or_print(&out, &io.output_file, sess);
+    write_or_print(&out, sess);
 }
 
-pub fn print_after_hir_lowering<'tcx>(
-    tcx: TyCtxt<'tcx>,
-    io: &CompilerIO,
-    krate: &ast::Crate,
-    ppm: PpMode,
-) {
+pub fn print_after_hir_lowering<'tcx>(tcx: TyCtxt<'tcx>, krate: &ast::Crate, ppm: PpMode) {
     if ppm.needs_analysis() {
-        abort_on_err(print_with_analysis(tcx, ppm, &io.output_file), tcx.sess);
+        abort_on_err(print_with_analysis(tcx, ppm), tcx.sess);
         return;
     }
 
-    let (src, src_name) = get_source(&io.input, tcx.sess);
+    let (src, src_name) = get_source(tcx.sess);
 
     let out = match ppm {
         Source(s) => {
@@ -468,18 +461,14 @@ pub fn print_after_hir_lowering<'tcx>(
         _ => unreachable!(),
     };
 
-    write_or_print(&out, &io.output_file, tcx.sess);
+    write_or_print(&out, tcx.sess);
 }
 
 // In an ideal world, this would be a public function called by the driver after
 // analysis is performed. However, we want to call `phase_3_run_analysis_passes`
 // with a different callback than the standard driver, so that isn't easy.
 // Instead, we call that function ourselves.
-fn print_with_analysis(
-    tcx: TyCtxt<'_>,
-    ppm: PpMode,
-    ofile: &Option<PathBuf>,
-) -> Result<(), ErrorGuaranteed> {
+fn print_with_analysis(tcx: TyCtxt<'_>, ppm: PpMode) -> Result<(), ErrorGuaranteed> {
     tcx.analysis(())?;
     let out = match ppm {
         Mir => {
@@ -512,7 +501,7 @@ fn print_with_analysis(
         _ => unreachable!(),
     };
 
-    write_or_print(&out, ofile, tcx.sess);
+    write_or_print(&out, tcx.sess);
 
     Ok(())
 }

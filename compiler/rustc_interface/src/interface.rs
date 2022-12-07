@@ -14,10 +14,10 @@ use rustc_middle::ty;
 use rustc_parse::maybe_new_parser_from_source_str;
 use rustc_query_impl::QueryCtxt;
 use rustc_session::config::{self, CheckCfg, ErrorOutputType, Input, OutputFilenames};
-use rustc_session::early_error;
 use rustc_session::lint;
 use rustc_session::parse::{CrateConfig, ParseSess};
 use rustc_session::Session;
+use rustc_session::{early_error, CompilerIO};
 use rustc_span::source_map::{FileLoader, FileName};
 use rustc_span::symbol::sym;
 use std::path::PathBuf;
@@ -35,17 +35,9 @@ pub type Result<T> = result::Result<T, ErrorGuaranteed>;
 pub struct Compiler {
     pub(crate) sess: Lrc<Session>,
     codegen_backend: Lrc<Box<dyn CodegenBackend>>,
-    pub(crate) io: CompilerIO,
     pub(crate) register_lints: Option<Box<dyn Fn(&Session, &mut LintStore) + Send + Sync>>,
     pub(crate) override_queries:
         Option<fn(&Session, &mut ty::query::Providers, &mut ty::query::ExternProviders)>,
-}
-
-pub struct CompilerIO {
-    pub input: Input,
-    pub output_dir: Option<PathBuf>,
-    pub output_file: Option<PathBuf>,
-    pub temps_dir: Option<PathBuf>,
 }
 
 impl Compiler {
@@ -55,9 +47,6 @@ impl Compiler {
     pub fn codegen_backend(&self) -> &Lrc<Box<dyn CodegenBackend>> {
         &self.codegen_backend
     }
-    pub fn io(&self) -> &CompilerIO {
-        &self.io
-    }
     pub fn register_lints(&self) -> &Option<Box<dyn Fn(&Session, &mut LintStore) + Send + Sync>> {
         &self.register_lints
     }
@@ -66,7 +55,7 @@ impl Compiler {
         sess: &Session,
         attrs: &[ast::Attribute],
     ) -> OutputFilenames {
-        util::build_output_filenames(&self.io, attrs, sess)
+        util::build_output_filenames(attrs, sess)
     }
 }
 
@@ -273,12 +262,19 @@ pub fn run_compiler<R: Send>(config: Config, f: impl FnOnce(&Compiler) -> R + Se
             crate::callbacks::setup_callbacks();
 
             let registry = &config.registry;
+
+            let temps_dir = config.opts.unstable_opts.temps_dir.as_deref().map(PathBuf::from);
             let (mut sess, codegen_backend) = util::create_session(
                 config.opts,
                 config.crate_cfg,
                 config.crate_check_cfg,
                 config.file_loader,
-                config.input.opt_path(),
+                CompilerIO {
+                    input: config.input,
+                    output_dir: config.output_dir,
+                    output_file: config.output_file,
+                    temps_dir,
+                },
                 config.lint_caps,
                 config.make_codegen_backend,
                 registry.clone(),
@@ -288,17 +284,9 @@ pub fn run_compiler<R: Send>(config: Config, f: impl FnOnce(&Compiler) -> R + Se
                 parse_sess_created(&mut sess.parse_sess);
             }
 
-            let temps_dir = sess.opts.unstable_opts.temps_dir.as_deref().map(PathBuf::from);
-
             let compiler = Compiler {
                 sess: Lrc::new(sess),
                 codegen_backend: Lrc::new(codegen_backend),
-                io: CompilerIO {
-                    input: config.input,
-                    output_dir: config.output_dir,
-                    output_file: config.output_file,
-                    temps_dir,
-                },
                 register_lints: config.register_lints,
                 override_queries: config.override_queries,
             };
