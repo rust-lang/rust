@@ -2077,6 +2077,7 @@ pub(crate) fn sidebar_render_assoc_items(
     blanket_impl: Vec<&Impl>,
 ) {
     let format_impls_grouped = |impls: Vec<&Impl>, id_map: &mut IdMap| {
+        const UNGROUPED: &str = "(ungrouped)";
         let mut links_dedup = FxHashSet::default();
         let mut mod_groups = FxHashMap::default();
 
@@ -2084,7 +2085,20 @@ pub(crate) fn sidebar_render_assoc_items(
         for it in &impls {
             if let Some(did) = it.trait_did() {
                 let mod_did = cx.shared.tcx.parent(did);
-                mod_groups.entry(mod_did).or_insert(Vec::new()).push(it);
+                mod_groups.entry(Some(mod_did)).or_insert(Vec::new()).push(it);
+            }
+        }
+
+        // collect groups with only one item
+        let singles = mod_groups
+            .iter()
+            .filter_map(|(did, group)| if group.len() == 1 { Some(did.unwrap()) } else { None })
+            .collect::<Vec<_>>();
+        if !singles.is_empty() {
+            mod_groups.insert(None, Vec::new());
+            for did in singles {
+                let item = mod_groups.remove(&Some(did)).unwrap();
+                mod_groups.entry(None).and_modify(|v| v.extend(item));
             }
         }
 
@@ -2112,11 +2126,15 @@ pub(crate) fn sidebar_render_assoc_items(
 
                 rendered.sort();
 
-                // render the module name
-                let tcx = &cx.shared.tcx;
-                let crate_name = tcx.crate_name(mod_did.krate).as_str().to_owned();
-                let module_name = tcx.def_path(mod_did).to_string_no_crate_verbose();
-                let title = crate_name + &module_name;
+                let title = if let Some(did) = mod_did {
+                    // render the module name
+                    let tcx = &cx.shared.tcx;
+                    let crate_name = tcx.crate_name(did.krate).as_str().to_owned();
+                    let module_name = tcx.def_path(did).to_string_no_crate_verbose();
+                    format!("{}{}::", crate_name, module_name)
+                } else {
+                    UNGROUPED.to_owned()
+                };
 
                 (title, rendered)
             })
@@ -2127,15 +2145,12 @@ pub(crate) fn sidebar_render_assoc_items(
     };
 
     let concrete_format = format_impls_grouped(concrete, id_map);
-
-    for (mod_name, items) in concrete_format {
-        print_sidebar_block(
-            out,
-            "trait-implementations",
-            &format!("Implemented Traits from {}", mod_name),
-            items.iter(),
-        );
-    }
+    print_sidebar_block_grouped(
+        out,
+        "trait-implementations",
+        "Trait Implementations",
+        concrete_format.into_iter(),
+    );
 
     let format_impls = |impls: Vec<&Impl>, id_map: &mut IdMap| {
         let mut links = FxHashSet::default();
@@ -2384,6 +2399,23 @@ fn print_sidebar_block(
         write!(buf, "<li>{}</li>", item);
     }
     buf.push_str("</ul>");
+}
+
+fn print_sidebar_block_grouped(
+    buf: &mut Buffer,
+    id: &str,
+    title: &str,
+    items: impl Iterator<Item = (String, Vec<String>)>,
+) {
+    print_sidebar_title(buf, id, title);
+    for (name, group) in items {
+        write!(buf, "<h4>{}</h4>", name);
+        buf.push_str("<ul class=\"sub-block\">");
+        for item in group {
+            write!(buf, "<li>{}</li>", item);
+        }
+        buf.push_str("</ul>");
+    }
 }
 
 fn sidebar_trait(cx: &Context<'_>, buf: &mut Buffer, it: &clean::Item, t: &clean::Trait) {

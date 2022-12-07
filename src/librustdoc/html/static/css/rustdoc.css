@@ -472,7 +472,7 @@ img {
 	width: 100px;
 }
 
-ul.block, .block li {
+ul.block, .block li, ul.sub-block, .sub-block li {
 	padding: 0;
 	margin: 0;
 	list-style: none;
@@ -497,6 +497,11 @@ ul.block, .block li {
 	margin: 0;
 }
 
+.sidebar h4 {
+	padding: 0;
+	margin: 0.2rem 0;
+}
+
 .sidebar-elems,
 .sidebar > h2 {
 	padding-left: 24px;
@@ -514,7 +519,12 @@ ul.block, .block li {
 	margin-bottom: 2em;
 }
 
-.sidebar-elems .block li a {
+.sidebar-elems .sub-block {
+	margin-bottom: 1.5em;
+}
+
+.sidebar-elems .block li a,
+.sidebar-elems .sub-block li a {
 	white-space: nowrap;
 	text-overflow: ellipsis;
 	overflow: hidden;
