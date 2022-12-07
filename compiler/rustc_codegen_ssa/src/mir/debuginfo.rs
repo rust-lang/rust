@@ -76,6 +76,53 @@ impl<'tcx, S: Copy, L: Copy> DebugScope<S, L> {
     }
 }
 
+struct DebugInfoOffset<T> {
+    /// Offset from the `base` used to calculate the debuginfo offset.
+    direct_offset: Size,
+    /// Each offset in this vector indicates one level of indirection from the base or previous
+    /// indirect offset plus a dereference.
+    indirect_offsets: Vec<Size>,
+    /// The final location debuginfo should point to.
+    result: T,
+}
+
+fn calculate_debuginfo_offset<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>>(
+    bx: &mut Bx,
+    local: mir::Local,
+    var: &PerLocalVarDebugInfo<'tcx, Bx::DIVariable>,
+    base: PlaceRef<'tcx, Bx::Value>,
+) -> DebugInfoOffset<PlaceRef<'tcx, Bx::Value>> {
+    let mut direct_offset = Size::ZERO;
+    // FIXME(eddyb) use smallvec here.
+    let mut indirect_offsets = vec![];
+    let mut place = base;
+
+    for elem in &var.projection[..] {
+        match *elem {
+            mir::ProjectionElem::Deref => {
+                indirect_offsets.push(Size::ZERO);
+                place = bx.load_operand(place).deref(bx.cx());
+            }
+            mir::ProjectionElem::Field(field, _) => {
+                let i = field.index();
+                let offset = indirect_offsets.last_mut().unwrap_or(&mut direct_offset);
+                *offset += place.layout.fields.offset(i);
+                place = place.project_field(bx, i);
+            }
+            mir::ProjectionElem::Downcast(_, variant) => {
+                place = place.project_downcast(bx, variant);
+            }
+            _ => span_bug!(
+                var.source_info.span,
+                "unsupported var debuginfo place `{:?}`",
+                mir::Place { local, projection: var.projection },
+            ),
+        }
+    }
+
+    DebugInfoOffset { direct_offset, indirect_offsets, result: place }
+}
+
 impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
     pub fn set_debug_loc(&self, bx: &mut Bx, source_info: mir::SourceInfo) {
         bx.set_span(source_info.span);
@@ -262,33 +309,8 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
             let Some(dbg_var) = var.dbg_var else { continue };
             let Some(dbg_loc) = self.dbg_loc(var.source_info) else { continue };
 
-            let mut direct_offset = Size::ZERO;
-            // FIXME(eddyb) use smallvec here.
-            let mut indirect_offsets = vec![];
-            let mut place = base;
-
-            for elem in &var.projection[..] {
-                match *elem {
-                    mir::ProjectionElem::Deref => {
-                        indirect_offsets.push(Size::ZERO);
-                        place = bx.load_operand(place).deref(bx.cx());
-                    }
-                    mir::ProjectionElem::Field(field, _) => {
-                        let i = field.index();
-                        let offset = indirect_offsets.last_mut().unwrap_or(&mut direct_offset);
-                        *offset += place.layout.fields.offset(i);
-                        place = place.project_field(bx, i);
-                    }
-                    mir::ProjectionElem::Downcast(_, variant) => {
-                        place = place.project_downcast(bx, variant);
-                    }
-                    _ => span_bug!(
-                        var.source_info.span,
-                        "unsupported var debuginfo place `{:?}`",
-                        mir::Place { local, projection: var.projection },
-                    ),
-                }
-            }
+            let DebugInfoOffset { direct_offset, indirect_offsets, result: place } =
+                calculate_debuginfo_offset(bx, local, &var, base);
 
             // When targeting MSVC, create extra allocas for arguments instead of pointing multiple
             // dbg_var_addr() calls into the same alloca with offsets. MSVC uses CodeView records
