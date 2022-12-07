@@ -8,3 +8,4 @@ pub struct S {
 }
 
 pub const N: usize = 0 - (mem::size_of::<S>() != 4) as usize;
+//~^ ERROR evaluation of constant value failed
