@@ -25,7 +25,7 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
   zlib1g-dev \
   xz-utils \
   nodejs \
-
+  \
 # Install powershell so we can test x.ps1 on Linux
     apt-transport-https software-properties-common && \
     curl -s "https://packages.microsoft.com/config/ubuntu/$(lsb_release -rs)/packages-microsoft-prod.deb" > packages-microsoft-prod.deb && \
