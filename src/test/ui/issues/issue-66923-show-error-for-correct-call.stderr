@@ -14,7 +14,7 @@ note: the method call chain might not have had the expected associated types
 LL |     let x1: &[f64] = &v;
    |                      -- this expression has type `&Vec<f64>`
 LL |     let x2: Vec<f64> = x1.into_iter().collect();
-   |                           ^^^^^^^^^^^ associated type `std::iter::Iterator::Item` is `&f64` here
+   |                           ^^^^^^^^^^^ `std::iter::Iterator::Item` is `&f64` here
 note: required by a bound in `collect`
   --> $SRC_DIR/core/src/iter/traits/iterator.rs:LL:COL
    |
@@ -38,7 +38,7 @@ LL |     let x1: &[f64] = &v;
    |                      -- this expression has type `&Vec<f64>`
 ...
 LL |     let x3 = x1.into_iter().collect::<Vec<f64>>();
-   |                 ^^^^^^^^^^^ associated type `std::iter::Iterator::Item` is `&f64` here
+   |                 ^^^^^^^^^^^ `std::iter::Iterator::Item` is `&f64` here
 note: required by a bound in `collect`
   --> $SRC_DIR/core/src/iter/traits/iterator.rs:LL:COL
    |

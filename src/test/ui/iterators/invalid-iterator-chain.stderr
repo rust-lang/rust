@@ -15,12 +15,12 @@ note: the method call chain might not have had the expected associated types
 LL |       let scores = vec![(0, 0)]
    |                    ------------ this expression has type `Vec<({integer}, {integer})>`
 LL |           .iter()
-   |            ^^^^^^ associated type `std::iter::Iterator::Item` is `&({integer}, {integer})` here
+   |            ^^^^^^ `std::iter::Iterator::Item` is `&({integer}, {integer})` here
 LL |           .map(|(a, b)| {
    |  __________^
 LL | |             a + b;
 LL | |         });
-   | |__________^ associated type `std::iter::Iterator::Item` changed to `()` here
+   | |__________^ `std::iter::Iterator::Item` changed to `()` here
 note: required by a bound in `std::iter::Iterator::sum`
   --> $SRC_DIR/core/src/iter/traits/iterator.rs:LL:COL
    |
@@ -50,19 +50,19 @@ note: the method call chain might not have had the expected associated types
 LL |         vec![0, 1]
    |         ---------- this expression has type `Vec<{integer}>`
 LL |             .iter()
-   |              ^^^^^^ associated type `std::iter::Iterator::Item` is `&{integer}` here
+   |              ^^^^^^ `std::iter::Iterator::Item` is `&{integer}` here
 LL |             .map(|x| x * 2)
-   |              ^^^^^^^^^^^^^^ associated type `std::iter::Iterator::Item` changed to `{integer}` here
+   |              ^^^^^^^^^^^^^^ `std::iter::Iterator::Item` changed to `{integer}` here
 LL |             .map(|x| x as f64)
-   |              ^^^^^^^^^^^^^^^^^ associated type `std::iter::Iterator::Item` changed to `f64` here
+   |              ^^^^^^^^^^^^^^^^^ `std::iter::Iterator::Item` changed to `f64` here
 LL |             .map(|x| x as i64)
-   |              ^^^^^^^^^^^^^^^^^ associated type `std::iter::Iterator::Item` changed to `i64` here
+   |              ^^^^^^^^^^^^^^^^^ `std::iter::Iterator::Item` changed to `i64` here
 LL |             .filter(|x| *x > 0)
    |              ------------------
 LL |             .map(|x| { x + 1 })
    |              ------------------
 LL |             .map(|x| { x; })
-   |              ^^^^^^^^^^^^^^^ associated type `std::iter::Iterator::Item` changed to `()` here
+   |              ^^^^^^^^^^^^^^^ `std::iter::Iterator::Item` changed to `()` here
 note: required by a bound in `std::iter::Iterator::sum`
   --> $SRC_DIR/core/src/iter/traits/iterator.rs:LL:COL
    |
@@ -84,9 +84,9 @@ note: the method call chain might not have had the expected associated types
   --> $DIR/invalid-iterator-chain.rs:20:31
    |
 LL |     println!("{}", vec![0, 1].iter().map(|x| { x; }).sum::<i32>());
-   |                    ---------- ^^^^^^ ^^^^^^^^^^^^^^^ associated type `std::iter::Iterator::Item` changed to `()` here
+   |                    ---------- ^^^^^^ ^^^^^^^^^^^^^^^ `std::iter::Iterator::Item` changed to `()` here
    |                    |          |
-   |                    |          associated type `std::iter::Iterator::Item` is `&{integer}` here
+   |                    |          `std::iter::Iterator::Item` is `&{integer}` here
    |                    this expression has type `Vec<{integer}>`
 note: required by a bound in `std::iter::Iterator::sum`
   --> $SRC_DIR/core/src/iter/traits/iterator.rs:LL:COL
@@ -109,7 +109,7 @@ note: the method call chain might not have had the expected associated types
   --> $DIR/invalid-iterator-chain.rs:21:33
    |
 LL |     println!("{}", vec![(), ()].iter().sum::<i32>());
-   |                    ------------ ^^^^^^ associated type `std::iter::Iterator::Item` is `&()` here
+   |                    ------------ ^^^^^^ `std::iter::Iterator::Item` is `&()` here
    |                    |
    |                    this expression has type `Vec<()>`
 note: required by a bound in `std::iter::Iterator::sum`
@@ -134,7 +134,7 @@ note: the method call chain might not have had the expected associated types
 LL |       let a = vec![0];
    |               ------- this expression has type `Vec<{integer}>`
 LL |       let b = a.into_iter();
-   |                 ^^^^^^^^^^^ associated type `std::iter::Iterator::Item` is `{integer}` here
+   |                 ^^^^^^^^^^^ `std::iter::Iterator::Item` is `{integer}` here
 LL |       let c = b.map(|x| x + 1);
    |                 --------------
 LL |       let d = c.filter(|x| *x > 10 );
@@ -143,7 +143,7 @@ LL |       let e = d.map(|x| {
    |  _______________^
 LL | |         x + 1;
 LL | |     });
-   | |______^ associated type `std::iter::Iterator::Item` changed to `()` here
+   | |______^ `std::iter::Iterator::Item` changed to `()` here
 LL |       let f = e.filter(|_| false);
    |                 -----------------
 note: required by a bound in `collect`

@@ -3011,7 +3011,7 @@ impl<'tcx> TypeErrCtxtExt<'tcx> for TypeErrCtxt<'_, 'tcx> {
                                     primary_spans.push(span);
                                     span_labels.push((
                                         span,
-                                        format!("associated type `{assoc}` is `{ty}` here"),
+                                        format!("`{assoc}` is `{ty}` here"),
                                     ));
                                 }
                                 break;
@@ -3025,15 +3025,13 @@ impl<'tcx> TypeErrCtxtExt<'tcx> for TypeErrCtxt<'_, 'tcx> {
                                             primary_spans.push(span);
                                             span_labels.push((
                                                 span,
-                                                format!("associated type `{assoc}` changed to `{ty}` here"),
+                                                format!("`{assoc}` changed to `{ty}` here"),
                                             ));
                                         }
                                     }
                                     (Some((span, (assoc, ty))), None) => {
-                                        span_labels.push((
-                                            span,
-                                            format!("associated type `{assoc}` is `{ty}` here"),
-                                        ));
+                                        span_labels
+                                            .push((span, format!("`{assoc}` is `{ty}` here")));
                                     }
                                     (None, Some(_)) | (None, None) => {}
                                 }
@@ -3055,7 +3053,7 @@ impl<'tcx> TypeErrCtxtExt<'tcx> for TypeErrCtxt<'_, 'tcx> {
                                 multi_span,
                                 format!(
                                     "the method call chain might not have had the expected \
-                                        associated types",
+                                     associated types",
                                 ),
                             );
                         }
