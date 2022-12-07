@@ -6,6 +6,7 @@ use rustc_ast_pretty::pprust;
 use rustc_errors::ErrorGuaranteed;
 use rustc_hir as hir;
 use rustc_hir_pretty as pprust_hir;
+use rustc_interface::interface::CompilerIO;
 use rustc_middle::hir::map as hir_map;
 use rustc_middle::mir::{write_mir_graphviz, write_mir_pretty};
 use rustc_middle::ty::{self, TyCtxt};
@@ -16,7 +17,7 @@ use rustc_span::FileName;
 
 use std::cell::Cell;
 use std::fmt::Write;
-use std::path::Path;
+use std::path::PathBuf;
 
 pub use self::PpMode::*;
 pub use self::PpSourceMode::*;
@@ -358,7 +359,7 @@ fn get_source(input: &Input, sess: &Session) -> (String, FileName) {
     (src, src_name)
 }
 
-fn write_or_print(out: &str, ofile: Option<&Path>, sess: &Session) {
+fn write_or_print(out: &str, ofile: &Option<PathBuf>, sess: &Session) {
     match ofile {
         None => print!("{out}"),
         Some(p) => {
@@ -372,14 +373,8 @@ fn write_or_print(out: &str, ofile: Option<&Path>, sess: &Session) {
     }
 }
 
-pub fn print_after_parsing(
-    sess: &Session,
-    input: &Input,
-    krate: &ast::Crate,
-    ppm: PpMode,
-    ofile: Option<&Path>,
-) {
-    let (src, src_name) = get_source(input, sess);
+pub fn print_after_parsing(sess: &Session, io: &CompilerIO, krate: &ast::Crate, ppm: PpMode) {
+    let (src, src_name) = get_source(&io.input, sess);
 
     let out = match ppm {
         Source(s) => {
@@ -407,22 +402,21 @@ pub fn print_after_parsing(
         _ => unreachable!(),
     };
 
-    write_or_print(&out, ofile, sess);
+    write_or_print(&out, &io.output_file, sess);
 }
 
 pub fn print_after_hir_lowering<'tcx>(
     tcx: TyCtxt<'tcx>,
-    input: &Input,
+    io: &CompilerIO,
     krate: &ast::Crate,
     ppm: PpMode,
-    ofile: Option<&Path>,
 ) {
     if ppm.needs_analysis() {
-        abort_on_err(print_with_analysis(tcx, ppm, ofile), tcx.sess);
+        abort_on_err(print_with_analysis(tcx, ppm, &io.output_file), tcx.sess);
         return;
     }
 
-    let (src, src_name) = get_source(input, tcx.sess);
+    let (src, src_name) = get_source(&io.input, tcx.sess);
 
     let out = match ppm {
         Source(s) => {
@@ -474,7 +468,7 @@ pub fn print_after_hir_lowering<'tcx>(
         _ => unreachable!(),
     };
 
-    write_or_print(&out, ofile, tcx.sess);
+    write_or_print(&out, &io.output_file, tcx.sess);
 }
 
 // In an ideal world, this would be a public function called by the driver after
@@ -484,7 +478,7 @@ pub fn print_after_hir_lowering<'tcx>(
 fn print_with_analysis(
     tcx: TyCtxt<'_>,
     ppm: PpMode,
-    ofile: Option<&Path>,
+    ofile: &Option<PathBuf>,
 ) -> Result<(), ErrorGuaranteed> {
     tcx.analysis(())?;
     let out = match ppm {

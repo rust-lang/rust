@@ -129,7 +129,7 @@ impl<'tcx> Queries<'tcx> {
 
     pub fn parse(&self) -> Result<QueryResult<'_, ast::Crate>> {
         self.parse.compute(|| {
-            passes::parse(self.session(), &self.compiler.input)
+            passes::parse(self.session(), &self.compiler.io.input)
                 .map_err(|mut parse_error| parse_error.emit())
         })
     }
@@ -165,7 +165,7 @@ impl<'tcx> Queries<'tcx> {
                 let parse_result = self.parse()?;
                 let krate = parse_result.borrow();
                 // parse `#[crate_name]` even if `--crate-name` was passed, to make sure it matches.
-                find_crate_name(self.session(), &krate.attrs, &self.compiler.input)
+                find_crate_name(self.session(), &krate.attrs, &self.compiler.io.input)
             })
         })
     }

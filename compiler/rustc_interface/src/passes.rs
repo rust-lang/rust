@@ -673,20 +673,13 @@ pub fn prepare_outputs(
     let _timer = sess.timer("prepare_outputs");
 
     // FIXME: rustdoc passes &[] instead of &krate.attrs here
-    let outputs = util::build_output_filenames(
-        &compiler.input,
-        &compiler.output_dir,
-        &compiler.output_file,
-        &compiler.temps_dir,
-        &krate.attrs,
-        sess,
-    );
+    let outputs = util::build_output_filenames(&compiler.io, &krate.attrs, sess);
 
     let output_paths =
-        generated_output_paths(sess, &outputs, compiler.output_file.is_some(), crate_name);
+        generated_output_paths(sess, &outputs, compiler.io.output_file.is_some(), crate_name);
 
     // Ensure the source file isn't accidentally overwritten during compilation.
-    if let Some(ref input_path) = compiler.input.opt_path() {
+    if let Some(ref input_path) = compiler.io.input.opt_path() {
         if sess.opts.will_create_output_file() {
             if output_contains_path(&output_paths, input_path) {
                 let reported = sess.emit_err(InputFileWouldBeOverWritten { path: input_path });
@@ -700,7 +693,7 @@ pub fn prepare_outputs(
         }
     }
 
-    if let Some(ref dir) = compiler.temps_dir {
+    if let Some(ref dir) = compiler.io.temps_dir {
         if fs::create_dir_all(dir).is_err() {
             let reported = sess.emit_err(TempsDirError);
             return Err(reported);
@@ -713,7 +706,7 @@ pub fn prepare_outputs(
         && sess.opts.output_types.len() == 1;
 
     if !only_dep_info {
-        if let Some(ref dir) = compiler.output_dir {
+        if let Some(ref dir) = compiler.io.output_dir {
             if fs::create_dir_all(dir).is_err() {
                 let reported = sess.emit_err(OutDirError);
                 return Err(reported);

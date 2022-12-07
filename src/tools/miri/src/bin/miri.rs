@@ -75,7 +75,7 @@ impl rustc_driver::Callbacks for MiriCompilerCalls {
             let mut config = self.miri_config.clone();
 
             // Add filename to `miri` arguments.
-            config.args.insert(0, compiler.input().filestem().to_string());
+            config.args.insert(0, compiler.io().input.filestem().to_string());
 
             // Adjust working directory for interpretation.
             if let Some(cwd) = env::var_os("MIRI_CWD") {

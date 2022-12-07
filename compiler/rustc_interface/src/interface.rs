@@ -35,13 +35,17 @@ pub type Result<T> = result::Result<T, ErrorGuaranteed>;
 pub struct Compiler {
     pub(crate) sess: Lrc<Session>,
     codegen_backend: Lrc<Box<dyn CodegenBackend>>,
-    pub(crate) input: Input,
-    pub(crate) output_dir: Option<PathBuf>,
-    pub(crate) output_file: Option<PathBuf>,
-    pub(crate) temps_dir: Option<PathBuf>,
+    pub(crate) io: CompilerIO,
     pub(crate) register_lints: Option<Box<dyn Fn(&Session, &mut LintStore) + Send + Sync>>,
     pub(crate) override_queries:
         Option<fn(&Session, &mut ty::query::Providers, &mut ty::query::ExternProviders)>,
+}
+
+pub struct CompilerIO {
+    pub input: Input,
+    pub output_dir: Option<PathBuf>,
+    pub output_file: Option<PathBuf>,
+    pub temps_dir: Option<PathBuf>,
 }
 
 impl Compiler {
@@ -51,17 +55,8 @@ impl Compiler {
     pub fn codegen_backend(&self) -> &Lrc<Box<dyn CodegenBackend>> {
         &self.codegen_backend
     }
-    pub fn input(&self) -> &Input {
-        &self.input
-    }
-    pub fn output_dir(&self) -> &Option<PathBuf> {
-        &self.output_dir
-    }
-    pub fn output_file(&self) -> &Option<PathBuf> {
-        &self.output_file
-    }
-    pub fn temps_dir(&self) -> &Option<PathBuf> {
-        &self.temps_dir
+    pub fn io(&self) -> &CompilerIO {
+        &self.io
     }
     pub fn register_lints(&self) -> &Option<Box<dyn Fn(&Session, &mut LintStore) + Send + Sync>> {
         &self.register_lints
@@ -71,14 +66,7 @@ impl Compiler {
         sess: &Session,
         attrs: &[ast::Attribute],
     ) -> OutputFilenames {
-        util::build_output_filenames(
-            &self.input,
-            &self.output_dir,
-            &self.output_file,
-            &self.temps_dir,
-            attrs,
-            sess,
-        )
+        util::build_output_filenames(&self.io, attrs, sess)
     }
 }
 
@@ -305,10 +293,12 @@ pub fn run_compiler<R: Send>(config: Config, f: impl FnOnce(&Compiler) -> R + Se
             let compiler = Compiler {
                 sess: Lrc::new(sess),
                 codegen_backend: Lrc::new(codegen_backend),
-                input: config.input,
-                output_dir: config.output_dir,
-                output_file: config.output_file,
-                temps_dir,
+                io: CompilerIO {
+                    input: config.input,
+                    output_dir: config.output_dir,
+                    output_file: config.output_file,
+                    temps_dir,
+                },
                 register_lints: config.register_lints,
                 override_queries: config.override_queries,
             };

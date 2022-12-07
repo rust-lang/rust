@@ -26,6 +26,7 @@ use rustc_errors::registry::{InvalidErrorCode, Registry};
 use rustc_errors::{ErrorGuaranteed, PResult};
 use rustc_feature::find_gated_cfg;
 use rustc_hir::def_id::LOCAL_CRATE;
+use rustc_interface::interface::CompilerIO;
 use rustc_interface::util::{self, collect_crate_types, get_codegen_backend};
 use rustc_interface::{interface, Queries};
 use rustc_lint::LintStore;
@@ -262,10 +263,8 @@ fn run_compiler(
                     let should_stop = print_crate_info(
                         &***compiler.codegen_backend(),
                         compiler.session(),
-                        None,
-                        compiler.output_dir(),
-                        compiler.output_file(),
-                        compiler.temps_dir(),
+                        false,
+                        compiler.io(),
                     );
 
                     if should_stop == Compilation::Stop {
@@ -288,18 +287,16 @@ fn run_compiler(
 
     interface::run_compiler(config, |compiler| {
         let sess = compiler.session();
-        let should_stop = print_crate_info(
-            &***compiler.codegen_backend(),
-            sess,
-            Some(compiler.input()),
-            compiler.output_dir(),
-            compiler.output_file(),
-            compiler.temps_dir(),
-        )
-        .and_then(|| {
-            list_metadata(sess, &*compiler.codegen_backend().metadata_loader(), compiler.input())
-        })
-        .and_then(|| try_process_rlink(sess, compiler));
+        let should_stop =
+            print_crate_info(&***compiler.codegen_backend(), sess, true, compiler.io())
+                .and_then(|| {
+                    list_metadata(
+                        sess,
+                        &*compiler.codegen_backend().metadata_loader(),
+                        &compiler.io().input,
+                    )
+                })
+                .and_then(|| try_process_rlink(sess, compiler));
 
         if should_stop == Compilation::Stop {
             return sess.compile_status();
@@ -315,22 +312,15 @@ fn run_compiler(
                     queries.global_ctxt()?.enter(|tcx| {
                         pretty::print_after_hir_lowering(
                             tcx,
-                            compiler.input(),
+                            compiler.io(),
                             &*expanded_crate,
                             *ppm,
-                            compiler.output_file().as_deref(),
                         );
                         Ok(())
                     })?;
                 } else {
                     let krate = queries.parse()?.steal();
-                    pretty::print_after_parsing(
-                        sess,
-                        compiler.input(),
-                        &krate,
-                        *ppm,
-                        compiler.output_file().as_deref(),
-                    );
+                    pretty::print_after_parsing(sess, compiler.io(), &krate, *ppm);
                 }
                 trace!("finished pretty-printing");
                 return early_exit();
@@ -380,9 +370,9 @@ fn run_compiler(
                         save::process_crate(
                             tcx,
                             crate_name,
-                            compiler.input(),
+                            &compiler.io().input,
                             None,
-                            DumpHandler::new(compiler.output_dir().as_deref(), crate_name),
+                            DumpHandler::new(compiler.io().output_dir.as_deref(), crate_name),
                         )
                     });
                 }
@@ -556,7 +546,7 @@ fn show_content_with_pager(content: &str) {
 
 pub fn try_process_rlink(sess: &Session, compiler: &interface::Compiler) -> Compilation {
     if sess.opts.unstable_opts.link_only {
-        if let Input::File(file) = compiler.input() {
+        if let Input::File(file) = &compiler.io().input {
             // FIXME: #![crate_type] and #![crate_name] support not implemented yet
             sess.init_crate_types(collect_crate_types(sess, &[]));
             let outputs = compiler.build_output_filenames(sess, &[]);
@@ -623,10 +613,8 @@ pub fn list_metadata(
 fn print_crate_info(
     codegen_backend: &dyn CodegenBackend,
     sess: &Session,
-    input: Option<&Input>,
-    odir: &Option<PathBuf>,
-    ofile: &Option<PathBuf>,
-    temps_dir: &Option<PathBuf>,
+    parse_attrs: bool,
+    io: &CompilerIO,
 ) -> Compilation {
     use rustc_session::config::PrintRequest::*;
     // NativeStaticLibs and LinkArgs are special - printed during linking
@@ -635,18 +623,17 @@ fn print_crate_info(
         return Compilation::Continue;
     }
 
-    let attrs = match input {
-        None => None,
-        Some(input) => {
-            let result = parse_crate_attrs(sess, input);
-            match result {
-                Ok(attrs) => Some(attrs),
-                Err(mut parse_error) => {
-                    parse_error.emit();
-                    return Compilation::Stop;
-                }
+    let attrs = if parse_attrs {
+        let result = parse_crate_attrs(sess, &io.input);
+        match result {
+            Ok(attrs) => Some(attrs),
+            Err(mut parse_error) => {
+                parse_error.emit();
+                return Compilation::Stop;
             }
         }
+    } else {
+        None
     };
     for req in &sess.opts.prints {
         match *req {
@@ -661,14 +648,9 @@ fn print_crate_info(
                 println!("{}", serde_json::to_string_pretty(&sess.target.to_json()).unwrap());
             }
             FileNames | CrateName => {
-                let input = input.unwrap_or_else(|| {
-                    early_error(ErrorOutputType::default(), "no input file provided")
-                });
                 let attrs = attrs.as_ref().unwrap();
-                let t_outputs = rustc_interface::util::build_output_filenames(
-                    input, odir, ofile, temps_dir, attrs, sess,
-                );
-                let id = rustc_session::output::find_crate_name(sess, attrs, input);
+                let t_outputs = rustc_interface::util::build_output_filenames(io, attrs, sess);
+                let id = rustc_session::output::find_crate_name(sess, attrs, &io.input);
                 if *req == PrintRequest::CrateName {
                     println!("{id}");
                     continue;
