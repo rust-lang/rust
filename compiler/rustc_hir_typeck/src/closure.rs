@@ -227,7 +227,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                 );
                 // Make sure that we didn't infer a signature that mentions itself.
                 // This can happen when we elaborate certain supertrait bounds that
-                // mention projections containing the `Self` type. See 
+                // mention projections containing the `Self` type. See #105401.
                 struct MentionsTy<'tcx> {
                     expected_ty: Ty<'tcx>,
                 }

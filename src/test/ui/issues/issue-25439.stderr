@@ -1,13 +1,13 @@
-error[E0631]: type mismatch in closure arguments
-  --> $DIR/issue-25439.rs:8:5
+error[E0644]: closure/generator type that references itself
+  --> $DIR/issue-25439.rs:8:9
    |
 LL |     fix(|_, x| x);
-   |     ^^^ ------ found signature defined here
-   |     |
-   |     expected due to this
+   |         ^^^^^^ cyclic type of infinite size
    |
-   = note: expected closure signature `for<'a> fn(Helper<'a, [closure@$DIR/issue-25439.rs:8:9: 8:15]>, i32) -> _`
-              found closure signature `fn(_, _) -> _`
+   = note: closures cannot capture themselves or take themselves as argument;
+           this error may be the result of a recent compiler bug-fix,
+           see issue #46062 <https://github.com/rust-lang/rust/issues/46062>
+           for more information
 note: required by a bound in `fix`
   --> $DIR/issue-25439.rs:3:33
    |
@@ -16,4 +16,4 @@ LL | fn fix<F>(f: F) -> i32 where F: Fn(Helper<F>, i32) -> i32 {
 
 error: aborting due to previous error
 
-For more information about this error, try `rustc --explain E0631`.
+For more information about this error, try `rustc --explain E0644`.
