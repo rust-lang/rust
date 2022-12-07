@@ -19,7 +19,7 @@ defaults:
 
 jobs:
   changelog:
-    runs-on: ubuntu-20.04
+    runs-on: ubuntu-latest
 
     steps:
     - uses: rust-lang/simpleinfra/github-actions/cancel-outdated-builds@master
@@ -53,12 +53,12 @@ jobs:
     needs: changelog
     strategy:
       matrix:
-        os: [ubuntu-20.04, windows-latest, macos-latest]
+        os: [ubuntu-latest, windows-latest, macos-latest]
         host: [x86_64-unknown-linux-gnu, i686-unknown-linux-gnu, x86_64-apple-darwin, x86_64-pc-windows-msvc]
         exclude:
-        - os: ubuntu-20.04
+        - os: ubuntu-latest
           host: x86_64-apple-darwin
-        - os: ubuntu-20.04
+        - os: ubuntu-latest
           host: x86_64-pc-windows-msvc
         - os: macos-latest
           host: x86_64-unknown-linux-gnu
@@ -81,13 +81,6 @@ jobs:
     - uses: rust-lang/simpleinfra/github-actions/cancel-outdated-builds@master
       with:
         github_token: "${{ secrets.github_token }}"
-
-    - name: Install dependencies (Linux-i686)
-      run: |
-        sudo dpkg --add-architecture i386
-        sudo apt-get update
-        sudo apt-get install gcc-multilib libssl-dev:i386 libgit2-dev:i386
-      if: matrix.host == 'i686-unknown-linux-gnu'
 
     - name: Checkout
       uses: actions/checkout@v3.0.2
@@ -147,7 +140,7 @@ jobs:
 
   metadata_collection:
     needs: changelog
-    runs-on: ubuntu-20.04
+    runs-on: ubuntu-latest
 
     steps:
      # Setup
@@ -166,7 +159,7 @@ jobs:
 
   integration_build:
     needs: changelog
-    runs-on: ubuntu-20.04
+    runs-on: ubuntu-latest
 
     steps:
     # Setup
@@ -224,7 +217,7 @@ jobs:
         - 'rust-lang-nursery/failure'
         - 'rust-lang/log'
 
-    runs-on: ubuntu-20.04
+    runs-on: ubuntu-latest
 
     steps:
     # Setup
@@ -265,7 +258,7 @@ jobs:
   end-success:
     name: bors test finished
     if: github.event.pusher.name == 'bors' && success()
-    runs-on: ubuntu-20.04
+    runs-on: ubuntu-latest
     needs: [changelog, base, metadata_collection, integration_build, integration]
 
     steps:
@@ -275,7 +268,7 @@ jobs:
   end-failure:
     name: bors test finished
     if: github.event.pusher.name == 'bors' && (failure() || cancelled())
-    runs-on: ubuntu-20.04
+    runs-on: ubuntu-latest
     needs: [changelog, base, metadata_collection, integration_build, integration]
 
     steps:
