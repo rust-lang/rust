@@ -30,7 +30,7 @@ use rustc_plugin_impl as plugin;
 use rustc_query_impl::{OnDiskCache, Queries as TcxQueries};
 use rustc_resolve::{Resolver, ResolverArenas};
 use rustc_session::config::{CrateType, Input, OutputFilenames, OutputType};
-use rustc_session::cstore::{MetadataLoader, MetadataLoaderDyn, Untracked};
+use rustc_session::cstore::{CrateStoreDyn, MetadataLoader, MetadataLoaderDyn, Untracked};
 use rustc_session::output::filename_for_input;
 use rustc_session::search_paths::PathKind;
 use rustc_session::{Limit, Session};
@@ -548,7 +548,7 @@ fn escape_dep_env(symbol: Symbol) -> String {
 
 fn write_out_deps(
     sess: &Session,
-    boxed_resolver: &RefCell<BoxedResolver>,
+    cstore: &CrateStoreDyn,
     outputs: &OutputFilenames,
     out_filenames: &[PathBuf],
 ) {
@@ -600,20 +600,19 @@ fn write_out_deps(
                 }
             }
 
-            boxed_resolver.borrow_mut().access(|resolver| {
-                for cnum in resolver.cstore().crates_untracked() {
-                    let source = resolver.cstore().crate_source_untracked(cnum);
-                    if let Some((path, _)) = &source.dylib {
-                        files.push(escape_dep_filename(&path.display().to_string()));
-                    }
-                    if let Some((path, _)) = &source.rlib {
-                        files.push(escape_dep_filename(&path.display().to_string()));
-                    }
-                    if let Some((path, _)) = &source.rmeta {
-                        files.push(escape_dep_filename(&path.display().to_string()));
-                    }
+            let cstore = cstore.as_any().downcast_ref::<CStore>().unwrap();
+            for cnum in cstore.crates_untracked() {
+                let source = cstore.crate_source_untracked(cnum);
+                if let Some((path, _)) = &source.dylib {
+                    files.push(escape_dep_filename(&path.display().to_string()));
                 }
-            });
+                if let Some((path, _)) = &source.rlib {
+                    files.push(escape_dep_filename(&path.display().to_string()));
+                }
+                if let Some((path, _)) = &source.rmeta {
+                    files.push(escape_dep_filename(&path.display().to_string()));
+                }
+            }
         }
 
         let mut file = BufWriter::new(fs::File::create(&deps_filename)?);
@@ -664,7 +663,7 @@ fn write_out_deps(
 pub fn prepare_outputs(
     sess: &Session,
     krate: &ast::Crate,
-    boxed_resolver: &RefCell<BoxedResolver>,
+    cstore: &CrateStoreDyn,
     crate_name: Symbol,
 ) -> Result<OutputFilenames> {
     let _timer = sess.timer("prepare_outputs");
@@ -697,7 +696,7 @@ pub fn prepare_outputs(
         }
     }
 
-    write_out_deps(sess, boxed_resolver, &outputs, &output_paths);
+    write_out_deps(sess, cstore, &outputs, &output_paths);
 
     let only_dep_info = sess.opts.output_types.contains_key(&OutputType::DepInfo)
         && sess.opts.output_types.len() == 1;
