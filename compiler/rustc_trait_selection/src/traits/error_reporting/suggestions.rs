@@ -2977,6 +2977,18 @@ impl<'tcx> TypeErrCtxtExt<'tcx> for TypeErrCtxt<'_, 'tcx> {
                             prev_ty = self.resolve_vars_if_possible(
                                 typeck_results.expr_ty_adjusted_opt(expr).unwrap_or(tcx.ty_error()),
                             );
+
+                            if let hir::ExprKind::Path(hir::QPath::Resolved(None, path)) = expr.kind
+                                && let hir::Path { res: hir::def::Res::Local(hir_id), .. } = path
+                                && let Some(hir::Node::Pat(binding)) = self.tcx.hir().find(*hir_id)
+                                && let parent_hir_id = self.tcx.hir().get_parent_node(binding.hir_id)
+                                && let Some(hir::Node::Local(local)) = self.tcx.hir().find(parent_hir_id)
+                                && let Some(binding_expr) = local.init
+                            {
+                                // We've reached the root of the method call chain and it is a
+                                // binding. Get the binding creation and try to continue the chain.
+                                expr = binding_expr;
+                            }
                         }
 
                         // We want the type before deref coercions, otherwise we talk about `&[_]`
