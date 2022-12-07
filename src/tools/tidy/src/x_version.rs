@@ -31,6 +31,6 @@ pub fn check(bad: &mut bool) {
             );
         }
     } else {
-        return tidy_error!(bad, "{}", output.status);
+        return tidy_error!(bad, "failed to check version of `x`: {}", output.status);
     }
 }
