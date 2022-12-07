@@ -3672,7 +3672,10 @@ impl Methods {
                     no_effect_replace::check(cx, expr, arg1, arg2);
 
                     // Check for repeated `str::replace` calls to perform `collapsible_str_replace` lint
-                    if name == "replace" && let Some(("replace", ..)) = method_call(recv) {
+                    if self.msrv.meets(msrvs::PATTERN_TRAIT_CHAR_ARRAY)
+                        && name == "replace"
+                        && let Some(("replace", ..)) = method_call(recv)
+                    {
                         collapsible_str_replace::check(cx, expr, arg1, arg2);
                     }
                 },
