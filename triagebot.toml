@@ -331,8 +331,16 @@ message = "Some changes occurred to MIR optimizations"
 cc = ["@rust-lang/wg-mir-opt"]
 
 [mentions."compiler/rustc_trait_selection/src/traits/const_evaluatable.rs"]
-message = "Some changes occurred in const_evaluatable.rs"
-cc = ["@lcnr"]
+message = "Some changes occurred in `const_evaluatable.rs`"
+cc = ["@BoxyUwU"]
+
+[mentions."compiler/rustc_middle/src/ty/abstract_const.rs"]
+message = "Some changes occured in `abstract_const.rs`"
+cc = ["@BoxyUwU"]
+
+[mentions."compiler/rustc_ty_utils/src/consts.rs"]
+message = "Some changes occured in `rustc_ty_utils::consts.rs`"
+cc = ["@BoxyUwU"]
 
 [mentions."compiler/rustc_trait_selection/src/traits/engine.rs"]
 message = """
