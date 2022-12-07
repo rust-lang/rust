@@ -30,7 +30,7 @@ env:
 jobs:
   base:
     # NOTE: If you modify this job, make sure you copy the changes to clippy_bors.yml
-    runs-on: ubuntu-20.04
+    runs-on: ubuntu-latest
 
     steps:
     # Setup
