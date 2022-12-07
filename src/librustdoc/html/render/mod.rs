@@ -2152,51 +2152,21 @@ pub(crate) fn sidebar_render_assoc_items(
         concrete_format.into_iter(),
     );
 
-    let format_impls = |impls: Vec<&Impl>, id_map: &mut IdMap| {
-        let mut links = FxHashSet::default();
+    let synthetic_format = format_impls_grouped(synthetic, id_map);
+    print_sidebar_block_grouped(
+        out,
+        "synthetic-implementations",
+        "Auto Trait Implementations",
+        synthetic_format.into_iter(),
+    );
 
-        let mut ret = impls
-            .iter()
-            .filter_map(|it| {
-                let trait_ = it.inner_impl().trait_.as_ref()?;
-                let encoded =
-                    id_map.derive(get_id_for_impl(&it.inner_impl().for_, Some(trait_), cx));
-
-                let i_display = format!("{:#}", trait_.print(cx));
-                let out = Escape(&i_display);
-                let prefix = match it.inner_impl().polarity {
-                    ty::ImplPolarity::Positive | ty::ImplPolarity::Reservation => "",
-                    ty::ImplPolarity::Negative => "!",
-                };
-                let generated = format!("<a href=\"#{}\">{}{}</a>", encoded, prefix, out);
-                if links.insert(generated.clone()) { Some(generated) } else { None }
-            })
-            .into_iter()
-            .collect::<Vec<String>>();
-        ret.sort();
-        ret
-    };
-
-    let synthetic_format = format_impls(synthetic, id_map);
-    let blanket_format = format_impls(blanket_impl, id_map);
-
-    if !synthetic_format.is_empty() {
-        print_sidebar_block(
-            out,
-            "synthetic-implementations",
-            "Auto Trait Implementations",
-            synthetic_format.iter(),
-        );
-    }
-
-    if !blanket_format.is_empty() {
-        print_sidebar_block(
-            out,
-            "blanket-implementations",
-            "Blanket Implementations",
-            blanket_format.iter(),
-        );
-    }
+    let blanket_format = format_impls_grouped(blanket_impl, id_map);
+    print_sidebar_block_grouped(
+        out,
+        "blanket-implementations",
+        "Blanket Implementations",
+        blanket_format.into_iter(),
+    );
 }
 
 fn sidebar_assoc_items(cx: &Context<'_>, out: &mut Buffer, it: &clean::Item) {
