@@ -3,7 +3,7 @@ use std::io::ErrorKind;
 use std::process::{Command, Stdio};
 
 pub fn check(bad: &mut bool) {
-    let result = Command::new("x").arg("--version").stdout(Stdio::piped()).spawn();
+    let result = Command::new("x").arg("--wrapper-version").stdout(Stdio::piped()).spawn();
     let child = match result {
         Ok(child) => child,
         Err(e) => match e.kind() {

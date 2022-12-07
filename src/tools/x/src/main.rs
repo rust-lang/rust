@@ -53,7 +53,7 @@ fn exec_or_status(command: &mut Command) -> io::Result<ExitStatus> {
 
 fn main() {
     match env::args().skip(1).next().as_deref() {
-        Some("--version") => {
+        Some("--wrapper-version") => {
             let version = env!("CARGO_PKG_VERSION");
             println!("{}", version);
             return;
