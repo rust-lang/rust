@@ -30,7 +30,7 @@ pub fn is_const_evaluatable<'tcx>(
     span: Span,
 ) -> Result<(), NotConstEvaluatable> {
     let tcx = infcx.tcx;
-    match unexpanded_ct.kind() {
+    match tcx.expand_abstract_consts(unexpanded_ct).kind() {
         ty::ConstKind::Unevaluated(_) | ty::ConstKind::Expr(_) => (),
         ty::ConstKind::Param(_)
         | ty::ConstKind::Bound(_, _)
