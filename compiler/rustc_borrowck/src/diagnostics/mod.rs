@@ -78,7 +78,7 @@ impl<'cx, 'tcx> MirBorrowckCtxt<'cx, 'tcx> {
             if let StatementKind::Assign(box (into, Rvalue::Use(from))) = &stmt.kind {
                 debug!("add_fnonce_closure_note: into={:?} from={:?}", into, from);
                 match from {
-                    Operand::Copy(ref place) | Operand::Move(ref place)
+                    Operand::Copy(place) | Operand::Move(place)
                         if target == place.local_or_deref_local() =>
                     {
                         target = into.local_or_deref_local()
@@ -101,7 +101,7 @@ impl<'cx, 'tcx> MirBorrowckCtxt<'cx, 'tcx> {
                 debug!("add_moved_or_invoked_closure_note: id={:?}", id);
                 if Some(self.infcx.tcx.parent(id)) == self.infcx.tcx.lang_items().fn_once_trait() {
                     let closure = match args.first() {
-                        Some(Operand::Copy(ref place)) | Some(Operand::Move(ref place))
+                        Some(Operand::Copy(place) | Operand::Move(place))
                             if target == place.local_or_deref_local() =>
                         {
                             place.local_or_deref_local().unwrap()
@@ -439,9 +439,9 @@ impl<'cx, 'tcx> MirBorrowckCtxt<'cx, 'tcx> {
                     if !is_terminator {
                         continue;
                     } else if let Some(Terminator {
-                        kind: TerminatorKind::Call { ref func, from_hir_call: false, .. },
+                        kind: TerminatorKind::Call { func, from_hir_call: false, .. },
                         ..
-                    }) = bbd.terminator
+                    }) = &bbd.terminator
                     {
                         if let Some(source) =
                             BorrowedContentSource::from_call(func.ty(self.body, tcx), tcx)
@@ -811,33 +811,30 @@ impl<'cx, 'tcx> MirBorrowckCtxt<'cx, 'tcx> {
         };
 
         debug!("move_spans: moved_place={:?} location={:?} stmt={:?}", moved_place, location, stmt);
-        if let StatementKind::Assign(box (_, Rvalue::Aggregate(ref kind, ref places))) = stmt.kind {
-            match **kind {
-                AggregateKind::Closure(def_id, _) | AggregateKind::Generator(def_id, _, _) => {
-                    debug!("move_spans: def_id={:?} places={:?}", def_id, places);
-                    if let Some((args_span, generator_kind, capture_kind_span, path_span)) =
-                        self.closure_span(def_id, moved_place, places)
-                    {
-                        return ClosureUse {
-                            generator_kind,
-                            args_span,
-                            capture_kind_span,
-                            path_span,
-                        };
-                    }
-                }
-                _ => {}
+        if let StatementKind::Assign(box (_, Rvalue::Aggregate(kind, places))) = &stmt.kind
+            && let AggregateKind::Closure(def_id, _) | AggregateKind::Generator(def_id, _, _) = **kind
+        {
+            debug!("move_spans: def_id={:?} places={:?}", def_id, places);
+            if let Some((args_span, generator_kind, capture_kind_span, path_span)) =
+                self.closure_span(def_id, moved_place, places)
+            {
+                return ClosureUse {
+                    generator_kind,
+                    args_span,
+                    capture_kind_span,
+                    path_span,
+                };
             }
         }
 
         // StatementKind::FakeRead only contains a def_id if they are introduced as a result
         // of pattern matching within a closure.
-        if let StatementKind::FakeRead(box (cause, ref place)) = stmt.kind {
+        if let StatementKind::FakeRead(box (cause, place)) = stmt.kind {
             match cause {
                 FakeReadCause::ForMatchedPlace(Some(closure_def_id))
                 | FakeReadCause::ForLet(Some(closure_def_id)) => {
                     debug!("move_spans: def_id={:?} place={:?}", closure_def_id, place);
-                    let places = &[Operand::Move(*place)];
+                    let places = &[Operand::Move(place)];
                     if let Some((args_span, generator_kind, capture_kind_span, path_span)) =
                         self.closure_span(closure_def_id, moved_place, places)
                     {
@@ -924,7 +921,7 @@ impl<'cx, 'tcx> MirBorrowckCtxt<'cx, 'tcx> {
         debug!("borrow_spans: use_span={:?} location={:?}", use_span, location);
 
         let target = match self.body[location.block].statements.get(location.statement_index) {
-            Some(&Statement { kind: StatementKind::Assign(box (ref place, _)), .. }) => {
+            Some(Statement { kind: StatementKind::Assign(box (place, _)), .. }) => {
                 if let Some(local) = place.as_local() {
                     local
                 } else {
@@ -940,9 +937,7 @@ impl<'cx, 'tcx> MirBorrowckCtxt<'cx, 'tcx> {
         }
 
         for stmt in &self.body[location.block].statements[location.statement_index + 1..] {
-            if let StatementKind::Assign(box (_, Rvalue::Aggregate(ref kind, ref places))) =
-                stmt.kind
-            {
+            if let StatementKind::Assign(box (_, Rvalue::Aggregate(kind, places))) = &stmt.kind {
                 let (&def_id, is_generator) = match kind {
                     box AggregateKind::Closure(def_id, _) => (def_id, false),
                     box AggregateKind::Generator(def_id, _, _) => (def_id, true),

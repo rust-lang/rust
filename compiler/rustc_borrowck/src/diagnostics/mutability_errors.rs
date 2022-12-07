@@ -219,8 +219,8 @@ impl<'a, 'tcx> MirBorrowckCtxt<'a, 'tcx> {
             PlaceRef {
                 local,
                 projection:
-                    &[
-                        ref proj_base @ ..,
+                    [
+                        proj_base @ ..,
                         ProjectionElem::Deref,
                         ProjectionElem::Field(field, _),
                         ProjectionElem::Deref,
@@ -231,7 +231,7 @@ impl<'a, 'tcx> MirBorrowckCtxt<'a, 'tcx> {
                 if let Some(span) = get_mut_span_in_struct_field(
                     self.infcx.tcx,
                     Place::ty_from(local, proj_base, self.body, self.infcx.tcx).ty,
-                    field,
+                    *field,
                 ) {
                     err.span_suggestion_verbose(
                         span,

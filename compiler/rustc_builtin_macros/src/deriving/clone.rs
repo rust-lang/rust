@@ -32,10 +32,10 @@ pub fn expand_deriving_clone(
     let bounds;
     let substructure;
     let is_simple;
-    match *item {
-        Annotatable::Item(ref annitem) => match annitem.kind {
-            ItemKind::Struct(_, Generics { ref params, .. })
-            | ItemKind::Enum(_, Generics { ref params, .. }) => {
+    match item {
+        Annotatable::Item(annitem) => match &annitem.kind {
+            ItemKind::Struct(_, Generics { params, .. })
+            | ItemKind::Enum(_, Generics { params, .. }) => {
                 let container_id = cx.current_expansion.id.expn_data().parent.expect_local();
                 let has_derive_copy = cx.resolver.has_derive_copy(container_id);
                 if has_derive_copy
@@ -166,13 +166,13 @@ fn cs_clone(
     };
 
     let vdata;
-    match *substr.fields {
-        Struct(vdata_, ref af) => {
+    match substr.fields {
+        Struct(vdata_, af) => {
             ctor_path = cx.path(trait_span, vec![substr.type_ident]);
             all_fields = af;
-            vdata = vdata_;
+            vdata = *vdata_;
         }
-        EnumMatching(.., variant, ref af) => {
+        EnumMatching(.., variant, af) => {
             ctor_path = cx.path(trait_span, vec![substr.type_ident, variant.ident]);
             all_fields = af;
             vdata = &variant.data;

@@ -144,8 +144,8 @@ pub fn expand_concat_bytes(
     let mut missing_literals = vec![];
     let mut has_errors = false;
     for e in es {
-        match e.kind {
-            ast::ExprKind::Array(ref exprs) => {
+        match &e.kind {
+            ast::ExprKind::Array(exprs) => {
                 for expr in exprs {
                     if let Some(elem) =
                         handle_array_element(cx, &mut has_errors, &mut missing_literals, expr)
@@ -154,7 +154,7 @@ pub fn expand_concat_bytes(
                     }
                 }
             }
-            ast::ExprKind::Repeat(ref expr, ref count) => {
+            ast::ExprKind::Repeat(expr, count) => {
                 if let ast::ExprKind::Lit(token_lit) = count.value.kind
                 && let Ok(ast::LitKind::Int(count_val, _)) =
                     ast::LitKind::from_token_lit(token_lit)
@@ -170,7 +170,7 @@ pub fn expand_concat_bytes(
                     cx.span_err(count.value.span, "repeat count is not a positive number");
                 }
             }
-            ast::ExprKind::Lit(token_lit) => match ast::LitKind::from_token_lit(token_lit) {
+            &ast::ExprKind::Lit(token_lit) => match ast::LitKind::from_token_lit(token_lit) {
                 Ok(ast::LitKind::Byte(val)) => {
                     accumulator.push(val);
                 }
@@ -184,7 +184,7 @@ pub fn expand_concat_bytes(
                     has_errors = true;
                 }
             },
-            ast::ExprKind::IncludedBytes(ref bytes) => {
+            ast::ExprKind::IncludedBytes(bytes) => {
                 accumulator.extend_from_slice(bytes);
             }
             ast::ExprKind::Err => {

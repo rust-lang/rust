@@ -164,8 +164,8 @@ fn encodable_substructure(
         ],
     ));
 
-    match *substr.fields {
-        Struct(_, ref fields) => {
+    match substr.fields {
+        Struct(_, fields) => {
             let fn_emit_struct_field_path =
                 cx.def_site_path(&[sym::rustc_serialize, sym::Encoder, sym::emit_struct_field]);
             let mut stmts = Vec::new();
@@ -224,7 +224,7 @@ fn encodable_substructure(
             BlockOrExpr::new_expr(expr)
         }
 
-        EnumMatching(idx, _, variant, ref fields) => {
+        EnumMatching(idx, _, variant, fields) => {
             // We're not generating an AST that the borrow checker is expecting,
             // so we need to generate a unique local variable to take the
             // mutable loan out on, otherwise we get conflicts which don't
@@ -274,7 +274,7 @@ fn encodable_substructure(
                 vec![
                     blkencoder,
                     name,
-                    cx.expr_usize(trait_span, idx),
+                    cx.expr_usize(trait_span, *idx),
                     cx.expr_usize(trait_span, fields.len()),
                     blk,
                 ],

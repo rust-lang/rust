@@ -254,7 +254,7 @@ impl<'tcx> MirBorrowckCtxt<'_, 'tcx> {
             .or_else(|| self.give_name_if_anonymous_region_appears_in_impl_signature(fr))
             .or_else(|| self.give_name_if_anonymous_region_appears_in_arg_position_impl_trait(fr));
 
-        if let Some(ref value) = value {
+        if let Some(value) = &value {
             self.region_names.try_borrow_mut().unwrap().insert(fr, value.clone());
         }
 
