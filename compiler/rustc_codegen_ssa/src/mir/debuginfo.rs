@@ -103,6 +103,28 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> DebugInfoOffsetLocation<'tcx, Bx>
     }
 }
 
+impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> DebugInfoOffsetLocation<'tcx, Bx>
+    for TyAndLayout<'tcx>
+{
+    fn deref(&self, bx: &mut Bx) -> Self {
+        bx.cx().layout_of(
+            self.ty.builtin_deref(true).unwrap_or_else(|| bug!("cannot deref `{}`", self.ty)).ty,
+        )
+    }
+
+    fn layout(&self) -> TyAndLayout<'tcx> {
+        *self
+    }
+
+    fn project_field(&self, bx: &mut Bx, field: mir::Field) -> Self {
+        self.field(bx.cx(), field.index())
+    }
+
+    fn downcast(&self, bx: &mut Bx, variant: VariantIdx) -> Self {
+        self.for_variant(bx.cx(), variant)
+    }
+}
+
 struct DebugInfoOffset<T> {
     /// Offset from the `base` used to calculate the debuginfo offset.
     direct_offset: Size,
@@ -340,8 +362,8 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
             let Some(dbg_var) = var.dbg_var else { continue };
             let Some(dbg_loc) = self.dbg_loc(var.source_info) else { continue };
 
-            let DebugInfoOffset { direct_offset, indirect_offsets, result: place } =
-                calculate_debuginfo_offset(bx, local, &var, base);
+            let DebugInfoOffset { direct_offset, indirect_offsets, result: _ } =
+                calculate_debuginfo_offset(bx, local, &var, base.layout);
 
             // When targeting MSVC, create extra allocas for arguments instead of pointing multiple
             // dbg_var_addr() calls into the same alloca with offsets. MSVC uses CodeView records
@@ -359,6 +381,9 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
                     || !matches!(&indirect_offsets[..], [Size::ZERO] | []));
 
             if should_create_individual_allocas {
+                let DebugInfoOffset { direct_offset: _, indirect_offsets: _, result: place } =
+                    calculate_debuginfo_offset(bx, local, &var, base);
+
                 // Create a variable which will be a pointer to the actual value
                 let ptr_ty = bx.tcx().mk_ty(ty::RawPtr(ty::TypeAndMut {
                     mutbl: mir::Mutability::Mut,
