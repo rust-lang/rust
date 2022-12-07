@@ -4,7 +4,6 @@ use rustc_codegen_ssa::mir::place::PlaceRef;
 use rustc_codegen_ssa::traits::{
     BaseTypeMethods,
     ConstMethods,
-    DerivedTypeMethods,
     MiscMethods,
     StaticMethods,
 };
@@ -132,7 +131,9 @@ impl<'gcc, 'tcx> ConstMethods<'tcx> for CodegenCx<'gcc, 'tcx> {
             .or_insert_with(|| (s.to_owned(), self.global_string(s)))
             .1;
         let len = s.len();
-        let cs = self.const_ptrcast(str_global.get_address(None),
+        let cs = self.context.new_cast(
+            None,
+            str_global.get_address(None),
             self.type_ptr_to(self.layout_of(self.tcx.types.str_).gcc_type(self, true)),
         );
         (cs, self.const_usize(len as u64))
@@ -242,10 +243,6 @@ impl<'gcc, 'tcx> ConstMethods<'tcx> for CodegenCx<'gcc, 'tcx> {
                 self.const_bitcast(value, ty)
             };
         PlaceRef::new_sized(value, layout)
-    }
-
-    fn const_ptrcast(&self, val: RValue<'gcc>, ty: Type<'gcc>) -> RValue<'gcc> {
-        self.context.new_cast(None, val, ty)
     }
 }
 
