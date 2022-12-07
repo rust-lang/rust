@@ -62,13 +62,6 @@ pub(crate) struct InvalidMinimumAlignment {
 }
 
 #[derive(Diagnostic)]
-#[diag(codegen_llvm_linkage_const_or_mut_type)]
-pub(crate) struct LinkageConstOrMutType {
-    #[primary_span]
-    pub span: Span,
-}
-
-#[derive(Diagnostic)]
 #[diag(codegen_llvm_sanitizer_memtag_requires_mte)]
 pub(crate) struct SanitizerMemtagRequiresMte;
 

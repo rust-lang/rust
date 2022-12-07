@@ -1,4 +1,5 @@
 use crate::check::intrinsicck::InlineAsmCtxt;
+use crate::errors::LinkageType;
 
 use super::compare_method::check_type_bounds;
 use super::compare_method::{compare_impl_method, compare_ty_impl};
@@ -20,7 +21,7 @@ use rustc_middle::middle::stability::EvalResult;
 use rustc_middle::ty::layout::{LayoutError, MAX_SIMD_LANES};
 use rustc_middle::ty::subst::GenericArgKind;
 use rustc_middle::ty::util::{Discr, IntTypeExt};
-use rustc_middle::ty::{self, ParamEnv, Ty, TyCtxt, TypeSuperVisitable, TypeVisitable};
+use rustc_middle::ty::{self, AdtDef, ParamEnv, Ty, TyCtxt, TypeSuperVisitable, TypeVisitable};
 use rustc_session::lint::builtin::{UNINHABITED_STATIC, UNSUPPORTED_CALLING_CONVENTIONS};
 use rustc_span::symbol::sym;
 use rustc_span::{self, Span};
@@ -478,6 +479,36 @@ fn check_opaque_meets_bounds<'tcx>(
     let _ = infcx.inner.borrow_mut().opaque_type_storage.take_opaque_types();
 }
 
+fn is_enum_of_nonnullable_ptr<'tcx>(
+    tcx: TyCtxt<'tcx>,
+    adt_def: AdtDef<'tcx>,
+    substs: SubstsRef<'tcx>,
+) -> bool {
+    if adt_def.repr().inhibit_enum_layout_opt() {
+        return false;
+    }
+
+    let [var_one, var_two] = &adt_def.variants().raw[..] else {
+        return false;
+    };
+    let (([], [field]) | ([field], [])) = (&var_one.fields[..], &var_two.fields[..]) else {
+        return false;
+    };
+    matches!(field.ty(tcx, substs).kind(), ty::FnPtr(..) | ty::Ref(..))
+}
+
+fn check_static_linkage<'tcx>(tcx: TyCtxt<'tcx>, def_id: LocalDefId) {
+    if tcx.codegen_fn_attrs(def_id).import_linkage.is_some() {
+        if match tcx.type_of(def_id).kind() {
+            ty::RawPtr(_) => false,
+            ty::Adt(adt_def, substs) => !is_enum_of_nonnullable_ptr(tcx, *adt_def, *substs),
+            _ => true,
+        } {
+            tcx.sess.emit_err(LinkageType { span: tcx.def_span(def_id) });
+        }
+    }
+}
+
 fn check_item_type<'tcx>(tcx: TyCtxt<'tcx>, id: hir::ItemId) {
     debug!(
         "check_item_type(it.def_id={:?}, it.name={})",
@@ -490,6 +521,7 @@ fn check_item_type<'tcx>(tcx: TyCtxt<'tcx>, id: hir::ItemId) {
             tcx.ensure().typeck(id.owner_id.def_id);
             maybe_check_static_with_link_section(tcx, id.owner_id.def_id);
             check_static_inhabited(tcx, id.owner_id.def_id);
+            check_static_linkage(tcx, id.owner_id.def_id);
         }
         DefKind::Const => {
             tcx.ensure().typeck(id.owner_id.def_id);
@@ -627,6 +659,7 @@ fn check_item_type<'tcx>(tcx: TyCtxt<'tcx>, id: hir::ItemId) {
                         }
                         hir::ForeignItemKind::Static(..) => {
                             check_static_inhabited(tcx, def_id);
+                            check_static_linkage(tcx, def_id);
                         }
                         _ => {}
                     }

@@ -1,7 +1,7 @@
 use crate::base;
 use crate::common::{self, CodegenCx};
 use crate::debuginfo;
-use crate::errors::{InvalidMinimumAlignment, LinkageConstOrMutType, SymbolAlreadyDefined};
+use crate::errors::{InvalidMinimumAlignment, SymbolAlreadyDefined};
 use crate::llvm::{self, True};
 use crate::llvm_util;
 use crate::type_::Type;
@@ -162,22 +162,12 @@ fn check_and_apply_linkage<'ll, 'tcx>(
     def_id: DefId,
 ) -> &'ll Value {
     let llty = cx.layout_of(ty).llvm_type(cx);
-    if let Some(linkage) = attrs.linkage {
+    if let Some(linkage) = attrs.import_linkage {
         debug!("get_static: sym={} linkage={:?}", sym, linkage);
 
-        // If this is a static with a linkage specified, then we need to handle
-        // it a little specially. The typesystem prevents things like &T and
-        // extern "C" fn() from being non-null, so we can't just declare a
-        // static and call it a day. Some linkages (like weak) will make it such
-        // that the static actually has a null value.
-        let llty2 = if let ty::RawPtr(ref mt) = ty.kind() {
-            cx.layout_of(mt.ty).llvm_type(cx)
-        } else {
-            cx.sess().emit_fatal(LinkageConstOrMutType { span: cx.tcx.def_span(def_id) })
-        };
         unsafe {
             // Declare a symbol `foo` with the desired linkage.
-            let g1 = cx.declare_global(sym, llty2);
+            let g1 = cx.declare_global(sym, cx.type_i8());
             llvm::LLVMRustSetLinkage(g1, base::linkage_to_llvm(linkage));
 
             // Declare an internal global `extern_with_linkage_foo` which
@@ -195,7 +185,7 @@ fn check_and_apply_linkage<'ll, 'tcx>(
                 })
             });
             llvm::LLVMRustSetLinkage(g2, llvm::Linkage::InternalLinkage);
-            llvm::LLVMSetInitializer(g2, g1);
+            llvm::LLVMSetInitializer(g2, cx.const_ptrcast(g1, llty));
             g2
         }
     } else if cx.tcx.sess.target.arch == "x86" &&

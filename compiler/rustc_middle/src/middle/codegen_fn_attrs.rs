@@ -26,8 +26,10 @@ pub struct CodegenFnAttrs {
     /// The `#[target_feature(enable = "...")]` attribute and the enabled
     /// features (only enabled features are supported right now).
     pub target_features: Vec<Symbol>,
-    /// The `#[linkage = "..."]` attribute and the value we found.
+    /// The `#[linkage = "..."]` attribute on Rust-defined items and the value we found.
     pub linkage: Option<Linkage>,
+    /// The `#[linkage = "..."]` attribute on foreign items and the value we found.
+    pub import_linkage: Option<Linkage>,
     /// The `#[link_section = "..."]` attribute, or what executable section this
     /// should be placed in.
     pub link_section: Option<Symbol>,
@@ -113,6 +115,7 @@ impl CodegenFnAttrs {
             link_ordinal: None,
             target_features: vec![],
             linkage: None,
+            import_linkage: None,
             link_section: None,
             no_sanitize: SanitizerSet::empty(),
             instruction_set: None,

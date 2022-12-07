@@ -8,13 +8,11 @@ use rustc_middle::mir::mono::MonoItem;
 use rustc_middle::ty::{self, Instance, Ty};
 use rustc_middle::ty::layout::LayoutOf;
 use rustc_middle::mir::interpret::{self, ConstAllocation, ErrorHandled, Scalar as InterpScalar, read_target_uint};
-use rustc_span::Span;
 use rustc_span::def_id::DefId;
 use rustc_target::abi::{self, Align, HasDataLayout, Primitive, Size, WrappingRange};
 
 use crate::base;
 use crate::context::CodegenCx;
-use crate::errors::LinkageConstOrMutType;
 use crate::type_of::LayoutGccExt;
 
 impl<'gcc, 'tcx> CodegenCx<'gcc, 'tcx> {
@@ -239,12 +237,12 @@ impl<'gcc, 'tcx> CodegenCx<'gcc, 'tcx> {
                     }
 
                     Node::ForeignItem(&hir::ForeignItem {
-                        span,
+                        span: _,
                         kind: hir::ForeignItemKind::Static(..),
                         ..
                     }) => {
                         let fn_attrs = self.tcx.codegen_fn_attrs(def_id);
-                        check_and_apply_linkage(&self, &fn_attrs, ty, sym, span)
+                        check_and_apply_linkage(&self, &fn_attrs, ty, sym)
                     }
 
                     item => bug!("get_static: expected static, found {:?}", item),
@@ -257,8 +255,7 @@ impl<'gcc, 'tcx> CodegenCx<'gcc, 'tcx> {
                 //debug!("get_static: sym={} item_attr={:?}", sym, self.tcx.item_attrs(def_id));
 
                 let attrs = self.tcx.codegen_fn_attrs(def_id);
-                let span = self.tcx.def_span(def_id);
-                let global = check_and_apply_linkage(&self, &attrs, ty, sym, span);
+                let global = check_and_apply_linkage(&self, &attrs, ty, sym);
 
                 let needs_dll_storage_attr = false; // TODO(antoyo)
 
@@ -355,24 +352,12 @@ pub fn codegen_static_initializer<'gcc, 'tcx>(cx: &CodegenCx<'gcc, 'tcx>, def_id
     Ok((const_alloc_to_gcc(cx, alloc), alloc))
 }
 
-fn check_and_apply_linkage<'gcc, 'tcx>(cx: &CodegenCx<'gcc, 'tcx>, attrs: &CodegenFnAttrs, ty: Ty<'tcx>, sym: &str, span: Span) -> LValue<'gcc> {
+fn check_and_apply_linkage<'gcc, 'tcx>(cx: &CodegenCx<'gcc, 'tcx>, attrs: &CodegenFnAttrs, ty: Ty<'tcx>, sym: &str) -> LValue<'gcc> {
     let is_tls = attrs.flags.contains(CodegenFnAttrFlags::THREAD_LOCAL);
     let llty = cx.layout_of(ty).gcc_type(cx, true);
-    if let Some(linkage) = attrs.linkage {
-        // If this is a static with a linkage specified, then we need to handle
-        // it a little specially. The typesystem prevents things like &T and
-        // extern "C" fn() from being non-null, so we can't just declare a
-        // static and call it a day. Some linkages (like weak) will make it such
-        // that the static actually has a null value.
-        let llty2 =
-            if let ty::RawPtr(ref mt) = ty.kind() {
-                cx.layout_of(mt.ty).gcc_type(cx, true)
-            }
-            else {
-                cx.sess().emit_fatal(LinkageConstOrMutType { span: span })
-            };
+    if let Some(linkage) = attrs.import_linkage {
         // Declare a symbol `foo` with the desired linkage.
-        let global1 = cx.declare_global_with_linkage(&sym, llty2, base::global_linkage_to_gcc(linkage));
+        let global1 = cx.declare_global_with_linkage(&sym, cx.type_i8(), base::global_linkage_to_gcc(linkage));
 
         // Declare an internal global `extern_with_linkage_foo` which
         // is initialized with the address of `foo`.  If `foo` is
