@@ -73,6 +73,8 @@ macro_rules! declare_late_lint_pass {
     )
 }
 
+// Declare the `LateLintPass` trait, which contains empty default definitions
+// for all the `check_*` methods.
 late_lint_methods!(declare_late_lint_pass, []);
 
 impl LateLintPass<'_> for HardwiredLints {}
@@ -176,6 +178,8 @@ macro_rules! declare_early_lint_pass {
     )
 }
 
+// Declare the `EarlyLintPass` trait, which contains empty default definitions
+// for all the `check_*` methods.
 early_lint_methods!(declare_early_lint_pass, []);
 
 #[macro_export]

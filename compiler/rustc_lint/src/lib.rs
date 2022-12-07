@@ -127,6 +127,7 @@ fn lint_mod(tcx: TyCtxt<'_>, module_def_id: LocalDefId) {
     late::late_lint_mod(tcx, module_def_id, BuiltinCombinedModuleLateLintPass::new());
 }
 
+// See the comment on `BuiltinCombinedEarlyLintPass`, which is similar.
 early_lint_methods!(
     declare_combined_early_lint_pass,
     [
@@ -137,6 +138,9 @@ early_lint_methods!(
     ]
 );
 
+// Declare `BuiltinCombinedEarlyLintPass`, a lint pass that combines multiple
+// lint passes into a single pass for maximum speed. Each `check_foo` method
+// within this pass simply calls `check_foo` once per listed lint.
 early_lint_methods!(
     declare_combined_early_lint_pass,
     [
@@ -162,7 +166,9 @@ early_lint_methods!(
     ]
 );
 
-// FIXME: Make a separate lint type which do not require typeck tables
+// FIXME: Make a separate lint type which does not require typeck tables.
+
+// See the comment on `BuiltinCombinedEarlyLintPass`, which is similar.
 late_lint_methods!(
     declare_combined_late_lint_pass,
     [
@@ -182,6 +188,7 @@ late_lint_methods!(
     ]
 );
 
+// See the comment on `BuiltinCombinedEarlyLintPass`, which is similar.
 late_lint_methods!(
     declare_combined_late_lint_pass,
     [
