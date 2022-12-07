@@ -954,7 +954,10 @@ pub struct Resolver<'a> {
     arenas: &'a ResolverArenas<'a>,
     dummy_binding: &'a NameBinding<'a>,
 
-    crate_loader: CrateLoader<'a>,
+    local_crate_name: Symbol,
+    metadata_loader: Box<MetadataLoaderDyn>,
+    cstore: CStore,
+    used_extern_options: FxHashSet<Symbol>,
     macro_names: FxHashSet<Ident>,
     builtin_macros: FxHashMap<Symbol, BuiltinMacroState>,
     /// A small map keeping true kinds of built-in macros that appear to be fn-like on
@@ -1129,7 +1132,7 @@ impl DefIdTree for ResolverTree<'_> {
 impl<'a, 'b> DefIdTree for &'a Resolver<'b> {
     #[inline]
     fn opt_parent(self, id: DefId) -> Option<DefId> {
-        ResolverTree(&self.definitions, self.cstore()).opt_parent(id)
+        ResolverTree(&self.definitions, &self.cstore).opt_parent(id)
     }
 }
 
@@ -1311,7 +1314,10 @@ impl<'a> Resolver<'a> {
                 vis: ty::Visibility::Public,
             }),
 
-            crate_loader: CrateLoader::new(session, metadata_loader, crate_name),
+            metadata_loader,
+            local_crate_name: crate_name,
+            used_extern_options: Default::default(),
+            cstore: CStore::new(session),
             macro_names: FxHashSet::default(),
             builtin_macros: Default::default(),
             builtin_macro_kinds: Default::default(),
@@ -1403,7 +1409,7 @@ impl<'a> Resolver<'a> {
     pub fn into_outputs(self) -> ResolverOutputs {
         let proc_macros = self.proc_macros.iter().map(|id| self.local_def_id(*id)).collect();
         let definitions = self.definitions;
-        let cstore = Box::new(self.crate_loader.into_cstore());
+        let cstore = Box::new(self.cstore);
         let source_span = self.source_span;
         let expn_that_defined = self.expn_that_defined;
         let visibilities = self.visibilities;
@@ -1501,16 +1507,22 @@ impl<'a> Resolver<'a> {
     }
 
     fn create_stable_hashing_context(&self) -> StableHashingContext<'_> {
-        StableHashingContext::new(
-            self.session,
+        StableHashingContext::new(self.session, &self.definitions, &self.cstore, &self.source_span)
+    }
+
+    pub fn crate_loader(&mut self) -> CrateLoader<'_> {
+        CrateLoader::new(
+            &self.session,
+            &*self.metadata_loader,
+            self.local_crate_name,
+            &mut self.cstore,
             &self.definitions,
-            self.crate_loader.cstore(),
-            &self.source_span,
+            &mut self.used_extern_options,
         )
     }
 
     pub fn cstore(&self) -> &CStore {
-        self.crate_loader.cstore()
+        &self.cstore
     }
 
     fn dummy_ext(&self, macro_kind: MacroKind) -> Lrc<SyntaxExtension> {
@@ -1553,7 +1565,7 @@ impl<'a> Resolver<'a> {
             self.session.time("resolve_main", || self.resolve_main());
             self.session.time("resolve_check_unused", || self.check_unused(krate));
             self.session.time("resolve_report_errors", || self.report_errors(krate));
-            self.session.time("resolve_postprocess", || self.crate_loader.postprocess(krate));
+            self.session.time("resolve_postprocess", || self.crate_loader().postprocess(krate));
         });
     }
 
@@ -1871,10 +1883,10 @@ impl<'a> Resolver<'a> {
             } else {
                 let crate_id = if finalize {
                     let Some(crate_id) =
-                        self.crate_loader.process_path_extern(ident.name, ident.span) else { return Some(self.dummy_binding); };
+                        self.crate_loader().process_path_extern(ident.name, ident.span) else { return Some(self.dummy_binding); };
                     crate_id
                 } else {
-                    self.crate_loader.maybe_process_path_extern(ident.name)?
+                    self.crate_loader().maybe_process_path_extern(ident.name)?
                 };
                 let crate_root = self.expect_module(crate_id.as_def_id());
                 let vis = ty::Visibility::<LocalDefId>::Public;
