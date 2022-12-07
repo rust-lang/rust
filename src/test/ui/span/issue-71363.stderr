@@ -7,7 +7,7 @@ error[E0277]: `MyError` doesn't implement `std::fmt::Display`
   = help: the trait `std::fmt::Display` is not implemented for `MyError`
   = note: in format strings you may be able to use `{:?}` (or {:#?} for pretty-print) instead
 note: required by a bound in `std::error::Error`
- --> /rustc/xyz/library/core/src/error.rs:31:26
+ --> $SRC_DIR/core/src/error.rs:LL:COL
   |
   = note: required by this bound in `std::error::Error`
 
@@ -20,7 +20,7 @@ error[E0277]: `MyError` doesn't implement `Debug`
   = help: the trait `Debug` is not implemented for `MyError`
   = note: add `#[derive(Debug)]` to `MyError` or manually `impl Debug for MyError`
 note: required by a bound in `std::error::Error`
- --> /rustc/xyz/library/core/src/error.rs:31:18
+ --> $SRC_DIR/core/src/error.rs:LL:COL
   |
   = note: required by this bound in `std::error::Error`
 help: consider annotating `MyError` with `#[derive(Debug)]`
