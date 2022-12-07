@@ -1,20 +1,29 @@
-print-type-size type: `[static generator@$DIR/async.rs:10:32: 13:2]`: 16386 bytes, alignment: 1 bytes
-print-type-size     end padding: 16386 bytes
-print-type-size type: `std::future::from_generator::GenFuture<[static generator@$DIR/async.rs:10:32: 13:2]>`: 16386 bytes, alignment: 1 bytes
-print-type-size     field `.0`: 16386 bytes
+print-type-size type: `[async fn body@$DIR/async.rs:10:32: 13:2]`: 16386 bytes, alignment: 1 bytes
+print-type-size     discriminant: 1 bytes
+print-type-size     variant `Suspend0`: 16385 bytes
+print-type-size         field `.arg`: 8192 bytes, offset: 0 bytes, alignment: 1 bytes
+print-type-size         field `.arg`: 8192 bytes
+print-type-size         field `.__awaitee`: 1 bytes
+print-type-size     variant `Unresumed`: 8192 bytes
+print-type-size         field `.arg`: 8192 bytes, offset: 0 bytes, alignment: 1 bytes
+print-type-size     variant `Returned`: 8192 bytes
+print-type-size         field `.arg`: 8192 bytes, offset: 0 bytes, alignment: 1 bytes
+print-type-size     variant `Panicked`: 8192 bytes
+print-type-size         field `.arg`: 8192 bytes, offset: 0 bytes, alignment: 1 bytes
 print-type-size type: `std::mem::ManuallyDrop<[u8; 8192]>`: 8192 bytes, alignment: 1 bytes
 print-type-size     field `.value`: 8192 bytes
 print-type-size type: `std::mem::MaybeUninit<[u8; 8192]>`: 8192 bytes, alignment: 1 bytes
 print-type-size     variant `MaybeUninit`: 8192 bytes
 print-type-size         field `.uninit`: 0 bytes
 print-type-size         field `.value`: 8192 bytes
-print-type-size type: `[static generator@$DIR/async.rs:8:17: 8:19]`: 1 bytes, alignment: 1 bytes
-print-type-size     end padding: 1 bytes
-print-type-size type: `std::future::from_generator::GenFuture<[static generator@$DIR/async.rs:8:17: 8:19]>`: 1 bytes, alignment: 1 bytes
-print-type-size     field `.0`: 1 bytes
-print-type-size type: `std::mem::ManuallyDrop<std::future::from_generator::GenFuture<[static generator@$DIR/async.rs:8:17: 8:19]>>`: 1 bytes, alignment: 1 bytes
+print-type-size type: `[async fn body@$DIR/async.rs:8:17: 8:19]`: 1 bytes, alignment: 1 bytes
+print-type-size     discriminant: 1 bytes
+print-type-size     variant `Unresumed`: 0 bytes
+print-type-size     variant `Returned`: 0 bytes
+print-type-size     variant `Panicked`: 0 bytes
+print-type-size type: `std::mem::ManuallyDrop<[async fn body@$DIR/async.rs:8:17: 8:19]>`: 1 bytes, alignment: 1 bytes
 print-type-size     field `.value`: 1 bytes
-print-type-size type: `std::mem::MaybeUninit<std::future::from_generator::GenFuture<[static generator@$DIR/async.rs:8:17: 8:19]>>`: 1 bytes, alignment: 1 bytes
+print-type-size type: `std::mem::MaybeUninit<[async fn body@$DIR/async.rs:8:17: 8:19]>`: 1 bytes, alignment: 1 bytes
 print-type-size     variant `MaybeUninit`: 1 bytes
 print-type-size         field `.uninit`: 0 bytes
 print-type-size         field `.value`: 1 bytes

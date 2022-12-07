@@ -19,7 +19,7 @@ pub enum SizeKind {
     Min,
 }
 
-#[derive(Clone, PartialEq, Eq, Hash, Debug)]
+#[derive(Copy, Clone, PartialEq, Eq, Hash, Debug)]
 pub struct FieldInfo {
     pub name: Symbol,
     pub offset: u64,
@@ -114,8 +114,8 @@ impl CodeStats {
             let mut max_variant_size = discr_size;
 
             let struct_like = match kind {
-                DataTypeKind::Struct | DataTypeKind::Closure | DataTypeKind::Generator => true,
-                DataTypeKind::Enum | DataTypeKind::Union => false,
+                DataTypeKind::Struct | DataTypeKind::Closure => true,
+                DataTypeKind::Enum | DataTypeKind::Union | DataTypeKind::Generator => false,
             };
             for (i, variant_info) in variants.into_iter().enumerate() {
                 let VariantInfo { ref name, kind: _, align: _, size, ref fields } = *variant_info;
