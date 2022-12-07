@@ -613,7 +613,7 @@ pub const fn invalid_mut<T>(addr: usize) -> *mut T {
 /// This API and its claimed semantics are part of the Strict Provenance experiment, see the
 /// [module documentation][crate::ptr] for details.
 #[must_use]
-#[inline]
+#[inline(always)]
 #[unstable(feature = "strict_provenance", issue = "95228")]
 #[cfg_attr(miri, track_caller)] // even without panics, this helps for Miri backtraces
 #[allow(fuzzy_provenance_casts)] // this *is* the strict provenance API one should use instead
@@ -651,7 +651,7 @@ where
 /// This API and its claimed semantics are part of the Strict Provenance experiment, see the
 /// [module documentation][crate::ptr] for details.
 #[must_use]
-#[inline]
+#[inline(always)]
 #[unstable(feature = "strict_provenance", issue = "95228")]
 #[cfg_attr(miri, track_caller)] // even without panics, this helps for Miri backtraces
 #[allow(fuzzy_provenance_casts)] // this *is* the strict provenance API one should use instead
@@ -1801,7 +1801,7 @@ pub(crate) const unsafe fn align_offset<T: Sized>(p: *const T, a: usize) -> usiz
 /// assert!(!std::ptr::eq(&a[0..2], &a[1..3]));
 /// ```
 #[stable(feature = "ptr_eq", since = "1.17.0")]
-#[inline]
+#[inline(always)]
 pub fn eq<T: ?Sized>(a: *const T, b: *const T) -> bool {
     a == b
 }
