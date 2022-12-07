@@ -10,5 +10,15 @@ LL | | }
    |
    = note: `#[warn(ungated_async_fn_track_caller)]` on by default
 
-warning: 1 warning emitted
+warning: `#[track_caller]` on async functions is a no-op
+  --> $DIR/panic-track-caller.rs:62:5
+   |
+LL |       #[track_caller]
+   |       ^^^^^^^^^^^^^^^ help: enable this unstable feature: `closure_track_caller`
+LL | /     async fn bar_assoc() {
+LL | |         panic!();
+LL | |     }
+   | |_____- this function will not propagate the caller location
+
+warning: 2 warnings emitted
 
