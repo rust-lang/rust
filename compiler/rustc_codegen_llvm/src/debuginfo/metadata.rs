@@ -27,9 +27,7 @@ use rustc_codegen_ssa::traits::*;
 use rustc_fs_util::path_to_c_string;
 use rustc_hir::def::CtorKind;
 use rustc_hir::def_id::{DefId, LOCAL_CRATE};
-use rustc_index::vec::{Idx, IndexVec};
 use rustc_middle::bug;
-use rustc_middle::mir::{self, GeneratorLayout};
 use rustc_middle::ty::layout::{LayoutOf, TyAndLayout};
 use rustc_middle::ty::subst::GenericArgKind;
 use rustc_middle::ty::{
@@ -1026,33 +1024,6 @@ fn build_struct_type_di_node<'ll, 'tcx>(
 // Tuples
 //=-----------------------------------------------------------------------------
 
-/// Returns names of captured upvars for closures and generators.
-///
-/// Here are some examples:
-///  - `name__field1__field2` when the upvar is captured by value.
-///  - `_ref__name__field` when the upvar is captured by reference.
-///
-/// For generators this only contains upvars that are shared by all states.
-fn closure_saved_names_of_captured_variables(tcx: TyCtxt<'_>, def_id: DefId) -> SmallVec<String> {
-    let body = tcx.optimized_mir(def_id);
-
-    body.var_debug_info
-        .iter()
-        .filter_map(|var| {
-            let is_ref = match var.value {
-                mir::VarDebugInfoContents::Place(place) if place.local == mir::Local::new(1) => {
-                    // The projection is either `[.., Field, Deref]` or `[.., Field]`. It
-                    // implies whether the variable is captured by value or by reference.
-                    matches!(place.projection.last().unwrap(), mir::ProjectionElem::Deref)
-                }
-                _ => return None,
-            };
-            let prefix = if is_ref { "_ref__" } else { "" };
-            Some(prefix.to_owned() + var.name.as_str())
-        })
-        .collect()
-}
-
 /// Builds the DW_TAG_member debuginfo nodes for the upvars of a closure or generator.
 /// For a generator, this will handle upvars shared by all states.
 fn build_upvar_field_di_nodes<'ll, 'tcx>(
@@ -1083,7 +1054,7 @@ fn build_upvar_field_di_nodes<'ll, 'tcx>(
             .all(|&t| t == cx.tcx.normalize_erasing_regions(ParamEnv::reveal_all(), t))
     );
 
-    let capture_names = closure_saved_names_of_captured_variables(cx.tcx, def_id);
+    let capture_names = cx.tcx.closure_saved_names_of_captured_variables(def_id);
     let layout = cx.layout_of(closure_or_generator_ty);
 
     up_var_tys
@@ -1227,43 +1198,6 @@ fn build_union_type_di_node<'ll, 'tcx>(
         // Generics:
         |cx| build_generic_type_param_di_nodes(cx, union_type),
     )
-}
-
-// FIXME(eddyb) maybe precompute this? Right now it's computed once
-// per generator monomorphization, but it doesn't depend on substs.
-fn generator_layout_and_saved_local_names<'tcx>(
-    tcx: TyCtxt<'tcx>,
-    def_id: DefId,
-) -> (&'tcx GeneratorLayout<'tcx>, IndexVec<mir::GeneratorSavedLocal, Option<Symbol>>) {
-    let body = tcx.optimized_mir(def_id);
-    let generator_layout = body.generator_layout().unwrap();
-    let mut generator_saved_local_names = IndexVec::from_elem(None, &generator_layout.field_tys);
-
-    let state_arg = mir::Local::new(1);
-    for var in &body.var_debug_info {
-        let mir::VarDebugInfoContents::Place(place) = &var.value else { continue };
-        if place.local != state_arg {
-            continue;
-        }
-        match place.projection[..] {
-            [
-                // Deref of the `Pin<&mut Self>` state argument.
-                mir::ProjectionElem::Field(..),
-                mir::ProjectionElem::Deref,
-                // Field of a variant of the state.
-                mir::ProjectionElem::Downcast(_, variant),
-                mir::ProjectionElem::Field(field, _),
-            ] => {
-                let name = &mut generator_saved_local_names
-                    [generator_layout.variant_fields[variant][field]];
-                if name.is_none() {
-                    name.replace(var.name);
-                }
-            }
-            _ => {}
-        }
-    }
-    (generator_layout, generator_saved_local_names)
 }
 
 /// Computes the type parameters for a type, if any, for the given metadata.
