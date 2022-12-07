@@ -419,6 +419,7 @@ pub mod known {
         shr,
         sub_assign,
         sub,
+        unsafe_cell,
         va_list
     );
 

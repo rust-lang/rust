@@ -19,10 +19,11 @@ use std::sync::Arc;
 use chalk_ir::{cast::Cast, ConstValue, DebruijnIndex, Mutability, Safety, Scalar, TypeFlags};
 use hir_def::{
     body::Body,
-    builtin_type::BuiltinType,
+    builtin_type::{BuiltinInt, BuiltinType, BuiltinUint},
     data::{ConstData, StaticData},
     expr::{BindingAnnotation, ExprId, PatId},
     lang_item::LangItemTarget,
+    layout::Integer,
     path::{path, Path},
     resolver::{HasResolver, ResolveValueResult, Resolver, TypeNs, ValueNs},
     type_ref::TypeRef,
@@ -70,8 +71,26 @@ pub(crate) fn infer_query(db: &dyn HirDatabase, def: DefWithBodyId) -> Arc<Infer
         DefWithBodyId::StaticId(s) => ctx.collect_static(&db.static_data(s)),
         DefWithBodyId::VariantId(v) => {
             ctx.return_ty = TyBuilder::builtin(match db.enum_data(v.parent).variant_body_type() {
-                Either::Left(builtin) => BuiltinType::Int(builtin),
-                Either::Right(builtin) => BuiltinType::Uint(builtin),
+                hir_def::layout::IntegerType::Pointer(signed) => match signed {
+                    true => BuiltinType::Int(BuiltinInt::Isize),
+                    false => BuiltinType::Uint(BuiltinUint::Usize),
+                },
+                hir_def::layout::IntegerType::Fixed(size, signed) => match signed {
+                    true => BuiltinType::Int(match size {
+                        Integer::I8 => BuiltinInt::I8,
+                        Integer::I16 => BuiltinInt::I16,
+                        Integer::I32 => BuiltinInt::I32,
+                        Integer::I64 => BuiltinInt::I64,
+                        Integer::I128 => BuiltinInt::I128,
+                    }),
+                    false => BuiltinType::Uint(match size {
+                        Integer::I8 => BuiltinUint::U8,
+                        Integer::I16 => BuiltinUint::U16,
+                        Integer::I32 => BuiltinUint::U32,
+                        Integer::I64 => BuiltinUint::U64,
+                        Integer::I128 => BuiltinUint::U128,
+                    }),
+                },
             });
         }
     }

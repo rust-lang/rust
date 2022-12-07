@@ -27,6 +27,8 @@ pub mod display;
 pub mod method_resolution;
 pub mod primitive;
 pub mod traits;
+pub mod layout;
+pub mod lang_items;
 
 #[cfg(test)]
 mod tests;

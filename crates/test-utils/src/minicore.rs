@@ -30,6 +30,7 @@
 //!     index: sized
 //!     iterator: option
 //!     iterators: iterator, fn
+//!     non_zero:
 //!     option:
 //!     ord: eq, option
 //!     pin:
@@ -703,6 +704,15 @@ mod macros {
     }
 }
 // endregion:derive
+
+// region:non_zero
+pub mod num {
+    #[repr(transparent)]
+    #[rustc_layout_scalar_valid_range_start(1)]
+    #[rustc_nonnull_optimization_guaranteed]
+    pub struct NonZeroU8(u8);
+}
+// endregion:non_zero
 
 // region:bool_impl
 #[lang = "bool"]

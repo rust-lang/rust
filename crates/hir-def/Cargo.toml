@@ -33,6 +33,8 @@ base-db = { path = "../base-db", version = "0.0.0" }
 syntax = { path = "../syntax", version = "0.0.0" }
 profile = { path = "../profile", version = "0.0.0" }
 hir-expand = { path = "../hir-expand", version = "0.0.0" }
+rustc_abi = { version = "0.0.20221125", package = "hkalbasi-rustc-ap-rustc_abi", default-features = false }
+rustc_index = { version = "0.0.20221125", package = "hkalbasi-rustc-ap-rustc_index", default-features = false }
 mbe = { path = "../mbe", version = "0.0.0" }
 cfg = { path = "../cfg", version = "0.0.0" }
 tt = { path = "../tt", version = "0.0.0" }
