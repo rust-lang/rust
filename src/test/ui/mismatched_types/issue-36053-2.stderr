@@ -12,7 +12,7 @@ note: required by a bound in `filter`
   --> $SRC_DIR/core/src/iter/traits/iterator.rs:LL:COL
    |
 LL |         P: FnMut(&Self::Item) -> bool,
-   |            ^^^^^^^^^^^^^^^^^^^^^^^^^^ required by this bound in `filter`
+   |            ^^^^^^^^^^^^^^^^^^^^^^^^^^ required by this bound in `Iterator::filter`
 
 error[E0599]: the method `count` exists for struct `Filter<Fuse<std::iter::Once<&str>>, [closure@$DIR/issue-36053-2.rs:7:39: 7:48]>`, but its trait bounds were not satisfied
   --> $DIR/issue-36053-2.rs:7:55

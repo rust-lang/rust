@@ -130,7 +130,7 @@ note: required by a bound in `map`
   --> $SRC_DIR/core/src/iter/traits/iterator.rs:LL:COL
    |
 LL |         F: FnMut(Self::Item) -> B,
-   |            ^^^^^^^^^^^^^^^^^^^^^^ required by this bound in `map`
+   |            ^^^^^^^^^^^^^^^^^^^^^^ required by this bound in `Iterator::map`
 
 error[E0593]: closure is expected to take a single 2-tuple as argument, but it takes 3 distinct arguments
   --> $DIR/closure-arg-count.rs:27:57
@@ -146,7 +146,7 @@ note: required by a bound in `map`
   --> $SRC_DIR/core/src/iter/traits/iterator.rs:LL:COL
    |
 LL |         F: FnMut(Self::Item) -> B,
-   |            ^^^^^^^^^^^^^^^^^^^^^^ required by this bound in `map`
+   |            ^^^^^^^^^^^^^^^^^^^^^^ required by this bound in `Iterator::map`
 
 error[E0593]: function is expected to take a single 2-tuple as argument, but it takes 2 distinct arguments
   --> $DIR/closure-arg-count.rs:29:57
@@ -163,7 +163,7 @@ note: required by a bound in `map`
   --> $SRC_DIR/core/src/iter/traits/iterator.rs:LL:COL
    |
 LL |         F: FnMut(Self::Item) -> B,
-   |            ^^^^^^^^^^^^^^^^^^^^^^ required by this bound in `map`
+   |            ^^^^^^^^^^^^^^^^^^^^^^ required by this bound in `Iterator::map`
 
 error[E0593]: function is expected to take 1 argument, but it takes 2 arguments
   --> $DIR/closure-arg-count.rs:32:45
@@ -177,7 +177,7 @@ note: required by a bound in `map`
   --> $SRC_DIR/core/src/iter/traits/iterator.rs:LL:COL
    |
 LL |         F: FnMut(Self::Item) -> B,
-   |            ^^^^^^^^^^^^^^^^^^^^^^ required by this bound in `map`
+   |            ^^^^^^^^^^^^^^^^^^^^^^ required by this bound in `Iterator::map`
 
 error[E0593]: function is expected to take 0 arguments, but it takes 1 argument
   --> $DIR/closure-arg-count.rs:35:10
