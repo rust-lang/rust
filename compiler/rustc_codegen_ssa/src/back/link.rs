@@ -2352,15 +2352,6 @@ fn add_native_libs_from_crate(
                                 &search_paths.get_or_init(|| archive_search_paths(sess)),
                             );
                         } else {
-                            // HACK/FIXME: Fixup a circular dependency between libgcc and libc
-                            // with glibc. This logic should be moved to the libc crate.
-                            if cnum != LOCAL_CRATE
-                                && sess.target.os == "linux"
-                                && sess.target.env == "gnu"
-                                && name == "c"
-                            {
-                                cmd.link_staticlib("gcc", false);
-                            }
                             cmd.link_staticlib(name, verbatim)
                         }
                     }
