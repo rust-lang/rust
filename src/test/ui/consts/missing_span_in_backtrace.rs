@@ -1,4 +1,4 @@
-// compile-flags: -Z simulate-remapped-rust-src-base=/rustc/xyz -Z translate-remapped-path-to-local-path=no
+// compile-flags: -Z simulate-remapped-rust-src-base=/rustc/xyz -Z translate-remapped-path-to-local-path=no -Z ui-testing=no
 // normalize-stderr-test "alloc[0-9]+" -> "ALLOC_ID"
 
 #![feature(const_swap)]
