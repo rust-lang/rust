@@ -296,9 +296,8 @@ fn run_compiler(
 
             if let Some(ppm) = &sess.opts.pretty {
                 if ppm.needs_ast_map() {
-                    let expanded_crate = queries.expansion()?.borrow().0.clone();
                     queries.global_ctxt()?.enter(|tcx| {
-                        pretty::print_after_hir_lowering(tcx, &*expanded_crate, *ppm);
+                        pretty::print_after_hir_lowering(tcx, *ppm);
                         Ok(())
                     })?;
                 } else {

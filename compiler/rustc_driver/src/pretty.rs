@@ -403,7 +403,7 @@ pub fn print_after_parsing(sess: &Session, krate: &ast::Crate, ppm: PpMode) {
     write_or_print(&out, sess);
 }
 
-pub fn print_after_hir_lowering<'tcx>(tcx: TyCtxt<'tcx>, krate: &ast::Crate, ppm: PpMode) {
+pub fn print_after_hir_lowering<'tcx>(tcx: TyCtxt<'tcx>, ppm: PpMode) {
     if ppm.needs_analysis() {
         abort_on_err(print_with_analysis(tcx, ppm), tcx.sess);
         return;
@@ -420,7 +420,7 @@ pub fn print_after_hir_lowering<'tcx>(tcx: TyCtxt<'tcx>, krate: &ast::Crate, ppm
                 let parse = &sess.parse_sess;
                 pprust::print_crate(
                     sess.source_map(),
-                    krate,
+                    &tcx.resolver_for_lowering(()).borrow().1,
                     src_name,
                     src,
                     annotation.pp_ann(),
@@ -433,7 +433,7 @@ pub fn print_after_hir_lowering<'tcx>(tcx: TyCtxt<'tcx>, krate: &ast::Crate, ppm
 
         AstTree(PpAstTreeMode::Expanded) => {
             debug!("pretty-printing expanded AST");
-            format!("{krate:#?}")
+            format!("{:#?}", tcx.resolver_for_lowering(()).borrow().1)
         }
 
         Hir(s) => call_with_pp_support_hir(&s, tcx, move |annotation, hir_map| {
