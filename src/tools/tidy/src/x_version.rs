@@ -8,7 +8,7 @@ pub fn check(bad: &mut bool) {
         Ok(child) => child,
         Err(e) => match e.kind() {
             ErrorKind::NotFound => return,
-            _ => return tidy_error!(bad, "{}", e),
+            _ => return tidy_error!(bad, "failed to run `x`: {}", e),
         },
     };
 
