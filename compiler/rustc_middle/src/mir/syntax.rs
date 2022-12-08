@@ -6,6 +6,7 @@
 use super::{BasicBlock, Constant, Field, Local, SwitchTargets, UserTypeProjection};
 
 use crate::mir::coverage::{CodeRegion, CoverageKind};
+use crate::traits::Reveal;
 use crate::ty::adjustment::PointerCast;
 use crate::ty::subst::SubstsRef;
 use crate::ty::{self, List, Ty};
@@ -98,6 +99,13 @@ impl MirPhase {
             MirPhase::Runtime(RuntimePhase::Initial) => "runtime",
             MirPhase::Runtime(RuntimePhase::PostCleanup) => "runtime-post-cleanup",
             MirPhase::Runtime(RuntimePhase::Optimized) => "runtime-optimized",
+        }
+    }
+
+    pub fn reveal(&self) -> Reveal {
+        match *self {
+            MirPhase::Built | MirPhase::Analysis(_) => Reveal::UserFacing,
+            MirPhase::Runtime(_) => Reveal::All,
         }
     }
 }

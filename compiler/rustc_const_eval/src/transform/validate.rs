@@ -2,6 +2,7 @@
 
 use rustc_data_structures::fx::FxHashSet;
 use rustc_index::bit_set::BitSet;
+use rustc_infer::traits::Reveal;
 use rustc_middle::mir::interpret::Scalar;
 use rustc_middle::mir::visit::NonUseContext::VarDebugInfo;
 use rustc_middle::mir::visit::{PlaceContext, Visitor};
@@ -44,8 +45,11 @@ impl<'tcx> MirPass<'tcx> for Validator {
             return;
         }
         let def_id = body.source.def_id();
-        let param_env = tcx.param_env(def_id);
         let mir_phase = self.mir_phase;
+        let param_env = match mir_phase.reveal() {
+            Reveal::UserFacing => tcx.param_env(def_id),
+            Reveal::All => tcx.param_env_reveal_all_normalized(def_id),
+        };
 
         let always_live_locals = always_storage_live_locals(body);
         let storage_liveness = MaybeStorageLive::new(always_live_locals)
