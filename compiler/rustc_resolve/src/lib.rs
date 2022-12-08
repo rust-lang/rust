@@ -1176,7 +1176,7 @@ impl<'tcx> Resolver<'_, 'tcx> {
 
         // A relative span's parent must be an absolute span.
         debug_assert_eq!(span.data_untracked().parent, None);
-        let _id = self.untracked.source_span.push(span);
+        let _id = self.untracked.source_span.write().push(span);
         debug_assert_eq!(_id, def_id);
 
         // Some things for which we allocate `LocalDefId`s don't correspond to
@@ -1323,7 +1323,7 @@ impl<'a, 'tcx> Resolver<'a, 'tcx> {
             used_extern_options: Default::default(),
             untracked: Untracked {
                 cstore: RwLock::new(Box::new(CStore::new(session))),
-                source_span,
+                source_span: RwLock::new(source_span),
                 definitions: RwLock::new(definitions),
             },
             macro_names: FxHashSet::default(),
@@ -1923,7 +1923,7 @@ impl<'a, 'tcx> Resolver<'a, 'tcx> {
     /// Retrieves the span of the given `DefId` if `DefId` is in the local crate.
     #[inline]
     fn opt_span(&self, def_id: DefId) -> Option<Span> {
-        def_id.as_local().map(|def_id| self.untracked.source_span[def_id])
+        def_id.as_local().map(|def_id| self.untracked.source_span.read()[def_id])
     }
 
     /// Retrieves the name of the given `DefId`.
