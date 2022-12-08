@@ -911,10 +911,8 @@ impl Command {
     /// ```
     #[stable(feature = "process", since = "1.0.0")]
     pub fn output(&mut self) -> io::Result<Output> {
-        self.inner
-            .spawn(imp::Stdio::MakePipe, false)
-            .map(Child::from_inner)
-            .and_then(|p| p.wait_with_output())
+        let (status, stdout, stderr) = self.inner.output()?;
+        Ok(Output { status: ExitStatus(status), stdout, stderr })
     }
 
     /// Executes a command as a child process, waiting for it to finish and
