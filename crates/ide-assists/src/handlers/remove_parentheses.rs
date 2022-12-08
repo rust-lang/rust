@@ -1,4 +1,4 @@
-use syntax::{ast, AstNode, SyntaxKind, TextRange};
+use syntax::{ast, AstNode};
 
 use crate::{AssistContext, AssistId, AssistKind, Assists};
 
@@ -19,43 +19,28 @@ use crate::{AssistContext, AssistId, AssistKind, Assists};
 // ```
 pub(crate) fn remove_parentheses(acc: &mut Assists, ctx: &AssistContext<'_>) -> Option<()> {
     let parens = ctx.find_node_at_offset::<ast::ParenExpr>()?;
-    let l_paren = parens.l_paren_token()?;
-    let r_paren = parens.r_paren_token()?;
 
-    let cursor_in_range = l_paren.text_range().contains_range(ctx.selection_trimmed())
-        || r_paren.text_range().contains_range(ctx.selection_trimmed());
+    let cursor_in_range =
+        parens.l_paren_token()?.text_range().contains_range(ctx.selection_trimmed())
+            || parens.r_paren_token()?.text_range().contains_range(ctx.selection_trimmed());
     if !cursor_in_range {
         return None;
     }
 
     let expr = parens.expr()?;
+
     let parent = ast::Expr::cast(parens.syntax().parent()?);
     let is_ok_to_remove = expr.precedence() >= parent.as_ref().and_then(ast::Expr::precedence);
     if !is_ok_to_remove {
         return None;
     }
 
-    let delete_from_l = l_paren.text_range().start();
-    let delete_to_l = match l_paren.next_token() {
-        Some(it) if it.kind() == SyntaxKind::WHITESPACE => it.text_range().end(),
-        _ => l_paren.text_range().end(),
-    };
-
-    let delete_from_r = match r_paren.prev_token() {
-        Some(it) if it.kind() == SyntaxKind::WHITESPACE => it.text_range().start(),
-        _ => r_paren.text_range().start(),
-    };
-    let delete_to_r = r_paren.text_range().end();
-
     let target = parens.syntax().text_range();
     acc.add(
         AssistId("remove_parentheses", AssistKind::Refactor),
         "Remove redundant parentheses",
         target,
-        |builder| {
-            builder.delete(TextRange::new(delete_from_l, delete_to_l));
-            builder.delete(TextRange::new(delete_from_r, delete_to_r));
-        },
+        |builder| builder.replace_ast(parens.into(), expr),
     )
 }
 
