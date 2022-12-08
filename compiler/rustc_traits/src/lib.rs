@@ -12,13 +12,13 @@ extern crate tracing;
 extern crate rustc_middle;
 
 mod chalk;
+mod codegen;
 mod dropck_outlives;
 mod evaluate_obligation;
 mod implied_outlives_bounds;
 mod normalize_erasing_regions;
 mod normalize_projection_ty;
 mod type_op;
-mod codegen;
 
 pub use type_op::{type_op_ascribe_user_type_with_span, type_op_prove_predicate_with_cause};
 
