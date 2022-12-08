@@ -459,10 +459,10 @@ impl<'history, 'ecx, 'mir, 'tcx> DiagnosticCx<'history, 'ecx, 'mir, 'tcx> {
             Operation::Dealloc(_) => format!(" due to deallocation"),
             Operation::Access(AccessOp { kind, tag, .. }) =>
                 format!(" due to {kind:?} access for {tag:?}"),
-            Operation::Retag(RetagOp { orig_tag, permission, .. }) => {
+            Operation::Retag(RetagOp { orig_tag, permission, new_tag, .. }) => {
                 let permission = permission
                     .expect("start_grant should set the current permission before popping a tag");
-                format!(" due to {permission:?} retag from {orig_tag:?}")
+                format!(" due to {permission:?} retag from {orig_tag:?} (that retag created {new_tag:?})")
             }
         };
 
