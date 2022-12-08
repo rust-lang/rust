@@ -774,6 +774,7 @@ fn main_args(at_args: &[String]) -> MainResult {
     let output_format = options.output_format;
     let externs = options.externs.clone();
     let scrape_examples_options = options.scrape_examples_options.clone();
+    let bin_crate = options.bin_crate;
 
     let config = core::create_config(options);
 
@@ -832,7 +833,14 @@ fn main_args(at_args: &[String]) -> MainResult {
                 info!("finished with rustc");
 
                 if let Some(options) = scrape_examples_options {
-                    return scrape_examples::run(krate, render_opts, cache, tcx, options);
+                    return scrape_examples::run(
+                        krate,
+                        render_opts,
+                        cache,
+                        tcx,
+                        options,
+                        bin_crate,
+                    );
                 }
 
                 cache.crate_version = crate_version;
