@@ -210,7 +210,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                     ProbeScope::TraitsInScope,
                 ) {
                     Ok(ref new_pick) if pick.differs_from(new_pick) => {
-                        needs_mut = true;
+                        needs_mut = new_pick.self_ty.ref_mutability() != self_ty.ref_mutability();
                     }
                     _ => {}
                 }
