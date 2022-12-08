@@ -908,5 +908,9 @@ fn find_skips_from_snippet(
     (skips, true)
 }
 
+// Assert a reasonable size for `Piece`
+#[cfg(all(target_arch = "x86_64", target_pointer_width = "64"))]
+rustc_data_structures::static_assert_size!(Piece<'_>, 16);
+
 #[cfg(test)]
 mod tests;
