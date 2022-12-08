@@ -129,10 +129,10 @@ pub struct FileIsNotWriteable<'a> {
 
 #[derive(Diagnostic)]
 #[diag(session_crate_name_does_not_match)]
-pub struct CrateNameDoesNotMatch<'a> {
+pub struct CrateNameDoesNotMatch {
     #[primary_span]
     pub span: Span,
-    pub s: &'a str,
+    pub s: Symbol,
     pub name: Symbol,
 }
 
@@ -151,11 +151,11 @@ pub struct CrateNameEmpty {
 
 #[derive(Diagnostic)]
 #[diag(session_invalid_character_in_create_name)]
-pub struct InvalidCharacterInCrateName<'a> {
+pub struct InvalidCharacterInCrateName {
     #[primary_span]
     pub span: Option<Span>,
     pub character: char,
-    pub crate_name: &'a str,
+    pub crate_name: Symbol,
 }
 
 #[derive(Subdiagnostic)]

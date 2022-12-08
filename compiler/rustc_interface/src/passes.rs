@@ -158,7 +158,7 @@ pub fn create_resolver(
     sess: Lrc<Session>,
     metadata_loader: Box<MetadataLoaderDyn>,
     krate: &ast::Crate,
-    crate_name: &str,
+    crate_name: Symbol,
 ) -> BoxedResolver {
     trace!("create_resolver");
     BoxedResolver::new(sess, move |sess, resolver_arenas| {
@@ -171,7 +171,7 @@ pub fn register_plugins<'a>(
     metadata_loader: &'a dyn MetadataLoader,
     register_lints: impl Fn(&Session, &mut LintStore),
     mut krate: ast::Crate,
-    crate_name: &str,
+    crate_name: Symbol,
 ) -> Result<(ast::Crate, LintStore)> {
     krate = sess.time("attributes_injection", || {
         rustc_builtin_macros::cmdline_attrs::inject(
@@ -228,19 +228,21 @@ fn pre_expansion_lint<'a>(
     lint_store: &LintStore,
     registered_tools: &RegisteredTools,
     check_node: impl EarlyCheckNode<'a>,
-    node_name: &str,
+    node_name: Symbol,
 ) {
-    sess.prof.generic_activity_with_arg("pre_AST_expansion_lint_checks", node_name).run(|| {
-        rustc_lint::check_ast_node(
-            sess,
-            true,
-            lint_store,
-            registered_tools,
-            None,
-            rustc_lint::BuiltinCombinedPreExpansionLintPass::new(),
-            check_node,
-        );
-    });
+    sess.prof.generic_activity_with_arg("pre_AST_expansion_lint_checks", node_name.as_str()).run(
+        || {
+            rustc_lint::check_ast_node(
+                sess,
+                true,
+                lint_store,
+                registered_tools,
+                None,
+                rustc_lint::BuiltinCombinedPreExpansionLintPass::new(),
+                check_node,
+            );
+        },
+    );
 }
 
 // Cannot implement directly for `LintStore` due to trait coherence.
@@ -254,7 +256,7 @@ impl LintStoreExpand for LintStoreExpandImpl<'_> {
         node_id: ast::NodeId,
         attrs: &[ast::Attribute],
         items: &[rustc_ast::ptr::P<ast::Item>],
-        name: &str,
+        name: Symbol,
     ) {
         pre_expansion_lint(sess, self.0, registered_tools, (node_id, attrs, items), name);
     }
@@ -268,7 +270,7 @@ pub fn configure_and_expand(
     sess: &Session,
     lint_store: &LintStore,
     mut krate: ast::Crate,
-    crate_name: &str,
+    crate_name: Symbol,
     resolver: &mut Resolver<'_>,
 ) -> Result<ast::Crate> {
     trace!("configure_and_expand");
@@ -462,7 +464,7 @@ fn generated_output_paths(
     sess: &Session,
     outputs: &OutputFilenames,
     exact_name: bool,
-    crate_name: &str,
+    crate_name: Symbol,
 ) -> Vec<PathBuf> {
     let mut out_filenames = Vec::new();
     for output_type in sess.opts.output_types.keys() {
@@ -661,7 +663,7 @@ pub fn prepare_outputs(
     compiler: &Compiler,
     krate: &ast::Crate,
     boxed_resolver: &RefCell<BoxedResolver>,
-    crate_name: &str,
+    crate_name: Symbol,
 ) -> Result<OutputFilenames> {
     let _timer = sess.timer("prepare_outputs");
 
@@ -771,7 +773,7 @@ pub fn create_global_ctxt<'tcx>(
     dep_graph: DepGraph,
     resolver: Rc<RefCell<BoxedResolver>>,
     outputs: OutputFilenames,
-    crate_name: &str,
+    crate_name: Symbol,
     queries: &'tcx OnceCell<TcxQueries<'tcx>>,
     global_ctxt: &'tcx OnceCell<GlobalCtxt<'tcx>>,
     arena: &'tcx WorkerLocal<Arena<'tcx>>,
