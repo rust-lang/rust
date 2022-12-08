@@ -82,6 +82,7 @@
 	--crate-search-hover-border: #2196f3;
 	--source-sidebar-background-selected: #333;
 	--source-sidebar-background-hover: #444;
+	--table-alt-row-background-color: #2A2A2A;
 }
 
 .content .item-info::before { color: #ccc; }
