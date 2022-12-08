@@ -30,8 +30,7 @@ pub(crate) fn remove_parentheses(acc: &mut Assists, ctx: &AssistContext<'_>) -> 
 
     let expr = parens.expr()?;
     let parent = ast::Expr::cast(parens.syntax().parent()?);
-    let is_ok_to_remove =
-        parent.map_or(true, |p| ExprPrecedence::of(&expr) >= ExprPrecedence::of(&p));
+    let is_ok_to_remove = expr.precedence() >= parent.as_ref().and_then(ast::Expr::precedence);
     if !is_ok_to_remove {
         return None;
     }
@@ -58,97 +57,6 @@ pub(crate) fn remove_parentheses(acc: &mut Assists, ctx: &AssistContext<'_>) -> 
             builder.delete(TextRange::new(delete_from_r, delete_to_r));
         },
     )
-}
-
-#[derive(Debug, Copy, Clone, Ord, PartialOrd, Eq, PartialEq)]
-pub enum ExprPrecedence {
-    // N.B.: Order is important
-    /// Precedence is unknown
-    Dummy,
-    Closure,
-    Jump,
-    Range,
-    Bin(BinOpPresedence),
-    Prefix,
-    Postfix,
-    Paren,
-}
-
-#[derive(Debug, Copy, Clone, Ord, PartialOrd, Eq, PartialEq)]
-pub enum BinOpPresedence {
-    // N.B.: Order is important
-    /// `=`, `+=`, `-=`, `*=`, `/=`, `%=`, `|=`, `&=`
-    Assign,
-    /// `||`
-    LOr,
-    /// `&&`
-    LAnd,
-    /// `<`, `<=`, `>`, `>=`, `==` and `!=`
-    Cmp,
-    /// `|`
-    BitOr,
-    /// `^`
-    BitXor,
-    /// `&`
-    BitAnd,
-    /// `<<` and `>>`
-    Shift,
-    /// `+` and `-`
-    Add,
-    /// `*`, `/` and `%`
-    Mul,
-    /// `as`
-    As,
-}
-
-impl ExprPrecedence {
-    pub fn of(expr: &ast::Expr) -> Self {
-        // Copied from <https://github.com/rust-lang/rust/blob/b6852428a8ea9728369b64b9964cad8e258403d3/compiler/rustc_ast/src/util/parser.rs#L296>
-        use ast::Expr::*;
-
-        match expr {
-            ClosureExpr(_) => Self::Closure,
-
-            ContinueExpr(_) | ReturnExpr(_) | YieldExpr(_) | BreakExpr(_) => Self::Jump,
-
-            RangeExpr(_) => Self::Range,
-
-            BinExpr(bin_expr) => bin_expr
-                .op_kind()
-                .map(|op| match op {
-                    ast::BinaryOp::LogicOp(op) => match op {
-                        ast::LogicOp::And => BinOpPresedence::LAnd,
-                        ast::LogicOp::Or => BinOpPresedence::LOr,
-                    },
-                    ast::BinaryOp::ArithOp(op) => match op {
-                        ast::ArithOp::Add => BinOpPresedence::Add,
-                        ast::ArithOp::Mul => BinOpPresedence::Mul,
-                        ast::ArithOp::Sub => BinOpPresedence::Add,
-                        ast::ArithOp::Div => BinOpPresedence::Mul,
-                        ast::ArithOp::Rem => BinOpPresedence::Mul,
-                        ast::ArithOp::Shl => BinOpPresedence::Shift,
-                        ast::ArithOp::Shr => BinOpPresedence::Shift,
-                        ast::ArithOp::BitXor => BinOpPresedence::BitXor,
-                        ast::ArithOp::BitOr => BinOpPresedence::BitOr,
-                        ast::ArithOp::BitAnd => BinOpPresedence::BitAnd,
-                    },
-                    ast::BinaryOp::CmpOp(_) => BinOpPresedence::Cmp,
-                    ast::BinaryOp::Assignment { .. } => BinOpPresedence::Assign,
-                })
-                .map(Self::Bin)
-                .unwrap_or(Self::Dummy),
-            CastExpr(_) => Self::Bin(BinOpPresedence::As),
-
-            BoxExpr(_) | RefExpr(_) | LetExpr(_) | PrefixExpr(_) => Self::Prefix,
-
-            AwaitExpr(_) | CallExpr(_) | MethodCallExpr(_) | FieldExpr(_) | IndexExpr(_)
-            | TryExpr(_) | MacroExpr(_) => Self::Postfix,
-
-            ArrayExpr(_) | TupleExpr(_) | Literal(_) | PathExpr(_) | ParenExpr(_) | IfExpr(_)
-            | WhileExpr(_) | ForExpr(_) | LoopExpr(_) | MatchExpr(_) | BlockExpr(_)
-            | RecordExpr(_) | UnderscoreExpr(_) => Self::Paren,
-        }
-    }
 }
 
 #[cfg(test)]
