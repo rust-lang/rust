@@ -104,6 +104,10 @@ pub fn target() -> Target {
     // `args::args()` makes the WASI API calls itself.
     options.main_needs_argc_argv = false;
 
+    // And, WASI mangles the name of "main" to distinguish between different
+    // signatures.
+    options.entry_name = "__main_void".into();
+
     Target {
         llvm_target: "wasm32-wasi".into(),
         pointer_width: 32,
