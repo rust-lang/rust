@@ -256,6 +256,6 @@ pub type CrateStoreDyn = dyn CrateStore + sync::Sync + sync::Send;
 pub struct Untracked {
     pub cstore: RwLock<Box<CrateStoreDyn>>,
     /// Reference span for definitions.
-    pub source_span: IndexVec<LocalDefId, Span>,
+    pub source_span: RwLock<IndexVec<LocalDefId, Span>>,
     pub definitions: RwLock<Definitions>,
 }
