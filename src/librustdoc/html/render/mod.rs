@@ -2145,28 +2145,34 @@ pub(crate) fn sidebar_render_assoc_items(
     };
 
     let concrete_format = format_impls_grouped(concrete, id_map);
-    print_sidebar_block_grouped(
-        out,
-        "trait-implementations",
-        "Trait Implementations",
-        concrete_format.into_iter(),
-    );
+    if !concrete_format.is_empty() {
+        print_sidebar_block_grouped(
+            out,
+            "trait-implementations",
+            "Trait Implementations",
+            concrete_format.into_iter(),
+        );
+    }
 
     let synthetic_format = format_impls_grouped(synthetic, id_map);
-    print_sidebar_block_grouped(
-        out,
-        "synthetic-implementations",
-        "Auto Trait Implementations",
-        synthetic_format.into_iter(),
-    );
+    if !synthetic_format.is_empty() {
+        print_sidebar_block_grouped(
+            out,
+            "synthetic-implementations",
+            "Auto Trait Implementations",
+            synthetic_format.into_iter(),
+        );
+    }
 
     let blanket_format = format_impls_grouped(blanket_impl, id_map);
-    print_sidebar_block_grouped(
-        out,
-        "blanket-implementations",
-        "Blanket Implementations",
-        blanket_format.into_iter(),
-    );
+    if !blanket_format.is_empty() {
+        print_sidebar_block_grouped(
+            out,
+            "blanket-implementations",
+            "Blanket Implementations",
+            blanket_format.into_iter(),
+        );
+    }
 }
 
 fn sidebar_assoc_items(cx: &Context<'_>, out: &mut Buffer, it: &clean::Item) {
