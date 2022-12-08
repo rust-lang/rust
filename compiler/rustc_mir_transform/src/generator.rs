@@ -985,16 +985,6 @@ fn create_generator_drop_shim<'tcx>(
         tcx.mk_ptr(ty::TypeAndMut { ty: gen_ty, mutbl: hir::Mutability::Mut }),
         source_info,
     );
-    if tcx.sess.opts.unstable_opts.mir_emit_retag {
-        // Alias tracking must know we changed the type
-        body.basic_blocks_mut()[START_BLOCK].statements.insert(
-            0,
-            Statement {
-                source_info,
-                kind: StatementKind::Retag(RetagKind::Raw, Box::new(Place::from(SELF_ARG))),
-            },
-        )
-    }
 
     // Make sure we remove dead blocks to remove
     // unrelated code from the resume part of the function
