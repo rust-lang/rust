@@ -21,18 +21,6 @@ git clone https://github.com/rust-lang/rust.git
 cd rust
 ```
 
-## Create a `config.toml`
-
-To start, run `./x.py setup`. This will do some initialization and create a
-`config.toml` for you with reasonable defaults.
-
-Alternatively, you can write `config.toml` by hand. See `config.toml.example`
-for all the available settings and explanations of them. See `src/bootstrap/defaults` for common settings to change.
-
-If you have already built `rustc` and you change settings related to LLVM, then you may have to
-execute `rm -rf build` for subsequent configuration changes to take effect. Note that `./x.py
-clean` will not cause a rebuild of LLVM.
-
 ## What is `x.py`?
 
 `x.py` is the build tool for the `rust` repository. It can build docs, run tests, and compile the
@@ -50,6 +38,18 @@ run `x.py`, but it can be installed system-wide and run from any subdirectory
 of a checkout. It also looks up the appropriate version of `python` to use.
 
 You can install it with `cargo install --path src/tools/x`.
+
+## Create a `config.toml`
+
+To start, run `./x.py setup`. This will do some initialization and create a
+`config.toml` for you with reasonable defaults.
+
+Alternatively, you can write `config.toml` by hand. See `config.toml.example` for all the available
+settings and explanations of them. See `src/bootstrap/defaults` for common settings to change.
+
+If you have already built `rustc` and you change settings related to LLVM, then you may have to
+execute `rm -rf build` for subsequent configuration changes to take effect. Note that `./x.py
+clean` will not cause a rebuild of LLVM.
 
 ## Building the Compiler
 
