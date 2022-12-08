@@ -4348,6 +4348,7 @@ dependencies = [
  "rustc_span",
  "rustc_target",
  "smallvec",
+ "termize",
  "tracing",
  "winapi",
 ]
