@@ -4,7 +4,7 @@ use crate::{AssistContext, AssistId, AssistKind, Assists};
 
 // Assist: remove_parentheses
 //
-// Removes useless parentheses.
+// Removes redundant parentheses.
 //
 // ```
 // fn main() {
@@ -51,7 +51,7 @@ pub(crate) fn remove_parentheses(acc: &mut Assists, ctx: &AssistContext<'_>) -> 
     let target = parens.syntax().text_range();
     acc.add(
         AssistId("remove_parentheses", AssistKind::Refactor),
-        "Remove parentheses",
+        "Remove redundant parentheses",
         target,
         |builder| {
             builder.delete(TextRange::new(delete_from_l, delete_to_l));
