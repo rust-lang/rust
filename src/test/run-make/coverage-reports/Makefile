@@ -74,13 +74,13 @@ LLVM_COV_IGNORE_FILES=\
 all: $(patsubst $(SOURCEDIR)/lib/%.rs,%,$(wildcard $(SOURCEDIR)/lib/*.rs)) $(patsubst $(SOURCEDIR)/%.rs,%,$(wildcard $(SOURCEDIR)/*.rs))
 
 # Ensure there are no `expected` results for tests that may have been removed or renamed
-.PHONY: clear_expected_if_blessed
-clear_expected_if_blessed:
-ifdef RUSTC_BLESS_TEST
-	rm -f expected_*
-endif
+# .PHONY: clear_expected_if_blessed
+# clear_expected_if_blessed:
+# ifdef RUSTC_BLESS_TEST
+# 	rm -f expected_*
+# endif
 
-include clear_expected_if_blessed
+# include clear_expected_if_blessed
 
 %: $(SOURCEDIR)/lib/%.rs
 	# Compile the test library with coverage instrumentation
