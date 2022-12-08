@@ -24,8 +24,8 @@ powerful, a common strategy is to only use `./x.py check` on your local machine
 and let the CI build test your changes when you push to a PR branch.
 
 Building the compiler takes more than half an hour on my moderately powerful
-laptop. The first time you build the compiler, LLVM will also be built unless
-you use CI-built LLVM ([see here][config]).
+laptop. We suggest downloading LLVM from CI so you don't have to build it from source
+([see here][config]).
 
 Like `cargo`, the build system will use as many cores as possible. Sometimes
 this can cause you to run low on memory. You can use `-j` to adjust the number
