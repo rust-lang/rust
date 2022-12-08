@@ -144,7 +144,20 @@ impl<'a, 'tcx> TypeChecker<'a, 'tcx> {
             return true;
         }
 
-        crate::util::is_subtype(self.tcx, self.param_env, src, dest)
+        if crate::util::is_subtype(self.tcx, self.param_env, src, dest) {
+            return true;
+        }
+
+        // FIXME(@lcnr): This is needed to fix #105009 but it isn't yet clear to me why this is
+        // needed. The check for opaque types above should deal with all cases where we're in the
+        // defining scope of an opaque type and outside of the defining scope we shouldn't be able
+        // to rely on the hidden type.
+        crate::util::is_subtype(
+            self.tcx,
+            self.param_env.with_reveal_all_normalized(self.tcx),
+            src,
+            dest,
+        )
     }
 }
 
