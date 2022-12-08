@@ -4,7 +4,7 @@ use rustc_middle::ty;
 use rustc_mir_dataflow::move_paths::{
     IllegalMoveOrigin, IllegalMoveOriginKind, LookupResult, MoveError, MovePathIndex,
 };
-use rustc_span::Span;
+use rustc_span::{BytePos, Span};
 
 use crate::diagnostics::{DescribePlaceOpt, UseSpans};
 use crate::prefixes::PrefixSet;
@@ -148,7 +148,7 @@ impl<'a, 'tcx> MirBorrowckCtxt<'a, 'tcx> {
         match_span: Span,
         statement_span: Span,
     ) {
-        debug!("append_binding_error(match_place={:?}, match_span={:?})", match_place, match_span);
+        debug!(?match_place, ?match_span, "append_binding_error");
 
         let from_simple_let = match_place.is_none();
         let match_place = match_place.unwrap_or(move_from);
@@ -160,7 +160,7 @@ impl<'a, 'tcx> MirBorrowckCtxt<'a, 'tcx> {
                     if let GroupedMoveError::MovesFromPlace { span, binds_to, .. } = ge
                         && match_span == *span
                     {
-                        debug!("appending local({:?}) to list", bind_to);
+                        debug!("appending local({bind_to:?}) to list");
                         if !binds_to.is_empty() {
                             binds_to.push(bind_to);
                         }
@@ -198,7 +198,7 @@ impl<'a, 'tcx> MirBorrowckCtxt<'a, 'tcx> {
                     } = ge
                     {
                         if match_span == *span && mpi == *other_mpi {
-                            debug!("appending local({:?}) to list", bind_to);
+                            debug!("appending local({bind_to:?}) to list");
                             binds_to.push(bind_to);
                             return;
                         }
@@ -410,14 +410,12 @@ impl<'a, 'tcx> MirBorrowckCtxt<'a, 'tcx> {
     fn add_move_hints(&self, error: GroupedMoveError<'tcx>, err: &mut Diagnostic, span: Span) {
         match error {
             GroupedMoveError::MovesFromPlace { mut binds_to, move_from, .. } => {
-                if let Ok(snippet) = self.infcx.tcx.sess.source_map().span_to_snippet(span) {
-                    err.span_suggestion(
-                        span,
-                        "consider borrowing here",
-                        format!("&{snippet}"),
-                        Applicability::Unspecified,
-                    );
-                }
+                err.span_suggestion_verbose(
+                    span.shrink_to_lo(),
+                    "consider borrowing here",
+                    "&".to_string(),
+                    Applicability::Unspecified,
+                );
 
                 if binds_to.is_empty() {
                     let place_ty = move_from.ty(self.body, self.infcx.tcx).ty;
@@ -469,28 +467,36 @@ impl<'a, 'tcx> MirBorrowckCtxt<'a, 'tcx> {
                 VarBindingForm { pat_span, .. },
             )))) = bind_to.local_info
             {
-                if let Ok(pat_snippet) = self.infcx.tcx.sess.source_map().span_to_snippet(pat_span)
+                let Ok(pat_snippet) =
+                    self.infcx.tcx.sess.source_map().span_to_snippet(pat_span) else { continue; };
+                let Some(stripped) = pat_snippet.strip_prefix('&') else { continue; };
+                let inner_pat_snippet = stripped.trim_start();
+                let (pat_span, suggestion, to_remove) = if inner_pat_snippet.starts_with("mut")
+                    && inner_pat_snippet["mut".len()..].starts_with(rustc_lexer::is_whitespace)
                 {
-                    if let Some(stripped) = pat_snippet.strip_prefix('&') {
-                        let pat_snippet = stripped.trim_start();
-                        let (suggestion, to_remove) = if pat_snippet.starts_with("mut")
-                            && pat_snippet["mut".len()..].starts_with(rustc_lexer::is_whitespace)
-                        {
-                            (pat_snippet["mut".len()..].trim_start(), "&mut")
-                        } else {
-                            (pat_snippet, "&")
-                        };
-                        suggestions.push((pat_span, to_remove, suggestion.to_owned()));
-                    }
-                }
+                    let pat_span = pat_span.with_hi(
+                        pat_span.lo()
+                            + BytePos((pat_snippet.len() - inner_pat_snippet.len()) as u32),
+                    );
+                    (pat_span, String::new(), "mutable borrow")
+                } else {
+                    let pat_span = pat_span.with_hi(
+                        pat_span.lo()
+                            + BytePos(
+                                (pat_snippet.len() - inner_pat_snippet.trim_start().len()) as u32,
+                            ),
+                    );
+                    (pat_span, String::new(), "borrow")
+                };
+                suggestions.push((pat_span, to_remove, suggestion.to_owned()));
             }
         }
         suggestions.sort_unstable_by_key(|&(span, _, _)| span);
         suggestions.dedup_by_key(|&mut (span, _, _)| span);
         for (span, to_remove, suggestion) in suggestions {
-            err.span_suggestion(
+            err.span_suggestion_verbose(
                 span,
-                &format!("consider removing the `{to_remove}`"),
+                &format!("consider removing the {to_remove}"),
                 suggestion,
                 Applicability::MachineApplicable,
             );
@@ -521,8 +527,8 @@ impl<'a, 'tcx> MirBorrowckCtxt<'a, 'tcx> {
 
         if binds_to.len() > 1 {
             err.note(
-                "move occurs because these variables have types that \
-                      don't implement the `Copy` trait",
+                "move occurs because these variables have types that don't implement the `Copy` \
+                 trait",
             );
         }
     }

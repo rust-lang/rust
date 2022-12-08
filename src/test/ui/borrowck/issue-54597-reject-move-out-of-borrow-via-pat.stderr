@@ -2,10 +2,12 @@ error[E0507]: cannot move out of `*array` which is behind a shared reference
   --> $DIR/issue-54597-reject-move-out-of-borrow-via-pat.rs:14:13
    |
 LL |             *array
-   |             ^^^^^^
-   |             |
-   |             move occurs because `*array` has type `Vec<Value>`, which does not implement the `Copy` trait
-   |             help: consider borrowing here: `&*array`
+   |             ^^^^^^ move occurs because `*array` has type `Vec<Value>`, which does not implement the `Copy` trait
+   |
+help: consider borrowing here
+   |
+LL |             &*array
+   |             +
 
 error: aborting due to previous error
 

@@ -34,14 +34,10 @@ LL |         &mut [_a,
    |               data moved here
    |               move occurs because `_a` has type `Box<isize>`, which does not implement the `Copy` trait
    |
-help: consider removing the `&mut`
+help: consider removing the mutable borrow
    |
-LL ~         [_a,
-LL +
-LL +
-LL +
-LL +             ..
-LL ~         ] => {
+LL -         &mut [_a,
+LL +         mut [_a,
    |
 
 error[E0508]: cannot move out of type `[Box<isize>]`, a non-copy slice
@@ -52,7 +48,11 @@ LL |     let a = vec[0];
    |             |
    |             cannot move out of here
    |             move occurs because `vec[_]` has type `Box<isize>`, which does not implement the `Copy` trait
-   |             help: consider borrowing here: `&vec[0]`
+   |
+help: consider borrowing here
+   |
+LL |     let a = &vec[0];
+   |             +
 
 error[E0508]: cannot move out of type `[Box<isize>]`, a non-copy slice
   --> $DIR/borrowck-vec-pattern-nesting.rs:55:11
@@ -66,11 +66,10 @@ LL |          _b] => {}
    |          data moved here
    |          move occurs because `_b` has type `Box<isize>`, which does not implement the `Copy` trait
    |
-help: consider removing the `&mut`
+help: consider removing the mutable borrow
    |
-LL ~         [
-LL +
-LL ~          _b] => {}
+LL -         &mut [
+LL +         mut [
    |
 
 error[E0508]: cannot move out of type `[Box<isize>]`, a non-copy slice
@@ -81,7 +80,11 @@ LL |     let a = vec[0];
    |             |
    |             cannot move out of here
    |             move occurs because `vec[_]` has type `Box<isize>`, which does not implement the `Copy` trait
-   |             help: consider borrowing here: `&vec[0]`
+   |
+help: consider borrowing here
+   |
+LL |     let a = &vec[0];
+   |             +
 
 error[E0508]: cannot move out of type `[Box<isize>]`, a non-copy slice
   --> $DIR/borrowck-vec-pattern-nesting.rs:74:11
@@ -90,14 +93,17 @@ LL |     match vec {
    |           ^^^ cannot move out of here
 ...
 LL |         &mut [_a, _b, _c] => {}
-   |         -----------------
-   |         |     |   |   |
-   |         |     |   |   ...and here
-   |         |     |   ...and here
-   |         |     data moved here
-   |         help: consider removing the `&mut`: `[_a, _b, _c]`
+   |               --  --  -- ...and here
+   |               |   |
+   |               |   ...and here
+   |               data moved here
    |
    = note: move occurs because these variables have types that don't implement the `Copy` trait
+help: consider removing the mutable borrow
+   |
+LL -         &mut [_a, _b, _c] => {}
+LL +         mut [_a, _b, _c] => {}
+   |
 
 error[E0508]: cannot move out of type `[Box<isize>]`, a non-copy slice
   --> $DIR/borrowck-vec-pattern-nesting.rs:85:13
@@ -107,7 +113,11 @@ LL |     let a = vec[0];
    |             |
    |             cannot move out of here
    |             move occurs because `vec[_]` has type `Box<isize>`, which does not implement the `Copy` trait
-   |             help: consider borrowing here: `&vec[0]`
+   |
+help: consider borrowing here
+   |
+LL |     let a = &vec[0];
+   |             +
 
 error: aborting due to 8 previous errors
 

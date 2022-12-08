@@ -2,40 +2,52 @@ error[E0507]: cannot move out of a shared reference
   --> $DIR/duplicate-suggestions.rs:39:27
    |
 LL |     let &(X(_t), X(_u)) = &(x.clone(), x.clone());
-   |         ---------------   ^^^^^^^^^^^^^^^^^^^^^^^
-   |         |   |      |
-   |         |   |      ...and here
-   |         |   data moved here
-   |         help: consider removing the `&`: `(X(_t), X(_u))`
+   |             --     --     ^^^^^^^^^^^^^^^^^^^^^^^
+   |             |      |
+   |             |      ...and here
+   |             data moved here
    |
    = note: move occurs because these variables have types that don't implement the `Copy` trait
+help: consider removing the borrow
+   |
+LL -     let &(X(_t), X(_u)) = &(x.clone(), x.clone());
+LL +     let (X(_t), X(_u)) = &(x.clone(), x.clone());
+   |
 
 error[E0507]: cannot move out of a shared reference
-  --> $DIR/duplicate-suggestions.rs:43:50
+  --> $DIR/duplicate-suggestions.rs:42:50
    |
 LL |     if let &(Either::One(_t), Either::Two(_u)) = &(e.clone(), e.clone()) { }
-   |            -----------------------------------   ^^^^^^^^^^^^^^^^^^^^^^^
-   |            |             |                |
-   |            |             |                ...and here
-   |            |             data moved here
-   |            help: consider removing the `&`: `(Either::One(_t), Either::Two(_u))`
+   |                          --               --     ^^^^^^^^^^^^^^^^^^^^^^^
+   |                          |                |
+   |                          |                ...and here
+   |                          data moved here
    |
    = note: move occurs because these variables have types that don't implement the `Copy` trait
+help: consider removing the borrow
+   |
+LL -     if let &(Either::One(_t), Either::Two(_u)) = &(e.clone(), e.clone()) { }
+LL +     if let (Either::One(_t), Either::Two(_u)) = &(e.clone(), e.clone()) { }
+   |
 
 error[E0507]: cannot move out of a shared reference
-  --> $DIR/duplicate-suggestions.rs:47:53
+  --> $DIR/duplicate-suggestions.rs:45:53
    |
 LL |     while let &(Either::One(_t), Either::Two(_u)) = &(e.clone(), e.clone()) { }
-   |               -----------------------------------   ^^^^^^^^^^^^^^^^^^^^^^^
-   |               |             |                |
-   |               |             |                ...and here
-   |               |             data moved here
-   |               help: consider removing the `&`: `(Either::One(_t), Either::Two(_u))`
+   |                             --               --     ^^^^^^^^^^^^^^^^^^^^^^^
+   |                             |                |
+   |                             |                ...and here
+   |                             data moved here
    |
    = note: move occurs because these variables have types that don't implement the `Copy` trait
+help: consider removing the borrow
+   |
+LL -     while let &(Either::One(_t), Either::Two(_u)) = &(e.clone(), e.clone()) { }
+LL +     while let (Either::One(_t), Either::Two(_u)) = &(e.clone(), e.clone()) { }
+   |
 
 error[E0507]: cannot move out of a shared reference
-  --> $DIR/duplicate-suggestions.rs:51:11
+  --> $DIR/duplicate-suggestions.rs:48:11
    |
 LL |     match &(e.clone(), e.clone()) {
    |           ^^^^^^^^^^^^^^^^^^^^^^^
@@ -44,22 +56,24 @@ LL |         &(Either::One(_t), Either::Two(_u)) => (),
    |                       --               -- ...and here
    |                       |
    |                       data moved here
-...
+LL |
 LL |         &(Either::Two(_t), Either::One(_u)) => (),
    |                       -- ...and here   -- ...and here
    |
    = note: move occurs because these variables have types that don't implement the `Copy` trait
-help: consider removing the `&`
+help: consider removing the borrow
    |
-LL |         (Either::One(_t), Either::Two(_u)) => (),
-   |         ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-help: consider removing the `&`
+LL -         &(Either::One(_t), Either::Two(_u)) => (),
+LL +         (Either::One(_t), Either::Two(_u)) => (),
    |
-LL |         (Either::Two(_t), Either::One(_u)) => (),
-   |         ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+help: consider removing the borrow
+   |
+LL -         &(Either::Two(_t), Either::One(_u)) => (),
+LL +         (Either::Two(_t), Either::One(_u)) => (),
+   |
 
 error[E0507]: cannot move out of a shared reference
-  --> $DIR/duplicate-suggestions.rs:61:11
+  --> $DIR/duplicate-suggestions.rs:56:11
    |
 LL |     match &(e.clone(), e.clone()) {
    |           ^^^^^^^^^^^^^^^^^^^^^^^
@@ -70,82 +84,98 @@ LL |         &(Either::One(_t), Either::Two(_u))
    |                       data moved here
    |
    = note: move occurs because these variables have types that don't implement the `Copy` trait
-help: consider removing the `&`
+help: consider removing the borrow
    |
-LL ~         (Either::One(_t), Either::Two(_u))
-LL +
-LL +
-LL ~         | &(Either::Two(_t), Either::One(_u)) => (),
+LL -         &(Either::One(_t), Either::Two(_u))
+LL +         (Either::One(_t), Either::Two(_u))
    |
 
 error[E0507]: cannot move out of a shared reference
-  --> $DIR/duplicate-suggestions.rs:70:11
+  --> $DIR/duplicate-suggestions.rs:64:11
    |
 LL |     match &(e.clone(), e.clone()) {
    |           ^^^^^^^^^^^^^^^^^^^^^^^
 LL |
 LL |         &(Either::One(_t), Either::Two(_u)) => (),
-   |         -----------------------------------
-   |         |             |                |
-   |         |             |                ...and here
-   |         |             data moved here
-   |         help: consider removing the `&`: `(Either::One(_t), Either::Two(_u))`
+   |                       --               -- ...and here
+   |                       |
+   |                       data moved here
    |
    = note: move occurs because these variables have types that don't implement the `Copy` trait
+help: consider removing the borrow
+   |
+LL -         &(Either::One(_t), Either::Two(_u)) => (),
+LL +         (Either::One(_t), Either::Two(_u)) => (),
+   |
 
 error[E0507]: cannot move out of a shared reference
-  --> $DIR/duplicate-suggestions.rs:78:11
+  --> $DIR/duplicate-suggestions.rs:71:11
    |
 LL |     match &(e.clone(), e.clone()) {
    |           ^^^^^^^^^^^^^^^^^^^^^^^
 LL |
 LL |         &(Either::One(_t), Either::Two(_u)) => (),
-   |         -----------------------------------
-   |         |             |                |
-   |         |             |                ...and here
-   |         |             data moved here
-   |         help: consider removing the `&`: `(Either::One(_t), Either::Two(_u))`
+   |                       --               -- ...and here
+   |                       |
+   |                       data moved here
    |
    = note: move occurs because these variables have types that don't implement the `Copy` trait
+help: consider removing the borrow
+   |
+LL -         &(Either::One(_t), Either::Two(_u)) => (),
+LL +         (Either::One(_t), Either::Two(_u)) => (),
+   |
 
 error[E0507]: cannot move out of a mutable reference
-  --> $DIR/duplicate-suggestions.rs:91:31
+  --> $DIR/duplicate-suggestions.rs:82:31
    |
 LL |     let &mut (X(_t), X(_u)) = &mut (xm.clone(), xm.clone());
-   |         -------------------   ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
-   |         |       |      |
-   |         |       |      ...and here
-   |         |       data moved here
-   |         help: consider removing the `&mut`: `(X(_t), X(_u))`
+   |                 --     --     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |                 |      |
+   |                 |      ...and here
+   |                 data moved here
    |
    = note: move occurs because these variables have types that don't implement the `Copy` trait
+help: consider removing the mutable borrow
+   |
+LL -     let &mut (X(_t), X(_u)) = &mut (xm.clone(), xm.clone());
+LL +     let mut (X(_t), X(_u)) = &mut (xm.clone(), xm.clone());
+   |
 
 error[E0507]: cannot move out of a mutable reference
-  --> $DIR/duplicate-suggestions.rs:95:54
+  --> $DIR/duplicate-suggestions.rs:85:54
    |
 LL |     if let &mut (Either::One(_t), Either::Two(_u)) = &mut (em.clone(), em.clone()) { }
-   |            ---------------------------------------   ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
-   |            |                 |                |
-   |            |                 |                ...and here
-   |            |                 data moved here
-   |            help: consider removing the `&mut`: `(Either::One(_t), Either::Two(_u))`
+   |                              --               --     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |                              |                |
+   |                              |                ...and here
+   |                              data moved here
    |
    = note: move occurs because these variables have types that don't implement the `Copy` trait
+help: consider removing the mutable borrow
+   |
+LL -     if let &mut (Either::One(_t), Either::Two(_u)) = &mut (em.clone(), em.clone()) { }
+LL +     if let mut (Either::One(_t), Either::Two(_u)) = &mut (em.clone(), em.clone()) { }
+   |
 
 error[E0507]: cannot move out of a mutable reference
-  --> $DIR/duplicate-suggestions.rs:99:57
+  --> $DIR/duplicate-suggestions.rs:88:57
    |
 LL |     while let &mut (Either::One(_t), Either::Two(_u)) = &mut (em.clone(), em.clone()) { }
-   |               ---------------------------------------   ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
-   |               |                 |                |
-   |               |                 |                ...and here
-   |               |                 data moved here
-   |               help: consider removing the `&mut`: `(Either::One(_t), Either::Two(_u))`
+   |                                 --               --     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |                                 |                |
+   |                                 |                ...and here
+   |                                 data moved here
    |
    = note: move occurs because these variables have types that don't implement the `Copy` trait
+help: consider removing the mutable borrow
+   |
+LL -     while let &mut (Either::One(_t), Either::Two(_u)) = &mut (em.clone(), em.clone()) { }
+LL +     while let mut (Either::One(_t), Either::Two(_u)) = &mut (em.clone(), em.clone()) { }
+   |
 
 error[E0507]: cannot move out of a mutable reference
-  --> $DIR/duplicate-suggestions.rs:103:11
+  --> $DIR/duplicate-suggestions.rs:91:11
    |
 LL |     match &mut (em.clone(), em.clone()) {
    |           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
@@ -154,22 +184,24 @@ LL |         &mut (Either::One(_t), Either::Two(_u)) => (),
    |                           --               -- ...and here
    |                           |
    |                           data moved here
-...
+LL |
 LL |         &mut (Either::Two(_t), Either::One(_u)) => (),
    |                           -- ...and here   -- ...and here
    |
    = note: move occurs because these variables have types that don't implement the `Copy` trait
-help: consider removing the `&mut`
+help: consider removing the mutable borrow
    |
-LL |         (Either::One(_t), Either::Two(_u)) => (),
-   |         ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-help: consider removing the `&mut`
+LL -         &mut (Either::One(_t), Either::Two(_u)) => (),
+LL +         mut (Either::One(_t), Either::Two(_u)) => (),
    |
-LL |         (Either::Two(_t), Either::One(_u)) => (),
-   |         ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+help: consider removing the mutable borrow
+   |
+LL -         &mut (Either::Two(_t), Either::One(_u)) => (),
+LL +         mut (Either::Two(_t), Either::One(_u)) => (),
+   |
 
 error[E0507]: cannot move out of a mutable reference
-  --> $DIR/duplicate-suggestions.rs:113:11
+  --> $DIR/duplicate-suggestions.rs:99:11
    |
 LL |     match &mut (em.clone(), em.clone()) {
    |           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
@@ -180,82 +212,97 @@ LL |         &mut (Either::One(_t), Either::Two(_u))
    |                           data moved here
    |
    = note: move occurs because these variables have types that don't implement the `Copy` trait
-help: consider removing the `&mut`
+help: consider removing the mutable borrow
    |
-LL ~         (Either::One(_t), Either::Two(_u))
-LL +
-LL +
-LL ~         | &mut (Either::Two(_t), Either::One(_u)) => (),
+LL -         &mut (Either::One(_t), Either::Two(_u))
+LL +         mut (Either::One(_t), Either::Two(_u))
    |
 
 error[E0507]: cannot move out of a mutable reference
-  --> $DIR/duplicate-suggestions.rs:122:11
+  --> $DIR/duplicate-suggestions.rs:107:11
    |
 LL |     match &mut (em.clone(), em.clone()) {
    |           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 LL |
 LL |         &mut (Either::One(_t), Either::Two(_u)) => (),
-   |         ---------------------------------------
-   |         |                 |                |
-   |         |                 |                ...and here
-   |         |                 data moved here
-   |         help: consider removing the `&mut`: `(Either::One(_t), Either::Two(_u))`
+   |                           --               -- ...and here
+   |                           |
+   |                           data moved here
    |
    = note: move occurs because these variables have types that don't implement the `Copy` trait
+help: consider removing the mutable borrow
+   |
+LL -         &mut (Either::One(_t), Either::Two(_u)) => (),
+LL +         mut (Either::One(_t), Either::Two(_u)) => (),
+   |
 
 error[E0507]: cannot move out of a mutable reference
-  --> $DIR/duplicate-suggestions.rs:130:11
+  --> $DIR/duplicate-suggestions.rs:114:11
    |
 LL |     match &mut (em.clone(), em.clone()) {
    |           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 LL |
 LL |         &mut (Either::One(_t), Either::Two(_u)) => (),
-   |         ---------------------------------------
-   |         |                 |                |
-   |         |                 |                ...and here
-   |         |                 data moved here
-   |         help: consider removing the `&mut`: `(Either::One(_t), Either::Two(_u))`
+   |                           --               -- ...and here
+   |                           |
+   |                           data moved here
    |
    = note: move occurs because these variables have types that don't implement the `Copy` trait
+help: consider removing the mutable borrow
+   |
+LL -         &mut (Either::One(_t), Either::Two(_u)) => (),
+LL +         mut (Either::One(_t), Either::Two(_u)) => (),
+   |
 
 error[E0507]: cannot move out of a mutable reference
-  --> $DIR/duplicate-suggestions.rs:138:11
+  --> $DIR/duplicate-suggestions.rs:121:11
    |
 LL |     match &mut (em.clone(), em.clone()) {
    |           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 LL |
 LL |         &mut (Either::One(_t), Either::Two(_u)) => (),
-   |         ---------------------------------------
-   |         |                 |                |
-   |         |                 |                ...and here
-   |         |                 data moved here
-   |         help: consider removing the `&mut`: `(Either::One(_t), Either::Two(_u))`
+   |                           --               -- ...and here
+   |                           |
+   |                           data moved here
    |
    = note: move occurs because these variables have types that don't implement the `Copy` trait
+help: consider removing the mutable borrow
+   |
+LL -         &mut (Either::One(_t), Either::Two(_u)) => (),
+LL +         mut (Either::One(_t), Either::Two(_u)) => (),
+   |
 
 error[E0507]: cannot move out of a shared reference
-  --> $DIR/duplicate-suggestions.rs:86:11
+  --> $DIR/duplicate-suggestions.rs:78:11
    |
 LL |     fn f5(&(X(_t), X(_u)): &(X, X)) { }
    |           ^^^^--^^^^^--^^
-   |           |   |      |
-   |           |   |      ...and here
-   |           |   data moved here
-   |           help: consider removing the `&`: `(X(_t), X(_u))`
+   |               |      |
+   |               |      ...and here
+   |               data moved here
    |
    = note: move occurs because these variables have types that don't implement the `Copy` trait
+help: consider removing the borrow
+   |
+LL -     fn f5(&(X(_t), X(_u)): &(X, X)) { }
+LL +     fn f5((X(_t), X(_u)): &(X, X)) { }
+   |
 
 error[E0507]: cannot move out of a mutable reference
-  --> $DIR/duplicate-suggestions.rs:146:11
+  --> $DIR/duplicate-suggestions.rs:128:11
    |
 LL |     fn f6(&mut (X(_t), X(_u)): &mut (X, X)) { }
    |           ^^^^^^^^--^^^^^--^^
-   |           |       |      |
-   |           |       |      ...and here
-   |           |       data moved here
-   |           help: consider removing the `&mut`: `(X(_t), X(_u))`
+   |                   |      |
+   |                   |      ...and here
+   |                   data moved here
    |
    = note: move occurs because these variables have types that don't implement the `Copy` trait
+help: consider removing the mutable borrow
+   |
+LL -     fn f6(&mut (X(_t), X(_u)): &mut (X, X)) { }
+LL +     fn f6(mut (X(_t), X(_u)): &mut (X, X)) { }
+   |
 
 error: aborting due to 17 previous errors
 

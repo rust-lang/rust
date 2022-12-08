@@ -38,26 +38,21 @@ pub fn main() {
     let X(_t) = *s;
     //~^ ERROR cannot move
     //~| HELP consider borrowing here
-    //~| SUGGESTION s
     if let Either::One(_t) = *r { }
     //~^ ERROR cannot move
     //~| HELP consider borrowing here
-    //~| SUGGESTION r
     while let Either::One(_t) = *r { }
     //~^ ERROR cannot move
     //~| HELP consider borrowing here
-    //~| SUGGESTION r
     match *r {
         //~^ ERROR cannot move
         //~| HELP consider borrowing here
-        //~| SUGGESTION r
         Either::One(_t)
         | Either::Two(_t) => (),
     }
     match *r {
         //~^ ERROR cannot move
         //~| HELP consider borrowing here
-        //~| SUGGESTION r
         Either::One(_t) => (),
         Either::Two(ref _t) => (),
         // FIXME: should suggest removing `ref` too
@@ -66,26 +61,21 @@ pub fn main() {
     let X(_t) = *sm;
     //~^ ERROR cannot move
     //~| HELP consider borrowing here
-    //~| SUGGESTION sm
     if let Either::One(_t) = *rm { }
     //~^ ERROR cannot move
     //~| HELP consider borrowing here
-    //~| SUGGESTION rm
     while let Either::One(_t) = *rm { }
     //~^ ERROR cannot move
     //~| HELP consider borrowing here
-    //~| SUGGESTION rm
     match *rm {
         //~^ ERROR cannot move
         //~| HELP consider borrowing here
-        //~| SUGGESTION rm
         Either::One(_t)
         | Either::Two(_t) => (),
     }
     match *rm {
         //~^ ERROR cannot move
         //~| HELP consider borrowing here
-        //~| SUGGESTION rm
         Either::One(_t) => (),
         Either::Two(ref _t) => (),
         // FIXME: should suggest removing `ref` too
@@ -93,7 +83,6 @@ pub fn main() {
     match *rm {
         //~^ ERROR cannot move
         //~| HELP consider borrowing here
-        //~| SUGGESTION rm
         Either::One(_t) => (),
         Either::Two(ref mut _t) => (),
         // FIXME: should suggest removing `ref` too
@@ -102,26 +91,21 @@ pub fn main() {
     let X(_t) = vs[0];
     //~^ ERROR cannot move
     //~| HELP consider borrowing here
-    //~| SUGGESTION &vs[0]
     if let Either::One(_t) = vr[0] { }
     //~^ ERROR cannot move
     //~| HELP consider borrowing here
-    //~| SUGGESTION &vr[0]
     while let Either::One(_t) = vr[0] { }
     //~^ ERROR cannot move
     //~| HELP consider borrowing here
-    //~| SUGGESTION &vr[0]
     match vr[0] {
         //~^ ERROR cannot move
         //~| HELP consider borrowing here
-        //~| SUGGESTION &vr[0]
         Either::One(_t)
         | Either::Two(_t) => (),
     }
     match vr[0] {
         //~^ ERROR cannot move
         //~| HELP consider borrowing here
-        //~| SUGGESTION &vr[0]
         Either::One(_t) => (),
         Either::Two(ref _t) => (),
         // FIXME: should suggest removing `ref` too
@@ -130,26 +114,21 @@ pub fn main() {
     let X(_t) = vsm[0];
     //~^ ERROR cannot move
     //~| HELP consider borrowing here
-    //~| SUGGESTION &vsm[0]
     if let Either::One(_t) = vrm[0] { }
     //~^ ERROR cannot move
     //~| HELP consider borrowing here
-    //~| SUGGESTION &vrm[0]
     while let Either::One(_t) = vrm[0] { }
     //~^ ERROR cannot move
     //~| HELP consider borrowing here
-    //~| SUGGESTION &vrm[0]
     match vrm[0] {
         //~^ ERROR cannot move
         //~| HELP consider borrowing here
-        //~| SUGGESTION &vrm[0]
         Either::One(_t)
         | Either::Two(_t) => (),
     }
     match vrm[0] {
         //~^ ERROR cannot move
         //~| HELP consider borrowing here
-        //~| SUGGESTION &vrm[0]
         Either::One(_t) => (),
         Either::Two(ref _t) => (),
         // FIXME: should suggest removing `ref` too
@@ -157,7 +136,6 @@ pub fn main() {
     match vrm[0] {
         //~^ ERROR cannot move
         //~| HELP consider borrowing here
-        //~| SUGGESTION &vrm[0]
         Either::One(_t) => (),
         Either::Two(ref mut _t) => (),
         // FIXME: should suggest removing `ref` too
@@ -167,89 +145,73 @@ pub fn main() {
 
     let &X(_t) = s;
     //~^ ERROR cannot move
-    //~| HELP consider removing the `&`
-    //~| SUGGESTION X(_t)
+    //~| HELP consider removing
     if let &Either::One(_t) = r { }
     //~^ ERROR cannot move
-    //~| HELP consider removing the `&`
-    //~| SUGGESTION Either::One(_t)
+    //~| HELP consider removing
     while let &Either::One(_t) = r { }
     //~^ ERROR cannot move
-    //~| HELP consider removing the `&`
-    //~| SUGGESTION Either::One(_t)
+    //~| HELP consider removing
     match r {
         //~^ ERROR cannot move
         &Either::One(_t)
-        //~^ HELP consider removing the `&`
-        //~| SUGGESTION Either::One(_t)
+        //~^ HELP consider removing
         | &Either::Two(_t) => (),
         // FIXME: would really like a suggestion here too
     }
     match r {
         //~^ ERROR cannot move
         &Either::One(_t) => (),
-        //~^ HELP consider removing the `&`
-        //~| SUGGESTION Either::One(_t)
+        //~^ HELP consider removing
         &Either::Two(ref _t) => (),
     }
     match r {
         //~^ ERROR cannot move
         &Either::One(_t) => (),
-        //~^ HELP consider removing the `&`
-        //~| SUGGESTION Either::One(_t)
+        //~^ HELP consider removing
         Either::Two(_t) => (),
     }
     fn f1(&X(_t): &X) { }
     //~^ ERROR cannot move
-    //~| HELP consider removing the `&`
-    //~| SUGGESTION X(_t)
+    //~| HELP consider removing
 
     let &mut X(_t) = sm;
     //~^ ERROR cannot move
-    //~| HELP consider removing the `&mut`
-    //~| SUGGESTION X(_t)
+    //~| HELP consider removing
     if let &mut Either::One(_t) = rm { }
     //~^ ERROR cannot move
-    //~| HELP consider removing the `&mut`
-    //~| SUGGESTION Either::One(_t)
+    //~| HELP consider removing
     while let &mut Either::One(_t) = rm { }
     //~^ ERROR cannot move
-    //~| HELP consider removing the `&mut`
-    //~| SUGGESTION Either::One(_t)
+    //~| HELP consider removing
     match rm {
         //~^ ERROR cannot move
         &mut Either::One(_t) => (),
-        //~^ HELP consider removing the `&mut`
-        //~| SUGGESTION Either::One(_t)
+        //~^ HELP consider removing
         &mut Either::Two(_t) => (),
-        //~^ HELP consider removing the `&mut`
-        //~| SUGGESTION Either::Two(_t)
+        //~^ HELP consider removing
     }
     match rm {
         //~^ ERROR cannot move
         &mut Either::One(_t) => (),
-        //~^ HELP consider removing the `&mut`
-        //~| SUGGESTION Either::One(_t)
+        //~^ HELP consider removing
         &mut Either::Two(ref _t) => (),
     }
     match rm {
         //~^ ERROR cannot move
         &mut Either::One(_t) => (),
-        //~^ HELP consider removing the `&mut`
-        //~| SUGGESTION Either::One(_t)
+        //~^ HELP consider removing
         &mut Either::Two(ref mut _t) => (),
     }
     match rm {
         //~^ ERROR cannot move
         &mut Either::One(_t) => (),
-        //~^ HELP consider removing the `&mut`
-        //~| SUGGESTION Either::One(_t)
+        //~^ HELP consider removing
         Either::Two(_t) => (),
     }
     fn f2(&mut X(_t): &mut X) { }
     //~^ ERROR cannot move
-    //~| HELP consider removing the `&mut`
-    //~| SUGGESTION X(_t)
+    //~| HELP consider removing
 
     // move from tuple of &Either/&X
 
@@ -287,78 +249,77 @@ pub fn main() {
 
     let &X(_t) = &x;
     //~^ ERROR cannot move
-    //~| HELP consider removing the `&`
-    //~| SUGGESTION X(_t)
+    //~| HELP consider removing
     if let &Either::One(_t) = &e { }
     //~^ ERROR cannot move
-    //~| HELP consider removing the `&`
-    //~| SUGGESTION Either::One(_t)
+    //~| HELP consider removing
     while let &Either::One(_t) = &e { }
     //~^ ERROR cannot move
-    //~| HELP consider removing the `&`
-    //~| SUGGESTION Either::One(_t)
+    //~| HELP consider removing
     match &e {
         //~^ ERROR cannot move
         &Either::One(_t)
-        //~^ HELP consider removing the `&`
-        //~| SUGGESTION Either::One(_t)
+        //~^ HELP consider removing
         | &Either::Two(_t) => (),
         // FIXME: would really like a suggestion here too
     }
     match &e {
         //~^ ERROR cannot move
         &Either::One(_t) => (),
-        //~^ HELP consider removing the `&`
-        //~| SUGGESTION Either::One(_t)
+        //~^ HELP consider removing
         &Either::Two(ref _t) => (),
     }
     match &e {
         //~^ ERROR cannot move
         &Either::One(_t) => (),
-        //~^ HELP consider removing the `&`
-        //~| SUGGESTION Either::One(_t)
+        //~^ HELP consider removing
         Either::Two(_t) => (),
     }
 
     let &mut X(_t) = &mut xm;
     //~^ ERROR cannot move
-    //~| HELP consider removing the `&mut`
-    //~| SUGGESTION X(_t)
+    //~| HELP consider removing
     if let &mut Either::One(_t) = &mut em { }
     //~^ ERROR cannot move
-    //~| HELP consider removing the `&mut`
-    //~| SUGGESTION Either::One(_t)
+    //~| HELP consider removing
     while let &mut Either::One(_t) = &mut em { }
     //~^ ERROR cannot move
-    //~| HELP consider removing the `&mut`
-    //~| SUGGESTION Either::One(_t)
+    //~| HELP consider removing
     match &mut em {
         //~^ ERROR cannot move
         &mut Either::One(_t)
-        //~^ HELP consider removing the `&mut`
-        //~| SUGGESTION Either::One(_t)
+        //~^ HELP consider removing
         | &mut Either::Two(_t) => (),
         // FIXME: would really like a suggestion here too
     }
     match &mut em {
         //~^ ERROR cannot move
         &mut Either::One(_t) => (),
-        //~^ HELP consider removing the `&mut`
-        //~| SUGGESTION Either::One(_t)
+        //~^ HELP consider removing
         &mut Either::Two(ref _t) => (),
     }
     match &mut em {
         //~^ ERROR cannot move
         &mut Either::One(_t) => (),
-        //~^ HELP consider removing the `&mut`
-        //~| SUGGESTION Either::One(_t)
+        //~^ HELP consider removing
         &mut Either::Two(ref mut _t) => (),
     }
     match &mut em {
         //~^ ERROR cannot move
         &mut Either::One(_t) => (),
-        //~^ HELP consider removing the `&mut`
-        //~| SUGGESTION Either::One(_t)
+        //~^ HELP consider removing
         Either::Two(_t) => (),
     }
+}
+
+struct Testing {
+    a: Option<String>
+}
+
+fn testing(a: &Testing) {
+    let Some(_s) = a.a else {
+        //~^ ERROR cannot move
+        //~| HELP consider borrowing
+        return;
+    };
 }
