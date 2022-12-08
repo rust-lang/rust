@@ -9,7 +9,7 @@ use rustc_ast::{self as ast, *};
 use rustc_hir as hir;
 use rustc_hir::def::{DefKind, PartialRes, Res};
 use rustc_hir::GenericArg;
-use rustc_span::symbol::{kw, Ident};
+use rustc_span::symbol::{kw, sym, Ident};
 use rustc_span::{BytePos, Span, DUMMY_SP};
 
 use smallvec::{smallvec, SmallVec};
@@ -352,11 +352,18 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
             // fn f(_: impl Fn() -> impl Debug) -> impl Fn() -> impl Debug
             // //      disallowed --^^^^^^^^^^        allowed --^^^^^^^^^^
             // ```
-            FnRetTy::Ty(ty)
-                if matches!(itctx, ImplTraitContext::ReturnPositionOpaqueTy { .. })
-                    && self.tcx.features().impl_trait_in_fn_trait_return =>
-            {
-                self.lower_ty(&ty, itctx)
+            FnRetTy::Ty(ty) if matches!(itctx, ImplTraitContext::ReturnPositionOpaqueTy { .. }) => {
+                if self.tcx.features().impl_trait_in_fn_trait_return {
+                    self.lower_ty(&ty, itctx)
+                } else {
+                    self.lower_ty(
+                        &ty,
+                        &ImplTraitContext::FeatureGated(
+                            ImplTraitPosition::FnTraitReturn,
+                            sym::impl_trait_in_fn_trait_return,
+                        ),
+                    )
+                }
             }
             FnRetTy::Ty(ty) => {
                 self.lower_ty(&ty, &ImplTraitContext::Disallowed(ImplTraitPosition::FnTraitReturn))
