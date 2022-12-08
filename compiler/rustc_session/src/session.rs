@@ -952,6 +952,17 @@ impl Session {
     ) -> Option<Symbol> {
         attrs.iter().find(|at| at.has_name(name)).and_then(|at| at.value_str())
     }
+
+    pub fn diagnostic_width(&self) -> usize {
+        let default_column_width = 140;
+        if let Some(width) = self.opts.diagnostic_width {
+            width
+        } else if self.opts.unstable_opts.ui_testing {
+            default_column_width
+        } else {
+            termize::dimensions().map_or(default_column_width, |(w, _)| w)
+        }
+    }
 }
 
 // JUSTIFICATION: defn of the suggested wrapper fns
