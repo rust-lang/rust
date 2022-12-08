@@ -44,16 +44,11 @@ jobs:
     strategy:
       matrix:
         include:
-          - name: mingw-check
-            os: ubuntu-20.04-xl
-            env: {}
-          - name: x86_64-gnu-llvm-13
-            os: ubuntu-20.04-xl
-            env: {}
-          - name: x86_64-gnu-tools
+          - name: x86_64-msvc-1
             env:
-              CI_ONLY_WHEN_SUBMODULES_CHANGED: 1
-            os: ubuntu-20.04-xl
+              RUST_CONFIGURE_ARGS: "--build=x86_64-pc-windows-msvc --enable-profiler"
+              SCRIPT: "./eric-test.sh"
+            os: windows-latest-xl
     timeout-minutes: 600
     runs-on: "${{ matrix.os }}"
     steps:
