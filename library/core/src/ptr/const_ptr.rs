@@ -34,12 +34,24 @@ impl<T: ?Sized> *const T {
     #[rustc_const_unstable(feature = "const_ptr_is_null", issue = "74939")]
     #[inline]
     pub const fn is_null(self) -> bool {
+        #[inline]
+        const fn ct(ptr: *const u8) -> bool {
+            match (ptr).guaranteed_eq(null()) {
+                None => false,
+                Some(res) => res,
+            }
+        }
+
+        #[inline]
+        fn rt(ptr: *const u8) -> bool {
+            ptr.addr() == 0
+        }
+
         // Compare via a cast to a thin pointer, so fat pointers are only
         // considering their "data" part for null-ness.
-        match (self as *const u8).guaranteed_eq(null()) {
-            None => false,
-            Some(res) => res,
-        }
+
+        // SAFETY: NOYET
+        unsafe { intrinsics::const_eval_select((self as *const u8,), ct, rt) }
     }
 
     /// Casts to a pointer of another type.
