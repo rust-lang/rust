@@ -1,7 +1,6 @@
 use super::unsupported;
-use crate::convert::TryFrom;
 use crate::error::Error as StdError;
-use crate::ffi::{CStr, CString, OsStr, OsString};
+use crate::ffi::{CStr, OsStr, OsString};
 use crate::fmt;
 use crate::io;
 use crate::os::{
