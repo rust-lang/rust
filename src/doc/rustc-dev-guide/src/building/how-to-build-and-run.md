@@ -21,18 +21,6 @@ git clone https://github.com/rust-lang/rust.git
 cd rust
 ```
 
-There are also submodules for things like LLVM, `clippy`, `miri`, etc. The
-build tool will automatically clone and sync these for you. But if you want to,
-you can do the following:
-
-```sh
-# first time
-git submodule update --init --recursive
-
-# subsequent times (to pull new commits)
-git submodule update
-```
-
 ## Create a `config.toml`
 
 To start, run `./x.py setup`. This will do some initialization and create a
