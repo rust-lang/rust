@@ -1,7 +1,7 @@
 use crate::os::windows::prelude::*;
 
 use crate::ffi::OsStr;
-use crate::io::{self, IoSlice, IoSliceMut};
+use crate::io::{self, IoSlice, IoSliceMut, Read};
 use crate::mem;
 use crate::path::Path;
 use crate::ptr;
@@ -259,6 +259,10 @@ impl AnonPipe {
     #[inline]
     pub fn is_read_vectored(&self) -> bool {
         self.inner.is_read_vectored()
+    }
+
+    pub fn read_to_end(&self, buf: &mut Vec<u8>) -> io::Result<usize> {
+        self.handle().read_to_end(buf)
     }
 
     pub fn write(&self, buf: &[u8]) -> io::Result<usize> {

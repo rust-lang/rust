@@ -362,6 +362,10 @@ impl Read for ChildStdout {
     fn is_read_vectored(&self) -> bool {
         self.inner.is_read_vectored()
     }
+
+    fn read_to_end(&mut self, buf: &mut Vec<u8>) -> io::Result<usize> {
+        self.inner.read_to_end(buf)
+    }
 }
 
 impl AsInner<AnonPipe> for ChildStdout {
