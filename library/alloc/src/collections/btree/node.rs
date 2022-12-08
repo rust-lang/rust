@@ -819,7 +819,7 @@ impl<'a, K, V, NodeType, HandleType> Handle<NodeRef<marker::Mut<'a>, K, V, NodeT
 
     /// Returns a dormant copy of this handle which can be reawakened later.
     ///
-    /// See [`DormantMutRef`] for more details.
+    /// See `DormantMutRef` for more details.
     pub fn dormant(&self) -> Handle<NodeRef<marker::DormantMut, K, V, NodeType>, HandleType> {
         Handle { node: self.node.dormant(), idx: self.idx, _marker: PhantomData }
     }
@@ -1098,6 +1098,14 @@ impl<'a, K: 'a, V: 'a, NodeType> Handle<NodeRef<marker::Mut<'a>, K, V, NodeType>
         debug_assert!(self.idx < self.node.len());
         let leaf = self.node.into_leaf_mut();
         unsafe { leaf.vals.get_unchecked_mut(self.idx).assume_init_mut() }
+    }
+
+    pub fn into_kv_valmut(self) -> (&'a K, &'a mut V) {
+        debug_assert!(self.idx < self.node.len());
+        let leaf = self.node.into_leaf_mut();
+        let k = unsafe { leaf.keys.get_unchecked(self.idx).assume_init_ref() };
+        let v = unsafe { leaf.vals.get_unchecked_mut(self.idx).assume_init_mut() };
+        (k, v)
     }
 }
 
