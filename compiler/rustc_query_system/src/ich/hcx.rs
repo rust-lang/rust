@@ -6,7 +6,7 @@ use rustc_data_structures::stable_hasher::{HashStable, HashingControls, StableHa
 use rustc_data_structures::sync::Lrc;
 use rustc_hir as hir;
 use rustc_hir::def_id::{DefId, LocalDefId};
-use rustc_hir::definitions::{DefPathHash, Definitions};
+use rustc_hir::definitions::DefPathHash;
 use rustc_session::cstore::Untracked;
 use rustc_session::Session;
 use rustc_span::source_map::SourceMap;
@@ -19,7 +19,6 @@ use rustc_span::{BytePos, CachingSourceMapView, SourceFile, Span, SpanData, DUMM
 /// things (e.g., each `DefId`/`DefPath` is only hashed once).
 #[derive(Clone)]
 pub struct StableHashingContext<'a> {
-    definitions: &'a Definitions,
     untracked: &'a Untracked,
     // The value of `-Z incremental-ignore-spans`.
     // This field should only be used by `unstable_opts_incremental_ignore_span`
@@ -47,12 +46,11 @@ pub(super) enum BodyResolver<'tcx> {
 
 impl<'a> StableHashingContext<'a> {
     #[inline]
-    pub fn new(sess: &'a Session, definitions: &'a Definitions, untracked: &'a Untracked) -> Self {
+    pub fn new(sess: &'a Session, untracked: &'a Untracked) -> Self {
         let hash_spans_initial = !sess.opts.unstable_opts.incremental_ignore_spans;
 
         StableHashingContext {
             body_resolver: BodyResolver::Forbidden,
-            definitions,
             untracked,
             incremental_ignore_spans: sess.opts.unstable_opts.incremental_ignore_spans,
             caching_source_map: None,
@@ -98,7 +96,7 @@ impl<'a> StableHashingContext<'a> {
 
     #[inline]
     pub fn local_def_path_hash(&self, def_id: LocalDefId) -> DefPathHash {
-        self.definitions.def_path_hash(def_id)
+        self.untracked.definitions.read().def_path_hash(def_id)
     }
 
     #[inline]

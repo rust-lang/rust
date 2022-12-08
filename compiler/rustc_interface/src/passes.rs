@@ -805,7 +805,6 @@ pub fn create_global_ctxt<'tcx>(
     });
 
     let ty::ResolverOutputs {
-        definitions,
         global_ctxt: untracked_resolutions,
         ast_lowering: untracked_resolver_for_lowering,
         untracked,
@@ -818,7 +817,6 @@ pub fn create_global_ctxt<'tcx>(
                 lint_store,
                 arena,
                 hir_arena,
-                definitions,
                 untracked_resolutions,
                 untracked,
                 krate,

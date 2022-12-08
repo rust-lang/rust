@@ -35,7 +35,7 @@ use rustc_data_structures::profiling::SelfProfilerRef;
 use rustc_data_structures::sharded::{IntoPointer, ShardedHashMap};
 use rustc_data_structures::stable_hasher::{HashStable, StableHasher};
 use rustc_data_structures::steal::Steal;
-use rustc_data_structures::sync::{self, Lock, Lrc, ReadGuard, RwLock, WorkerLocal};
+use rustc_data_structures::sync::{self, Lock, Lrc, ReadGuard, WorkerLocal};
 use rustc_data_structures::unord::UnordSet;
 use rustc_data_structures::vec_map::VecMap;
 use rustc_errors::{
@@ -182,18 +182,12 @@ impl<'tcx> CtxtInterners<'tcx> {
     /// Interns a type.
     #[allow(rustc::usage_of_ty_tykind)]
     #[inline(never)]
-    fn intern_ty(
-        &self,
-        kind: TyKind<'tcx>,
-        sess: &Session,
-        definitions: &rustc_hir::definitions::Definitions,
-        untracked: &Untracked,
-    ) -> Ty<'tcx> {
+    fn intern_ty(&self, kind: TyKind<'tcx>, sess: &Session, untracked: &Untracked) -> Ty<'tcx> {
         Ty(Interned::new_unchecked(
             self.type_
                 .intern(kind, |kind| {
                     let flags = super::flags::FlagComputation::for_kind(&kind);
-                    let stable_hash = self.stable_hash(&flags, sess, definitions, untracked, &kind);
+                    let stable_hash = self.stable_hash(&flags, sess, untracked, &kind);
 
                     InternedInSet(self.arena.alloc(WithCachedTypeInfo {
                         internee: kind,
@@ -210,7 +204,6 @@ impl<'tcx> CtxtInterners<'tcx> {
         &self,
         flags: &ty::flags::FlagComputation,
         sess: &'a Session,
-        definitions: &'a rustc_hir::definitions::Definitions,
         untracked: &'a Untracked,
         val: &T,
     ) -> Fingerprint {
@@ -220,7 +213,7 @@ impl<'tcx> CtxtInterners<'tcx> {
             Fingerprint::ZERO
         } else {
             let mut hasher = StableHasher::new();
-            let mut hcx = StableHashingContext::new(sess, definitions, untracked);
+            let mut hcx = StableHashingContext::new(sess, untracked);
             val.hash_stable(&mut hcx, &mut hasher);
             hasher.finish()
         }
@@ -231,7 +224,6 @@ impl<'tcx> CtxtInterners<'tcx> {
         &self,
         kind: Binder<'tcx, PredicateKind<'tcx>>,
         sess: &Session,
-        definitions: &rustc_hir::definitions::Definitions,
         untracked: &Untracked,
     ) -> Predicate<'tcx> {
         Predicate(Interned::new_unchecked(
@@ -239,7 +231,7 @@ impl<'tcx> CtxtInterners<'tcx> {
                 .intern(kind, |kind| {
                     let flags = super::flags::FlagComputation::for_predicate(kind);
 
-                    let stable_hash = self.stable_hash(&flags, sess, definitions, untracked, &kind);
+                    let stable_hash = self.stable_hash(&flags, sess, untracked, &kind);
 
                     InternedInSet(self.arena.alloc(WithCachedTypeInfo {
                         internee: kind,
@@ -957,10 +949,9 @@ impl<'tcx> CommonTypes<'tcx> {
     fn new(
         interners: &CtxtInterners<'tcx>,
         sess: &Session,
-        definitions: &rustc_hir::definitions::Definitions,
         untracked: &Untracked,
     ) -> CommonTypes<'tcx> {
-        let mk = |ty| interners.intern_ty(ty, sess, definitions, untracked);
+        let mk = |ty| interners.intern_ty(ty, sess, untracked);
 
         CommonTypes {
             unit: mk(Tuple(List::empty())),
@@ -1105,8 +1096,6 @@ pub struct GlobalCtxt<'tcx> {
 
     /// Common consts, pre-interned for your convenience.
     pub consts: CommonConsts<'tcx>,
-
-    definitions: RwLock<Definitions>,
 
     untracked: Untracked,
     /// Output of the resolver.
@@ -1273,7 +1262,6 @@ impl<'tcx> TyCtxt<'tcx> {
         lint_store: Lrc<dyn Any + sync::Send + sync::Sync>,
         arena: &'tcx WorkerLocal<Arena<'tcx>>,
         hir_arena: &'tcx WorkerLocal<hir::Arena<'tcx>>,
-        definitions: Definitions,
         untracked_resolutions: ty::ResolverGlobalCtxt,
         untracked: Untracked,
         krate: Lrc<ast::Crate>,
@@ -1288,7 +1276,7 @@ impl<'tcx> TyCtxt<'tcx> {
             s.emit_fatal(err);
         });
         let interners = CtxtInterners::new(arena);
-        let common_types = CommonTypes::new(&interners, s, &definitions, &untracked);
+        let common_types = CommonTypes::new(&interners, s, &untracked);
         let common_lifetimes = CommonLifetimes::new(&interners);
         let common_consts = CommonConsts::new(&interners, &common_types);
 
@@ -1299,7 +1287,6 @@ impl<'tcx> TyCtxt<'tcx> {
             hir_arena,
             interners,
             dep_graph,
-            definitions: RwLock::new(definitions),
             prof: s.prof.clone(),
             types: common_types,
             lifetimes: common_lifetimes,
@@ -1477,7 +1464,7 @@ impl<'tcx> TyCtxt<'tcx> {
         // If this is a DefPathHash from the local crate, we can look up the
         // DefId in the tcx's `Definitions`.
         if stable_crate_id == self.sess.local_stable_crate_id() {
-            self.definitions.read().local_def_path_hash_to_def_id(hash, err).to_def_id()
+            self.untracked.definitions.read().local_def_path_hash_to_def_id(hash, err).to_def_id()
         } else {
             // If this is a DefPathHash from an upstream crate, let the CrateStore map
             // it to a DefId.
@@ -1537,7 +1524,7 @@ impl<'tcx> TyCtxtAt<'tcx> {
         // This is fine because:
         // - those queries are `eval_always` so we won't miss their result changing;
         // - this write will have happened before these queries are called.
-        let key = self.definitions.write().create_def(parent, data);
+        let key = self.untracked.definitions.write().create_def(parent, data);
 
         let feed = TyCtxtFeed { tcx: self.tcx, key };
         feed.def_span(self.span);
@@ -1551,7 +1538,7 @@ impl<'tcx> TyCtxt<'tcx> {
         // definitions change.
         self.dep_graph.read_index(DepNodeIndex::FOREVER_RED_NODE);
 
-        let definitions = &self.definitions;
+        let definitions = &self.untracked.definitions;
         std::iter::from_generator(|| {
             let mut i = 0;
 
@@ -1575,7 +1562,7 @@ impl<'tcx> TyCtxt<'tcx> {
 
         // Leak a read lock once we start iterating on definitions, to prevent adding new ones
         // while iterating.  If some query needs to add definitions, it should be `ensure`d above.
-        let definitions = self.definitions.leak();
+        let definitions = self.untracked.definitions.leak();
         definitions.def_path_table()
     }
 
@@ -1587,7 +1574,7 @@ impl<'tcx> TyCtxt<'tcx> {
         self.ensure().hir_crate(());
         // Leak a read lock once we start iterating on definitions, to prevent adding new ones
         // while iterating.  If some query needs to add definitions, it should be `ensure`d above.
-        let definitions = self.definitions.leak();
+        let definitions = self.untracked.definitions.leak();
         definitions.def_path_hash_to_def_index_map()
     }
 
@@ -1601,7 +1588,7 @@ impl<'tcx> TyCtxt<'tcx> {
     /// system if the result is otherwise tracked through queries
     #[inline]
     pub fn definitions_untracked(self) -> ReadGuard<'tcx, Definitions> {
-        self.definitions.read()
+        self.untracked.definitions.read()
     }
 
     /// Note that this is *untracked* and should only be used within the query
@@ -1616,9 +1603,7 @@ impl<'tcx> TyCtxt<'tcx> {
         self,
         f: impl FnOnce(StableHashingContext<'_>) -> R,
     ) -> R {
-        let definitions = self.definitions_untracked();
-        let hcx = StableHashingContext::new(self.sess, &*definitions, &self.untracked);
-        f(hcx)
+        f(StableHashingContext::new(self.sess, &self.untracked))
     }
 
     pub fn serialize_query_result_cache(self, encoder: FileEncoder) -> FileEncodeResult {
@@ -2412,7 +2397,6 @@ impl<'tcx> TyCtxt<'tcx> {
         self.interners.intern_ty(
             st,
             self.sess,
-            &self.definitions.read(),
             // This is only used to create a stable hashing context.
             &self.untracked,
         )
@@ -2423,7 +2407,6 @@ impl<'tcx> TyCtxt<'tcx> {
         self.interners.intern_predicate(
             binder,
             self.sess,
-            &self.definitions.read(),
             // This is only used to create a stable hashing context.
             &self.untracked,
         )

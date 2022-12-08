@@ -40,7 +40,6 @@ use rustc_data_structures::tagged_ptr::CopyTaggedPtr;
 use rustc_hir as hir;
 use rustc_hir::def::{CtorKind, CtorOf, DefKind, LifetimeRes, Res};
 use rustc_hir::def_id::{CrateNum, DefId, LocalDefId, LocalDefIdMap};
-use rustc_hir::definitions::Definitions;
 use rustc_hir::Node;
 use rustc_index::vec::IndexVec;
 use rustc_macros::HashStable;
@@ -150,7 +149,6 @@ mod sty;
 pub type RegisteredTools = FxHashSet<Ident>;
 
 pub struct ResolverOutputs {
-    pub definitions: Definitions,
     pub global_ctxt: ResolverGlobalCtxt,
     pub ast_lowering: ResolverAstLowering,
     pub untracked: Untracked,

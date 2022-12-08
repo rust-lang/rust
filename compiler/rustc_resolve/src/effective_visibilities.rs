@@ -107,10 +107,7 @@ impl<'r, 'a> EffectiveVisibilitiesVisitor<'r, 'a> {
                 r.effective_visibilities.update_eff_vis(
                     r.local_def_id(node_id),
                     eff_vis,
-                    ResolverTree(
-                        &r.definitions,
-                        &r.untracked.cstore.as_any().downcast_ref().unwrap(),
-                    ),
+                    ResolverTree(&r.untracked),
                 )
             }
         }

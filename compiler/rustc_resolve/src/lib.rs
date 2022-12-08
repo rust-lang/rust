@@ -29,7 +29,7 @@ use rustc_ast::{self as ast, NodeId, CRATE_NODE_ID};
 use rustc_ast::{AngleBracketedArg, Crate, Expr, ExprKind, GenericArg, GenericArgs, LitKind, Path};
 use rustc_data_structures::fx::{FxHashMap, FxHashSet, FxIndexMap, FxIndexSet};
 use rustc_data_structures::intern::Interned;
-use rustc_data_structures::sync::Lrc;
+use rustc_data_structures::sync::{Lrc, RwLock};
 use rustc_errors::{Applicability, DiagnosticBuilder, ErrorGuaranteed};
 use rustc_expand::base::{DeriveResolutions, SyntaxExtension, SyntaxExtensionKind};
 use rustc_hir::def::Namespace::*;
@@ -866,7 +866,6 @@ struct MacroData {
 pub struct Resolver<'a> {
     session: &'a Session,
 
-    definitions: Definitions,
     /// Item with a given `LocalDefId` was defined during macro expansion with ID `ExpnId`.
     expn_that_defined: FxHashMap<LocalDefId, ExpnId>,
 
@@ -1113,15 +1112,15 @@ impl<'a> AsMut<Resolver<'a>> for Resolver<'a> {
 /// A minimal subset of resolver that can implemenent `DefIdTree`, sometimes
 /// required to satisfy borrow checker by avoiding borrowing the whole resolver.
 #[derive(Clone, Copy)]
-struct ResolverTree<'a>(&'a Definitions, &'a CStore);
+struct ResolverTree<'a>(&'a Untracked);
 
 impl DefIdTree for ResolverTree<'_> {
     #[inline]
     fn opt_parent(self, id: DefId) -> Option<DefId> {
-        let ResolverTree(definitions, cstore) = self;
+        let ResolverTree(Untracked { definitions, cstore, .. }) = self;
         match id.as_local() {
-            Some(id) => definitions.def_key(id).parent,
-            None => cstore.def_key(id).parent,
+            Some(id) => definitions.read().def_key(id).parent,
+            None => cstore.as_any().downcast_ref::<CStore>().unwrap().def_key(id).parent,
         }
         .map(|index| DefId { index, ..id })
     }
@@ -1130,7 +1129,7 @@ impl DefIdTree for ResolverTree<'_> {
 impl<'a, 'b> DefIdTree for &'a Resolver<'b> {
     #[inline]
     fn opt_parent(self, id: DefId) -> Option<DefId> {
-        ResolverTree(&self.definitions, self.cstore()).opt_parent(id)
+        ResolverTree(&self.untracked).opt_parent(id)
     }
 }
 
@@ -1157,10 +1156,10 @@ impl Resolver<'_> {
             "adding a def'n for node-id {:?} and data {:?} but a previous def'n exists: {:?}",
             node_id,
             data,
-            self.definitions.def_key(self.node_id_to_def_id[&node_id]),
+            self.untracked.definitions.read().def_key(self.node_id_to_def_id[&node_id]),
         );
 
-        let def_id = self.definitions.create_def(parent, data);
+        let def_id = self.untracked.definitions.write().create_def(parent, data);
 
         // Create the definition.
         if expn_id != ExpnId::root() {
@@ -1259,7 +1258,6 @@ impl<'a> Resolver<'a> {
         let mut resolver = Resolver {
             session,
 
-            definitions,
             expn_that_defined: Default::default(),
 
             // The outermost module has def ID 0; this is not reflected in the
@@ -1314,7 +1312,11 @@ impl<'a> Resolver<'a> {
             metadata_loader,
             local_crate_name: crate_name,
             used_extern_options: Default::default(),
-            untracked: Untracked { cstore: Box::new(CStore::new(session)), source_span },
+            untracked: Untracked {
+                cstore: Box::new(CStore::new(session)),
+                source_span,
+                definitions: RwLock::new(definitions),
+            },
             macro_names: FxHashSet::default(),
             builtin_macros: Default::default(),
             builtin_macro_kinds: Default::default(),
@@ -1405,7 +1407,6 @@ impl<'a> Resolver<'a> {
 
     pub fn into_outputs(self) -> ResolverOutputs {
         let proc_macros = self.proc_macros.iter().map(|id| self.local_def_id(*id)).collect();
-        let definitions = self.definitions;
         let expn_that_defined = self.expn_that_defined;
         let visibilities = self.visibilities;
         let has_pub_restricted = self.has_pub_restricted;
@@ -1453,14 +1454,15 @@ impl<'a> Resolver<'a> {
             builtin_macro_kinds: self.builtin_macro_kinds,
             lifetime_elision_allowed: self.lifetime_elision_allowed,
         };
-        ResolverOutputs { definitions, global_ctxt, ast_lowering, untracked }
+        ResolverOutputs { global_ctxt, ast_lowering, untracked }
     }
 
     pub fn clone_outputs(&self) -> ResolverOutputs {
         let proc_macros = self.proc_macros.iter().map(|id| self.local_def_id(*id)).collect();
-        let definitions = self.definitions.clone();
+        let definitions = self.untracked.definitions.clone();
         let cstore = Box::new(self.cstore().clone());
-        let untracked = Untracked { cstore, source_span: self.untracked.source_span.clone() };
+        let untracked =
+            Untracked { cstore, source_span: self.untracked.source_span.clone(), definitions };
         let global_ctxt = ResolverGlobalCtxt {
             expn_that_defined: self.expn_that_defined.clone(),
             visibilities: self.visibilities.clone(),
@@ -1496,11 +1498,11 @@ impl<'a> Resolver<'a> {
             builtin_macro_kinds: self.builtin_macro_kinds.clone(),
             lifetime_elision_allowed: self.lifetime_elision_allowed.clone(),
         };
-        ResolverOutputs { definitions, global_ctxt, ast_lowering, untracked }
+        ResolverOutputs { global_ctxt, ast_lowering, untracked }
     }
 
     fn create_stable_hashing_context(&self) -> StableHashingContext<'_> {
-        StableHashingContext::new(self.session, &self.definitions, &self.untracked)
+        StableHashingContext::new(self.session, &self.untracked)
     }
 
     pub fn crate_loader(&mut self) -> CrateLoader<'_> {
@@ -1509,7 +1511,7 @@ impl<'a> Resolver<'a> {
             &*self.metadata_loader,
             self.local_crate_name,
             &mut *self.untracked.cstore.untracked_as_any().downcast_mut().unwrap(),
-            &self.definitions,
+            self.untracked.definitions.read(),
             &mut self.used_extern_options,
         )
     }
@@ -1958,7 +1960,7 @@ impl<'a> Resolver<'a> {
     #[inline]
     pub fn opt_name(&self, def_id: DefId) -> Option<Symbol> {
         let def_key = match def_id.as_local() {
-            Some(def_id) => self.definitions.def_key(def_id),
+            Some(def_id) => self.untracked.definitions.read().def_key(def_id),
             None => self.cstore().def_key(def_id),
         };
         def_key.get_opt_name()

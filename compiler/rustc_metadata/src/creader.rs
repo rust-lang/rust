@@ -13,7 +13,7 @@ use rustc_ast::expand::allocator::AllocatorKind;
 use rustc_ast::{self as ast, *};
 use rustc_data_structures::fx::{FxHashMap, FxHashSet};
 use rustc_data_structures::svh::Svh;
-use rustc_data_structures::sync::Lrc;
+use rustc_data_structures::sync::{Lrc, ReadGuard};
 use rustc_expand::base::SyntaxExtension;
 use rustc_hir::def_id::{CrateNum, LocalDefId, StableCrateId, LOCAL_CRATE};
 use rustc_hir::definitions::Definitions;
@@ -69,7 +69,7 @@ pub struct CrateLoader<'a> {
     // Immutable configuration.
     sess: &'a Session,
     metadata_loader: &'a MetadataLoaderDyn,
-    definitions: &'a Definitions,
+    definitions: ReadGuard<'a, Definitions>,
     local_crate_name: Symbol,
     // Mutable output.
     cstore: &'a mut CStore,
@@ -267,7 +267,7 @@ impl<'a> CrateLoader<'a> {
         metadata_loader: &'a MetadataLoaderDyn,
         local_crate_name: Symbol,
         cstore: &'a mut CStore,
-        definitions: &'a Definitions,
+        definitions: ReadGuard<'a, Definitions>,
         used_extern_options: &'a mut FxHashSet<Symbol>,
     ) -> Self {
         CrateLoader {
