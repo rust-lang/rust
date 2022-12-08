@@ -1482,15 +1482,15 @@ impl<'a, 'tcx> Resolver<'a, 'tcx> {
         StableHashingContext::new(self.tcx.sess, &self.untracked)
     }
 
-    fn crate_loader(&mut self) -> CrateLoader<'_> {
-        CrateLoader::new(
+    fn crate_loader<T>(&mut self, f: impl FnOnce(&mut CrateLoader<'_>) -> T) -> T {
+        f(&mut CrateLoader::new(
             &self.tcx.sess,
             &*self.metadata_loader,
             self.local_crate_name,
             &mut *self.untracked.cstore.untracked_as_any().downcast_mut().unwrap(),
             self.untracked.definitions.read(),
             &mut self.used_extern_options,
-        )
+        ))
     }
 
     fn cstore(&self) -> &CStore {
@@ -1539,7 +1539,9 @@ impl<'a, 'tcx> Resolver<'a, 'tcx> {
             self.tcx.sess.time("resolve_main", || self.resolve_main());
             self.tcx.sess.time("resolve_check_unused", || self.check_unused(krate));
             self.tcx.sess.time("resolve_report_errors", || self.report_errors(krate));
-            self.tcx.sess.time("resolve_postprocess", || self.crate_loader().postprocess(krate));
+            self.tcx
+                .sess
+                .time("resolve_postprocess", || self.crate_loader(|c| c.postprocess(krate)));
         });
     }
 
@@ -1879,10 +1881,10 @@ impl<'a, 'tcx> Resolver<'a, 'tcx> {
             } else {
                 let crate_id = if finalize {
                     let Some(crate_id) =
-                        self.crate_loader().process_path_extern(ident.name, ident.span) else { return Some(self.dummy_binding); };
+                        self.crate_loader(|c| c.process_path_extern(ident.name, ident.span)) else { return Some(self.dummy_binding); };
                     crate_id
                 } else {
-                    self.crate_loader().maybe_process_path_extern(ident.name)?
+                    self.crate_loader(|c| c.maybe_process_path_extern(ident.name))?
                 };
                 let crate_root = self.expect_module(crate_id.as_def_id());
                 let vis = ty::Visibility::<LocalDefId>::Public;
