@@ -32,15 +32,19 @@ LL +     if let E::Bar(identifier) = &s.x {
    |
 
 error[E0507]: cannot move out of a shared reference
-  --> $DIR/by-move-pattern-binding.rs:25:17
+  --> $DIR/by-move-pattern-binding.rs:25:31
    |
 LL |     let &E::Bar(identifier) = &s.x else {
-   |                 ^^^^^^^^^^ move occurs because value has type `String`, which does not implement the `Copy` trait
+   |                 ----------    ^^^^
+   |                 |
+   |                 data moved here
+   |                 move occurs because `identifier` has type `String`, which does not implement the `Copy` trait
    |
-help: consider borrowing here
+help: consider removing the borrow
    |
-LL |     let &E::Bar(&identifier) = &s.x else {
-   |                 +
+LL -     let &E::Bar(identifier) = &s.x else {
+LL +     let E::Bar(identifier) = &s.x else {
+   |
 
 error: aborting due to 3 previous errors
 

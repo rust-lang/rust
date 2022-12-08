@@ -319,7 +319,6 @@ struct Testing {
 fn testing(a: &Testing) {
     let Some(_s) = a.a else {
         //~^ ERROR cannot move
-        //~| HELP consider borrowing
         return;
     };
 }

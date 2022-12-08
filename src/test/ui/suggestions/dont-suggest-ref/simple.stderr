@@ -902,15 +902,13 @@ LL |     fn f4((&mut X(_t),): (&mut X,)) { }
    |                   move occurs because `_t` has type `Y`, which does not implement the `Copy` trait
 
 error[E0507]: cannot move out of `a.a` as enum variant `Some` which is behind a shared reference
-  --> $DIR/simple.rs:320:14
+  --> $DIR/simple.rs:320:20
    |
 LL |     let Some(_s) = a.a else {
-   |              ^^ move occurs because `a.a.0` has type `String`, which does not implement the `Copy` trait
-   |
-help: consider borrowing here
-   |
-LL |     let Some(&_s) = a.a else {
-   |              +
+   |              --    ^^^
+   |              |
+   |              data moved here
+   |              move occurs because `_s` has type `String`, which does not implement the `Copy` trait
 
 error: aborting due to 61 previous errors
 

@@ -231,7 +231,7 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
                                         remainder_span,
                                         pattern,
                                         None,
-                                        Some((None, initializer_span)),
+                                        Some((Some(&destination), initializer_span)),
                                     );
                                     this.visit_primary_bindings(
                                         pattern,
