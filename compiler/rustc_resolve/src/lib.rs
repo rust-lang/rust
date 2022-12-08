@@ -27,7 +27,7 @@ use rustc_ast::{self as ast, NodeId, CRATE_NODE_ID};
 use rustc_ast::{AngleBracketedArg, Crate, Expr, ExprKind, GenericArg, GenericArgs, LitKind, Path};
 use rustc_data_structures::fx::{FxHashMap, FxHashSet, FxIndexMap, FxIndexSet};
 use rustc_data_structures::intern::Interned;
-use rustc_data_structures::sync::{Lrc, RwLock};
+use rustc_data_structures::sync::{Lrc, MappedReadGuard, ReadGuard, RwLock};
 use rustc_errors::{Applicability, DiagnosticBuilder, ErrorGuaranteed};
 use rustc_expand::base::{DeriveResolutions, SyntaxExtension, SyntaxExtensionKind};
 use rustc_hir::def::Namespace::{self, *};
@@ -1132,7 +1132,7 @@ impl DefIdTree for ResolverTree<'_> {
         let ResolverTree(Untracked { definitions, cstore, .. }) = self;
         match id.as_local() {
             Some(id) => definitions.read().def_key(id).parent,
-            None => cstore.as_any().downcast_ref::<CStore>().unwrap().def_key(id).parent,
+            None => cstore.read().as_any().downcast_ref::<CStore>().unwrap().def_key(id).parent,
         }
         .map(|index| DefId { index, ..id })
     }
@@ -1328,7 +1328,7 @@ impl<'a, 'tcx> Resolver<'a, 'tcx> {
             local_crate_name: crate_name,
             used_extern_options: Default::default(),
             untracked: Untracked {
-                cstore: Box::new(CStore::new(session)),
+                cstore: RwLock::new(Box::new(CStore::new(session))),
                 source_span,
                 definitions: RwLock::new(definitions),
             },
@@ -1487,14 +1487,14 @@ impl<'a, 'tcx> Resolver<'a, 'tcx> {
             &self.tcx.sess,
             &*self.metadata_loader,
             self.local_crate_name,
-            &mut *self.untracked.cstore.untracked_as_any().downcast_mut().unwrap(),
+            &mut *self.untracked.cstore.write().untracked_as_any().downcast_mut().unwrap(),
             self.untracked.definitions.read(),
             &mut self.used_extern_options,
         ))
     }
 
-    fn cstore(&self) -> &CStore {
-        self.untracked.cstore.as_any().downcast_ref().unwrap()
+    fn cstore(&self) -> MappedReadGuard<'_, CStore> {
+        ReadGuard::map(self.untracked.cstore.read(), |r| r.as_any().downcast_ref().unwrap())
     }
 
     fn dummy_ext(&self, macro_kind: MacroKind) -> Lrc<SyntaxExtension> {

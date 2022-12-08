@@ -8,7 +8,7 @@ use rustc_ast::expand::allocator::AllocatorKind;
 use rustc_ast::{self as ast, *};
 use rustc_data_structures::fx::{FxHashMap, FxHashSet};
 use rustc_data_structures::svh::Svh;
-use rustc_data_structures::sync::ReadGuard;
+use rustc_data_structures::sync::{MappedReadGuard, ReadGuard};
 use rustc_expand::base::SyntaxExtension;
 use rustc_hir::def_id::{CrateNum, LocalDefId, StableCrateId, LOCAL_CRATE};
 use rustc_hir::definitions::Definitions;
@@ -127,11 +127,10 @@ impl<'a> std::fmt::Debug for CrateDump<'a> {
 }
 
 impl CStore {
-    pub fn from_tcx(tcx: TyCtxt<'_>) -> &CStore {
-        tcx.cstore_untracked()
-            .as_any()
-            .downcast_ref::<CStore>()
-            .expect("`tcx.cstore` is not a `CStore`")
+    pub fn from_tcx(tcx: TyCtxt<'_>) -> MappedReadGuard<'_, CStore> {
+        MappedReadGuard::map(tcx.cstore_untracked(), |c| {
+            c.as_any().downcast_ref::<CStore>().expect("`tcx.cstore` is not a `CStore`")
+        })
     }
 
     fn alloc_new_crate_num(&mut self) -> CrateNum {

@@ -215,6 +215,9 @@ impl<'tcx> Queries<'tcx> {
                 ast_lowering: untracked_resolver_for_lowering,
             } = resolver_outputs;
 
+            // Make sure we don't mutate the cstore from here on.
+            std::mem::forget(untracked.cstore.read());
+
             let gcx = passes::create_global_ctxt(
                 self.compiler,
                 lint_store,

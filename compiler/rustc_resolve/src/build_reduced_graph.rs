@@ -130,11 +130,13 @@ impl<'a, 'tcx> Resolver<'a, 'tcx> {
                         def_key.disambiguated_data.data.get_opt_name().expect("module without name")
                     };
 
+                    let expn_id = self.cstore().module_expansion_untracked(def_id, &self.tcx.sess);
+                    let span = self.cstore().get_span_untracked(def_id, &self.tcx.sess);
                     Some(self.new_module(
                         parent,
                         ModuleKind::Def(def_kind, def_id, name),
-                        self.cstore().module_expansion_untracked(def_id, &self.tcx.sess),
-                        self.cstore().get_span_untracked(def_id, &self.tcx.sess),
+                        expn_id,
+                        span,
                         // FIXME: Account for `#[no_implicit_prelude]` attributes.
                         parent.map_or(false, |module| module.no_implicit_prelude),
                     ))
@@ -179,7 +181,8 @@ impl<'a, 'tcx> Resolver<'a, 'tcx> {
             return macro_data.clone();
         }
 
-        let (ext, macro_rules) = match self.cstore().load_macro_untracked(def_id, &self.tcx.sess) {
+        let load_macro_untracked = self.cstore().load_macro_untracked(def_id, &self.tcx.sess);
+        let (ext, macro_rules) = match load_macro_untracked {
             LoadedMacro::MacroDef(item, edition) => (
                 Lrc::new(self.compile_macro(&item, edition).0),
                 matches!(item.kind, ItemKind::MacroDef(def) if def.macro_rules),
@@ -204,9 +207,9 @@ impl<'a, 'tcx> Resolver<'a, 'tcx> {
     }
 
     pub(crate) fn build_reduced_graph_external(&mut self, module: Module<'a>) {
-        for child in
-            Vec::from_iter(self.cstore().module_children_untracked(module.def_id(), self.tcx.sess))
-        {
+        let children =
+            Vec::from_iter(self.cstore().module_children_untracked(module.def_id(), self.tcx.sess));
+        for child in children {
             let parent_scope = ParentScope::module(module, self);
             BuildReducedGraphVisitor { r: self, parent_scope }
                 .build_reduced_graph_for_external_crate_res(child);
@@ -1000,23 +1003,26 @@ impl<'a, 'b, 'tcx> BuildReducedGraphVisitor<'a, 'b, 'tcx> {
             | Res::Err => bug!("unexpected resolution: {:?}", res),
         }
         // Record some extra data for better diagnostics.
-        let cstore = self.r.cstore();
         match res {
             Res::Def(DefKind::Struct, def_id) => {
+                let cstore = self.r.cstore();
                 if let Some((ctor_kind, ctor_def_id)) = cstore.ctor_untracked(def_id) {
                     let ctor_res = Res::Def(DefKind::Ctor(CtorOf::Struct, ctor_kind), ctor_def_id);
                     let ctor_vis = cstore.visibility_untracked(ctor_def_id);
                     let field_visibilities =
                         cstore.struct_field_visibilities_untracked(def_id).collect();
+                    drop(cstore);
                     self.r
                         .struct_constructors
                         .insert(def_id, (ctor_res, ctor_vis, field_visibilities));
+                } else {
+                    drop(cstore);
                 }
                 self.insert_field_names_extern(def_id)
             }
             Res::Def(DefKind::Union, def_id) => self.insert_field_names_extern(def_id),
             Res::Def(DefKind::AssocFn, def_id) => {
-                if cstore.fn_has_self_parameter_untracked(def_id, self.r.tcx.sess) {
+                if self.r.cstore().fn_has_self_parameter_untracked(def_id, self.r.tcx.sess) {
                     self.r.has_self.insert(def_id);
                 }
             }
