@@ -921,7 +921,7 @@ impl<'a, 'tcx> MirBorrowckCtxt<'a, 'tcx> {
                 }
             }
             hir::ExprKind::Block(blk, _) => {
-                if let Some(ref expr) = blk.expr {
+                if let Some(expr) = blk.expr {
                     // only when the block is a closure
                     if let hir::ExprKind::Closure(hir::Closure {
                         capture_clause: hir::CaptureBy::Ref,

@@ -523,6 +523,11 @@ impl<'a, 'tcx> ExprUseVisitor<'a, 'tcx> {
         // Consume the expressions supplying values for each field.
         for field in fields {
             self.consume_expr(field.expr);
+
+            // The struct path probably didn't resolve
+            if self.mc.typeck_results.opt_field_index(field.hir_id).is_none() {
+                self.tcx().sess.delay_span_bug(field.span, "couldn't resolve index for field");
+            }
         }
 
         let with_expr = match *opt_with {
@@ -540,9 +545,9 @@ impl<'a, 'tcx> ExprUseVisitor<'a, 'tcx> {
             ty::Adt(adt, substs) if adt.is_struct() => {
                 // Consume those fields of the with expression that are needed.
                 for (f_index, with_field) in adt.non_enum_variant().fields.iter().enumerate() {
-                    let is_mentioned = fields.iter().any(|f| {
-                        self.tcx().field_index(f.hir_id, self.mc.typeck_results) == f_index
-                    });
+                    let is_mentioned = fields
+                        .iter()
+                        .any(|f| self.mc.typeck_results.opt_field_index(f.hir_id) == Some(f_index));
                     if !is_mentioned {
                         let field_place = self.mc.cat_projection(
                             &*with_expr,

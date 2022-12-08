@@ -125,12 +125,12 @@ fn inject_impl_of_structural_trait(
     structural_path: generic::ty::Path,
     push: &mut dyn FnMut(Annotatable),
 ) {
-    let Annotatable::Item(ref item) = *item else {
+    let Annotatable::Item(item) = item else {
         unreachable!();
     };
 
-    let generics = match item.kind {
-        ItemKind::Struct(_, ref generics) | ItemKind::Enum(_, ref generics) => generics,
+    let generics = match &item.kind {
+        ItemKind::Struct(_, generics) | ItemKind::Enum(_, generics) => generics,
         // Do not inject `impl Structural for Union`. (`PartialEq` does not
         // support unions, so we will see error downstream.)
         ItemKind::Union(..) => return,

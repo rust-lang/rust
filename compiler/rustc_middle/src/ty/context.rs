@@ -667,6 +667,14 @@ impl<'tcx> TypeckResults<'tcx> {
         LocalTableInContextMut { hir_owner: self.hir_owner, data: &mut self.field_indices }
     }
 
+    pub fn field_index(&self, id: hir::HirId) -> usize {
+        self.field_indices().get(id).cloned().expect("no index for a field")
+    }
+
+    pub fn opt_field_index(&self, id: hir::HirId) -> Option<usize> {
+        self.field_indices().get(id).cloned()
+    }
+
     pub fn user_provided_types(&self) -> LocalTableInContext<'_, CanonicalUserType<'tcx>> {
         LocalTableInContext { hir_owner: self.hir_owner, data: &self.user_provided_types }
     }

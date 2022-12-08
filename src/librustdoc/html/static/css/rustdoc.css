@@ -212,8 +212,7 @@ pre.rust a,
 .mobile-topbar h2 a,
 h1 a,
 .search-results a,
-.module-item .stab,
-.import-item .stab,
+.item-left .stab,
 .result-name .primitive > i, .result-name .keyword > i {
 	color: var(--main-color);
 }
@@ -1010,8 +1009,7 @@ so that we can apply CSS-filters to change the arrow color in themes */
 		0 -1px 0 black;
 }
 
-.module-item .stab,
-.import-item .stab {
+.item-left .stab {
 	border-radius: 3px;
 	display: inline-block;
 	line-height: 1.2;

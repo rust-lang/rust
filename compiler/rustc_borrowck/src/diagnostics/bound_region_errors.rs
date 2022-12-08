@@ -243,9 +243,9 @@ impl<'tcx> TypeOpInfo<'tcx> for PredicateQuery<'tcx> {
         placeholder_region: ty::Region<'tcx>,
         error_region: Option<ty::Region<'tcx>>,
     ) -> Option<DiagnosticBuilder<'tcx, ErrorGuaranteed>> {
-        let (ref infcx, key, _) =
+        let (infcx, key, _) =
             mbcx.infcx.tcx.infer_ctxt().build_with_canonical(cause.span, &self.canonical_query);
-        let ocx = ObligationCtxt::new(infcx);
+        let ocx = ObligationCtxt::new(&infcx);
         type_op_prove_predicate_with_cause(&ocx, key, cause);
         try_extract_error_from_fulfill_cx(&ocx, placeholder_region, error_region)
     }
@@ -284,9 +284,9 @@ where
         placeholder_region: ty::Region<'tcx>,
         error_region: Option<ty::Region<'tcx>>,
     ) -> Option<DiagnosticBuilder<'tcx, ErrorGuaranteed>> {
-        let (ref infcx, key, _) =
+        let (infcx, key, _) =
             mbcx.infcx.tcx.infer_ctxt().build_with_canonical(cause.span, &self.canonical_query);
-        let ocx = ObligationCtxt::new(infcx);
+        let ocx = ObligationCtxt::new(&infcx);
 
         // FIXME(lqd): Unify and de-duplicate the following with the actual
         // `rustc_traits::type_op::type_op_normalize` query to allow the span we need in the
@@ -328,9 +328,9 @@ impl<'tcx> TypeOpInfo<'tcx> for AscribeUserTypeQuery<'tcx> {
         placeholder_region: ty::Region<'tcx>,
         error_region: Option<ty::Region<'tcx>>,
     ) -> Option<DiagnosticBuilder<'tcx, ErrorGuaranteed>> {
-        let (ref infcx, key, _) =
+        let (infcx, key, _) =
             mbcx.infcx.tcx.infer_ctxt().build_with_canonical(cause.span, &self.canonical_query);
-        let ocx = ObligationCtxt::new(infcx);
+        let ocx = ObligationCtxt::new(&infcx);
         type_op_ascribe_user_type_with_span(&ocx, key, Some(cause.span)).ok()?;
         try_extract_error_from_fulfill_cx(&ocx, placeholder_region, error_region)
     }

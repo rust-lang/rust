@@ -587,9 +587,9 @@ impl<'cx, 'tcx> UniversalRegionsBuilder<'cx, 'tcx> {
         let typeck_root_def_id = tcx.typeck_root_def_id(self.mir_def.did.to_def_id());
         let identity_substs = InternalSubsts::identity_for_item(tcx, typeck_root_def_id);
         let fr_substs = match defining_ty {
-            DefiningTy::Closure(_, ref substs)
-            | DefiningTy::Generator(_, ref substs, _)
-            | DefiningTy::InlineConst(_, ref substs) => {
+            DefiningTy::Closure(_, substs)
+            | DefiningTy::Generator(_, substs, _)
+            | DefiningTy::InlineConst(_, substs) => {
                 // In the case of closures, we rely on the fact that
                 // the first N elements in the ClosureSubsts are
                 // inherited from the `typeck_root_def_id`.

@@ -469,8 +469,8 @@ impl<'cx, 'tcx> MirBorrowckCtxt<'cx, 'tcx> {
                 } else if self.was_captured_by_trait_object(borrow) {
                     LaterUseKind::TraitCapture
                 } else if location.statement_index == block.statements.len() {
-                    if let TerminatorKind::Call { ref func, from_hir_call: true, .. } =
-                        block.terminator().kind
+                    if let TerminatorKind::Call { func, from_hir_call: true, .. } =
+                        &block.terminator().kind
                     {
                         // Just point to the function, to reduce the chance of overlapping spans.
                         let function_span = match func {
@@ -515,19 +515,16 @@ impl<'cx, 'tcx> MirBorrowckCtxt<'cx, 'tcx> {
         // will only ever have one item at any given time, but by using a vector, we can pop from
         // it which simplifies the termination logic.
         let mut queue = vec![location];
-        let mut target = if let Some(&Statement {
-            kind: StatementKind::Assign(box (ref place, _)),
-            ..
-        }) = stmt
-        {
-            if let Some(local) = place.as_local() {
-                local
+        let mut target =
+            if let Some(Statement { kind: StatementKind::Assign(box (place, _)), .. }) = stmt {
+                if let Some(local) = place.as_local() {
+                    local
+                } else {
+                    return false;
+                }
             } else {
                 return false;
-            }
-        } else {
-            return false;
-        };
+            };
 
         debug!("was_captured_by_trait: target={:?} queue={:?}", target, queue);
         while let Some(current_location) = queue.pop() {

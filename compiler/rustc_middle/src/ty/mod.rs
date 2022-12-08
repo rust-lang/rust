@@ -2142,10 +2142,6 @@ impl<'tcx> TyCtxt<'tcx> {
         }
     }
 
-    pub fn field_index(self, hir_id: hir::HirId, typeck_results: &TypeckResults<'_>) -> usize {
-        typeck_results.field_indices().get(hir_id).cloned().expect("no index for a field")
-    }
-
     pub fn find_field_index(self, ident: Ident, variant: &VariantDef) -> Option<usize> {
         variant
             .fields
