@@ -1,7 +1,7 @@
 use crate::coercion::CoerceMany;
 use crate::gather_locals::GatherLocalsVisitor;
 use crate::FnCtxt;
-use crate::{GeneratorTypes, UnsafetyState};
+use crate::GeneratorTypes;
 use rustc_hir as hir;
 use rustc_hir::def::DefKind;
 use rustc_hir::intravisit::Visitor;
@@ -30,7 +30,6 @@ pub(super) fn check_fn<'a, 'tcx>(
     can_be_generator: Option<hir::Movability>,
 ) -> Option<GeneratorTypes<'tcx>> {
     let fn_id = fcx.tcx.hir().local_def_id_to_hir_id(fn_def_id);
-    fcx.ps.set(UnsafetyState::function(fn_sig.unsafety, fn_id));
 
     let tcx = fcx.tcx;
     let hir = tcx.hir();
