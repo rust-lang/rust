@@ -373,9 +373,21 @@ pub trait Machine<'mir, 'tcx>: Sized {
         Ok(())
     }
 
-    /// Executes a retagging operation.
+    /// Executes a retagging operation for a single pointer.
+    /// Returns the possibly adjusted pointer.
     #[inline]
-    fn retag(
+    fn retag_ptr_value(
+        _ecx: &mut InterpCx<'mir, 'tcx, Self>,
+        _kind: mir::RetagKind,
+        val: &ImmTy<'tcx, Self::Provenance>,
+    ) -> InterpResult<'tcx, ImmTy<'tcx, Self::Provenance>> {
+        Ok(val.clone())
+    }
+
+    /// Executes a retagging operation on a compound value.
+    /// Replaces all pointers stored in the given place.
+    #[inline]
+    fn retag_place_contents(
         _ecx: &mut InterpCx<'mir, 'tcx, Self>,
         _kind: mir::RetagKind,
         _place: &PlaceTy<'tcx, Self::Provenance>,

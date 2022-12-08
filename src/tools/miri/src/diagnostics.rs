@@ -63,9 +63,9 @@ impl MachineStopType for TerminationInfo {}
 
 /// Miri specific diagnostics
 pub enum NonHaltingDiagnostic {
-    /// (new_tag, new_kind, (alloc_id, base_offset, orig_tag))
+    /// (new_tag, new_perm, (alloc_id, base_offset, orig_tag))
     ///
-    /// new_kind is `None` for base tags.
+    /// new_perm is `None` for base tags.
     CreatedPointerTag(NonZeroU64, Option<String>, Option<(AllocId, AllocRange, ProvenanceExtra)>),
     /// This `Item` was popped from the borrow stack. The string explains the reason.
     PoppedPointerTag(Item, String),
@@ -393,10 +393,10 @@ impl<'mir, 'tcx> MiriMachine<'mir, 'tcx> {
 
         let msg = match &e {
             CreatedPointerTag(tag, None, _) => format!("created base tag {tag:?}"),
-            CreatedPointerTag(tag, Some(kind), None) => format!("created {tag:?} for {kind}"),
-            CreatedPointerTag(tag, Some(kind), Some((alloc_id, range, orig_tag))) =>
+            CreatedPointerTag(tag, Some(perm), None) => format!("created {tag:?} with {perm} derived from unknown tag"),
+            CreatedPointerTag(tag, Some(perm), Some((alloc_id, range, orig_tag))) =>
                 format!(
-                    "created tag {tag:?} for {kind} at {alloc_id:?}{range:?} derived from {orig_tag:?}"
+                    "created tag {tag:?} with {perm} at {alloc_id:?}{range:?} derived from {orig_tag:?}"
                 ),
             PoppedPointerTag(item, cause) => format!("popped tracked tag for item {item:?}{cause}"),
             CreatedCallId(id) => format!("function call with id {id}"),
