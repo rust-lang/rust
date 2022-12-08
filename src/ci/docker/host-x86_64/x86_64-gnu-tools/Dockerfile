@@ -15,7 +15,7 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
   sudo \
   xz-utils \
   tidy \
-
+  \
 # Install dependencies for chromium browser
   gconf-service \
   libasound2 \
