@@ -508,9 +508,20 @@ pub fn register_plugins(store: &mut rustc_lint::LintStore, sess: &Session, conf:
     }
 
     let arithmetic_side_effects_allowed = conf.arithmetic_side_effects_allowed.clone();
+    let arithmetic_side_effects_allowed_binary = conf.arithmetic_side_effects_allowed_binary.clone();
+    let arithmetic_side_effects_allowed_unary = conf.arithmetic_side_effects_allowed_unary.clone();
     store.register_late_pass(move |_| {
         Box::new(operators::arithmetic_side_effects::ArithmeticSideEffects::new(
-            arithmetic_side_effects_allowed.clone(),
+            arithmetic_side_effects_allowed
+                .iter()
+                .flat_map(|el| [[el.clone(), "*".to_string()], ["*".to_string(), el.clone()]])
+                .chain(arithmetic_side_effects_allowed_binary.clone())
+                .collect(),
+            arithmetic_side_effects_allowed
+                .iter()
+                .chain(arithmetic_side_effects_allowed_unary.iter())
+                .cloned()
+                .collect(),
         ))
     });
     store.register_late_pass(|_| Box::new(utils::dump_hir::DumpHir));
