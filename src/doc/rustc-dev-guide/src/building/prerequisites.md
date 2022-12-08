@@ -2,48 +2,7 @@
 
 ## Dependencies
 
-Before building the compiler, you need the following things installed:
-
-* `python` 3 or 2.7 (under the name `python`; `python2` or `python3` will not work)
-* `curl`
-* `git`
-* `ssl` which comes in `libssl-dev` or `openssl-devel`
-* `pkg-config` if you are compiling on Linux and targeting Linux
-* `libstdc++-static` may be required on some Linux distributions such as Fedora and Ubuntu
-
-If building LLVM from source (the default), you'll need additional tools:
-
-* `g++`, `clang++`, or MSVC with versions listed on <!-- date-check: Aug 2022 -->
-  [LLVM's documentation](https://releases.llvm.org/13.0.0/docs/GettingStarted.html#host-c-toolchain-both-compiler-and-standard-library)
-* `ninja`, or GNU `make` 3.81 or later (ninja is recommended, especially on Windows)
-* `cmake` 3.13.4 or later
-
-Otherwise, you'll need LLVM installed and `llvm-config` in your path.
-See [this section for more info][sysllvm].
-
-[sysllvm]: ./new-target.md#using-pre-built-llvm
-
-### Windows
-
-* Install [winget](https://github.com/microsoft/winget-cli)
-
-`winget` is a Windows package manager. It will make package installation easy
-on Windows.
-
-Run the following in a terminal:
-
-```powershell
-winget install -e Python.Python.3
-winget install -e Kitware.CMake
-```
-
-If any of those is installed already, winget will detect it. Then edit your system's `PATH` variable
-and add: `C:\Program Files\CMake\bin`. See
-[this guide on editing the system `PATH`](https://www.java.com/en/download/help/path.html) from the
-Java documentation.
-
-For more information about building on Windows,
-see [the `rust-lang/rust` README](https://github.com/rust-lang/rust#building-on-windows).
+See [the `rust-lang/rust` README](https://github.com/rust-lang/rust#dependencies).
 
 ## Hardware
 
@@ -80,10 +39,3 @@ longer (especially after a rebase), but will save a ton of space from the
 incremental caches.
 
 [config]: ./how-to-build-and-run.md#create-a-configtoml
-
-## `rustc` and toolchain installation
-
-Follow the installation given in the [Rust book][install] to install a working
-`rustc` and the necessary C/++ toolchain on your platform.
-
-[install]: https://doc.rust-lang.org/book/ch01-01-installation.html
