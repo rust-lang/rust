@@ -82,7 +82,7 @@ mod boxed_resolver {
     struct BoxedResolverInner {
         session: Lrc<Session>,
         resolver_arenas: Option<ResolverArenas<'static>>,
-        resolver: Option<Resolver<'static>>,
+        resolver: Option<Resolver<'static, 'static>>,
         _pin: PhantomPinned,
     }
 
@@ -98,7 +98,10 @@ mod boxed_resolver {
     impl BoxedResolver {
         pub(super) fn new(
             session: Lrc<Session>,
-            make_resolver: impl for<'a> FnOnce(&'a Session, &'a ResolverArenas<'a>) -> Resolver<'a>,
+            make_resolver: impl for<'a, 'tcx> FnOnce(
+                &'tcx Session,
+                &'a ResolverArenas<'a>,
+            ) -> Resolver<'a, 'tcx>,
         ) -> BoxedResolver {
             let mut boxed_resolver = Box::new(BoxedResolverInner {
                 session,
@@ -121,7 +124,10 @@ mod boxed_resolver {
             }
         }
 
-        pub fn access<F: for<'a> FnOnce(&mut Resolver<'a>) -> R, R>(&mut self, f: F) -> R {
+        pub fn access<F: for<'a, 'tcx> FnOnce(&mut Resolver<'a, 'tcx>) -> R, R>(
+            &mut self,
+            f: F,
+        ) -> R {
             // SAFETY: The resolver doesn't need to be pinned.
             let mut resolver = unsafe {
                 self.0.as_mut().map_unchecked_mut(|boxed_resolver| &mut boxed_resolver.resolver)
@@ -256,7 +262,7 @@ pub fn configure_and_expand(
     lint_store: &LintStore,
     mut krate: ast::Crate,
     crate_name: Symbol,
-    resolver: &mut Resolver<'_>,
+    resolver: &mut Resolver<'_, '_>,
 ) -> Result<ast::Crate> {
     trace!("configure_and_expand");
     pre_expansion_lint(sess, lint_store, resolver.registered_tools(), &krate, crate_name);

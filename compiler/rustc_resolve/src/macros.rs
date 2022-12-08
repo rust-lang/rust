@@ -160,7 +160,7 @@ fn soft_custom_inner_attributes_gate(path: &ast::Path, invoc: &Invocation) -> bo
     false
 }
 
-impl<'a> ResolverExpand for Resolver<'a> {
+impl<'a, 'tcx> ResolverExpand for Resolver<'a, 'tcx> {
     fn next_node_id(&mut self) -> NodeId {
         self.next_node_id()
     }
@@ -467,7 +467,7 @@ impl<'a> ResolverExpand for Resolver<'a> {
     }
 }
 
-impl<'a> Resolver<'a> {
+impl<'a, 'tcx> Resolver<'a, 'tcx> {
     /// Resolve macro path with error reporting and recovery.
     /// Uses dummy syntax extensions for unresolved macros or macros with unexpected resolutions
     /// for better error recovery.

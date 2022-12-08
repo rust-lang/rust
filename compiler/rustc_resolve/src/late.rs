@@ -505,7 +505,7 @@ enum MaybeExported<'a> {
 }
 
 impl MaybeExported<'_> {
-    fn eval(self, r: &Resolver<'_>) -> bool {
+    fn eval(self, r: &Resolver<'_, '_>) -> bool {
         let def_id = match self {
             MaybeExported::Ok(node_id) => Some(r.local_def_id(node_id)),
             MaybeExported::Impl(Some(trait_def_id)) | MaybeExported::ImplItem(Ok(trait_def_id)) => {
@@ -584,8 +584,8 @@ struct DiagnosticMetadata<'ast> {
     current_elision_failures: Vec<MissingLifetime>,
 }
 
-struct LateResolutionVisitor<'a, 'b, 'ast> {
-    r: &'b mut Resolver<'a>,
+struct LateResolutionVisitor<'a, 'b, 'ast, 'tcx> {
+    r: &'b mut Resolver<'a, 'tcx>,
 
     /// The module that represents the current item scope.
     parent_scope: ParentScope<'a>,
@@ -628,7 +628,7 @@ struct LateResolutionVisitor<'a, 'b, 'ast> {
 }
 
 /// Walks the whole crate in DFS order, visiting each item, resolving names as it goes.
-impl<'a: 'ast, 'ast> Visitor<'ast> for LateResolutionVisitor<'a, '_, 'ast> {
+impl<'a: 'ast, 'ast, 'tcx> Visitor<'ast> for LateResolutionVisitor<'a, '_, 'ast, 'tcx> {
     fn visit_attribute(&mut self, _: &'ast Attribute) {
         // We do not want to resolve expressions that appear in attributes,
         // as they do not correspond to actual code.
@@ -1199,8 +1199,8 @@ impl<'a: 'ast, 'ast> Visitor<'ast> for LateResolutionVisitor<'a, '_, 'ast> {
     }
 }
 
-impl<'a: 'ast, 'b, 'ast> LateResolutionVisitor<'a, 'b, 'ast> {
-    fn new(resolver: &'b mut Resolver<'a>) -> LateResolutionVisitor<'a, 'b, 'ast> {
+impl<'a: 'ast, 'b, 'ast, 'tcx> LateResolutionVisitor<'a, 'b, 'ast, 'tcx> {
+    fn new(resolver: &'b mut Resolver<'a, 'tcx>) -> LateResolutionVisitor<'a, 'b, 'ast, 'tcx> {
         // During late resolution we only track the module component of the parent scope,
         // although it may be useful to track other components as well for diagnostics.
         let graph_root = resolver.graph_root;
@@ -2029,13 +2029,13 @@ impl<'a: 'ast, 'b, 'ast> LateResolutionVisitor<'a, 'b, 'ast> {
 
     /// List all the lifetimes that appear in the provided type.
     fn find_lifetime_for_self(&self, ty: &'ast Ty) -> Set1<LifetimeRes> {
-        struct SelfVisitor<'r, 'a> {
-            r: &'r Resolver<'a>,
+        struct SelfVisitor<'r, 'a, 'tcx> {
+            r: &'r Resolver<'a, 'tcx>,
             impl_self: Option<Res>,
             lifetime: Set1<LifetimeRes>,
         }
 
-        impl SelfVisitor<'_, '_> {
+        impl SelfVisitor<'_, '_, '_> {
             // Look for `self: &'a Self` - also desugared from `&'a self`,
             // and if that matches, use it for elision and return early.
             fn is_self_ty(&self, ty: &Ty) -> bool {
@@ -2053,7 +2053,7 @@ impl<'a: 'ast, 'b, 'ast> LateResolutionVisitor<'a, 'b, 'ast> {
             }
         }
 
-        impl<'a> Visitor<'a> for SelfVisitor<'_, '_> {
+        impl<'a> Visitor<'a> for SelfVisitor<'_, '_, '_> {
             fn visit_ty(&mut self, ty: &'a Ty) {
                 trace!("SelfVisitor considering ty={:?}", ty);
                 if let TyKind::Ref(lt, ref mt) = ty.kind && self.is_self_ty(&mt.ty) {
@@ -4288,13 +4288,13 @@ impl<'a: 'ast, 'b, 'ast> LateResolutionVisitor<'a, 'b, 'ast> {
     }
 }
 
-struct LifetimeCountVisitor<'a, 'b> {
-    r: &'b mut Resolver<'a>,
+struct LifetimeCountVisitor<'a, 'b, 'tcx> {
+    r: &'b mut Resolver<'a, 'tcx>,
 }
 
 /// Walks the whole crate in DFS order, visiting each item, counting the declared number of
 /// lifetime generic parameters.
-impl<'ast> Visitor<'ast> for LifetimeCountVisitor<'_, '_> {
+impl<'ast> Visitor<'ast> for LifetimeCountVisitor<'_, '_, '_> {
     fn visit_item(&mut self, item: &'ast Item) {
         match &item.kind {
             ItemKind::TyAlias(box TyAlias { ref generics, .. })
@@ -4328,7 +4328,7 @@ impl<'ast> Visitor<'ast> for LifetimeCountVisitor<'_, '_> {
     }
 }
 
-impl<'a> Resolver<'a> {
+impl<'a, 'tcx> Resolver<'a, 'tcx> {
     pub(crate) fn late_resolve_crate(&mut self, krate: &Crate) {
         visit::walk_crate(&mut LifetimeCountVisitor { r: self }, krate);
         let mut late_resolution_visitor = LateResolutionVisitor::new(self);

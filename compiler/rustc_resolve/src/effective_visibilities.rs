@@ -29,8 +29,8 @@ impl ParentId<'_> {
     }
 }
 
-pub(crate) struct EffectiveVisibilitiesVisitor<'r, 'a> {
-    r: &'r mut Resolver<'a>,
+pub(crate) struct EffectiveVisibilitiesVisitor<'r, 'a, 'tcx> {
+    r: &'r mut Resolver<'a, 'tcx>,
     def_effective_visibilities: EffectiveVisibilities,
     /// While walking import chains we need to track effective visibilities per-binding, and def id
     /// keys in `Resolver::effective_visibilities` are not enough for that, because multiple
@@ -41,7 +41,7 @@ pub(crate) struct EffectiveVisibilitiesVisitor<'r, 'a> {
     changed: bool,
 }
 
-impl Resolver<'_> {
+impl Resolver<'_, '_> {
     fn nearest_normal_mod(&mut self, def_id: LocalDefId) -> LocalDefId {
         self.get_nearest_non_block_module(def_id.to_def_id()).nearest_parent_mod().expect_local()
     }
@@ -67,18 +67,21 @@ impl Resolver<'_> {
     }
 }
 
-impl<'a, 'b> IntoDefIdTree for &'b mut Resolver<'a> {
-    type Tree = &'b Resolver<'a>;
+impl<'a, 'b, 'tcx> IntoDefIdTree for &'b mut Resolver<'a, 'tcx> {
+    type Tree = &'b Resolver<'a, 'tcx>;
     fn tree(self) -> Self::Tree {
         self
     }
 }
 
-impl<'r, 'a> EffectiveVisibilitiesVisitor<'r, 'a> {
+impl<'r, 'a, 'tcx> EffectiveVisibilitiesVisitor<'r, 'a, 'tcx> {
     /// Fills the `Resolver::effective_visibilities` table with public & exported items
     /// For now, this doesn't resolve macros (FIXME) and cannot resolve Impl, as we
     /// need access to a TyCtxt for that.
-    pub(crate) fn compute_effective_visibilities<'c>(r: &'r mut Resolver<'a>, krate: &'c Crate) {
+    pub(crate) fn compute_effective_visibilities<'c>(
+        r: &'r mut Resolver<'a, 'tcx>,
+        krate: &'c Crate,
+    ) {
         let mut visitor = EffectiveVisibilitiesVisitor {
             r,
             def_effective_visibilities: Default::default(),
@@ -192,7 +195,7 @@ impl<'r, 'a> EffectiveVisibilitiesVisitor<'r, 'a> {
     }
 }
 
-impl<'r, 'ast> Visitor<'ast> for EffectiveVisibilitiesVisitor<'ast, 'r> {
+impl<'r, 'ast, 'tcx> Visitor<'ast> for EffectiveVisibilitiesVisitor<'ast, 'r, 'tcx> {
     fn visit_item(&mut self, item: &'ast ast::Item) {
         let def_id = self.r.local_def_id(item.id);
         // Update effective visibilities of nested items.
