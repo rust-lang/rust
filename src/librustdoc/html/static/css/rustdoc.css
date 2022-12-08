@@ -639,7 +639,7 @@ pre, .rustdoc.source .example-wrap {
 	border: 1px solid var(--border-color);
 }
 
-.docblock table tr:nth-child(2n) {
+.docblock table tbody tr:nth-child(2n) {
 	background: var(--table-alt-row-background-color);
 }
 
