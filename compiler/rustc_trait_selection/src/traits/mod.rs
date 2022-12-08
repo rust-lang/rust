@@ -4,7 +4,6 @@
 
 pub mod auto_trait;
 mod chalk_fulfill;
-pub mod codegen;
 mod coherence;
 pub mod const_evaluatable;
 mod engine;
@@ -569,7 +568,6 @@ pub fn provide(providers: &mut ty::query::Providers) {
     *providers = ty::query::Providers {
         specialization_graph_of: specialize::specialization_graph_provider,
         specializes: specialize::specializes,
-        codegen_select_candidate: codegen::codegen_select_candidate,
         subst_and_check_impossible_predicates,
         is_impossible_method,
         ..*providers
