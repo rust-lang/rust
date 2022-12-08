@@ -27,7 +27,10 @@ use rustc_hir::def::{CtorOf, DefKind, Namespace, Res};
 use rustc_hir::def_id::{DefId, LocalDefId};
 use rustc_hir::intravisit::{walk_generics, Visitor as _};
 use rustc_hir::{GenericArg, GenericArgs, OpaqueTyOrigin};
-use rustc_infer::infer::{InferCtxt, TyCtxtInferExt};
+use rustc_infer::infer::type_variable::{TypeVariableOrigin, TypeVariableOriginKind};
+use rustc_infer::infer::{InferCtxt, InferOk, TyCtxtInferExt};
+use rustc_infer::traits::ObligationCause;
+use rustc_middle::infer::unify_key::{ConstVariableOrigin, ConstVariableOriginKind};
 use rustc_middle::middle::stability::AllowUnstable;
 use rustc_middle::ty::subst::{self, GenericArgKind, InternalSubsts, SubstsRef};
 use rustc_middle::ty::DynKind;
@@ -40,11 +43,12 @@ use rustc_span::symbol::{kw, Ident, Symbol};
 use rustc_span::{sym, Span, DUMMY_SP};
 use rustc_target::spec::abi;
 use rustc_trait_selection::traits;
-use rustc_trait_selection::traits::astconv_object_safety_violations;
 use rustc_trait_selection::traits::error_reporting::{
     report_object_safety_error, suggestions::NextTypeParamName,
 };
+use rustc_trait_selection::traits::query::evaluate_obligation::InferCtxtExt;
 use rustc_trait_selection::traits::wf::object_region_bounds;
+use rustc_trait_selection::traits::{astconv_object_safety_violations, NormalizeExt};
 
 use smallvec::{smallvec, SmallVec};
 use std::collections::BTreeSet;
@@ -2043,23 +2047,15 @@ impl<'o, 'tcx> dyn AstConv<'tcx> + 'o {
                 }
             }
 
-            // see if we can satisfy using an inherent associated type
-            for &impl_ in tcx.inherent_impls(adt_def.did()) {
-                let Some(assoc_ty_did) = self.lookup_assoc_ty(assoc_ident, hir_ref_id, span, impl_) else {
-                    continue;
-                };
-                let ty::Adt(_, adt_substs) = qself_ty.kind() else {
-                    // FIXME(inherent_associated_types)
-                    bug!("unimplemented: non-adt self of inherent assoc ty");
-                };
-                let item_substs = self.create_substs_for_associated_item(
-                    span,
-                    assoc_ty_did,
-                    assoc_segment,
-                    adt_substs,
-                );
-                let ty = tcx.type_of(assoc_ty_did).subst(tcx, item_substs);
-                return Ok((ty, DefKind::AssocTy, assoc_ty_did));
+            if let Some((ty, did)) = self.lookup_inherent_assoc_ty(
+                assoc_ident,
+                assoc_segment,
+                adt_def.did(),
+                qself_ty,
+                hir_ref_id,
+                span,
+            )? {
+                return Ok((ty, DefKind::AssocTy, did));
             }
         }
 
@@ -2202,6 +2198,196 @@ impl<'o, 'tcx> dyn AstConv<'tcx> + 'o {
         Ok((ty, DefKind::AssocTy, assoc_ty_did))
     }
 
+    fn lookup_inherent_assoc_ty(
+        &self,
+        name: Ident,
+        segment: &hir::PathSegment<'_>,
+        adt_did: DefId,
+        self_ty: Ty<'tcx>,
+        block: hir::HirId,
+        span: Span,
+    ) -> Result<Option<(Ty<'tcx>, DefId)>, ErrorGuaranteed> {
+        let tcx = self.tcx();
+
+        let candidates: Vec<_> = tcx
+            .inherent_impls(adt_did)
+            .iter()
+            .filter_map(|&impl_| Some((impl_, self.lookup_assoc_ty_unchecked(name, block, impl_)?)))
+            .collect();
+
+        if candidates.is_empty() {
+            return Ok(None);
+        }
+
+        let cause = ObligationCause::misc(span, block.owner.def_id);
+        let mut unsatisfied_predicates = Vec::new();
+
+        for &(impl_, (assoc_item, def_scope)) in &candidates {
+            let infcx = tcx.infer_ctxt().ignoring_regions().build();
+            let param_env = tcx.param_env(impl_);
+
+            let impl_ty = tcx.type_of(impl_);
+            let impl_substs = self.fresh_item_substs(impl_, &infcx);
+            let impl_ty = impl_ty.subst(tcx, impl_substs);
+
+            let InferOk { value: impl_ty, obligations } =
+                infcx.at(&cause, param_env).normalize(impl_ty);
+
+            // Check that the Self-types can be related.
+            let Ok(InferOk { obligations: sub_obligations, value: () }) = infcx
+                .at(&ObligationCause::dummy(), param_env)
+                .define_opaque_types(false)
+                .sup(impl_ty, self_ty)
+            else {
+                continue;
+            };
+
+            // Check whether the impl imposes obligations we have to worry about.
+            let impl_bounds = tcx.predicates_of(impl_);
+            let impl_bounds = impl_bounds.instantiate(tcx, impl_substs);
+
+            let InferOk { value: impl_bounds, obligations: norm_obligations } =
+                infcx.at(&cause, param_env).normalize(impl_bounds);
+
+            let impl_obligations =
+                traits::predicates_for_generics(|_, _| cause.clone(), param_env, impl_bounds);
+
+            let candidate_obligations = impl_obligations
+                .chain(norm_obligations.into_iter())
+                .chain(obligations.iter().cloned());
+
+            let mut matches = true;
+
+            // Evaluate those obligations to see if they might possibly hold.
+            for o in candidate_obligations {
+                let o = infcx.resolve_vars_if_possible(o);
+                if !infcx.predicate_may_hold(&o) {
+                    matches = false;
+                    unsatisfied_predicates.push(o.predicate);
+                }
+            }
+
+            // Evaluate those obligations to see if they might possibly hold.
+            for o in sub_obligations {
+                let o = infcx.resolve_vars_if_possible(o);
+                if !infcx.predicate_may_hold(&o) {
+                    matches = false;
+                    unsatisfied_predicates.push(o.predicate);
+                }
+            }
+
+            if !matches {
+                continue;
+            }
+
+            self.check_assoc_ty(assoc_item, name, def_scope, block, span);
+
+            let ty::Adt(_, adt_substs) = self_ty.kind() else {
+                bug!("unreachable: `lookup_inherent_assoc_ty` is only called on ADTs");
+            };
+
+            let item_substs =
+                self.create_substs_for_associated_item(span, assoc_item, segment, adt_substs);
+            // FIXME(inherent_associated_types): Check if the obligations arising from the
+            // where-clause & the bounds on the associated type and its parameters hold.
+            let ty = tcx.type_of(assoc_item).subst(tcx, item_substs);
+            return Ok(Some((ty, assoc_item)));
+        }
+
+        Err(self.complain_about_inherent_assoc_type_not_found(
+            name,
+            self_ty,
+            &candidates.into_iter().map(|(impl_, _)| impl_).collect::<Vec<_>>(),
+            unsatisfied_predicates,
+            span,
+        ))
+    }
+
+    // FIXME(fmease): Copied from `rustc_hir_typeck::method::probe`. Deduplicate.
+    fn fresh_item_substs(&self, def_id: DefId, infcx: &InferCtxt<'tcx>) -> SubstsRef<'tcx> {
+        let tcx = self.tcx();
+
+        InternalSubsts::for_item(tcx, def_id, |param, _| match param.kind {
+            GenericParamDefKind::Lifetime => tcx.lifetimes.re_erased.into(),
+            GenericParamDefKind::Type { .. } => infcx
+                .next_ty_var(TypeVariableOrigin {
+                    kind: TypeVariableOriginKind::SubstitutionPlaceholder,
+                    span: tcx.def_span(def_id),
+                })
+                .into(),
+            GenericParamDefKind::Const { .. } => {
+                let span = tcx.def_span(def_id);
+                let origin = ConstVariableOrigin {
+                    kind: ConstVariableOriginKind::SubstitutionPlaceholder,
+                    span,
+                };
+                infcx
+                    .next_const_var(
+                        tcx.type_of(param.def_id)
+                            .no_bound_vars()
+                            .expect("const parameter types cannot be generic"),
+                        origin,
+                    )
+                    .into()
+            }
+        })
+    }
+
+    fn lookup_assoc_ty(
+        &self,
+        name: Ident,
+        block: hir::HirId,
+        span: Span,
+        scope: DefId,
+    ) -> Option<DefId> {
+        let (item, def_scope) = self.lookup_assoc_ty_unchecked(name, block, scope)?;
+        self.check_assoc_ty(item, name, def_scope, block, span);
+        Some(item)
+    }
+
+    fn lookup_assoc_ty_unchecked(
+        &self,
+        name: Ident,
+        block: hir::HirId,
+        scope: DefId,
+    ) -> Option<(DefId, DefId)> {
+        let tcx = self.tcx();
+        let (ident, def_scope) = tcx.adjust_ident_and_get_scope(name, scope, block);
+
+        // We have already adjusted the item name above, so compare with `ident.normalize_to_macros_2_0()` instead
+        // of calling `find_by_name_and_kind`.
+        let item = tcx.associated_items(scope).in_definition_order().find(|i| {
+            i.kind.namespace() == Namespace::TypeNS
+                && i.ident(tcx).normalize_to_macros_2_0() == ident
+        })?;
+
+        Some((item.def_id, def_scope))
+    }
+
+    fn check_assoc_ty(
+        &self,
+        item: DefId,
+        name: Ident,
+        def_scope: DefId,
+        block: hir::HirId,
+        span: Span,
+    ) {
+        let tcx = self.tcx();
+        let kind = DefKind::AssocTy;
+
+        if !tcx.visibility(item).is_accessible_from(def_scope, tcx) {
+            let kind = kind.descr(item);
+            let msg = format!("{kind} `{name}` is private");
+            let def_span = tcx.def_span(item);
+            tcx.sess
+                .struct_span_err_with_code(span, &msg, rustc_errors::error_code!(E0624))
+                .span_label(span, &format!("private {kind}"))
+                .span_label(def_span, &format!("{kind} defined here"))
+                .emit();
+        }
+        tcx.check_stability(item, Some(block), span, None);
+    }
+
     fn probe_traits_that_match_assoc_ty(
         &self,
         qself_ty: Ty<'tcx>,
@@ -2253,39 +2439,6 @@ impl<'o, 'tcx> dyn AstConv<'tcx> + 'o {
             })
             .map(|trait_def_id| tcx.def_path_str(trait_def_id))
             .collect()
-    }
-
-    fn lookup_assoc_ty(
-        &self,
-        ident: Ident,
-        block: hir::HirId,
-        span: Span,
-        scope: DefId,
-    ) -> Option<DefId> {
-        let tcx = self.tcx();
-        let (ident, def_scope) = tcx.adjust_ident_and_get_scope(ident, scope, block);
-
-        // We have already adjusted the item name above, so compare with `ident.normalize_to_macros_2_0()` instead
-        // of calling `find_by_name_and_kind`.
-        let item = tcx.associated_items(scope).in_definition_order().find(|i| {
-            i.kind.namespace() == Namespace::TypeNS
-                && i.ident(tcx).normalize_to_macros_2_0() == ident
-        })?;
-
-        let kind = DefKind::AssocTy;
-        if !item.visibility(tcx).is_accessible_from(def_scope, tcx) {
-            let kind = kind.descr(item.def_id);
-            let msg = format!("{kind} `{ident}` is private");
-            let def_span = self.tcx().def_span(item.def_id);
-            tcx.sess
-                .struct_span_err_with_code(span, &msg, rustc_errors::error_code!(E0624))
-                .span_label(span, &format!("private {kind}"))
-                .span_label(def_span, &format!("{kind} defined here"))
-                .emit();
-        }
-        tcx.check_stability(item.def_id, Some(block), span, None);
-
-        Some(item.def_id)
     }
 
     fn qpath_to_ty(

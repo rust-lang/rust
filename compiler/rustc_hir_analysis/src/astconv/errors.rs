@@ -1,10 +1,10 @@
 use crate::astconv::AstConv;
 use crate::errors::{ManualImplementation, MissingTypeParams};
 use rustc_data_structures::fx::FxHashMap;
-use rustc_errors::{pluralize, struct_span_err, Applicability, ErrorGuaranteed};
+use rustc_errors::{pluralize, struct_span_err, Applicability, Diagnostic, ErrorGuaranteed};
 use rustc_hir as hir;
 use rustc_hir::def_id::DefId;
-use rustc_middle::ty;
+use rustc_middle::ty::{self, Ty};
 use rustc_session::parse::feature_err;
 use rustc_span::lev_distance::find_best_match_for_name;
 use rustc_span::symbol::{sym, Ident};
@@ -218,6 +218,168 @@ impl<'o, 'tcx> dyn AstConv<'tcx> + 'o {
         }
 
         err.span_label(span, format!("associated type `{}` not found", assoc_name));
+        err.emit()
+    }
+
+    // FIXME(inherent_associated_types): Find similarly named associated types and suggest them.
+    pub(crate) fn complain_about_inherent_assoc_type_not_found(
+        &self,
+        name: Ident,
+        self_ty: Ty<'tcx>,
+        candidates: &[DefId],
+        unsatisfied_predicates: Vec<ty::Predicate<'tcx>>,
+        span: Span,
+    ) -> ErrorGuaranteed {
+        let tcx = self.tcx();
+
+        let adt_did = self_ty.ty_adt_def().map(|def| def.did());
+        let add_def_label = |err: &mut Diagnostic| {
+            if let Some(did) = adt_did {
+                err.span_label(
+                    tcx.def_span(did),
+                    format!(
+                        "associated item `{name}` not found for this {}",
+                        tcx.def_kind(did).descr(did)
+                    ),
+                );
+            }
+        };
+
+        if unsatisfied_predicates.is_empty() {
+            // FIXME(fmease): Copied from `rustc_hir_typeck::method::probe`. Deduplicate.
+
+            let limit = if candidates.len() == 5 { 5 } else { 4 };
+            let type_candidates = candidates
+                .iter()
+                .take(limit)
+                .map(|candidate| {
+                    format!("- `{}`", tcx.at(span).type_of(candidate).subst_identity())
+                })
+                .collect::<Vec<_>>()
+                .join("\n");
+            let additional_types = if candidates.len() > limit {
+                format!("\nand {} more types", candidates.len() - limit)
+            } else {
+                String::new()
+            };
+
+            let mut err = struct_span_err!(
+                tcx.sess,
+                name.span,
+                E0220,
+                "associated type `{name}` not found for `{self_ty}` in the current scope"
+            );
+            err.span_label(name.span, format!("associated item not found in `{self_ty}`"));
+            err.note(&format!(
+                "the associated type was found for\n{type_candidates}{additional_types}",
+            ));
+            add_def_label(&mut err);
+            return err.emit();
+        }
+
+        let mut bound_spans = Vec::new();
+
+        // FIXME(fmease): Copied from `rustc_hir_typeck::method::probe`. Deduplicate.
+        let mut bound_span_label = |self_ty: Ty<'_>, obligation: &str, quiet: &str| {
+            let msg = format!(
+                "doesn't satisfy `{}`",
+                if obligation.len() > 50 { quiet } else { obligation }
+            );
+            match &self_ty.kind() {
+                // Point at the type that couldn't satisfy the bound.
+                ty::Adt(def, _) => bound_spans.push((tcx.def_span(def.did()), msg)),
+                // Point at the trait object that couldn't satisfy the bound.
+                ty::Dynamic(preds, _, _) => {
+                    for pred in preds.iter() {
+                        match pred.skip_binder() {
+                            ty::ExistentialPredicate::Trait(tr) => {
+                                bound_spans.push((tcx.def_span(tr.def_id), msg.clone()))
+                            }
+                            ty::ExistentialPredicate::Projection(_)
+                            | ty::ExistentialPredicate::AutoTrait(_) => {}
+                        }
+                    }
+                }
+                // Point at the closure that couldn't satisfy the bound.
+                ty::Closure(def_id, _) => {
+                    bound_spans.push((tcx.def_span(*def_id), format!("doesn't satisfy `{quiet}`")))
+                }
+                _ => {}
+            }
+        };
+
+        // FIXME(fmease): Copied from `rustc_hir_typeck::method::probe`. Deduplicate.
+        let format_pred = |pred: ty::Predicate<'tcx>| {
+            let bound_predicate = pred.kind();
+            match bound_predicate.skip_binder() {
+                ty::PredicateKind::Clause(ty::Clause::Projection(pred)) => {
+                    let pred = bound_predicate.rebind(pred);
+                    // `<Foo as Iterator>::Item = String`.
+                    let projection_ty = pred.skip_binder().projection_ty;
+
+                    let substs_with_infer_self = tcx.mk_substs(
+                        std::iter::once(tcx.mk_ty_var(ty::TyVid::from_u32(0)).into())
+                            .chain(projection_ty.substs.iter().skip(1)),
+                    );
+
+                    let quiet_projection_ty =
+                        tcx.mk_alias_ty(projection_ty.def_id, substs_with_infer_self);
+
+                    let term = pred.skip_binder().term;
+
+                    let obligation = format!("{projection_ty} = {term}");
+                    let quiet = format!("{quiet_projection_ty} = {term}");
+
+                    bound_span_label(projection_ty.self_ty(), &obligation, &quiet);
+                    Some((obligation, projection_ty.self_ty()))
+                }
+                ty::PredicateKind::Clause(ty::Clause::Trait(poly_trait_ref)) => {
+                    let p = poly_trait_ref.trait_ref;
+                    let self_ty = p.self_ty();
+                    let path = p.print_only_trait_path();
+                    let obligation = format!("{self_ty}: {path}");
+                    let quiet = format!("_: {path}");
+                    bound_span_label(self_ty, &obligation, &quiet);
+                    Some((obligation, self_ty))
+                }
+                _ => None,
+            }
+        };
+
+        // FIXME(fmease): `rustc_hir_typeck::method::suggest` uses a `skip_list` to filter out some bounds.
+        // I would do the same here if it didn't mean more code duplication.
+        let mut bounds: Vec<_> = unsatisfied_predicates
+            .into_iter()
+            .filter_map(format_pred)
+            .map(|(p, _)| format!("`{}`", p))
+            .collect();
+        bounds.sort();
+        bounds.dedup();
+
+        let mut err = tcx.sess.struct_span_err(
+            name.span,
+            &format!("the associated type `{name}` exists for `{self_ty}`, but its trait bounds were not satisfied")
+        );
+        if !bounds.is_empty() {
+            err.note(&format!(
+                "the following trait bounds were not satisfied:\n{}",
+                bounds.join("\n")
+            ));
+        }
+        err.span_label(
+            name.span,
+            format!("associated type cannot be referenced on `{self_ty}` due to unsatisfied trait bounds")
+        );
+
+        bound_spans.sort();
+        bound_spans.dedup();
+        for (span, msg) in bound_spans {
+            if !tcx.sess.source_map().is_span_accessible(span) {
+                continue;
+            }
+            err.span_label(span, &msg);
+        }
+        add_def_label(&mut err);
         err.emit()
     }
 
