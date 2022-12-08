@@ -1337,24 +1337,16 @@ impl<'a, 'tcx> EncodeContext<'a, 'tcx> {
         debug!("EncodeContext::encode_info_for_trait_item({:?})", def_id);
         let tcx = self.tcx;
 
-        let ast_item = tcx.hir().expect_trait_item(def_id.expect_local());
-        self.tables.impl_defaultness.set(def_id.index, ast_item.defaultness);
+        let impl_defaultness = tcx.impl_defaultness(def_id.expect_local());
+        self.tables.impl_defaultness.set(def_id.index, impl_defaultness);
         let trait_item = tcx.associated_item(def_id);
         self.tables.assoc_container.set(def_id.index, trait_item.container);
 
         match trait_item.kind {
             ty::AssocKind::Const => {}
             ty::AssocKind::Fn => {
-                let hir::TraitItemKind::Fn(m_sig, m) = &ast_item.kind else { bug!() };
-                match *m {
-                    hir::TraitFn::Required(ref names) => {
-                        record_array!(self.tables.fn_arg_names[def_id] <- *names)
-                    }
-                    hir::TraitFn::Provided(body) => {
-                        record_array!(self.tables.fn_arg_names[def_id] <- self.tcx.hir().body_param_names(body))
-                    }
-                };
-                self.tables.asyncness.set(def_id.index, m_sig.header.asyncness);
+                record_array!(self.tables.fn_arg_names[def_id] <- tcx.fn_arg_names(def_id));
+                self.tables.asyncness.set(def_id.index, tcx.asyncness(def_id));
                 self.tables.constness.set(def_id.index, hir::Constness::NotConst);
             }
             ty::AssocKind::Type => {
