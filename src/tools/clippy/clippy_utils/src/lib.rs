@@ -102,7 +102,7 @@ use rustc_middle::ty::fast_reject::SimplifiedTypeGen::{
     PtrSimplifiedType, SliceSimplifiedType, StrSimplifiedType, UintSimplifiedType,
 };
 use rustc_middle::ty::{
-    layout::IntegerExt, BorrowKind, ClosureKind, DefIdTree, Ty, TyCtxt, TypeAndMut, TypeVisitable, UpvarCapture,
+    layout::IntegerExt, BorrowKind, ClosureKind, DefIdTree, Ty, TyCtxt, TypeAndMut, UpvarCapture,
 };
 use rustc_middle::ty::{FloatTy, IntTy, UintTy};
 use rustc_span::hygiene::{ExpnKind, MacroKind};
@@ -2092,19 +2092,10 @@ pub fn is_trait_impl_item(cx: &LateContext<'_>, hir_id: HirId) -> bool {
 /// }
 /// ```
 pub fn fn_has_unsatisfiable_preds(cx: &LateContext<'_>, did: DefId) -> bool {
-    use rustc_trait_selection::traits;
-    let predicates = cx
-        .tcx
-        .predicates_of(did)
-        .predicates
-        .iter()
-        .filter_map(|(p, _)| if p.is_global() { Some(*p) } else { None });
-    traits::impossible_predicates(
-        cx.tcx,
-        traits::elaborate_predicates(cx.tcx, predicates)
-            .map(|o| o.predicate)
-            .collect::<Vec<_>>(),
-    )
+    cx.tcx.subst_and_check_impossible_predicates((
+        did,
+        rustc_ty::InternalSubsts::identity_for_item(cx.tcx, did),
+    ))
 }
 
 /// Returns the `DefId` of the callee if the given expression is a function or method call.

@@ -441,14 +441,31 @@ pub fn fully_solve_bound<'tcx>(
     fully_solve_obligation(infcx, obligation)
 }
 
-/// Normalizes the predicates and checks whether they hold in an empty environment. If this
-/// returns true, then either normalize encountered an error or one of the predicates did not
-/// hold. Used when creating vtables to check for unsatisfiable methods.
-pub fn impossible_predicates<'tcx>(
+// Instantiates the predicates for the given DefId and checks if there are
+// predicates that don't reference unsubstituted parameters and which are
+// known to be unsatisfiable.
+#[instrument(skip(tcx))]
+fn subst_and_check_impossible_predicates<'tcx>(
     tcx: TyCtxt<'tcx>,
-    predicates: Vec<ty::Predicate<'tcx>>,
+    key: (DefId, SubstsRef<'tcx>),
 ) -> bool {
-    debug!("impossible_predicates(predicates={:?})", predicates);
+    let mut predicates = tcx.predicates_of(key.0).instantiate(tcx, key.1).predicates;
+
+    // Specifically check trait fulfillment to avoid an error when trying to resolve
+    // associated items.
+    if let Some(trait_def_id) = tcx.trait_of_item(key.0) {
+        let trait_ref = ty::TraitRef::from_method(tcx, trait_def_id, key.1);
+        predicates.push(ty::Binder::dummy(trait_ref).to_predicate(tcx));
+    }
+
+    // 1. We skip evaluating any predicates that we would
+    // never be able prove are unsatisfiable (e.g. `<T as Foo>`
+    // 2. We avoid trying to normalize predicates involving generic
+    // parameters (e.g. `<T as Foo>::MyItem`). This can confuse
+    // the normalization code (leading to cycle errors), since
+    // it's usually never invoked in this way.
+    predicates.retain(|predicate| !predicate.needs_subst());
+    debug!(?predicates);
 
     let infcx = tcx.infer_ctxt().build();
     let param_env = ty::ParamEnv::reveal_all();
@@ -464,29 +481,7 @@ pub fn impossible_predicates<'tcx>(
     let _ = infcx.inner.borrow_mut().opaque_type_storage.take_opaque_types();
 
     let result = !errors.is_empty();
-    debug!("impossible_predicates = {:?}", result);
-    result
-}
-
-fn subst_and_check_impossible_predicates<'tcx>(
-    tcx: TyCtxt<'tcx>,
-    key: (DefId, SubstsRef<'tcx>),
-) -> bool {
-    debug!("subst_and_check_impossible_predicates(key={:?})", key);
-
-    let mut predicates = tcx.predicates_of(key.0).instantiate(tcx, key.1).predicates;
-
-    // Specifically check trait fulfillment to avoid an error when trying to resolve
-    // associated items.
-    if let Some(trait_def_id) = tcx.trait_of_item(key.0) {
-        let trait_ref = ty::TraitRef::from_method(tcx, trait_def_id, key.1);
-        predicates.push(ty::Binder::dummy(trait_ref).to_predicate(tcx));
-    }
-
-    predicates.retain(|predicate| !predicate.needs_subst());
-    let result = impossible_predicates(tcx, predicates);
-
-    debug!("subst_and_check_impossible_predicates(key={:?}) = {:?}", key, result);
+    debug!(?result);
     result
 }
 
@@ -814,8 +809,7 @@ fn vtable_entries<'tcx>(
                     // do not hold for this particular set of type parameters.
                     // Note that this method could then never be called, so we
                     // do not want to try and codegen it, in that case (see #23435).
-                    let predicates = tcx.predicates_of(def_id).instantiate_own(tcx, substs);
-                    if impossible_predicates(tcx, predicates.predicates) {
+                    if tcx.subst_and_check_impossible_predicates((def_id, substs)) {
                         debug!("vtable_entries: predicates do not hold");
                         return VtblEntry::Vacant;
                     }
