@@ -12,7 +12,7 @@ LL |     func(&mut iter.map(|x| x + 1))
 error[E0275]: overflow evaluating the requirement `Map<&mut Map<&mut Map<&mut Map<..., ...>, ...>, ...>, ...>: Iterator`
    |
    = help: consider increasing the recursion limit by adding a `#![recursion_limit = "256"]` attribute to your crate (`issue_83150`)
-   = note: required for `&mut Map<&mut Map<&mut Map<..., ...>, ...>, ...>` to implement `Iterator`
+   = note: required for `&mut Map<&mut Map<&mut Map<&mut Map<&mut Map<&mut Map<&mut Map<..., ...>, ...>, ...>, ...>, ...>, ...>, ...>` to implement `Iterator`
    = note: the full type name has been written to '$TEST_BUILD_DIR/recursion/issue-83150/issue-83150.long-type-hash.txt'
 
 error: aborting due to previous error; 1 warning emitted
