@@ -25,6 +25,10 @@ impl<T, A: Allocator> IntoIter<T, A> {
     pub(super) fn new(inner: VecDeque<T, A>) -> Self {
         IntoIter { inner }
     }
+
+    pub(super) fn into_vecdeque(self) -> VecDeque<T, A> {
+        self.inner
+    }
 }
 
 #[stable(feature = "collection_debug", since = "1.17.0")]

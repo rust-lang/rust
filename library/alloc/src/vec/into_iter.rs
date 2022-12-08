@@ -1,6 +1,7 @@
 #[cfg(not(no_global_oom_handling))]
 use super::AsVecIntoIter;
 use crate::alloc::{Allocator, Global};
+use crate::collections::VecDeque;
 use crate::raw_vec::RawVec;
 use core::array;
 use core::fmt;
@@ -131,6 +132,32 @@ impl<T, A: Allocator> IntoIter<T, A> {
     /// Forgets to Drop the remaining elements while still allowing the backing allocation to be freed.
     pub(crate) fn forget_remaining_elements(&mut self) {
         self.ptr = self.end;
+    }
+
+    #[inline]
+    pub(crate) fn into_vecdeque(self) -> VecDeque<T, A> {
+        // Keep our `Drop` impl from dropping the elements and the allocator
+        let mut this = ManuallyDrop::new(self);
+
+        // SAFETY: This allocation originally came from a `Vec`, so it passes
+        // all those checks.  We have `this.buf` ≤ `this.ptr` ≤ `this.end`,
+        // so the `sub_ptr`s below cannot wrap, and will produce a well-formed
+        // range.  `end` ≤ `buf + cap`, so the range will be in-bounds.
+        // Taking `alloc` is ok because nothing else is going to look at it,
+        // since our `Drop` impl isn't going to run so there's no more code.
+        unsafe {
+            let buf = this.buf.as_ptr();
+            let initialized = if T::IS_ZST {
+                // All the pointers are the same for ZSTs, so it's fine to
+                // say that they're all at the beginning of the "allocation".
+                0..this.len()
+            } else {
+                this.ptr.sub_ptr(buf)..this.end.sub_ptr(buf)
+            };
+            let cap = this.cap;
+            let alloc = ManuallyDrop::take(&mut this.alloc);
+            VecDeque::from_contiguous_raw_parts_in(buf, initialized, cap, alloc)
+        }
     }
 }
 

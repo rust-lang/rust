@@ -1736,3 +1736,29 @@ fn test_resize_keeps_reserved_space_from_item() {
     d.resize(1, v);
     assert_eq!(d[0].capacity(), 1234);
 }
+
+#[test]
+fn test_collect_from_into_iter_keeps_allocation() {
+    let mut v = Vec::with_capacity(13);
+    v.extend(0..7);
+    check(v.into_iter());
+
+    let mut v = VecDeque::with_capacity(13);
+    v.extend(0..7);
+    check(v.into_iter());
+
+    fn check(mut it: impl Iterator<Item = i32>) {
+        assert_eq!(it.next(), Some(0));
+        assert_eq!(it.next(), Some(1));
+        let mut v: VecDeque<i32> = it.collect();
+        assert_eq!(v.capacity(), 13);
+        assert_eq!(v.as_slices(), ([2, 3, 4, 5, 6].as_slice(), [].as_slice()));
+        v.push_front(7);
+        assert_eq!(v.as_slices(), ([7, 2, 3, 4, 5, 6].as_slice(), [].as_slice()));
+        v.push_front(8);
+        assert_eq!(v.as_slices(), ([8, 7, 2, 3, 4, 5, 6].as_slice(), [].as_slice()));
+        v.push_front(9);
+        assert_eq!(v.as_slices(), ([9].as_slice(), [8, 7, 2, 3, 4, 5, 6].as_slice()));
+        assert_eq!(v.capacity(), 13);
+    }
+}

@@ -55,6 +55,10 @@ use self::spec_extend::SpecExtend;
 
 mod spec_extend;
 
+use self::spec_from_iter::SpecFromIter;
+
+mod spec_from_iter;
+
 #[cfg(test)]
 mod tests;
 
@@ -584,6 +588,35 @@ impl<T, A: Allocator> VecDeque<T, A> {
     #[unstable(feature = "allocator_api", issue = "32838")]
     pub fn with_capacity_in(capacity: usize, alloc: A) -> VecDeque<T, A> {
         VecDeque { head: 0, len: 0, buf: RawVec::with_capacity_in(capacity, alloc) }
+    }
+
+    /// For use by `vec::IntoIter::into_vecdeque`
+    ///
+    /// # Safety
+    ///
+    /// All the usual requirements on the allocated memory like in
+    /// `Vec::from_raw_parts_in`, but takes a *range* of elements that are
+    /// initialized rather than only supporting `0..len`.  Requires that
+    /// `initialized.start` ≤ `initialized.end` ≤ `capacity`.
+    #[inline]
+    pub(crate) unsafe fn from_contiguous_raw_parts_in(
+        ptr: *mut T,
+        initialized: Range<usize>,
+        capacity: usize,
+        alloc: A,
+    ) -> Self {
+        debug_assert!(initialized.start <= initialized.end);
+        debug_assert!(initialized.end <= capacity);
+
+        // SAFETY: Our safety precondition guarantees the range length won't wrap,
+        // and that the allocation is valid for use in `RawVec`.
+        unsafe {
+            VecDeque {
+                head: initialized.start,
+                len: initialized.end.unchecked_sub(initialized.start),
+                buf: RawVec::from_raw_parts_in(ptr, capacity, alloc),
+            }
+        }
     }
 
     /// Provides a reference to the element at the given index.
@@ -2699,18 +2732,8 @@ impl<T, A: Allocator> IndexMut<usize> for VecDeque<T, A> {
 
 #[stable(feature = "rust1", since = "1.0.0")]
 impl<T> FromIterator<T> for VecDeque<T> {
-    #[inline]
     fn from_iter<I: IntoIterator<Item = T>>(iter: I) -> VecDeque<T> {
-        // Since converting is O(1) now, might as well re-use that logic
-        // (including things like the `vec::IntoIter`→`Vec` specialization)
-        // especially as that could save us some monomorphiziation work
-        // if one uses the same iterators (like slice ones) with both.
-        return from_iter_via_vec(iter.into_iter());
-
-        #[inline]
-        fn from_iter_via_vec<U>(iter: impl Iterator<Item = U>) -> VecDeque<U> {
-            Vec::from_iter(iter).into()
-        }
+        SpecFromIter::spec_from_iter(iter.into_iter())
     }
 }
 
