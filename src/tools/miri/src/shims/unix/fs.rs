@@ -605,6 +605,15 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriInterpCxExt<'mir, 'tcx> {
             // (Technically we do not support *not* setting this flag, but we ignore that.)
             mirror |= o_cloexec;
         }
+        if this.tcx.sess.target.os == "linux" {
+            let o_tmpfile = this.eval_libc_i32("O_TMPFILE")?;
+            if flag & o_tmpfile != 0 {
+                // if the flag contains `O_TMPFILE` then we return a graceful error
+                let eopnotsupp = this.eval_libc("EOPNOTSUPP")?;
+                this.set_last_error(eopnotsupp)?;
+                return Ok(-1);
+            }
+        }
         // If `flag` is not equal to `mirror`, there is an unsupported option enabled in `flag`,
         // then we throw an error.
         if flag != mirror {
