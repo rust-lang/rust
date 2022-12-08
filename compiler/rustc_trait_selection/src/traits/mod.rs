@@ -922,7 +922,6 @@ pub fn vtable_trait_upcasting_coercion_new_vptr_slot<'tcx>(
 
 pub fn provide(providers: &mut ty::query::Providers) {
     object_safety::provide(providers);
-    structural_match::provide(providers);
     *providers = ty::query::Providers {
         specialization_graph_of: specialize::specialization_graph_provider,
         specializes: specialize::specializes,
