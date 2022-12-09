@@ -20,23 +20,23 @@ use rustc_ast::ptr::P;
 use rustc_ast::visit::{self as ast_visit, Visitor};
 use rustc_ast::{self as ast, walk_list, HasAttrs};
 use rustc_middle::ty::RegisteredTools;
-use rustc_session::lint::{BufferedEarlyLint, LintBuffer};
+use rustc_session::lint::{BufferedEarlyLint, LintBuffer, LintPass};
 use rustc_session::Session;
 use rustc_span::symbol::Ident;
 use rustc_span::Span;
 
 macro_rules! lint_callback { ($cx:expr, $f:ident, $($args:expr),*) => ({
-    for pass in $cx.passes.iter_mut() {
-        pass.$f(&$cx.context, $($args),*);
-    }
+    $cx.pass.$f(&$cx.context, $($args),*);
 }) }
 
-pub struct EarlyContextAndPasses<'a> {
+/// Implements the AST traversal for early lint passes. `T` provides the the
+/// `check_*` methods.
+pub struct EarlyContextAndPass<'a, T: EarlyLintPass> {
     context: EarlyContext<'a>,
-    passes: Vec<EarlyLintPassObject>,
+    pass: T,
 }
 
-impl<'a> EarlyContextAndPasses<'a> {
+impl<'a, T: EarlyLintPass> EarlyContextAndPass<'a, T> {
     // This always-inlined function is for the hot call site.
     #[inline(always)]
     fn inlined_check_id(&mut self, id: ast::NodeId) {
@@ -78,7 +78,7 @@ impl<'a> EarlyContextAndPasses<'a> {
     }
 }
 
-impl<'a> ast_visit::Visitor<'a> for EarlyContextAndPasses<'a> {
+impl<'a, T: EarlyLintPass> ast_visit::Visitor<'a> for EarlyContextAndPass<'a, T> {
     fn visit_param(&mut self, param: &'a ast::Param) {
         self.with_lint_attrs(param.id, &param.attrs, |cx| {
             lint_callback!(cx, check_param, param);
@@ -296,6 +296,35 @@ impl<'a> ast_visit::Visitor<'a> for EarlyContextAndPasses<'a> {
     }
 }
 
+// Combines multiple lint passes into a single pass, at runtime. Each
+// `check_foo` method in `$methods` within this pass simply calls `check_foo`
+// once per `$pass`. Compare with `declare_combined_early_lint_pass`, which is
+// similar, but combines lint passes at compile time.
+struct RuntimeCombinedEarlyLintPass<'a> {
+    passes: &'a mut [EarlyLintPassObject],
+}
+
+#[allow(rustc::lint_pass_impl_without_macro)]
+impl LintPass for RuntimeCombinedEarlyLintPass<'_> {
+    fn name(&self) -> &'static str {
+        panic!()
+    }
+}
+
+macro_rules! impl_early_lint_pass {
+    ([], [$($(#[$attr:meta])* fn $f:ident($($param:ident: $arg:ty),*);)*]) => (
+        impl EarlyLintPass for RuntimeCombinedEarlyLintPass<'_> {
+            $(fn $f(&mut self, context: &EarlyContext<'_>, $($param: $arg),*) {
+                for pass in self.passes.iter_mut() {
+                    pass.$f(context, $($param),*);
+                }
+            })*
+        }
+    )
+}
+
+crate::early_lint_methods!(impl_early_lint_pass, []);
+
 /// Early lints work on different nodes - either on the crate root, or on freshly loaded modules.
 /// This trait generalizes over those nodes.
 pub trait EarlyCheckNode<'a>: Copy {
@@ -303,7 +332,7 @@ pub trait EarlyCheckNode<'a>: Copy {
     fn attrs<'b>(self) -> &'b [ast::Attribute]
     where
         'a: 'b;
-    fn check<'b>(self, cx: &mut EarlyContextAndPasses<'b>)
+    fn check<'b, T: EarlyLintPass>(self, cx: &mut EarlyContextAndPass<'b, T>)
     where
         'a: 'b;
 }
@@ -318,7 +347,7 @@ impl<'a> EarlyCheckNode<'a> for &'a ast::Crate {
     {
         &self.attrs
     }
-    fn check<'b>(self, cx: &mut EarlyContextAndPasses<'b>)
+    fn check<'b, T: EarlyLintPass>(self, cx: &mut EarlyContextAndPass<'b, T>)
     where
         'a: 'b,
     {
@@ -338,7 +367,7 @@ impl<'a> EarlyCheckNode<'a> for (ast::NodeId, &'a [ast::Attribute], &'a [P<ast::
     {
         self.1
     }
-    fn check<'b>(self, cx: &mut EarlyContextAndPasses<'b>)
+    fn check<'b, T: EarlyLintPass>(self, cx: &mut EarlyContextAndPass<'b, T>)
     where
         'a: 'b,
     {
@@ -356,21 +385,22 @@ pub fn check_ast_node<'a>(
     builtin_lints: impl EarlyLintPass + 'static,
     check_node: impl EarlyCheckNode<'a>,
 ) {
+    let context = EarlyContext::new(
+        sess,
+        !pre_expansion,
+        lint_store,
+        registered_tools,
+        lint_buffer.unwrap_or_default(),
+    );
+
     let passes =
         if pre_expansion { &lint_store.pre_expansion_passes } else { &lint_store.early_passes };
-    let mut passes: Vec<EarlyLintPassObject> = passes.iter().map(|p| (p)()).collect();
+    let mut passes: Vec<EarlyLintPassObject> = passes.iter().map(|mk_pass| (mk_pass)()).collect();
     passes.push(Box::new(builtin_lints));
+    let pass = RuntimeCombinedEarlyLintPass { passes: &mut passes[..] };
 
-    let mut cx = EarlyContextAndPasses {
-        context: EarlyContext::new(
-            sess,
-            !pre_expansion,
-            lint_store,
-            registered_tools,
-            lint_buffer.unwrap_or_default(),
-        ),
-        passes,
-    };
+    let mut cx = EarlyContextAndPass { context, pass };
+
     cx.with_lint_attrs(check_node.id(), check_node.attrs(), |cx| check_node.check(cx));
 
     // All of the buffered lints should have been emitted at this point.
