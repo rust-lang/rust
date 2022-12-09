@@ -393,7 +393,8 @@ impl<'mir, 'tcx> MiriMachine<'mir, 'tcx> {
 
         let msg = match &e {
             CreatedPointerTag(tag, None, _) => format!("created base tag {tag:?}"),
-            CreatedPointerTag(tag, Some(perm), None) => format!("created {tag:?} with {perm} derived from unknown tag"),
+            CreatedPointerTag(tag, Some(perm), None) =>
+                format!("created {tag:?} with {perm} derived from unknown tag"),
             CreatedPointerTag(tag, Some(perm), Some((alloc_id, range, orig_tag))) =>
                 format!(
                     "created tag {tag:?} with {perm} at {alloc_id:?}{range:?} derived from {orig_tag:?}"

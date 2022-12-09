@@ -967,9 +967,8 @@ impl<'mir, 'tcx> Machine<'mir, 'tcx> for MiriMachine<'mir, 'tcx> {
         ptr: Pointer<Self::Provenance>,
     ) -> InterpResult<'tcx> {
         match ptr.provenance {
-            Provenance::Concrete { alloc_id, tag } => {
-                intptrcast::GlobalStateInner::expose_ptr(ecx, alloc_id, tag)
-            }
+            Provenance::Concrete { alloc_id, tag } =>
+                intptrcast::GlobalStateInner::expose_ptr(ecx, alloc_id, tag),
             Provenance::Wildcard => {
                 // No need to do anything for wildcard pointers as
                 // their provenances have already been previously exposed.
