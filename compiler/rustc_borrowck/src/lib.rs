@@ -97,7 +97,6 @@ use nll::{PoloniusOutput, ToRegionVid};
 use place_ext::PlaceExt;
 use places_conflict::{places_conflict, PlaceConflictBias};
 use region_infer::RegionInferenceContext;
-#[cfg(debug_assertions)]
 use renumber::RegionCtxt;
 
 // FIXME(eddyb) perhaps move this somewhere more centrally.
@@ -488,28 +487,14 @@ pub struct BodyWithBorrowckFacts<'tcx> {
 
 pub struct BorrowckInferCtxt<'cx, 'tcx> {
     pub(crate) infcx: &'cx InferCtxt<'tcx>,
-
-    #[cfg(debug_assertions)]
     pub(crate) reg_var_to_origin: RefCell<FxHashMap<ty::RegionVid, RegionCtxt>>,
 }
 
 impl<'cx, 'tcx> BorrowckInferCtxt<'cx, 'tcx> {
-    #[cfg(not(debug_assertions))]
-    pub(crate) fn new(infcx: &'cx InferCtxt<'tcx>) -> Self {
-        BorrowckInferCtxt { infcx }
-    }
-
-    #[cfg(debug_assertions)]
     pub(crate) fn new(infcx: &'cx InferCtxt<'tcx>) -> Self {
         BorrowckInferCtxt { infcx, reg_var_to_origin: RefCell::new(Default::default()) }
     }
 
-    #[cfg(not(debug_assertions))]
-    pub(crate) fn next_region_var(&self, origin: RegionVariableOrigin) -> ty::Region<'tcx> {
-        self.infcx.next_region_var(origin)
-    }
-
-    #[cfg(debug_assertions)]
     pub(crate) fn next_region_var(
         &self,
         origin: RegionVariableOrigin,
@@ -533,12 +518,6 @@ impl<'cx, 'tcx> BorrowckInferCtxt<'cx, 'tcx> {
         next_region
     }
 
-    #[cfg(not(debug_assertions))]
-    pub(crate) fn next_nll_region_var(&self, origin: NllRegionVariableOrigin) -> ty::Region<'tcx> {
-        self.infcx.next_nll_region_var(origin)
-    }
-
-    #[cfg(debug_assertions)]
     #[instrument(skip(self), level = "debug")]
     pub(crate) fn next_nll_region_var(
         &self,

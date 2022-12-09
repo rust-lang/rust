@@ -1335,43 +1335,27 @@ impl<'a, 'tcx> TypeChecker<'a, 'tcx> {
                     }
                 };
                 let (sig, map) = tcx.replace_late_bound_regions(sig, |br| {
-                    #[cfg(not(debug_assertions))]
-                    {
-                        self.infcx.next_region_var(LateBoundRegion(
+                    use crate::renumber::{BoundRegionInfo, RegionCtxt};
+                    use rustc_span::Symbol;
+
+                    let reg_info = match br.kind {
+                        // FIXME Probably better to use the `Span` here
+                        ty::BoundRegionKind::BrAnon(_, Some(span)) => BoundRegionInfo::Span(span),
+                        ty::BoundRegionKind::BrAnon(..) => {
+                            BoundRegionInfo::Name(Symbol::intern("anon"))
+                        }
+                        ty::BoundRegionKind::BrNamed(_, name) => BoundRegionInfo::Name(name),
+                        ty::BoundRegionKind::BrEnv => BoundRegionInfo::Name(Symbol::intern("env")),
+                    };
+
+                    self.infcx.next_region_var(
+                        LateBoundRegion(
                             term.source_info.span,
                             br.kind,
                             LateBoundRegionConversionTime::FnCall,
-                        ))
-                    }
-
-                    #[cfg(debug_assertions)]
-                    {
-                        use crate::renumber::{BoundRegionInfo, RegionCtxt};
-                        use rustc_span::Symbol;
-
-                        let reg_info = match br.kind {
-                            // FIXME Probably better to use the `Span` here
-                            ty::BoundRegionKind::BrAnon(_, Some(span)) => {
-                                BoundRegionInfo::Span(span)
-                            }
-                            ty::BoundRegionKind::BrAnon(..) => {
-                                BoundRegionInfo::Name(Symbol::intern("anon"))
-                            }
-                            ty::BoundRegionKind::BrNamed(_, name) => BoundRegionInfo::Name(name),
-                            ty::BoundRegionKind::BrEnv => {
-                                BoundRegionInfo::Name(Symbol::intern("env"))
-                            }
-                        };
-
-                        self.infcx.next_region_var(
-                            LateBoundRegion(
-                                term.source_info.span,
-                                br.kind,
-                                LateBoundRegionConversionTime::FnCall,
-                            ),
-                            RegionCtxt::LateBound(reg_info),
-                        )
-                    }
+                        ),
+                        RegionCtxt::LateBound(reg_info),
+                    )
                 });
                 debug!(?sig);
                 // IMPORTANT: We have to prove well formed for the function signature before

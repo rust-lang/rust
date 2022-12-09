@@ -9,7 +9,6 @@ use rustc_trait_selection::traits::query::Fallible;
 
 use crate::constraints::OutlivesConstraint;
 use crate::diagnostics::UniverseInfo;
-#[cfg(debug_assertions)]
 use crate::renumber::{BoundRegionInfo, RegionCtxt};
 use crate::type_check::{InstantiateOpaqueType, Locations, TypeChecker};
 
@@ -110,10 +109,6 @@ impl<'tcx> TypeRelatingDelegate<'tcx> for NllTypeRelatingDelegate<'_, '_, 'tcx> 
     ) -> ty::Region<'tcx> {
         let origin = NllRegionVariableOrigin::Existential { from_forall };
 
-        #[cfg(not(debug_assertions))]
-        let reg_var = self.type_checker.infcx.next_nll_region_var(origin);
-
-        #[cfg(debug_assertions)]
         let reg_var =
             self.type_checker.infcx.next_nll_region_var(origin, RegionCtxt::Existential(_name));
 
@@ -128,23 +123,19 @@ impl<'tcx> TypeRelatingDelegate<'tcx> for NllTypeRelatingDelegate<'_, '_, 'tcx> 
             .constraints
             .placeholder_region(self.type_checker.infcx, placeholder);
 
-        #[cfg(debug_assertions)]
-        {
-            let reg_info = match placeholder.name {
-                // FIXME Probably better to use the `Span` here
-                ty::BoundRegionKind::BrAnon(_, Some(span)) => BoundRegionInfo::Span(span),
-                ty::BoundRegionKind::BrAnon(..) => BoundRegionInfo::Name(Symbol::intern("anon")),
-                ty::BoundRegionKind::BrNamed(_, name) => BoundRegionInfo::Name(name),
-                ty::BoundRegionKind::BrEnv => BoundRegionInfo::Name(Symbol::intern("env")),
-            };
+        let reg_info = match placeholder.name {
+            ty::BoundRegionKind::BrAnon(_, Some(span)) => BoundRegionInfo::Span(span),
+            ty::BoundRegionKind::BrAnon(..) => BoundRegionInfo::Name(Symbol::intern("anon")),
+            ty::BoundRegionKind::BrNamed(_, name) => BoundRegionInfo::Name(name),
+            ty::BoundRegionKind::BrEnv => BoundRegionInfo::Name(Symbol::intern("env")),
+        };
 
-            let reg_var = reg
-                .try_get_var()
-                .unwrap_or_else(|| bug!("expected region {:?} to be of kind ReVar", reg));
-            let mut var_to_origin = self.type_checker.infcx.reg_var_to_origin.borrow_mut();
-            let prev = var_to_origin.insert(reg_var, RegionCtxt::Placeholder(reg_info));
-            assert!(matches!(prev, None));
-        }
+        let reg_var = reg
+            .try_get_var()
+            .unwrap_or_else(|| bug!("expected region {:?} to be of kind ReVar", reg));
+        let mut var_to_origin = self.type_checker.infcx.reg_var_to_origin.borrow_mut();
+        let prev = var_to_origin.insert(reg_var, RegionCtxt::Placeholder(reg_info));
+        assert!(matches!(prev, None));
 
         reg
     }
@@ -156,15 +147,12 @@ impl<'tcx> TypeRelatingDelegate<'tcx> for NllTypeRelatingDelegate<'_, '_, 'tcx> 
             universe,
         );
 
-        #[cfg(debug_assertions)]
-        {
-            let reg_var = reg
-                .try_get_var()
-                .unwrap_or_else(|| bug!("expected region {:?} to be of kind ReVar", reg));
-            let mut var_to_origin = self.type_checker.infcx.reg_var_to_origin.borrow_mut();
-            let prev = var_to_origin.insert(reg_var, RegionCtxt::Existential(None));
-            assert!(matches!(prev, None));
-        }
+        let reg_var = reg
+            .try_get_var()
+            .unwrap_or_else(|| bug!("expected region {:?} to be of kind ReVar", reg));
+        let mut var_to_origin = self.type_checker.infcx.reg_var_to_origin.borrow_mut();
+        let prev = var_to_origin.insert(reg_var, RegionCtxt::Existential(None));
+        assert!(matches!(prev, None));
 
         reg
     }

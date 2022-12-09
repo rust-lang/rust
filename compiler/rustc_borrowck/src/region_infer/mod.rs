@@ -244,7 +244,6 @@ pub enum ExtraConstraintInfo {
     PlaceholderFromPredicate(Span),
 }
 
-#[cfg(debug_assertions)]
 #[instrument(skip(infcx, sccs), level = "debug")]
 fn sccs_info<'cx, 'tcx>(
     infcx: &'cx BorrowckInferCtxt<'cx, 'tcx>,
@@ -278,7 +277,7 @@ fn sccs_info<'cx, 'tcx>(
         .map(|(scc_idx, region_ctxts)| {
             let repr = region_ctxts
                 .into_iter()
-                .max_by(|x, y| x._preference_value().cmp(&y._preference_value()))
+                .max_by(|x, y| x.preference_value().cmp(&y.preference_value()))
                 .unwrap();
 
             (ConstraintSccIndex::from_usize(scc_idx), repr)
@@ -334,10 +333,7 @@ impl<'tcx> RegionInferenceContext<'tcx> {
         let fr_static = universal_regions.fr_static;
         let constraint_sccs = Rc::new(constraints.compute_sccs(&constraint_graph, fr_static));
 
-        #[cfg(debug_assertions)]
-        {
-            sccs_info(_infcx, constraint_sccs.clone());
-        }
+        sccs_info(_infcx, constraint_sccs.clone());
 
         let mut scc_values =
             RegionValues::new(elements, universal_regions.len(), &placeholder_indices);
