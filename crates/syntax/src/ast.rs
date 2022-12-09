@@ -9,6 +9,7 @@ mod operators;
 pub mod edit;
 pub mod edit_in_place;
 pub mod make;
+pub mod prec;
 
 use std::marker::PhantomData;
 
