@@ -219,31 +219,42 @@ pub fn main() {
 
     let (&X(_t),) = (&x.clone(),);
     //~^ ERROR cannot move
+    //~| HELP consider borrowing the pattern binding
     if let (&Either::One(_t),) = (&e.clone(),) { }
     //~^ ERROR cannot move
+    //~| HELP consider borrowing the pattern binding
     while let (&Either::One(_t),) = (&e.clone(),) { }
     //~^ ERROR cannot move
+    //~| HELP consider borrowing the pattern binding
     match (&e.clone(),) {
         //~^ ERROR cannot move
         (&Either::One(_t),)
+        //~^ HELP consider borrowing the pattern binding
         | (&Either::Two(_t),) => (),
     }
     fn f3((&X(_t),): (&X,)) { }
     //~^ ERROR cannot move
+    //~| HELP consider borrowing the pattern binding
 
     let (&mut X(_t),) = (&mut xm.clone(),);
     //~^ ERROR cannot move
+    //~| HELP consider borrowing the pattern binding
     if let (&mut Either::One(_t),) = (&mut em.clone(),) { }
     //~^ ERROR cannot move
+    //~| HELP consider borrowing the pattern binding
     while let (&mut Either::One(_t),) = (&mut em.clone(),) { }
     //~^ ERROR cannot move
+    //~| HELP consider borrowing the pattern binding
     match (&mut em.clone(),) {
         //~^ ERROR cannot move
         (&mut Either::One(_t),) => (),
+        //~^ HELP consider borrowing the pattern binding
         (&mut Either::Two(_t),) => (),
+        //~^ HELP consider borrowing the pattern binding
     }
     fn f4((&mut X(_t),): (&mut X,)) { }
     //~^ ERROR cannot move
+    //~| HELP consider borrowing the pattern binding
 
     // move from &Either/&X value
 
@@ -319,6 +330,7 @@ struct Testing {
 fn testing(a: &Testing) {
     let Some(_s) = a.a else {
         //~^ ERROR cannot move
+        //~| HELP consider borrowing the pattern binding
         return;
     };
 }

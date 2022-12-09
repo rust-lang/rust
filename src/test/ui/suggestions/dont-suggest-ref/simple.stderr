@@ -566,27 +566,42 @@ LL |     let (&X(_t),) = (&x.clone(),);
    |             |
    |             data moved here
    |             move occurs because `_t` has type `Y`, which does not implement the `Copy` trait
+   |
+help: consider borrowing the pattern binding
+   |
+LL |     let (&X(ref _t),) = (&x.clone(),);
+   |             +++
 
 error[E0507]: cannot move out of a shared reference
-  --> $DIR/simple.rs:222:34
+  --> $DIR/simple.rs:223:34
    |
 LL |     if let (&Either::One(_t),) = (&e.clone(),) { }
    |                          --      ^^^^^^^^^^^^^
    |                          |
    |                          data moved here
    |                          move occurs because `_t` has type `X`, which does not implement the `Copy` trait
+   |
+help: consider borrowing the pattern binding
+   |
+LL |     if let (&Either::One(ref _t),) = (&e.clone(),) { }
+   |                          +++
 
 error[E0507]: cannot move out of a shared reference
-  --> $DIR/simple.rs:224:37
+  --> $DIR/simple.rs:226:37
    |
 LL |     while let (&Either::One(_t),) = (&e.clone(),) { }
    |                             --      ^^^^^^^^^^^^^
    |                             |
    |                             data moved here
    |                             move occurs because `_t` has type `X`, which does not implement the `Copy` trait
+   |
+help: consider borrowing the pattern binding
+   |
+LL |     while let (&Either::One(ref _t),) = (&e.clone(),) { }
+   |                             +++
 
 error[E0507]: cannot move out of a shared reference
-  --> $DIR/simple.rs:226:11
+  --> $DIR/simple.rs:229:11
    |
 LL |     match (&e.clone(),) {
    |           ^^^^^^^^^^^^^
@@ -596,49 +611,78 @@ LL |         (&Either::One(_t),)
    |                       |
    |                       data moved here
    |                       move occurs because `_t` has type `X`, which does not implement the `Copy` trait
+   |
+help: consider borrowing the pattern binding
+   |
+LL |         (&Either::One(ref _t),)
+   |                       +++
 
 error[E0507]: cannot move out of a mutable reference
-  --> $DIR/simple.rs:234:25
+  --> $DIR/simple.rs:239:25
    |
 LL |     let (&mut X(_t),) = (&mut xm.clone(),);
    |                 --      ^^^^^^^^^^^^^^^^^^
    |                 |
    |                 data moved here
    |                 move occurs because `_t` has type `Y`, which does not implement the `Copy` trait
+   |
+help: consider borrowing the pattern binding
+   |
+LL |     let (&mut X(ref _t),) = (&mut xm.clone(),);
+   |                 +++
 
 error[E0507]: cannot move out of a mutable reference
-  --> $DIR/simple.rs:236:38
+  --> $DIR/simple.rs:242:38
    |
 LL |     if let (&mut Either::One(_t),) = (&mut em.clone(),) { }
    |                              --      ^^^^^^^^^^^^^^^^^^
    |                              |
    |                              data moved here
    |                              move occurs because `_t` has type `X`, which does not implement the `Copy` trait
+   |
+help: consider borrowing the pattern binding
+   |
+LL |     if let (&mut Either::One(ref _t),) = (&mut em.clone(),) { }
+   |                              +++
 
 error[E0507]: cannot move out of a mutable reference
-  --> $DIR/simple.rs:238:41
+  --> $DIR/simple.rs:245:41
    |
 LL |     while let (&mut Either::One(_t),) = (&mut em.clone(),) { }
    |                                 --      ^^^^^^^^^^^^^^^^^^
    |                                 |
    |                                 data moved here
    |                                 move occurs because `_t` has type `X`, which does not implement the `Copy` trait
+   |
+help: consider borrowing the pattern binding
+   |
+LL |     while let (&mut Either::One(ref _t),) = (&mut em.clone(),) { }
+   |                                 +++
 
 error[E0507]: cannot move out of a mutable reference
-  --> $DIR/simple.rs:240:11
+  --> $DIR/simple.rs:248:11
    |
 LL |     match (&mut em.clone(),) {
    |           ^^^^^^^^^^^^^^^^^^
 LL |
 LL |         (&mut Either::One(_t),) => (),
    |                           -- data moved here
+LL |
 LL |         (&mut Either::Two(_t),) => (),
    |                           -- ...and here
    |
    = note: move occurs because these variables have types that don't implement the `Copy` trait
+help: consider borrowing the pattern binding
+   |
+LL |         (&mut Either::One(ref _t),) => (),
+   |                           +++
+help: consider borrowing the pattern binding
+   |
+LL |         (&mut Either::Two(ref _t),) => (),
+   |                           +++
 
 error[E0507]: cannot move out of a shared reference
-  --> $DIR/simple.rs:250:18
+  --> $DIR/simple.rs:261:18
    |
 LL |     let &X(_t) = &x;
    |            --    ^^
@@ -653,7 +697,7 @@ LL +     let X(_t) = &x;
    |
 
 error[E0507]: cannot move out of a shared reference
-  --> $DIR/simple.rs:253:31
+  --> $DIR/simple.rs:264:31
    |
 LL |     if let &Either::One(_t) = &e { }
    |                         --    ^^
@@ -668,7 +712,7 @@ LL +     if let Either::One(_t) = &e { }
    |
 
 error[E0507]: cannot move out of a shared reference
-  --> $DIR/simple.rs:256:34
+  --> $DIR/simple.rs:267:34
    |
 LL |     while let &Either::One(_t) = &e { }
    |                            --    ^^
@@ -683,7 +727,7 @@ LL +     while let Either::One(_t) = &e { }
    |
 
 error[E0507]: cannot move out of a shared reference
-  --> $DIR/simple.rs:259:11
+  --> $DIR/simple.rs:270:11
    |
 LL |     match &e {
    |           ^^
@@ -701,7 +745,7 @@ LL +         Either::One(_t)
    |
 
 error[E0507]: cannot move out of a shared reference
-  --> $DIR/simple.rs:266:11
+  --> $DIR/simple.rs:277:11
    |
 LL |     match &e {
    |           ^^
@@ -719,7 +763,7 @@ LL +         Either::One(_t) => (),
    |
 
 error[E0507]: cannot move out of a shared reference
-  --> $DIR/simple.rs:272:11
+  --> $DIR/simple.rs:283:11
    |
 LL |     match &e {
    |           ^^
@@ -737,7 +781,7 @@ LL +         Either::One(_t) => (),
    |
 
 error[E0507]: cannot move out of a mutable reference
-  --> $DIR/simple.rs:279:22
+  --> $DIR/simple.rs:290:22
    |
 LL |     let &mut X(_t) = &mut xm;
    |                --    ^^^^^^^
@@ -752,7 +796,7 @@ LL +     let mut X(_t) = &mut xm;
    |
 
 error[E0507]: cannot move out of a mutable reference
-  --> $DIR/simple.rs:282:35
+  --> $DIR/simple.rs:293:35
    |
 LL |     if let &mut Either::One(_t) = &mut em { }
    |                             --    ^^^^^^^
@@ -767,7 +811,7 @@ LL +     if let mut Either::One(_t) = &mut em { }
    |
 
 error[E0507]: cannot move out of a mutable reference
-  --> $DIR/simple.rs:285:38
+  --> $DIR/simple.rs:296:38
    |
 LL |     while let &mut Either::One(_t) = &mut em { }
    |                                --    ^^^^^^^
@@ -782,7 +826,7 @@ LL +     while let mut Either::One(_t) = &mut em { }
    |
 
 error[E0507]: cannot move out of a mutable reference
-  --> $DIR/simple.rs:288:11
+  --> $DIR/simple.rs:299:11
    |
 LL |     match &mut em {
    |           ^^^^^^^
@@ -800,7 +844,7 @@ LL +         mut Either::One(_t)
    |
 
 error[E0507]: cannot move out of a mutable reference
-  --> $DIR/simple.rs:295:11
+  --> $DIR/simple.rs:306:11
    |
 LL |     match &mut em {
    |           ^^^^^^^
@@ -818,7 +862,7 @@ LL +         mut Either::One(_t) => (),
    |
 
 error[E0507]: cannot move out of a mutable reference
-  --> $DIR/simple.rs:301:11
+  --> $DIR/simple.rs:312:11
    |
 LL |     match &mut em {
    |           ^^^^^^^
@@ -836,7 +880,7 @@ LL +         mut Either::One(_t) => (),
    |
 
 error[E0507]: cannot move out of a mutable reference
-  --> $DIR/simple.rs:307:11
+  --> $DIR/simple.rs:318:11
    |
 LL |     match &mut em {
    |           ^^^^^^^
@@ -884,31 +928,46 @@ LL +     fn f2(mut X(_t): &mut X) { }
    |
 
 error[E0507]: cannot move out of a shared reference
-  --> $DIR/simple.rs:231:11
+  --> $DIR/simple.rs:235:11
    |
 LL |     fn f3((&X(_t),): (&X,)) { }
    |           ^^^^--^^^
    |               |
    |               data moved here
    |               move occurs because `_t` has type `Y`, which does not implement the `Copy` trait
+   |
+help: consider borrowing the pattern binding
+   |
+LL |     fn f3((&X(ref _t),): (&X,)) { }
+   |               +++
 
 error[E0507]: cannot move out of a mutable reference
-  --> $DIR/simple.rs:245:11
+  --> $DIR/simple.rs:255:11
    |
 LL |     fn f4((&mut X(_t),): (&mut X,)) { }
    |           ^^^^^^^^--^^^
    |                   |
    |                   data moved here
    |                   move occurs because `_t` has type `Y`, which does not implement the `Copy` trait
+   |
+help: consider borrowing the pattern binding
+   |
+LL |     fn f4((&mut X(ref _t),): (&mut X,)) { }
+   |                   +++
 
 error[E0507]: cannot move out of `a.a` as enum variant `Some` which is behind a shared reference
-  --> $DIR/simple.rs:320:20
+  --> $DIR/simple.rs:331:20
    |
 LL |     let Some(_s) = a.a else {
    |              --    ^^^
    |              |
    |              data moved here
    |              move occurs because `_s` has type `String`, which does not implement the `Copy` trait
+   |
+help: consider borrowing the pattern binding
+   |
+LL |     let Some(ref _s) = a.a else {
+   |              +++
 
 error: aborting due to 61 previous errors
 

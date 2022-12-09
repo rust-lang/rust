@@ -460,7 +460,7 @@ impl<'a, 'tcx> MirBorrowckCtxt<'a, 'tcx> {
     }
 
     fn add_move_error_suggestions(&self, err: &mut Diagnostic, binds_to: &[Local]) {
-        let mut suggestions: Vec<(Span, &str, String)> = Vec::new();
+        let mut suggestions: Vec<(Span, String, String)> = Vec::new();
         for local in binds_to {
             let bind_to = &self.body.local_decls[*local];
             if let Some(box LocalInfo::User(ClearCrossCrate::Set(BindingForm::Var(
@@ -469,7 +469,14 @@ impl<'a, 'tcx> MirBorrowckCtxt<'a, 'tcx> {
             {
                 let Ok(pat_snippet) =
                     self.infcx.tcx.sess.source_map().span_to_snippet(pat_span) else { continue; };
-                let Some(stripped) = pat_snippet.strip_prefix('&') else { continue; };
+                let Some(stripped) = pat_snippet.strip_prefix('&') else {
+                    suggestions.push((
+                        bind_to.source_info.span.shrink_to_lo(),
+                        "consider borrowing the pattern binding".to_string(),
+                        "ref ".to_string(),
+                    ));
+                    continue;
+                };
                 let inner_pat_snippet = stripped.trim_start();
                 let (pat_span, suggestion, to_remove) = if inner_pat_snippet.starts_with("mut")
                     && inner_pat_snippet["mut".len()..].starts_with(rustc_lexer::is_whitespace)
@@ -488,18 +495,17 @@ impl<'a, 'tcx> MirBorrowckCtxt<'a, 'tcx> {
                     );
                     (pat_span, String::new(), "borrow")
                 };
-                suggestions.push((pat_span, to_remove, suggestion.to_owned()));
+                suggestions.push((
+                    pat_span,
+                    format!("consider removing the {to_remove}"),
+                    suggestion.to_string(),
+                ));
             }
         }
         suggestions.sort_unstable_by_key(|&(span, _, _)| span);
         suggestions.dedup_by_key(|&mut (span, _, _)| span);
-        for (span, to_remove, suggestion) in suggestions {
-            err.span_suggestion_verbose(
-                span,
-                &format!("consider removing the {to_remove}"),
-                suggestion,
-                Applicability::MachineApplicable,
-            );
+        for (span, msg, suggestion) in suggestions {
+            err.span_suggestion_verbose(span, &msg, suggestion, Applicability::MachineApplicable);
         }
     }
 

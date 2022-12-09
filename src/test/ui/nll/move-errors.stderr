@@ -81,6 +81,11 @@ LL |     let C(D(s)) = c;
    |             |
    |             data moved here
    |             move occurs because `s` has type `String`, which does not implement the `Copy` trait
+   |
+help: consider borrowing the pattern binding
+   |
+LL |     let C(D(ref s)) = c;
+   |             +++
 
 error[E0507]: cannot move out of `*a` which is behind a shared reference
   --> $DIR/move-errors.rs:51:9
@@ -116,6 +121,11 @@ LL |         B::U(D(s)) => (),
    |                |
    |                data moved here
    |                move occurs because `s` has type `String`, which does not implement the `Copy` trait
+   |
+help: consider borrowing the pattern binding
+   |
+LL |         B::U(D(ref s)) => (),
+   |                +++
 
 error[E0509]: cannot move out of type `D`, which implements the `Drop` trait
   --> $DIR/move-errors.rs:92:11
@@ -128,6 +138,11 @@ LL |         (D(s), &t) => (),
    |            |
    |            data moved here
    |            move occurs because `s` has type `String`, which does not implement the `Copy` trait
+   |
+help: consider borrowing the pattern binding
+   |
+LL |         (D(ref s), &t) => (),
+   |            +++
 
 error[E0507]: cannot move out of `*x.1` which is behind a shared reference
   --> $DIR/move-errors.rs:92:11
@@ -140,6 +155,11 @@ LL |         (D(s), &t) => (),
    |                 |
    |                 data moved here
    |                 move occurs because `t` has type `String`, which does not implement the `Copy` trait
+   |
+help: consider borrowing the pattern binding
+   |
+LL |         (D(s), &ref t) => (),
+   |                 +++
 
 error[E0509]: cannot move out of type `F`, which implements the `Drop` trait
   --> $DIR/move-errors.rs:102:11
@@ -153,6 +173,14 @@ LL |         F(s, mut t) => (),
    |           data moved here
    |
    = note: move occurs because these variables have types that don't implement the `Copy` trait
+help: consider borrowing the pattern binding
+   |
+LL |         F(ref s, mut t) => (),
+   |           +++
+help: consider borrowing the pattern binding
+   |
+LL |         F(s, ref mut t) => (),
+   |              +++
 
 error[E0507]: cannot move out of `x` as enum variant `Err` which is behind a shared reference
   --> $DIR/move-errors.rs:110:11
