@@ -256,6 +256,7 @@ mod return_self_not_must_use;
 mod returns;
 mod same_name_method;
 mod self_named_constructors;
+mod semicolon_block;
 mod semicolon_if_nothing_returned;
 mod serde_api;
 mod shadow;
@@ -900,6 +901,7 @@ pub fn register_plugins(store: &mut rustc_lint::LintStore, sess: &Session, conf:
     store.register_late_pass(|_| Box::new(from_raw_with_void_ptr::FromRawWithVoidPtr));
     store.register_late_pass(|_| Box::new(suspicious_xor_used_as_pow::ConfusingXorAndPow));
     store.register_late_pass(move |_| Box::new(manual_is_ascii_check::ManualIsAsciiCheck::new(msrv())));
+    store.register_late_pass(|_| Box::new(semicolon_block::SemicolonBlock));
     // add lints here, do not remove this comment, it's used in `new_lint`
 }
 
