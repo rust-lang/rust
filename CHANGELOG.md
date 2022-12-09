@@ -3875,6 +3875,7 @@ Released 2018-09-13
 [`alloc_instead_of_core`]: https://rust-lang.github.io/rust-clippy/master/index.html#alloc_instead_of_core
 [`allow_attributes_without_reason`]: https://rust-lang.github.io/rust-clippy/master/index.html#allow_attributes_without_reason
 [`almost_complete_letter_range`]: https://rust-lang.github.io/rust-clippy/master/index.html#almost_complete_letter_range
+[`almost_complete_range`]: https://rust-lang.github.io/rust-clippy/master/index.html#almost_complete_range
 [`almost_swapped`]: https://rust-lang.github.io/rust-clippy/master/index.html#almost_swapped
 [`approx_constant`]: https://rust-lang.github.io/rust-clippy/master/index.html#approx_constant
 [`arithmetic_side_effects`]: https://rust-lang.github.io/rust-clippy/master/index.html#arithmetic_side_effects
