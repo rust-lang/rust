@@ -349,11 +349,26 @@ pub(super) fn late_lint_mod<'tcx, T: LateLintPass<'tcx> + 'tcx>(
         only_module: true,
     };
 
+    // Note: `passes` is often empty. In that case, it's faster to run
+    // `builtin_lints` directly rather than bundling it up into the
+    // `RuntimeCombinedLateLintPass`.
     let mut passes: Vec<_> =
         unerased_lint_store(tcx).late_module_passes.iter().map(|mk_pass| (mk_pass)(tcx)).collect();
-    passes.push(Box::new(builtin_lints));
-    let pass = RuntimeCombinedLateLintPass { passes: &mut passes[..] };
+    if passes.is_empty() {
+        late_lint_mod_inner(tcx, module_def_id, context, builtin_lints);
+    } else {
+        passes.push(Box::new(builtin_lints));
+        let pass = RuntimeCombinedLateLintPass { passes: &mut passes[..] };
+        late_lint_mod_inner(tcx, module_def_id, context, pass);
+    }
+}
 
+fn late_lint_mod_inner<'tcx, T: LateLintPass<'tcx>>(
+    tcx: TyCtxt<'tcx>,
+    module_def_id: LocalDefId,
+    context: LateContext<'tcx>,
+    pass: T,
+) {
     let mut cx = LateContextAndPass { context, pass };
 
     let (module, _span, hir_id) = tcx.hir().get_module(module_def_id);
@@ -380,11 +395,25 @@ fn late_lint_crate<'tcx, T: LateLintPass<'tcx> + 'tcx>(tcx: TyCtxt<'tcx>, builti
         only_module: false,
     };
 
+    // Note: `passes` is often empty. In that case, it's faster to run
+    // `builtin_lints` directly rather than bundling it up into the
+    // `RuntimeCombinedLateLintPass`.
     let mut passes: Vec<_> =
         unerased_lint_store(tcx).late_passes.iter().map(|mk_pass| (mk_pass)(tcx)).collect();
-    passes.push(Box::new(builtin_lints));
-    let pass = RuntimeCombinedLateLintPass { passes: &mut passes[..] };
+    if passes.is_empty() {
+        late_lint_crate_inner(tcx, context, builtin_lints);
+    } else {
+        passes.push(Box::new(builtin_lints));
+        let pass = RuntimeCombinedLateLintPass { passes: &mut passes[..] };
+        late_lint_crate_inner(tcx, context, pass);
+    }
+}
 
+fn late_lint_crate_inner<'tcx, T: LateLintPass<'tcx>>(
+    tcx: TyCtxt<'tcx>,
+    context: LateContext<'tcx>,
+    pass: T,
+) {
     let mut cx = LateContextAndPass { context, pass };
 
     // Visit the whole crate.

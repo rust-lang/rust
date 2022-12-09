@@ -393,12 +393,27 @@ pub fn check_ast_node<'a>(
         lint_buffer.unwrap_or_default(),
     );
 
+    // Note: `passes` is often empty. In that case, it's faster to run
+    // `builtin_lints` directly rather than bundling it up into the
+    // `RuntimeCombinedEarlyLintPass`.
     let passes =
         if pre_expansion { &lint_store.pre_expansion_passes } else { &lint_store.early_passes };
-    let mut passes: Vec<EarlyLintPassObject> = passes.iter().map(|mk_pass| (mk_pass)()).collect();
-    passes.push(Box::new(builtin_lints));
-    let pass = RuntimeCombinedEarlyLintPass { passes: &mut passes[..] };
+    if passes.is_empty() {
+        check_ast_node_inner(sess, check_node, context, builtin_lints);
+    } else {
+        let mut passes: Vec<_> = passes.iter().map(|mk_pass| (mk_pass)()).collect();
+        passes.push(Box::new(builtin_lints));
+        let pass = RuntimeCombinedEarlyLintPass { passes: &mut passes[..] };
+        check_ast_node_inner(sess, check_node, context, pass);
+    }
+}
 
+pub fn check_ast_node_inner<'a, T: EarlyLintPass>(
+    sess: &Session,
+    check_node: impl EarlyCheckNode<'a>,
+    context: EarlyContext<'_>,
+    pass: T,
+) {
     let mut cx = EarlyContextAndPass { context, pass };
 
     cx.with_lint_attrs(check_node.id(), check_node.attrs(), |cx| check_node.check(cx));
