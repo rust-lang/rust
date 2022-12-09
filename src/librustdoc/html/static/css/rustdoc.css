@@ -212,7 +212,7 @@ pre.rust a,
 .mobile-topbar h2 a,
 h1 a,
 .search-results a,
-.item-left .stab,
+.stab,
 .result-name .primitive > i, .result-name .keyword > i {
 	color: var(--main-color);
 }
@@ -960,22 +960,29 @@ so that we can apply CSS-filters to change the arrow color in themes */
 }
 
 .item-info .stab {
-	width: fit-content;
 	/* This min-height is needed to unify the height of the stab elements because some of them
 	   have emojis.
 	*/
 	min-height: 36px;
 	display: flex;
-	align-items: center;
-	white-space: pre-wrap;
-}
-.stab {
 	padding: 3px;
 	margin-bottom: 5px;
+}
+.item-left .stab {
+	margin-left: 0.3125em;
+}
+.stab {
+	padding: 0 2px;
 	font-size: 0.875rem;
 	font-weight: normal;
 	color: var(--main-color);
 	background-color: var(--stab-background-color);
+	width: fit-content;
+	align-items: center;
+	white-space: pre-wrap;
+	border-radius: 3px;
+	display: inline-flex;
+	vertical-align: text-bottom;
 }
 
 .stab.portability > code {
@@ -988,12 +995,6 @@ so that we can apply CSS-filters to change the arrow color in themes */
 	margin-right: 0.3rem;
 }
 
-/* This is to prevent the `.stab` elements to overflow the .docblock elements. */
-.docblock .stab {
-	padding: 0 0.125em;
-	margin-bottom: 0;
-}
-
 /* Black one-pixel outline around emoji shapes */
 .emoji {
 	text-shadow:
@@ -1001,16 +1002,6 @@ so that we can apply CSS-filters to change the arrow color in themes */
 		-1px 0 0 black,
 		0  1px 0 black,
 		0 -1px 0 black;
-}
-
-.item-left .stab {
-	border-radius: 3px;
-	display: inline-block;
-	line-height: 1.2;
-	margin-bottom: 0;
-	margin-left: 0.3125em;
-	padding: 2px;
-	vertical-align: text-bottom;
 }
 
 .module-item.unstable,
