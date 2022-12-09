@@ -638,8 +638,12 @@ fn adjustment_hints(
         return None;
     }
 
-    if let ast::Expr::ParenExpr(_) = expr {
-        // These inherit from the inner expression which would result in duplicate hints
+    // These inherit from the inner expression which would result in duplicate hints
+    if let ast::Expr::ParenExpr(_)
+    | ast::Expr::IfExpr(_)
+    | ast::Expr::BlockExpr(_)
+    | ast::Expr::MatchExpr(_) = expr
+    {
         return None;
     }
 
@@ -3083,6 +3087,33 @@ fn main() {
    //^^^^^^^^^^^&
    //^^^^^^^^^^^*
     (&mut Struct).by_ref_mut();
+
+    // Check that block-like expressions don't duplicate hints
+    let _: &mut [u32] = (&mut []);
+                       //^^^^^^^<unsize>
+                       //^^^^^^^&mut $
+                       //^^^^^^^*
+    let _: &mut [u32] = { &mut [] };
+                        //^^^^^^^<unsize>
+                        //^^^^^^^&mut $
+                        //^^^^^^^*
+    let _: &mut [u32] = unsafe { &mut [] };
+                               //^^^^^^^<unsize>
+                               //^^^^^^^&mut $
+                               //^^^^^^^*
+    let _: &mut [u32] = if true {
+        &mut []
+      //^^^^^^^<unsize>
+      //^^^^^^^&mut $
+      //^^^^^^^*
+    } else {
+        loop {}
+      //^^^^^^^<never-to-any>
+    };
+    let _: &mut [u32] = match () { () => &mut [] }
+                                       //^^^^^^^<unsize>
+                                       //^^^^^^^&mut $
+                                       //^^^^^^^*
 }
 
 #[derive(Copy, Clone)]
@@ -3092,6 +3123,8 @@ impl Struct {
     fn by_ref(&self) {}
     fn by_ref_mut(&mut self) {}
 }
+trait Trait {}
+impl Trait for Struct {}
 "#,
         )
     }
