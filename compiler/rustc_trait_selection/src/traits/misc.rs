@@ -2,12 +2,15 @@
 
 use crate::traits::{self, ObligationCause};
 
+use rustc_data_structures::fx::FxIndexSet;
 use rustc_hir as hir;
 use rustc_infer::infer::outlives::env::OutlivesEnvironment;
 use rustc_infer::infer::TyCtxtInferExt;
 use rustc_middle::ty::{self, Ty, TyCtxt, TypeVisitable};
 
 use crate::traits::error_reporting::TypeErrCtxtExt;
+
+use super::outlives_bounds::InferCtxtExt;
 
 #[derive(Clone)]
 pub enum CopyImplementationError<'tcx> {
@@ -45,6 +48,7 @@ pub fn type_allowed_to_implement_copy<'tcx>(
     };
 
     let copy_def_id = tcx.require_lang_item(hir::LangItem::Copy, Some(parent_cause.span));
+
     let mut infringing = Vec::new();
     for variant in adt.variants() {
         for field in &variant.fields {
@@ -85,7 +89,16 @@ pub fn type_allowed_to_implement_copy<'tcx>(
                 infringing.push((field, ty));
             }
 
-            let outlives_env = OutlivesEnvironment::new(param_env);
+            // Check regions assuming the self type of the impl is WF
+            let outlives_env = OutlivesEnvironment::with_bounds(
+                param_env,
+                Some(&infcx),
+                infcx.implied_bounds_tys(
+                    param_env,
+                    parent_cause.body_id,
+                    FxIndexSet::from_iter([self_type]),
+                ),
+            );
             infcx.process_registered_region_obligations(
                 outlives_env.region_bound_pairs(),
                 param_env,
