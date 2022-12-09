@@ -1,6 +1,21 @@
 // All stability badges should have rounded corners and colored backgrounds.
 goto: "file://" + |DOC_PATH| + "/test_docs/index.html"
 show-text: true
+
+// Checking the alignment of the badges text with the item name.
+assert-css: (
+    "//*[@class='item-table']//*[@class='item-left module-item']/*[@class='stab deprecated']",
+    {"padding-top": "2px"},
+)
+assert-position: (
+    "//*[@class='item-table']//*[@class='item-left module-item']/*[@class='stab deprecated']",
+    {"y": 1892},
+)
+assert-position: (
+    "//*[@class='item-table']//*[@class='item-left module-item']/*[@class='stab deprecated']/preceding-sibling::a",
+    {"y": 1894}, // 1892 + 2 because of padding
+)
+
 define-function: (
 	"check-badge",
 	(theme, background, color),
