@@ -17,7 +17,7 @@ error[E0275]: overflow evaluating the requirement `(): Sized`
    = help: consider increasing the recursion limit by adding a `#![recursion_limit = "512"]` attribute to your crate (`issue_91949_hangs_on_recursion`)
    = note: required for `std::iter::Empty<()>` to implement `Iterator`
    = note: 171 redundant requirements hidden
-   = note: required for `IteratorOfWrapped<(), Map<IteratorOfWrapped<(), Map<..., ...>>, ...>>` to implement `Iterator`
+   = note: required for `IteratorOfWrapped<(), Map<IteratorOfWrapped<(), Map<IteratorOfWrapped<(), Map<..., ...>>, ...>>, ...>>` to implement `Iterator`
    = note: the full type name has been written to '$TEST_BUILD_DIR/traits/issue-91949-hangs-on-recursion/issue-91949-hangs-on-recursion.long-type-hash.txt'
 
 error: aborting due to previous error; 1 warning emitted

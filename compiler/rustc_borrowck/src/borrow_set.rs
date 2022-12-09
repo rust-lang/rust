@@ -198,7 +198,7 @@ impl<'a, 'tcx> Visitor<'tcx> for GatherBorrows<'a, 'tcx> {
         rvalue: &mir::Rvalue<'tcx>,
         location: mir::Location,
     ) {
-        if let mir::Rvalue::Ref(region, kind, ref borrowed_place) = *rvalue {
+        if let &mir::Rvalue::Ref(region, kind, borrowed_place) = rvalue {
             if borrowed_place.ignore_borrow(self.tcx, self.body, &self.locals_state_at_exit) {
                 debug!("ignoring_borrow of {:?}", borrowed_place);
                 return;
@@ -211,7 +211,7 @@ impl<'a, 'tcx> Visitor<'tcx> for GatherBorrows<'a, 'tcx> {
                 region,
                 reserve_location: location,
                 activation_location: TwoPhaseActivation::NotTwoPhase,
-                borrowed_place: *borrowed_place,
+                borrowed_place,
                 assigned_place: *assigned_place,
             };
             let (idx, _) = self.location_map.insert_full(location, borrow);
@@ -273,14 +273,14 @@ impl<'a, 'tcx> Visitor<'tcx> for GatherBorrows<'a, 'tcx> {
     }
 
     fn visit_rvalue(&mut self, rvalue: &mir::Rvalue<'tcx>, location: mir::Location) {
-        if let mir::Rvalue::Ref(region, kind, ref place) = *rvalue {
+        if let &mir::Rvalue::Ref(region, kind, place) = rvalue {
             // double-check that we already registered a BorrowData for this
 
             let borrow_data = &self.location_map[&location];
             assert_eq!(borrow_data.reserve_location, location);
             assert_eq!(borrow_data.kind, kind);
             assert_eq!(borrow_data.region, region.to_region_vid());
-            assert_eq!(borrow_data.borrowed_place, *place);
+            assert_eq!(borrow_data.borrowed_place, place);
         }
 
         self.super_rvalue(rvalue, location)

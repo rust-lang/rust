@@ -8,7 +8,7 @@ use rustc_middle::mir;
 use rustc_middle::mir::interpret::{InterpResult, Scalar};
 use rustc_middle::ty::layout::LayoutOf;
 
-use super::{InterpCx, Machine};
+use super::{ImmTy, InterpCx, Machine};
 
 /// Classify whether an operator is "left-homogeneous", i.e., the LHS has the
 /// same type as the result.
@@ -108,7 +108,7 @@ impl<'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
             // Stacked Borrows.
             Retag(kind, place) => {
                 let dest = self.eval_place(**place)?;
-                M::retag(self, *kind, &dest)?;
+                M::retag_place_contents(self, *kind, &dest)?;
             }
 
             Intrinsic(box ref intrinsic) => self.emulate_nondiverging_intrinsic(intrinsic)?,
@@ -247,10 +247,41 @@ impl<'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
                 self.write_scalar(Scalar::from_machine_usize(len, self), &dest)?;
             }
 
-            AddressOf(_, place) | Ref(_, _, place) => {
+            Ref(_, borrow_kind, place) => {
                 let src = self.eval_place(place)?;
                 let place = self.force_allocation(&src)?;
-                self.write_immediate(place.to_ref(self), &dest)?;
+                let val = ImmTy::from_immediate(place.to_ref(self), dest.layout);
+                // A fresh reference was created, make sure it gets retagged.
+                let val = M::retag_ptr_value(
+                    self,
+                    if borrow_kind.allows_two_phase_borrow() {
+                        mir::RetagKind::TwoPhase
+                    } else {
+                        mir::RetagKind::Default
+                    },
+                    &val,
+                )?;
+                self.write_immediate(*val, &dest)?;
+            }
+
+            AddressOf(_, place) => {
+                // Figure out whether this is an addr_of of an already raw place.
+                let place_base_raw = if place.has_deref() {
+                    let ty = self.frame().body.local_decls[place.local].ty;
+                    ty.is_unsafe_ptr()
+                } else {
+                    // Not a deref, and thus not raw.
+                    false
+                };
+
+                let src = self.eval_place(place)?;
+                let place = self.force_allocation(&src)?;
+                let mut val = ImmTy::from_immediate(place.to_ref(self), dest.layout);
+                if !place_base_raw {
+                    // If this was not already raw, it needs retagging.
+                    val = M::retag_ptr_value(self, mir::RetagKind::Raw, &val)?;
+                }
+                self.write_immediate(*val, &dest)?;
             }
 
             NullaryOp(null_op, ty) => {

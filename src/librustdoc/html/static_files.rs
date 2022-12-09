@@ -130,4 +130,4 @@ static_files! {
     nanum_barun_gothic_license => "static/fonts/NanumBarunGothic-LICENSE.txt",
 }
 
-pub(crate) static SCRAPE_EXAMPLES_HELP_MD: &str = include_str!("static/js/scrape-examples.js");
+pub(crate) static SCRAPE_EXAMPLES_HELP_MD: &str = include_str!("static/scrape-examples-help.md");

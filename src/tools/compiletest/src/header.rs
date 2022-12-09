@@ -260,9 +260,9 @@ impl TestProps {
         props.load_from(testfile, cfg, config);
 
         match (props.pass_mode, props.fail_mode) {
-            (None, None) => props.fail_mode = Some(FailMode::Check),
-            (Some(_), None) | (None, Some(_)) => {}
+            (None, None) if config.mode == Mode::Ui => props.fail_mode = Some(FailMode::Check),
             (Some(_), Some(_)) => panic!("cannot use a *-fail and *-pass mode together"),
+            _ => {}
         }
 
         props
@@ -522,8 +522,8 @@ impl TestProps {
     }
 
     pub fn pass_mode(&self, config: &Config) -> Option<PassMode> {
-        if !self.ignore_pass && self.fail_mode.is_none() && config.mode == Mode::Ui {
-            if let (mode @ Some(_), Some(_)) = (config.force_pass_mode, self.pass_mode) {
+        if !self.ignore_pass && self.fail_mode.is_none() {
+            if let mode @ Some(_) = config.force_pass_mode {
                 return mode;
             }
         }

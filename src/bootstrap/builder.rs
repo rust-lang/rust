@@ -754,6 +754,8 @@ impl<'a> Builder<'a> {
                 run::BumpStage0,
                 run::ReplaceVersionPlaceholder,
                 run::Miri,
+                run::CollectLicenseMetadata,
+                run::GenerateCopyright,
             ),
             // These commands either don't use paths, or they're special-cased in Build::build()
             Kind::Clean | Kind::Format | Kind::Setup => vec![],

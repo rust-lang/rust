@@ -225,7 +225,7 @@ impl<T> Channel<T> {
             let slot = unsafe { self.buffer.get_unchecked(index) };
             let stamp = slot.stamp.load(Ordering::Acquire);
 
-            // If the the stamp is ahead of the head by 1, we may attempt to pop.
+            // If the stamp is ahead of the head by 1, we may attempt to pop.
             if head + 1 == stamp {
                 let new = if index + 1 < self.cap {
                     // Same lap, incremented index.

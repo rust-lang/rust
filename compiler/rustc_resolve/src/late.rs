@@ -1927,7 +1927,7 @@ impl<'a: 'ast, 'b, 'ast> LateResolutionVisitor<'a, 'b, 'ast> {
                                 // We have a single lifetime => success.
                                 elision_lifetime = Elision::Param(res)
                             } else {
-                                // We have have multiple lifetimes => error.
+                                // We have multiple lifetimes => error.
                                 elision_lifetime = Elision::Err;
                             }
                         }
@@ -2360,8 +2360,8 @@ impl<'a: 'ast, 'b, 'ast> LateResolutionVisitor<'a, 'b, 'ast> {
                     if let GenericParamKind::Lifetime = param.kind {
                         // Record lifetime res, so lowering knows there is something fishy.
                         self.record_lifetime_param(param.id, LifetimeRes::Error);
-                        continue;
                     }
+                    continue;
                 }
                 Entry::Vacant(entry) => {
                     entry.insert(param.ident.span);

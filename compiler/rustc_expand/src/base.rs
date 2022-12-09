@@ -960,7 +960,7 @@ pub trait LintStoreExpand {
         node_id: NodeId,
         attrs: &[Attribute],
         items: &[P<Item>],
-        name: &str,
+        name: Symbol,
     );
 }
 

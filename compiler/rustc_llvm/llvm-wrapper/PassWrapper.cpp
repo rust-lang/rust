@@ -205,7 +205,12 @@ enum class LLVMRustCodeModel {
   None,
 };
 
-static Optional<CodeModel::Model> fromRust(LLVMRustCodeModel Model) {
+#if LLVM_VERSION_LT(16, 0)
+static Optional<CodeModel::Model>
+#else
+static std::optional<CodeModel::Model>
+#endif
+fromRust(LLVMRustCodeModel Model) {
   switch (Model) {
   case LLVMRustCodeModel::Tiny:
     return CodeModel::Tiny;
@@ -638,7 +643,11 @@ LLVMRustOptimize(
     LLVMSelfProfileInitializeCallbacks(PIC,LlvmSelfProfiler,BeforePassCallback,AfterPassCallback);
   }
 
+#if LLVM_VERSION_LT(16, 0)
   Optional<PGOOptions> PGOOpt;
+#else
+  std::optional<PGOOptions> PGOOpt;
+#endif
   if (PGOGenPath) {
     assert(!PGOUsePath && !PGOSampleUsePath);
     PGOOpt = PGOOptions(PGOGenPath, "", "", PGOOptions::IRInstr,

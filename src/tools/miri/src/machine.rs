@@ -1055,13 +1055,26 @@ impl<'mir, 'tcx> Machine<'mir, 'tcx> for MiriMachine<'mir, 'tcx> {
     }
 
     #[inline(always)]
-    fn retag(
+    fn retag_ptr_value(
+        ecx: &mut InterpCx<'mir, 'tcx, Self>,
+        kind: mir::RetagKind,
+        val: &ImmTy<'tcx, Provenance>,
+    ) -> InterpResult<'tcx, ImmTy<'tcx, Provenance>> {
+        if ecx.machine.borrow_tracker.is_some() {
+            ecx.retag_ptr_value(kind, val)
+        } else {
+            Ok(val.clone())
+        }
+    }
+
+    #[inline(always)]
+    fn retag_place_contents(
         ecx: &mut InterpCx<'mir, 'tcx, Self>,
         kind: mir::RetagKind,
         place: &PlaceTy<'tcx, Provenance>,
     ) -> InterpResult<'tcx> {
         if ecx.machine.borrow_tracker.is_some() {
-            ecx.retag(kind, place)?;
+            ecx.retag_place_contents(kind, place)?;
         }
         Ok(())
     }

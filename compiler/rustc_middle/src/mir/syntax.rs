@@ -400,7 +400,7 @@ impl std::fmt::Display for NonDivergingIntrinsic<'_> {
 #[derive(Copy, Clone, TyEncodable, TyDecodable, Debug, PartialEq, Eq, Hash, HashStable)]
 #[rustc_pass_by_value]
 pub enum RetagKind {
-    /// The initial retag when entering a function.
+    /// The initial retag of arguments when entering a function.
     FnEntry,
     /// Retag preparing for a two-phase borrow.
     TwoPhase,

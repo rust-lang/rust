@@ -120,13 +120,20 @@ where
         self.items.hash(hasher)
     }
 }
+
 impl<I: Idx, K, V, C> HashStable<C> for SortedIndexMultiMap<I, K, V>
 where
     K: HashStable<C>,
     V: HashStable<C>,
 {
     fn hash_stable(&self, ctx: &mut C, hasher: &mut StableHasher) {
-        self.items.hash_stable(ctx, hasher)
+        let SortedIndexMultiMap {
+            items,
+            // We can ignore this field because it is not observable from the outside.
+            idx_sorted_by_item_key: _,
+        } = self;
+
+        items.hash_stable(ctx, hasher)
     }
 }
 

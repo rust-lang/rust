@@ -70,7 +70,7 @@ pub fn codegen_select_candidate<'tcx>(
         // `rustc_ty_utils::resolve_associated_item` doesn't return `None` post-monomorphization.
         for err in errors {
             if let FulfillmentErrorCode::CodeCycle(cycle) = err.code {
-                infcx.err_ctxt().report_overflow_error_cycle(&cycle);
+                infcx.err_ctxt().report_overflow_obligation_cycle(&cycle);
             }
         }
         return Err(CodegenObligationError::FulfillmentError);

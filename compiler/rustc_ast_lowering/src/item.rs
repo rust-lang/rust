@@ -253,8 +253,13 @@ impl<'hir> LoweringContext<'_, 'hir> {
                     // only cares about the input argument patterns in the function
                     // declaration (decl), not the return types.
                     let asyncness = header.asyncness;
-                    let body_id =
-                        this.lower_maybe_async_body(span, &decl, asyncness, body.as_deref());
+                    let body_id = this.lower_maybe_async_body(
+                        span,
+                        hir_id,
+                        &decl,
+                        asyncness,
+                        body.as_deref(),
+                    );
 
                     let mut itctx = ImplTraitContext::Universal;
                     let (generics, decl) = this.lower_generics(generics, id, &mut itctx, |this| {
@@ -701,6 +706,7 @@ impl<'hir> LoweringContext<'_, 'hir> {
 
     fn lower_trait_item(&mut self, i: &AssocItem) -> &'hir hir::TraitItem<'hir> {
         let hir_id = self.lower_node_id(i.id);
+        self.lower_attrs(hir_id, &i.attrs);
         let trait_item_def_id = hir_id.expect_owner();
 
         let (generics, kind, has_default) = match &i.kind {
@@ -724,7 +730,7 @@ impl<'hir> LoweringContext<'_, 'hir> {
             AssocItemKind::Fn(box Fn { sig, generics, body: Some(body), .. }) => {
                 let asyncness = sig.header.asyncness;
                 let body_id =
-                    self.lower_maybe_async_body(i.span, &sig.decl, asyncness, Some(&body));
+                    self.lower_maybe_async_body(i.span, hir_id, &sig.decl, asyncness, Some(&body));
                 let (generics, sig) = self.lower_method_sig(
                     generics,
                     sig,
@@ -759,7 +765,6 @@ impl<'hir> LoweringContext<'_, 'hir> {
             AssocItemKind::MacCall(..) => panic!("macro item shouldn't exist at this point"),
         };
 
-        self.lower_attrs(hir_id, &i.attrs);
         let item = hir::TraitItem {
             owner_id: trait_item_def_id,
             ident: self.lower_ident(i.ident),
@@ -791,13 +796,15 @@ impl<'hir> LoweringContext<'_, 'hir> {
 
     /// Construct `ExprKind::Err` for the given `span`.
     pub(crate) fn expr_err(&mut self, span: Span) -> hir::Expr<'hir> {
-        self.expr(span, hir::ExprKind::Err, AttrVec::new())
+        self.expr(span, hir::ExprKind::Err)
     }
 
     fn lower_impl_item(&mut self, i: &AssocItem) -> &'hir hir::ImplItem<'hir> {
         // Since `default impl` is not yet implemented, this is always true in impls.
         let has_value = true;
         let (defaultness, _) = self.lower_defaultness(i.kind.defaultness(), has_value);
+        let hir_id = self.lower_node_id(i.id);
+        self.lower_attrs(hir_id, &i.attrs);
 
         let (generics, kind) = match &i.kind {
             AssocItemKind::Const(_, ty, expr) => {
@@ -810,8 +817,13 @@ impl<'hir> LoweringContext<'_, 'hir> {
             AssocItemKind::Fn(box Fn { sig, generics, body, .. }) => {
                 self.current_item = Some(i.span);
                 let asyncness = sig.header.asyncness;
-                let body_id =
-                    self.lower_maybe_async_body(i.span, &sig.decl, asyncness, body.as_deref());
+                let body_id = self.lower_maybe_async_body(
+                    i.span,
+                    hir_id,
+                    &sig.decl,
+                    asyncness,
+                    body.as_deref(),
+                );
                 let (generics, sig) = self.lower_method_sig(
                     generics,
                     sig,
@@ -844,8 +856,6 @@ impl<'hir> LoweringContext<'_, 'hir> {
             AssocItemKind::MacCall(..) => panic!("`TyMac` should have been expanded by now"),
         };
 
-        let hir_id = self.lower_node_id(i.id);
-        self.lower_attrs(hir_id, &i.attrs);
         let item = hir::ImplItem {
             owner_id: hir_id.expect_owner(),
             ident: self.lower_ident(i.ident),
@@ -978,6 +988,7 @@ impl<'hir> LoweringContext<'_, 'hir> {
     fn lower_maybe_async_body(
         &mut self,
         span: Span,
+        fn_id: hir::HirId,
         decl: &FnDecl,
         asyncness: Async,
         body: Option<&Block>,
@@ -1128,6 +1139,7 @@ impl<'hir> LoweringContext<'_, 'hir> {
 
             let async_expr = this.make_async_expr(
                 CaptureBy::Value,
+                Some(fn_id),
                 closure_id,
                 None,
                 body.span,
@@ -1139,11 +1151,8 @@ impl<'hir> LoweringContext<'_, 'hir> {
                     // Transform into `drop-temps { <user-body> }`, an expression:
                     let desugared_span =
                         this.mark_span_with_reason(DesugaringKind::Async, user_body.span, None);
-                    let user_body = this.expr_drop_temps(
-                        desugared_span,
-                        this.arena.alloc(user_body),
-                        AttrVec::new(),
-                    );
+                    let user_body =
+                        this.expr_drop_temps(desugared_span, this.arena.alloc(user_body));
 
                     // As noted above, create the final block like
                     //
@@ -1160,14 +1169,11 @@ impl<'hir> LoweringContext<'_, 'hir> {
                         Some(user_body),
                     );
 
-                    this.expr_block(body, AttrVec::new())
+                    this.expr_block(body)
                 },
             );
 
-            (
-                this.arena.alloc_from_iter(parameters),
-                this.expr(body.span, async_expr, AttrVec::new()),
-            )
+            (this.arena.alloc_from_iter(parameters), this.expr(body.span, async_expr))
         })
     }
 

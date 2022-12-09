@@ -140,6 +140,13 @@ than building it.
         .map(|p| cmd_finder.must_have(p))
         .or_else(|| cmd_finder.maybe_have("gdb"));
 
+    build.config.reuse = build
+        .config
+        .reuse
+        .take()
+        .map(|p| cmd_finder.must_have(p))
+        .or_else(|| cmd_finder.maybe_have("reuse"));
+
     // We're gonna build some custom C code here and there, host triples
     // also build some C++ shims for LLVM so we need a C++ compiler.
     for target in &build.targets {

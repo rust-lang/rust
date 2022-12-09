@@ -695,19 +695,8 @@ impl<'a> State<'a> {
                 self.head("trait");
                 self.print_ident(item.ident);
                 self.print_generic_params(generics.params);
-                let mut real_bounds = Vec::with_capacity(bounds.len());
-                // FIXME(durka) this seems to be some quite outdated syntax
-                for b in bounds {
-                    if let GenericBound::Trait(ptr, hir::TraitBoundModifier::Maybe) = b {
-                        self.space();
-                        self.word_space("for ?");
-                        self.print_trait_ref(&ptr.trait_ref);
-                    } else {
-                        real_bounds.push(b);
-                    }
-                }
                 self.nbsp();
-                self.print_bounds("=", real_bounds);
+                self.print_bounds("=", bounds);
                 self.print_where_clause(generics);
                 self.word(";");
                 self.end(); // end inner head-block

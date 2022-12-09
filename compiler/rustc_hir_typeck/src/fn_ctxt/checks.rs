@@ -1393,8 +1393,6 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         blk: &'tcx hir::Block<'tcx>,
         expected: Expectation<'tcx>,
     ) -> Ty<'tcx> {
-        let prev = self.ps.replace(self.ps.get().recurse(blk));
-
         // In some cases, blocks have just one exit, but other blocks
         // can be targeted by multiple breaks. This can happen both
         // with labeled blocks as well as when we desugar
@@ -1558,7 +1556,6 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
 
         self.write_ty(blk.hir_id, ty);
 
-        self.ps.set(prev);
         ty
     }
 
@@ -1918,15 +1915,11 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         receiver: Option<&'tcx hir::Expr<'tcx>>,
         args: &'tcx [hir::Expr<'tcx>],
     ) -> bool {
-        // Do not call `fn_sig` on non-functions.
-        if !matches!(
-            self.tcx.def_kind(def_id),
-            DefKind::Fn | DefKind::AssocFn | DefKind::Variant | DefKind::Ctor(..)
-        ) {
+        let ty = self.tcx.type_of(def_id);
+        if !ty.is_fn() {
             return false;
         }
-
-        let sig = self.tcx.fn_sig(def_id).skip_binder();
+        let sig = ty.fn_sig(self.tcx).skip_binder();
         let args_referencing_param: Vec<_> = sig
             .inputs()
             .iter()

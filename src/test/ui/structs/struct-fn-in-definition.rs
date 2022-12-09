@@ -28,6 +28,7 @@ enum E {
     //~^ ERROR functions are not allowed in enum definitions
     //~| HELP unlike in C++, Java, and C#, functions are declared in `impl` blocks
     //~| HELP see https://doc.rust-lang.org/book/ch05-03-method-syntax.html for more information
+    //~| HELP enum variants can be `Variant`, `Variant = <integer>`, `Variant(Type, ..., TypeN)` or `Variant { fields: Types }`
 }
 
 fn main() {}

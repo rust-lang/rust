@@ -111,7 +111,7 @@ impl<'tcx> DumpVisitor<'tcx> {
         self.save_ctxt.lookup_def_id(ref_id)
     }
 
-    pub fn dump_crate_info(&mut self, name: &str) {
+    pub fn dump_crate_info(&mut self, name: Symbol) {
         let source_file = self.tcx.sess.local_crate_source_file.as_ref();
         let crate_root = source_file.map(|source_file| {
             let source_file = Path::new(source_file);
@@ -124,7 +124,7 @@ impl<'tcx> DumpVisitor<'tcx> {
 
         let data = CratePreludeData {
             crate_id: GlobalCrateId {
-                name: name.into(),
+                name: name.to_string(),
                 disambiguator: (self.tcx.sess.local_stable_crate_id().to_u64(), 0),
             },
             crate_root: crate_root.unwrap_or_else(|| "<no source>".to_owned()),
@@ -135,7 +135,7 @@ impl<'tcx> DumpVisitor<'tcx> {
         self.dumper.crate_prelude(data);
     }
 
-    pub fn dump_compilation_options(&mut self, input: &Input, crate_name: &str) {
+    pub fn dump_compilation_options(&mut self, input: &Input, crate_name: Symbol) {
         // Apply possible `remap-path-prefix` remapping to the input source file
         // (and don't include remapping args anymore)
         let (program, arguments) = {

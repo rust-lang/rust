@@ -11,7 +11,6 @@ use rustc_target::abi::Size;
 
 use crate::*;
 pub mod stacked_borrows;
-use stacked_borrows::diagnostics::RetagCause;
 
 pub type CallId = NonZeroU64;
 
@@ -265,11 +264,27 @@ impl GlobalStateInner {
 
 impl<'mir, 'tcx: 'mir> EvalContextExt<'mir, 'tcx> for crate::MiriInterpCx<'mir, 'tcx> {}
 pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriInterpCxExt<'mir, 'tcx> {
-    fn retag(&mut self, kind: RetagKind, place: &PlaceTy<'tcx, Provenance>) -> InterpResult<'tcx> {
+    fn retag_ptr_value(
+        &mut self,
+        kind: RetagKind,
+        val: &ImmTy<'tcx, Provenance>,
+    ) -> InterpResult<'tcx, ImmTy<'tcx, Provenance>> {
         let this = self.eval_context_mut();
         let method = this.machine.borrow_tracker.as_ref().unwrap().borrow().borrow_tracker_method;
         match method {
-            BorrowTrackerMethod::StackedBorrows => this.sb_retag(kind, place),
+            BorrowTrackerMethod::StackedBorrows => this.sb_retag_ptr_value(kind, val),
+        }
+    }
+
+    fn retag_place_contents(
+        &mut self,
+        kind: RetagKind,
+        place: &PlaceTy<'tcx, Provenance>,
+    ) -> InterpResult<'tcx> {
+        let this = self.eval_context_mut();
+        let method = this.machine.borrow_tracker.as_ref().unwrap().borrow().borrow_tracker_method;
+        match method {
+            BorrowTrackerMethod::StackedBorrows => this.sb_retag_place_contents(kind, place),
         }
     }
 

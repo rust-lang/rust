@@ -704,7 +704,7 @@ impl<'tcx> Cx<'tcx> {
             hir::ExprKind::Field(ref source, ..) => ExprKind::Field {
                 lhs: self.mirror_expr(source),
                 variant_index: VariantIdx::new(0),
-                name: Field::new(tcx.field_index(expr.hir_id, self.typeck_results)),
+                name: Field::new(self.typeck_results.field_index(expr.hir_id)),
             },
             hir::ExprKind::Cast(ref source, ref cast_ty) => {
                 // Check for a user-given type annotation on this `cast`
@@ -1079,7 +1079,7 @@ impl<'tcx> Cx<'tcx> {
         fields
             .iter()
             .map(|field| FieldExpr {
-                name: Field::new(self.tcx.field_index(field.hir_id, self.typeck_results)),
+                name: Field::new(self.typeck_results.field_index(field.hir_id)),
                 expr: self.mirror_expr(field.expr),
             })
             .collect()

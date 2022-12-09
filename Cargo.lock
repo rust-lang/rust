@@ -581,6 +581,7 @@ dependencies = [
  "libc",
  "num-integer",
  "num-traits",
+ "serde",
  "time",
  "winapi",
 ]
@@ -728,6 +729,16 @@ dependencies = [
  "if_chain",
  "itertools",
  "rustc-semver",
+]
+
+[[package]]
+name = "collect-license-metadata"
+version = "0.1.0"
+dependencies = [
+ "anyhow",
+ "serde",
+ "serde_json",
+ "spdx-rs",
 ]
 
 [[package]]
@@ -1553,6 +1564,15 @@ dependencies = [
 ]
 
 [[package]]
+name = "generate-copyright"
+version = "0.1.0"
+dependencies = [
+ "anyhow",
+ "serde",
+ "serde_json",
+]
+
+[[package]]
 name = "generic-array"
 version = "0.14.4"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -2085,9 +2105,9 @@ checksum = "830d08ce1d1d941e6b30645f1a0eb5643013d835ce3779a5fc208261dbe10f55"
 
 [[package]]
 name = "libc"
-version = "0.2.135"
+version = "0.2.138"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "68783febc7782c6c5cb401fbda4de5a9898be1762314da0bb2c10ced61f18b0c"
+checksum = "db6d7e329c562c5dfab7a46a2afabc8b987ab9a4834c9d1ca04dc54c1546cef8"
 dependencies = [
  "rustc-std-workspace-core",
 ]
@@ -4328,6 +4348,7 @@ dependencies = [
  "rustc_span",
  "rustc_target",
  "smallvec",
+ "termize",
  "tracing",
  "winapi",
 ]
@@ -4865,6 +4886,35 @@ dependencies = [
 ]
 
 [[package]]
+name = "spdx-expression"
+version = "0.5.2"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "53d7ac03c67c572d85049d6db815e20a4a19b41b3d5cca732ac582342021ad77"
+dependencies = [
+ "nom",
+ "serde",
+ "thiserror",
+ "tracing",
+]
+
+[[package]]
+name = "spdx-rs"
+version = "0.5.1"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "b3c02f6eb7e7b4100c272f685a9ccaccaab302324e8c7ec3e2ee72340fb29ff3"
+dependencies = [
+ "chrono",
+ "log",
+ "nom",
+ "serde",
+ "spdx-expression",
+ "strum",
+ "strum_macros",
+ "thiserror",
+ "uuid",
+]
+
+[[package]]
 name = "stable_deref_trait"
 version = "1.2.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -4966,6 +5016,25 @@ name = "strsim"
 version = "0.10.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "73473c0e59e6d5812c5dfe2a064a6444949f089e20eec9a2e5506596494e4623"
+
+[[package]]
+name = "strum"
+version = "0.24.1"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "063e6045c0e62079840579a7e47a355ae92f60eb74daaf156fb1e84ba164e63f"
+
+[[package]]
+name = "strum_macros"
+version = "0.24.3"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "1e385be0d24f186b4ce2f9982191e7101bb737312ad61c1f2f984f34bcf85d59"
+dependencies = [
+ "heck",
+ "proc-macro2",
+ "quote",
+ "rustversion",
+ "syn",
+]
 
 [[package]]
 name = "syn"
@@ -5595,6 +5664,15 @@ name = "utf8parse"
 version = "0.1.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "8772a4ccbb4e89959023bc5b7cb8623a795caa7092d99f3aa9501b9484d4557d"
+
+[[package]]
+name = "uuid"
+version = "0.8.2"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "bc5cf98d8186244414c848017f0e2676b3fcb46807f6668a97dfe67359a3c4b7"
+dependencies = [
+ "getrandom 0.2.0",
+]
 
 [[package]]
 name = "valuable"

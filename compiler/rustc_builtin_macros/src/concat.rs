@@ -20,7 +20,7 @@ pub fn expand_concat(
     for e in es {
         match e.kind {
             ast::ExprKind::Lit(token_lit) => match ast::LitKind::from_token_lit(token_lit) {
-                Ok(ast::LitKind::Str(ref s, _) | ast::LitKind::Float(ref s, _)) => {
+                Ok(ast::LitKind::Str(s, _) | ast::LitKind::Float(s, _)) => {
                     accumulator.push_str(s.as_str());
                 }
                 Ok(ast::LitKind::Char(c)) => {

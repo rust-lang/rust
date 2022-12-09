@@ -1,29 +1,32 @@
 //! Implements "Stacked Borrows".  See <https://github.com/rust-lang/unsafe-code-guidelines/blob/master/wip/stacked-borrows.md>
 //! for further information.
 
+pub mod diagnostics;
+mod item;
+mod stack;
+
 use log::trace;
 use std::cmp;
-use std::fmt::{self, Write};
+use std::fmt::Write;
 
 use rustc_data_structures::fx::FxHashSet;
 use rustc_middle::mir::{Mutability, RetagKind};
 use rustc_middle::ty::{
     self,
     layout::{HasParamEnv, LayoutOf},
+    Ty,
 };
 use rustc_target::abi::{Abi, Size};
 
 use crate::borrow_tracker::{
     stacked_borrows::diagnostics::{AllocHistory, DiagnosticCx, DiagnosticCxBuilder, TagHistory},
-    AccessKind, GlobalStateInner, ProtectorKind, RetagCause, RetagFields,
+    AccessKind, GlobalStateInner, ProtectorKind, RetagFields,
 };
 use crate::*;
 
-mod item;
+use diagnostics::RetagCause;
 pub use item::{Item, Permission};
-mod stack;
 pub use stack::Stack;
-pub mod diagnostics;
 
 pub type AllocState = Stacks;
 
@@ -40,30 +43,104 @@ pub struct Stacks {
     modified_since_last_gc: bool,
 }
 
-/// Indicates which kind of reference is being created.
-/// Used by high-level `reborrow` to compute which permissions to grant to the
-/// new pointer.
-#[derive(Copy, Clone, Hash, PartialEq, Eq)]
-enum RefKind {
-    /// `Box`.
-    Box,
-    /// `&mut`.
-    Unique { two_phase: bool },
-    /// `&` with or without interior mutability.
-    Shared,
-    /// `*mut`/`*const` (raw pointers).
-    Raw { mutable: bool },
+/// Indicates which permissions to grant to the retagged pointer.
+#[derive(Clone, Debug)]
+enum NewPermission {
+    Uniform {
+        perm: Permission,
+        access: Option<AccessKind>,
+        protector: Option<ProtectorKind>,
+    },
+    FreezeSensitive {
+        freeze_perm: Permission,
+        freeze_access: Option<AccessKind>,
+        freeze_protector: Option<ProtectorKind>,
+        nonfreeze_perm: Permission,
+        nonfreeze_access: Option<AccessKind>,
+        // nonfreeze_protector must always be None
+    },
 }
 
-impl fmt::Display for RefKind {
-    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+impl NewPermission {
+    /// A key function: determine the permissions to grant at a retag for the given kind of
+    /// reference/pointer.
+    fn from_ref_ty<'tcx>(
+        ty: Ty<'tcx>,
+        kind: RetagKind,
+        cx: &crate::MiriInterpCx<'_, 'tcx>,
+    ) -> Self {
+        let protector = (kind == RetagKind::FnEntry).then_some(ProtectorKind::StrongProtector);
+        match ty.kind() {
+            ty::Ref(_, pointee, Mutability::Mut) => {
+                if kind == RetagKind::TwoPhase {
+                    // We mostly just give up on 2phase-borrows, and treat these exactly like raw pointers.
+                    assert!(protector.is_none()); // RetagKind can't be both FnEntry and TwoPhase.
+                    NewPermission::Uniform {
+                        perm: Permission::SharedReadWrite,
+                        access: None,
+                        protector: None,
+                    }
+                } else if pointee.is_unpin(*cx.tcx, cx.param_env()) {
+                    // A regular full mutable reference.
+                    NewPermission::Uniform {
+                        perm: Permission::Unique,
+                        access: Some(AccessKind::Write),
+                        protector,
+                    }
+                } else {
+                    NewPermission::Uniform {
+                        perm: Permission::SharedReadWrite,
+                        // FIXME: We emit `dereferenceable` for `!Unpin` mutable references, so we
+                        // should do fake accesses here. But then we run into
+                        // <https://github.com/rust-lang/unsafe-code-guidelines/issues/381>, so for now
+                        // we don't do that.
+                        access: None,
+                        protector,
+                    }
+                }
+            }
+            ty::RawPtr(ty::TypeAndMut { mutbl: Mutability::Mut, .. }) => {
+                assert!(protector.is_none()); // RetagKind can't be both FnEntry and Raw.
+                // Mutable raw pointer. No access, not protected.
+                NewPermission::Uniform {
+                    perm: Permission::SharedReadWrite,
+                    access: None,
+                    protector: None,
+                }
+            }
+            ty::Ref(_, _pointee, Mutability::Not) => {
+                NewPermission::FreezeSensitive {
+                    freeze_perm: Permission::SharedReadOnly,
+                    freeze_access: Some(AccessKind::Read),
+                    freeze_protector: protector,
+                    nonfreeze_perm: Permission::SharedReadWrite,
+                    // Inside UnsafeCell, this does *not* count as an access, as there
+                    // might actually be mutable references further up the stack that
+                    // we have to keep alive.
+                    nonfreeze_access: None,
+                    // We do not protect inside UnsafeCell.
+                    // This fixes https://github.com/rust-lang/rust/issues/55005.
+                }
+            }
+            ty::RawPtr(ty::TypeAndMut { mutbl: Mutability::Not, .. }) => {
+                assert!(protector.is_none()); // RetagKind can't be both FnEntry and Raw.
+                // `*const T`, when freshly created, are read-only in the frozen part.
+                NewPermission::FreezeSensitive {
+                    freeze_perm: Permission::SharedReadOnly,
+                    freeze_access: Some(AccessKind::Read),
+                    freeze_protector: None,
+                    nonfreeze_perm: Permission::SharedReadWrite,
+                    nonfreeze_access: None,
+                }
+            }
+            _ => unreachable!(),
+        }
+    }
+
+    fn protector(&self) -> Option<ProtectorKind> {
         match self {
-            RefKind::Box => write!(f, "Box"),
-            RefKind::Unique { two_phase: false } => write!(f, "unique reference"),
-            RefKind::Unique { two_phase: true } => write!(f, "unique reference (two-phase)"),
-            RefKind::Shared => write!(f, "shared reference"),
-            RefKind::Raw { mutable: true } => write!(f, "raw (mutable) pointer"),
-            RefKind::Raw { mutable: false } => write!(f, "raw (constant) pointer"),
+            NewPermission::Uniform { protector, .. } => *protector,
+            NewPermission::FreezeSensitive { freeze_protector, .. } => *freeze_protector,
         }
     }
 }
@@ -518,10 +595,9 @@ trait EvalContextPrivExt<'mir: 'ecx, 'tcx: 'mir, 'ecx>: crate::MiriInterpCxExt<'
         &mut self,
         place: &MPlaceTy<'tcx, Provenance>,
         size: Size,
-        kind: RefKind,
-        retag_cause: RetagCause, // What caused this retag, for diagnostics only
+        new_perm: NewPermission,
         new_tag: BorTag,
-        protect: Option<ProtectorKind>,
+        retag_cause: RetagCause, // What caused this retag, for diagnostics only
     ) -> InterpResult<'tcx, Option<AllocId>> {
         let this = self.eval_context_mut();
 
@@ -532,20 +608,16 @@ trait EvalContextPrivExt<'mir: 'ecx, 'tcx: 'mir, 'ecx>: crate::MiriInterpCxExt<'
             let global = this.machine.borrow_tracker.as_ref().unwrap().borrow();
             let ty = place.layout.ty;
             if global.tracked_pointer_tags.contains(&new_tag) {
-                let mut kind_str = format!("{kind}");
-                match kind {
-                    RefKind::Unique { two_phase: false }
-                        if !ty.is_unpin(*this.tcx, this.param_env()) =>
-                    {
-                        write!(kind_str, " (!Unpin pointee type {ty})").unwrap()
-                    },
-                    RefKind::Shared
-                        if !ty.is_freeze(*this.tcx, this.param_env()) =>
-                    {
-                        write!(kind_str, " (!Freeze pointee type {ty})").unwrap()
-                    },
-                    _ => write!(kind_str, " (pointee type {ty})").unwrap(),
-                };
+                let mut kind_str = String::new();
+                match new_perm {
+                    NewPermission::Uniform { perm, .. } =>
+                        write!(kind_str, "{perm:?} permission").unwrap(),
+                    NewPermission::FreezeSensitive { freeze_perm, .. } if ty.is_freeze(*this.tcx, this.param_env()) =>
+                        write!(kind_str, "{freeze_perm:?} permission").unwrap(),
+                    NewPermission::FreezeSensitive { freeze_perm, nonfreeze_perm, .. }  =>
+                        write!(kind_str, "{freeze_perm:?}/{nonfreeze_perm:?} permission for frozen/non-frozen parts").unwrap(),
+                }
+                write!(kind_str, " (pointee type {ty})").unwrap();
                 this.emit_diagnostic(NonHaltingDiagnostic::CreatedPointerTag(
                     new_tag.inner(),
                     Some(kind_str),
@@ -579,7 +651,7 @@ trait EvalContextPrivExt<'mir: 'ecx, 'tcx: 'mir, 'ecx>: crate::MiriInterpCxExt<'
                     );
                     let mut dcx = dcx.build(&mut stacked_borrows.history, base_offset);
                     dcx.log_creation();
-                    if protect.is_some() {
+                    if new_perm.protector().is_some() {
                         dcx.log_protector();
                     }
                 },
@@ -592,8 +664,7 @@ trait EvalContextPrivExt<'mir: 'ecx, 'tcx: 'mir, 'ecx>: crate::MiriInterpCxExt<'
 
         if size == Size::ZERO {
             trace!(
-                "reborrow of size 0: {} reference {:?} derived from {:?} (pointee {})",
-                kind,
+                "reborrow of size 0: reference {:?} derived from {:?} (pointee {})",
                 new_tag,
                 place.ptr,
                 place.layout.ty,
@@ -630,8 +701,7 @@ trait EvalContextPrivExt<'mir: 'ecx, 'tcx: 'mir, 'ecx>: crate::MiriInterpCxExt<'
         }
 
         trace!(
-            "reborrow: {} reference {:?} derived from {:?} (pointee {}): {:?}, size {}",
-            kind,
+            "reborrow: reference {:?} derived from {:?} (pointee {}): {:?}, size {}",
             new_tag,
             orig_tag,
             place.layout.ty,
@@ -639,7 +709,7 @@ trait EvalContextPrivExt<'mir: 'ecx, 'tcx: 'mir, 'ecx>: crate::MiriInterpCxExt<'
             size.bytes()
         );
 
-        if let Some(protect) = protect {
+        if let Some(protect) = new_perm.protector() {
             // See comment in `Stack::item_invalidated` for why we store the tag twice.
             this.frame_mut().extra.borrow_tracker.as_mut().unwrap().protected_tags.push(new_tag);
             this.machine
@@ -651,30 +721,45 @@ trait EvalContextPrivExt<'mir: 'ecx, 'tcx: 'mir, 'ecx>: crate::MiriInterpCxExt<'
                 .insert(new_tag, protect);
         }
 
-        // Update the stacks.
-        // Make sure that raw pointers and mutable shared references are reborrowed "weak":
-        // There could be existing unique pointers reborrowed from them that should remain valid!
-        let (perm, access) = match kind {
-            RefKind::Unique { two_phase } => {
-                // Permission is Unique only if the type is `Unpin` and this is not twophase
-                if !two_phase && place.layout.ty.is_unpin(*this.tcx, this.param_env()) {
-                    (Permission::Unique, Some(AccessKind::Write))
-                } else {
-                    // FIXME: We emit `dereferenceable` for `!Unpin` mutable references, so we
-                    // should do fake accesses here. But then we run into
-                    // <https://github.com/rust-lang/unsafe-code-guidelines/issues/381>, so for now
-                    // we don't do that.
-                    (Permission::SharedReadWrite, None)
+        // Update the stacks, according to the new permission information we are given.
+        match new_perm {
+            NewPermission::Uniform { perm, access, protector } => {
+                assert!(perm != Permission::SharedReadOnly);
+                // Here we can avoid `borrow()` calls because we have mutable references.
+                // Note that this asserts that the allocation is mutable -- but since we are creating a
+                // mutable pointer, that seems reasonable.
+                let (alloc_extra, machine) = this.get_alloc_extra_mut(alloc_id)?;
+                let stacked_borrows = alloc_extra.borrow_tracker_sb_mut().get_mut();
+                let item = Item::new(new_tag, perm, protector.is_some());
+                let range = alloc_range(base_offset, size);
+                let global = machine.borrow_tracker.as_ref().unwrap().borrow();
+                let dcx = DiagnosticCxBuilder::retag(
+                    machine,
+                    retag_cause,
+                    new_tag,
+                    orig_tag,
+                    alloc_range(base_offset, size),
+                );
+                stacked_borrows.for_each(range, dcx, |stack, dcx, exposed_tags| {
+                    stack.grant(orig_tag, item, access, &global, dcx, exposed_tags)
+                })?;
+                drop(global);
+                if let Some(access) = access {
+                    assert_eq!(access, AccessKind::Write);
+                    // Make sure the data race model also knows about this.
+                    if let Some(data_race) = alloc_extra.data_race.as_mut() {
+                        data_race.write(alloc_id, range, machine)?;
+                    }
                 }
             }
-            RefKind::Box => (Permission::Unique, Some(AccessKind::Write)),
-            RefKind::Raw { mutable: true } => {
-                // Creating a raw ptr does not count as an access
-                (Permission::SharedReadWrite, None)
-            }
-            RefKind::Shared | RefKind::Raw { mutable: false } => {
-                // Shared references and *const are a whole different kind of game, the
-                // permission is not uniform across the entire range!
+            NewPermission::FreezeSensitive {
+                freeze_perm,
+                freeze_access,
+                freeze_protector,
+                nonfreeze_perm,
+                nonfreeze_access,
+            } => {
+                // The permission is not uniform across the entire range!
                 // We need a frozen-sensitive reborrow.
                 // We have to use shared references to alloc/memory_extra here since
                 // `visit_freeze_sensitive` needs to access the global state.
@@ -684,22 +769,12 @@ trait EvalContextPrivExt<'mir: 'ecx, 'tcx: 'mir, 'ecx>: crate::MiriInterpCxExt<'
                     // Adjust range.
                     range.start += base_offset;
                     // We are only ever `SharedReadOnly` inside the frozen bits.
-                    let (perm, access) = if frozen {
-                        (Permission::SharedReadOnly, Some(AccessKind::Read))
+                    let (perm, access, protector) = if frozen {
+                        (freeze_perm, freeze_access, freeze_protector)
                     } else {
-                        // Inside UnsafeCell, this does *not* count as an access, as there
-                        // might actually be mutable references further up the stack that
-                        // we have to keep alive.
-                        (Permission::SharedReadWrite, None)
+                        (nonfreeze_perm, nonfreeze_access, None)
                     };
-                    let protected = if frozen {
-                        protect.is_some()
-                    } else {
-                        // We do not protect inside UnsafeCell.
-                        // This fixes https://github.com/rust-lang/rust/issues/55005.
-                        false
-                    };
-                    let item = Item::new(new_tag, perm, protected);
+                    let item = Item::new(new_tag, perm, protector.is_some());
                     let global = this.machine.borrow_tracker.as_ref().unwrap().borrow();
                     let dcx = DiagnosticCxBuilder::retag(
                         &this.machine,
@@ -721,34 +796,6 @@ trait EvalContextPrivExt<'mir: 'ecx, 'tcx: 'mir, 'ecx>: crate::MiriInterpCxExt<'
                     }
                     Ok(())
                 })?;
-                return Ok(Some(alloc_id));
-            }
-        };
-
-        // Here we can avoid `borrow()` calls because we have mutable references.
-        // Note that this asserts that the allocation is mutable -- but since we are creating a
-        // mutable pointer, that seems reasonable.
-        let (alloc_extra, machine) = this.get_alloc_extra_mut(alloc_id)?;
-        let stacked_borrows = alloc_extra.borrow_tracker_sb_mut().get_mut();
-        let item = Item::new(new_tag, perm, protect.is_some());
-        let range = alloc_range(base_offset, size);
-        let global = machine.borrow_tracker.as_ref().unwrap().borrow();
-        let dcx = DiagnosticCxBuilder::retag(
-            machine,
-            retag_cause,
-            new_tag,
-            orig_tag,
-            alloc_range(base_offset, size),
-        );
-        stacked_borrows.for_each(range, dcx, |stack, dcx, exposed_tags| {
-            stack.grant(orig_tag, item, access, &global, dcx, exposed_tags)
-        })?;
-        drop(global);
-        if let Some(access) = access {
-            assert_eq!(access, AccessKind::Write);
-            // Make sure the data race model also knows about this.
-            if let Some(data_race) = alloc_extra.data_race.as_mut() {
-                data_race.write(alloc_id, range, machine)?;
             }
         }
 
@@ -760,9 +807,8 @@ trait EvalContextPrivExt<'mir: 'ecx, 'tcx: 'mir, 'ecx>: crate::MiriInterpCxExt<'
     fn sb_retag_reference(
         &mut self,
         val: &ImmTy<'tcx, Provenance>,
-        kind: RefKind,
-        retag_cause: RetagCause, // What caused this retag, for diagnostics only
-        protect: Option<ProtectorKind>,
+        new_perm: NewPermission,
+        cause: RetagCause, // What caused this retag, for diagnostics only
     ) -> InterpResult<'tcx, ImmTy<'tcx, Provenance>> {
         let this = self.eval_context_mut();
         // We want a place for where the ptr *points to*, so we get one.
@@ -780,7 +826,7 @@ trait EvalContextPrivExt<'mir: 'ecx, 'tcx: 'mir, 'ecx>: crate::MiriInterpCxExt<'
         let new_tag = this.machine.borrow_tracker.as_mut().unwrap().get_mut().new_ptr();
 
         // Reborrow.
-        let alloc_id = this.sb_reborrow(&place, size, kind, retag_cause, new_tag, protect)?;
+        let alloc_id = this.sb_reborrow(&place, size, new_perm, new_tag, cause)?;
 
         // Adjust pointer.
         let new_place = place.map_provenance(|p| {
@@ -807,7 +853,22 @@ trait EvalContextPrivExt<'mir: 'ecx, 'tcx: 'mir, 'ecx>: crate::MiriInterpCxExt<'
 
 impl<'mir, 'tcx: 'mir> EvalContextExt<'mir, 'tcx> for crate::MiriInterpCx<'mir, 'tcx> {}
 pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriInterpCxExt<'mir, 'tcx> {
-    fn sb_retag(
+    fn sb_retag_ptr_value(
+        &mut self,
+        kind: RetagKind,
+        val: &ImmTy<'tcx, Provenance>,
+    ) -> InterpResult<'tcx, ImmTy<'tcx, Provenance>> {
+        let this = self.eval_context_mut();
+        let new_perm = NewPermission::from_ref_ty(val.layout.ty, kind, this);
+        let retag_cause = match kind {
+            RetagKind::TwoPhase { .. } => RetagCause::TwoPhase,
+            RetagKind::FnEntry => unreachable!(),
+            RetagKind::Raw | RetagKind::Default => RetagCause::Normal,
+        };
+        this.sb_retag_reference(val, new_perm, retag_cause)
+    }
+
+    fn sb_retag_place_contents(
         &mut self,
         kind: RetagKind,
         place: &PlaceTy<'tcx, Provenance>,
@@ -815,9 +876,9 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriInterpCxExt<'mir, 'tcx> {
         let this = self.eval_context_mut();
         let retag_fields = this.machine.borrow_tracker.as_mut().unwrap().get_mut().retag_fields;
         let retag_cause = match kind {
-            RetagKind::TwoPhase { .. } => RetagCause::TwoPhase,
+            RetagKind::Raw | RetagKind::TwoPhase { .. } => unreachable!(), // these can only happen in `retag_ptr_value`
             RetagKind::FnEntry => RetagCause::FnEntry,
-            RetagKind::Raw | RetagKind::Default => RetagCause::Normal,
+            RetagKind::Default => RetagCause::Normal,
         };
         let mut visitor = RetagVisitor { ecx: this, kind, retag_cause, retag_fields };
         return visitor.visit_value(place);
@@ -831,15 +892,14 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriInterpCxExt<'mir, 'tcx> {
         }
         impl<'ecx, 'mir, 'tcx> RetagVisitor<'ecx, 'mir, 'tcx> {
             #[inline(always)] // yes this helps in our benchmarks
-            fn retag_place(
+            fn retag_ptr_inplace(
                 &mut self,
                 place: &PlaceTy<'tcx, Provenance>,
-                ref_kind: RefKind,
+                new_perm: NewPermission,
                 retag_cause: RetagCause,
-                protector: Option<ProtectorKind>,
             ) -> InterpResult<'tcx> {
                 let val = self.ecx.read_immediate(&self.ecx.place_to_op(place)?)?;
-                let val = self.ecx.sb_retag_reference(&val, ref_kind, retag_cause, protector)?;
+                let val = self.ecx.sb_retag_reference(&val, new_perm, retag_cause)?;
                 self.ecx.write_immediate(*val, place)?;
                 Ok(())
             }
@@ -856,13 +916,13 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriInterpCxExt<'mir, 'tcx> {
 
             fn visit_box(&mut self, place: &PlaceTy<'tcx, Provenance>) -> InterpResult<'tcx> {
                 // Boxes get a weak protectors, since they may be deallocated.
-                self.retag_place(
-                    place,
-                    RefKind::Box,
-                    self.retag_cause,
-                    /*protector*/
-                    (self.kind == RetagKind::FnEntry).then_some(ProtectorKind::WeakProtector),
-                )
+                let new_perm = NewPermission::Uniform {
+                    perm: Permission::Unique,
+                    access: Some(AccessKind::Write),
+                    protector: (self.kind == RetagKind::FnEntry)
+                        .then_some(ProtectorKind::WeakProtector),
+                };
+                self.retag_ptr_inplace(place, new_perm, self.retag_cause)
             }
 
             fn visit_value(&mut self, place: &PlaceTy<'tcx, Provenance>) -> InterpResult<'tcx> {
@@ -876,36 +936,16 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriInterpCxExt<'mir, 'tcx> {
 
                 // Check the type of this value to see what to do with it (retag, or recurse).
                 match place.layout.ty.kind() {
-                    ty::Ref(_, _, mutbl) => {
-                        let ref_kind = match mutbl {
-                            Mutability::Mut =>
-                                RefKind::Unique { two_phase: self.kind == RetagKind::TwoPhase },
-                            Mutability::Not => RefKind::Shared,
-                        };
-                        self.retag_place(
-                            place,
-                            ref_kind,
-                            self.retag_cause,
-                            /*protector*/
-                            (self.kind == RetagKind::FnEntry)
-                                .then_some(ProtectorKind::StrongProtector),
-                        )?;
+                    ty::Ref(..) => {
+                        let new_perm =
+                            NewPermission::from_ref_ty(place.layout.ty, self.kind, self.ecx);
+                        self.retag_ptr_inplace(place, new_perm, self.retag_cause)?;
                     }
-                    ty::RawPtr(tym) => {
-                        // We definitely do *not* want to recurse into raw pointers -- wide raw
-                        // pointers have fields, and for dyn Trait pointees those can have reference
-                        // type!
-                        if self.kind == RetagKind::Raw {
-                            // Raw pointers need to be enabled.
-                            self.retag_place(
-                                place,
-                                RefKind::Raw { mutable: tym.mutbl == Mutability::Mut },
-                                self.retag_cause,
-                                /*protector*/ None,
-                            )?;
-                        }
+                    ty::RawPtr(..) => {
+                        // We do *not* want to recurse into raw pointers -- wide raw pointers have
+                        // fields, and for dyn Trait pointees those can have reference type!
                     }
-                    _ if place.layout.ty.ty_adt_def().is_some_and(|adt| adt.is_box()) => {
+                    ty::Adt(adt, _) if adt.is_box() => {
                         // Recurse for boxes, they require some tricky handling and will end up in `visit_box` above.
                         // (Yes this means we technically also recursively retag the allocator itself
                         // even if field retagging is not enabled. *shrug*)
@@ -953,12 +993,12 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriInterpCxExt<'mir, 'tcx> {
         let ptr_layout = this.layout_of(this.tcx.mk_mut_ptr(return_place.layout.ty))?;
         let val = ImmTy::from_immediate(return_place.to_ref(this), ptr_layout);
         // Reborrow it. With protection! That is part of the point.
-        let val = this.sb_retag_reference(
-            &val,
-            RefKind::Unique { two_phase: false },
-            RetagCause::FnReturn,
-            /*protector*/ Some(ProtectorKind::StrongProtector),
-        )?;
+        let new_perm = NewPermission::Uniform {
+            perm: Permission::Unique,
+            access: Some(AccessKind::Write),
+            protector: Some(ProtectorKind::StrongProtector),
+        };
+        let val = this.sb_retag_reference(&val, new_perm, RetagCause::FnReturn)?;
         // And use reborrowed pointer for return place.
         let return_place = this.ref_to_mplace(&val)?;
         this.frame_mut().return_place = return_place.into();

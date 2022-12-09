@@ -11,9 +11,7 @@ fn <impl at $DIR/retag.rs:12:1: 12:10>::foo(_1: &Test, _2: &mut i32) -> &mut i32
         Retag([fn entry] _2);            // scope 0 at $DIR/retag.rs:+0:23: +0:24
         StorageLive(_3);                 // scope 0 at $DIR/retag.rs:+1:9: +1:10
         _3 = &mut (*_2);                 // scope 0 at $DIR/retag.rs:+1:9: +1:10
-        Retag(_3);                       // scope 0 at $DIR/retag.rs:+1:9: +1:10
         _0 = &mut (*_3);                 // scope 0 at $DIR/retag.rs:+1:9: +1:10
-        Retag(_0);                       // scope 0 at $DIR/retag.rs:+1:9: +1:10
         StorageDead(_3);                 // scope 0 at $DIR/retag.rs:+2:5: +2:6
         return;                          // scope 0 at $DIR/retag.rs:+2:6: +2:6
     }
