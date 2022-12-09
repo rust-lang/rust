@@ -8,9 +8,6 @@ LL |     val.0;
    |
 note: this function takes ownership of the receiver `self`, which moves `val.0`
   --> $SRC_DIR/core/src/iter/traits/collect.rs:LL:COL
-   |
-LL |     fn into_iter(self) -> Self::IntoIter;
-   |                  ^^^^
    = note: move occurs because `val.0` has type `Vec<bool>`, which does not implement the `Copy` trait
 
 error[E0382]: use of moved value: `foo`
@@ -112,10 +109,10 @@ LL |     foo_add;
    |     ^^^^^^^ value used here after move
    |
 note: calling this operator moves the left-hand side
-  --> $SRC_DIR/core/src/ops/arith.rs:LL:COL
+  --> $DIR/move-fn-self-receiver.rs:58:5
    |
-LL |     fn add(self, rhs: Rhs) -> Self::Output;
-   |            ^^^^
+LL |     foo_add + Foo;
+   |     ^^^^^^^^^^^^^
 
 error[E0382]: use of moved value: `implicit_into_iter`
   --> $DIR/move-fn-self-receiver.rs:63:5

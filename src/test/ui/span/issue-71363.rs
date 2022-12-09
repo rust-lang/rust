@@ -1,4 +1,4 @@
-// compile-flags: -Z simulate-remapped-rust-src-base=/rustc/FAKE_PREFIX -Z translate-remapped-path-to-local-path=no -Z ui-testing=no
+// compile-flags: -Z ui-testing=no
 
 struct MyError;
 impl std::error::Error for MyError {}

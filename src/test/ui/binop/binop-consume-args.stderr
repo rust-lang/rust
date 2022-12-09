@@ -9,10 +9,10 @@ LL |     drop(lhs);
    |          ^^^ value used here after move
    |
 note: calling this operator moves the left-hand side
-  --> $SRC_DIR/core/src/ops/arith.rs:LL:COL
+  --> $DIR/binop-consume-args.rs:6:5
    |
-LL |     fn add(self, rhs: Rhs) -> Self::Output;
-   |            ^^^^
+LL |     lhs + rhs;
+   |     ^^^^^^^^^
 help: consider further restricting this bound
    |
 LL | fn add<A: Add<B, Output=()> + Copy, B>(lhs: A, rhs: B) {
@@ -45,10 +45,10 @@ LL |     drop(lhs);
    |          ^^^ value used here after move
    |
 note: calling this operator moves the left-hand side
-  --> $SRC_DIR/core/src/ops/arith.rs:LL:COL
+  --> $DIR/binop-consume-args.rs:12:5
    |
-LL |     fn sub(self, rhs: Rhs) -> Self::Output;
-   |            ^^^^
+LL |     lhs - rhs;
+   |     ^^^^^^^^^
 help: consider further restricting this bound
    |
 LL | fn sub<A: Sub<B, Output=()> + Copy, B>(lhs: A, rhs: B) {
@@ -81,10 +81,10 @@ LL |     drop(lhs);
    |          ^^^ value used here after move
    |
 note: calling this operator moves the left-hand side
-  --> $SRC_DIR/core/src/ops/arith.rs:LL:COL
+  --> $DIR/binop-consume-args.rs:18:5
    |
-LL |     fn mul(self, rhs: Rhs) -> Self::Output;
-   |            ^^^^
+LL |     lhs * rhs;
+   |     ^^^^^^^^^
 help: consider further restricting this bound
    |
 LL | fn mul<A: Mul<B, Output=()> + Copy, B>(lhs: A, rhs: B) {
@@ -117,10 +117,10 @@ LL |     drop(lhs);
    |          ^^^ value used here after move
    |
 note: calling this operator moves the left-hand side
-  --> $SRC_DIR/core/src/ops/arith.rs:LL:COL
+  --> $DIR/binop-consume-args.rs:24:5
    |
-LL |     fn div(self, rhs: Rhs) -> Self::Output;
-   |            ^^^^
+LL |     lhs / rhs;
+   |     ^^^^^^^^^
 help: consider further restricting this bound
    |
 LL | fn div<A: Div<B, Output=()> + Copy, B>(lhs: A, rhs: B) {
@@ -153,10 +153,10 @@ LL |     drop(lhs);
    |          ^^^ value used here after move
    |
 note: calling this operator moves the left-hand side
-  --> $SRC_DIR/core/src/ops/arith.rs:LL:COL
+  --> $DIR/binop-consume-args.rs:30:5
    |
-LL |     fn rem(self, rhs: Rhs) -> Self::Output;
-   |            ^^^^
+LL |     lhs % rhs;
+   |     ^^^^^^^^^
 help: consider further restricting this bound
    |
 LL | fn rem<A: Rem<B, Output=()> + Copy, B>(lhs: A, rhs: B) {
@@ -189,10 +189,10 @@ LL |     drop(lhs);
    |          ^^^ value used here after move
    |
 note: calling this operator moves the left-hand side
-  --> $SRC_DIR/core/src/ops/bit.rs:LL:COL
+  --> $DIR/binop-consume-args.rs:36:5
    |
-LL |     fn bitand(self, rhs: Rhs) -> Self::Output;
-   |               ^^^^
+LL |     lhs & rhs;
+   |     ^^^^^^^^^
 help: consider further restricting this bound
    |
 LL | fn bitand<A: BitAnd<B, Output=()> + Copy, B>(lhs: A, rhs: B) {
@@ -225,10 +225,10 @@ LL |     drop(lhs);
    |          ^^^ value used here after move
    |
 note: calling this operator moves the left-hand side
-  --> $SRC_DIR/core/src/ops/bit.rs:LL:COL
+  --> $DIR/binop-consume-args.rs:42:5
    |
-LL |     fn bitor(self, rhs: Rhs) -> Self::Output;
-   |              ^^^^
+LL |     lhs | rhs;
+   |     ^^^^^^^^^
 help: consider further restricting this bound
    |
 LL | fn bitor<A: BitOr<B, Output=()> + Copy, B>(lhs: A, rhs: B) {
@@ -261,10 +261,10 @@ LL |     drop(lhs);
    |          ^^^ value used here after move
    |
 note: calling this operator moves the left-hand side
-  --> $SRC_DIR/core/src/ops/bit.rs:LL:COL
+  --> $DIR/binop-consume-args.rs:48:5
    |
-LL |     fn bitxor(self, rhs: Rhs) -> Self::Output;
-   |               ^^^^
+LL |     lhs ^ rhs;
+   |     ^^^^^^^^^
 help: consider further restricting this bound
    |
 LL | fn bitxor<A: BitXor<B, Output=()> + Copy, B>(lhs: A, rhs: B) {
@@ -297,10 +297,10 @@ LL |     drop(lhs);
    |          ^^^ value used here after move
    |
 note: calling this operator moves the left-hand side
-  --> $SRC_DIR/core/src/ops/bit.rs:LL:COL
+  --> $DIR/binop-consume-args.rs:54:5
    |
-LL |     fn shl(self, rhs: Rhs) -> Self::Output;
-   |            ^^^^
+LL |     lhs << rhs;
+   |     ^^^^^^^^^^
 help: consider further restricting this bound
    |
 LL | fn shl<A: Shl<B, Output=()> + Copy, B>(lhs: A, rhs: B) {
@@ -333,10 +333,10 @@ LL |     drop(lhs);
    |          ^^^ value used here after move
    |
 note: calling this operator moves the left-hand side
-  --> $SRC_DIR/core/src/ops/bit.rs:LL:COL
+  --> $DIR/binop-consume-args.rs:60:5
    |
-LL |     fn shr(self, rhs: Rhs) -> Self::Output;
-   |            ^^^^
+LL |     lhs >> rhs;
+   |     ^^^^^^^^^^
 help: consider further restricting this bound
    |
 LL | fn shr<A: Shr<B, Output=()> + Copy, B>(lhs: A, rhs: B) {

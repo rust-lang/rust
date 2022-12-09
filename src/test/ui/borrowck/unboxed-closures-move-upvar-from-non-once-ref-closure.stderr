@@ -12,9 +12,6 @@ LL |         y.into_iter();
    |
 note: this function takes ownership of the receiver `self`, which moves `y`
   --> $SRC_DIR/core/src/iter/traits/collect.rs:LL:COL
-   |
-LL |     fn into_iter(self) -> Self::IntoIter;
-   |                  ^^^^
 
 error: aborting due to previous error
 

@@ -14,9 +14,10 @@ LL | | }
    = note: unsafe function cannot be called generically without an unsafe block
 note: required by a bound in `ProcMacro::custom_derive`
   --> $SRC_DIR/proc_macro/src/bridge/client.rs:LL:COL
-   |
-LL |         expand: impl Fn(crate::TokenStream) -> crate::TokenStream + Copy,
-   |                      ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ required by this bound in `ProcMacro::custom_derive`
+$SRC_DIR/proc_macro/src/bridge/client.rs:LL:COL
+$SRC_DIR/proc_macro/src/bridge/client.rs:LL:COL
+$SRC_DIR/proc_macro/src/bridge/client.rs:LL:COL
+$SRC_DIR/proc_macro/src/bridge/client.rs:LL:COL
 
 error: aborting due to previous error
 

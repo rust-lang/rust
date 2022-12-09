@@ -16,9 +16,6 @@ LL |     catch_unwind(|| { x.set(23); });
    |                  ^^
 note: required by a bound in `catch_unwind`
   --> $SRC_DIR/std/src/panic.rs:LL:COL
-   |
-LL | pub fn catch_unwind<F: FnOnce() -> R + UnwindSafe, R>(f: F) -> Result<R> {
-   |                                        ^^^^^^^^^^ required by this bound in `catch_unwind`
 
 error: aborting due to previous error
 

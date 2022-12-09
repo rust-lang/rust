@@ -12,9 +12,6 @@ LL |     let _y = foo;
    |
 note: this function takes ownership of the receiver `self`, which moves `foo`
   --> $SRC_DIR/core/src/option.rs:LL:COL
-   |
-LL |     pub const fn map<U, F>(self, f: F) -> Option<U>
-   |                            ^^^^
 
 error: aborting due to previous error
 

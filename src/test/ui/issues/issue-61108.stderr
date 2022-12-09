@@ -11,9 +11,6 @@ LL |     bad_letters.push('s');
    |
 note: this function takes ownership of the receiver `self`, which moves `bad_letters`
   --> $SRC_DIR/core/src/iter/traits/collect.rs:LL:COL
-   |
-LL |     fn into_iter(self) -> Self::IntoIter;
-   |                  ^^^^
 help: consider iterating over a slice of the `Vec<char>`'s content to avoid moving into the `for` loop
    |
 LL |     for l in &bad_letters {

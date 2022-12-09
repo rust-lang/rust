@@ -10,9 +10,6 @@ LL |     let _s = y.unwrap_or(|| x.split('.').nth(1).unwrap());
                 found closure `[closure@$DIR/sugg-else-for-closure.rs:6:26: 6:28]`
 note: associated function defined here
   --> $SRC_DIR/core/src/option.rs:LL:COL
-   |
-LL |     pub const fn unwrap_or(self, default: T) -> T
-   |                  ^^^^^^^^^
 help: try calling `unwrap_or_else` instead
    |
 LL |     let _s = y.unwrap_or_else(|| x.split('.').nth(1).unwrap());

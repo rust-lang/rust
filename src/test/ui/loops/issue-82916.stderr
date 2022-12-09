@@ -11,9 +11,6 @@ LL |     let z = x;
    |
 note: this function takes ownership of the receiver `self`, which moves `x`
   --> $SRC_DIR/core/src/iter/traits/collect.rs:LL:COL
-   |
-LL |     fn into_iter(self) -> Self::IntoIter;
-   |                  ^^^^
 help: consider iterating over a slice of the `Vec<S>`'s content to avoid moving into the `for` loop
    |
 LL |     for y in &x {

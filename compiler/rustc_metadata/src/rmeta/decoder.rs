@@ -1527,13 +1527,15 @@ impl<'a, 'tcx> CrateMetadataRef<'a> {
                 if let Some(virtual_dir) = &sess.opts.unstable_opts.simulate_remapped_rust_src_base
                 {
                     if let Some(real_dir) = &sess.opts.real_rust_source_base_dir {
-                        if let rustc_span::FileName::Real(ref mut old_name) = name {
-                            if let rustc_span::RealFileName::LocalPath(local) = old_name {
-                                if let Ok(rest) = local.strip_prefix(real_dir) {
-                                    *old_name = rustc_span::RealFileName::Remapped {
-                                        local_path: None,
-                                        virtual_name: virtual_dir.join(rest),
-                                    };
+                        for subdir in ["library", "compiler"] {
+                            if let rustc_span::FileName::Real(ref mut old_name) = name {
+                                if let rustc_span::RealFileName::LocalPath(local) = old_name {
+                                    if let Ok(rest) = local.strip_prefix(real_dir.join(subdir)) {
+                                        *old_name = rustc_span::RealFileName::Remapped {
+                                            local_path: None,
+                                            virtual_name: virtual_dir.join(subdir).join(rest),
+                                        };
+                                    }
                                 }
                             }
                         }

@@ -12,10 +12,12 @@ LL | |     x;
    |       `x` moved due to usage in operator
    |
 note: calling this operator moves the left-hand side
-  --> $SRC_DIR/core/src/ops/arith.rs:LL:COL
+  --> $DIR/binop-move-semantics.rs:6:5
    |
-LL |     fn add(self, rhs: Rhs) -> Self::Output;
-   |            ^^^^
+LL | /     x
+LL | |     +
+LL | |     x;
+   | |_____^
 help: consider further restricting this bound
    |
 LL | fn double_move<T: Add<Output=()> + Copy>(x: T) {
@@ -77,10 +79,12 @@ LL | |     *n;
    | |______- `*m` moved due to usage in operator
    |
 note: calling this operator moves the left-hand side
-  --> $SRC_DIR/core/src/ops/arith.rs:LL:COL
+  --> $DIR/binop-move-semantics.rs:30:5
    |
-LL |     fn add(self, rhs: Rhs) -> Self::Output;
-   |            ^^^^
+LL | /     *m
+LL | |     +
+LL | |     *n;
+   | |______^
 
 error[E0507]: cannot move out of `*n` which is behind a shared reference
   --> $DIR/binop-move-semantics.rs:32:5

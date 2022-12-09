@@ -23,9 +23,6 @@ LL |     <i32 as Add<i32>>::add(1u32, 2);
    |
 note: associated function defined here
   --> $SRC_DIR/core/src/ops/arith.rs:LL:COL
-   |
-LL |     fn add(self, rhs: Rhs) -> Self::Output;
-   |        ^^^
 help: change the type of the numeric literal from `u32` to `i32`
    |
 LL |     <i32 as Add<i32>>::add(1i32, 2);
@@ -41,9 +38,6 @@ LL |     <i32 as Add<i32>>::add(1, 2u32);
    |
 note: associated function defined here
   --> $SRC_DIR/core/src/ops/arith.rs:LL:COL
-   |
-LL |     fn add(self, rhs: Rhs) -> Self::Output;
-   |        ^^^
 help: change the type of the numeric literal from `u32` to `i32`
    |
 LL |     <i32 as Add<i32>>::add(1, 2i32);

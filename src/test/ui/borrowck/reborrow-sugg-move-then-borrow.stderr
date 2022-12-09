@@ -11,9 +11,6 @@ LL |     fill_segment(state);
    |
 note: this function takes ownership of the receiver `self`, which moves `state`
   --> $SRC_DIR/core/src/iter/traits/collect.rs:LL:COL
-   |
-LL |     fn into_iter(self) -> Self::IntoIter;
-   |                  ^^^^
 help: consider creating a fresh reborrow of `state` here
    |
 LL |     for _ in &mut *state {}

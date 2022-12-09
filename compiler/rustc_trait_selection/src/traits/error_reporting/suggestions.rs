@@ -2179,15 +2179,15 @@ impl<'tcx> TypeErrCtxtExt<'tcx> for TypeErrCtxt<'_, 'tcx> {
             format!("does not implement `{}`", trait_pred.print_modifiers_and_trait_path())
         };
 
-        let mut explain_yield = |interior_span: Span,
-                                 yield_span: Span,
-                                 scope_span: Option<Span>| {
-            let mut span = MultiSpan::from_span(yield_span);
-            if let Ok(snippet) = source_map.span_to_snippet(interior_span) {
-                // #70935: If snippet contains newlines, display "the value" instead
-                // so that we do not emit complex diagnostics.
-                let snippet = &format!("`{}`", snippet);
-                let snippet = if snippet.contains('\n') { "the value" } else { snippet };
+        let mut explain_yield =
+            |interior_span: Span, yield_span: Span, scope_span: Option<Span>| {
+                let mut span = MultiSpan::from_span(yield_span);
+                let snippet = match source_map.span_to_snippet(interior_span) {
+                    // #70935: If snippet contains newlines, display "the value" instead
+                    // so that we do not emit complex diagnostics.
+                    Ok(snippet) if !snippet.contains('\n') => format!("`{}`", snippet),
+                    _ => "the value".to_string(),
+                };
                 // note: future is not `Send` as this value is used across an await
                 //   --> $DIR/issue-70935-complex-spans.rs:13:9
                 //    |
@@ -2234,8 +2234,7 @@ impl<'tcx> TypeErrCtxtExt<'tcx> for TypeErrCtxt<'_, 'tcx> {
                 if let Some((span, msg)) = scope_note {
                     err.span_note(span, &msg);
                 }
-            }
-        };
+            };
         match interior_or_upvar_span {
             GeneratorInteriorOrUpvar::Interior(interior_span, interior_extra_info) => {
                 if let Some((scope_span, yield_span, expr, from_awaited_ty)) = interior_extra_info {

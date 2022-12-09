@@ -9,9 +9,6 @@ LL |                 if selection.1.unwrap().contains(selection.0) {
    |
 note: this function takes ownership of the receiver `self`, which moves `selection.1`
   --> $SRC_DIR/core/src/option.rs:LL:COL
-   |
-LL |     pub const fn unwrap(self) -> T {
-   |                         ^^^^
 
 error[E0507]: cannot move out of `selection.1` which is behind a shared reference
   --> $DIR/option-content-move.rs:27:20
@@ -24,9 +21,6 @@ LL |                 if selection.1.unwrap().contains(selection.0) {
    |
 note: this function takes ownership of the receiver `self`, which moves `selection.1`
   --> $SRC_DIR/core/src/result.rs:LL:COL
-   |
-LL |     pub fn unwrap(self) -> T
-   |                   ^^^^
 
 error: aborting due to 2 previous errors
 

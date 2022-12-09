@@ -14,11 +14,9 @@ error: `impl` item signature doesn't match `trait` item signature
    |
 LL |     fn next(&mut self) -> Option<IteratorChunk<T, S>> {
    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ found `fn(&'1 mut ChunkingIterator<T, S>) -> Option<IteratorChunk<'1, T, S>>`
+  --> $SRC_DIR/core/src/iter/traits/iterator.rs:LL:COL
    |
-  ::: $SRC_DIR/core/src/iter/traits/iterator.rs:LL:COL
-   |
-LL |     fn next(&mut self) -> Option<Self::Item>;
-   |     ----------------------------------------- expected `fn(&'1 mut ChunkingIterator<T, S>) -> Option<IteratorChunk<'static, T, S>>`
+   = note: expected `fn(&'1 mut ChunkingIterator<T, S>) -> Option<IteratorChunk<'static, T, S>>`
    |
    = note: expected `fn(&'1 mut ChunkingIterator<T, S>) -> Option<IteratorChunk<'static, T, S>>`
               found `fn(&'1 mut ChunkingIterator<T, S>) -> Option<IteratorChunk<'1, T, S>>`

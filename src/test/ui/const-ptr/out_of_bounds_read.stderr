@@ -1,14 +1,10 @@
 error[E0080]: evaluation of constant value failed
   --> $SRC_DIR/core/src/ptr/mod.rs:LL:COL
    |
-LL |         copy_nonoverlapping(src, tmp.as_mut_ptr(), 1);
-   |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ memory access failed: alloc5 has size 4, so pointer to 4 bytes starting at offset 4 is out-of-bounds
+   = note: memory access failed: alloc5 has size 4, so pointer to 4 bytes starting at offset 4 is out-of-bounds
    |
 note: inside `std::ptr::read::<u32>`
   --> $SRC_DIR/core/src/ptr/mod.rs:LL:COL
-   |
-LL |         copy_nonoverlapping(src, tmp.as_mut_ptr(), 1);
-   |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 note: inside `_READ`
   --> $DIR/out_of_bounds_read.rs:12:33
    |
@@ -18,19 +14,12 @@ LL |     const _READ: u32 = unsafe { ptr::read(PAST_END_PTR) };
 error[E0080]: evaluation of constant value failed
   --> $SRC_DIR/core/src/ptr/mod.rs:LL:COL
    |
-LL |         copy_nonoverlapping(src, tmp.as_mut_ptr(), 1);
-   |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ memory access failed: alloc5 has size 4, so pointer to 4 bytes starting at offset 4 is out-of-bounds
+   = note: memory access failed: alloc5 has size 4, so pointer to 4 bytes starting at offset 4 is out-of-bounds
    |
 note: inside `std::ptr::read::<u32>`
   --> $SRC_DIR/core/src/ptr/mod.rs:LL:COL
-   |
-LL |         copy_nonoverlapping(src, tmp.as_mut_ptr(), 1);
-   |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 note: inside `ptr::const_ptr::<impl *const u32>::read`
   --> $SRC_DIR/core/src/ptr/const_ptr.rs:LL:COL
-   |
-LL |         unsafe { read(self) }
-   |                  ^^^^^^^^^^
 note: inside `_CONST_READ`
   --> $DIR/out_of_bounds_read.rs:13:39
    |
@@ -40,19 +29,12 @@ LL |     const _CONST_READ: u32 = unsafe { PAST_END_PTR.read() };
 error[E0080]: evaluation of constant value failed
   --> $SRC_DIR/core/src/ptr/mod.rs:LL:COL
    |
-LL |         copy_nonoverlapping(src, tmp.as_mut_ptr(), 1);
-   |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ memory access failed: alloc5 has size 4, so pointer to 4 bytes starting at offset 4 is out-of-bounds
+   = note: memory access failed: alloc5 has size 4, so pointer to 4 bytes starting at offset 4 is out-of-bounds
    |
 note: inside `std::ptr::read::<u32>`
   --> $SRC_DIR/core/src/ptr/mod.rs:LL:COL
-   |
-LL |         copy_nonoverlapping(src, tmp.as_mut_ptr(), 1);
-   |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 note: inside `ptr::mut_ptr::<impl *mut u32>::read`
   --> $SRC_DIR/core/src/ptr/mut_ptr.rs:LL:COL
-   |
-LL |         unsafe { read(self) }
-   |                  ^^^^^^^^^^
 note: inside `_MUT_READ`
   --> $DIR/out_of_bounds_read.rs:14:37
    |

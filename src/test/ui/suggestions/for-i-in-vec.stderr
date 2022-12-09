@@ -9,9 +9,6 @@ LL |         for _ in self.v {
    |
 note: this function takes ownership of the receiver `self`, which moves `self.v`
   --> $SRC_DIR/core/src/iter/traits/collect.rs:LL:COL
-   |
-LL |     fn into_iter(self) -> Self::IntoIter;
-   |                  ^^^^
 help: consider iterating over a slice of the `Vec<u32>`'s content to avoid moving into the `for` loop
    |
 LL |         for _ in &self.v {
@@ -42,9 +39,6 @@ LL |     for loader in *LOADERS {
    |
 note: this function takes ownership of the receiver `self`, which moves value
   --> $SRC_DIR/core/src/iter/traits/collect.rs:LL:COL
-   |
-LL |     fn into_iter(self) -> Self::IntoIter;
-   |                  ^^^^
 help: consider iterating over a slice of the `Vec<&u8>`'s content to avoid moving into the `for` loop
    |
 LL |     for loader in &*LOADERS {

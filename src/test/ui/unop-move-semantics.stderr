@@ -10,10 +10,10 @@ LL |     x.clone();
    |     ^^^^^^^^^ value borrowed here after move
    |
 note: calling this operator moves the left-hand side
-  --> $SRC_DIR/core/src/ops/bit.rs:LL:COL
+  --> $DIR/unop-move-semantics.rs:6:5
    |
-LL |     fn not(self) -> Self::Output;
-   |            ^^^^
+LL |     !x;
+   |     ^^
 help: consider cloning the value if the performance cost is acceptable
    |
 LL |     !x.clone();
@@ -56,10 +56,10 @@ LL |     !*m;
    |     `*m` moved due to usage in operator
    |
 note: calling this operator moves the left-hand side
-  --> $SRC_DIR/core/src/ops/bit.rs:LL:COL
+  --> $DIR/unop-move-semantics.rs:24:5
    |
-LL |     fn not(self) -> Self::Output;
-   |            ^^^^
+LL |     !*m;
+   |     ^^^
 
 error[E0507]: cannot move out of `*n` which is behind a shared reference
   --> $DIR/unop-move-semantics.rs:26:6

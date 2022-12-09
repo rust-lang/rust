@@ -17,9 +17,8 @@ LL |     let some_generated_vec = (0..10).collect();
    = help: the trait `Sized` is not implemented for `[i32]`
 note: required by a bound in `collect`
   --> $SRC_DIR/core/src/iter/traits/iterator.rs:LL:COL
-   |
-LL |     fn collect<B: FromIterator<Self::Item>>(self) -> B
-   |                ^ required by this bound in `Iterator::collect`
+$SRC_DIR/core/src/iter/traits/iterator.rs:LL:COL
+$SRC_DIR/core/src/iter/traits/iterator.rs:LL:COL
 
 error[E0277]: a slice of type `[i32]` cannot be built since `[i32]` has no definite size
   --> $DIR/collect-into-slice.rs:6:38
@@ -30,9 +29,8 @@ LL |     let some_generated_vec = (0..10).collect();
    = help: the trait `FromIterator<{integer}>` is not implemented for `[i32]`
 note: required by a bound in `collect`
   --> $SRC_DIR/core/src/iter/traits/iterator.rs:LL:COL
-   |
-LL |     fn collect<B: FromIterator<Self::Item>>(self) -> B
-   |                   ^^^^^^^^^^^^^^^^^^^^^^^^ required by this bound in `Iterator::collect`
+$SRC_DIR/core/src/iter/traits/iterator.rs:LL:COL
+$SRC_DIR/core/src/iter/traits/iterator.rs:LL:COL
 
 error: aborting due to 3 previous errors
 

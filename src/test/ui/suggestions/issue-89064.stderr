@@ -62,11 +62,6 @@ error[E0107]: this associated function takes 0 generic arguments but 1 generic a
 LL |     let _ = 42.into::<Option<_>>();
    |                ^^^^ expected 0 generic arguments
    |
-note: associated function defined here, with 0 generic parameters
-  --> $SRC_DIR/core/src/convert/mod.rs:LL:COL
-   |
-LL |     fn into(self) -> T;
-   |        ^^^^
 help: consider moving this generic argument to the `Into` trait, which takes up to 1 argument
    |
 LL |     let _ = Into::<Option<_>>::into(42);
