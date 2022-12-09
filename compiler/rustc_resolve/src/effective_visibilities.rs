@@ -110,7 +110,7 @@ impl<'r, 'a, 'tcx> EffectiveVisibilitiesVisitor<'r, 'a, 'tcx> {
                 r.effective_visibilities.update_eff_vis(
                     r.local_def_id(node_id),
                     eff_vis,
-                    ResolverTree(&r.untracked),
+                    ResolverTree(&r.tcx.untracked()),
                 )
             }
         }

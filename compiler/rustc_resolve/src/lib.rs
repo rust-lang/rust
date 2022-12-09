@@ -27,7 +27,7 @@ use rustc_ast::{self as ast, NodeId, CRATE_NODE_ID};
 use rustc_ast::{AngleBracketedArg, Crate, Expr, ExprKind, GenericArg, GenericArgs, LitKind, Path};
 use rustc_data_structures::fx::{FxHashMap, FxHashSet, FxIndexMap, FxIndexSet};
 use rustc_data_structures::intern::Interned;
-use rustc_data_structures::sync::{Lrc, MappedReadGuard, ReadGuard};
+use rustc_data_structures::sync::{Lrc, MappedReadGuard};
 use rustc_errors::{Applicability, DiagnosticBuilder, ErrorGuaranteed};
 use rustc_expand::base::{DeriveResolutions, SyntaxExtension, SyntaxExtensionKind};
 use rustc_hir::def::Namespace::{self, *};
@@ -41,12 +41,11 @@ use rustc_metadata::creader::{CStore, CrateLoader};
 use rustc_middle::metadata::ModChild;
 use rustc_middle::middle::privacy::EffectiveVisibilities;
 use rustc_middle::span_bug;
-use rustc_middle::ty::{self, DefIdTree, MainDefinition, RegisteredTools};
+use rustc_middle::ty::{self, DefIdTree, MainDefinition, RegisteredTools, TyCtxt};
 use rustc_middle::ty::{ResolverGlobalCtxt, ResolverOutputs};
 use rustc_query_system::ich::StableHashingContext;
 use rustc_session::cstore::{CrateStore, MetadataLoaderDyn, Untracked};
 use rustc_session::lint::LintBuffer;
-use rustc_session::Session;
 use rustc_span::hygiene::{ExpnId, LocalExpnId, MacroKind, SyntaxContext, Transparency};
 use rustc_span::source_map::Spanned;
 use rustc_span::symbol::{kw, sym, Ident, Symbol};
@@ -861,10 +860,6 @@ struct MacroData {
     macro_rules: bool,
 }
 
-struct TyCtxt<'tcx> {
-    sess: &'tcx Session,
-}
-
 /// The main resolver class.
 ///
 /// This is the visitor that walks the whole crate.
@@ -962,7 +957,6 @@ pub struct Resolver<'a, 'tcx> {
 
     local_crate_name: Symbol,
     metadata_loader: Box<MetadataLoaderDyn>,
-    untracked: &'tcx Untracked,
     used_extern_options: FxHashSet<Symbol>,
     macro_names: FxHashSet<Ident>,
     builtin_macros: FxHashMap<Symbol, BuiltinMacroState>,
@@ -1141,7 +1135,7 @@ impl DefIdTree for ResolverTree<'_> {
 impl<'a, 'b, 'tcx> DefIdTree for &'a Resolver<'b, 'tcx> {
     #[inline]
     fn opt_parent(self, id: DefId) -> Option<DefId> {
-        ResolverTree(&self.untracked).opt_parent(id)
+        ResolverTree(&self.tcx.untracked()).opt_parent(id)
     }
 }
 
@@ -1168,10 +1162,11 @@ impl<'tcx> Resolver<'_, 'tcx> {
             "adding a def'n for node-id {:?} and data {:?} but a previous def'n exists: {:?}",
             node_id,
             data,
-            self.untracked.definitions.read().def_key(self.node_id_to_def_id[&node_id]),
+            self.tcx.definitions_untracked().def_key(self.node_id_to_def_id[&node_id]),
         );
 
-        let def_id = self.untracked.definitions.write().create_def(parent, data);
+        // FIXME: remove `def_span` body, pass in the right spans here and call `tcx.at().create_def()`
+        let def_id = self.tcx.untracked().definitions.write().create_def(parent, data);
 
         // Create the definition.
         if expn_id != ExpnId::root() {
@@ -1180,7 +1175,7 @@ impl<'tcx> Resolver<'_, 'tcx> {
 
         // A relative span's parent must be an absolute span.
         debug_assert_eq!(span.data_untracked().parent, None);
-        let _id = self.untracked.source_span.write().push(span);
+        let _id = self.tcx.untracked().source_span.write().push(span);
         debug_assert_eq!(_id, def_id);
 
         // Some things for which we allocate `LocalDefId`s don't correspond to
@@ -1206,15 +1201,12 @@ impl<'tcx> Resolver<'_, 'tcx> {
 
 impl<'a, 'tcx> Resolver<'a, 'tcx> {
     pub fn new(
-        session: &'tcx Session,
+        tcx: TyCtxt<'tcx>,
         krate: &Crate,
         crate_name: Symbol,
         metadata_loader: Box<MetadataLoaderDyn>,
         arenas: &'a ResolverArenas<'a>,
-        untracked: &'tcx Untracked,
     ) -> Resolver<'a, 'tcx> {
-        let tcx = TyCtxt { sess: session };
-
         let root_def_id = CRATE_DEF_ID.to_def_id();
         let mut module_map = FxHashMap::default();
         let graph_root = arenas.new_module(
@@ -1222,7 +1214,7 @@ impl<'a, 'tcx> Resolver<'a, 'tcx> {
             ModuleKind::Def(DefKind::Mod, root_def_id, kw::Empty),
             ExpnId::root(),
             krate.spans.inner_span,
-            session.contains_name(&krate.attrs, sym::no_implicit_prelude),
+            tcx.sess.contains_name(&krate.attrs, sym::no_implicit_prelude),
             &mut module_map,
         );
         let empty_module = arenas.new_module(
@@ -1245,7 +1237,8 @@ impl<'a, 'tcx> Resolver<'a, 'tcx> {
         let mut invocation_parents = FxHashMap::default();
         invocation_parents.insert(LocalExpnId::ROOT, (CRATE_DEF_ID, ImplTraitContext::Existential));
 
-        let mut extern_prelude: FxHashMap<Ident, ExternPreludeEntry<'_>> = session
+        let mut extern_prelude: FxHashMap<Ident, ExternPreludeEntry<'_>> = tcx
+            .sess
             .opts
             .externs
             .iter()
@@ -1253,16 +1246,16 @@ impl<'a, 'tcx> Resolver<'a, 'tcx> {
             .map(|(name, _)| (Ident::from_str(name), Default::default()))
             .collect();
 
-        if !session.contains_name(&krate.attrs, sym::no_core) {
+        if !tcx.sess.contains_name(&krate.attrs, sym::no_core) {
             extern_prelude.insert(Ident::with_dummy_span(sym::core), Default::default());
-            if !session.contains_name(&krate.attrs, sym::no_std) {
+            if !tcx.sess.contains_name(&krate.attrs, sym::no_std) {
                 extern_prelude.insert(Ident::with_dummy_span(sym::std), Default::default());
             }
         }
 
-        let registered_tools = macros::registered_tools(session, &krate.attrs);
+        let registered_tools = macros::registered_tools(tcx.sess, &krate.attrs);
 
-        let features = session.features_untracked();
+        let features = tcx.sess.features_untracked();
 
         let mut resolver = Resolver {
             tcx,
@@ -1322,16 +1315,15 @@ impl<'a, 'tcx> Resolver<'a, 'tcx> {
             metadata_loader,
             local_crate_name: crate_name,
             used_extern_options: Default::default(),
-            untracked,
             macro_names: FxHashSet::default(),
             builtin_macros: Default::default(),
             builtin_macro_kinds: Default::default(),
             registered_tools,
             macro_use_prelude: FxHashMap::default(),
             macro_map: FxHashMap::default(),
-            dummy_ext_bang: Lrc::new(SyntaxExtension::dummy_bang(session.edition())),
-            dummy_ext_derive: Lrc::new(SyntaxExtension::dummy_derive(session.edition())),
-            non_macro_attr: Lrc::new(SyntaxExtension::non_macro_attr(session.edition())),
+            dummy_ext_bang: Lrc::new(SyntaxExtension::dummy_bang(tcx.sess.edition())),
+            dummy_ext_derive: Lrc::new(SyntaxExtension::dummy_derive(tcx.sess.edition())),
+            non_macro_attr: Lrc::new(SyntaxExtension::non_macro_attr(tcx.sess.edition())),
             invocation_parent_scopes: Default::default(),
             output_macro_rules_scopes: Default::default(),
             macro_rules_scopes: Default::default(),
@@ -1469,7 +1461,7 @@ impl<'a, 'tcx> Resolver<'a, 'tcx> {
     }
 
     fn create_stable_hashing_context(&self) -> StableHashingContext<'_> {
-        StableHashingContext::new(self.tcx.sess, self.untracked)
+        StableHashingContext::new(self.tcx.sess, self.tcx.untracked())
     }
 
     fn crate_loader<T>(&mut self, f: impl FnOnce(&mut CrateLoader<'_>) -> T) -> T {
@@ -1477,14 +1469,14 @@ impl<'a, 'tcx> Resolver<'a, 'tcx> {
             &self.tcx.sess,
             &*self.metadata_loader,
             self.local_crate_name,
-            &mut *self.untracked.cstore.write().untracked_as_any().downcast_mut().unwrap(),
-            self.untracked.definitions.read(),
+            &mut *self.tcx.untracked().cstore.write().untracked_as_any().downcast_mut().unwrap(),
+            self.tcx.definitions_untracked(),
             &mut self.used_extern_options,
         ))
     }
 
     fn cstore(&self) -> MappedReadGuard<'_, CStore> {
-        ReadGuard::map(self.untracked.cstore.read(), |r| r.as_any().downcast_ref().unwrap())
+        CStore::from_tcx(self.tcx)
     }
 
     fn dummy_ext(&self, macro_kind: MacroKind) -> Lrc<SyntaxExtension> {
@@ -1535,7 +1527,7 @@ impl<'a, 'tcx> Resolver<'a, 'tcx> {
         });
 
         // Make sure we don't mutate the cstore from here on.
-        self.untracked.cstore.leak();
+        self.tcx.untracked().cstore.leak();
     }
 
     fn traits_in_scope(
@@ -1925,14 +1917,14 @@ impl<'a, 'tcx> Resolver<'a, 'tcx> {
     /// Retrieves the span of the given `DefId` if `DefId` is in the local crate.
     #[inline]
     fn opt_span(&self, def_id: DefId) -> Option<Span> {
-        def_id.as_local().map(|def_id| self.untracked.source_span.read()[def_id])
+        def_id.as_local().map(|def_id| self.tcx.source_span(def_id))
     }
 
     /// Retrieves the name of the given `DefId`.
     #[inline]
     fn opt_name(&self, def_id: DefId) -> Option<Symbol> {
         let def_key = match def_id.as_local() {
-            Some(def_id) => self.untracked.definitions.read().def_key(def_id),
+            Some(def_id) => self.tcx.definitions_untracked().def_key(def_id),
             None => self.cstore().def_key(def_id),
         };
         def_key.get_opt_name()

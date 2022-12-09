@@ -221,12 +221,11 @@ impl<'tcx> Queries<'tcx> {
 
                     let arenas = Resolver::arenas();
                     let mut resolver = Resolver::new(
-                        sess,
+                        tcx,
                         &krate,
                         crate_name,
                         self.codegen_backend().metadata_loader(),
                         &arenas,
-                        tcx.untracked(),
                     );
                     let krate = passes::configure_and_expand(
                         sess,
