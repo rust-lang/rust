@@ -158,7 +158,7 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriInterpCxExt<'mir, 'tcx> {
                 // Set page size.
                 let page_size = system_info.offset(field_offsets[2], dword_layout, &this.tcx)?;
                 this.write_scalar(
-                    Scalar::from_int(PAGE_SIZE, dword_layout.size),
+                    Scalar::from_int(this.machine.page_size, dword_layout.size),
                     &page_size.into(),
                 )?;
                 // Set number of processors.
