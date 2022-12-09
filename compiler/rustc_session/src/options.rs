@@ -1338,6 +1338,9 @@ options! {
     incremental_info: bool = (false, parse_bool, [UNTRACKED],
         "print high-level information about incremental reuse (or the lack thereof) \
         (default: no)"),
+    #[rustc_lint_opt_deny_field_access("use `Session::incremental_relative_spans` instead of this field")]
+    incremental_relative_spans: bool = (false, parse_bool, [TRACKED],
+        "hash spans relative to their parent item for incr. comp. (default: no)"),
     incremental_verify_ich: bool = (false, parse_bool, [UNTRACKED],
         "verify incr. comp. hashes of green query instances (default: no)"),
     inline_in_all_cgus: Option<bool> = (None, parse_opt_bool, [TRACKED],
