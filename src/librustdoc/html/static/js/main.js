@@ -622,7 +622,7 @@ function loadCss(cssUrl) {
         const innerToggle = document.getElementById(toggleAllDocsId);
         removeClass(innerToggle, "will-expand");
         onEachLazy(document.getElementsByClassName("rustdoc-toggle"), e => {
-            if (!hasClass(e, "type-contents-toggle")) {
+            if (!hasClass(e, "type-contents-toggle") && !hasClass(e, "more-examples-toggle")) {
                 e.open = true;
             }
         });

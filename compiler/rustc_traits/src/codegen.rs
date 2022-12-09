@@ -3,15 +3,15 @@
 // seems likely that they should eventually be merged into more
 // general routines.
 
-use crate::infer::{DefiningAnchor, TyCtxtInferExt};
-use crate::traits::error_reporting::TypeErrCtxtExt;
-use crate::traits::{
-    ImplSource, Obligation, ObligationCause, SelectionContext, TraitEngine, TraitEngineExt,
-    Unimplemented,
-};
+use rustc_infer::infer::{DefiningAnchor, TyCtxtInferExt};
 use rustc_infer::traits::FulfillmentErrorCode;
 use rustc_middle::traits::CodegenObligationError;
 use rustc_middle::ty::{self, TyCtxt};
+use rustc_trait_selection::traits::error_reporting::TypeErrCtxtExt;
+use rustc_trait_selection::traits::{
+    ImplSource, Obligation, ObligationCause, SelectionContext, TraitEngine, TraitEngineExt,
+    Unimplemented,
+};
 
 /// Attempts to resolve an obligation to an `ImplSource`. The result is
 /// a shallow `ImplSource` resolution, meaning that we do not

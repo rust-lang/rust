@@ -630,22 +630,16 @@ pre, .rustdoc.source .example-wrap {
 
 .docblock table {
 	margin: .5em 0;
-	width: calc(100% - 2px);
-	overflow-x: auto;
-	display: block;
 	border-collapse: collapse;
 }
 
-.docblock table td {
+.docblock table td, .docblock table th {
 	padding: .5em;
-	border: 1px dashed var(--border-color);
-	vertical-align: top;
+	border: 1px solid var(--border-color);
 }
 
-.docblock table th {
-	padding: .5em;
-	text-align: left;
-	border: 1px solid var(--border-color);
+.docblock table tbody tr:nth-child(2n) {
+	background: var(--table-alt-row-background-color);
 }
 
 /* Shift "where ..." part of method or fn definition down a line */
@@ -1813,6 +1807,22 @@ in storage.js
 	}
 }
 
+/* Should have min-width: (N + 1)px where N is the mobile breakpoint above. */
+@media (min-width: 701px) {
+	/* Places file-link for a scraped example on top of the example to save space.
+	   We only do this on large screens so the file-link doesn't overlap too much
+		 with the example's content. */
+	.scraped-example-title {
+		position: absolute;
+		z-index: 10;
+		background: var(--main-background-color);
+		bottom: 8px;
+		right: 5px;
+		padding: 2px 4px;
+		box-shadow: 0 0 4px var(--main-background-color);
+	}
+}
+
 @media print {
 	nav.sidebar, nav.sub, .out-of-band, a.srclink, #copy-path,
 	details.rustdoc-toggle[open] > summary::before, details.rustdoc-toggle > summary::before,
@@ -1899,6 +1909,11 @@ in storage.js
 	border-radius: 50px;
 }
 
+.scraped-example {
+	/* So .scraped-example-title can be positioned absolutely */
+	position: relative;
+}
+
 .scraped-example .code-wrapper {
 	position: relative;
 	display: flex;
@@ -1908,18 +1923,30 @@ in storage.js
 }
 
 .scraped-example:not(.expanded) .code-wrapper {
-	max-height: 240px;
+	/* scrape-examples.js has a constant DEFAULT_MAX_LINES (call it N) for the number
+	 * of lines shown in the un-expanded example code viewer. This pre needs to have
+	 * a max-height equal to line-height * N. The line-height is currently 1.5em,
+	 * and we include additional 10px for padding. */
+	 max-height: calc(1.5em * 5 + 10px);
 }
 
 .scraped-example:not(.expanded) .code-wrapper pre {
 	overflow-y: hidden;
-	max-height: 240px;
 	padding-bottom: 0;
+	/* See above comment, should be the same max-height. */
+	max-height: calc(1.5em * 5 + 10px);
+}
+
+.more-scraped-examples .scraped-example:not(.expanded) .code-wrapper,
+.more-scraped-examples .scraped-example:not(.expanded) .code-wrapper pre {
+	/* See above comment, except this height is based on HIDDEN_MAX_LINES. */
+	max-height: calc(1.5em * 10 + 10px);
 }
 
 .scraped-example .code-wrapper .next,
 .scraped-example .code-wrapper .prev,
 .scraped-example .code-wrapper .expand {
+	color: var(--main-color);
 	position: absolute;
 	top: 0.25em;
 	z-index: 1;

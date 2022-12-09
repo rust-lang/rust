@@ -87,6 +87,7 @@ Original by Dempfi (https://github.com/dempfi/ayu)
 	--crate-search-hover-border: #e0e0e0;
 	--source-sidebar-background-selected: #14191f;
 	--source-sidebar-background-hover: #14191f;
+	--table-alt-row-background-color: #191f26;
 }
 
 h1, h2, h3, h4 {
