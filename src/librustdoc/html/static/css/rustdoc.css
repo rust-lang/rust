@@ -766,6 +766,9 @@ table,
 .item-left {
 	padding-right: 1.25rem;
 }
+.item-left > a, .item-left > span {
+	vertical-align: middle;
+}
 
 .search-results-title {
 	margin-top: 0;
