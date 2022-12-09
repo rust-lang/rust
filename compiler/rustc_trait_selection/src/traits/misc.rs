@@ -4,19 +4,23 @@ use crate::traits::{self, ObligationCause};
 
 use rustc_data_structures::fx::FxIndexSet;
 use rustc_hir as hir;
-use rustc_infer::infer::outlives::env::OutlivesEnvironment;
-use rustc_infer::infer::TyCtxtInferExt;
+use rustc_infer::infer::{RegionResolutionError, TyCtxtInferExt};
+use rustc_infer::{infer::outlives::env::OutlivesEnvironment, traits::FulfillmentError};
 use rustc_middle::ty::{self, Ty, TyCtxt, TypeVisitable};
 
 use crate::traits::error_reporting::TypeErrCtxtExt;
 
 use super::outlives_bounds::InferCtxtExt;
 
-#[derive(Clone)]
 pub enum CopyImplementationError<'tcx> {
-    InfrigingFields(Vec<(&'tcx ty::FieldDef, Ty<'tcx>)>),
+    InfrigingFields(Vec<(&'tcx ty::FieldDef, Ty<'tcx>, InfringingFieldsReason<'tcx>)>),
     NotAnAdt,
     HasDestructor,
+}
+
+pub enum InfringingFieldsReason<'tcx> {
+    Fulfill(Vec<FulfillmentError<'tcx>>),
+    Regions(Vec<RegionResolutionError<'tcx>>),
 }
 
 /// Checks that the fields of the type (an ADT) all implement copy.
@@ -60,22 +64,27 @@ pub fn type_allowed_to_implement_copy<'tcx>(
             if ty.references_error() {
                 continue;
             }
-            let span = tcx.def_span(field.did);
+
+            let field_span = tcx.def_span(field.did);
+            let field_ty_span = match tcx.hir().get_if_local(field.did) {
+                Some(hir::Node::Field(field_def)) => field_def.ty.span,
+                _ => field_span,
+            };
+
             // FIXME(compiler-errors): This gives us better spans for bad
             // projection types like in issue-50480.
             // If the ADT has substs, point to the cause we are given.
             // If it does not, then this field probably doesn't normalize
             // to begin with, and point to the bad field's span instead.
-            let cause = if field
+            let normalization_cause = if field
                 .ty(tcx, traits::InternalSubsts::identity_for_item(tcx, adt.did()))
                 .has_non_region_param()
             {
                 parent_cause.clone()
             } else {
-                ObligationCause::dummy_with_span(span)
+                ObligationCause::dummy_with_span(field_ty_span)
             };
-
-            let ty = ocx.normalize(&cause, param_env, ty);
+            let ty = ocx.normalize(&normalization_cause, param_env, ty);
             let normalization_errors = ocx.select_where_possible();
             if !normalization_errors.is_empty() {
                 // Don't report this as a field that doesn't implement Copy,
@@ -84,9 +93,15 @@ pub fn type_allowed_to_implement_copy<'tcx>(
                 continue;
             }
 
-            ocx.register_bound(cause, param_env, ty, copy_def_id);
-            if !ocx.select_all_or_error().is_empty() {
-                infringing.push((field, ty));
+            ocx.register_bound(
+                ObligationCause::dummy_with_span(field_ty_span),
+                param_env,
+                ty,
+                copy_def_id,
+            );
+            let errors = ocx.select_all_or_error();
+            if !errors.is_empty() {
+                infringing.push((field, ty, InfringingFieldsReason::Fulfill(errors)));
             }
 
             // Check regions assuming the self type of the impl is WF
@@ -103,8 +118,9 @@ pub fn type_allowed_to_implement_copy<'tcx>(
                 outlives_env.region_bound_pairs(),
                 param_env,
             );
-            if !infcx.resolve_regions(&outlives_env).is_empty() {
-                infringing.push((field, ty));
+            let errors = infcx.resolve_regions(&outlives_env);
+            if !errors.is_empty() {
+                infringing.push((field, ty, InfringingFieldsReason::Regions(errors)));
             }
         }
     }
