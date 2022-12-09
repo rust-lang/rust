@@ -87,6 +87,7 @@
 #![warn(missing_debug_implementations)]
 #![warn(missing_docs)]
 #![allow(explicit_outlives_requirements)]
+#![cfg_attr(not(bootstrap), warn(multiple_supertrait_upcastable))]
 //
 // Library features:
 #![feature(alloc_layout_extra)]
@@ -190,6 +191,7 @@
 #![feature(unsized_fn_params)]
 #![feature(c_unwind)]
 #![feature(with_negative_coherence)]
+#![cfg_attr(not(bootstrap), feature(multiple_supertrait_upcastable))]
 //
 // Rustdoc features:
 #![feature(doc_cfg)]

@@ -28,6 +28,7 @@ use crate::fmt::{Debug, Display};
 #[stable(feature = "rust1", since = "1.0.0")]
 #[cfg_attr(not(test), rustc_diagnostic_item = "Error")]
 #[rustc_has_incoherent_inherent_impls]
+#[cfg_attr(not(bootstrap), allow(multiple_supertrait_upcastable))]
 pub trait Error: Debug + Display {
     /// The lower-level source of this error, if any.
     ///
