@@ -6,6 +6,8 @@ error: error reading Clippy's configuration file `$DIR/clippy.toml`: unknown fie
            allow-unwrap-in-tests
            allowed-scripts
            arithmetic-side-effects-allowed
+           arithmetic-side-effects-allowed-binary
+           arithmetic-side-effects-allowed-unary
            array-size-threshold
            avoid-breaking-exported-api
            await-holding-invalid-types
