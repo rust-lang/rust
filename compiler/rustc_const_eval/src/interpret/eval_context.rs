@@ -17,7 +17,7 @@ use rustc_middle::ty::{
 };
 use rustc_mir_dataflow::storage::always_storage_live_locals;
 use rustc_session::Limit;
-use rustc_span::{Pos, Span};
+use rustc_span::Span;
 use rustc_target::abi::{call::FnAbi, Align, HasDataLayout, Size, TargetDataLayout};
 
 use super::{
@@ -256,25 +256,13 @@ impl<'tcx> fmt::Display for FrameInfo<'tcx> {
             if tcx.def_key(self.instance.def_id()).disambiguated_data.data
                 == DefPathData::ClosureExpr
             {
-                write!(f, "inside closure")?;
+                write!(f, "inside closure")
             } else {
                 // Note: this triggers a `good_path_bug` state, which means that if we ever get here
                 // we must emit a diagnostic. We should never display a `FrameInfo` unless we
                 // actually want to emit a warning or error to the user.
-                write!(f, "inside `{}`", self.instance)?;
+                write!(f, "inside `{}`", self.instance)
             }
-            if !self.span.is_dummy() {
-                let sm = tcx.sess.source_map();
-                let lo = sm.lookup_char_pos(self.span.lo());
-                write!(
-                    f,
-                    " at {}:{}:{}",
-                    sm.filename_for_diagnostics(&lo.file.name),
-                    lo.line,
-                    lo.col.to_usize() + 1
-                )?;
-            }
-            Ok(())
         })
     }
 }

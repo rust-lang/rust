@@ -364,7 +364,9 @@ fn report_msg<'tcx>(
         if is_local && idx > 0 {
             err.span_note(frame_info.span, &frame_info.to_string());
         } else {
-            err.note(&frame_info.to_string());
+            let sm = sess.source_map();
+            let span = sm.span_to_embeddable_string(frame_info.span);
+            err.note(format!("{frame_info} at {span}"));
         }
     }
 

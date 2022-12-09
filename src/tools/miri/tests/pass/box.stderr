@@ -12,7 +12,7 @@ LL |         let r2 = ((r as usize) + 0) as *mut i32;
    = help: Alternatively, the `-Zmiri-permissive-provenance` flag disables this warning.
    = note: BACKTRACE:
    = note: inside `into_raw` at $DIR/box.rs:LL:CC
-note: inside `main` at $DIR/box.rs:LL:CC
+note: inside `main`
   --> $DIR/box.rs:LL:CC
    |
 LL |     into_raw();
@@ -25,7 +25,7 @@ LL |         let r = ((u.as_ptr() as usize) + 0) as *mut i32;
    |                 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ integer-to-pointer cast
    |
    = note: inside `into_unique` at $DIR/box.rs:LL:CC
-note: inside `main` at $DIR/box.rs:LL:CC
+note: inside `main`
   --> $DIR/box.rs:LL:CC
    |
 LL |     into_unique();

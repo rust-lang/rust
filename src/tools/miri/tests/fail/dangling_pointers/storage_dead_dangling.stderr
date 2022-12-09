@@ -8,7 +8,7 @@ LL |     unsafe { &mut *(LEAK as *mut i32) };
    = help: see https://doc.rust-lang.org/nightly/reference/behavior-considered-undefined.html for further information
    = note: BACKTRACE:
    = note: inside `evil` at $DIR/storage_dead_dangling.rs:LL:CC
-note: inside `main` at $DIR/storage_dead_dangling.rs:LL:CC
+note: inside `main`
   --> $DIR/storage_dead_dangling.rs:LL:CC
    |
 LL |     evil();
