@@ -395,17 +395,17 @@ pub(super) fn definition(
             let id = it.index();
             let layout = it.layout(db).ok()?;
             let offset = match var_def {
-                hir::VariantDef::Struct(s) => {
-                    let layout = Adt::from(s).layout(db).ok()?;
-                    layout.fields.offset(id)
-                }
-                _ => return None,
+                hir::VariantDef::Struct(s) => Adt::from(s)
+                    .layout(db)
+                    .ok()
+                    .map(|layout| format!(", offset = {}", layout.fields.offset(id).bytes())),
+                _ => None,
             };
             Some(format!(
-                "size = {}, align = {}, offset = {}",
+                "size = {}, align = {}{}",
                 layout.size.bytes(),
                 layout.align.abi.bytes(),
-                offset.bytes()
+                offset.as_deref().unwrap_or_default()
             ))
         }),
         Definition::Module(it) => label_and_docs(db, it),

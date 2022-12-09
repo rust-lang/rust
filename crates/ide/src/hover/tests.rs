@@ -5177,6 +5177,28 @@ enum Enum {
 }
 
 #[test]
+fn hover_record_variant_field() {
+    check(
+        r#"
+enum Enum {
+    RecordV { field$0: u32 }
+}
+"#,
+        expect![[r#"
+            *field*
+
+            ```rust
+            test::RecordV
+            ```
+
+            ```rust
+            field: u32 // size = 4, align = 4
+            ```
+        "#]],
+    );
+}
+
+#[test]
 fn hover_trait_impl_assoc_item_def_doc_forwarding() {
     check(
         r#"
