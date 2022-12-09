@@ -15,6 +15,7 @@ fn main() {
     assert!('x'.is_ascii_alphabetic());
 
     assert!(matches!('x', 'A'..='Z' | 'a'..='z' | '_'));
+    assert!(&b'0'.is_ascii_digit());
 }
 
 #[clippy::msrv = "1.23"]
