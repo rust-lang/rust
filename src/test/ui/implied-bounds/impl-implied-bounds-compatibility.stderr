@@ -1,0 +1,32 @@
+error[E0495]: cannot infer an appropriate lifetime for lifetime parameter 'b in generic type due to conflicting requirements
+  --> $DIR/impl-implied-bounds-compatibility.rs:12:5
+   |
+LL |     fn listeners<'b>(&'b self) -> &'a MessageListeners<'b> {
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+note: first, the lifetime cannot outlive the lifetime `'c` as defined here...
+  --> $DIR/impl-implied-bounds-compatibility.rs:12:5
+   |
+LL |     fn listeners<'b>(&'b self) -> &'a MessageListeners<'b> {
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+note: ...so that the method type is compatible with trait
+  --> $DIR/impl-implied-bounds-compatibility.rs:12:5
+   |
+LL |     fn listeners<'b>(&'b self) -> &'a MessageListeners<'b> {
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   = note: expected `fn(&'c MessageListeners<'a>) -> &'c MessageListeners<'c>`
+              found `fn(&MessageListeners<'a>) -> &'a MessageListeners<'_>`
+note: but, the lifetime must be valid for the lifetime `'a` as defined here...
+  --> $DIR/impl-implied-bounds-compatibility.rs:11:6
+   |
+LL | impl<'a> MessageListenersInterface for MessageListeners<'a> {
+   |      ^^
+note: ...so that the reference type `&'a MessageListeners<'_>` does not outlive the data it points at
+  --> $DIR/impl-implied-bounds-compatibility.rs:12:5
+   |
+LL |     fn listeners<'b>(&'b self) -> &'a MessageListeners<'b> {
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+error: aborting due to previous error
+
+For more information about this error, try `rustc --explain E0495`.
