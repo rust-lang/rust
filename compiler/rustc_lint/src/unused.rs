@@ -1138,6 +1138,7 @@ impl UnusedDelimLint for UnusedBraces {
                             && !cx.sess().source_map().is_multiline(value.span)
                             && value.attrs.is_empty()
                             && !value.span.from_expansion()
+                            && !inner.span.from_expansion()
                         {
                             self.emit_unused_delims_expr(cx, value, ctx, left_pos, right_pos)
                         }
