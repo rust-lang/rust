@@ -654,11 +654,11 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
             // We are capturing a path that starts off a local variable in the parent.
             // The mutability of the current capture is same as the mutability
             // of the local declaration in the parent.
-            PlaceBuilder::Local(local, _) => this.local_decls[local].mutability,
+            PlaceBuilder::Local { local, .. } => this.local_decls[local].mutability,
             // Parent is a closure and we are capturing a path that is captured
             // by the parent itself. The mutability of the current capture
             // is same as that of the capture in the parent closure.
-            PlaceBuilder::UpVar(..) => {
+            PlaceBuilder::Upvar { .. } => {
                 let enclosing_upvars_resolved = arg_place_builder.to_place(this);
 
                 match enclosing_upvars_resolved.as_ref() {

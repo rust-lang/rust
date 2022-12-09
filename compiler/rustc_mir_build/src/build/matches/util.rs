@@ -108,9 +108,8 @@ impl<'pat, 'tcx> MatchPair<'pat, 'tcx> {
         // Only add the OpaqueCast projection if the given place is an opaque type and the
         // expected type from the pattern is not.
         let may_need_cast = match place {
-            PlaceBuilder::Local(local, _) => {
-                let ty =
-                    Place::ty_from(local, place.get_local_projection(), &cx.local_decls, cx.tcx).ty;
+            PlaceBuilder::Local { local, ref projection } => {
+                let ty = Place::ty_from(local, projection, &cx.local_decls, cx.tcx).ty;
                 ty != pattern.ty && ty.has_opaque_types()
             }
             _ => true,

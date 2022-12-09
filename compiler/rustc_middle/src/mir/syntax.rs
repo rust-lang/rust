@@ -875,6 +875,13 @@ pub struct Place<'tcx> {
     pub projection: &'tcx List<PlaceElem<'tcx>>,
 }
 
+/// The different kinds of projections that can be used in the projection of a `Place`.
+///
+/// `T1` is the generic type for a field projection. For an actual projection on a `Place`
+/// this parameter will always be `Ty`, but the field type can be unavailable when
+/// building (by using `PlaceBuilder`) places that correspond to upvars.
+/// `T2` is the generic type for an `OpaqueCast` (is generic since it's abstracted over
+/// in dataflow analysis, see `AbstractElem`).
 #[derive(Copy, Clone, Debug, PartialEq, Eq, PartialOrd, Ord, Hash)]
 #[derive(TyEncodable, TyDecodable, HashStable, TypeFoldable, TypeVisitable)]
 pub enum ProjectionElem<V, T1, T2> {
@@ -942,7 +949,7 @@ pub enum ProjectionElem<V, T1, T2> {
 /// and the index is a local.
 pub type PlaceElem<'tcx> = ProjectionElem<Local, Ty<'tcx>, Ty<'tcx>>;
 
-/// Alias for projections that appear in `PlaceBuilder::UpVar`, for which
+/// Alias for projections that appear in `PlaceBuilder::Upvar`, for which
 /// we cannot provide any field types.
 pub type UpvarProjectionElem<'tcx> = ProjectionElem<Local, (), Ty<'tcx>>;
 

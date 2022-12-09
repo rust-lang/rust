@@ -33,7 +33,7 @@ pub(in crate::build) enum PlaceBuilder<'tcx> {
     /// Denotes the start of a `Place`.
     ///
     /// We use `PlaceElem` since this has all `Field` types available.
-    Local(Local, Vec<PlaceElem<'tcx>>),
+    Local { local: Local, projection: Vec<PlaceElem<'tcx>> },
 
     /// When building place for an expression within a closure, the place might start off a
     /// captured path. When `capture_disjoint_fields` is enabled, we might not know the capture
@@ -67,11 +67,11 @@ pub(in crate::build) enum PlaceBuilder<'tcx> {
     ///
     /// Note: in contrast to `PlaceBuilder::Local` we have not yet determined all `Field` types
     /// and will only do so once converting to `PlaceBuilder::Local`.
-    UpVar(UpVar, Vec<UpvarProjectionElem<'tcx>>),
+    Upvar { upvar: Upvar, projection: Vec<UpvarProjectionElem<'tcx>> },
 }
 
 #[derive(Copy, Clone, Debug, PartialEq)]
-pub(crate) struct UpVar {
+pub(crate) struct Upvar {
     var_hir_id: LocalVarId,
     closure_def_id: LocalDefId,
 }
@@ -222,36 +222,7 @@ fn to_upvars_resolved_place_builder<'tcx>(
         upvar_projection,
     );
 
-    debug_assert!({
-        let builder = upvar_resolved_place_builder.clone();
-        let mut valid_conversion = true;
-        match builder {
-            PlaceBuilder::Local(_, projections) => {
-                for proj in projections.iter() {
-                    match proj {
-                        ProjectionElem::Field(_, field_ty) => {
-                            if matches!(field_ty.kind(), ty::Infer(..)) {
-                                debug!(
-                                    "field ty should have been converted for projection {:?} in PlaceBuilder {:?}",
-                                    proj,
-                                    upvar_resolved_place_builder.clone()
-                                );
-
-                                valid_conversion = false;
-                                break;
-                            }
-                        }
-                        _ => {}
-                    }
-                }
-            }
-            PlaceBuilder::UpVar(..) => {
-                unreachable!()
-            }
-        }
-
-        valid_conversion
-    });
+    assert!(matches!(upvar_resolved_place_builder, PlaceBuilder::Local { .. }));
 
     Some(upvar_resolved_place_builder)
 }
@@ -269,9 +240,9 @@ fn strip_prefix<'a, 'tcx>(
 ) -> impl Iterator<Item = UpvarProjectionElem<'tcx>> + 'a {
     let mut iter = projections
         .iter()
+        .copied()
         // Filter out opaque casts, they are unnecessary in the prefix.
-        .filter(|elem| !matches!(elem, ProjectionElem::OpaqueCast(..)))
-        .map(|elem| *elem);
+        .filter(|elem| !matches!(elem, ProjectionElem::OpaqueCast(..)));
     for projection in prefix_projections {
         debug!(?projection, ?projection.ty);
 
@@ -305,8 +276,8 @@ impl<'tcx> PlaceBuilder<'tcx> {
     pub(in crate::build) fn try_to_place(&self, cx: &Builder<'_, 'tcx>) -> Option<Place<'tcx>> {
         let resolved = self.resolve_upvar(cx);
         let builder = resolved.as_ref().unwrap_or(self);
-        let PlaceBuilder::Local(local, projection) = builder else { return None };
-        let projection = cx.tcx.intern_place_elems(&projection);
+        let PlaceBuilder::Local{local, ref projection} = builder else { return None };
+        let projection = cx.tcx.intern_place_elems(projection);
         Some(Place { local: *local, projection })
     }
 
@@ -324,40 +295,31 @@ impl<'tcx> PlaceBuilder<'tcx> {
         &self,
         cx: &Builder<'_, 'tcx>,
     ) -> Option<PlaceBuilder<'tcx>> {
-        let PlaceBuilder::UpVar( UpVar {var_hir_id, closure_def_id }, projection) = self else {
+        let PlaceBuilder::Upvar{ upvar: Upvar {var_hir_id, closure_def_id }, projection} = self else {
             return None;
         };
 
         to_upvars_resolved_place_builder(cx, *var_hir_id, *closure_def_id, &projection)
     }
 
-    pub(crate) fn get_local_projection(&self) -> &[PlaceElem<'tcx>] {
-        match self {
-            Self::Local(_, projection) => projection,
-            Self::UpVar(..) => {
-                bug!("get_local_projection_mut can only be called on PlaceBuilder::Local")
-            }
-        }
-    }
-
     #[instrument(skip(cx), level = "debug")]
     pub(crate) fn field(self, cx: &Builder<'_, 'tcx>, f: Field) -> Self {
-        let field_ty = match self.clone() {
-            PlaceBuilder::Local(local, projection) => {
-                let base_place = PlaceBuilder::Local(local, projection);
+        match self.clone() {
+            PlaceBuilder::Local { local, projection } => {
+                let base_place = PlaceBuilder::Local { local, projection };
                 let PlaceTy { ty, variant_index } =
                     base_place.to_place(cx).ty(&cx.local_decls, cx.tcx);
                 let base_ty = cx.tcx.normalize_erasing_regions(cx.param_env, ty);
 
-                PlaceBuilder::compute_field_ty(cx, f, base_ty, variant_index)
-            }
-            PlaceBuilder::UpVar(..) => {
-                let dummy_ty = cx.tcx.mk_ty_infer(ty::FreshTy(0));
-                dummy_ty
-            }
-        };
+                let field_ty = PlaceBuilder::compute_field_ty(cx, f, base_ty, variant_index);
 
-        self.project(ProjectionElem::Field(f, field_ty))
+                self.project(ProjectionElem::Field(f, field_ty))
+            }
+            PlaceBuilder::Upvar { upvar, mut projection } => {
+                projection.push(ProjectionElem::Field(f, ()));
+                PlaceBuilder::Upvar { upvar, projection }
+            }
+        }
     }
 
     pub(crate) fn deref(self) -> Self {
@@ -375,13 +337,13 @@ impl<'tcx> PlaceBuilder<'tcx> {
     #[instrument(level = "debug")]
     pub(crate) fn project(self, elem: PlaceElem<'tcx>) -> Self {
         let result = match self {
-            PlaceBuilder::Local(local, mut proj) => {
-                proj.push(elem);
-                PlaceBuilder::Local(local, proj)
+            PlaceBuilder::Local { local, mut projection } => {
+                projection.push(elem);
+                PlaceBuilder::Local { local, projection }
             }
-            PlaceBuilder::UpVar(upvar, mut proj) => {
-                proj.push(elem.into());
-                PlaceBuilder::UpVar(upvar, proj)
+            PlaceBuilder::Upvar { upvar, mut projection } => {
+                projection.push(elem.into());
+                PlaceBuilder::Upvar { upvar, projection }
             }
         };
 
@@ -392,14 +354,14 @@ impl<'tcx> PlaceBuilder<'tcx> {
     /// Same as `.clone().project(..)` but more efficient
     pub(crate) fn clone_project(&self, elem: PlaceElem<'tcx>) -> Self {
         match self {
-            PlaceBuilder::Local(local, proj) => PlaceBuilder::Local(
-                *local,
-                Vec::from_iter(proj.iter().copied().chain([elem.into()])),
-            ),
-            PlaceBuilder::UpVar(upvar, proj) => PlaceBuilder::UpVar(
-                *upvar,
-                Vec::from_iter(proj.iter().copied().chain([elem.into()])),
-            ),
+            PlaceBuilder::Local { local, projection } => PlaceBuilder::Local {
+                local: *local,
+                projection: Vec::from_iter(projection.iter().copied().chain([elem.into()])),
+            },
+            PlaceBuilder::Upvar { upvar, projection } => PlaceBuilder::Upvar {
+                upvar: *upvar,
+                projection: Vec::from_iter(projection.iter().copied().chain([elem.into()])),
+            },
         }
     }
 
@@ -463,7 +425,11 @@ impl<'tcx> PlaceBuilder<'tcx> {
                     f_ty
                 } else {
                     let Some(f_ty) = substs.as_generator().prefix_tys().nth(field.index()) else {
-                        bug!("expected to take index {:?} in {:?}", field.index(), substs.as_generator().prefix_tys().collect::<Vec<_>>());
+                        bug!(
+                            "expected to take index {:?} in {:?}",
+                            field.index(),
+                            substs.as_generator().prefix_tys().collect::<Vec<_>>()
+                        );
                     };
 
                     f_ty
@@ -475,7 +441,7 @@ impl<'tcx> PlaceBuilder<'tcx> {
         cx.tcx.normalize_erasing_regions(cx.param_env, field_ty)
     }
 
-    /// Creates a `PlaceBuilder::Local` from a `PlaceBuilder::UpVar` whose upvars
+    /// Creates a `PlaceBuilder::Local` from a `PlaceBuilder::Upvar` whose upvars
     /// are resolved. This function takes two kinds of projections: `local_projection`
     /// contains the projections of the captured upvar and `upvar_projection` the
     /// projections that are applied to the captured upvar. The main purpose of this
@@ -516,19 +482,19 @@ impl<'tcx> PlaceBuilder<'tcx> {
             }
         }
 
-        PlaceBuilder::Local(local, local_projection)
+        PlaceBuilder::Local { local, projection: local_projection }
     }
 }
 
 impl<'tcx> From<Local> for PlaceBuilder<'tcx> {
     fn from(local: Local) -> Self {
-        Self::Local(local, Vec::new())
+        Self::Local { local, projection: Vec::new() }
     }
 }
 
 impl<'tcx> From<Place<'tcx>> for PlaceBuilder<'tcx> {
     fn from(p: Place<'tcx>) -> Self {
-        Self::Local(p.local, p.projection.to_vec())
+        Self::Local { local: p.local, projection: p.projection.to_vec() }
     }
 }
 
@@ -564,13 +530,7 @@ fn project_ty<'tcx>(
             (ty, None)
         }
         ProjectionElem::Downcast(_, variant_idx) => (ty, Some(variant_idx)),
-        ProjectionElem::Field(_, ty) => {
-            if matches!(ty.kind(), ty::Infer(..)) {
-                bug!("Field ty should have been resolved");
-            }
-
-            (ty, None)
-        }
+        ProjectionElem::Field(_, ty) => (ty, None),
         ProjectionElem::OpaqueCast(..) => bug!("didn't expect OpaqueCast"),
     }
 }
@@ -836,7 +796,7 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
     }
 
     /// Lower a captured upvar. Note we might not know the actual capture index,
-    /// so we create a place starting from `UpVar`, which will be resolved
+    /// so we create a place starting from `Upvar`, which will be resolved
     /// once all projections that allow us to identify a capture have been applied.
     fn lower_captured_upvar(
         &mut self,
@@ -844,7 +804,10 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
         closure_def_id: LocalDefId,
         var_hir_id: LocalVarId,
     ) -> BlockAnd<PlaceBuilder<'tcx>> {
-        block.and(PlaceBuilder::UpVar(UpVar { var_hir_id, closure_def_id }, vec![]))
+        block.and(PlaceBuilder::Upvar {
+            upvar: Upvar { var_hir_id, closure_def_id },
+            projection: vec![],
+        })
     }
 
     /// Lower an index expression
