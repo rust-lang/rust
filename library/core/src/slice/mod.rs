@@ -3468,10 +3468,11 @@ impl<T> [T] {
     /// maintained.
     ///
     /// This method splits the slice into three distinct slices: prefix, correctly aligned middle
-    /// slice of a new type, and the suffix slice. The method may make the middle slice the greatest
-    /// length possible for a given type and input slice, but only your algorithm's performance
-    /// should depend on that, not its correctness. It is permissible for all of the input data to
-    /// be returned as the prefix or suffix slice.
+    /// slice of a new type, and the suffix slice. How exactly the slice is split up is not
+    /// specified; the middle part may be smaller than necessary. However, if this fails to return a
+    /// maximal middle part, that is because code is running in a context where performance does not
+    /// matter, such as a sanitizer attempting to find alignment bugs. Regular code running
+    /// in a default (debug or release) execution *will* return a maximal middle part.
     ///
     /// This method has no purpose when either input element `T` or output element `U` are
     /// zero-sized and will return the original slice without splitting anything.
@@ -3529,10 +3530,11 @@ impl<T> [T] {
     /// types is maintained.
     ///
     /// This method splits the slice into three distinct slices: prefix, correctly aligned middle
-    /// slice of a new type, and the suffix slice. The method may make the middle slice the greatest
-    /// length possible for a given type and input slice, but only your algorithm's performance
-    /// should depend on that, not its correctness. It is permissible for all of the input data to
-    /// be returned as the prefix or suffix slice.
+    /// slice of a new type, and the suffix slice. How exactly the slice is split up is not
+    /// specified; the middle part may be smaller than necessary. However, if this fails to return a
+    /// maximal middle part, that is because code is running in a context where performance does not
+    /// matter, such as a sanitizer attempting to find alignment bugs. Regular code running
+    /// in a default (debug or release) execution *will* return a maximal middle part.
     ///
     /// This method has no purpose when either input element `T` or output element `U` are
     /// zero-sized and will return the original slice without splitting anything.
