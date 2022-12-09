@@ -27,7 +27,7 @@ use rustc_ast::{self as ast, NodeId, CRATE_NODE_ID};
 use rustc_ast::{AngleBracketedArg, Crate, Expr, ExprKind, GenericArg, GenericArgs, LitKind, Path};
 use rustc_data_structures::fx::{FxHashMap, FxHashSet, FxIndexMap, FxIndexSet};
 use rustc_data_structures::intern::Interned;
-use rustc_data_structures::sync::{Lrc, ReadGuard, RwLock};
+use rustc_data_structures::sync::{Lrc, MappedReadGuard, ReadGuard, RwLock};
 use rustc_errors::{Applicability, DiagnosticBuilder, ErrorGuaranteed};
 use rustc_expand::base::{DeriveResolutions, SyntaxExtension, SyntaxExtensionKind};
 use rustc_hir::def::Namespace::{self, *};
@@ -1487,7 +1487,7 @@ impl<'a, 'tcx> Resolver<'a, 'tcx> {
         ))
     }
 
-    fn cstore(&self) -> ReadGuard<'_, CStore> {
+    fn cstore(&self) -> MappedReadGuard<'_, CStore> {
         ReadGuard::map(self.untracked.cstore.read(), |r| r.as_any().downcast_ref().unwrap())
     }
 
