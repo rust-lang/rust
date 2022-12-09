@@ -410,13 +410,7 @@ impl<'a, 'tcx> MirBorrowckCtxt<'a, 'tcx> {
     fn add_move_hints(&self, error: GroupedMoveError<'tcx>, err: &mut Diagnostic, span: Span) {
         match error {
             GroupedMoveError::MovesFromPlace { mut binds_to, move_from, .. } => {
-                err.span_suggestion_verbose(
-                    span.shrink_to_lo(),
-                    "consider borrowing here",
-                    "&".to_string(),
-                    Applicability::Unspecified,
-                );
-
+                self.add_borrow_suggestions(err, span);
                 if binds_to.is_empty() {
                     let place_ty = move_from.ty(self.body, self.infcx.tcx).ty;
                     let place_desc = match self.describe_place(move_from.as_ref()) {
@@ -455,6 +449,27 @@ impl<'a, 'tcx> MirBorrowckCtxt<'a, 'tcx> {
                 self.note_type_does_not_implement_copy(err, &place_desc, place_ty, Some(span), "");
 
                 use_spans.args_span_label(err, format!("move out of {place_desc} occurs here"));
+            }
+        }
+    }
+
+    fn add_borrow_suggestions(&self, err: &mut Diagnostic, span: Span) {
+        match self.infcx.tcx.sess.source_map().span_to_snippet(span) {
+            Ok(snippet) if snippet.starts_with('*') => {
+                err.span_suggestion_verbose(
+                    span.with_hi(span.lo() + BytePos(1)),
+                    "consider removing the dereference here",
+                    String::new(),
+                    Applicability::MaybeIncorrect,
+                );
+            }
+            _ => {
+                err.span_suggestion_verbose(
+                    span.shrink_to_lo(),
+                    "consider borrowing here",
+                    "&".to_string(),
+                    Applicability::MaybeIncorrect,
+                );
             }
         }
     }

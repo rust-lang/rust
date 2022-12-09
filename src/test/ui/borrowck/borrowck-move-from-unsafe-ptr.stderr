@@ -4,10 +4,11 @@ error[E0507]: cannot move out of `*x` which is behind a raw pointer
 LL |     let y = *x;
    |             ^^ move occurs because `*x` has type `Box<isize>`, which does not implement the `Copy` trait
    |
-help: consider borrowing here
+help: consider removing the dereference here
    |
-LL |     let y = &*x;
-   |             +
+LL -     let y = *x;
+LL +     let y = x;
+   |
 
 error: aborting due to previous error
 

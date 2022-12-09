@@ -7,10 +7,11 @@ LL |     let [_, e, _, _] = *a;
    |             data moved here
    |             move occurs because `e` has type `D`, which does not implement the `Copy` trait
    |
-help: consider borrowing here
+help: consider removing the dereference here
    |
-LL |     let [_, e, _, _] = &*a;
-   |                        +
+LL -     let [_, e, _, _] = *a;
+LL +     let [_, e, _, _] = a;
+   |
 
 error[E0508]: cannot move out of type `[D; 4]`, a non-copy array
   --> $DIR/move-out-of-array-ref.rs:13:27
@@ -21,10 +22,11 @@ LL |     let [_, s @ .. , _] = *a;
    |             data moved here
    |             move occurs because `s` has type `[D; 2]`, which does not implement the `Copy` trait
    |
-help: consider borrowing here
+help: consider removing the dereference here
    |
-LL |     let [_, s @ .. , _] = &*a;
-   |                           +
+LL -     let [_, s @ .. , _] = *a;
+LL +     let [_, s @ .. , _] = a;
+   |
 
 error[E0508]: cannot move out of type `[D; 4]`, a non-copy array
   --> $DIR/move-out-of-array-ref.rs:18:24
@@ -35,10 +37,11 @@ LL |     let [_, e, _, _] = *a;
    |             data moved here
    |             move occurs because `e` has type `D`, which does not implement the `Copy` trait
    |
-help: consider borrowing here
+help: consider removing the dereference here
    |
-LL |     let [_, e, _, _] = &*a;
-   |                        +
+LL -     let [_, e, _, _] = *a;
+LL +     let [_, e, _, _] = a;
+   |
 
 error[E0508]: cannot move out of type `[D; 4]`, a non-copy array
   --> $DIR/move-out-of-array-ref.rs:23:27
@@ -49,10 +52,11 @@ LL |     let [_, s @ .. , _] = *a;
    |             data moved here
    |             move occurs because `s` has type `[D; 2]`, which does not implement the `Copy` trait
    |
-help: consider borrowing here
+help: consider removing the dereference here
    |
-LL |     let [_, s @ .. , _] = &*a;
-   |                           +
+LL -     let [_, s @ .. , _] = *a;
+LL +     let [_, s @ .. , _] = a;
+   |
 
 error: aborting due to 4 previous errors
 

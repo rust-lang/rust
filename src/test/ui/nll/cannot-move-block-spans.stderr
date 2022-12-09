@@ -4,10 +4,11 @@ error[E0507]: cannot move out of `*r` which is behind a shared reference
 LL |     let x = { *r };
    |               ^^ move occurs because `*r` has type `String`, which does not implement the `Copy` trait
    |
-help: consider borrowing here
+help: consider removing the dereference here
    |
-LL |     let x = { &*r };
-   |               +
+LL -     let x = { *r };
+LL +     let x = { r };
+   |
 
 error[E0507]: cannot move out of `*r` which is behind a shared reference
   --> $DIR/cannot-move-block-spans.rs:6:22
@@ -15,10 +16,11 @@ error[E0507]: cannot move out of `*r` which is behind a shared reference
 LL |     let y = unsafe { *r };
    |                      ^^ move occurs because `*r` has type `String`, which does not implement the `Copy` trait
    |
-help: consider borrowing here
+help: consider removing the dereference here
    |
-LL |     let y = unsafe { &*r };
-   |                      +
+LL -     let y = unsafe { *r };
+LL +     let y = unsafe { r };
+   |
 
 error[E0507]: cannot move out of `*r` which is behind a shared reference
   --> $DIR/cannot-move-block-spans.rs:7:26
@@ -26,10 +28,11 @@ error[E0507]: cannot move out of `*r` which is behind a shared reference
 LL |     let z = loop { break *r; };
    |                          ^^ move occurs because `*r` has type `String`, which does not implement the `Copy` trait
    |
-help: consider borrowing here
+help: consider removing the dereference here
    |
-LL |     let z = loop { break &*r; };
-   |                          +
+LL -     let z = loop { break *r; };
+LL +     let z = loop { break r; };
+   |
 
 error[E0508]: cannot move out of type `[String; 2]`, a non-copy array
   --> $DIR/cannot-move-block-spans.rs:11:15
@@ -79,10 +82,11 @@ error[E0507]: cannot move out of `*r` which is behind a shared reference
 LL |     let x = { let mut u = 0; u += 1; *r };
    |                                      ^^ move occurs because `*r` has type `String`, which does not implement the `Copy` trait
    |
-help: consider borrowing here
+help: consider removing the dereference here
    |
-LL |     let x = { let mut u = 0; u += 1; &*r };
-   |                                      +
+LL -     let x = { let mut u = 0; u += 1; *r };
+LL +     let x = { let mut u = 0; u += 1; r };
+   |
 
 error[E0507]: cannot move out of `*r` which is behind a shared reference
   --> $DIR/cannot-move-block-spans.rs:18:45
@@ -90,10 +94,11 @@ error[E0507]: cannot move out of `*r` which is behind a shared reference
 LL |     let y = unsafe { let mut u = 0; u += 1; *r };
    |                                             ^^ move occurs because `*r` has type `String`, which does not implement the `Copy` trait
    |
-help: consider borrowing here
+help: consider removing the dereference here
    |
-LL |     let y = unsafe { let mut u = 0; u += 1; &*r };
-   |                                             +
+LL -     let y = unsafe { let mut u = 0; u += 1; *r };
+LL +     let y = unsafe { let mut u = 0; u += 1; r };
+   |
 
 error[E0507]: cannot move out of `*r` which is behind a shared reference
   --> $DIR/cannot-move-block-spans.rs:19:49
@@ -101,10 +106,11 @@ error[E0507]: cannot move out of `*r` which is behind a shared reference
 LL |     let z = loop { let mut u = 0; u += 1; break *r; u += 2; };
    |                                                 ^^ move occurs because `*r` has type `String`, which does not implement the `Copy` trait
    |
-help: consider borrowing here
+help: consider removing the dereference here
    |
-LL |     let z = loop { let mut u = 0; u += 1; break &*r; u += 2; };
-   |                                                 +
+LL -     let z = loop { let mut u = 0; u += 1; break *r; u += 2; };
+LL +     let z = loop { let mut u = 0; u += 1; break r; u += 2; };
+   |
 
 error: aborting due to 9 previous errors
 

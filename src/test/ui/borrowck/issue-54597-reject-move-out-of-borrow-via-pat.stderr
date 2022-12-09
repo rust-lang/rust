@@ -4,10 +4,11 @@ error[E0507]: cannot move out of `*array` which is behind a shared reference
 LL |             *array
    |             ^^^^^^ move occurs because `*array` has type `Vec<Value>`, which does not implement the `Copy` trait
    |
-help: consider borrowing here
+help: consider removing the dereference here
    |
-LL |             &*array
-   |             +
+LL -             *array
+LL +             array
+   |
 
 error: aborting due to previous error
 

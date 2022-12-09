@@ -37,22 +37,22 @@ pub fn main() {
 
     let X(_t) = *s;
     //~^ ERROR cannot move
-    //~| HELP consider borrowing here
+    //~| HELP consider removing the dereference here
     if let Either::One(_t) = *r { }
     //~^ ERROR cannot move
-    //~| HELP consider borrowing here
+    //~| HELP consider removing the dereference here
     while let Either::One(_t) = *r { }
     //~^ ERROR cannot move
-    //~| HELP consider borrowing here
+    //~| HELP consider removing the dereference here
     match *r {
         //~^ ERROR cannot move
-        //~| HELP consider borrowing here
+        //~| HELP consider removing the dereference here
         Either::One(_t)
         | Either::Two(_t) => (),
     }
     match *r {
         //~^ ERROR cannot move
-        //~| HELP consider borrowing here
+        //~| HELP consider removing the dereference here
         Either::One(_t) => (),
         Either::Two(ref _t) => (),
         // FIXME: should suggest removing `ref` too
@@ -60,29 +60,29 @@ pub fn main() {
 
     let X(_t) = *sm;
     //~^ ERROR cannot move
-    //~| HELP consider borrowing here
+    //~| HELP consider removing the dereference here
     if let Either::One(_t) = *rm { }
     //~^ ERROR cannot move
-    //~| HELP consider borrowing here
+    //~| HELP consider removing the dereference here
     while let Either::One(_t) = *rm { }
     //~^ ERROR cannot move
-    //~| HELP consider borrowing here
+    //~| HELP consider removing the dereference here
     match *rm {
         //~^ ERROR cannot move
-        //~| HELP consider borrowing here
+        //~| HELP consider removing the dereference here
         Either::One(_t)
         | Either::Two(_t) => (),
     }
     match *rm {
         //~^ ERROR cannot move
-        //~| HELP consider borrowing here
+        //~| HELP consider removing the dereference here
         Either::One(_t) => (),
         Either::Two(ref _t) => (),
         // FIXME: should suggest removing `ref` too
     }
     match *rm {
         //~^ ERROR cannot move
-        //~| HELP consider borrowing here
+        //~| HELP consider removing the dereference here
         Either::One(_t) => (),
         Either::Two(ref mut _t) => (),
         // FIXME: should suggest removing `ref` too

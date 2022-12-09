@@ -10,7 +10,7 @@ enum Foo {
 
 fn blah() {
     let f = &Foo::Foo1(Box::new(1), Box::new(2));
-    match &*f { //~ ERROR cannot move out of
+    match f { //~ ERROR cannot move out of
         Foo::Foo1(num1,
                   num2) => (),
         Foo::Foo2(num) => (),
