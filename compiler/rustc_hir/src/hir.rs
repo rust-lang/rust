@@ -827,7 +827,7 @@ impl<'tcx> AttributeMap<'tcx> {
 pub struct OwnerNodes<'tcx> {
     /// Pre-computed hash of the full HIR.
     pub hash_including_bodies: Fingerprint,
-    /// Pre-computed hash of the item signature, sithout recursing into the body.
+    /// Pre-computed hash of the item signature, without recursing into the body.
     pub hash_without_bodies: Fingerprint,
     /// Full HIR for the current owner.
     // The zeroth node's parent should never be accessed: the owner's parent is computed by the

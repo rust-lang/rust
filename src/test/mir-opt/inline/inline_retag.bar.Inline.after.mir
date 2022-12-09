@@ -38,9 +38,7 @@ fn bar() -> bool {
                                          // + literal: Const { ty: &i32, val: Unevaluated(bar, [], Some(promoted[1])) }
         Retag(_10);                      // scope 1 at $DIR/inline_retag.rs:+2:7: +2:9
         _4 = &(*_10);                    // scope 1 at $DIR/inline_retag.rs:+2:7: +2:9
-        Retag(_4);                       // scope 1 at $DIR/inline_retag.rs:+2:7: +2:9
         _3 = &(*_4);                     // scope 1 at $DIR/inline_retag.rs:+2:7: +2:9
-        Retag(_3);                       // scope 1 at $DIR/inline_retag.rs:+2:7: +2:9
         StorageLive(_6);                 // scope 1 at $DIR/inline_retag.rs:+2:11: +2:14
         StorageLive(_7);                 // scope 1 at $DIR/inline_retag.rs:+2:11: +2:14
         _9 = const _;                    // scope 1 at $DIR/inline_retag.rs:+2:11: +2:14
@@ -49,9 +47,7 @@ fn bar() -> bool {
                                          // + literal: Const { ty: &i32, val: Unevaluated(bar, [], Some(promoted[0])) }
         Retag(_9);                       // scope 1 at $DIR/inline_retag.rs:+2:11: +2:14
         _7 = &(*_9);                     // scope 1 at $DIR/inline_retag.rs:+2:11: +2:14
-        Retag(_7);                       // scope 1 at $DIR/inline_retag.rs:+2:11: +2:14
         _6 = &(*_7);                     // scope 1 at $DIR/inline_retag.rs:+2:11: +2:14
-        Retag(_6);                       // scope 1 at $DIR/inline_retag.rs:+2:11: +2:14
         Retag(_3);                       // scope 2 at $DIR/inline_retag.rs:16:8: 16:9
         Retag(_6);                       // scope 2 at $DIR/inline_retag.rs:16:17: 16:18
         StorageLive(_11);                // scope 2 at $DIR/inline_retag.rs:17:5: 17:7

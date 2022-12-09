@@ -89,38 +89,6 @@ pub struct LocalTy<'tcx> {
     revealed_ty: Ty<'tcx>,
 }
 
-#[derive(Copy, Clone)]
-pub struct UnsafetyState {
-    pub def: hir::HirId,
-    pub unsafety: hir::Unsafety,
-    from_fn: bool,
-}
-
-impl UnsafetyState {
-    pub fn function(unsafety: hir::Unsafety, def: hir::HirId) -> UnsafetyState {
-        UnsafetyState { def, unsafety, from_fn: true }
-    }
-
-    pub fn recurse(self, blk: &hir::Block<'_>) -> UnsafetyState {
-        use hir::BlockCheckMode;
-        match self.unsafety {
-            // If this unsafe, then if the outer function was already marked as
-            // unsafe we shouldn't attribute the unsafe'ness to the block. This
-            // way the block can be warned about instead of ignoring this
-            // extraneous block (functions are never warned about).
-            hir::Unsafety::Unsafe if self.from_fn => self,
-
-            unsafety => {
-                let (unsafety, def) = match blk.rules {
-                    BlockCheckMode::UnsafeBlock(..) => (hir::Unsafety::Unsafe, blk.hir_id),
-                    BlockCheckMode::DefaultBlock => (unsafety, self.def),
-                };
-                UnsafetyState { def, unsafety, from_fn: false }
-            }
-        }
-    }
-}
-
 /// If this `DefId` is a "primary tables entry", returns
 /// `Some((body_id, body_ty, fn_sig))`. Otherwise, returns `None`.
 ///

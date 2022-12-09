@@ -71,7 +71,7 @@ impl Condvar {
             }
         }
 
-        unsafe { mutex.lock() };
+        mutex.lock();
     }
 
     pub unsafe fn wait_timeout(&self, mutex: &Mutex, dur: Duration) -> bool {
@@ -109,7 +109,7 @@ impl Condvar {
         // we woke up because of `notify_*`.
         let success = self.waiters.with_locked(|waiters| unsafe { !waiters.remove(waiter) });
 
-        unsafe { mutex.lock() };
+        mutex.lock();
         success
     }
 }

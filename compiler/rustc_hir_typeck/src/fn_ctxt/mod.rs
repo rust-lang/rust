@@ -8,7 +8,7 @@ use rustc_errors::ErrorGuaranteed;
 pub use suggestions::*;
 
 use crate::coercion::DynamicCoerceMany;
-use crate::{Diverges, EnclosingBreakables, Inherited, UnsafetyState};
+use crate::{Diverges, EnclosingBreakables, Inherited};
 use rustc_hir as hir;
 use rustc_hir::def_id::DefId;
 use rustc_hir_analysis::astconv::AstConv;
@@ -74,8 +74,6 @@ pub struct FnCtxt<'a, 'tcx> {
 
     pub(super) resume_yield_tys: Option<(Ty<'tcx>, Ty<'tcx>)>,
 
-    pub(super) ps: Cell<UnsafetyState>,
-
     /// Whether the last checked node generates a divergence (e.g.,
     /// `return` will set this to `Always`). In general, when entering
     /// an expression or other node in the tree, the initial value
@@ -129,7 +127,6 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             ret_coercion: None,
             ret_coercion_span: Cell::new(None),
             resume_yield_tys: None,
-            ps: Cell::new(UnsafetyState::function(hir::Unsafety::Normal, hir::CRATE_HIR_ID)),
             diverges: Cell::new(Diverges::Maybe),
             enclosing_breakables: RefCell::new(EnclosingBreakables {
                 stack: Vec::new(),

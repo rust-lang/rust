@@ -72,7 +72,7 @@ pub(super) struct MutexGuard<'a>(&'a Mutex);
 impl<'a> MutexGuard<'a> {
     #[inline]
     pub(super) fn lock(x: &'a Mutex) -> Self {
-        unsafe { x.lock() };
+        x.lock();
         Self(x)
     }
 }

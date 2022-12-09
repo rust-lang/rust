@@ -109,6 +109,7 @@ use rustc_data_structures::{base_n, flock};
 use rustc_errors::ErrorGuaranteed;
 use rustc_fs_util::{link_or_copy, LinkOrCopy};
 use rustc_session::{Session, StableCrateId};
+use rustc_span::Symbol;
 
 use std::fs as std_fs;
 use std::io::{self, ErrorKind};
@@ -202,7 +203,7 @@ pub fn in_incr_comp_dir(incr_comp_session_dir: &Path, file_name: &str) -> PathBu
 /// [`rustc_interface::queries::dep_graph`]: ../../rustc_interface/struct.Queries.html#structfield.dep_graph
 pub fn prepare_session_directory(
     sess: &Session,
-    crate_name: &str,
+    crate_name: Symbol,
     stable_crate_id: StableCrateId,
 ) -> Result<(), ErrorGuaranteed> {
     if sess.opts.incremental.is_none() {
@@ -657,7 +658,7 @@ fn string_to_timestamp(s: &str) -> Result<SystemTime, ()> {
     Ok(UNIX_EPOCH + duration)
 }
 
-fn crate_path(sess: &Session, crate_name: &str, stable_crate_id: StableCrateId) -> PathBuf {
+fn crate_path(sess: &Session, crate_name: Symbol, stable_crate_id: StableCrateId) -> PathBuf {
     let incr_dir = sess.opts.incremental.as_ref().unwrap().clone();
 
     let stable_crate_id = base_n::encode(stable_crate_id.to_u64() as u128, INT_ENCODE_BASE);

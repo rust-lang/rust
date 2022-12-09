@@ -1196,7 +1196,7 @@ impl<'a> Resolver<'a> {
     pub fn new(
         session: &'a Session,
         krate: &Crate,
-        crate_name: &str,
+        crate_name: Symbol,
         metadata_loader: Box<MetadataLoaderDyn>,
         arenas: &'a ResolverArenas<'a>,
     ) -> Resolver<'a> {
