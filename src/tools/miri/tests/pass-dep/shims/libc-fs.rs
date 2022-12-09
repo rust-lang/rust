@@ -6,7 +6,7 @@
 
 use std::convert::TryInto;
 use std::ffi::CString;
-use std::fs::{canonicalize, remove_file, File};
+use std::fs::{canonicalize, remove_dir_all, remove_file, File};
 use std::io::{Error, ErrorKind, Write};
 use std::os::unix::ffi::OsStrExt;
 use std::path::PathBuf;
@@ -18,6 +18,8 @@ fn main() {
     test_file_open_unix_allow_two_args();
     test_file_open_unix_needs_three_args();
     test_file_open_unix_extra_third_arg();
+    #[cfg(target_os = "linux")]
+    test_o_tmpfile_flag();
 }
 
 fn tmp() -> PathBuf {
@@ -42,6 +44,15 @@ fn prepare(filename: &str) -> PathBuf {
     let path = tmp().join(filename);
     // Clean the paths for robustness.
     remove_file(&path).ok();
+    path
+}
+
+/// Prepare directory: compute directory name and make sure it does not exist.
+#[allow(unused)]
+fn prepare_dir(dirname: &str) -> PathBuf {
+    let path = tmp().join(&dirname);
+    // Clean the directory for robustness.
+    remove_dir_all(&path).ok();
     path
 }
 
@@ -134,4 +145,23 @@ fn test_readlink() {
     };
     assert_eq!(res, -1);
     assert_eq!(Error::last_os_error().kind(), ErrorKind::NotFound);
+}
+
+#[cfg(target_os = "linux")]
+fn test_o_tmpfile_flag() {
+    use std::fs::{create_dir, OpenOptions};
+    use std::os::unix::fs::OpenOptionsExt;
+    let dir_path = prepare_dir("miri_test_fs_dir");
+    create_dir(&dir_path).unwrap();
+    // test that the `O_TMPFILE` custom flag gracefully errors instead of stopping execution
+    assert_eq!(
+        Some(libc::EOPNOTSUPP),
+        OpenOptions::new()
+            .read(true)
+            .write(true)
+            .custom_flags(libc::O_TMPFILE)
+            .open(dir_path)
+            .unwrap_err()
+            .raw_os_error(),
+    );
 }
