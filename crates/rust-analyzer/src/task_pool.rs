@@ -8,12 +8,13 @@ pub(crate) struct TaskPool<T> {
 }
 
 impl<T> TaskPool<T> {
-    pub(crate) fn new(sender: Sender<T>) -> TaskPool<T> {
+    pub(crate) fn new_with_threads(sender: Sender<T>, threads: usize) -> TaskPool<T> {
         const STACK_SIZE: usize = 8 * 1024 * 1024;
 
         let inner = threadpool::Builder::new()
             .thread_name("Worker".into())
             .thread_stack_size(STACK_SIZE)
+            .num_threads(threads)
             .build();
         TaskPool { sender, inner }
     }

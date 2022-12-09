@@ -403,6 +403,9 @@ config_data! {
         /// Whether to show `can't find Cargo.toml` error message.
         notifications_cargoTomlNotFound: bool      = "true",
 
+        /// How many worker threads in the main loop. The default `null` means to pick automatically.
+        numThreads: Option<usize> = "null",
+
         /// Expand attribute macros. Requires `#rust-analyzer.procMacro.enable#` to be set.
         procMacro_attributes_enable: bool = "true",
         /// Enable support for procedural macros, implies `#rust-analyzer.cargo.buildScripts.enable#`.
@@ -1452,6 +1455,10 @@ impl Config {
             0 => num_cpus::get_physical().try_into().unwrap_or(u8::MAX),
             n => n,
         }
+    }
+
+    pub fn main_loop_num_threads(&self) -> usize {
+        self.data.numThreads.unwrap_or(num_cpus::get_physical().try_into().unwrap_or(1))
     }
 
     pub fn typing_autoclose_angle(&self) -> bool {
