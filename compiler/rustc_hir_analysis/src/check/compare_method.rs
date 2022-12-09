@@ -184,8 +184,7 @@ fn compare_predicate_entailment<'tcx>(
     // environment. We can't just use `impl_env.caller_bounds`,
     // however, because we want to replace all late-bound regions with
     // region variables.
-    let impl_predicates = tcx.predicates_of(impl_m_predicates.parent.unwrap());
-    let mut hybrid_preds = impl_predicates.instantiate_identity(tcx);
+    let mut hybrid_preds = impl_m_predicates.instantiate_identity(tcx);
 
     debug!("compare_impl_method: impl_bounds={:?}", hybrid_preds);
 
@@ -1558,8 +1557,7 @@ fn compare_type_predicate_entailment<'tcx>(
 
     // The predicates declared by the impl definition, the trait and the
     // associated type in the trait are assumed.
-    let impl_predicates = tcx.predicates_of(impl_ty_predicates.parent.unwrap());
-    let mut hybrid_preds = impl_predicates.instantiate_identity(tcx);
+    let mut hybrid_preds = impl_m_predicates.instantiate_identity(tcx);
     hybrid_preds
         .predicates
         .extend(trait_ty_predicates.instantiate_own(tcx, trait_to_impl_substs).predicates);
