@@ -447,7 +447,7 @@ LL |     let &mut X(_t) = sm;
 help: consider removing the mutable borrow
    |
 LL -     let &mut X(_t) = sm;
-LL +     let mut X(_t) = sm;
+LL +     let X(_t) = sm;
    |
 
 error[E0507]: cannot move out of `rm` as enum variant `One` which is behind a mutable reference
@@ -462,7 +462,7 @@ LL |     if let &mut Either::One(_t) = rm { }
 help: consider removing the mutable borrow
    |
 LL -     if let &mut Either::One(_t) = rm { }
-LL +     if let mut Either::One(_t) = rm { }
+LL +     if let Either::One(_t) = rm { }
    |
 
 error[E0507]: cannot move out of `rm` as enum variant `One` which is behind a mutable reference
@@ -477,7 +477,7 @@ LL |     while let &mut Either::One(_t) = rm { }
 help: consider removing the mutable borrow
    |
 LL -     while let &mut Either::One(_t) = rm { }
-LL +     while let mut Either::One(_t) = rm { }
+LL +     while let Either::One(_t) = rm { }
    |
 
 error[E0507]: cannot move out of `rm` as enum variant `Two` which is behind a mutable reference
@@ -496,12 +496,12 @@ LL |         &mut Either::Two(_t) => (),
 help: consider removing the mutable borrow
    |
 LL -         &mut Either::One(_t) => (),
-LL +         mut Either::One(_t) => (),
+LL +         Either::One(_t) => (),
    |
 help: consider removing the mutable borrow
    |
 LL -         &mut Either::Two(_t) => (),
-LL +         mut Either::Two(_t) => (),
+LL +         Either::Two(_t) => (),
    |
 
 error[E0507]: cannot move out of `rm` as enum variant `One` which is behind a mutable reference
@@ -519,7 +519,7 @@ LL |         &mut Either::One(_t) => (),
 help: consider removing the mutable borrow
    |
 LL -         &mut Either::One(_t) => (),
-LL +         mut Either::One(_t) => (),
+LL +         Either::One(_t) => (),
    |
 
 error[E0507]: cannot move out of `rm` as enum variant `One` which is behind a mutable reference
@@ -537,7 +537,7 @@ LL |         &mut Either::One(_t) => (),
 help: consider removing the mutable borrow
    |
 LL -         &mut Either::One(_t) => (),
-LL +         mut Either::One(_t) => (),
+LL +         Either::One(_t) => (),
    |
 
 error[E0507]: cannot move out of `rm` as enum variant `One` which is behind a mutable reference
@@ -555,7 +555,7 @@ LL |         &mut Either::One(_t) => (),
 help: consider removing the mutable borrow
    |
 LL -         &mut Either::One(_t) => (),
-LL +         mut Either::One(_t) => (),
+LL +         Either::One(_t) => (),
    |
 
 error[E0507]: cannot move out of a shared reference
@@ -792,7 +792,7 @@ LL |     let &mut X(_t) = &mut xm;
 help: consider removing the mutable borrow
    |
 LL -     let &mut X(_t) = &mut xm;
-LL +     let mut X(_t) = &mut xm;
+LL +     let X(_t) = &mut xm;
    |
 
 error[E0507]: cannot move out of a mutable reference
@@ -807,7 +807,7 @@ LL |     if let &mut Either::One(_t) = &mut em { }
 help: consider removing the mutable borrow
    |
 LL -     if let &mut Either::One(_t) = &mut em { }
-LL +     if let mut Either::One(_t) = &mut em { }
+LL +     if let Either::One(_t) = &mut em { }
    |
 
 error[E0507]: cannot move out of a mutable reference
@@ -822,7 +822,7 @@ LL |     while let &mut Either::One(_t) = &mut em { }
 help: consider removing the mutable borrow
    |
 LL -     while let &mut Either::One(_t) = &mut em { }
-LL +     while let mut Either::One(_t) = &mut em { }
+LL +     while let Either::One(_t) = &mut em { }
    |
 
 error[E0507]: cannot move out of a mutable reference
@@ -840,7 +840,7 @@ LL |         &mut Either::One(_t)
 help: consider removing the mutable borrow
    |
 LL -         &mut Either::One(_t)
-LL +         mut Either::One(_t)
+LL +         Either::One(_t)
    |
 
 error[E0507]: cannot move out of a mutable reference
@@ -858,7 +858,7 @@ LL |         &mut Either::One(_t) => (),
 help: consider removing the mutable borrow
    |
 LL -         &mut Either::One(_t) => (),
-LL +         mut Either::One(_t) => (),
+LL +         Either::One(_t) => (),
    |
 
 error[E0507]: cannot move out of a mutable reference
@@ -876,7 +876,7 @@ LL |         &mut Either::One(_t) => (),
 help: consider removing the mutable borrow
    |
 LL -         &mut Either::One(_t) => (),
-LL +         mut Either::One(_t) => (),
+LL +         Either::One(_t) => (),
    |
 
 error[E0507]: cannot move out of a mutable reference
@@ -894,7 +894,7 @@ LL |         &mut Either::One(_t) => (),
 help: consider removing the mutable borrow
    |
 LL -         &mut Either::One(_t) => (),
-LL +         mut Either::One(_t) => (),
+LL +         Either::One(_t) => (),
    |
 
 error[E0507]: cannot move out of a shared reference
@@ -924,7 +924,7 @@ LL |     fn f2(&mut X(_t): &mut X) { }
 help: consider removing the mutable borrow
    |
 LL -     fn f2(&mut X(_t): &mut X) { }
-LL +     fn f2(mut X(_t): &mut X) { }
+LL +     fn f2(X(_t): &mut X) { }
    |
 
 error[E0507]: cannot move out of a shared reference

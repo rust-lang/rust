@@ -481,6 +481,7 @@ impl<'a, 'tcx> MirBorrowckCtxt<'a, 'tcx> {
                 let (pat_span, suggestion, to_remove) = if inner_pat_snippet.starts_with("mut")
                     && inner_pat_snippet["mut".len()..].starts_with(rustc_lexer::is_whitespace)
                 {
+                    let inner_pat_snippet = inner_pat_snippet["mut".len()..].trim_start();
                     let pat_span = pat_span.with_hi(
                         pat_span.lo()
                             + BytePos((pat_snippet.len() - inner_pat_snippet.len()) as u32),

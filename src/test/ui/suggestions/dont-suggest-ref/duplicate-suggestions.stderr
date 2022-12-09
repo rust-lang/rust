@@ -139,7 +139,7 @@ LL |     let &mut (X(_t), X(_u)) = &mut (xm.clone(), xm.clone());
 help: consider removing the mutable borrow
    |
 LL -     let &mut (X(_t), X(_u)) = &mut (xm.clone(), xm.clone());
-LL +     let mut (X(_t), X(_u)) = &mut (xm.clone(), xm.clone());
+LL +     let (X(_t), X(_u)) = &mut (xm.clone(), xm.clone());
    |
 
 error[E0507]: cannot move out of a mutable reference
@@ -155,7 +155,7 @@ LL |     if let &mut (Either::One(_t), Either::Two(_u)) = &mut (em.clone(), em.c
 help: consider removing the mutable borrow
    |
 LL -     if let &mut (Either::One(_t), Either::Two(_u)) = &mut (em.clone(), em.clone()) { }
-LL +     if let mut (Either::One(_t), Either::Two(_u)) = &mut (em.clone(), em.clone()) { }
+LL +     if let (Either::One(_t), Either::Two(_u)) = &mut (em.clone(), em.clone()) { }
    |
 
 error[E0507]: cannot move out of a mutable reference
@@ -171,7 +171,7 @@ LL |     while let &mut (Either::One(_t), Either::Two(_u)) = &mut (em.clone(), e
 help: consider removing the mutable borrow
    |
 LL -     while let &mut (Either::One(_t), Either::Two(_u)) = &mut (em.clone(), em.clone()) { }
-LL +     while let mut (Either::One(_t), Either::Two(_u)) = &mut (em.clone(), em.clone()) { }
+LL +     while let (Either::One(_t), Either::Two(_u)) = &mut (em.clone(), em.clone()) { }
    |
 
 error[E0507]: cannot move out of a mutable reference
@@ -192,12 +192,12 @@ LL |         &mut (Either::Two(_t), Either::One(_u)) => (),
 help: consider removing the mutable borrow
    |
 LL -         &mut (Either::One(_t), Either::Two(_u)) => (),
-LL +         mut (Either::One(_t), Either::Two(_u)) => (),
+LL +         (Either::One(_t), Either::Two(_u)) => (),
    |
 help: consider removing the mutable borrow
    |
 LL -         &mut (Either::Two(_t), Either::One(_u)) => (),
-LL +         mut (Either::Two(_t), Either::One(_u)) => (),
+LL +         (Either::Two(_t), Either::One(_u)) => (),
    |
 
 error[E0507]: cannot move out of a mutable reference
@@ -215,7 +215,7 @@ LL |         &mut (Either::One(_t), Either::Two(_u))
 help: consider removing the mutable borrow
    |
 LL -         &mut (Either::One(_t), Either::Two(_u))
-LL +         mut (Either::One(_t), Either::Two(_u))
+LL +         (Either::One(_t), Either::Two(_u))
    |
 
 error[E0507]: cannot move out of a mutable reference
@@ -233,7 +233,7 @@ LL |         &mut (Either::One(_t), Either::Two(_u)) => (),
 help: consider removing the mutable borrow
    |
 LL -         &mut (Either::One(_t), Either::Two(_u)) => (),
-LL +         mut (Either::One(_t), Either::Two(_u)) => (),
+LL +         (Either::One(_t), Either::Two(_u)) => (),
    |
 
 error[E0507]: cannot move out of a mutable reference
@@ -251,7 +251,7 @@ LL |         &mut (Either::One(_t), Either::Two(_u)) => (),
 help: consider removing the mutable borrow
    |
 LL -         &mut (Either::One(_t), Either::Two(_u)) => (),
-LL +         mut (Either::One(_t), Either::Two(_u)) => (),
+LL +         (Either::One(_t), Either::Two(_u)) => (),
    |
 
 error[E0507]: cannot move out of a mutable reference
@@ -269,7 +269,7 @@ LL |         &mut (Either::One(_t), Either::Two(_u)) => (),
 help: consider removing the mutable borrow
    |
 LL -         &mut (Either::One(_t), Either::Two(_u)) => (),
-LL +         mut (Either::One(_t), Either::Two(_u)) => (),
+LL +         (Either::One(_t), Either::Two(_u)) => (),
    |
 
 error[E0507]: cannot move out of a shared reference
@@ -301,7 +301,7 @@ LL |     fn f6(&mut (X(_t), X(_u)): &mut (X, X)) { }
 help: consider removing the mutable borrow
    |
 LL -     fn f6(&mut (X(_t), X(_u)): &mut (X, X)) { }
-LL +     fn f6(mut (X(_t), X(_u)): &mut (X, X)) { }
+LL +     fn f6((X(_t), X(_u)): &mut (X, X)) { }
    |
 
 error: aborting due to 17 previous errors

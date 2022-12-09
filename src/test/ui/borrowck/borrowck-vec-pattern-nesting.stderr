@@ -37,7 +37,7 @@ LL |         &mut [_a,
 help: consider removing the mutable borrow
    |
 LL -         &mut [_a,
-LL +         mut [_a,
+LL +         [_a,
    |
 
 error[E0508]: cannot move out of type `[Box<isize>]`, a non-copy slice
@@ -69,7 +69,7 @@ LL |          _b] => {}
 help: consider removing the mutable borrow
    |
 LL -         &mut [
-LL +         mut [
+LL +         [
    |
 
 error[E0508]: cannot move out of type `[Box<isize>]`, a non-copy slice
@@ -102,7 +102,7 @@ LL |         &mut [_a, _b, _c] => {}
 help: consider removing the mutable borrow
    |
 LL -         &mut [_a, _b, _c] => {}
-LL +         mut [_a, _b, _c] => {}
+LL +         [_a, _b, _c] => {}
    |
 
 error[E0508]: cannot move out of type `[Box<isize>]`, a non-copy slice
