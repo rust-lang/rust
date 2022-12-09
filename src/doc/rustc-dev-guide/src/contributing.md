@@ -185,7 +185,7 @@ As a developer to this repository, you don't have to treat the following externa
 differently from other crates that are directly in this repo:
 
 * [Clippy](https://github.com/rust-lang/rust-clippy)
-* [Miri](https://github.com/rust-lang/miri)
+* [Miri]
 * [rustfmt](https://github.com/rust-lang/rustfmt)
 * [rust-analyzer](https://github.com/rust-lang/rust-analyzer)
 
@@ -273,7 +273,6 @@ Breakage is not allowed in the beta and stable channels, and must be addressed
 before the PR is merged. They are also not allowed to be broken on master in
 the week leading up to the beta cut.
 
-[Miri]: https://github.com/rust-lang/miri
 [git submodules]: https://git-scm.com/book/en/v2/Git-Tools-Submodules
 [`.gitmodules`]: https://github.com/rust-lang/rust/blob/master/.gitmodules
 [The Rust Reference]: https://github.com/rust-lang/reference/
@@ -550,3 +549,4 @@ are:
 [ro]: https://www.rustaceans.org/
 [rctd]: tests/intro.md
 [cheatsheet]: https://bors.rust-lang.org/
+[Miri]: https://github.com/rust-lang/miri
