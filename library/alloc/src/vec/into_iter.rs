@@ -1,6 +1,7 @@
 #[cfg(not(no_global_oom_handling))]
 use super::AsVecIntoIter;
 use crate::alloc::{Allocator, Global};
+#[cfg(not(no_global_oom_handling))]
 use crate::collections::VecDeque;
 use crate::raw_vec::RawVec;
 use core::array;
@@ -134,6 +135,7 @@ impl<T, A: Allocator> IntoIter<T, A> {
         self.ptr = self.end;
     }
 
+    #[cfg(not(no_global_oom_handling))]
     #[inline]
     pub(crate) fn into_vecdeque(self) -> VecDeque<T, A> {
         // Keep our `Drop` impl from dropping the elements and the allocator

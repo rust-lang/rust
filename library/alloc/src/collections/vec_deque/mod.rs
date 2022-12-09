@@ -590,6 +590,9 @@ impl<T, A: Allocator> VecDeque<T, A> {
         VecDeque { head: 0, len: 0, buf: RawVec::with_capacity_in(capacity, alloc) }
     }
 
+    /// Creates a `VecDeque` from a raw allocation, when the initialized
+    /// part of that allocation forms a *contiguous* subslice thereof.
+    ///
     /// For use by `vec::IntoIter::into_vecdeque`
     ///
     /// # Safety
