@@ -560,7 +560,7 @@ impl FileType {
     }
 
     pub fn is(&self, mode: mode_t) -> bool {
-        self.mode & libc::S_IFMT == mode
+        self.masked() == mode
     }
 
     fn masked(&self) -> mode_t {
