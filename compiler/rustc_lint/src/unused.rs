@@ -633,13 +633,34 @@ trait UnusedDelimLint {
         left_pos: Option<BytePos>,
         right_pos: Option<BytePos>,
     ) {
+        // If `value` has `ExprKind::Err`, unused delim lint can be broken.
+        // For example, the following code caused ICE.
+        // This is because the `ExprKind::Call` in `value` has `ExprKind::Err` as its argument
+        // and this leads to wrong spans. #104897
+        //
+        // ```
+        // fn f(){(print!(á
+        // ```
+        use rustc_ast::visit::{walk_expr, Visitor};
+        struct ErrExprVisitor {
+            has_error: bool,
+        }
+        impl<'ast> Visitor<'ast> for ErrExprVisitor {
+            fn visit_expr(&mut self, expr: &'ast ast::Expr) {
+                if let ExprKind::Err = expr.kind {
+                    self.has_error = true;
+                    return;
+                }
+                walk_expr(self, expr)
+            }
+        }
+        let mut visitor = ErrExprVisitor { has_error: false };
+        visitor.visit_expr(value);
+        if visitor.has_error {
+            return;
+        }
         let spans = match value.kind {
             ast::ExprKind::Block(ref block, None) if block.stmts.len() == 1 => {
-                if let StmtKind::Expr(expr) = &block.stmts[0].kind
-                    && let ExprKind::Err = expr.kind
-                {
-                    return
-                }
                 if let Some(span) = block.stmts[0].span.find_ancestor_inside(value.span) {
                     Some((value.span.with_hi(span.lo()), value.span.with_lo(span.hi())))
                 } else {

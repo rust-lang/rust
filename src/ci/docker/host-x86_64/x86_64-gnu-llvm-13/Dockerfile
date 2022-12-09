@@ -24,15 +24,15 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
   pkg-config \
   zlib1g-dev \
   xz-utils \
-  nodejs
-
+  nodejs \
+  \
 # Install powershell so we can test x.ps1 on Linux
-RUN apt-get update && \
-    apt-get install -y apt-transport-https software-properties-common && \
+    apt-transport-https software-properties-common && \
     curl -s "https://packages.microsoft.com/config/ubuntu/$(lsb_release -rs)/packages-microsoft-prod.deb" > packages-microsoft-prod.deb && \
     dpkg -i packages-microsoft-prod.deb && \
     apt-get update && \
-    apt-get install -y powershell
+    apt-get install -y powershell \
+    && rm -rf /var/lib/apt/lists/*
 
 COPY scripts/sccache.sh /scripts/
 RUN sh /scripts/sccache.sh

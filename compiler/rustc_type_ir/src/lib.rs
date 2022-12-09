@@ -19,9 +19,11 @@ use std::mem::discriminant;
 
 pub mod codec;
 pub mod sty;
+pub mod ty_info;
 
 pub use codec::*;
 pub use sty::*;
+pub use ty_info::*;
 
 /// Needed so we can use #[derive(HashStable_Generic)]
 pub trait HashStableContext {}

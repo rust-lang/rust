@@ -1065,9 +1065,9 @@ impl<'tcx> Visitor<'tcx> for NamePrivacyVisitor<'tcx> {
                 // are checked for privacy (RFC 736). Rather than computing the set of
                 // unmentioned fields, just check them all.
                 for (vf_index, variant_field) in variant.fields.iter().enumerate() {
-                    let field = fields.iter().find(|f| {
-                        self.tcx.field_index(f.hir_id, self.typeck_results()) == vf_index
-                    });
+                    let field = fields
+                        .iter()
+                        .find(|f| self.typeck_results().field_index(f.hir_id) == vf_index);
                     let (use_ctxt, span) = match field {
                         Some(field) => (field.ident.span, field.span),
                         None => (base.span, base.span),
@@ -1077,7 +1077,7 @@ impl<'tcx> Visitor<'tcx> for NamePrivacyVisitor<'tcx> {
             } else {
                 for field in fields {
                     let use_ctxt = field.ident.span;
-                    let index = self.tcx.field_index(field.hir_id, self.typeck_results());
+                    let index = self.typeck_results().field_index(field.hir_id);
                     self.check_field(use_ctxt, field.span, adt, &variant.fields[index], false);
                 }
             }
@@ -1093,7 +1093,7 @@ impl<'tcx> Visitor<'tcx> for NamePrivacyVisitor<'tcx> {
             let variant = adt.variant_of_res(res);
             for field in fields {
                 let use_ctxt = field.ident.span;
-                let index = self.tcx.field_index(field.hir_id, self.typeck_results());
+                let index = self.typeck_results().field_index(field.hir_id);
                 self.check_field(use_ctxt, field.span, adt, &variant.fields[index], false);
             }
         }

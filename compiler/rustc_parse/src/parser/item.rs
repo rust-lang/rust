@@ -3,6 +3,7 @@ use crate::errors::{DocCommentDoesNotDocumentAnything, UseEmptyBlockNotSemi};
 use super::diagnostics::{dummy_arg, ConsumeClosingDelim};
 use super::ty::{AllowPlus, RecoverQPath, RecoverReturnSign};
 use super::{AttrWrapper, FollowedByType, ForceCollect, Parser, PathStyle, TrailingToken};
+use crate::errors::FnTypoWithImpl;
 use rustc_ast::ast::*;
 use rustc_ast::ptr::P;
 use rustc_ast::token::{self, Delimiter, TokenKind};
@@ -1414,7 +1415,10 @@ impl<'a> Parser<'a> {
 
                 Ok((Some(vr), TrailingToken::MaybeComma))
             },
-        )
+        ).map_err(|mut err|{
+            err.help("enum variants can be `Variant`, `Variant = <integer>`, `Variant(Type, ..., TypeN)` or `Variant { fields: Types }`");
+            err
+        })
     }
 
     /// Parses `struct Foo { ... }`.
@@ -2123,11 +2127,26 @@ impl<'a> Parser<'a> {
         vis: &Visibility,
         case: Case,
     ) -> PResult<'a, (Ident, FnSig, Generics, Option<P<Block>>)> {
+        let fn_span = self.token.span;
         let header = self.parse_fn_front_matter(vis, case)?; // `const ... fn`
         let ident = self.parse_ident()?; // `foo`
         let mut generics = self.parse_generics()?; // `<'a, T, ...>`
-        let decl =
-            self.parse_fn_decl(fn_parse_mode.req_name, AllowPlus::Yes, RecoverReturnSign::Yes)?; // `(p: u8, ...)`
+        let decl = match self.parse_fn_decl(
+            fn_parse_mode.req_name,
+            AllowPlus::Yes,
+            RecoverReturnSign::Yes,
+        ) {
+            Ok(decl) => decl,
+            Err(old_err) => {
+                // If we see `for Ty ...` then user probably meant `impl` item.
+                if self.token.is_keyword(kw::For) {
+                    old_err.cancel();
+                    return Err(self.sess.create_err(FnTypoWithImpl { fn_span }));
+                } else {
+                    return Err(old_err);
+                }
+            }
+        };
         generics.where_clause = self.parse_where_clause()?; // `where T: Ord`
 
         let mut sig_hi = self.prev_token.span;

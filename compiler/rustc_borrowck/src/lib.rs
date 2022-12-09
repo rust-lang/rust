@@ -578,12 +578,12 @@ impl<'cx, 'tcx> rustc_mir_dataflow::ResultsVisitor<'cx, 'tcx> for MirBorrowckCtx
         self.check_activations(location, span, flow_state);
 
         match &stmt.kind {
-            StatementKind::Assign(box (lhs, ref rhs)) => {
+            StatementKind::Assign(box (lhs, rhs)) => {
                 self.consume_rvalue(location, (rhs, span), flow_state);
 
                 self.mutate_place(location, (*lhs, span), Shallow(None), flow_state);
             }
-            StatementKind::FakeRead(box (_, ref place)) => {
+            StatementKind::FakeRead(box (_, place)) => {
                 // Read for match doesn't access any memory and is used to
                 // assert that a place is safe and live. So we don't have to
                 // do any checks here.
@@ -601,7 +601,7 @@ impl<'cx, 'tcx> rustc_mir_dataflow::ResultsVisitor<'cx, 'tcx> for MirBorrowckCtx
                     flow_state,
                 );
             }
-            StatementKind::Intrinsic(box ref kind) => match kind {
+            StatementKind::Intrinsic(box kind) => match kind {
                 NonDivergingIntrinsic::Assume(op) => self.consume_operand(location, (op, span), flow_state),
                 NonDivergingIntrinsic::CopyNonOverlapping(..) => span_bug!(
                     span,
@@ -643,8 +643,8 @@ impl<'cx, 'tcx> rustc_mir_dataflow::ResultsVisitor<'cx, 'tcx> for MirBorrowckCtx
 
         self.check_activations(loc, span, flow_state);
 
-        match term.kind {
-            TerminatorKind::SwitchInt { ref discr, switch_ty: _, targets: _ } => {
+        match &term.kind {
+            TerminatorKind::SwitchInt { discr, switch_ty: _, targets: _ } => {
                 self.consume_operand(loc, (discr, span), flow_state);
             }
             TerminatorKind::Drop { place, target: _, unwind: _ } => {
@@ -656,7 +656,7 @@ impl<'cx, 'tcx> rustc_mir_dataflow::ResultsVisitor<'cx, 'tcx> for MirBorrowckCtx
 
                 self.access_place(
                     loc,
-                    (place, span),
+                    (*place, span),
                     (AccessDepth::Drop, Write(WriteKind::StorageDeadOrDrop)),
                     LocalMutationIsAllowed::Yes,
                     flow_state,
@@ -664,16 +664,16 @@ impl<'cx, 'tcx> rustc_mir_dataflow::ResultsVisitor<'cx, 'tcx> for MirBorrowckCtx
             }
             TerminatorKind::DropAndReplace {
                 place: drop_place,
-                value: ref new_value,
+                value: new_value,
                 target: _,
                 unwind: _,
             } => {
-                self.mutate_place(loc, (drop_place, span), Deep, flow_state);
+                self.mutate_place(loc, (*drop_place, span), Deep, flow_state);
                 self.consume_operand(loc, (new_value, span), flow_state);
             }
             TerminatorKind::Call {
-                ref func,
-                ref args,
+                func,
+                args,
                 destination,
                 target: _,
                 cleanup: _,
@@ -684,43 +684,43 @@ impl<'cx, 'tcx> rustc_mir_dataflow::ResultsVisitor<'cx, 'tcx> for MirBorrowckCtx
                 for arg in args {
                     self.consume_operand(loc, (arg, span), flow_state);
                 }
-                self.mutate_place(loc, (destination, span), Deep, flow_state);
+                self.mutate_place(loc, (*destination, span), Deep, flow_state);
             }
-            TerminatorKind::Assert { ref cond, expected: _, ref msg, target: _, cleanup: _ } => {
+            TerminatorKind::Assert { cond, expected: _, msg, target: _, cleanup: _ } => {
                 self.consume_operand(loc, (cond, span), flow_state);
                 use rustc_middle::mir::AssertKind;
-                if let AssertKind::BoundsCheck { ref len, ref index } = *msg {
+                if let AssertKind::BoundsCheck { len, index } = msg {
                     self.consume_operand(loc, (len, span), flow_state);
                     self.consume_operand(loc, (index, span), flow_state);
                 }
             }
 
-            TerminatorKind::Yield { ref value, resume: _, resume_arg, drop: _ } => {
+            TerminatorKind::Yield { value, resume: _, resume_arg, drop: _ } => {
                 self.consume_operand(loc, (value, span), flow_state);
-                self.mutate_place(loc, (resume_arg, span), Deep, flow_state);
+                self.mutate_place(loc, (*resume_arg, span), Deep, flow_state);
             }
 
             TerminatorKind::InlineAsm {
                 template: _,
-                ref operands,
+                operands,
                 options: _,
                 line_spans: _,
                 destination: _,
                 cleanup: _,
             } => {
                 for op in operands {
-                    match *op {
-                        InlineAsmOperand::In { reg: _, ref value } => {
+                    match op {
+                        InlineAsmOperand::In { reg: _, value } => {
                             self.consume_operand(loc, (value, span), flow_state);
                         }
                         InlineAsmOperand::Out { reg: _, late: _, place, .. } => {
                             if let Some(place) = place {
-                                self.mutate_place(loc, (place, span), Shallow(None), flow_state);
+                                self.mutate_place(loc, (*place, span), Shallow(None), flow_state);
                             }
                         }
-                        InlineAsmOperand::InOut { reg: _, late: _, ref in_value, out_place } => {
+                        InlineAsmOperand::InOut { reg: _, late: _, in_value, out_place } => {
                             self.consume_operand(loc, (in_value, span), flow_state);
-                            if let Some(out_place) = out_place {
+                            if let &Some(out_place) = out_place {
                                 self.mutate_place(
                                     loc,
                                     (out_place, span),
@@ -1164,8 +1164,8 @@ impl<'cx, 'tcx> MirBorrowckCtxt<'cx, 'tcx> {
         (rvalue, span): (&'cx Rvalue<'tcx>, Span),
         flow_state: &Flows<'cx, 'tcx>,
     ) {
-        match *rvalue {
-            Rvalue::Ref(_ /*rgn*/, bk, place) => {
+        match rvalue {
+            &Rvalue::Ref(_ /*rgn*/, bk, place) => {
                 let access_kind = match bk {
                     BorrowKind::Shallow => {
                         (Shallow(Some(ArtificialField::ShallowBorrow)), Read(ReadKind::Borrow(bk)))
@@ -1203,7 +1203,7 @@ impl<'cx, 'tcx> MirBorrowckCtxt<'cx, 'tcx> {
                 );
             }
 
-            Rvalue::AddressOf(mutability, place) => {
+            &Rvalue::AddressOf(mutability, place) => {
                 let access_kind = match mutability {
                     Mutability::Mut => (
                         Deep,
@@ -1232,14 +1232,15 @@ impl<'cx, 'tcx> MirBorrowckCtxt<'cx, 'tcx> {
 
             Rvalue::ThreadLocalRef(_) => {}
 
-            Rvalue::Use(ref operand)
-            | Rvalue::Repeat(ref operand, _)
-            | Rvalue::UnaryOp(_ /*un_op*/, ref operand)
-            | Rvalue::Cast(_ /*cast_kind*/, ref operand, _ /*ty*/)
-            | Rvalue::ShallowInitBox(ref operand, _ /*ty*/) => {
+            Rvalue::Use(operand)
+            | Rvalue::Repeat(operand, _)
+            | Rvalue::UnaryOp(_ /*un_op*/, operand)
+            | Rvalue::Cast(_ /*cast_kind*/, operand, _ /*ty*/)
+            | Rvalue::ShallowInitBox(operand, _ /*ty*/) => {
                 self.consume_operand(location, (operand, span), flow_state)
             }
-            Rvalue::CopyForDeref(place) => {
+
+            &Rvalue::CopyForDeref(place) => {
                 self.access_place(
                     location,
                     (place, span),
@@ -1257,7 +1258,7 @@ impl<'cx, 'tcx> MirBorrowckCtxt<'cx, 'tcx> {
                 );
             }
 
-            Rvalue::Len(place) | Rvalue::Discriminant(place) => {
+            &(Rvalue::Len(place) | Rvalue::Discriminant(place)) => {
                 let af = match *rvalue {
                     Rvalue::Len(..) => Some(ArtificialField::ArrayLength),
                     Rvalue::Discriminant(..) => None,
@@ -1278,8 +1279,8 @@ impl<'cx, 'tcx> MirBorrowckCtxt<'cx, 'tcx> {
                 );
             }
 
-            Rvalue::BinaryOp(_bin_op, box (ref operand1, ref operand2))
-            | Rvalue::CheckedBinaryOp(_bin_op, box (ref operand1, ref operand2)) => {
+            Rvalue::BinaryOp(_bin_op, box (operand1, operand2))
+            | Rvalue::CheckedBinaryOp(_bin_op, box (operand1, operand2)) => {
                 self.consume_operand(location, (operand1, span), flow_state);
                 self.consume_operand(location, (operand2, span), flow_state);
             }
@@ -1288,7 +1289,7 @@ impl<'cx, 'tcx> MirBorrowckCtxt<'cx, 'tcx> {
                 // nullary ops take no dynamic input; no borrowck effect.
             }
 
-            Rvalue::Aggregate(ref aggregate_kind, ref operands) => {
+            Rvalue::Aggregate(aggregate_kind, operands) => {
                 // We need to report back the list of mutable upvars that were
                 // moved into the closure and subsequently used by the closure,
                 // in order to populate our used_mut set.

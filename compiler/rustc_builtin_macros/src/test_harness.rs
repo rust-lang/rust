@@ -131,8 +131,9 @@ impl<'a> MutVisitor for TestHarnessGenerator<'a> {
 
         // We don't want to recurse into anything other than mods, since
         // mods or tests inside of functions will break things
-        if let ast::ItemKind::Mod(_, ModKind::Loaded(.., ref spans)) = item.kind {
-            let ast::ModSpans { inner_span: span, inject_use_span: _ } = *spans;
+        if let ast::ItemKind::Mod(_, ModKind::Loaded(.., ast::ModSpans { inner_span: span, .. })) =
+            item.kind
+        {
             let prev_tests = mem::take(&mut self.tests);
             noop_visit_item_kind(&mut item.kind, self);
             self.add_test_cases(item.id, span, prev_tests);

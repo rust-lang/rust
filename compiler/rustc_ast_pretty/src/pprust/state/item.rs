@@ -348,21 +348,10 @@ impl<'a> State<'a> {
                 self.head(visibility_qualified(&item.vis, "trait"));
                 self.print_ident(item.ident);
                 self.print_generic_params(&generics.params);
-                let mut real_bounds = Vec::with_capacity(bounds.len());
-                // FIXME(durka) this seems to be some quite outdated syntax
-                for b in bounds.iter() {
-                    if let GenericBound::Trait(ptr, ast::TraitBoundModifier::Maybe) = b {
-                        self.space();
-                        self.word_space("for ?");
-                        self.print_trait_ref(&ptr.trait_ref);
-                    } else {
-                        real_bounds.push(b.clone());
-                    }
-                }
                 self.nbsp();
-                if !real_bounds.is_empty() {
+                if !bounds.is_empty() {
                     self.word_nbsp("=");
-                    self.print_type_bounds(&real_bounds);
+                    self.print_type_bounds(&bounds);
                 }
                 self.print_where_clause(&generics.where_clause);
                 self.word(";");

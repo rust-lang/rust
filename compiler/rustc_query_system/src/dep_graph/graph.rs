@@ -510,7 +510,7 @@ impl<K: DepKind> DepGraph<K> {
         cx: Ctxt,
         key: A,
         result: &R,
-        hash_result: fn(&mut StableHashingContext<'_>, &R) -> Fingerprint,
+        hash_result: Option<fn(&mut StableHashingContext<'_>, &R) -> Fingerprint>,
     ) -> DepNodeIndex {
         if let Some(data) = self.data.as_ref() {
             // The caller query has more dependencies than the node we are creating.  We may
@@ -521,10 +521,12 @@ impl<K: DepKind> DepGraph<K> {
             // For sanity, we still check that the loaded stable hash and the new one match.
             if let Some(dep_node_index) = self.dep_node_index_of_opt(&node) {
                 let _current_fingerprint =
-                    crate::query::incremental_verify_ich(cx, result, &node, Some(hash_result));
+                    crate::query::incremental_verify_ich(cx, result, &node, hash_result);
 
                 #[cfg(debug_assertions)]
-                data.current.record_edge(dep_node_index, node, _current_fingerprint);
+                if hash_result.is_some() {
+                    data.current.record_edge(dep_node_index, node, _current_fingerprint);
+                }
 
                 return dep_node_index;
             }
@@ -539,8 +541,9 @@ impl<K: DepKind> DepGraph<K> {
             });
 
             let hashing_timer = cx.profiler().incr_result_hashing();
-            let current_fingerprint =
-                cx.with_stable_hashing_context(|mut hcx| hash_result(&mut hcx, result));
+            let current_fingerprint = hash_result.map(|hash_result| {
+                cx.with_stable_hashing_context(|mut hcx| hash_result(&mut hcx, result))
+            });
 
             let print_status = cfg!(debug_assertions) && cx.sess().opts.unstable_opts.dep_tasks;
 
@@ -550,7 +553,7 @@ impl<K: DepKind> DepGraph<K> {
                 &data.previous,
                 node,
                 edges,
-                Some(current_fingerprint),
+                current_fingerprint,
                 print_status,
             );
 

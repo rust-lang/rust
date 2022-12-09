@@ -25,6 +25,7 @@ use rustc_data_structures::sync::SeqCst;
 use rustc_errors::registry::{InvalidErrorCode, Registry};
 use rustc_errors::{ErrorGuaranteed, PResult};
 use rustc_feature::find_gated_cfg;
+use rustc_hir::def_id::LOCAL_CRATE;
 use rustc_interface::util::{self, collect_crate_types, get_codegen_backend};
 use rustc_interface::{interface, Queries};
 use rustc_lint::LintStore;
@@ -374,14 +375,14 @@ fn run_compiler(
             queries.global_ctxt()?.peek_mut().enter(|tcx| {
                 let result = tcx.analysis(());
                 if sess.opts.unstable_opts.save_analysis {
-                    let crate_name = queries.crate_name()?.peek().clone();
+                    let crate_name = tcx.crate_name(LOCAL_CRATE);
                     sess.time("save_analysis", || {
                         save::process_crate(
                             tcx,
-                            &crate_name,
+                            crate_name,
                             compiler.input(),
                             None,
-                            DumpHandler::new(compiler.output_dir().as_deref(), &crate_name),
+                            DumpHandler::new(compiler.output_dir().as_deref(), crate_name),
                         )
                     });
                 }
@@ -678,7 +679,7 @@ fn print_crate_info(
                 let crate_types = collect_crate_types(sess, attrs);
                 for &style in &crate_types {
                     let fname =
-                        rustc_session::output::filename_for_input(sess, style, &id, &t_outputs);
+                        rustc_session::output::filename_for_input(sess, style, id, &t_outputs);
                     println!("{}", fname.file_name().unwrap().to_string_lossy());
                 }
             }

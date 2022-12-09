@@ -369,15 +369,14 @@ fn find_type_parameters(
 
     impl<'a, 'b> visit::Visitor<'a> for Visitor<'a, 'b> {
         fn visit_ty(&mut self, ty: &'a ast::Ty) {
-            if let ast::TyKind::Path(_, ref path) = ty.kind {
-                if let Some(segment) = path.segments.first() {
-                    if self.ty_param_names.contains(&segment.ident.name) {
-                        self.type_params.push(TypeParameter {
-                            bound_generic_params: self.bound_generic_params_stack.clone(),
-                            ty: P(ty.clone()),
-                        });
-                    }
-                }
+            if let ast::TyKind::Path(_, path) = &ty.kind
+                && let Some(segment) = path.segments.first()
+                && self.ty_param_names.contains(&segment.ident.name)
+            {
+                self.type_params.push(TypeParameter {
+                    bound_generic_params: self.bound_generic_params_stack.clone(),
+                    ty: P(ty.clone()),
+                });
             }
 
             visit::walk_ty(self, ty)
@@ -428,8 +427,8 @@ impl<'a> TraitDef<'a> {
         push: &mut dyn FnMut(Annotatable),
         from_scratch: bool,
     ) {
-        match *item {
-            Annotatable::Item(ref item) => {
+        match item {
+            Annotatable::Item(item) => {
                 let is_packed = item.attrs.iter().any(|attr| {
                     for r in attr::find_repr_attrs(&cx.sess, attr) {
                         if let attr::ReprPacked(_) = r {
@@ -438,10 +437,10 @@ impl<'a> TraitDef<'a> {
                     }
                     false
                 });
-                let has_no_type_params = match item.kind {
-                    ast::ItemKind::Struct(_, ref generics)
-                    | ast::ItemKind::Enum(_, ref generics)
-                    | ast::ItemKind::Union(_, ref generics) => !generics
+                let has_no_type_params = match &item.kind {
+                    ast::ItemKind::Struct(_, generics)
+                    | ast::ItemKind::Enum(_, generics)
+                    | ast::ItemKind::Union(_, generics) => !generics
                         .params
                         .iter()
                         .any(|param| matches!(param.kind, ast::GenericParamKind::Type { .. })),
@@ -451,8 +450,8 @@ impl<'a> TraitDef<'a> {
                 let copy_fields =
                     is_packed && has_no_type_params && cx.resolver.has_derive_copy(container_id);
 
-                let newitem = match item.kind {
-                    ast::ItemKind::Struct(ref struct_def, ref generics) => self.expand_struct_def(
+                let newitem = match &item.kind {
+                    ast::ItemKind::Struct(struct_def, generics) => self.expand_struct_def(
                         cx,
                         &struct_def,
                         item.ident,
@@ -460,7 +459,7 @@ impl<'a> TraitDef<'a> {
                         from_scratch,
                         copy_fields,
                     ),
-                    ast::ItemKind::Enum(ref enum_def, ref generics) => {
+                    ast::ItemKind::Enum(enum_def, generics) => {
                         // We ignore `is_packed` here, because `repr(packed)`
                         // enums cause an error later on.
                         //
@@ -468,7 +467,7 @@ impl<'a> TraitDef<'a> {
                         // downstream in blatantly illegal code, so it is fine.
                         self.expand_enum_def(cx, enum_def, item.ident, generics, from_scratch)
                     }
-                    ast::ItemKind::Union(ref struct_def, ref generics) => {
+                    ast::ItemKind::Union(struct_def, generics) => {
                         if self.supports_unions {
                             self.expand_struct_def(
                                 cx,
@@ -663,12 +662,11 @@ impl<'a> TraitDef<'a> {
 
                     for field_ty_param in field_ty_params {
                         // if we have already handled this type, skip it
-                        if let ast::TyKind::Path(_, ref p) = field_ty_param.ty.kind {
-                            if p.segments.len() == 1
-                                && ty_param_names.contains(&p.segments[0].ident.name)
-                            {
-                                continue;
-                            };
+                        if let ast::TyKind::Path(_, p) = &field_ty_param.ty.kind
+                            && let [sole_segment] = &*p.segments
+                            && ty_param_names.contains(&sole_segment.ident.name)
+                        {
+                            continue;
                         }
                         let mut bounds: Vec<_> = self
                             .additional_bounds

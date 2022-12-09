@@ -143,7 +143,7 @@ pub enum Subcommand {
         args: Vec<String>,
     },
     Setup {
-        profile: Profile,
+        profile: Option<Profile>,
     },
 }
 
@@ -628,14 +628,15 @@ Arguments:
                         |path| format!("{} is not a valid UTF8 string", path.to_string_lossy())
                     ));
 
-                    profile_string.parse().unwrap_or_else(|err| {
+                    let profile = profile_string.parse().unwrap_or_else(|err| {
                         eprintln!("error: {}", err);
                         eprintln!("help: the available profiles are:");
                         eprint!("{}", Profile::all_for_help("- "));
                         crate::detail_exit(1);
-                    })
+                    });
+                    Some(profile)
                 } else {
-                    t!(crate::setup::interactive_path())
+                    None
                 };
                 Subcommand::Setup { profile }
             }

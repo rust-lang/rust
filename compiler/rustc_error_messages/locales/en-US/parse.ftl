@@ -362,3 +362,6 @@ parse_fn_ptr_with_generics = function pointer types may not have generic paramet
 
 parse_invalid_identifier_with_leading_number = expected identifier, found number literal
     .label = identifiers cannot start with a number
+
+parse_maybe_fn_typo_with_impl = you might have meant to write `impl` instead of `fn`
+    .suggestion = replace `fn` with `impl` here

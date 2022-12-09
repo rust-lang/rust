@@ -259,6 +259,8 @@ enum ImplTraitContext {
     },
     /// Impl trait in type aliases.
     TypeAliasesOpaqueTy,
+    /// `impl Trait` is unstably accepted in this position.
+    FeatureGated(ImplTraitPosition, Symbol),
     /// `impl Trait` is not accepted in this position.
     Disallowed(ImplTraitPosition),
 }
@@ -1372,17 +1374,15 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
                         }
                         path
                     }
-                    ImplTraitContext::Disallowed(
-                        position @ (ImplTraitPosition::TraitReturn | ImplTraitPosition::ImplReturn),
-                    ) => {
+                    ImplTraitContext::FeatureGated(position, feature) => {
                         self.tcx
                             .sess
                             .create_feature_err(
                                 MisplacedImplTrait {
                                     span: t.span,
-                                    position: DiagnosticArgFromDisplay(&position),
+                                    position: DiagnosticArgFromDisplay(position),
                                 },
-                                sym::return_position_impl_trait_in_trait,
+                                *feature,
                             )
                             .emit();
                         hir::TyKind::Err
@@ -1390,7 +1390,7 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
                     ImplTraitContext::Disallowed(position) => {
                         self.tcx.sess.emit_err(MisplacedImplTrait {
                             span: t.span,
-                            position: DiagnosticArgFromDisplay(&position),
+                            position: DiagnosticArgFromDisplay(position),
                         });
                         hir::TyKind::Err
                     }
@@ -1739,14 +1739,14 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
         } else {
             match &decl.output {
                 FnRetTy::Ty(ty) => {
-                    let mut context = if kind.return_impl_trait_allowed(self.tcx) {
+                    let context = if kind.return_impl_trait_allowed(self.tcx) {
                         let fn_def_id = self.local_def_id(fn_node_id);
                         ImplTraitContext::ReturnPositionOpaqueTy {
                             origin: hir::OpaqueTyOrigin::FnReturn(fn_def_id),
                             in_trait: matches!(kind, FnDeclKind::Trait),
                         }
                     } else {
-                        ImplTraitContext::Disallowed(match kind {
+                        let position = match kind {
                             FnDeclKind::Fn | FnDeclKind::Inherent => {
                                 unreachable!("fn should allow in-band lifetimes")
                             }
@@ -1755,9 +1755,16 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
                             FnDeclKind::Pointer => ImplTraitPosition::PointerReturn,
                             FnDeclKind::Trait => ImplTraitPosition::TraitReturn,
                             FnDeclKind::Impl => ImplTraitPosition::ImplReturn,
-                        })
+                        };
+                        match kind {
+                            FnDeclKind::Trait | FnDeclKind::Impl => ImplTraitContext::FeatureGated(
+                                position,
+                                sym::return_position_impl_trait_in_trait,
+                            ),
+                            _ => ImplTraitContext::Disallowed(position),
+                        }
                     };
-                    hir::FnRetTy::Return(self.lower_ty(ty, &mut context))
+                    hir::FnRetTy::Return(self.lower_ty(ty, &context))
                 }
                 FnRetTy::Default(span) => hir::FnRetTy::DefaultReturn(self.lower_span(*span)),
             }
@@ -1938,7 +1945,10 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
                     output,
                     span,
                     if in_trait && !this.tcx.features().return_position_impl_trait_in_trait {
-                        ImplTraitContext::Disallowed(ImplTraitPosition::TraitReturn)
+                        ImplTraitContext::FeatureGated(
+                            ImplTraitPosition::TraitReturn,
+                            sym::return_position_impl_trait_in_trait,
+                        )
                     } else {
                         ImplTraitContext::ReturnPositionOpaqueTy {
                             origin: hir::OpaqueTyOrigin::FnReturn(fn_def_id),
@@ -2291,7 +2301,7 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
     /// has no attributes and is not targeted by a `break`.
     fn lower_block_expr(&mut self, b: &Block) -> hir::Expr<'hir> {
         let block = self.lower_block(b, false);
-        self.expr_block(block, AttrVec::new())
+        self.expr_block(block)
     }
 
     fn lower_array_length(&mut self, c: &AnonConst) -> hir::ArrayLen {

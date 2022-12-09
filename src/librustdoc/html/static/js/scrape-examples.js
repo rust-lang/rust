@@ -57,7 +57,7 @@
                     });
                 });
 
-            example.querySelector("next")
+            example.querySelector(".next")
                 .addEventListener("click", () => {
                     onChangeLoc(() => {
                         locIndex = (locIndex + 1) % locs.length;

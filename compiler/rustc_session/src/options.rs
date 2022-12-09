@@ -1382,6 +1382,9 @@ options! {
         "list the symbols defined by a library crate (default: no)"),
     macro_backtrace: bool = (false, parse_bool, [UNTRACKED],
         "show macro backtraces (default: no)"),
+    maximal_hir_to_mir_coverage: bool = (false, parse_bool, [TRACKED],
+        "save as much information as possible about the correspondence between MIR and HIR \
+        as source scopes (default: no)"),
     merge_functions: Option<MergeFunctions> = (None, parse_merge_functions, [TRACKED],
         "control the operation of the MergeFunctions LLVM pass, taking \
         the same values as the target option of the same name"),

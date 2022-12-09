@@ -1122,7 +1122,7 @@ impl InvocationCollectorNode for P<ast::Item> {
                         ecx.current_expansion.lint_node_id,
                         &attrs,
                         &items,
-                        ident.name.as_str(),
+                        ident.name,
                     );
                 }
 

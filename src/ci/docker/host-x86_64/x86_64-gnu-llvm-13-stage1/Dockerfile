@@ -21,7 +21,8 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
     pkg-config \
     zlib1g-dev \
     xz-utils \
-    nodejs
+    nodejs \
+    && rm -rf /var/lib/apt/lists/*
 
 COPY scripts/sccache.sh /scripts/
 RUN sh /scripts/sccache.sh

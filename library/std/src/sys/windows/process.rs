@@ -252,10 +252,6 @@ impl Command {
     ) -> io::Result<(Process, StdioPipes)> {
         let maybe_env = self.env.capture_if_changed();
 
-        let mut si = zeroed_startupinfo();
-        si.cb = mem::size_of::<c::STARTUPINFO>() as c::DWORD;
-        si.dwFlags = c::STARTF_USESTDHANDLES;
-
         let child_paths = if let Some(env) = maybe_env.as_ref() {
             env.get(&EnvKey::new("PATH")).map(|s| s.as_os_str())
         } else {
@@ -314,9 +310,21 @@ impl Command {
         let stdin = stdin.to_handle(c::STD_INPUT_HANDLE, &mut pipes.stdin)?;
         let stdout = stdout.to_handle(c::STD_OUTPUT_HANDLE, &mut pipes.stdout)?;
         let stderr = stderr.to_handle(c::STD_ERROR_HANDLE, &mut pipes.stderr)?;
-        si.hStdInput = stdin.as_raw_handle();
-        si.hStdOutput = stdout.as_raw_handle();
-        si.hStdError = stderr.as_raw_handle();
+
+        let mut si = zeroed_startupinfo();
+        si.cb = mem::size_of::<c::STARTUPINFO>() as c::DWORD;
+
+        // If at least one of stdin, stdout or stderr are set (i.e. are non null)
+        // then set the `hStd` fields in `STARTUPINFO`.
+        // Otherwise skip this and allow the OS to apply its default behaviour.
+        // This provides more consistent behaviour between Win7 and Win8+.
+        let is_set = |stdio: &Handle| !stdio.as_raw_handle().is_null();
+        if is_set(&stderr) || is_set(&stdout) || is_set(&stdin) {
+            si.dwFlags |= c::STARTF_USESTDHANDLES;
+            si.hStdInput = stdin.as_raw_handle();
+            si.hStdOutput = stdout.as_raw_handle();
+            si.hStdError = stderr.as_raw_handle();
+        }
 
         unsafe {
             cvt(c::CreateProcessW(
@@ -513,9 +521,6 @@ fn program_exists(path: &Path) -> Option<Vec<u16>> {
 impl Stdio {
     fn to_handle(&self, stdio_id: c::DWORD, pipe: &mut Option<AnonPipe>) -> io::Result<Handle> {
         match *self {
-            // If no stdio handle is available, then inherit means that it
-            // should still be unavailable so propagate the
-            // INVALID_HANDLE_VALUE.
             Stdio::Inherit => match stdio::get_handle(stdio_id) {
                 Ok(io) => unsafe {
                     let io = Handle::from_raw_handle(io);
@@ -523,7 +528,8 @@ impl Stdio {
                     io.into_raw_handle();
                     ret
                 },
-                Err(..) => unsafe { Ok(Handle::from_raw_handle(c::INVALID_HANDLE_VALUE)) },
+                // If no stdio handle is available, then propagate the null value.
+                Err(..) => unsafe { Ok(Handle::from_raw_handle(ptr::null_mut())) },
             },
 
             Stdio::MakePipe => {
@@ -730,9 +736,9 @@ fn zeroed_startupinfo() -> c::STARTUPINFO {
         wShowWindow: 0,
         cbReserved2: 0,
         lpReserved2: ptr::null_mut(),
-        hStdInput: c::INVALID_HANDLE_VALUE,
-        hStdOutput: c::INVALID_HANDLE_VALUE,
-        hStdError: c::INVALID_HANDLE_VALUE,
+        hStdInput: ptr::null_mut(),
+        hStdOutput: ptr::null_mut(),
+        hStdError: ptr::null_mut(),
     }
 }
 

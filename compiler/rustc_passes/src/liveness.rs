@@ -1548,7 +1548,13 @@ impl<'tcx> Liveness<'_, 'tcx> {
                 .or_insert_with(|| (ln, var, vec![id_and_sp]));
         });
 
-        let can_remove = matches!(&pat.kind, hir::PatKind::Struct(_, _, true));
+        let can_remove = match pat.kind {
+            hir::PatKind::Struct(_, fields, true) => {
+                // if all fields are shorthand, remove the struct field, otherwise, mark with _ as prefix
+                fields.iter().all(|f| f.is_shorthand)
+            }
+            _ => false,
+        };
 
         for (_, (ln, var, hir_ids_and_spans)) in vars {
             if self.used_on_entry(ln, var) {

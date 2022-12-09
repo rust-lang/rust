@@ -328,13 +328,25 @@ macro_rules! define_callbacks {
     };
 }
 
+macro_rules! hash_result {
+    ([]) => {{
+        Some(dep_graph::hash_result)
+    }};
+    ([(no_hash) $($rest:tt)*]) => {{
+        None
+    }};
+    ([$other:tt $($modifiers:tt)*]) => {
+        hash_result!([$($modifiers)*])
+    };
+}
+
 macro_rules! define_feedable {
     ($($(#[$attr:meta])* [$($modifiers:tt)*] fn $name:ident($($K:tt)*) -> $V:ty,)*) => {
-        impl<'tcx> TyCtxtFeed<'tcx> {
-            $($(#[$attr])*
+        $(impl<'tcx, K: IntoQueryParam<$($K)*> + Copy> TyCtxtFeed<'tcx, K> {
+            $(#[$attr])*
             #[inline(always)]
             pub fn $name(self, value: $V) -> query_stored::$name<'tcx> {
-                let key = self.def_id().into_query_param();
+                let key = self.key().into_query_param();
                 opt_remap_env_constness!([$($modifiers)*][key]);
 
                 let tcx = self.tcx;
@@ -358,11 +370,11 @@ macro_rules! define_feedable {
                     tcx,
                     key,
                     &value,
-                    dep_graph::hash_result,
+                    hash_result!([$($modifiers)*]),
                 );
                 cache.complete(key, value, dep_node_index)
-            })*
-        }
+            }
+        })*
     }
 }
 

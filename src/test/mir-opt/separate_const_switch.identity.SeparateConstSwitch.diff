@@ -22,9 +22,6 @@
                   let mut _18: i32;        // in scope 8 at $SRC_DIR/core/src/result.rs:LL:COL
                   scope 9 {
                       debug e => _16;      // in scope 9 at $SRC_DIR/core/src/result.rs:LL:COL
-                      scope 10 (inlined <i32 as From<i32>>::from) { // at $SRC_DIR/core/src/result.rs:LL:COL
-                          debug t => _18;  // in scope 10 at $SRC_DIR/core/src/convert/mod.rs:LL:COL
-                      }
                   }
               }
           }
@@ -95,18 +92,11 @@
           StorageLive(_17);                // scope 9 at $SRC_DIR/core/src/result.rs:LL:COL
           StorageLive(_18);                // scope 9 at $SRC_DIR/core/src/result.rs:LL:COL
           _18 = move _16;                  // scope 9 at $SRC_DIR/core/src/result.rs:LL:COL
-          _17 = move _18;                  // scope 10 at $SRC_DIR/core/src/convert/mod.rs:LL:COL
-          StorageDead(_18);                // scope 9 at $SRC_DIR/core/src/result.rs:LL:COL
-          Deinit(_0);                      // scope 9 at $SRC_DIR/core/src/result.rs:LL:COL
-          ((_0 as Err).0: i32) = move _17; // scope 9 at $SRC_DIR/core/src/result.rs:LL:COL
-          discriminant(_0) = 1;            // scope 9 at $SRC_DIR/core/src/result.rs:LL:COL
-          StorageDead(_17);                // scope 9 at $SRC_DIR/core/src/result.rs:LL:COL
-          StorageDead(_16);                // scope 8 at $SRC_DIR/core/src/result.rs:LL:COL
-          StorageDead(_8);                 // scope 2 at $DIR/separate_const_switch.rs:+1:9: +1:10
-          StorageDead(_6);                 // scope 0 at $DIR/separate_const_switch.rs:+1:9: +1:10
-          StorageDead(_2);                 // scope 0 at $DIR/separate_const_switch.rs:+1:10: +1:11
-          StorageDead(_3);                 // scope 0 at $DIR/separate_const_switch.rs:+2:1: +2:2
-          return;                          // scope 0 at $DIR/separate_const_switch.rs:+2:2: +2:2
+-         _17 = <i32 as From<i32>>::from(move _18) -> bb8; // scope 9 at $SRC_DIR/core/src/result.rs:LL:COL
++         _17 = <i32 as From<i32>>::from(move _18) -> bb7; // scope 9 at $SRC_DIR/core/src/result.rs:LL:COL
+                                           // mir::Constant
+                                           // + span: $SRC_DIR/core/src/result.rs:LL:COL
+                                           // + literal: Const { ty: fn(i32) -> i32 {<i32 as From<i32>>::from}, val: Value(<ZST>) }
       }
   
 -     bb5: {
@@ -151,6 +141,21 @@
 +         StorageDead(_4);                 // scope 0 at $DIR/separate_const_switch.rs:+1:9: +1:10
 +         _5 = discriminant(_3);           // scope 0 at $DIR/separate_const_switch.rs:+1:8: +1:10
 +         switchInt(move _5) -> [0_isize: bb1, 1_isize: bb3, otherwise: bb2]; // scope 0 at $DIR/separate_const_switch.rs:+1:8: +1:10
+      }
+  
+-     bb8: {
++     bb7: {
+          StorageDead(_18);                // scope 9 at $SRC_DIR/core/src/result.rs:LL:COL
+          Deinit(_0);                      // scope 9 at $SRC_DIR/core/src/result.rs:LL:COL
+          ((_0 as Err).0: i32) = move _17; // scope 9 at $SRC_DIR/core/src/result.rs:LL:COL
+          discriminant(_0) = 1;            // scope 9 at $SRC_DIR/core/src/result.rs:LL:COL
+          StorageDead(_17);                // scope 9 at $SRC_DIR/core/src/result.rs:LL:COL
+          StorageDead(_16);                // scope 8 at $SRC_DIR/core/src/result.rs:LL:COL
+          StorageDead(_8);                 // scope 2 at $DIR/separate_const_switch.rs:+1:9: +1:10
+          StorageDead(_6);                 // scope 0 at $DIR/separate_const_switch.rs:+1:9: +1:10
+          StorageDead(_2);                 // scope 0 at $DIR/separate_const_switch.rs:+1:10: +1:11
+          StorageDead(_3);                 // scope 0 at $DIR/separate_const_switch.rs:+2:1: +2:2
+          return;                          // scope 0 at $DIR/separate_const_switch.rs:+2:2: +2:2
       }
   }
   

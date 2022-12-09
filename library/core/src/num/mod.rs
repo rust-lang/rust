@@ -4,11 +4,13 @@
 
 use crate::ascii;
 use crate::convert::TryInto;
-use crate::error::Error;
 use crate::intrinsics;
 use crate::mem;
 use crate::ops::{Add, Mul, Sub};
 use crate::str::FromStr;
+
+#[cfg(not(no_fp_fmt_parse))]
+use crate::error::Error;
 
 // Used because the `?` operator is not allowed in a const context.
 macro_rules! try_opt {

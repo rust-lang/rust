@@ -43,6 +43,10 @@ pub struct LifetimesOrBoundsMismatchOnTrait {
     pub span: Span,
     #[label(generics_label)]
     pub generics_span: Option<Span>,
+    #[label(where_label)]
+    pub where_span: Option<Span>,
+    #[label(bounds_label)]
+    pub bounds_span: Vec<Span>,
     pub item_kind: &'static str,
     pub ident: Ident,
 }
@@ -284,4 +288,11 @@ pub struct SelfInImplSelf {
     pub span: MultiSpan,
     #[note]
     pub note: (),
+}
+
+#[derive(Diagnostic)]
+#[diag(hir_analysis_linkage_type, code = "E0791")]
+pub(crate) struct LinkageType {
+    #[primary_span]
+    pub span: Span,
 }

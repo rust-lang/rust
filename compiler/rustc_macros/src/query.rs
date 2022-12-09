@@ -364,10 +364,6 @@ pub fn rustc_queries(input: TokenStream) -> TokenStream {
                 modifiers.eval_always.is_none(),
                 "Query {name} cannot be both `feedable` and `eval_always`."
             );
-            assert!(
-                modifiers.no_hash.is_none(),
-                "Query {name} cannot be both `feedable` and `no_hash`."
-            );
             feedable_queries.extend(quote! {
                 #(#doc_comments)*
                 [#attribute_stream] fn #name(#arg) #result,

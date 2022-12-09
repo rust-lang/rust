@@ -476,9 +476,24 @@ impl<'tcx> WfPredicates<'tcx> {
                                 ty::Binder::dummy(ty::PredicateKind::WellFormed(ct.into())),
                             ));
                         }
-                        // FIXME(generic_const_exprs): This seems wrong but I could not find a way to get this to trigger
                         ty::ConstKind::Expr(_) => {
-                            bug!("checking wfness of `ConstKind::Expr` is unsupported")
+                            // FIXME(generic_const_exprs): this doesnt verify that given `Expr(N + 1)` the
+                            // trait bound `typeof(N): Add<typeof(1)>` holds. This is currently unnecessary
+                            // as `ConstKind::Expr` is only produced via normalization of `ConstKind::Unevaluated`
+                            // which means that the `DefId` would have been typeck'd elsewhere. However in
+                            // the future we may allow directly lowering to `ConstKind::Expr` in which case
+                            // we would not be proving bounds we should.
+
+                            let predicate =
+                                ty::Binder::dummy(ty::PredicateKind::ConstEvaluatable(ct));
+                            let cause = self.cause(traits::WellFormed(None));
+                            self.out.push(traits::Obligation::with_depth(
+                                self.tcx(),
+                                cause,
+                                self.recursion_depth,
+                                self.param_env,
+                                predicate,
+                            ));
                         }
 
                         ty::ConstKind::Error(_)

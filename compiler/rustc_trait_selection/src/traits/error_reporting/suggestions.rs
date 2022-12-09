@@ -298,7 +298,7 @@ pub trait TypeErrCtxtExt<'tcx> {
         obligated_types: &mut Vec<Ty<'tcx>>,
         seen_requirements: &mut FxHashSet<DefId>,
     ) where
-        T: fmt::Display + ToPredicate<'tcx, T>;
+        T: fmt::Display + ToPredicate<'tcx>;
 
     /// Suggest to await before try: future? => future.await?
     fn suggest_await_before_try(
@@ -2353,7 +2353,7 @@ impl<'tcx> TypeErrCtxtExt<'tcx> for TypeErrCtxt<'_, 'tcx> {
         obligated_types: &mut Vec<Ty<'tcx>>,
         seen_requirements: &mut FxHashSet<DefId>,
     ) where
-        T: fmt::Display,
+        T: fmt::Display + ToPredicate<'tcx>,
     {
         let tcx = self.tcx;
         match *cause_code {

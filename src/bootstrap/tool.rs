@@ -380,6 +380,8 @@ bootstrap_tool!(
     HtmlChecker, "src/tools/html-checker", "html-checker";
     BumpStage0, "src/tools/bump-stage0", "bump-stage0";
     ReplaceVersionPlaceholder, "src/tools/replace-version-placeholder", "replace-version-placeholder";
+    CollectLicenseMetadata, "src/tools/collect-license-metadata", "collect-license-metadata";
+    GenerateCopyright, "src/tools/generate-copyright", "generate-copyright";
 );
 
 #[derive(Debug, Copy, Clone, Hash, PartialEq, Eq, Ord, PartialOrd)]

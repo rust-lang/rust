@@ -1,0 +1,50 @@
+- // MIR for `main` before Inline
++ // MIR for `main` after Inline
+  
+  fn main() -> () {
+      let mut _0: ();                      // return place in scope 0 at $DIR/exponential_runtime.rs:+0:11: +0:11
+      let _1: ();                          // in scope 0 at $DIR/exponential_runtime.rs:+1:5: +1:22
++     scope 1 (inlined <() as G>::call) {  // at $DIR/exponential_runtime.rs:86:5: 86:22
++         let _2: ();                      // in scope 1 at $DIR/exponential_runtime.rs:73:9: 73:25
++         let _3: ();                      // in scope 1 at $DIR/exponential_runtime.rs:74:9: 74:25
++         let _4: ();                      // in scope 1 at $DIR/exponential_runtime.rs:75:9: 75:25
++     }
+  
+      bb0: {
+          StorageLive(_1);                 // scope 0 at $DIR/exponential_runtime.rs:+1:5: +1:22
+-         _1 = <() as G>::call() -> bb1;   // scope 0 at $DIR/exponential_runtime.rs:+1:5: +1:22
++         StorageLive(_2);                 // scope 1 at $DIR/exponential_runtime.rs:73:9: 73:25
++         _2 = <() as F>::call() -> bb1;   // scope 1 at $DIR/exponential_runtime.rs:73:9: 73:25
+                                           // mir::Constant
+-                                          // + span: $DIR/exponential_runtime.rs:86:5: 86:20
+-                                          // + literal: Const { ty: fn() {<() as G>::call}, val: Value(<ZST>) }
++                                          // + span: $DIR/exponential_runtime.rs:73:9: 73:23
++                                          // + literal: Const { ty: fn() {<() as F>::call}, val: Value(<ZST>) }
+      }
+  
+      bb1: {
++         StorageDead(_2);                 // scope 1 at $DIR/exponential_runtime.rs:73:25: 73:26
++         StorageLive(_3);                 // scope 1 at $DIR/exponential_runtime.rs:74:9: 74:25
++         _3 = <() as F>::call() -> bb2;   // scope 1 at $DIR/exponential_runtime.rs:74:9: 74:25
++                                          // mir::Constant
++                                          // + span: $DIR/exponential_runtime.rs:74:9: 74:23
++                                          // + literal: Const { ty: fn() {<() as F>::call}, val: Value(<ZST>) }
++     }
++ 
++     bb2: {
++         StorageDead(_3);                 // scope 1 at $DIR/exponential_runtime.rs:74:25: 74:26
++         StorageLive(_4);                 // scope 1 at $DIR/exponential_runtime.rs:75:9: 75:25
++         _4 = <() as F>::call() -> bb3;   // scope 1 at $DIR/exponential_runtime.rs:75:9: 75:25
++                                          // mir::Constant
++                                          // + span: $DIR/exponential_runtime.rs:75:9: 75:23
++                                          // + literal: Const { ty: fn() {<() as F>::call}, val: Value(<ZST>) }
++     }
++ 
++     bb3: {
++         StorageDead(_4);                 // scope 1 at $DIR/exponential_runtime.rs:75:25: 75:26
+          StorageDead(_1);                 // scope 0 at $DIR/exponential_runtime.rs:+1:22: +1:23
+          _0 = const ();                   // scope 0 at $DIR/exponential_runtime.rs:+0:11: +2:2
+          return;                          // scope 0 at $DIR/exponential_runtime.rs:+2:2: +2:2
+      }
+  }
+  

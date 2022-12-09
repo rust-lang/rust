@@ -1189,8 +1189,8 @@ impl<'a, 'tcx> TypeChecker<'a, 'tcx> {
     fn check_stmt(&mut self, body: &Body<'tcx>, stmt: &Statement<'tcx>, location: Location) {
         let tcx = self.tcx();
         debug!("stmt kind: {:?}", stmt.kind);
-        match stmt.kind {
-            StatementKind::Assign(box (ref place, ref rv)) => {
+        match &stmt.kind {
+            StatementKind::Assign(box (place, rv)) => {
                 // Assignments to temporaries are not "interesting";
                 // they are not caused by the user, but rather artifacts
                 // of lowering. Assignments to other sorts of places *are* interesting
@@ -1279,11 +1279,11 @@ impl<'a, 'tcx> TypeChecker<'a, 'tcx> {
                     );
                 }
             }
-            StatementKind::AscribeUserType(box (ref place, ref projection), variance) => {
+            StatementKind::AscribeUserType(box (place, projection), variance) => {
                 let place_ty = place.ty(body, tcx).ty;
                 if let Err(terr) = self.relate_type_and_user_type(
                     place_ty,
-                    variance,
+                    *variance,
                     projection,
                     Locations::All(stmt.source_info.span),
                     ConstraintCategory::TypeAnnotation,
@@ -1300,7 +1300,7 @@ impl<'a, 'tcx> TypeChecker<'a, 'tcx> {
                     );
                 }
             }
-            StatementKind::Intrinsic(box ref kind) => match kind {
+            StatementKind::Intrinsic(box kind) => match kind {
                 NonDivergingIntrinsic::Assume(op) => self.check_operand(op, location),
                 NonDivergingIntrinsic::CopyNonOverlapping(..) => span_bug!(
                     stmt.source_info.span,
@@ -1328,7 +1328,7 @@ impl<'a, 'tcx> TypeChecker<'a, 'tcx> {
     ) {
         let tcx = self.tcx();
         debug!("terminator kind: {:?}", term.kind);
-        match term.kind {
+        match &term.kind {
             TerminatorKind::Goto { .. }
             | TerminatorKind::Resume
             | TerminatorKind::Abort
@@ -1342,7 +1342,7 @@ impl<'a, 'tcx> TypeChecker<'a, 'tcx> {
                 // no checks needed for these
             }
 
-            TerminatorKind::DropAndReplace { ref place, ref value, target: _, unwind: _ } => {
+            TerminatorKind::DropAndReplace { place, value, target: _, unwind: _ } => {
                 let place_ty = place.ty(body, tcx).ty;
                 let rv_ty = value.ty(body, tcx);
 
@@ -1360,13 +1360,13 @@ impl<'a, 'tcx> TypeChecker<'a, 'tcx> {
                     );
                 }
             }
-            TerminatorKind::SwitchInt { ref discr, switch_ty, .. } => {
+            TerminatorKind::SwitchInt { discr, switch_ty, .. } => {
                 self.check_operand(discr, term_location);
 
                 let discr_ty = discr.ty(body, tcx);
                 if let Err(terr) = self.sub_types(
                     discr_ty,
-                    switch_ty,
+                    *switch_ty,
                     term_location.to_locations(),
                     ConstraintCategory::Assignment,
                 ) {
@@ -1384,14 +1384,7 @@ impl<'a, 'tcx> TypeChecker<'a, 'tcx> {
                 }
                 // FIXME: check the values
             }
-            TerminatorKind::Call {
-                ref func,
-                ref args,
-                ref destination,
-                from_hir_call,
-                target,
-                ..
-            } => {
+            TerminatorKind::Call { func, args, destination, from_hir_call, target, .. } => {
                 self.check_operand(func, term_location);
                 for arg in args {
                     self.check_operand(arg, term_location);
@@ -1431,7 +1424,7 @@ impl<'a, 'tcx> TypeChecker<'a, 'tcx> {
                     ConstraintCategory::Boring,
                 );
                 let sig = self.normalize(sig, term_location);
-                self.check_call_dest(body, term, &sig, *destination, target, term_location);
+                self.check_call_dest(body, term, &sig, *destination, *target, term_location);
 
                 // The ordinary liveness rules will ensure that all
                 // regions in the type of the callee are live here. We
@@ -1449,9 +1442,9 @@ impl<'a, 'tcx> TypeChecker<'a, 'tcx> {
                         .add_element(region_vid, term_location);
                 }
 
-                self.check_call_inputs(body, term, &sig, args, term_location, from_hir_call);
+                self.check_call_inputs(body, term, &sig, args, term_location, *from_hir_call);
             }
-            TerminatorKind::Assert { ref cond, ref msg, .. } => {
+            TerminatorKind::Assert { cond, msg, .. } => {
                 self.check_operand(cond, term_location);
 
                 let cond_ty = cond.ty(body, tcx);
@@ -1459,7 +1452,7 @@ impl<'a, 'tcx> TypeChecker<'a, 'tcx> {
                     span_mirbug!(self, term, "bad Assert ({:?}, not bool", cond_ty);
                 }
 
-                if let AssertKind::BoundsCheck { ref len, ref index } = *msg {
+                if let AssertKind::BoundsCheck { len, index } = msg {
                     if len.ty(body, tcx) != tcx.types.usize {
                         span_mirbug!(self, len, "bounds-check length non-usize {:?}", len)
                     }
@@ -1468,7 +1461,7 @@ impl<'a, 'tcx> TypeChecker<'a, 'tcx> {
                     }
                 }
             }
-            TerminatorKind::Yield { ref value, .. } => {
+            TerminatorKind::Yield { value, .. } => {
                 self.check_operand(value, term_location);
 
                 let value_ty = value.ty(body, tcx);
@@ -2630,7 +2623,7 @@ impl<'a, 'tcx> TypeChecker<'a, 'tcx> {
         substs: SubstsRef<'tcx>,
         location: Location,
     ) -> ty::InstantiatedPredicates<'tcx> {
-        if let Some(ref closure_requirements) = tcx.mir_borrowck(def_id).closure_requirements {
+        if let Some(closure_requirements) = &tcx.mir_borrowck(def_id).closure_requirements {
             constraint_conversion::ConstraintConversion::new(
                 self.infcx,
                 self.borrowck_context.universal_regions,

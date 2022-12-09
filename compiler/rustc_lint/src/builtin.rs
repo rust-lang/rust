@@ -259,7 +259,7 @@ impl<'tcx> LateLintPass<'tcx> for NonShorthandFieldPatterns {
                 }
                 if let PatKind::Binding(binding_annot, _, ident, None) = fieldpat.pat.kind {
                     if cx.tcx.find_field_index(ident, &variant)
-                        == Some(cx.tcx.field_index(fieldpat.hir_id, cx.typeck_results()))
+                        == Some(cx.typeck_results().field_index(fieldpat.hir_id))
                     {
                         cx.struct_span_lint(
                             NON_SHORTHAND_FIELD_PATTERNS,
