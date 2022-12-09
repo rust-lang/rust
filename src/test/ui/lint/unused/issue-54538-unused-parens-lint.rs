@@ -1,6 +1,6 @@
 // run-rustfix
 
-#![feature(box_patterns, stmt_expr_attributes)]
+#![feature(box_patterns, stmt_expr_attributes, yeet_expr)]
 
 #![allow(
     dead_code,
@@ -23,6 +23,13 @@ fn lint_on_top_level() {
 
 fn _no_lint_attr() {
     let _x = #[allow(dead_code)] (1 + 2);
+}
+
+fn _no_lint_yeet() -> Result<(), ()> {
+    #[allow(unreachable_code)]
+    if (do yeet) {}
+
+    Ok(())
 }
 
 // Don't lint in these cases (#64106).
