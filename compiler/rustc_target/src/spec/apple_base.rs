@@ -204,7 +204,7 @@ pub fn macos_llvm_target(arch: Arch) -> String {
 fn link_env_remove(arch: Arch, os: &'static str) -> StaticCow<[StaticCow<str>]> {
     // Apple platforms only officially support macOS as a host for any compilation.
     //
-    // If building for macOS, we go ahead and remove any erronous environment state
+    // If building for macOS, we go ahead and remove any erroneous environment state
     // that's only applicable to cross-OS compilation. Always leave anything for the
     // host OS alone though.
     if os == "macos" {
