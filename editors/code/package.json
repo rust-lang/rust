@@ -1137,6 +1137,15 @@
                     "default": true,
                     "type": "boolean"
                 },
+                "rust-analyzer.numThreads": {
+                    "markdownDescription": "How many worker threads in the main loop. The default `null` means to pick automatically.",
+                    "default": null,
+                    "type": [
+                        "null",
+                        "integer"
+                    ],
+                    "minimum": 0
+                },
                 "rust-analyzer.procMacro.attributes.enable": {
                     "markdownDescription": "Expand attribute macros. Requires `#rust-analyzer.procMacro.enable#` to be set.",
                     "default": true,
