@@ -1557,7 +1557,7 @@ fn compare_type_predicate_entailment<'tcx>(
 
     // The predicates declared by the impl definition, the trait and the
     // associated type in the trait are assumed.
-    let mut hybrid_preds = impl_m_predicates.instantiate_identity(tcx);
+    let mut hybrid_preds = impl_ty_predicates.instantiate_identity(tcx);
     hybrid_preds
         .predicates
         .extend(trait_ty_predicates.instantiate_own(tcx, trait_to_impl_substs).predicates);
