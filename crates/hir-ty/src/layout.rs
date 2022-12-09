@@ -3,8 +3,13 @@
 use std::sync::Arc;
 
 use chalk_ir::{AdtId, TyKind};
-pub(self) use hir_def::layout::*;
-use hir_def::LocalFieldId;
+use hir_def::{
+    layout::{
+        Abi, FieldsShape, Integer, Layout, LayoutCalculator, LayoutError, Primitive, ReprOptions,
+        RustcEnumVariantIdx, Scalar, Size, StructKind, TargetDataLayout, Variants, WrappingRange,
+    },
+    LocalFieldId,
+};
 use stdx::never;
 
 use crate::{db::HirDatabase, Interner, Substitution, Ty};

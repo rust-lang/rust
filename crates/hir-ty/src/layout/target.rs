@@ -6,7 +6,7 @@ use hir_def::layout::TargetDataLayout;
 
 use crate::db::HirDatabase;
 
-use super::{AbiAndPrefAlign, AddressSpace, Align, Endian, Integer, Size};
+use hir_def::layout::{AbiAndPrefAlign, AddressSpace, Align, Endian, Integer, Size};
 
 pub fn current_target_data_layout_query(db: &dyn HirDatabase) -> Arc<TargetDataLayout> {
     let crate_graph = db.crate_graph();
