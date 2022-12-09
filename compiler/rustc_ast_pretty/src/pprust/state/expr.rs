@@ -2,6 +2,8 @@ use crate::pp::Breaks::Inconsistent;
 use crate::pprust::state::{AnnNode, IterDelimited, PrintState, State, INDENT_UNIT};
 
 use rustc_ast::ptr::P;
+use rustc_ast::token;
+use rustc_ast::util::literal::escape_byte_str_symbol;
 use rustc_ast::util::parser::{self, AssocOp, Fixity};
 use rustc_ast::{self as ast, BlockCheckMode};
 
@@ -323,7 +325,7 @@ impl<'a> State<'a> {
                 self.print_token_literal(*token_lit, expr.span);
             }
             ast::ExprKind::IncludedBytes(bytes) => {
-                let lit = ast::LitKind::ByteStr(bytes.clone()).to_token_lit();
+                let lit = token::Lit::new(token::ByteStr, escape_byte_str_symbol(bytes), None);
                 self.print_token_literal(lit, expr.span)
             }
             ast::ExprKind::Cast(expr, ty) => {

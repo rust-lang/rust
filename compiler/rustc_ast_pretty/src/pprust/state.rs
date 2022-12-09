@@ -376,7 +376,7 @@ pub trait PrintState<'a>: std::ops::Deref<Target = pp::Printer> + std::ops::Dere
     }
 
     fn print_meta_item_lit(&mut self, lit: &ast::MetaItemLit) {
-        self.print_token_literal(lit.token_lit, lit.span)
+        self.print_token_literal(lit.as_token_lit(), lit.span)
     }
 
     fn print_token_literal(&mut self, token_lit: token::Lit, span: Span) {

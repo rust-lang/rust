@@ -958,7 +958,8 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
                     lit
                 } else {
                     MetaItemLit {
-                        token_lit: token::Lit::new(token::LitKind::Err, kw::Empty, None),
+                        symbol: kw::Empty,
+                        suffix: None,
                         kind: LitKind::Err,
                         span: DUMMY_SP,
                     }

@@ -1735,8 +1735,10 @@ pub enum StrStyle {
 /// A literal in a meta item.
 #[derive(Clone, Encodable, Decodable, Debug, HashStable_Generic)]
 pub struct MetaItemLit {
-    /// The original literal token as written in source code.
-    pub token_lit: token::Lit,
+    /// The original literal as written in the source code.
+    pub symbol: Symbol,
+    /// The original suffix as written in the source code.
+    pub suffix: Option<Symbol>,
     /// The "semantic" representation of the literal lowered from the original tokens.
     /// Strings are unescaped, hexadecimal forms are eliminated, etc.
     pub kind: LitKind,
@@ -1746,13 +1748,14 @@ pub struct MetaItemLit {
 /// Similar to `MetaItemLit`, but restricted to string literals.
 #[derive(Clone, Copy, Encodable, Decodable, Debug)]
 pub struct StrLit {
-    /// The original literal token as written in source code.
-    pub style: StrStyle,
+    /// The original literal as written in source code.
     pub symbol: Symbol,
+    /// The original suffix as written in source code.
     pub suffix: Option<Symbol>,
-    pub span: Span,
-    /// The unescaped "semantic" representation of the literal lowered from the original token.
+    /// The semantic (unescaped) representation of the literal.
     pub symbol_unescaped: Symbol,
+    pub style: StrStyle,
+    pub span: Span,
 }
 
 impl StrLit {
@@ -1798,8 +1801,9 @@ pub enum LitKind {
     /// A string literal (`"foo"`). The symbol is unescaped, and so may differ
     /// from the original token's symbol.
     Str(Symbol, StrStyle),
-    /// A byte string (`b"foo"`).
-    ByteStr(Lrc<[u8]>),
+    /// A byte string (`b"foo"`). Not stored as a symbol because it might be
+    /// non-utf8, and symbols only allow utf8 strings.
+    ByteStr(Lrc<[u8]>, StrStyle),
     /// A byte char (`b'f'`).
     Byte(u8),
     /// A character literal (`'a'`).
@@ -1824,7 +1828,7 @@ impl LitKind {
 
     /// Returns `true` if this literal is byte literal string.
     pub fn is_bytestr(&self) -> bool {
-        matches!(self, LitKind::ByteStr(_))
+        matches!(self, LitKind::ByteStr(..))
     }
 
     /// Returns `true` if this is a numeric literal.
@@ -3101,7 +3105,7 @@ mod size_asserts {
     static_assert_size!(ItemKind, 112);
     static_assert_size!(LitKind, 24);
     static_assert_size!(Local, 72);
-    static_assert_size!(MetaItemLit, 48);
+    static_assert_size!(MetaItemLit, 40);
     static_assert_size!(Param, 40);
     static_assert_size!(Pat, 88);
     static_assert_size!(Path, 24);
