@@ -4,6 +4,7 @@
 
 // run-rustfix
 
+#![allow(clippy::almost_complete_range)]
 #![allow(clippy::disallowed_names)]
 #![allow(clippy::blocks_in_if_conditions)]
 #![allow(clippy::box_collection)]
@@ -37,6 +38,7 @@
 #![allow(temporary_cstring_as_ptr)]
 #![allow(unknown_lints)]
 #![allow(unused_labels)]
+#![warn(clippy::almost_complete_letter_range)]
 #![warn(clippy::blacklisted_name)]
 #![warn(clippy::block_in_if_condition_expr)]
 #![warn(clippy::block_in_if_condition_stmt)]

@@ -35,7 +35,7 @@ pub(crate) static LINTS: &[&crate::LintInfo] = &[
     crate::utils::internal_lints::produce_ice::PRODUCE_ICE_INFO,
     #[cfg(feature = "internal")]
     crate::utils::internal_lints::unnecessary_def_path::UNNECESSARY_DEF_PATH_INFO,
-    crate::almost_complete_letter_range::ALMOST_COMPLETE_LETTER_RANGE_INFO,
+    crate::almost_complete_range::ALMOST_COMPLETE_RANGE_INFO,
     crate::approx_const::APPROX_CONSTANT_INFO,
     crate::as_conversions::AS_CONVERSIONS_INFO,
     crate::asm_syntax::INLINE_ASM_X86_ATT_SYNTAX_INFO,
