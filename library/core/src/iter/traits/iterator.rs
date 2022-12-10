@@ -1413,7 +1413,7 @@ pub trait Iterator {
     /// assert_eq!(iter.next(), Some(-1));
     /// assert_eq!(iter.next(), Some(-2));
     /// assert_eq!(iter.next(), Some(-6));
-    /// assert_eq!(iter.next(), None);
+    /// assert_eq!(iter.next(), None);     // The iterator is finished.
     /// ```
     #[inline]
     #[stable(feature = "rust1", since = "1.0.0")]
