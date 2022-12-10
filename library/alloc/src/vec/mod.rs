@@ -397,10 +397,26 @@ mod spec_extend;
 #[stable(feature = "rust1", since = "1.0.0")]
 #[cfg_attr(not(test), rustc_diagnostic_item = "Vec")]
 #[rustc_insignificant_dtor]
-pub struct Vec<T, #[unstable(feature = "allocator_api", issue = "32838")] A: Allocator = Global> {
-    buf: RawVec<T, A>,
+// @TODO _coop
+pub struct Vec<T, #[unstable(feature = "allocator_api", issue = "32838")] A: Allocator = Global, const _coop_preferred: bool = true>
+where [(); core::alloc::co_alloc_metadata_num_slots::<A>()]:
+{
+    buf: RawVec<T, A, _coop_preferred>,
     len: usize,
 }
+
+#[unstable(feature = "global_co_alloc_vec", issue = "none")]
+pub type CoVec<T> = Vec<T, Global, true>;
+
+/// "Plain" Vec.
+#[unstable(feature = "global_co_alloc_vec", issue = "none")]
+pub type PlVec<T> = Vec<T, Global, false>;
+
+/// "Weighted" Vec.
+/// weight means how much it wants to cooperate. 0 = always pack; u8::MAX = always coop (if `Global` supports it).
+/// @TODO Weighing on the side of Allocator - const fn.
+#[unstable(feature = "global_co_alloc_vec", issue = "none")]
+pub type WeVec<T, const weight: u8> = Vec<T, Global, {weight>1}>;
 
 ////////////////////////////////////////////////////////////////////////////////
 // Inherent methods
@@ -590,7 +606,8 @@ impl<T> Vec<T> {
     }
 }
 
-impl<T, A: Allocator> Vec<T, A> {
+impl<T, A: Allocator> Vec<T, A>
+where [(); core::alloc::co_alloc_metadata_num_slots::<A>()]: {
     /// Constructs a new, empty `Vec<T, A>`.
     ///
     /// The vector will not allocate until elements are pushed onto it.
@@ -1601,14 +1618,16 @@ impl<T, A: Allocator> Vec<T, A> {
         // This drop guard will be invoked when predicate or `drop` of element panicked.
         // It shifts unchecked elements to cover holes and `set_len` to the correct length.
         // In cases when predicate and `drop` never panick, it will be optimized out.
-        struct BackshiftOnDrop<'a, T, A: Allocator> {
+        struct BackshiftOnDrop<'a, T, A: Allocator>
+        where [(); core::alloc::co_alloc_metadata_num_slots::<A>()]: {
             v: &'a mut Vec<T, A>,
             processed_len: usize,
             deleted_cnt: usize,
             original_len: usize,
         }
 
-        impl<T, A: Allocator> Drop for BackshiftOnDrop<'_, T, A> {
+        impl<T, A: Allocator> Drop for BackshiftOnDrop<'_, T, A>
+        where [(); core::alloc::co_alloc_metadata_num_slots::<A>()]: {
             fn drop(&mut self) {
                 if self.deleted_cnt > 0 {
                     // SAFETY: Trailing unchecked items must be valid since we never touch them.
@@ -1635,6 +1654,7 @@ impl<T, A: Allocator> Vec<T, A> {
             g: &mut BackshiftOnDrop<'_, T, A>,
         ) where
             F: FnMut(&mut T) -> bool,
+            [(); core::alloc::co_alloc_metadata_num_slots::<A>()]:
         {
             while g.processed_len != original_len {
                 // SAFETY: Unchecked element must be valid.
@@ -1727,7 +1747,8 @@ impl<T, A: Allocator> Vec<T, A> {
         }
 
         /* INVARIANT: vec.len() > read >= write > write-1 >= 0 */
-        struct FillGapOnDrop<'a, T, A: core::alloc::Allocator> {
+        struct FillGapOnDrop<'a, T, A: core::alloc::Allocator>
+        where [(); core::alloc::co_alloc_metadata_num_slots::<A>()]: {
             /* Offset of the element we want to check if it is duplicate */
             read: usize,
 
@@ -1739,7 +1760,8 @@ impl<T, A: Allocator> Vec<T, A> {
             vec: &'a mut Vec<T, A>,
         }
 
-        impl<'a, T, A: core::alloc::Allocator> Drop for FillGapOnDrop<'a, T, A> {
+        impl<'a, T, A: core::alloc::Allocator> Drop for FillGapOnDrop<'a, T, A> 
+        where [(); core::alloc::co_alloc_metadata_num_slots::<A>()]: {
             fn drop(&mut self) {
                 /* This code gets executed when `same_bucket` panics */
 
@@ -2332,7 +2354,8 @@ impl<T, A: Allocator> Vec<T, A> {
     }
 }
 
-impl<T: Clone, A: Allocator> Vec<T, A> {
+impl<T: Clone, A: Allocator> Vec<T, A>
+where [(); core::alloc::co_alloc_metadata_num_slots::<A>()]: {
     /// Resizes the `Vec` in-place so that `len` is equal to `new_len`.
     ///
     /// If `new_len` is greater than `len`, the `Vec` is extended by the
@@ -2431,7 +2454,8 @@ impl<T: Clone, A: Allocator> Vec<T, A> {
     }
 }
 
-impl<T, A: Allocator, const N: usize> Vec<[T; N], A> {
+impl<T, A: Allocator, const N: usize> Vec<[T; N], A>
+where [(); core::alloc::co_alloc_metadata_num_slots::<A>()]: {
     /// Takes a `Vec<[T; N]>` and flattens it into a `Vec<T>`.
     ///
     /// # Panics
@@ -2492,7 +2516,8 @@ impl<T: Clone> ExtendWith<T> for ExtendElement<T> {
     }
 }
 
-impl<T, A: Allocator> Vec<T, A> {
+impl<T, A: Allocator> Vec<T, A>
+where [(); core::alloc::co_alloc_metadata_num_slots::<A>()]: {
     #[cfg(not(no_global_oom_handling))]
     /// Extend the vector by `n` values, using the given generator.
     fn extend_with<E: ExtendWith<T>>(&mut self, n: usize, mut value: E) {
@@ -2524,7 +2549,8 @@ impl<T, A: Allocator> Vec<T, A> {
     }
 }
 
-impl<T: PartialEq, A: Allocator> Vec<T, A> {
+impl<T: PartialEq, A: Allocator> Vec<T, A>
+where [(); core::alloc::co_alloc_metadata_num_slots::<A>()]: {
     /// Removes consecutive repeated elements in the vector according to the
     /// [`PartialEq`] trait implementation.
     ///
@@ -2560,7 +2586,8 @@ pub fn from_elem<T: Clone>(elem: T, n: usize) -> Vec<T> {
 #[doc(hidden)]
 #[cfg(not(no_global_oom_handling))]
 #[unstable(feature = "allocator_api", issue = "32838")]
-pub fn from_elem_in<T: Clone, A: Allocator>(elem: T, n: usize, alloc: A) -> Vec<T, A> {
+pub fn from_elem_in<T: Clone, A: Allocator>(elem: T, n: usize, alloc: A) -> Vec<T, A>
+where [(); core::alloc::co_alloc_metadata_num_slots::<A>()]: {
     <T as SpecFromElem>::from_elem(elem, n, alloc)
 }
 
@@ -2572,7 +2599,8 @@ trait ExtendFromWithinSpec {
     unsafe fn spec_extend_from_within(&mut self, src: Range<usize>);
 }
 
-impl<T: Clone, A: Allocator> ExtendFromWithinSpec for Vec<T, A> {
+impl<T: Clone, A: Allocator> ExtendFromWithinSpec for Vec<T, A>
+where [(); core::alloc::co_alloc_metadata_num_slots::<A>()]: {
     default unsafe fn spec_extend_from_within(&mut self, src: Range<usize>) {
         // SAFETY:
         // - len is increased only after initializing elements
@@ -2591,7 +2619,8 @@ impl<T: Clone, A: Allocator> ExtendFromWithinSpec for Vec<T, A> {
     }
 }
 
-impl<T: Copy, A: Allocator> ExtendFromWithinSpec for Vec<T, A> {
+impl<T: Copy, A: Allocator> ExtendFromWithinSpec for Vec<T, A>
+where [(); core::alloc::co_alloc_metadata_num_slots::<A>()]: {
     unsafe fn spec_extend_from_within(&mut self, src: Range<usize>) {
         let count = src.len();
         {
@@ -2624,7 +2653,8 @@ impl<T: Copy, A: Allocator> ExtendFromWithinSpec for Vec<T, A> {
 ////////////////////////////////////////////////////////////////////////////////
 
 #[stable(feature = "rust1", since = "1.0.0")]
-impl<T, A: Allocator> ops::Deref for Vec<T, A> {
+impl<T, A: Allocator> ops::Deref for Vec<T, A>
+where [(); core::alloc::co_alloc_metadata_num_slots::<A>()]: {
     type Target = [T];
 
     #[inline]
@@ -2634,7 +2664,8 @@ impl<T, A: Allocator> ops::Deref for Vec<T, A> {
 }
 
 #[stable(feature = "rust1", since = "1.0.0")]
-impl<T, A: Allocator> ops::DerefMut for Vec<T, A> {
+impl<T, A: Allocator> ops::DerefMut for Vec<T, A>
+where [(); core::alloc::co_alloc_metadata_num_slots::<A>()]: {
     #[inline]
     fn deref_mut(&mut self) -> &mut [T] {
         unsafe { slice::from_raw_parts_mut(self.as_mut_ptr(), self.len) }
@@ -2647,7 +2678,8 @@ trait SpecCloneFrom {
 }
 
 #[cfg(not(no_global_oom_handling))]
-impl<T: Clone, A: Allocator> SpecCloneFrom for Vec<T, A> {
+impl<T: Clone, A: Allocator> SpecCloneFrom for Vec<T, A>
+where [(); core::alloc::co_alloc_metadata_num_slots::<A>()]: {
     default fn clone_from(this: &mut Self, other: &Self) {
         // drop anything that will not be overwritten
         this.truncate(other.len());
@@ -2663,7 +2695,8 @@ impl<T: Clone, A: Allocator> SpecCloneFrom for Vec<T, A> {
 }
 
 #[cfg(not(no_global_oom_handling))]
-impl<T: Copy, A: Allocator> SpecCloneFrom for Vec<T, A> {
+impl<T: Copy, A: Allocator> SpecCloneFrom for Vec<T, A>
+where [(); core::alloc::co_alloc_metadata_num_slots::<A>()]: {
     fn clone_from(this: &mut Self, other: &Self) {
         this.clear();
         this.extend_from_slice(other);
@@ -2672,7 +2705,8 @@ impl<T: Copy, A: Allocator> SpecCloneFrom for Vec<T, A> {
 
 #[cfg(not(no_global_oom_handling))]
 #[stable(feature = "rust1", since = "1.0.0")]
-impl<T: Clone, A: Allocator + Clone> Clone for Vec<T, A> {
+impl<T: Clone, A: Allocator + Clone> Clone for Vec<T, A>
+where [(); core::alloc::co_alloc_metadata_num_slots::<A>()]: {
     #[cfg(not(test))]
     fn clone(&self) -> Self {
         let alloc = self.allocator().clone();
@@ -2707,7 +2741,8 @@ impl<T: Clone, A: Allocator + Clone> Clone for Vec<T, A> {
 /// assert_eq!(b.hash_one(v), b.hash_one(s));
 /// ```
 #[stable(feature = "rust1", since = "1.0.0")]
-impl<T: Hash, A: Allocator> Hash for Vec<T, A> {
+impl<T: Hash, A: Allocator> Hash for Vec<T, A>
+where [(); core::alloc::co_alloc_metadata_num_slots::<A>()]: {
     #[inline]
     fn hash<H: Hasher>(&self, state: &mut H) {
         Hash::hash(&**self, state)
@@ -2719,7 +2754,8 @@ impl<T: Hash, A: Allocator> Hash for Vec<T, A> {
     message = "vector indices are of type `usize` or ranges of `usize`",
     label = "vector indices are of type `usize` or ranges of `usize`"
 )]
-impl<T, I: SliceIndex<[T]>, A: Allocator> Index<I> for Vec<T, A> {
+impl<T, I: SliceIndex<[T]>, A: Allocator> Index<I> for Vec<T, A>
+where [(); core::alloc::co_alloc_metadata_num_slots::<A>()]: {
     type Output = I::Output;
 
     #[inline]
