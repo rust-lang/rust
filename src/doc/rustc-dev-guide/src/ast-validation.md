@@ -1,7 +1,6 @@
 # AST Validation
 
-* [About](#about)
-* [Validation](#validation)
+<!-- toc -->
 
 ## About
 
@@ -17,9 +16,9 @@ is done, the compiler runs the crate resolution pass.
 
 ## Validations
 
-Validations are defined in `AstValidator` class, which 
+Validations are defined in `AstValidator` type, which 
 itself is located in `rustc_ast_passes` crate. This
-class implements various simple checks which emit errors
+type implements various simple checks which emit errors
 when certain language rules are broken.
 
 In addition, `AstValidator` implements `Visitor` trait
