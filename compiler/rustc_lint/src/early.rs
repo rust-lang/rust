@@ -37,7 +37,9 @@ pub struct EarlyContextAndPasses<'a> {
 }
 
 impl<'a> EarlyContextAndPasses<'a> {
-    fn check_id(&mut self, id: ast::NodeId) {
+    // This always-inlined function is for the hot call site.
+    #[inline(always)]
+    fn inlined_check_id(&mut self, id: ast::NodeId) {
         for early_lint in self.context.buffered.take(id) {
             let BufferedEarlyLint { span, msg, node_id: _, lint_id, diagnostic } = early_lint;
             self.context.lookup_with_diagnostics(
@@ -48,6 +50,11 @@ impl<'a> EarlyContextAndPasses<'a> {
                 diagnostic,
             );
         }
+    }
+
+    // This non-inlined function is for the cold call sites.
+    fn check_id(&mut self, id: ast::NodeId) {
+        self.inlined_check_id(id)
     }
 
     /// Merge the lints specified by any lint attributes into the
@@ -61,7 +68,7 @@ impl<'a> EarlyContextAndPasses<'a> {
         debug!(?id);
         let push = self.context.builder.push(attrs, is_crate_node, None);
 
-        self.check_id(id);
+        self.inlined_check_id(id);
         debug!("early context: enter_attrs({:?})", attrs);
         run_early_passes!(self, enter_lint_attrs, attrs);
         f(self);
