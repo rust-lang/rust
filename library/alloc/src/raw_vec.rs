@@ -1,6 +1,6 @@
 #![unstable(feature = "raw_vec_internals", reason = "unstable const warnings", issue = "none")]
 
-use core::alloc::{LayoutError, GlobalCoAllocMeta};
+use core::alloc::{self, LayoutError, GlobalCoAllocMeta};
 use core::cmp;
 use core::intrinsics;
 use core::mem::{self, ManuallyDrop, MaybeUninit, SizedTypeProperties};
@@ -49,12 +49,19 @@ enum AllocInit {
 /// `usize::MAX`. This means that you need to be careful when round-tripping this type with a
 /// `Box<[T]>`, since `capacity()` won't yield the length.
 #[allow(missing_debug_implementations)]
-pub(crate) struct RawVec<T, A: Allocator = Global> {
+// @TODO
+// 1. make const generic _coop come from the target specification
+// 2. apply `_coop` with logical && to `A::IsCoAllocator`
+pub(crate) struct RawVec<T, A: Allocator = Global, const _coop: bool = true>
+where [(); alloc::co_alloc_metadata_num_slots::<A>()]:
+{
     ptr: Unique<T>,
     cap: usize,
     alloc: A,
-    #[allow(dead_code)]
-    pub(crate) meta: GlobalCoAllocMeta,
+    // As of v1.67.0, `cmp` for `TypeId` is not `const`, unfortunately:
+    //pub(crate) meta: [GlobalCoAllocMeta; {if core::any::TypeId::of::<A>()==core::any::TypeId::of::<Global>() {1} else {0}}],
+    //pub(crate) meta: [GlobalCoAllocMeta; mem::size_of::<A::IsCoAllocator>()],
+    pub(crate) meta: [GlobalCoAllocMeta; alloc::co_alloc_metadata_num_slots::<A>()],
 }
 
 impl<T> RawVec<T, Global> {
@@ -104,7 +111,9 @@ impl<T> RawVec<T, Global> {
     }
 }
 
-impl<T, A: Allocator> RawVec<T, A> {
+impl<T, A: Allocator> RawVec<T, A>
+where [(); alloc::co_alloc_metadata_num_slots::<A>()]:
+{
     // Tiny Vecs are dumb. Skip to:
     // - 8 if the element size is 1, because any heap allocators is likely
     //   to round up a request of less than 8 bytes to at least 8 bytes.
@@ -284,7 +293,9 @@ impl<T, A: Allocator> RawVec<T, A> {
             slf: &mut RawVec<T, A>,
             len: usize,
             additional: usize,
-        ) {
+        )
+        where [(); alloc::co_alloc_metadata_num_slots::<A>()]:
+        {
             handle_reserve(slf.grow_amortized(len, additional));
         }
 
@@ -357,14 +368,18 @@ impl<T, A: Allocator> RawVec<T, A> {
     }
 }
 
-impl<T, A: Allocator> RawVec<T, A> {
+impl<T, A: Allocator> RawVec<T, A>
+where [(); alloc::co_alloc_metadata_num_slots::<A>()]:
+{
     /// Returns if the buffer needs to grow to fulfill the needed extra capacity.
     /// Mainly used to make inlining reserve-calls possible without inlining `grow`.
-    fn needs_to_grow(&self, len: usize, additional: usize) -> bool {
+    fn needs_to_grow(&self, len: usize, additional: usize) -> bool
+     {
         additional > self.capacity().wrapping_sub(len)
     }
 
-    fn set_ptr_and_cap(&mut self, ptr: NonNull<[u8]>, cap: usize) {
+    fn set_ptr_and_cap(&mut self, ptr: NonNull<[u8]>, cap: usize)
+    {
         // Allocators currently return a `NonNull<[u8]>` whose length matches
         // the size requested. If that ever changes, the capacity here should
         // change to `ptr.len() / mem::size_of::<T>()`.
@@ -475,16 +490,19 @@ where
     memory.map_err(|_| AllocError { layout: new_layout, non_exhaustive: () }.into())
 }
 
-unsafe impl<#[may_dangle] T, A: Allocator> Drop for RawVec<T, A> {
+unsafe impl<#[may_dangle] T, A: Allocator> Drop for RawVec<T, A>
+where [(); alloc::co_alloc_metadata_num_slots::<A>()]:
+{
     /// Frees the memory owned by the `RawVec` *without* trying to drop its contents.
     default fn drop(&mut self) {
         if let Some((ptr, layout)) = self.current_memory() {
-            unsafe { self.alloc.deallocate(ptr, layout) }
+            unsafe { self.alloc.co_deallocate(ptr, layout) }
         }
     }
 }
 
-unsafe impl<#[may_dangle] T> Drop for RawVec<T, Global> {
+// @TODO Custom
+/*unsafe impl<#[may_dangle] T> Drop for RawVec<T, Global> {
     /// Frees the memory owned by the `RawVec` *without* trying to drop its contents.
     fn drop(&mut self) {
         // @TODO
@@ -492,7 +510,7 @@ unsafe impl<#[may_dangle] T> Drop for RawVec<T, Global> {
             unsafe { self.alloc.deallocate(ptr, layout) }
         }
     }
-}
+}*/
 
 // Central function for reserve error handling.
 #[cfg(not(no_global_oom_handling))]

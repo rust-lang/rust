@@ -78,6 +78,11 @@ pub struct SliceAndMeta {
 #[allow(missing_debug_implementations)]
 pub type SliceAndMetaResult = Result<SliceAndMeta, AllocError>;
 
+#[unstable(feature = "global_co_alloc", issue = "none")]
+pub const fn co_alloc_metadata_num_slots<A: Allocator>() -> usize {
+    if A::IS_CO_ALLOCATOR { 1 } else { 0 }
+}
+
 /// An implementation of `Allocator` can allocate, grow, shrink, and deallocate arbitrary blocks of
 /// data described via [`Layout`][].
 ///
@@ -137,6 +142,13 @@ pub type SliceAndMetaResult = Result<SliceAndMeta, AllocError>;
 #[unstable(feature = "allocator_api", issue = "32838")]
 #[const_trait]
 pub unsafe trait Allocator {
+    //const fn is_co_allocator() -> bool {false}
+    // Can't have: const type Xyz;
+    /// If this is any type with non-zero size, then the actual `Allocator` implementation supports cooperative functions (`co_*`) as first class citizens.
+    //type IsCoAllocator = ();
+    // It applies to the global (default) allocator only. And/or System allocator?! TODO
+    const IS_CO_ALLOCATOR: bool = true;
+
     /// Attempts to allocate a block of memory.
     ///
     /// On success, returns a [`NonNull<[u8]>`][NonNull] meeting the size and alignment guarantees of `layout`.
@@ -505,6 +517,7 @@ pub unsafe trait Allocator {
     }
 }
 
+// @TODO
 #[unstable(feature = "allocator_api", issue = "32838")]
 unsafe impl<A> Allocator for &A
 where

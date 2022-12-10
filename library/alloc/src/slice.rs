@@ -92,7 +92,8 @@ pub(crate) mod hack {
     // We shouldn't add inline attribute to this since this is used in
     // `vec!` macro mostly and causes perf regression. See #71204 for
     // discussion and perf results.
-    pub fn into_vec<T, A: Allocator>(b: Box<[T], A>) -> Vec<T, A> {
+    pub fn into_vec<T, A: Allocator>(b: Box<[T], A>) -> Vec<T, A>
+    where [(); core::alloc::co_alloc_metadata_num_slots::<A>()]: {
         unsafe {
             let len = b.len();
             let (b, alloc) = Box::into_raw_with_allocator(b);
@@ -102,7 +103,8 @@ pub(crate) mod hack {
 
     #[cfg(not(no_global_oom_handling))]
     #[inline]
-    pub fn to_vec<T: ConvertVec, A: Allocator>(s: &[T], alloc: A) -> Vec<T, A> {
+    pub fn to_vec<T: ConvertVec, A: Allocator>(s: &[T], alloc: A) -> Vec<T, A>
+    where [(); core::alloc::co_alloc_metadata_num_slots::<A>()]: {
         T::to_vec(s, alloc)
     }
 
@@ -110,13 +112,15 @@ pub(crate) mod hack {
     pub trait ConvertVec {
         fn to_vec<A: Allocator>(s: &[Self], alloc: A) -> Vec<Self, A>
         where
-            Self: Sized;
+            Self: Sized,
+            [(); core::alloc::co_alloc_metadata_num_slots::<A>()]:;
     }
 
     #[cfg(not(no_global_oom_handling))]
     impl<T: Clone> ConvertVec for T {
         #[inline]
-        default fn to_vec<A: Allocator>(s: &[Self], alloc: A) -> Vec<Self, A> {
+        default fn to_vec<A: Allocator>(s: &[Self], alloc: A) -> Vec<Self, A>
+        where [(); core::alloc::co_alloc_metadata_num_slots::<A>()]: {
             struct DropGuard<'a, T, A: Allocator> {
                 vec: &'a mut Vec<T, A>,
                 num_init: usize,
@@ -153,7 +157,8 @@ pub(crate) mod hack {
     #[cfg(not(no_global_oom_handling))]
     impl<T: Copy> ConvertVec for T {
         #[inline]
-        fn to_vec<A: Allocator>(s: &[Self], alloc: A) -> Vec<Self, A> {
+        fn to_vec<A: Allocator>(s: &[Self], alloc: A) -> Vec<Self, A>
+        where [(); core::alloc::co_alloc_metadata_num_slots::<A>()]: {
             let mut v = Vec::with_capacity_in(s.len(), alloc);
             // SAFETY:
             // allocated above with the capacity of `s`, and initialize to `s.len()` in
@@ -431,6 +436,7 @@ impl<T> [T] {
     pub fn to_vec_in<A: Allocator>(&self, alloc: A) -> Vec<T, A>
     where
         T: Clone,
+        [(); core::alloc::co_alloc_metadata_num_slots::<A>()]:
     {
         // N.B., see the `hack` module in this file for more details.
         hack::to_vec(self, alloc)
@@ -453,7 +459,8 @@ impl<T> [T] {
     #[rustc_allow_incoherent_impl]
     #[stable(feature = "rust1", since = "1.0.0")]
     #[inline]
-    pub fn into_vec<A: Allocator>(self: Box<Self, A>) -> Vec<T, A> {
+    pub fn into_vec<A: Allocator>(self: Box<Self, A>) -> Vec<T, A>
+    where [(); core::alloc::co_alloc_metadata_num_slots::<A>()]: {
         // N.B., see the `hack` module in this file for more details.
         hack::into_vec(self)
     }
@@ -764,14 +771,16 @@ impl<T: Clone, V: Borrow<[T]>> Join<&[T]> for [V] {
 ////////////////////////////////////////////////////////////////////////////////
 
 #[stable(feature = "rust1", since = "1.0.0")]
-impl<T, A: Allocator> Borrow<[T]> for Vec<T, A> {
+impl<T, A: Allocator> Borrow<[T]> for Vec<T, A>
+where [(); core::alloc::co_alloc_metadata_num_slots::<A>()]: {
     fn borrow(&self) -> &[T] {
         &self[..]
     }
 }
 
 #[stable(feature = "rust1", since = "1.0.0")]
-impl<T, A: Allocator> BorrowMut<[T]> for Vec<T, A> {
+impl<T, A: Allocator> BorrowMut<[T]> for Vec<T, A>
+where [(); core::alloc::co_alloc_metadata_num_slots::<A>()]: {
     fn borrow_mut(&mut self) -> &mut [T] {
         &mut self[..]
     }

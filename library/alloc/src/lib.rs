@@ -86,6 +86,7 @@
 #![warn(deprecated_in_future)]
 #![warn(missing_debug_implementations)]
 #![warn(missing_docs)]
+#![allow(incomplete_features)]
 #![allow(explicit_outlives_requirements)]
 //
 // Library features:
@@ -121,6 +122,7 @@
 #![feature(extend_one)]
 #![feature(fmt_internals)]
 #![feature(fn_traits)]
+#![feature(generic_const_exprs)]
 #![feature(global_co_alloc_meta)]
 #![feature(hasher_prefixfree_extras)]
 #![feature(inplace_iteration)]
