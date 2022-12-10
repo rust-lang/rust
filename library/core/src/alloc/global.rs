@@ -6,7 +6,7 @@ use crate::alloc::GlobalCoAllocMeta;
 #[unstable(feature = "global_co_alloc_meta", issue = "none")]
 #[allow(missing_debug_implementations)]
 /// Used for parameters and results (to/from `GlobalCoAllocator`'s functions, where applicable).
-pub struct PtrAndMeta {
+pub struct RawAndMeta {
     pub ptr: *mut u8,
     pub meta: GlobalCoAllocMeta,
 }
@@ -166,7 +166,7 @@ pub unsafe trait GlobalAlloc {
     unsafe fn alloc(&self, layout: Layout) -> *mut u8;
 
     #[unstable(feature = "global_co_alloc", issue = "none")]
-    unsafe fn co_alloc(&self, _layout: Layout, mut _result: &mut PtrAndMeta) {panic!("TODO")}
+    unsafe fn co_alloc(&self, _layout: Layout, mut _result: &mut RawAndMeta) {panic!("TODO")}
 
     /// Deallocate the block of memory at the given `ptr` pointer with the given `layout`.
     ///
@@ -184,7 +184,7 @@ pub unsafe trait GlobalAlloc {
     unsafe fn dealloc(&self, ptr: *mut u8, layout: Layout);
 
     #[unstable(feature = "global_co_alloc", issue = "none")]
-    unsafe fn co_dealloc(&self, _ptr_and_meta: PtrAndMeta, _layout: Layout) {panic!("TODO")}
+    unsafe fn co_dealloc(&self, _ptr_and_meta: RawAndMeta, _layout: Layout) {panic!("TODO")}
 
     /// Behaves like `alloc`, but also ensures that the contents
     /// are set to zero before being returned.
@@ -219,7 +219,7 @@ pub unsafe trait GlobalAlloc {
     }
 
     #[unstable(feature = "global_co_alloc", issue = "none")]
-    unsafe fn co_alloc_zeroed(&self, layout: Layout, mut result: &mut PtrAndMeta) {
+    unsafe fn co_alloc_zeroed(&self, layout: Layout, mut result: &mut RawAndMeta) {
         let size = layout.size();
         // SAFETY: the safety contract for `alloc` must be upheld by the caller.
         unsafe { self.co_alloc(layout, &mut result) };
@@ -305,10 +305,10 @@ pub unsafe trait GlobalAlloc {
     #[unstable(feature = "global_co_alloc", issue = "none")]
     unsafe fn co_realloc(
         &self,
-        ptr_and_meta: PtrAndMeta,
+        ptr_and_meta: RawAndMeta,
         layout: Layout,
         new_size: usize,
-        mut result: &mut PtrAndMeta
+        mut result: &mut RawAndMeta
     ) {
         // SAFETY: the caller must ensure that the `new_size` does not overflow.
         // `layout.align()` comes from a `Layout` and is thus guaranteed to be valid.
