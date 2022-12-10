@@ -35,6 +35,7 @@ pub fn from_generator<G: Generator<Return = ()> + Unpin>(generator: G) -> FromGe
 ///
 /// [`iter::from_generator()`]: from_generator
 #[unstable(feature = "iter_from_generator", issue = "43122", reason = "generators are unstable")]
+#[derive(Clone)]
 pub struct FromGenerator<G>(G);
 
 #[unstable(feature = "iter_from_generator", issue = "43122", reason = "generators are unstable")]
