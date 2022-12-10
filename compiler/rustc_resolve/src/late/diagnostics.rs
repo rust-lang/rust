@@ -1663,8 +1663,10 @@ impl<'a: 'ast, 'ast> LateResolutionVisitor<'a, '_, 'ast> {
                         if !module.no_implicit_prelude {
                             let extern_prelude = self.r.extern_prelude.clone();
                             names.extend(extern_prelude.iter().flat_map(|(ident, _)| {
-                                self.r.crate_loader.maybe_process_path_extern(ident.name).and_then(
-                                    |crate_id| {
+                                self.r
+                                    .crate_loader()
+                                    .maybe_process_path_extern(ident.name)
+                                    .and_then(|crate_id| {
                                         let crate_mod =
                                             Res::Def(DefKind::Mod, crate_id.as_def_id());
 
@@ -1673,8 +1675,7 @@ impl<'a: 'ast, 'ast> LateResolutionVisitor<'a, '_, 'ast> {
                                         } else {
                                             None
                                         }
-                                    },
-                                )
+                                    })
                             }));
 
                             if let Some(prelude) = self.r.prelude {

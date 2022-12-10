@@ -805,9 +805,9 @@ pub fn create_global_ctxt<'tcx>(
     });
 
     let ty::ResolverOutputs {
-        definitions,
         global_ctxt: untracked_resolutions,
         ast_lowering: untracked_resolver_for_lowering,
+        untracked,
     } = resolver_outputs;
 
     let gcx = sess.time("setup_global_ctxt", || {
@@ -817,8 +817,8 @@ pub fn create_global_ctxt<'tcx>(
                 lint_store,
                 arena,
                 hir_arena,
-                definitions,
                 untracked_resolutions,
+                untracked,
                 krate,
                 dep_graph,
                 queries.on_disk_cache.as_ref().map(OnDiskCache::as_dyn),

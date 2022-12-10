@@ -13,7 +13,7 @@ use rustc_ast::expand::allocator::AllocatorKind;
 use rustc_ast::{self as ast, *};
 use rustc_data_structures::fx::{FxHashMap, FxHashSet};
 use rustc_data_structures::svh::Svh;
-use rustc_data_structures::sync::Lrc;
+use rustc_data_structures::sync::{Lrc, ReadGuard};
 use rustc_expand::base::SyntaxExtension;
 use rustc_hir::def_id::{CrateNum, LocalDefId, StableCrateId, LOCAL_CRATE};
 use rustc_hir::definitions::Definitions;
@@ -68,11 +68,12 @@ impl std::fmt::Debug for CStore {
 pub struct CrateLoader<'a> {
     // Immutable configuration.
     sess: &'a Session,
-    metadata_loader: Box<MetadataLoaderDyn>,
+    metadata_loader: &'a MetadataLoaderDyn,
+    definitions: ReadGuard<'a, Definitions>,
     local_crate_name: Symbol,
     // Mutable output.
-    cstore: CStore,
-    used_extern_options: FxHashSet<Symbol>,
+    cstore: &'a mut CStore,
+    used_extern_options: &'a mut FxHashSet<Symbol>,
 }
 
 pub enum LoadedMacro {
@@ -239,45 +240,47 @@ impl CStore {
             );
         }
     }
+
+    pub fn new(sess: &Session) -> CStore {
+        let mut stable_crate_ids = FxHashMap::default();
+        stable_crate_ids.insert(sess.local_stable_crate_id(), LOCAL_CRATE);
+        CStore {
+            // We add an empty entry for LOCAL_CRATE (which maps to zero) in
+            // order to make array indices in `metas` match with the
+            // corresponding `CrateNum`. This first entry will always remain
+            // `None`.
+            metas: IndexVec::from_elem_n(None, 1),
+            injected_panic_runtime: None,
+            allocator_kind: None,
+            alloc_error_handler_kind: None,
+            has_global_allocator: false,
+            has_alloc_error_handler: false,
+            stable_crate_ids,
+            unused_externs: Vec::new(),
+        }
+    }
 }
 
 impl<'a> CrateLoader<'a> {
     pub fn new(
         sess: &'a Session,
-        metadata_loader: Box<MetadataLoaderDyn>,
+        metadata_loader: &'a MetadataLoaderDyn,
         local_crate_name: Symbol,
+        cstore: &'a mut CStore,
+        definitions: ReadGuard<'a, Definitions>,
+        used_extern_options: &'a mut FxHashSet<Symbol>,
     ) -> Self {
-        let mut stable_crate_ids = FxHashMap::default();
-        stable_crate_ids.insert(sess.local_stable_crate_id(), LOCAL_CRATE);
-
         CrateLoader {
             sess,
             metadata_loader,
             local_crate_name,
-            cstore: CStore {
-                // We add an empty entry for LOCAL_CRATE (which maps to zero) in
-                // order to make array indices in `metas` match with the
-                // corresponding `CrateNum`. This first entry will always remain
-                // `None`.
-                metas: IndexVec::from_elem_n(None, 1),
-                injected_panic_runtime: None,
-                allocator_kind: None,
-                alloc_error_handler_kind: None,
-                has_global_allocator: false,
-                has_alloc_error_handler: false,
-                stable_crate_ids,
-                unused_externs: Vec::new(),
-            },
-            used_extern_options: Default::default(),
+            cstore,
+            used_extern_options,
+            definitions,
         }
     }
-
     pub fn cstore(&self) -> &CStore {
         &self.cstore
-    }
-
-    pub fn into_cstore(self) -> CStore {
-        self.cstore
     }
 
     fn existing_match(&self, name: Symbol, hash: Option<Svh>, kind: PathKind) -> Option<CrateNum> {
@@ -989,7 +992,6 @@ impl<'a> CrateLoader<'a> {
     pub fn process_extern_crate(
         &mut self,
         item: &ast::Item,
-        definitions: &Definitions,
         def_id: LocalDefId,
     ) -> Option<CrateNum> {
         match item.kind {
@@ -1013,7 +1015,7 @@ impl<'a> CrateLoader<'a> {
 
                 let cnum = self.resolve_crate(name, item.span, dep_kind)?;
 
-                let path_len = definitions.def_path(def_id).data.len();
+                let path_len = self.definitions.def_path(def_id).data.len();
                 self.update_extern_crate(
                     cnum,
                     ExternCrate {
