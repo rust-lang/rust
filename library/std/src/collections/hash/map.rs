@@ -901,7 +901,7 @@ where
     /// assert_eq!()
     /// ```
     #[inline]
-    pub fn get_or_insert<Q: ?Sized>(&self, k: &Q, callback: fn() -> V) -> &V
+    pub fn get_or_insert<Q: ?Sized>(&mut self, k: &Q, callback: fn() -> V) -> &V
     where
         K: Borrow<Q>,
         Q: Hash + Eq,
@@ -910,8 +910,8 @@ where
             Some(value) => value,
             None => {
                 let value = (callback)();
-                self.base.insert(value);
-                &value
+                self.base.insert(k, value);
+                self.base.get(k)
             }
         }
     }
