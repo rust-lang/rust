@@ -1389,6 +1389,22 @@ fn foo<const C: u8, T>() -> (impl FnOnce(&str, T), impl Trait<u8>) {
 }
 
 #[test]
+fn return_pos_impl_trait_in_projection() {
+    // Note that the unused type param `X` is significant; see #13307.
+    check_no_mismatches(
+        r#"
+//- minicore: sized
+trait Future { type Output; }
+impl Future for () { type Output = i32; }
+type Foo<F> = (<F as Future>::Output, F);
+fn foo<X>() -> Foo<impl Future<Output = ()>> {
+    (0, ())
+}
+"#,
+    )
+}
+
+#[test]
 fn dyn_trait() {
     check_infer(
         r#"
