@@ -2,6 +2,7 @@
 
 #![feature(array_windows)]
 #![feature(box_patterns)]
+#![feature(global_co_alloc_meta)]
 #![feature(if_let_guard)]
 #![feature(iter_intersperse)]
 #![feature(let_chains)]

@@ -3,6 +3,8 @@
 //! This is in a dedicated file so that changes to this file can be reviewed more carefully.
 //! The intention is that this file only contains datatype declarations, no code.
 
+use core::alloc::GlobalCoAllocMeta;
+use core::mem;
 use super::{BasicBlock, Constant, Field, Local, SwitchTargets, UserTypeProjection};
 
 use crate::mir::coverage::{CodeRegion, CoverageKind};
@@ -1267,6 +1269,6 @@ mod size_asserts {
     static_assert_size!(Operand<'_>, 24);
     static_assert_size!(Place<'_>, 16);
     static_assert_size!(PlaceElem<'_>, 24);
-    static_assert_size!(Rvalue<'_>, 40);
+    static_assert_size!(Rvalue<'_>, 40 + mem::size_of::<GlobalCoAllocMeta>());
     // tidy-alphabetical-end
 }

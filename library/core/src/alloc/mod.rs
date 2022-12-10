@@ -3,6 +3,7 @@
 #![stable(feature = "alloc_module", since = "1.28.0")]
 
 mod global;
+//mod global_co;
 mod layout;
 
 #[stable(feature = "global_alloc", since = "1.28.0")]
@@ -24,6 +25,16 @@ pub use self::layout::LayoutError;
 use crate::error::Error;
 use crate::fmt;
 use crate::ptr::{self, NonNull};
+
+// @TODO Make this target-specific
+#[unstable(feature = "global_co_alloc_meta", issue = "none")]
+#[allow(missing_debug_implementations)]
+pub struct GlobalCoAllocMeta {
+    //pub one: usize,
+    /*pub two: usize,
+    pub three: usize,
+    pub four: usize,*/
+}
 
 /// The `AllocError` error indicates an allocation failure
 /// that may be due to resource exhaustion or to

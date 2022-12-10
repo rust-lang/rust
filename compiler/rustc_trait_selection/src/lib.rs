@@ -15,6 +15,7 @@
 #![feature(box_patterns)]
 #![feature(control_flow_enum)]
 #![feature(drain_filter)]
+#![feature(global_co_alloc_meta)]
 #![feature(hash_drain_filter)]
 #![feature(let_chains)]
 #![feature(if_let_guard)]

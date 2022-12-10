@@ -12,6 +12,7 @@
 #![feature(box_patterns)]
 #![feature(const_default_impls)]
 #![feature(const_trait_impl)]
+#![feature(global_co_alloc_meta)]
 #![feature(if_let_guard)]
 #![feature(let_chains)]
 #![feature(min_specialization)]

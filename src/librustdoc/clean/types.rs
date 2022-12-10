@@ -1,6 +1,8 @@
+use std::alloc::GlobalCoAllocMeta;
 use std::cell::RefCell;
 use std::default::Default;
 use std::hash::Hash;
+use std::mem;
 use std::path::PathBuf;
 use std::rc::Rc;
 use std::sync::Arc;
@@ -2574,13 +2576,13 @@ mod size_asserts {
     // tidy-alphabetical-start
     static_assert_size!(Crate, 64); // frequently moved by-value
     static_assert_size!(DocFragment, 32);
-    static_assert_size!(GenericArg, 32);
+    static_assert_size!(GenericArg, 32 + mem::size_of::<GlobalCoAllocMeta>());
     static_assert_size!(GenericArgs, 32);
-    static_assert_size!(GenericParamDef, 56);
+    static_assert_size!(GenericParamDef, 56 + mem::size_of::<GlobalCoAllocMeta>());
     static_assert_size!(Generics, 16);
     static_assert_size!(Item, 56);
-    static_assert_size!(ItemKind, 64);
+    static_assert_size!(ItemKind, 64 + mem::size_of::<GlobalCoAllocMeta>());
     static_assert_size!(PathSegment, 40);
-    static_assert_size!(Type, 32);
+    static_assert_size!(Type, 32 + mem::size_of::<GlobalCoAllocMeta>());
     // tidy-alphabetical-end
 }
