@@ -412,6 +412,9 @@ jobs:
           - name: test-various
             <<: *job-linux-xl
 
+          - name: test-big-endian
+            <<: *job-linux-xl
+
           - name: wasm32
             <<: *job-linux-xl
 

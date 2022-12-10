@@ -262,6 +262,9 @@ jobs:
           - name: test-various
             os: ubuntu-20.04-xl
             env: {}
+          - name: test-big-endian
+            os: ubuntu-20.04-xl
+            env: {}
           - name: wasm32
             os: ubuntu-20.04-xl
             env: {}
