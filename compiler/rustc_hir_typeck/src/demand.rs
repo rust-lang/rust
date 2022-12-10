@@ -189,7 +189,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         &self,
         err: &mut Diagnostic,
         expr: &hir::Expr<'_>,
-        error: Option<TypeError<'_>>,
+        error: Option<TypeError<'tcx>>,
     ) {
         let parent = self.tcx.hir().get_parent_node(expr.hir_id);
         match (self.tcx.hir().find(parent), error) {
@@ -285,6 +285,16 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                     // silence this.
                     err.downgrade_to_delayed_bug();
                 }
+            }
+            (
+                Some(hir::Node::Expr(hir::Expr {
+                    kind: hir::ExprKind::Binary(_, lhs, rhs), ..
+                })),
+                Some(TypeError::Sorts(ExpectedFound { expected, .. })),
+            ) if rhs.hir_id == expr.hir_id
+                && self.typeck_results.borrow().expr_ty_adjusted_opt(lhs) == Some(expected) =>
+            {
+                err.span_label(lhs.span, &format!("expected because this is `{expected}`"));
             }
             _ => {}
         }
