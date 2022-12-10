@@ -240,10 +240,8 @@ fn typeck_with_fallback<'tcx>(
                         }),
                         Node::Expr(&hir::Expr { kind: hir::ExprKind::InlineAsm(asm), .. })
                         | Node::Item(&hir::Item { kind: hir::ItemKind::GlobalAsm(asm), .. }) => {
-                            let operand_ty = asm
-                                .operands
-                                .iter()
-                                .filter_map(|(op, _op_sp)| match op {
+                            let operand_ty =
+                                asm.operands.iter().find_map(|(op, _op_sp)| match op {
                                     hir::InlineAsmOperand::Const { anon_const }
                                         if anon_const.hir_id == id =>
                                     {
@@ -259,8 +257,7 @@ fn typeck_with_fallback<'tcx>(
                                         }))
                                     }
                                     _ => None,
-                                })
-                                .next();
+                                });
                             operand_ty.unwrap_or_else(fallback)
                         }
                         _ => fallback(),

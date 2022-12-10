@@ -316,35 +316,29 @@ impl<'a, 'tcx> MirBorrowckCtxt<'a, 'tcx> {
                         // obligation comes from the `impl`. Find that `impl` so that we can point
                         // at it in the suggestion.
                         let trait_did = trait_did.to_def_id();
-                        match tcx
-                            .hir()
-                            .trait_impls(trait_did)
-                            .iter()
-                            .filter_map(|&impl_did| {
-                                match tcx.hir().get_if_local(impl_did.to_def_id()) {
-                                    Some(Node::Item(Item {
-                                        kind: ItemKind::Impl(hir::Impl { self_ty, .. }),
-                                        ..
-                                    })) if trait_objects.iter().all(|did| {
-                                        // FIXME: we should check `self_ty` against the receiver
-                                        // type in the `UnifyReceiver` context, but for now, use
-                                        // this imperfect proxy. This will fail if there are
-                                        // multiple `impl`s for the same trait like
-                                        // `impl Foo for Box<dyn Bar>` and `impl Foo for dyn Bar`.
-                                        // In that case, only the first one will get suggestions.
-                                        let mut traits = vec![];
-                                        let mut hir_v = HirTraitObjectVisitor(&mut traits, *did);
-                                        hir_v.visit_ty(self_ty);
-                                        !traits.is_empty()
-                                    }) =>
-                                    {
-                                        Some(self_ty)
-                                    }
-                                    _ => None,
+                        match tcx.hir().trait_impls(trait_did).iter().find_map(|&impl_did| {
+                            match tcx.hir().get_if_local(impl_did.to_def_id()) {
+                                Some(Node::Item(Item {
+                                    kind: ItemKind::Impl(hir::Impl { self_ty, .. }),
+                                    ..
+                                })) if trait_objects.iter().all(|did| {
+                                    // FIXME: we should check `self_ty` against the receiver
+                                    // type in the `UnifyReceiver` context, but for now, use
+                                    // this imperfect proxy. This will fail if there are
+                                    // multiple `impl`s for the same trait like
+                                    // `impl Foo for Box<dyn Bar>` and `impl Foo for dyn Bar`.
+                                    // In that case, only the first one will get suggestions.
+                                    let mut traits = vec![];
+                                    let mut hir_v = HirTraitObjectVisitor(&mut traits, *did);
+                                    hir_v.visit_ty(self_ty);
+                                    !traits.is_empty()
+                                }) =>
+                                {
+                                    Some(self_ty)
                                 }
-                            })
-                            .next()
-                        {
+                                _ => None,
+                            }
+                        }) {
                             Some(self_ty) => Some((trait_item.ident, self_ty)),
                             _ => None,
                         }

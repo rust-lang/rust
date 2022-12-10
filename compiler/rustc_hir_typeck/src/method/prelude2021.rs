@@ -341,8 +341,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         // Find an identifier with which this trait was imported (note that `_` doesn't count).
         let any_id = import_items
             .iter()
-            .filter_map(|item| if item.ident.name != Underscore { Some(item.ident) } else { None })
-            .next();
+            .find_map(|item| if item.ident.name != Underscore { Some(item.ident) } else { None });
         if let Some(any_id) = any_id {
             if any_id.name == Empty {
                 // Glob import, so just use its name.

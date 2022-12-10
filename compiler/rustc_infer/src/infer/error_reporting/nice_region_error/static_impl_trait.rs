@@ -309,19 +309,12 @@ pub fn suggest_new_region_bound(
                 let did = item_id.owner_id.to_def_id();
                 let ty = tcx.mk_opaque(did, ty::InternalSubsts::identity_for_item(tcx, did));
 
-                if let Some(span) = opaque
-                    .bounds
-                    .iter()
-                    .filter_map(|arg| match arg {
-                        GenericBound::Outlives(Lifetime {
-                            res: LifetimeName::Static,
-                            ident,
-                            ..
-                        }) => Some(ident.span),
-                        _ => None,
-                    })
-                    .next()
-                {
+                if let Some(span) = opaque.bounds.iter().find_map(|arg| match arg {
+                    GenericBound::Outlives(Lifetime {
+                        res: LifetimeName::Static, ident, ..
+                    }) => Some(ident.span),
+                    _ => None,
+                }) {
                     if let Some(explicit_static) = &explicit_static {
                         err.span_suggestion_verbose(
                             span,
@@ -338,20 +331,14 @@ pub fn suggest_new_region_bound(
                             Applicability::MaybeIncorrect,
                         );
                     }
-                } else if opaque
-                    .bounds
-                    .iter()
-                    .filter_map(|arg| match arg {
-                        GenericBound::Outlives(Lifetime { ident, .. })
-                            if ident.name.to_string() == lifetime_name =>
-                        {
-                            Some(ident.span)
-                        }
-                        _ => None,
-                    })
-                    .next()
-                    .is_some()
-                {
+                } else if opaque.bounds.iter().any(|arg| match arg {
+                    GenericBound::Outlives(Lifetime { ident, .. })
+                        if ident.name.to_string() == lifetime_name =>
+                    {
+                        true
+                    }
+                    _ => false,
+                }) {
                 } else {
                     err.span_suggestion_verbose(
                         fn_return.span.shrink_to_hi(),
@@ -428,35 +415,29 @@ impl<'a, 'tcx> NiceRegionError<'a, 'tcx> {
                         // obligation comes from the `impl`. Find that `impl` so that we can point
                         // at it in the suggestion.
                         let trait_did = trait_did.to_def_id();
-                        match tcx
-                            .hir()
-                            .trait_impls(trait_did)
-                            .iter()
-                            .filter_map(|&impl_did| {
-                                match tcx.hir().get_if_local(impl_did.to_def_id()) {
-                                    Some(Node::Item(Item {
-                                        kind: ItemKind::Impl(hir::Impl { self_ty, .. }),
-                                        ..
-                                    })) if trait_objects.iter().all(|did| {
-                                        // FIXME: we should check `self_ty` against the receiver
-                                        // type in the `UnifyReceiver` context, but for now, use
-                                        // this imperfect proxy. This will fail if there are
-                                        // multiple `impl`s for the same trait like
-                                        // `impl Foo for Box<dyn Bar>` and `impl Foo for dyn Bar`.
-                                        // In that case, only the first one will get suggestions.
-                                        let mut traits = vec![];
-                                        let mut hir_v = HirTraitObjectVisitor(&mut traits, *did);
-                                        hir_v.visit_ty(self_ty);
-                                        !traits.is_empty()
-                                    }) =>
-                                    {
-                                        Some(self_ty)
-                                    }
-                                    _ => None,
+                        match tcx.hir().trait_impls(trait_did).iter().find_map(|&impl_did| {
+                            match tcx.hir().get_if_local(impl_did.to_def_id()) {
+                                Some(Node::Item(Item {
+                                    kind: ItemKind::Impl(hir::Impl { self_ty, .. }),
+                                    ..
+                                })) if trait_objects.iter().all(|did| {
+                                    // FIXME: we should check `self_ty` against the receiver
+                                    // type in the `UnifyReceiver` context, but for now, use
+                                    // this imperfect proxy. This will fail if there are
+                                    // multiple `impl`s for the same trait like
+                                    // `impl Foo for Box<dyn Bar>` and `impl Foo for dyn Bar`.
+                                    // In that case, only the first one will get suggestions.
+                                    let mut traits = vec![];
+                                    let mut hir_v = HirTraitObjectVisitor(&mut traits, *did);
+                                    hir_v.visit_ty(self_ty);
+                                    !traits.is_empty()
+                                }) =>
+                                {
+                                    Some(self_ty)
                                 }
-                            })
-                            .next()
-                        {
+                                _ => None,
+                            }
+                        }) {
                             Some(self_ty) => Some((trait_item.ident, self_ty)),
                             _ => None,
                         }

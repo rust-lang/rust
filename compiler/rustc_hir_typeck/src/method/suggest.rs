@@ -257,9 +257,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                         self.tcx
                             .inherent_impls(adt_def.did())
                             .iter()
-                            .filter_map(|def_id| self.associated_value(*def_id, item_name))
-                            .count()
-                            >= 1
+                            .any(|def_id| self.associated_value(*def_id, item_name).is_some())
                     } else {
                         false
                     }
