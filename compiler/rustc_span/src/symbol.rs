@@ -1710,7 +1710,8 @@ impl fmt::Display for Ident {
     }
 }
 
-/// This is the most general way to print identifiers.
+/// The most general type to print identifiers.
+///
 /// AST pretty-printer is used as a fallback for turning AST structures into token streams for
 /// proc macros. Additionally, proc macros may stringify their input and expect it survive the
 /// stringification (especially true for proc macro derives written between Rust 1.15 and 1.30).
