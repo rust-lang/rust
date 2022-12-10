@@ -160,11 +160,6 @@ body.source .example-wrap pre.rust a {
 	background: #333;
 }
 
-.module-item .stab,
-.import-item .stab {
-	color: #000;
-}
-
 .result-name .primitive > i, .result-name .keyword > i {
 	color: #788797;
 }

@@ -955,7 +955,7 @@ fn trait_def(tcx: TyCtxt<'_>, def_id: DefId) -> ty::TraitDef {
                     .struct_span_err(
                         attr.span,
                         "the `#[rustc_must_implement_one_of]` attribute must be \
-                        used with at least 2 args",
+                         used with at least 2 args",
                     )
                     .emit();
 
@@ -987,7 +987,7 @@ fn trait_def(tcx: TyCtxt<'_>, def_id: DefId) -> ty::TraitDef {
                             tcx.sess
                                 .struct_span_err(
                                     item.span,
-                                    "This function doesn't have a default implementation",
+                                    "function doesn't have a default implementation",
                                 )
                                 .span_note(attr_span, "required by this annotation")
                                 .emit();
@@ -999,17 +999,17 @@ fn trait_def(tcx: TyCtxt<'_>, def_id: DefId) -> ty::TraitDef {
                     }
                     Some(item) => {
                         tcx.sess
-                            .struct_span_err(item.span, "Not a function")
+                            .struct_span_err(item.span, "not a function")
                             .span_note(attr_span, "required by this annotation")
                             .note(
-                                "All `#[rustc_must_implement_one_of]` arguments \
-                            must be associated function names",
+                                "all `#[rustc_must_implement_one_of]` arguments must be associated \
+                                 function names",
                             )
                             .emit();
                     }
                     None => {
                         tcx.sess
-                            .struct_span_err(ident.span, "Function not found in this trait")
+                            .struct_span_err(ident.span, "function not found in this trait")
                             .emit();
                     }
                 }
@@ -1027,11 +1027,8 @@ fn trait_def(tcx: TyCtxt<'_>, def_id: DefId) -> ty::TraitDef {
             for ident in &*list {
                 if let Some(dup) = set.insert(ident.name, ident.span) {
                     tcx.sess
-                        .struct_span_err(vec![dup, ident.span], "Functions names are duplicated")
-                        .note(
-                            "All `#[rustc_must_implement_one_of]` arguments \
-                            must be unique",
-                        )
+                        .struct_span_err(vec![dup, ident.span], "functions names are duplicated")
+                        .note("all `#[rustc_must_implement_one_of]` arguments must be unique")
                         .emit();
 
                     no_dups = false;
