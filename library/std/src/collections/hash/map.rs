@@ -906,9 +906,9 @@ where
         K: Borrow<Q>,
         Q: Hash + Eq,
     {
-        match self.base.get(k) {
-            Some(value) => value,
-            None => {
+        match self.base.contains_key(k) {
+            true => self.base.get(k),
+            false => {
                 let value = (callback)();
                 self.base.insert(k, value);
                 self.base.get(k)
