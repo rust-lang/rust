@@ -1,6 +1,6 @@
 #![unstable(feature = "raw_vec_internals", reason = "unstable const warnings", issue = "none")]
 
-use core::alloc::LayoutError;
+use core::alloc::{LayoutError, GlobalCoAllocMeta};
 use core::cmp;
 use core::intrinsics;
 use core::mem::{self, ManuallyDrop, MaybeUninit, SizedTypeProperties};
@@ -53,6 +53,8 @@ pub(crate) struct RawVec<T, A: Allocator = Global> {
     ptr: Unique<T>,
     cap: usize,
     alloc: A,
+    #[allow(dead_code)]
+    pub(crate) meta: GlobalCoAllocMeta,
 }
 
 impl<T> RawVec<T, Global> {
@@ -120,7 +122,7 @@ impl<T, A: Allocator> RawVec<T, A> {
     /// the returned `RawVec`.
     pub const fn new_in(alloc: A) -> Self {
         // `cap: 0` means "unallocated". zero-sized types are ignored.
-        Self { ptr: Unique::dangling(), cap: 0, alloc }
+        Self { ptr: Unique::dangling(), cap: 0, alloc, meta: GlobalCoAllocMeta {/*one: 1*/ /* , two: 2, three: 3, four: 4*/} }
     }
 
     /// Like `with_capacity`, but parameterized over the choice of
@@ -197,6 +199,7 @@ impl<T, A: Allocator> RawVec<T, A> {
                 ptr: unsafe { Unique::new_unchecked(ptr.cast().as_ptr()) },
                 cap: capacity,
                 alloc,
+                meta: GlobalCoAllocMeta {/*one: 1*/ /*, two: 2, three: 3, four: 4*/}
             }
         }
     }
@@ -213,7 +216,7 @@ impl<T, A: Allocator> RawVec<T, A> {
     /// guaranteed.
     #[inline]
     pub unsafe fn from_raw_parts_in(ptr: *mut T, capacity: usize, alloc: A) -> Self {
-        Self { ptr: unsafe { Unique::new_unchecked(ptr) }, cap: capacity, alloc }
+        Self { ptr: unsafe { Unique::new_unchecked(ptr) }, cap: capacity, alloc, meta: GlobalCoAllocMeta {/*one: 1*/ /*, two: 2, three: 3, four: 4*/} }
     }
 
     /// Gets a raw pointer to the start of the allocation. Note that this is
@@ -474,7 +477,17 @@ where
 
 unsafe impl<#[may_dangle] T, A: Allocator> Drop for RawVec<T, A> {
     /// Frees the memory owned by the `RawVec` *without* trying to drop its contents.
+    default fn drop(&mut self) {
+        if let Some((ptr, layout)) = self.current_memory() {
+            unsafe { self.alloc.deallocate(ptr, layout) }
+        }
+    }
+}
+
+unsafe impl<#[may_dangle] T> Drop for RawVec<T, Global> {
+    /// Frees the memory owned by the `RawVec` *without* trying to drop its contents.
     fn drop(&mut self) {
+        // @TODO
         if let Some((ptr, layout)) = self.current_memory() {
             unsafe { self.alloc.deallocate(ptr, layout) }
         }

@@ -1,4 +1,6 @@
 use crate::infer::{InferCtxt, TyOrConstInferVar};
+use core::alloc::GlobalCoAllocMeta;
+use core::mem;
 use rustc_data_structures::fx::FxHashMap;
 use rustc_data_structures::obligation_forest::ProcessResult;
 use rustc_data_structures::obligation_forest::{Error, ForestObligation, Outcome};
@@ -80,7 +82,7 @@ pub struct PendingPredicateObligation<'tcx> {
 
 // `PendingPredicateObligation` is used a lot. Make sure it doesn't unintentionally get bigger.
 #[cfg(all(target_arch = "x86_64", target_pointer_width = "64"))]
-static_assert_size!(PendingPredicateObligation<'_>, 72);
+static_assert_size!(PendingPredicateObligation<'_>, 72 + mem::size_of::<GlobalCoAllocMeta>());
 
 impl<'a, 'tcx> FulfillmentContext<'tcx> {
     /// Creates a new fulfillment context.
