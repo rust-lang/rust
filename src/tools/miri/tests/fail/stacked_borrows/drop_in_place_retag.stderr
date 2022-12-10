@@ -5,7 +5,7 @@ LL | pub unsafe fn drop_in_place<T: ?Sized>(to_drop: *mut T) {
    | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
    | |
    | trying to retag from <TAG> for Unique permission at ALLOC[0x0], but that tag only grants SharedReadOnly permission for this location
-   | this error occurs as part of FnEntry retag at ALLOC[0x0..0x1]
+   | this error occurs as part of retag at ALLOC[0x0..0x1]
    |
    = help: this indicates a potential bug in the program: it performed an invalid operation, but the Stacked Borrows rules it violated are still experimental
    = help: see https://github.com/rust-lang/unsafe-code-guidelines/blob/master/wip/stacked-borrows.md for further information
@@ -16,7 +16,7 @@ LL |         let x = core::ptr::addr_of!(x);
    |                 ^^^^^^^^^^^^^^^^^^^^^^
    = note: BACKTRACE:
    = note: inside `std::ptr::drop_in_place::<u8> - shim(None)` at RUSTLIB/core/src/ptr/mod.rs:LL:CC
-note: inside `main` at $DIR/drop_in_place_retag.rs:LL:CC
+note: inside `main`
   --> $DIR/drop_in_place_retag.rs:LL:CC
    |
 LL |         core::ptr::drop_in_place(x.cast_mut());

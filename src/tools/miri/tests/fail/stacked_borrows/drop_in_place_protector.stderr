@@ -20,7 +20,7 @@ LL |         core::ptr::drop_in_place(x);
    = note: inside `<HasDrop as std::ops::Drop>::drop` at $DIR/drop_in_place_protector.rs:LL:CC
    = note: inside `std::ptr::drop_in_place::<HasDrop> - shim(Some(HasDrop))` at RUSTLIB/core/src/ptr/mod.rs:LL:CC
    = note: inside `std::ptr::drop_in_place::<(HasDrop, u8)> - shim(Some((HasDrop, u8)))` at RUSTLIB/core/src/ptr/mod.rs:LL:CC
-note: inside `main` at $DIR/drop_in_place_protector.rs:LL:CC
+note: inside `main`
   --> $DIR/drop_in_place_protector.rs:LL:CC
    |
 LL |         core::ptr::drop_in_place(x);
