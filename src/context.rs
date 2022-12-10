@@ -253,7 +253,7 @@ impl<'gcc, 'tcx> CodegenCx<'gcc, 'tcx> {
 
     pub fn rvalue_as_function(&self, value: RValue<'gcc>) -> Function<'gcc> {
         let function: Function<'gcc> = unsafe { std::mem::transmute(value) };
-        debug_assert!(self.functions.borrow().values().find(|value| **value == function).is_some(),
+        debug_assert!(self.functions.borrow().values().any(|value| *value == function),
             "{:?} ({:?}) is not a function", value, value.get_type());
         function
     }
