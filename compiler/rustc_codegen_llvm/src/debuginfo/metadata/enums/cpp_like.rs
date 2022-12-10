@@ -22,9 +22,9 @@ use crate::{
     common::CodegenCx,
     debuginfo::{
         metadata::{
-            build_field_di_node, closure_saved_names_of_captured_variables,
+            build_field_di_node,
             enums::{tag_base_type, DiscrResult},
-            file_metadata, generator_layout_and_saved_local_names, size_and_align_of, type_di_node,
+            file_metadata, size_and_align_of, type_di_node,
             type_map::{self, Stub, UniqueTypeId},
             unknown_file_metadata, DINodeCreationResult, SmallVec, NO_GENERICS, NO_SCOPE_METADATA,
             UNKNOWN_LINE_NUMBER,
@@ -677,9 +677,9 @@ fn build_union_fields_for_direct_tag_generator<'ll, 'tcx>(
     };
 
     let (generator_layout, state_specific_upvar_names) =
-        generator_layout_and_saved_local_names(cx.tcx, generator_def_id);
+        cx.tcx.generator_layout_and_saved_local_names(generator_def_id);
 
-    let common_upvar_names = closure_saved_names_of_captured_variables(cx.tcx, generator_def_id);
+    let common_upvar_names = cx.tcx.closure_saved_names_of_captured_variables(generator_def_id);
     let variant_range = generator_substs.variant_range(generator_def_id, cx.tcx);
     let variant_count = (variant_range.start.as_u32()..variant_range.end.as_u32()).len();
 
