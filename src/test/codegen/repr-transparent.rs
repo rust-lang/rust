@@ -2,6 +2,7 @@
 
 // ignore-riscv64 riscv64 has an i128 type used with test_Vector
 // see codegen/riscv-abi for riscv functiona call tests
+// ignore-s390x s390x with default march passes vector types per reference
 
 #![crate_type="lib"]
 #![feature(repr_simd, transparent_unions)]
