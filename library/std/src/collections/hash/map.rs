@@ -907,11 +907,11 @@ where
         Q: Hash + Eq,
     {
         match self.base.contains_key(k) {
-            true => self.base.get(k),
+            true => self.base.get(k).unwrap(),
             false => {
                 let value = (callback)();
                 self.base.insert(k, value);
-                self.base.get(k)
+                self.base.get(k).unwrap()
             }
         }
     }
