@@ -300,4 +300,8 @@ impl<'gcc, 'tcx> TypeMembershipMethods<'tcx> for CodegenCx<'gcc, 'tcx> {
         // Unsupported.
         self.context.new_rvalue_from_int(self.int_type, 0)
     }
+
+    fn set_kcfi_type_metadata(&self, _function: RValue<'gcc>, _kcfi_typeid: u32) {
+        // Unsupported.
+    }
 }

@@ -20,6 +20,7 @@ use rustc_middle::ty::layout::{
 };
 use rustc_middle::ty::{self, Ty, TyCtxt};
 use rustc_span::Span;
+use rustc_symbol_mangling::typeid::kcfi_typeid_for_fnabi;
 use rustc_target::abi::{self, call::FnAbi, Align, Size, WrappingRange};
 use rustc_target::spec::{HasTargetSpec, Target};
 use std::borrow::Cow;
@@ -225,9 +226,25 @@ impl<'a, 'll, 'tcx> BuilderMethods<'a, 'tcx> for Builder<'a, 'll, 'tcx> {
         debug!("invoke {:?} with args ({:?})", llfn, args);
 
         let args = self.check_call("invoke", llty, llfn, args);
-        let bundle = funclet.map(|funclet| funclet.bundle());
-        let bundle = bundle.as_ref().map(|b| &*b.raw);
+        let funclet_bundle = funclet.map(|funclet| funclet.bundle());
+        let funclet_bundle = funclet_bundle.as_ref().map(|b| &*b.raw);
+        let mut bundles = vec![funclet_bundle];
 
+        // Set KCFI operand bundle
+        let is_indirect_call = unsafe { llvm::LLVMIsAFunction(llfn).is_none() };
+        let kcfi_bundle =
+            if self.tcx.sess.is_sanitizer_kcfi_enabled() && fn_abi.is_some() && is_indirect_call {
+                let kcfi_typeid = kcfi_typeid_for_fnabi(self.tcx, fn_abi.unwrap());
+                Some(llvm::OperandBundleDef::new("kcfi", &[self.const_u32(kcfi_typeid)]))
+            } else {
+                None
+            };
+        if kcfi_bundle.is_some() {
+            let kcfi_bundle = kcfi_bundle.as_ref().map(|b| &*b.raw);
+            bundles.push(kcfi_bundle);
+        }
+
+        bundles.retain(|bundle| bundle.is_some());
         let invoke = unsafe {
             llvm::LLVMRustBuildInvoke(
                 self.llbuilder,
@@ -237,7 +254,8 @@ impl<'a, 'll, 'tcx> BuilderMethods<'a, 'tcx> for Builder<'a, 'll, 'tcx> {
                 args.len() as c_uint,
                 then,
                 catch,
-                bundle,
+                bundles.as_ptr(),
+                bundles.len() as c_uint,
                 UNNAMED,
             )
         };
@@ -1143,7 +1161,8 @@ impl<'a, 'll, 'tcx> BuilderMethods<'a, 'tcx> for Builder<'a, 'll, 'tcx> {
                 llfn,
                 args.as_ptr() as *const &llvm::Value,
                 args.len() as c_uint,
-                None,
+                [].as_ptr(),
+                0 as c_uint,
             );
         }
     }
@@ -1159,9 +1178,25 @@ impl<'a, 'll, 'tcx> BuilderMethods<'a, 'tcx> for Builder<'a, 'll, 'tcx> {
         debug!("call {:?} with args ({:?})", llfn, args);
 
         let args = self.check_call("call", llty, llfn, args);
-        let bundle = funclet.map(|funclet| funclet.bundle());
-        let bundle = bundle.as_ref().map(|b| &*b.raw);
+        let funclet_bundle = funclet.map(|funclet| funclet.bundle());
+        let funclet_bundle = funclet_bundle.as_ref().map(|b| &*b.raw);
+        let mut bundles = vec![funclet_bundle];
 
+        // Set KCFI operand bundle
+        let is_indirect_call = unsafe { llvm::LLVMIsAFunction(llfn).is_none() };
+        let kcfi_bundle =
+            if self.tcx.sess.is_sanitizer_kcfi_enabled() && fn_abi.is_some() && is_indirect_call {
+                let kcfi_typeid = kcfi_typeid_for_fnabi(self.tcx, fn_abi.unwrap());
+                Some(llvm::OperandBundleDef::new("kcfi", &[self.const_u32(kcfi_typeid)]))
+            } else {
+                None
+            };
+        if kcfi_bundle.is_some() {
+            let kcfi_bundle = kcfi_bundle.as_ref().map(|b| &*b.raw);
+            bundles.push(kcfi_bundle);
+        }
+
+        bundles.retain(|bundle| bundle.is_some());
         let call = unsafe {
             llvm::LLVMRustBuildCall(
                 self.llbuilder,
@@ -1169,7 +1204,8 @@ impl<'a, 'll, 'tcx> BuilderMethods<'a, 'tcx> for Builder<'a, 'll, 'tcx> {
                 llfn,
                 args.as_ptr() as *const &llvm::Value,
                 args.len() as c_uint,
-                bundle,
+                bundles.as_ptr(),
+                bundles.len() as c_uint,
             )
         };
         if let Some(fn_abi) = fn_abi {

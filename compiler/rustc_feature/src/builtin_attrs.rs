@@ -394,7 +394,7 @@ pub const BUILTIN_ATTRIBUTES: &[BuiltinAttribute] = &[
     ungated!(instruction_set, Normal, template!(List: "set"), ErrorPreceding),
     gated!(
         no_sanitize, Normal,
-        template!(List: "address, memory, thread"), DuplicatesOk,
+        template!(List: "address, kcfi, memory, thread"), DuplicatesOk,
         experimental!(no_sanitize)
     ),
     gated!(no_coverage, Normal, template!(Word), WarnFollowing, experimental!(no_coverage)),

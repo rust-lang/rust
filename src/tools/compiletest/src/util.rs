@@ -42,6 +42,8 @@ pub const CFI_SUPPORTED_TARGETS: &[&str] = &[
     "x86_64-unknown-netbsd",
 ];
 
+pub const KCFI_SUPPORTED_TARGETS: &[&str] = &["aarch64-linux-none", "x86_64-linux-none"];
+
 pub const LSAN_SUPPORTED_TARGETS: &[&str] = &[
     // FIXME: currently broken, see #88132
     // "aarch64-apple-darwin",
