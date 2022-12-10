@@ -127,11 +127,8 @@ impl<'tcx> MirPass<'tcx> for SimplifyComparisonIntegral {
             let targets = SwitchTargets::new(iter::once((new_value, bb_cond)), bb_otherwise);
 
             let terminator = bb.terminator_mut();
-            terminator.kind = TerminatorKind::SwitchInt {
-                discr: Operand::Move(opt.to_switch_on),
-                switch_ty: opt.branch_value_ty,
-                targets,
-            };
+            terminator.kind =
+                TerminatorKind::SwitchInt { discr: Operand::Move(opt.to_switch_on), targets };
         }
 
         for (idx, bb_idx) in storage_deads_to_remove {

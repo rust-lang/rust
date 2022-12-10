@@ -63,7 +63,7 @@
       bb3: {
 -         StorageDead(_8);                 // scope 2 at $DIR/remove_storage_markers.rs:+2:18: +2:19
           _10 = discriminant(_7);          // scope 2 at $DIR/remove_storage_markers.rs:+2:14: +2:19
-          switchInt(move _10) -> [0_isize: bb6, 1_isize: bb4, otherwise: bb5]; // scope 2 at $DIR/remove_storage_markers.rs:+2:14: +2:19
+          switchInt(move _10) -> [0: bb6, 1: bb4, otherwise: bb5]; // scope 2 at $DIR/remove_storage_markers.rs:+2:14: +2:19
       }
   
       bb4: {

@@ -37,8 +37,8 @@
       }
   
       bb2: {
--         switchInt(move _5) -> [false: bb4, otherwise: bb3]; // scope 0 at $DIR/cycle.rs:+3:11: +3:17
-+         switchInt(move _4) -> [false: bb4, otherwise: bb3]; // scope 0 at $DIR/cycle.rs:+3:11: +3:17
+-         switchInt(move _5) -> [0: bb4, otherwise: bb3]; // scope 0 at $DIR/cycle.rs:+3:11: +3:17
++         switchInt(move _4) -> [0: bb4, otherwise: bb3]; // scope 0 at $DIR/cycle.rs:+3:11: +3:17
       }
   
       bb3: {

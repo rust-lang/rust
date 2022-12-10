@@ -145,7 +145,7 @@ fn array_casts() -> () {
         StorageDead(_24);                // scope 7 at $SRC_DIR/core/src/macros/mod.rs:LL:COL
         _22 = Not(move _23);             // scope 7 at $SRC_DIR/core/src/macros/mod.rs:LL:COL
         StorageDead(_23);                // scope 7 at $SRC_DIR/core/src/macros/mod.rs:LL:COL
-        switchInt(move _22) -> [false: bb4, otherwise: bb3]; // scope 7 at $SRC_DIR/core/src/macros/mod.rs:LL:COL
+        switchInt(move _22) -> [0: bb4, otherwise: bb3]; // scope 7 at $SRC_DIR/core/src/macros/mod.rs:LL:COL
     }
 
     bb3: {

@@ -39,7 +39,7 @@
 +         StorageLive(_6);                 // scope 2 at $DIR/inline_shims.rs:+2:14: +2:40
 +         StorageLive(_7);                 // scope 2 at $DIR/inline_shims.rs:+2:14: +2:40
 +         _6 = discriminant((*_5));        // scope 3 at $SRC_DIR/core/src/ptr/mod.rs:LL:COL
-+         switchInt(move _6) -> [0_isize: bb2, otherwise: bb3]; // scope 3 at $SRC_DIR/core/src/ptr/mod.rs:LL:COL
++         switchInt(move _6) -> [0: bb2, otherwise: bb3]; // scope 3 at $SRC_DIR/core/src/ptr/mod.rs:LL:COL
       }
   
       bb2: {
