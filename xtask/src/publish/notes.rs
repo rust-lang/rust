@@ -5,6 +5,8 @@ use std::{
 };
 
 const LISTING_DELIMITER: &'static str = "----";
+const IMAGE_BLOCK_PREFIX: &'static str = "image::";
+const VIDEO_BLOCK_PREFIX: &'static str = "video::";
 
 struct Converter<'a, 'b, R: BufRead> {
     iter: &'a mut Peekable<Lines<R>>,
@@ -33,6 +35,12 @@ impl<'a, 'b, R: BufRead> Converter<'a, 'b, R> {
                 self.process_source_code_block(0)?;
             } else if line.starts_with(LISTING_DELIMITER) {
                 self.process_listing_block(None, 0)?;
+            } else if line.starts_with('.') {
+                self.process_block_with_title(0)?;
+            } else if line.starts_with(IMAGE_BLOCK_PREFIX) {
+                self.process_image_block(None, 0)?;
+            } else if line.starts_with(VIDEO_BLOCK_PREFIX) {
+                self.process_video_block(None, 0)?;
             } else {
                 self.process_paragraph(0)?;
             }
@@ -95,6 +103,15 @@ impl<'a, 'b, R: BufRead> Converter<'a, 'b, R> {
                 } else if line.starts_with(LISTING_DELIMITER) {
                     self.write_line("", 0);
                     self.process_listing_block(None, 1)?;
+                } else if line.starts_with('.') {
+                    self.write_line("", 0);
+                    self.process_block_with_title(1)?;
+                } else if line.starts_with(IMAGE_BLOCK_PREFIX) {
+                    self.write_line("", 0);
+                    self.process_image_block(None, 1)?;
+                } else if line.starts_with(VIDEO_BLOCK_PREFIX) {
+                    self.write_line("", 0);
+                    self.process_video_block(None, 1)?;
                 } else {
                     self.write_line("", 0);
                     self.process_paragraph(1)?;
@@ -145,6 +162,75 @@ impl<'a, 'b, R: BufRead> Converter<'a, 'b, R> {
         bail!("not a listing block")
     }
 
+    fn process_block_with_title(&mut self, level: usize) -> anyhow::Result<()> {
+        if let Some(Ok(line)) = self.iter.next() {
+            let title =
+                line.strip_prefix('.').ok_or_else(|| anyhow!("extraction of the title failed"))?;
+
+            let line = self
+                .iter
+                .peek()
+                .ok_or_else(|| anyhow!("target block for the title is not found"))?;
+            let line = line.as_deref().map_err(|e| anyhow!("{e}"))?;
+            if line.starts_with(IMAGE_BLOCK_PREFIX) {
+                return self.process_image_block(Some(title), level);
+            } else if line.starts_with(VIDEO_BLOCK_PREFIX) {
+                return self.process_video_block(Some(title), level);
+            } else {
+                bail!("title for that block type is not supported");
+            }
+        }
+        bail!("not a title")
+    }
+
+    fn process_image_block(&mut self, caption: Option<&str>, level: usize) -> anyhow::Result<()> {
+        if let Some(Ok(line)) = self.iter.next() {
+            if let Some((url, attrs)) = parse_media_block(&line, IMAGE_BLOCK_PREFIX) {
+                let alt = if let Some(stripped) =
+                    attrs.strip_prefix('"').and_then(|s| s.strip_suffix('"'))
+                {
+                    stripped
+                } else {
+                    attrs
+                };
+                if let Some(caption) = caption {
+                    self.write_caption_line(caption, level);
+                }
+                self.write_indent(level);
+                self.output.push_str("![");
+                self.output.push_str(alt);
+                self.output.push_str("](");
+                self.output.push_str(url);
+                self.output.push_str(")\n");
+                return Ok(());
+            }
+        }
+        bail!("not a image block")
+    }
+
+    fn process_video_block(&mut self, caption: Option<&str>, level: usize) -> anyhow::Result<()> {
+        if let Some(Ok(line)) = self.iter.next() {
+            if let Some((url, attrs)) = parse_media_block(&line, VIDEO_BLOCK_PREFIX) {
+                let html_attrs = match attrs {
+                    "options=loop" => "controls loop",
+                    r#"options="autoplay,loop""# => "autoplay controls loop",
+                    _ => bail!("unsupported video syntax"),
+                };
+                if let Some(caption) = caption {
+                    self.write_caption_line(caption, level);
+                }
+                self.write_indent(level);
+                self.output.push_str(r#"<video src=""#);
+                self.output.push_str(url);
+                self.output.push_str(r#"" "#);
+                self.output.push_str(html_attrs);
+                self.output.push_str(">Your browser does not support the video tag.</video>\n");
+                return Ok(());
+            }
+        }
+        bail!("not a video block")
+    }
+
     fn process_paragraph(&mut self, level: usize) -> anyhow::Result<()> {
         while let Some(line) = self.iter.peek() {
             let line = line.as_deref().map_err(|e| anyhow!("{e}"))?;
@@ -190,6 +276,13 @@ impl<'a, 'b, R: BufRead> Converter<'a, 'b, R> {
         self.output.push_str("- ");
         self.output.push_str(item);
         self.output.push('\n');
+    }
+
+    fn write_caption_line(&mut self, caption: &str, level: usize) {
+        self.write_indent(level);
+        self.output.push('_');
+        self.output.push_str(caption);
+        self.output.push_str("_\\\n");
     }
 
     fn write_indent(&mut self, level: usize) {
@@ -249,6 +342,17 @@ fn get_list_item(line: &str) -> Option<&str> {
     }
 }
 
+fn parse_media_block<'a>(line: &'a str, prefix: &str) -> Option<(&'a str, &'a str)> {
+    if let Some(line) = line.strip_prefix(prefix) {
+        if let Some((url, rest)) = line.split_once('[') {
+            if let Some(attrs) = rest.strip_suffix(']') {
+                return Some((url, attrs));
+            }
+        }
+    }
+    None
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -272,7 +376,17 @@ Release: release:2022-01-01[]
 +
 image::https://example.com/animation.gif[]
 +
+image::https://example.com/animation.gif[\"alt text\"]
++
+video::https://example.com/movie.mp4[options=loop]
++
 video::https://example.com/movie.mp4[options=\"autoplay,loop\"]
++
+.Image
+image::https://example.com/animation.gif[]
++
+.Video
+video::https://example.com/movie.mp4[options=loop]
 +
 [source,bash]
 ----
@@ -325,9 +439,19 @@ Release: release:2022-01-01[]
 - pr:1111[] foo bar baz
 - pr:2222[] foo bar baz
 
-  image::https://example.com/animation.gif[]
+  ![](https://example.com/animation.gif)
 
-  video::https://example.com/movie.mp4[options=\"autoplay,loop\"]
+  ![alt text](https://example.com/animation.gif)
+
+  <video src=\"https://example.com/movie.mp4\" controls loop>Your browser does not support the video tag.</video>
+
+  <video src=\"https://example.com/movie.mp4\" autoplay controls loop>Your browser does not support the video tag.</video>
+
+  _Image_\\
+  ![](https://example.com/animation.gif)
+
+  _Video_\\
+  <video src=\"https://example.com/movie.mp4\" controls loop>Your browser does not support the video tag.</video>
 
   ```bash
   rustup update nightly
