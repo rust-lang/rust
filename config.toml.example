@@ -35,9 +35,6 @@ changelog-seen = 2
 # Unless you're developing for a target where Rust CI doesn't build a compiler
 # toolchain or changing LLVM locally, you probably want to set this to true.
 #
-# This is false by default so that distributions don't unexpectedly download
-# LLVM from the internet.
-#
 # All tier 1 targets are currently supported; set this to `"if-available"` if
 # you are not sure whether you're on a tier 1 target.
 #
@@ -45,7 +42,9 @@ changelog-seen = 2
 #
 # Note that many of the LLVM options are not currently supported for
 # downloading. Currently only the "assertions" option can be toggled.
-#download-ci-llvm = false
+#
+# Defaults to "if-available" when `channel = "dev"` and "false" otherwise.
+#download-ci-llvm = "if-available"
 
 # Indicates whether LLVM rebuild should be skipped when running bootstrap. If
 # this is `false` then the compiler's LLVM will be rebuilt whenever the built

@@ -1551,3 +1551,19 @@ fn hiberfil_sys() {
     fs::metadata(hiberfil).unwrap();
     assert_eq!(true, hiberfil.exists());
 }
+
+/// Test that two different ways of obtaining the FileType give the same result.
+/// Cf. https://github.com/rust-lang/rust/issues/104900
+#[test]
+fn test_eq_direntry_metadata() {
+    let tmpdir = tmpdir();
+    let file_path = tmpdir.join("file");
+    File::create(file_path).unwrap();
+    for e in fs::read_dir(tmpdir.path()).unwrap() {
+        let e = e.unwrap();
+        let p = e.path();
+        let ft1 = e.file_type().unwrap();
+        let ft2 = p.metadata().unwrap().file_type();
+        assert_eq!(ft1, ft2);
+    }
+}

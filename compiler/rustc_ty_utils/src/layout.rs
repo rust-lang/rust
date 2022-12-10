@@ -1,3 +1,4 @@
+use hir::def_id::DefId;
 use rustc_hir as hir;
 use rustc_index::bit_set::BitSet;
 use rustc_index::vec::{Idx, IndexVec};
@@ -6,7 +7,7 @@ use rustc_middle::ty::layout::{
     IntegerExt, LayoutCx, LayoutError, LayoutOf, TyAndLayout, MAX_SIMD_LANES,
 };
 use rustc_middle::ty::{
-    self, subst::SubstsRef, EarlyBinder, ReprOptions, Ty, TyCtxt, TypeVisitable,
+    self, subst::SubstsRef, AdtDef, EarlyBinder, ReprOptions, Ty, TyCtxt, TypeVisitable,
 };
 use rustc_session::{DataTypeKind, FieldInfo, SizeKind, VariantInfo};
 use rustc_span::symbol::Symbol;
@@ -814,27 +815,39 @@ fn record_layout_for_printing_outlined<'tcx>(
         );
     };
 
-    let adt_def = match *layout.ty.kind() {
-        ty::Adt(ref adt_def, _) => {
+    match *layout.ty.kind() {
+        ty::Adt(adt_def, _) => {
             debug!("print-type-size t: `{:?}` process adt", layout.ty);
-            adt_def
+            let adt_kind = adt_def.adt_kind();
+            let adt_packed = adt_def.repr().pack.is_some();
+            let (variant_infos, opt_discr_size) = variant_info_for_adt(cx, layout, adt_def);
+            record(adt_kind.into(), adt_packed, opt_discr_size, variant_infos);
+        }
+
+        ty::Generator(def_id, substs, _) => {
+            debug!("print-type-size t: `{:?}` record generator", layout.ty);
+            // Generators always have a begin/poisoned/end state with additional suspend points
+            let (variant_infos, opt_discr_size) =
+                variant_info_for_generator(cx, layout, def_id, substs);
+            record(DataTypeKind::Generator, false, opt_discr_size, variant_infos);
         }
 
         ty::Closure(..) => {
             debug!("print-type-size t: `{:?}` record closure", layout.ty);
             record(DataTypeKind::Closure, false, None, vec![]);
-            return;
         }
 
         _ => {
             debug!("print-type-size t: `{:?}` skip non-nominal", layout.ty);
-            return;
         }
     };
+}
 
-    let adt_kind = adt_def.adt_kind();
-    let adt_packed = adt_def.repr().pack.is_some();
-
+fn variant_info_for_adt<'tcx>(
+    cx: &LayoutCx<'tcx, TyCtxt<'tcx>>,
+    layout: TyAndLayout<'tcx>,
+    adt_def: AdtDef<'tcx>,
+) -> (Vec<VariantInfo>, Option<Size>) {
     let build_variant_info = |n: Option<Symbol>, flds: &[Symbol], layout: TyAndLayout<'tcx>| {
         let mut min_size = Size::ZERO;
         let field_info: Vec<_> = flds
@@ -843,10 +856,7 @@ fn record_layout_for_printing_outlined<'tcx>(
             .map(|(i, &name)| {
                 let field_layout = layout.field(cx, i);
                 let offset = layout.fields.offset(i);
-                let field_end = offset + field_layout.size;
-                if min_size < field_end {
-                    min_size = field_end;
-                }
+                min_size = min_size.max(offset + field_layout.size);
                 FieldInfo {
                     name,
                     offset: offset.bytes(),
@@ -871,16 +881,9 @@ fn record_layout_for_printing_outlined<'tcx>(
                 debug!("print-type-size `{:#?}` variant {}", layout, adt_def.variant(index).name);
                 let variant_def = &adt_def.variant(index);
                 let fields: Vec<_> = variant_def.fields.iter().map(|f| f.name).collect();
-                record(
-                    adt_kind.into(),
-                    adt_packed,
-                    None,
-                    vec![build_variant_info(Some(variant_def.name), &fields, layout)],
-                );
+                (vec![build_variant_info(Some(variant_def.name), &fields, layout)], None)
             } else {
-                // (This case arises for *empty* enums; so give it
-                // zero variants.)
-                record(adt_kind.into(), adt_packed, None, vec![]);
+                (vec![], None)
             }
         }
 
@@ -898,15 +901,101 @@ fn record_layout_for_printing_outlined<'tcx>(
                     build_variant_info(Some(variant_def.name), &fields, layout.for_variant(cx, i))
                 })
                 .collect();
-            record(
-                adt_kind.into(),
-                adt_packed,
+
+            (
+                variant_infos,
                 match tag_encoding {
                     TagEncoding::Direct => Some(tag.size(cx)),
                     _ => None,
                 },
-                variant_infos,
-            );
+            )
         }
     }
+}
+
+fn variant_info_for_generator<'tcx>(
+    cx: &LayoutCx<'tcx, TyCtxt<'tcx>>,
+    layout: TyAndLayout<'tcx>,
+    def_id: DefId,
+    substs: ty::SubstsRef<'tcx>,
+) -> (Vec<VariantInfo>, Option<Size>) {
+    let Variants::Multiple { tag, ref tag_encoding, .. } = layout.variants else {
+        return (vec![], None);
+    };
+
+    let (generator, state_specific_names) = cx.tcx.generator_layout_and_saved_local_names(def_id);
+    let upvar_names = cx.tcx.closure_saved_names_of_captured_variables(def_id);
+
+    let mut upvars_size = Size::ZERO;
+    let upvar_fields: Vec<_> = substs
+        .as_generator()
+        .upvar_tys()
+        .zip(upvar_names)
+        .enumerate()
+        .map(|(field_idx, (_, name))| {
+            let field_layout = layout.field(cx, field_idx);
+            let offset = layout.fields.offset(field_idx);
+            upvars_size = upvars_size.max(offset + field_layout.size);
+            FieldInfo {
+                name: Symbol::intern(&name),
+                offset: offset.bytes(),
+                size: field_layout.size.bytes(),
+                align: field_layout.align.abi.bytes(),
+            }
+        })
+        .collect();
+
+    let variant_infos: Vec<_> = generator
+        .variant_fields
+        .iter_enumerated()
+        .map(|(variant_idx, variant_def)| {
+            let variant_layout = layout.for_variant(cx, variant_idx);
+            let mut variant_size = Size::ZERO;
+            let fields = variant_def
+                .iter()
+                .enumerate()
+                .map(|(field_idx, local)| {
+                    let field_layout = variant_layout.field(cx, field_idx);
+                    let offset = variant_layout.fields.offset(field_idx);
+                    // The struct is as large as the last field's end
+                    variant_size = variant_size.max(offset + field_layout.size);
+                    FieldInfo {
+                        name: state_specific_names.get(*local).copied().flatten().unwrap_or(
+                            Symbol::intern(&format!(".generator_field{}", local.as_usize())),
+                        ),
+                        offset: offset.bytes(),
+                        size: field_layout.size.bytes(),
+                        align: field_layout.align.abi.bytes(),
+                    }
+                })
+                .chain(upvar_fields.iter().copied())
+                .collect();
+
+            // If the variant has no state-specific fields, then it's the size of the upvars.
+            if variant_size == Size::ZERO {
+                variant_size = upvars_size;
+            }
+            // We need to add the discriminant size back into min_size, since it is subtracted
+            // later during printing.
+            variant_size += match tag_encoding {
+                TagEncoding::Direct => tag.size(cx),
+                _ => Size::ZERO,
+            };
+
+            VariantInfo {
+                name: Some(Symbol::intern(&ty::GeneratorSubsts::variant_name(variant_idx))),
+                kind: SizeKind::Exact,
+                size: variant_size.bytes(),
+                align: variant_layout.align.abi.bytes(),
+                fields,
+            }
+        })
+        .collect();
+    (
+        variant_infos,
+        match tag_encoding {
+            TagEncoding::Direct => Some(tag.size(cx)),
+            _ => None,
+        },
+    )
 }

@@ -828,6 +828,7 @@ symbols! {
         item_like_imports,
         iter,
         iter_repeat,
+        kcfi,
         keyword,
         kind,
         kreg,
