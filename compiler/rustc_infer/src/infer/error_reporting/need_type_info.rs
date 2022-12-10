@@ -461,33 +461,39 @@ impl<'tcx> TypeErrCtxt<'_, 'tcx> {
                     parent_name,
                 });
 
-                let args = fmt_printer(self, Namespace::TypeNS)
-                    .comma_sep(generic_args.iter().copied().map(|arg| {
-                        if arg.is_suggestable(self.tcx, true) {
-                            return arg;
-                        }
+                let args = if self.infcx.tcx.get_diagnostic_item(sym::iterator_collect_fn)
+                    == Some(generics_def_id)
+                {
+                    "Vec<_>".to_string()
+                } else {
+                    fmt_printer(self, Namespace::TypeNS)
+                        .comma_sep(generic_args.iter().copied().map(|arg| {
+                            if arg.is_suggestable(self.tcx, true) {
+                                return arg;
+                            }
 
-                        match arg.unpack() {
-                            GenericArgKind::Lifetime(_) => bug!("unexpected lifetime"),
-                            GenericArgKind::Type(_) => self
-                                .next_ty_var(TypeVariableOrigin {
-                                    span: rustc_span::DUMMY_SP,
-                                    kind: TypeVariableOriginKind::MiscVariable,
-                                })
-                                .into(),
-                            GenericArgKind::Const(arg) => self
-                                .next_const_var(
-                                    arg.ty(),
-                                    ConstVariableOrigin {
+                            match arg.unpack() {
+                                GenericArgKind::Lifetime(_) => bug!("unexpected lifetime"),
+                                GenericArgKind::Type(_) => self
+                                    .next_ty_var(TypeVariableOrigin {
                                         span: rustc_span::DUMMY_SP,
-                                        kind: ConstVariableOriginKind::MiscVariable,
-                                    },
-                                )
-                                .into(),
-                        }
-                    }))
-                    .unwrap()
-                    .into_buffer();
+                                        kind: TypeVariableOriginKind::MiscVariable,
+                                    })
+                                    .into(),
+                                GenericArgKind::Const(arg) => self
+                                    .next_const_var(
+                                        arg.ty(),
+                                        ConstVariableOrigin {
+                                            span: rustc_span::DUMMY_SP,
+                                            kind: ConstVariableOriginKind::MiscVariable,
+                                        },
+                                    )
+                                    .into(),
+                            }
+                        }))
+                        .unwrap()
+                        .into_buffer()
+                };
 
                 if !have_turbofish {
                     infer_subdiags.push(SourceKindSubdiag::GenericSuggestion {

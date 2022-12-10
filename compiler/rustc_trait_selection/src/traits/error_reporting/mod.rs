@@ -42,7 +42,7 @@ use rustc_middle::ty::{
 };
 use rustc_session::Limit;
 use rustc_span::def_id::LOCAL_CRATE;
-use rustc_span::symbol::{kw, sym};
+use rustc_span::symbol::sym;
 use rustc_span::{ExpnKind, Span, DUMMY_SP};
 use std::fmt;
 use std::iter;
@@ -2198,60 +2198,10 @@ impl<'tcx> InferCtxtPrivExt<'tcx> for TypeErrCtxt<'_, 'tcx> {
                     }
                 }
 
-                if let ObligationCauseCode::ItemObligation(def_id) | ObligationCauseCode::ExprItemObligation(def_id, ..) = *obligation.cause.code() {
-                    self.suggest_fully_qualified_path(&mut err, def_id, span, trait_ref.def_id());
-                } else if let Ok(snippet) = &self.tcx.sess.source_map().span_to_snippet(span)
-                    && let ObligationCauseCode::BindingObligation(def_id, _) | ObligationCauseCode::ExprBindingObligation(def_id, ..)
-                        = *obligation.cause.code()
+                if let ObligationCauseCode::ItemObligation(def_id)
+                | ObligationCauseCode::ExprItemObligation(def_id, ..) = *obligation.cause.code()
                 {
-                    let generics = self.tcx.generics_of(def_id);
-                    if generics.params.iter().any(|p| p.name != kw::SelfUpper)
-                        && !snippet.ends_with('>')
-                        && !generics.has_impl_trait()
-                        && !self.tcx.is_fn_trait(def_id)
-                    {
-                        // FIXME: To avoid spurious suggestions in functions where type arguments
-                        // where already supplied, we check the snippet to make sure it doesn't
-                        // end with a turbofish. Ideally we would have access to a `PathSegment`
-                        // instead. Otherwise we would produce the following output:
-                        //
-                        // error[E0283]: type annotations needed
-                        //   --> $DIR/issue-54954.rs:3:24
-                        //    |
-                        // LL | const ARR_LEN: usize = Tt::const_val::<[i8; 123]>();
-                        //    |                        ^^^^^^^^^^^^^^^^^^^^^^^^^^
-                        //    |                        |
-                        //    |                        cannot infer type
-                        //    |                        help: consider specifying the type argument
-                        //    |                        in the function call:
-                        //    |                        `Tt::const_val::<[i8; 123]>::<T>`
-                        // ...
-                        // LL |     const fn const_val<T: Sized>() -> usize {
-                        //    |                        - required by this bound in `Tt::const_val`
-                        //    |
-                        //    = note: cannot satisfy `_: Tt`
-
-                        // Clear any more general suggestions in favor of our specific one
-                        err.clear_suggestions();
-
-                        err.span_suggestion_verbose(
-                            span.shrink_to_hi(),
-                            &format!(
-                                "consider specifying the type argument{} in the function call",
-                                pluralize!(generics.params.len()),
-                            ),
-                            format!(
-                                "::<{}>",
-                                generics
-                                    .params
-                                    .iter()
-                                    .map(|p| p.name.to_string())
-                                    .collect::<Vec<String>>()
-                                    .join(", ")
-                            ),
-                            Applicability::HasPlaceholders,
-                        );
-                    }
+                    self.suggest_fully_qualified_path(&mut err, def_id, span, trait_ref.def_id());
                 }
 
                 if let (Some(body_id), Some(ty::subst::GenericArgKind::Type(_))) =
