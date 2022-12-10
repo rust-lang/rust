@@ -32,6 +32,7 @@
 #![feature(exhaustive_patterns)]
 #![feature(generators)]
 #![feature(get_mut_unchecked)]
+#![feature(global_co_alloc_meta)]
 #![feature(if_let_guard)]
 #![feature(iter_from_generator)]
 #![feature(negative_impls)]
