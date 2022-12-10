@@ -434,6 +434,9 @@ replacement is purely textual, with no consideration of the current system's
 pathname syntax. For example `--remap-path-prefix foo=bar` will match
 `foo/lib.rs` but not `./foo/lib.rs`.
 
+When multiple remappings are given and several of them match, the **last**
+matching one is applied.
+
 <a id="option-json"></a>
 ## `--json`: configure json messages printed by the compiler
 
