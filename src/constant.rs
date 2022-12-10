@@ -266,16 +266,7 @@ fn data_id_for_static(
     def_id: DefId,
     definition: bool,
 ) -> DataId {
-    let rlinkage = tcx.codegen_fn_attrs(def_id).linkage;
-    let linkage = if definition {
-        crate::linkage::get_static_linkage(tcx, def_id)
-    } else if rlinkage == Some(rustc_middle::mir::mono::Linkage::ExternalWeak)
-        || rlinkage == Some(rustc_middle::mir::mono::Linkage::WeakAny)
-    {
-        Linkage::Preemptible
-    } else {
-        Linkage::Import
-    };
+    let attrs = tcx.codegen_fn_attrs(def_id);
 
     let instance = Instance::mono(tcx, def_id).polymorphize(tcx);
     let symbol_name = tcx.symbol_name(instance).name;
@@ -287,22 +278,30 @@ fn data_id_for_static(
     };
     let align = tcx.layout_of(ParamEnv::reveal_all().and(ty)).unwrap().align.pref.bytes();
 
-    let attrs = tcx.codegen_fn_attrs(def_id);
+    if let Some(import_linkage) = attrs.import_linkage {
+        assert!(!definition);
 
-    let data_id = match module.declare_data(
-        &*symbol_name,
-        linkage,
-        is_mutable,
-        attrs.flags.contains(CodegenFnAttrFlags::THREAD_LOCAL),
-    ) {
-        Ok(data_id) => data_id,
-        Err(ModuleError::IncompatibleDeclaration(_)) => tcx.sess.fatal(&format!(
-            "attempt to declare `{symbol_name}` as static, but it was already declared as function"
-        )),
-        Err(err) => Err::<_, _>(err).unwrap(),
-    };
+        let linkage = if import_linkage == rustc_middle::mir::mono::Linkage::ExternalWeak
+            || import_linkage == rustc_middle::mir::mono::Linkage::WeakAny
+        {
+            Linkage::Preemptible
+        } else {
+            Linkage::Import
+        };
 
-    if rlinkage.is_some() {
+        let data_id = match module.declare_data(
+            &*symbol_name,
+            linkage,
+            is_mutable,
+            attrs.flags.contains(CodegenFnAttrFlags::THREAD_LOCAL),
+        ) {
+            Ok(data_id) => data_id,
+            Err(ModuleError::IncompatibleDeclaration(_)) => tcx.sess.fatal(&format!(
+                "attempt to declare `{symbol_name}` as static, but it was already declared as function"
+            )),
+            Err(err) => Err::<_, _>(err).unwrap(),
+        };
+
         // Comment copied from https://github.com/rust-lang/rust/blob/45060c2a66dfd667f88bd8b94261b28a58d85bd5/src/librustc_codegen_llvm/consts.rs#L141
         // Declare an internal global `extern_with_linkage_foo` which
         // is initialized with the address of `foo`.  If `foo` is
@@ -324,10 +323,34 @@ fn data_id_for_static(
             Err(ModuleError::DuplicateDefinition(_)) => {}
             res => res.unwrap(),
         }
-        ref_data_id
-    } else {
-        data_id
+
+        return ref_data_id;
     }
+
+    let linkage = if definition {
+        crate::linkage::get_static_linkage(tcx, def_id)
+    } else if attrs.linkage == Some(rustc_middle::mir::mono::Linkage::ExternalWeak)
+        || attrs.linkage == Some(rustc_middle::mir::mono::Linkage::WeakAny)
+    {
+        Linkage::Preemptible
+    } else {
+        Linkage::Import
+    };
+
+    let data_id = match module.declare_data(
+        &*symbol_name,
+        linkage,
+        is_mutable,
+        attrs.flags.contains(CodegenFnAttrFlags::THREAD_LOCAL),
+    ) {
+        Ok(data_id) => data_id,
+        Err(ModuleError::IncompatibleDeclaration(_)) => tcx.sess.fatal(&format!(
+            "attempt to declare `{symbol_name}` as static, but it was already declared as function"
+        )),
+        Err(err) => Err::<_, _>(err).unwrap(),
+    };
+
+    data_id
 }
 
 fn define_all_allocs(tcx: TyCtxt<'_>, module: &mut dyn Module, cx: &mut ConstantCx) {
