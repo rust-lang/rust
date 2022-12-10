@@ -1,12 +1,6 @@
 // stderr-per-bitwidth
-<<<<<<< HEAD
-#![feature(rustc_attrs, ptr_metadata)]
-||||||| parent of 56c99f30359 (Support endianness mark in test case check files)
-#![feature(rustc_attrs)]
-=======
 // stderr-per-endianness
-#![feature(rustc_attrs)]
->>>>>>> 56c99f30359 (Support endianness mark in test case check files)
+#![feature(rustc_attrs, ptr_metadata)]
 #![allow(invalid_value)] // make sure we cannot allow away the errors tested here
 
 use std::mem;
