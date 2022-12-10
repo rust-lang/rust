@@ -880,6 +880,41 @@ where
     {
         self.base.get(k)
     }
+    
+    /// Returns a reference to the value corresponding to the key.
+    ///
+    /// The key may be any borrowed form of the map's key type, but
+    /// [`Hash`] and [`Eq`] on the borrowed form *must* match those for
+    /// the key type.
+    ///
+    /// If the key isn't present in the map yet, it will add it with the callback.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// use std::collections::HashMap;
+    ///
+    /// let mut map = HashMap::new();
+    /// map.insert(1, "a");
+    /// assert_eq!(map.get_or_insert(&1, || "a"), Some(&"a"));
+    /// assert_eq!(map.get_or_insert(&2, || "b"), Some(&"b"));
+    /// assert_eq!()
+    /// ```
+    #[inline]
+    pub fn get_or_insert<Q: ?Sized>(&self, k: &Q, callback: fn() -> V) -> &V
+    where
+        K: Borrow<Q>,
+        Q: Hash + Eq,
+    {
+        match self.base.get(k) {
+            Some(value) => value,
+            None => {
+                let value = (callback)();
+                self.base.insert(value);
+                &value
+            }
+        }
+    }
 
     /// Returns the key-value pair corresponding to the supplied key.
     ///
