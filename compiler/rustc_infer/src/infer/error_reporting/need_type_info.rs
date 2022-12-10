@@ -20,7 +20,7 @@ use rustc_middle::ty::print::{FmtPrinter, PrettyPrinter, Print, Printer};
 use rustc_middle::ty::{self, DefIdTree, InferConst};
 use rustc_middle::ty::{GenericArg, GenericArgKind, SubstsRef};
 use rustc_middle::ty::{IsSuggestable, Ty, TyCtxt, TypeckResults};
-use rustc_span::symbol::{kw, Ident};
+use rustc_span::symbol::{kw, sym, Ident};
 use rustc_span::{BytePos, Span};
 use std::borrow::Cow;
 use std::iter;
@@ -78,12 +78,12 @@ impl InferenceDiagnosticsData {
     }
 
     fn where_x_is_kind(&self, in_type: Ty<'_>) -> &'static str {
-        if in_type.is_ty_infer() {
-            "empty"
-        } else if self.name == "_" {
+        if self.name == "_" {
             // FIXME: Consider specializing this message if there is a single `_`
             // in the type.
             "underscore"
+        } else if in_type.is_ty_infer() {
+            "empty"
         } else {
             "has_name"
         }
@@ -368,6 +368,7 @@ impl<'tcx> InferCtxt<'tcx> {
 }
 
 impl<'tcx> TypeErrCtxt<'_, 'tcx> {
+    #[instrument(level = "debug", skip(self, error_code))]
     pub fn emit_inference_failure_err(
         &self,
         body_id: Option<hir::BodyId>,
@@ -406,16 +407,20 @@ impl<'tcx> TypeErrCtxt<'_, 'tcx> {
         let mut infer_subdiags = Vec::new();
         let mut multi_suggestions = Vec::new();
         match kind {
-            InferSourceKind::LetBinding { insert_span, pattern_name, ty } => {
+            InferSourceKind::LetBinding { insert_span, pattern_name, ty, is_collect } => {
                 infer_subdiags.push(SourceKindSubdiag::LetLike {
                     span: insert_span,
                     name: pattern_name.map(|name| name.to_string()).unwrap_or_else(String::new),
-                    x_kind: arg_data.where_x_is_kind(ty),
+                    x_kind: if is_collect { "empty" } else { arg_data.where_x_is_kind(ty) },
                     prefix_kind: arg_data.kind.clone(),
                     prefix: arg_data.kind.try_get_prefix().unwrap_or_default(),
                     arg_name: arg_data.name,
                     kind: if pattern_name.is_some() { "with_pattern" } else { "other" },
-                    type_name: ty_to_string(self, ty),
+                    type_name: if is_collect {
+                        "Vec<_>".to_string()
+                    } else {
+                        ty_to_string(self, ty)
+                    },
                 });
             }
             InferSourceKind::ClosureArg { insert_span, ty } => {
@@ -608,6 +613,7 @@ enum InferSourceKind<'tcx> {
         insert_span: Span,
         pattern_name: Option<Ident>,
         ty: Ty<'tcx>,
+        is_collect: bool,
     },
     ClosureArg {
         insert_span: Span,
@@ -788,10 +794,19 @@ impl<'a, 'tcx> FindInferSourceVisitor<'a, 'tcx> {
     /// Uses `fn source_cost` to determine whether this inference source is preferable to
     /// previous sources. We generally prefer earlier sources.
     #[instrument(level = "debug", skip(self))]
-    fn update_infer_source(&mut self, new_source: InferSource<'tcx>) {
+    fn update_infer_source(&mut self, mut new_source: InferSource<'tcx>) {
         let cost = self.source_cost(&new_source) + self.attempt;
         debug!(?cost);
         self.attempt += 1;
+        if let Some(InferSource { kind: InferSourceKind::GenericArg { def_id, ..}, .. }) = self.infer_source
+            && self.infcx.tcx.get_diagnostic_item(sym::iterator_collect_fn) == Some(def_id)
+            && let InferSourceKind::LetBinding { ref ty, ref mut is_collect, ..} = new_source.kind
+            && ty.is_ty_infer()
+        {
+            // Customize the output so we talk about `let x: Vec<_> = iter.collect();` instead of
+            // `let x: _ = iter.collect();`, as this is a very common case.
+            *is_collect = true;
+        }
         if cost < self.infer_source_cost {
             self.infer_source_cost = cost;
             self.infer_source = Some(new_source);
@@ -1089,6 +1104,7 @@ impl<'a, 'tcx> Visitor<'tcx> for FindInferSourceVisitor<'a, 'tcx> {
                                 insert_span: local.pat.span.shrink_to_hi(),
                                 pattern_name: local.pat.simple_ident(),
                                 ty,
+                                is_collect: false,
                             },
                         })
                     }

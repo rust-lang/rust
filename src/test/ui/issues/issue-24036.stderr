@@ -17,7 +17,7 @@ error[E0282]: type annotations needed
 LL |         1 => |c| c + 1,
    |               ^
    |
-help: consider giving this closure parameter an explicit type
+help: consider giving this closure parameter an explicit type, where the placeholders `_` are specified
    |
 LL |         1 => |c: _| c + 1,
    |                +++

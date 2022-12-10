@@ -7,7 +7,7 @@ LL |
 LL |     x.0;
    |     - type must be known at this point
    |
-help: consider giving `x` an explicit type
+help: consider giving `x` an explicit type, where the placeholders `_` are specified
    |
 LL |     let mut x: _ = Default::default();
    |              +++
@@ -21,7 +21,7 @@ LL |
 LL |     x[0];
    |     - type must be known at this point
    |
-help: consider giving `x` an explicit type
+help: consider giving `x` an explicit type, where the placeholders `_` are specified
    |
 LL |     let mut x: _ = Default::default();
    |              +++

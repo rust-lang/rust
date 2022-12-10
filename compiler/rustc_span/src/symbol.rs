@@ -827,6 +827,7 @@ symbols! {
         item_like_imports,
         iter,
         iter_repeat,
+        iterator_collect_fn,
         kcfi,
         keyword,
         kind,

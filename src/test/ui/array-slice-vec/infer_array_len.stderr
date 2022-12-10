@@ -4,7 +4,7 @@ error[E0282]: type annotations needed
 LL |     let [_, _] = a.into();
    |         ^^^^^^
    |
-help: consider giving this pattern a type
+help: consider giving this pattern a type, where the placeholders `_` are specified
    |
 LL |     let [_, _]: _ = a.into();
    |               +++

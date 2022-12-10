@@ -4,7 +4,7 @@ error[E0282]: type annotations needed
 LL |     let x;
    |         ^
    |
-help: consider giving `x` an explicit type
+help: consider giving `x` an explicit type, where the placeholders `_` are specified
    |
 LL |     let x: _;
    |          +++

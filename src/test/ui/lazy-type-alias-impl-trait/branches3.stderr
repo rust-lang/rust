@@ -4,7 +4,7 @@ error[E0282]: type annotations needed
 LL |         |s| s.len()
    |          ^  - type must be known at this point
    |
-help: consider giving this closure parameter an explicit type
+help: consider giving this closure parameter an explicit type, where the placeholders `_` are specified
    |
 LL |         |s: _| s.len()
    |           +++
@@ -15,7 +15,7 @@ error[E0282]: type annotations needed
 LL |         |s| s.len()
    |          ^  - type must be known at this point
    |
-help: consider giving this closure parameter an explicit type
+help: consider giving this closure parameter an explicit type, where the placeholders `_` are specified
    |
 LL |         |s: _| s.len()
    |           +++
@@ -26,7 +26,7 @@ error[E0282]: type annotations needed
 LL |         |s| s.len()
    |          ^  - type must be known at this point
    |
-help: consider giving this closure parameter an explicit type
+help: consider giving this closure parameter an explicit type, where the placeholders `_` are specified
    |
 LL |         |s: _| s.len()
    |           +++
@@ -37,7 +37,7 @@ error[E0282]: type annotations needed
 LL |         |s| s.len()
    |          ^  - type must be known at this point
    |
-help: consider giving this closure parameter an explicit type
+help: consider giving this closure parameter an explicit type, where the placeholders `_` are specified
    |
 LL |         |s: _| s.len()
    |           +++

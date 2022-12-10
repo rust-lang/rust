@@ -10,7 +10,7 @@ error[E0282]: type annotations needed
 LL |     [(); &(&'static: loop { |x| {}; }) as *const _ as usize]
    |                              ^
    |
-help: consider giving this closure parameter an explicit type
+help: consider giving this closure parameter an explicit type, where the placeholders `_` are specified
    |
 LL |     [(); &(&'static: loop { |x: _| {}; }) as *const _ as usize]
    |                               +++

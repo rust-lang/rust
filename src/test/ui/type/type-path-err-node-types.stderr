@@ -28,7 +28,7 @@ error[E0282]: type annotations needed
 LL |     let _ = |a, b: _| -> _ { 0 };
    |              ^
    |
-help: consider giving this closure parameter an explicit type
+help: consider giving this closure parameter an explicit type, where the placeholders `_` are specified
    |
 LL |     let _ = |a: _, b: _| -> _ { 0 };
    |               +++
