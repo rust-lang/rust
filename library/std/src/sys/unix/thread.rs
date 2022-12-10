@@ -136,7 +136,7 @@ impl Thread {
 
         unsafe {
             // Available since glibc 2.12, musl 1.1.16, and uClibc 1.0.20.
-            let name = truncate_cstr(name, TASK_COMM_LEN);
+            let name = truncate_cstr::<{ TASK_COMM_LEN }>(name);
             let res = libc::pthread_setname_np(libc::pthread_self(), name.as_ptr());
             // We have no good way of propagating errors here, but in debug-builds let's check that this actually worked.
             debug_assert_eq!(res, 0);
@@ -153,7 +153,7 @@ impl Thread {
     #[cfg(any(target_os = "macos", target_os = "ios", target_os = "watchos"))]
     pub fn set_name(name: &CStr) {
         unsafe {
-            let name = truncate_cstr(name, libc::MAXTHREADNAMESIZE);
+            let name = truncate_cstr::<{ libc::MAXTHREADNAMESIZE }>(name);
             let res = libc::pthread_setname_np(name.as_ptr());
             // We have no good way of propagating errors here, but in debug-builds let's check that this actually worked.
             debug_assert_eq!(res, 0);
@@ -285,17 +285,12 @@ impl Drop for Thread {
 }
 
 #[cfg(any(target_os = "linux", target_os = "macos", target_os = "ios", target_os = "watchos"))]
-fn truncate_cstr(cstr: &CStr, max_with_nul: usize) -> crate::borrow::Cow<'_, CStr> {
-    use crate::{borrow::Cow, ffi::CString};
-
-    if cstr.to_bytes_with_nul().len() > max_with_nul {
-        let bytes = cstr.to_bytes()[..max_with_nul - 1].to_vec();
-        // SAFETY: the non-nul bytes came straight from a CStr.
-        // (CString will add the terminating nul.)
-        Cow::Owned(unsafe { CString::from_vec_unchecked(bytes) })
-    } else {
-        Cow::Borrowed(cstr)
+fn truncate_cstr<const MAX_WITH_NUL: usize>(cstr: &CStr) -> [libc::c_char; MAX_WITH_NUL] {
+    let mut result = [0; MAX_WITH_NUL];
+    for (src, dst) in cstr.to_bytes().iter().zip(&mut result[..MAX_WITH_NUL - 1]) {
+        *dst = *src as libc::c_char;
     }
+    result
 }
 
 pub fn available_parallelism() -> io::Result<NonZeroUsize> {
