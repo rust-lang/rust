@@ -356,11 +356,12 @@ pub fn eval_const(
                         hir_def::AssocItemId::FunctionId(_) => {
                             Err(ConstEvalError::NotSupported("assoc function"))
                         }
+                        // FIXME use actual impl for trait assoc const
                         hir_def::AssocItemId::ConstId(c) => ctx.db.const_eval(c),
                         hir_def::AssocItemId::TypeAliasId(_) => {
                             Err(ConstEvalError::NotSupported("assoc type alias"))
                         }
-                    }
+                    };
                 }
             };
             match pr {

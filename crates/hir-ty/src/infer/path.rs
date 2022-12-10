@@ -7,6 +7,7 @@ use hir_def::{
     AdtId, AssocItemId, EnumVariantId, ItemContainerId, Lookup,
 };
 use hir_expand::name::Name;
+use stdx::never;
 
 use crate::{
     builder::ParamKind,
@@ -212,7 +213,7 @@ impl<'a> InferenceContext<'a> {
             AssocItemId::TypeAliasId(_) => unreachable!(),
         };
 
-        self.write_assoc_resolution(id, item, Some(trait_ref.substitution.clone()));
+        self.write_assoc_resolution(id, item, trait_ref.substitution.clone());
         Some((def, Some(trait_ref.substitution)))
     }
 
@@ -259,7 +260,7 @@ impl<'a> InferenceContext<'a> {
                         let impl_self_ty =
                             self.db.impl_self_ty(impl_id).substitute(Interner, &impl_substs);
                         self.unify(&impl_self_ty, &ty);
-                        Some(impl_substs)
+                        impl_substs
                     }
                     ItemContainerId::TraitId(trait_) => {
                         // we're picking this method
@@ -268,13 +269,16 @@ impl<'a> InferenceContext<'a> {
                             .fill_with_inference_vars(&mut self.table)
                             .build();
                         self.push_obligation(trait_ref.clone().cast(Interner));
-                        Some(trait_ref.substitution)
+                        trait_ref.substitution
                     }
-                    ItemContainerId::ModuleId(_) | ItemContainerId::ExternBlockId(_) => None,
+                    ItemContainerId::ModuleId(_) | ItemContainerId::ExternBlockId(_) => {
+                        never!("assoc item contained in module/extern block");
+                        return None;
+                    }
                 };
 
                 self.write_assoc_resolution(id, item, substs.clone());
-                Some((def, substs))
+                Some((def, Some(substs)))
             },
         )
     }

@@ -502,11 +502,7 @@ impl SourceAnalyzer {
                             }
                         }
                         AssocItemId::ConstId(const_id) => {
-                            if let Some(subs) = subs {
-                                self.resolve_impl_const_or_trait_def(db, const_id, subs).into()
-                            } else {
-                                assoc
-                            }
+                            self.resolve_impl_const_or_trait_def(db, const_id, subs).into()
                         }
                         _ => assoc,
                     };
