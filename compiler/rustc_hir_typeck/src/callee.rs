@@ -521,7 +521,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                 callee_expr,
                 call_expr,
                 callee_ty,
-                pick,
+                &pick,
                 segment,
             );
             if pick.illegal_sized_bound.is_some() {
