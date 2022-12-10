@@ -185,7 +185,6 @@ impl<'a> Sugg<'a> {
     ) -> Self {
         use rustc_ast::ast::RangeLimits;
 
-        #[expect(clippy::match_wildcard_for_single_variants)]
         match expr.kind {
             _ if expr.span.ctxt() != ctxt => Sugg::NonParen(snippet_with_context(cx, expr.span, ctxt, default, app).0),
             ast::ExprKind::AddrOf(..)
