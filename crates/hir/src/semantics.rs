@@ -1600,7 +1600,7 @@ impl<'a> SemanticsScope<'a> {
             self.db,
             def,
             resolution.in_type_ns()?,
-            |name, _, id| cb(name, id.into()),
+            |name, id| cb(name, id.into()),
         )
     }
 }

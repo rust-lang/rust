@@ -967,7 +967,7 @@ fn resolve_hir_path_(
                         db,
                         def,
                         res.in_type_ns()?,
-                        |name, _, id| (name == unresolved.name).then(|| id),
+                        |name, id| (name == unresolved.name).then(|| id),
                     )
                 })
                 .map(TypeAlias::from)

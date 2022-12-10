@@ -603,9 +603,8 @@ impl<'a> TyLoweringContext<'a> {
     }
 
     fn select_associated_type(&self, res: Option<TypeNs>, segment: PathSegment<'_>) -> Ty {
-        let (def, res) = match (self.resolver.generic_def(), res) {
-            (Some(def), Some(res)) => (def, res),
-            _ => return TyKind::Error.intern(Interner),
+        let Some((def, res)) = self.resolver.generic_def().zip(res) else {
+            return TyKind::Error.intern(Interner);
         };
         let ty = named_associated_type_shorthand_candidates(
             self.db,
@@ -616,6 +615,21 @@ impl<'a> TyLoweringContext<'a> {
                 if name != segment.name {
                     return None;
                 }
+
+                let parent_subst = t.substitution.clone();
+                let parent_subst = match self.type_param_mode {
+                    ParamLoweringMode::Placeholder => {
+                        // if we're lowering to placeholders, we have to put them in now.
+                        let generics = generics(self.db.upcast(), def);
+                        let s = generics.placeholder_subst(self.db);
+                        s.apply(parent_subst, Interner)
+                    }
+                    ParamLoweringMode::Variable => {
+                        // We need to shift in the bound vars, since
+                        // `named_associated_type_shorthand_candidates` does not do that.
+                        parent_subst.shifted_in_from(Interner, self.in_binders)
+                    }
+                };
 
                 // FIXME: `substs_from_path_segment()` pushes `TyKind::Error` for every parent
                 // generic params. It's inefficient to splice the `Substitution`s, so we may want
@@ -632,22 +646,9 @@ impl<'a> TyLoweringContext<'a> {
 
                 let substs = Substitution::from_iter(
                     Interner,
-                    substs.iter(Interner).take(len_self).chain(t.substitution.iter(Interner)),
+                    substs.iter(Interner).take(len_self).chain(parent_subst.iter(Interner)),
                 );
 
-                let substs = match self.type_param_mode {
-                    ParamLoweringMode::Placeholder => {
-                        // if we're lowering to placeholders, we have to put
-                        // them in now
-                        let generics = generics(self.db.upcast(), def);
-                        let s = generics.placeholder_subst(self.db);
-                        s.apply(substs, Interner)
-                    }
-                    ParamLoweringMode::Variable => substs,
-                };
-                // We need to shift in the bound vars, since
-                // associated_type_shorthand_candidates does not do that
-                let substs = substs.shifted_in_from(Interner, self.in_binders);
                 Some(
                     TyKind::Alias(AliasTy::Projection(ProjectionTy {
                         associated_ty_id: to_assoc_type_id(associated_ty),
@@ -1190,9 +1191,9 @@ pub fn associated_type_shorthand_candidates<R>(
     db: &dyn HirDatabase,
     def: GenericDefId,
     res: TypeNs,
-    cb: impl FnMut(&Name, &TraitRef, TypeAliasId) -> Option<R>,
+    mut cb: impl FnMut(&Name, TypeAliasId) -> Option<R>,
 ) -> Option<R> {
-    named_associated_type_shorthand_candidates(db, def, res, None, cb)
+    named_associated_type_shorthand_candidates(db, def, res, None, |name, _, id| cb(name, id))
 }
 
 fn named_associated_type_shorthand_candidates<R>(
@@ -1202,6 +1203,9 @@ fn named_associated_type_shorthand_candidates<R>(
     def: GenericDefId,
     res: TypeNs,
     assoc_name: Option<Name>,
+    // Do NOT let `cb` touch `TraitRef` outside of `TyLoweringContext`. Its substitution contains
+    // free `BoundVar`s that need to be shifted and only `TyLoweringContext` knows how to do that
+    // properly (see `TyLoweringContext::select_associated_type()`).
     mut cb: impl FnMut(&Name, &TraitRef, TypeAliasId) -> Option<R>,
 ) -> Option<R> {
     let mut search = |t| {
