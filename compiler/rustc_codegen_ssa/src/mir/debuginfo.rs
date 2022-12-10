@@ -3,12 +3,12 @@ use rustc_index::vec::IndexVec;
 use rustc_middle::middle::codegen_fn_attrs::CodegenFnAttrFlags;
 use rustc_middle::mir;
 use rustc_middle::ty;
+use rustc_middle::ty::layout::TyAndLayout;
 use rustc_middle::ty::layout::{HasTyCtxt, LayoutOf};
 use rustc_session::config::DebugInfo;
 use rustc_span::symbol::{kw, Symbol};
 use rustc_span::{BytePos, Span};
-use rustc_target::abi::Abi;
-use rustc_target::abi::Size;
+use rustc_target::abi::{Abi, Size, VariantIdx};
 
 use super::operand::{OperandRef, OperandValue};
 use super::place::PlaceRef;
@@ -74,6 +74,106 @@ impl<'tcx, S: Copy, L: Copy> DebugScope<S, L> {
             self.dbg_scope
         }
     }
+}
+
+trait DebugInfoOffsetLocation<'tcx, Bx> {
+    fn deref(&self, bx: &mut Bx) -> Self;
+    fn layout(&self) -> TyAndLayout<'tcx>;
+    fn project_field(&self, bx: &mut Bx, field: mir::Field) -> Self;
+    fn downcast(&self, bx: &mut Bx, variant: VariantIdx) -> Self;
+}
+
+impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> DebugInfoOffsetLocation<'tcx, Bx>
+    for PlaceRef<'tcx, Bx::Value>
+{
+    fn deref(&self, bx: &mut Bx) -> Self {
+        bx.load_operand(*self).deref(bx.cx())
+    }
+
+    fn layout(&self) -> TyAndLayout<'tcx> {
+        self.layout
+    }
+
+    fn project_field(&self, bx: &mut Bx, field: mir::Field) -> Self {
+        PlaceRef::project_field(*self, bx, field.index())
+    }
+
+    fn downcast(&self, bx: &mut Bx, variant: VariantIdx) -> Self {
+        self.project_downcast(bx, variant)
+    }
+}
+
+impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> DebugInfoOffsetLocation<'tcx, Bx>
+    for TyAndLayout<'tcx>
+{
+    fn deref(&self, bx: &mut Bx) -> Self {
+        bx.cx().layout_of(
+            self.ty.builtin_deref(true).unwrap_or_else(|| bug!("cannot deref `{}`", self.ty)).ty,
+        )
+    }
+
+    fn layout(&self) -> TyAndLayout<'tcx> {
+        *self
+    }
+
+    fn project_field(&self, bx: &mut Bx, field: mir::Field) -> Self {
+        self.field(bx.cx(), field.index())
+    }
+
+    fn downcast(&self, bx: &mut Bx, variant: VariantIdx) -> Self {
+        self.for_variant(bx.cx(), variant)
+    }
+}
+
+struct DebugInfoOffset<T> {
+    /// Offset from the `base` used to calculate the debuginfo offset.
+    direct_offset: Size,
+    /// Each offset in this vector indicates one level of indirection from the base or previous
+    /// indirect offset plus a dereference.
+    indirect_offsets: Vec<Size>,
+    /// The final location debuginfo should point to.
+    result: T,
+}
+
+fn calculate_debuginfo_offset<
+    'a,
+    'tcx,
+    Bx: BuilderMethods<'a, 'tcx>,
+    L: DebugInfoOffsetLocation<'tcx, Bx>,
+>(
+    bx: &mut Bx,
+    local: mir::Local,
+    var: &PerLocalVarDebugInfo<'tcx, Bx::DIVariable>,
+    base: L,
+) -> DebugInfoOffset<L> {
+    let mut direct_offset = Size::ZERO;
+    // FIXME(eddyb) use smallvec here.
+    let mut indirect_offsets = vec![];
+    let mut place = base;
+
+    for elem in &var.projection[..] {
+        match *elem {
+            mir::ProjectionElem::Deref => {
+                indirect_offsets.push(Size::ZERO);
+                place = place.deref(bx);
+            }
+            mir::ProjectionElem::Field(field, _) => {
+                let offset = indirect_offsets.last_mut().unwrap_or(&mut direct_offset);
+                *offset += place.layout().fields.offset(field.index());
+                place = place.project_field(bx, field);
+            }
+            mir::ProjectionElem::Downcast(_, variant) => {
+                place = place.downcast(bx, variant);
+            }
+            _ => span_bug!(
+                var.source_info.span,
+                "unsupported var debuginfo place `{:?}`",
+                mir::Place { local, projection: var.projection },
+            ),
+        }
+    }
+
+    DebugInfoOffset { direct_offset, indirect_offsets, result: place }
 }
 
 impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
@@ -262,33 +362,8 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
             let Some(dbg_var) = var.dbg_var else { continue };
             let Some(dbg_loc) = self.dbg_loc(var.source_info) else { continue };
 
-            let mut direct_offset = Size::ZERO;
-            // FIXME(eddyb) use smallvec here.
-            let mut indirect_offsets = vec![];
-            let mut place = base;
-
-            for elem in &var.projection[..] {
-                match *elem {
-                    mir::ProjectionElem::Deref => {
-                        indirect_offsets.push(Size::ZERO);
-                        place = bx.load_operand(place).deref(bx.cx());
-                    }
-                    mir::ProjectionElem::Field(field, _) => {
-                        let i = field.index();
-                        let offset = indirect_offsets.last_mut().unwrap_or(&mut direct_offset);
-                        *offset += place.layout.fields.offset(i);
-                        place = place.project_field(bx, i);
-                    }
-                    mir::ProjectionElem::Downcast(_, variant) => {
-                        place = place.project_downcast(bx, variant);
-                    }
-                    _ => span_bug!(
-                        var.source_info.span,
-                        "unsupported var debuginfo place `{:?}`",
-                        mir::Place { local, projection: var.projection },
-                    ),
-                }
-            }
+            let DebugInfoOffset { direct_offset, indirect_offsets, result: _ } =
+                calculate_debuginfo_offset(bx, local, &var, base.layout);
 
             // When targeting MSVC, create extra allocas for arguments instead of pointing multiple
             // dbg_var_addr() calls into the same alloca with offsets. MSVC uses CodeView records
@@ -306,6 +381,9 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
                     || !matches!(&indirect_offsets[..], [Size::ZERO] | []));
 
             if should_create_individual_allocas {
+                let DebugInfoOffset { direct_offset: _, indirect_offsets: _, result: place } =
+                    calculate_debuginfo_offset(bx, local, &var, base);
+
                 // Create a variable which will be a pointer to the actual value
                 let ptr_ty = bx.tcx().mk_ty(ty::RawPtr(ty::TypeAndMut {
                     mutbl: mir::Mutability::Mut,

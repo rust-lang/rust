@@ -26,7 +26,7 @@ fn main() -> () {
         StorageLive(_3);                 // scope 1 at $DIR/issue_38669.rs:+3:9: +5:10
         StorageLive(_4);                 // scope 1 at $DIR/issue_38669.rs:+3:12: +3:24
         _4 = _1;                         // scope 1 at $DIR/issue_38669.rs:+3:12: +3:24
-        switchInt(move _4) -> [false: bb4, otherwise: bb3]; // scope 1 at $DIR/issue_38669.rs:+3:12: +3:24
+        switchInt(move _4) -> [0: bb4, otherwise: bb3]; // scope 1 at $DIR/issue_38669.rs:+3:12: +3:24
     }
 
     bb3: {

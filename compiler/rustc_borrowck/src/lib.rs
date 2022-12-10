@@ -644,7 +644,7 @@ impl<'cx, 'tcx> rustc_mir_dataflow::ResultsVisitor<'cx, 'tcx> for MirBorrowckCtx
         self.check_activations(loc, span, flow_state);
 
         match &term.kind {
-            TerminatorKind::SwitchInt { discr, switch_ty: _, targets: _ } => {
+            TerminatorKind::SwitchInt { discr, targets: _ } => {
                 self.consume_operand(loc, (discr, span), flow_state);
             }
             TerminatorKind::Drop { place, target: _, unwind: _ } => {

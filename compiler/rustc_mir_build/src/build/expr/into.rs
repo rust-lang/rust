@@ -183,7 +183,7 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
                     LogicalOp::And => (else_block, shortcircuit_block),
                     LogicalOp::Or => (shortcircuit_block, else_block),
                 };
-                let term = TerminatorKind::if_(this.tcx, lhs, blocks.0, blocks.1);
+                let term = TerminatorKind::if_(lhs, blocks.0, blocks.1);
                 this.cfg.terminate(block, source_info, term);
 
                 this.cfg.push_assign_constant(

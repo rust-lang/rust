@@ -78,7 +78,7 @@ pub(super) fn generics_of(tcx: TyCtxt<'_>, def_id: DefId) -> ty::Generics {
                     let generics = tcx.generics_of(parent_def_id.to_def_id());
                     let param_def_idx = generics.param_def_id_to_index[&param_id.to_def_id()];
                     // In the above example this would be .params[..N#0]
-                    let params = generics.params[..param_def_idx as usize].to_owned();
+                    let params = generics.params_to(param_def_idx as usize, tcx).to_owned();
                     let param_def_id_to_index =
                         params.iter().map(|param| (param.def_id, param.index)).collect();
 

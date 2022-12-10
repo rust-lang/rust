@@ -303,7 +303,6 @@ fn check_terminator<'tcx>(
 
         TerminatorKind::SwitchInt {
             discr,
-            switch_ty: _,
             targets: _,
         } => check_operand(tcx, discr, span, body),
 

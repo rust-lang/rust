@@ -28,7 +28,7 @@ fn full_tested_match2() -> () {
         _2 = Option::<i32>::Some(const 42_i32); // scope 0 at $DIR/match_false_edges.rs:+1:19: +1:27
         FakeRead(ForMatchedPlace(None), _2); // scope 0 at $DIR/match_false_edges.rs:+1:19: +1:27
         _3 = discriminant(_2);           // scope 0 at $DIR/match_false_edges.rs:+1:19: +1:27
-        switchInt(move _3) -> [0_isize: bb1, 1_isize: bb2, otherwise: bb4]; // scope 0 at $DIR/match_false_edges.rs:+1:13: +1:27
+        switchInt(move _3) -> [0: bb1, 1: bb2, otherwise: bb4]; // scope 0 at $DIR/match_false_edges.rs:+1:13: +1:27
     }
 
     bb1: {
@@ -66,7 +66,7 @@ fn full_tested_match2() -> () {
     }
 
     bb6: {
-        switchInt(move _7) -> [false: bb8, otherwise: bb7]; // scope 0 at $DIR/match_false_edges.rs:+2:20: +2:27
+        switchInt(move _7) -> [0: bb8, otherwise: bb7]; // scope 0 at $DIR/match_false_edges.rs:+2:20: +2:27
     }
 
     bb7: {
