@@ -349,7 +349,7 @@ pub struct InferenceResult {
     /// For each struct literal or pattern, records the variant it resolves to.
     variant_resolutions: FxHashMap<ExprOrPatId, VariantId>,
     /// For each associated item record what it resolves to
-    assoc_resolutions: FxHashMap<ExprOrPatId, (AssocItemId, Option<Substitution>)>,
+    assoc_resolutions: FxHashMap<ExprOrPatId, (AssocItemId, Substitution)>,
     pub diagnostics: Vec<InferenceDiagnostic>,
     pub type_of_expr: ArenaMap<ExprId, Ty>,
     /// For each pattern record the type it resolves to.
@@ -379,16 +379,10 @@ impl InferenceResult {
     pub fn variant_resolution_for_pat(&self, id: PatId) -> Option<VariantId> {
         self.variant_resolutions.get(&id.into()).copied()
     }
-    pub fn assoc_resolutions_for_expr(
-        &self,
-        id: ExprId,
-    ) -> Option<(AssocItemId, Option<Substitution>)> {
+    pub fn assoc_resolutions_for_expr(&self, id: ExprId) -> Option<(AssocItemId, Substitution)> {
         self.assoc_resolutions.get(&id.into()).cloned()
     }
-    pub fn assoc_resolutions_for_pat(
-        &self,
-        id: PatId,
-    ) -> Option<(AssocItemId, Option<Substitution>)> {
+    pub fn assoc_resolutions_for_pat(&self, id: PatId) -> Option<(AssocItemId, Substitution)> {
         self.assoc_resolutions.get(&id.into()).cloned()
     }
     pub fn type_mismatch_for_expr(&self, expr: ExprId) -> Option<&TypeMismatch> {
@@ -653,12 +647,7 @@ impl<'a> InferenceContext<'a> {
         self.result.variant_resolutions.insert(id, variant);
     }
 
-    fn write_assoc_resolution(
-        &mut self,
-        id: ExprOrPatId,
-        item: AssocItemId,
-        subs: Option<Substitution>,
-    ) {
+    fn write_assoc_resolution(&mut self, id: ExprOrPatId, item: AssocItemId, subs: Substitution) {
         self.result.assoc_resolutions.insert(id, (item, subs));
     }
 
