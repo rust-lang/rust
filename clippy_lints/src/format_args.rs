@@ -2,7 +2,8 @@ use clippy_utils::diagnostics::{span_lint_and_sugg, span_lint_and_then};
 use clippy_utils::is_diag_trait_item;
 use clippy_utils::macros::FormatParamKind::{Implicit, Named, NamedInline, Numbered, Starred};
 use clippy_utils::macros::{
-    is_format_macro, is_panic, root_macro_call, Count, FormatArg, FormatArgsExpn, FormatParam, FormatParamUsage,
+    is_assert_macro, is_format_macro, is_panic, root_macro_call, Count, FormatArg, FormatArgsExpn, FormatParam,
+    FormatParamUsage,
 };
 use clippy_utils::msrvs::{self, Msrv};
 use clippy_utils::source::snippet_opt;
@@ -290,8 +291,9 @@ fn check_uninlined_args(
     if args.format_string.span.from_expansion() {
         return;
     }
-    if call_site.edition() < Edition2021 && is_panic(cx, def_id) {
-        // panic! before 2021 edition considers a single string argument as non-format
+    if call_site.edition() < Edition2021 && (is_panic(cx, def_id) || is_assert_macro(cx, def_id)) {
+        // panic!, assert!, and debug_assert! before 2021 edition considers a single string argument as
+        // non-format
         return;
     }
 
