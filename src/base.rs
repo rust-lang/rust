@@ -372,8 +372,10 @@ fn codegen_fn_body(fx: &mut FunctionCx<'_, '_, '_>, start_block: Block) {
                 }
             }
 
-            TerminatorKind::SwitchInt { discr, switch_ty, targets } => {
-                let discr = codegen_operand(fx, discr).load_scalar(fx);
+            TerminatorKind::SwitchInt { discr, targets } => {
+                let discr = codegen_operand(fx, discr);
+                let switch_ty = discr.layout().ty;
+                let discr = discr.load_scalar(fx);
 
                 let use_bool_opt = switch_ty.kind() == fx.tcx.types.bool.kind()
                     || (targets.iter().count() == 1 && targets.iter().next().unwrap().0 == 0);
