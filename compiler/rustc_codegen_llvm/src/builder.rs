@@ -166,7 +166,7 @@ impl<'a, 'll, 'tcx> BuilderMethods<'a, 'tcx> for Builder<'a, 'll, 'tcx> {
     }
 
     fn switch_to_block(&mut self, llbb: Self::BasicBlock) {
-        *self = Self::build(self.cx, llbb)
+        unsafe { llvm::LLVMPositionBuilderAtEnd(self.llbuilder, llbb) }
     }
 
     fn ret_void(&mut self) {
@@ -412,10 +412,8 @@ impl<'a, 'll, 'tcx> BuilderMethods<'a, 'tcx> for Builder<'a, 'll, 'tcx> {
     }
 
     fn alloca(&mut self, ty: &'ll Type, align: Align) -> &'ll Value {
-        let mut bx = Builder::with_cx(self.cx);
-        bx.position_at_start(unsafe { llvm::LLVMGetFirstBasicBlock(self.llfn()) });
         unsafe {
-            let alloca = llvm::LLVMBuildAlloca(bx.llbuilder, ty, UNNAMED);
+            let alloca = llvm::LLVMBuildAlloca(self.llbuilder, ty, UNNAMED);
             llvm::LLVMSetAlignment(alloca, align.bytes() as c_uint);
             alloca
         }
@@ -566,33 +564,31 @@ impl<'a, 'll, 'tcx> BuilderMethods<'a, 'tcx> for Builder<'a, 'll, 'tcx> {
         let start = dest.project_index(self, zero).llval;
         let end = dest.project_index(self, count).llval;
 
+        let intro_bb = self.llbb();
         let header_bb = self.append_sibling_block("repeat_loop_header");
         let body_bb = self.append_sibling_block("repeat_loop_body");
         let next_bb = self.append_sibling_block("repeat_loop_next");
 
         self.br(header_bb);
 
-        let mut header_bx = Self::build(self.cx, header_bb);
-        let current = header_bx.phi(self.val_ty(start), &[start], &[self.llbb()]);
+        self.switch_to_block(header_bb);
+        let current = self.phi(self.val_ty(start), &[start], &[intro_bb]);
 
-        let keep_going = header_bx.icmp(IntPredicate::IntNE, current, end);
-        header_bx.cond_br(keep_going, body_bb, next_bb);
+        let keep_going = self.icmp(IntPredicate::IntNE, current, end);
+        self.cond_br(keep_going, body_bb, next_bb);
 
-        let mut body_bx = Self::build(self.cx, body_bb);
+        self.switch_to_block(body_bb);
         let align = dest.align.restrict_for_offset(dest.layout.field(self.cx(), 0).size);
-        cg_elem
-            .val
-            .store(&mut body_bx, PlaceRef::new_sized_aligned(current, cg_elem.layout, align));
+        cg_elem.val.store(self, PlaceRef::new_sized_aligned(current, cg_elem.layout, align));
 
-        let next = body_bx.inbounds_gep(
-            self.backend_type(cg_elem.layout),
-            current,
-            &[self.const_usize(1)],
-        );
-        body_bx.br(header_bb);
-        header_bx.add_incoming_to_phi(current, next, body_bb);
+        let next =
+            self.inbounds_gep(self.backend_type(cg_elem.layout), current, &[self.const_usize(1)]);
+        self.br(header_bb);
 
-        *self = Self::build(self.cx, next_bb);
+        self.switch_to_block(header_bb);
+        self.add_incoming_to_phi(current, next, body_bb);
+
+        self.switch_to_block(next_bb);
     }
 
     fn range_metadata(&mut self, load: &'ll Value, range: WrappingRange) {
@@ -819,15 +815,33 @@ impl<'a, 'll, 'tcx> BuilderMethods<'a, 'tcx> for Builder<'a, 'll, 'tcx> {
     }
 
     fn bitcast(&mut self, val: &'ll Value, dest_ty: &'ll Type) -> &'ll Value {
-        unsafe { llvm::LLVMBuildBitCast(self.llbuilder, val, dest_ty, UNNAMED) }
+        unsafe {
+            if llvm::LLVMTypeOf(val) != dest_ty {
+                llvm::LLVMBuildBitCast(self.llbuilder, val, dest_ty, UNNAMED)
+            } else {
+                val
+            }
+        }
     }
 
     fn intcast(&mut self, val: &'ll Value, dest_ty: &'ll Type, is_signed: bool) -> &'ll Value {
-        unsafe { llvm::LLVMRustBuildIntCast(self.llbuilder, val, dest_ty, is_signed) }
+        unsafe {
+            if llvm::LLVMTypeOf(val) != dest_ty {
+                llvm::LLVMRustBuildIntCast(self.llbuilder, val, dest_ty, is_signed)
+            } else {
+                val
+            }
+        }
     }
 
     fn pointercast(&mut self, val: &'ll Value, dest_ty: &'ll Type) -> &'ll Value {
-        unsafe { llvm::LLVMBuildPointerCast(self.llbuilder, val, dest_ty, UNNAMED) }
+        unsafe {
+            if llvm::LLVMTypeOf(val) != dest_ty {
+                llvm::LLVMBuildPointerCast(self.llbuilder, val, dest_ty, UNNAMED)
+            } else {
+                val
+            }
+        }
     }
 
     /* Comparisons */
@@ -1204,12 +1218,6 @@ impl<'a, 'll, 'tcx> Builder<'a, 'll, 'tcx> {
 
     pub fn llfn(&self) -> &'ll Value {
         unsafe { llvm::LLVMGetBasicBlockParent(self.llbb()) }
-    }
-
-    fn position_at_start(&mut self, llbb: &'ll BasicBlock) {
-        unsafe {
-            llvm::LLVMRustPositionBuilderAtStart(self.llbuilder, llbb);
-        }
     }
 
     fn align_metadata(&mut self, load: &'ll Value, align: Align) {
