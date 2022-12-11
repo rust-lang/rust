@@ -1503,6 +1503,10 @@ impl<'a> Parser<'a> {
     pub fn clear_expected_tokens(&mut self) {
         self.expected_tokens.clear();
     }
+
+    pub fn approx_token_stream_pos(&self) -> usize {
+        self.token_cursor.num_next_calls
+    }
 }
 
 pub(crate) fn make_unclosed_delims_error(

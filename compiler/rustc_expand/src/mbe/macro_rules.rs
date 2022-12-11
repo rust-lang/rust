@@ -326,8 +326,8 @@ pub(super) fn try_match_macro<'matcher, T: Tracker<'matcher>>(
 
                 return Ok((i, named_matches));
             }
-            Failure(_, _) => {
-                trace!("Failed to match arm, trying the next one");
+            Failure(_, reached_position, _) => {
+                trace!(%reached_position, "Failed to match arm, trying the next one");
                 // Try the next arm.
             }
             Error(_, _) => {
@@ -432,7 +432,7 @@ pub fn compile_declarative_macro(
     let argument_map =
         match tt_parser.parse_tt(&mut Cow::Owned(parser), &argument_gram, &mut NoopTracker) {
             Success(m) => m,
-            Failure(token, msg) => {
+            Failure(token, _, msg) => {
                 let s = parse_failure_msg(&token);
                 let sp = token.span.substitute_dummy(def.span);
                 let mut err = sess.parse_sess.span_diagnostic.struct_span_err(sp, &s);
