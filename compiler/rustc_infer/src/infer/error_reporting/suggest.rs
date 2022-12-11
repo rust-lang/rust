@@ -8,7 +8,7 @@ use rustc_middle::traits::{
     StatementAsExpression,
 };
 use rustc_middle::ty::print::with_no_trimmed_paths;
-use rustc_middle::ty::{self as ty, Ty, TypeVisitable};
+use rustc_middle::ty::{self as ty, IsSuggestable, Ty, TypeVisitable};
 use rustc_span::{sym, BytePos, Span};
 
 use crate::errors::SuggAddLetForLetChains;
@@ -349,6 +349,82 @@ impl<'tcx> TypeErrCtxt<'_, 'tcx> {
                 Applicability::MachineApplicable,
             );
         }
+    }
+
+    pub(super) fn suggest_function_pointers(
+        &self,
+        cause: &ObligationCause<'tcx>,
+        span: Span,
+        exp_found: &ty::error::ExpectedFound<Ty<'tcx>>,
+        diag: &mut Diagnostic,
+    ) {
+        debug!("suggest_function_pointers(cause={:?}, exp_found={:?})", cause, exp_found);
+        let ty::error::ExpectedFound { expected, found } = exp_found;
+        let expected_inner = expected.peel_refs();
+        let found_inner = found.peel_refs();
+        if !expected_inner.is_fn() || !found_inner.is_fn() {
+            return;
+        }
+        match (&expected_inner.kind(), &found_inner.kind()) {
+            (ty::FnPtr(sig), ty::FnDef(did, substs)) => {
+                let expected_sig = &(self.normalize_fn_sig)(*sig);
+                let found_sig =
+                    &(self.normalize_fn_sig)(self.tcx.bound_fn_sig(*did).subst(self.tcx, substs));
+
+                let fn_name = self.tcx.def_path_str_with_substs(*did, substs);
+
+                if !self.same_type_modulo_infer(*found_sig, *expected_sig)
+                    || !sig.is_suggestable(self.tcx, true)
+                    || ty::util::is_intrinsic(self.tcx, *did)
+                {
+                    return;
+                }
+
+                let (msg, sugg) = match (expected.is_ref(), found.is_ref()) {
+                    (true, false) => {
+                        let msg = "consider using a reference";
+                        let sug = format!("&{fn_name}");
+                        (msg, sug)
+                    }
+                    (false, true) => {
+                        let msg = "consider removing the reference";
+                        let sug = format!("{fn_name}");
+                        (msg, sug)
+                    }
+                    (true, true) => {
+                        diag.note("fn items are distinct from fn pointers");
+                        let msg = "consider casting to a fn pointer";
+                        let sug = format!("&({fn_name} as {sig})");
+                        (msg, sug)
+                    }
+                    (false, false) => {
+                        diag.note("fn items are distinct from fn pointers");
+                        let msg = "consider casting to a fn pointer";
+                        let sug = format!("{fn_name} as {sig}");
+                        (msg, sug)
+                    }
+                };
+                diag.span_suggestion(span, msg, &sugg, Applicability::MaybeIncorrect);
+            }
+            (ty::FnDef(did1, substs1), ty::FnDef(did2, substs2)) => {
+                let expected_sig =
+                    &(self.normalize_fn_sig)(self.tcx.bound_fn_sig(*did1).subst(self.tcx, substs1));
+                let found_sig =
+                    &(self.normalize_fn_sig)(self.tcx.bound_fn_sig(*did2).subst(self.tcx, substs2));
+
+                if self.same_type_modulo_infer(*found_sig, *expected_sig) {
+                    diag.note(
+                    "different fn items have unique types, even if their signatures are the same",
+                    );
+                }
+            }
+            (ty::FnDef(_, _), ty::FnPtr(_)) => {
+                diag.note("fn items are distinct from fn pointers");
+            }
+            _ => {
+                return;
+            }
+        };
     }
 
     pub fn should_suggest_as_ref(&self, expected: Ty<'tcx>, found: Ty<'tcx>) -> Option<&str> {
