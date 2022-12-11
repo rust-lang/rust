@@ -581,7 +581,7 @@ extern "Rust" {
     /// Performs conversion of path separators as needed.
     ///
     /// Usually Miri performs this kind of conversion automatically. However, manual conversion
-    /// might be necessary when reading an environment variable that was set of the host
+    /// might be necessary when reading an environment variable that was set on the host
     /// (such as TMPDIR) and using it as a target path.
     ///
     /// Only works with isolation disabled.

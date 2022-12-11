@@ -15,6 +15,7 @@ use std::io::{Error, ErrorKind, IsTerminal, Read, Result, Seek, SeekFrom, Write}
 use std::path::{Path, PathBuf};
 
 fn main() {
+    test_path_conversion();
     test_file();
     test_file_clone();
     test_file_create_new();
@@ -28,15 +29,11 @@ fn main() {
     test_directory();
     test_canonicalize();
     test_from_raw_os_error();
-    test_path_conversion();
 }
 
-fn tmp() -> PathBuf {
+fn host_to_target_path(path: String) -> PathBuf {
     use std::ffi::{CStr, CString};
 
-    let path = std::env::var("MIRI_TEMP")
-        .unwrap_or_else(|_| std::env::temp_dir().into_os_string().into_string().unwrap());
-    // These are host paths. We need to convert them to the target.
     let path = CString::new(path).unwrap();
     let mut out = Vec::with_capacity(1024);
 
@@ -49,6 +46,13 @@ fn tmp() -> PathBuf {
         let out = CStr::from_ptr(out.as_ptr()).to_str().unwrap();
         PathBuf::from(out)
     }
+}
+
+fn tmp() -> PathBuf {
+    let path = std::env::var("MIRI_TEMP")
+        .unwrap_or_else(|_| std::env::temp_dir().into_os_string().into_string().unwrap());
+    // These are host paths. We need to convert them to the target.
+    host_to_target_path(path)
 }
 
 /// Prepare: compute filename and make sure the file does not exist.

@@ -1667,7 +1667,7 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriInterpCxExt<'mir, 'tcx> {
                 // 'readlink' truncates the resolved path if the provided buffer is not large
                 // enough, and does *not* add a null terminator. That means we cannot use the usual
                 // `write_path_to_c_str` and have to re-implement parts of it ourselves.
-                let resolved = this.convert_path_separator(
+                let resolved = this.convert_path(
                     Cow::Borrowed(resolved.as_ref()),
                     crate::shims::os_str::PathConversion::HostToTarget,
                 );
