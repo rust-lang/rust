@@ -1,12 +1,19 @@
 use crate::def_id::{DefId, DefIndex, LocalDefId, CRATE_DEF_ID};
 use rustc_data_structures::stable_hasher::{HashStable, StableHasher, StableOrd, ToStableHashKey};
 use rustc_span::{def_id::DefPathHash, HashStableContext};
-use std::fmt;
+use std::fmt::{self, Debug};
 
-#[derive(Copy, Clone, PartialEq, Eq, Hash, Debug)]
+#[derive(Copy, Clone, PartialEq, Eq, Hash)]
 #[derive(Encodable, Decodable)]
 pub struct OwnerId {
     pub def_id: LocalDefId,
+}
+
+impl Debug for OwnerId {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        // Example: DefId(0:1 ~ aa[7697]::{use#0})
+        Debug::fmt(&self.def_id, f)
+    }
 }
 
 impl From<OwnerId> for HirId {
@@ -60,12 +67,20 @@ impl<CTX: HashStableContext> ToStableHashKey<CTX> for OwnerId {
 /// the `local_id` part of the `HirId` changing, which is a very useful property in
 /// incremental compilation where we have to persist things through changes to
 /// the code base.
-#[derive(Copy, Clone, PartialEq, Eq, Hash, Debug)]
+#[derive(Copy, Clone, PartialEq, Eq, Hash)]
 #[derive(Encodable, Decodable, HashStable_Generic)]
 #[rustc_pass_by_value]
 pub struct HirId {
     pub owner: OwnerId,
     pub local_id: ItemLocalId,
+}
+
+impl Debug for HirId {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        // Example: HirId(DefId(0:1 ~ aa[7697]::{use#0}).10)
+        // Don't use debug_tuple to always keep this on one line.
+        write!(f, "HirId({:?}.{:?})", self.owner, self.local_id)
+    }
 }
 
 impl HirId {
