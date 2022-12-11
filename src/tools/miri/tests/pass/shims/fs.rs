@@ -28,6 +28,7 @@ fn main() {
     test_directory();
     test_canonicalize();
     test_from_raw_os_error();
+    test_path_conversion();
 }
 
 fn tmp() -> PathBuf {
@@ -72,6 +73,12 @@ fn prepare_with_content(filename: &str, content: &[u8]) -> PathBuf {
     let mut file = File::create(&path).unwrap();
     file.write(content).unwrap();
     path
+}
+
+fn test_path_conversion() {
+    let tmp = tmp();
+    assert!(tmp.is_absolute(), "{:?} is not absolute", tmp);
+    assert!(tmp.is_dir(), "{:?} is not a directory", tmp);
 }
 
 fn test_file() {
