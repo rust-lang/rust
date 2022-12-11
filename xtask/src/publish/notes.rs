@@ -83,38 +83,42 @@ impl<'a, 'b, R: BufRead> Converter<'a, 'b, R> {
     }
 
     fn process_list(&mut self) -> anyhow::Result<()> {
+        let mut nesting = ListNesting::new();
         while let Some(line) = self.iter.next() {
             let line = line?;
             if line.is_empty() {
                 break;
             }
 
-            if let Some(item) = get_list_item(&line) {
-                self.write_list_item(item);
+            if let Some((marker, item)) = get_list_item(&line) {
+                nesting.set_current(marker);
+                self.write_list_item(item, &nesting);
             } else if line == "+" {
                 let line = self
                     .iter
                     .peek()
                     .ok_or_else(|| anyhow!("list continuation unexpectedly terminated"))?;
                 let line = line.as_deref().map_err(|e| anyhow!("{e}"))?;
+
+                let indent = nesting.indent();
                 if line.starts_with('[') {
                     self.write_line("", 0);
-                    self.process_source_code_block(1)?;
+                    self.process_source_code_block(indent)?;
                 } else if line.starts_with(LISTING_DELIMITER) {
                     self.write_line("", 0);
-                    self.process_listing_block(None, 1)?;
+                    self.process_listing_block(None, indent)?;
                 } else if line.starts_with('.') {
                     self.write_line("", 0);
-                    self.process_block_with_title(1)?;
+                    self.process_block_with_title(indent)?;
                 } else if line.starts_with(IMAGE_BLOCK_PREFIX) {
                     self.write_line("", 0);
-                    self.process_image_block(None, 1)?;
+                    self.process_image_block(None, indent)?;
                 } else if line.starts_with(VIDEO_BLOCK_PREFIX) {
                     self.write_line("", 0);
-                    self.process_video_block(None, 1)?;
+                    self.process_video_block(None, indent)?;
                 } else {
                     self.write_line("", 0);
-                    self.process_paragraph(1)?;
+                    self.process_paragraph(indent)?;
                 }
             } else {
                 bail!("not a list block")
@@ -263,8 +267,8 @@ impl<'a, 'b, R: BufRead> Converter<'a, 'b, R> {
         Ok(())
     }
 
-    fn write_title(&mut self, level: usize, title: &str) {
-        for _ in 0..level {
+    fn write_title(&mut self, indent: usize, title: &str) {
+        for _ in 0..indent {
             self.output.push('#');
         }
         self.output.push(' ');
@@ -272,27 +276,29 @@ impl<'a, 'b, R: BufRead> Converter<'a, 'b, R> {
         self.output.push('\n');
     }
 
-    fn write_list_item(&mut self, item: &str) {
-        self.output.push_str("- ");
+    fn write_list_item(&mut self, item: &str, nesting: &ListNesting) {
+        let (marker, indent) = nesting.marker();
+        self.write_indent(indent);
+        self.output.push_str(marker);
         self.output.push_str(item);
         self.output.push('\n');
     }
 
-    fn write_caption_line(&mut self, caption: &str, level: usize) {
-        self.write_indent(level);
+    fn write_caption_line(&mut self, caption: &str, indent: usize) {
+        self.write_indent(indent);
         self.output.push('_');
         self.output.push_str(caption);
         self.output.push_str("_\\\n");
     }
 
-    fn write_indent(&mut self, level: usize) {
-        for _ in 0..level {
-            self.output.push_str("  ");
+    fn write_indent(&mut self, indent: usize) {
+        for _ in 0..indent {
+            self.output.push(' ');
         }
     }
 
-    fn write_line(&mut self, line: &str, level: usize) {
-        self.write_indent(level);
+    fn write_line(&mut self, line: &str, indent: usize) {
+        self.write_indent(indent);
         self.output.push_str(line);
         self.output.push('\n');
     }
@@ -312,15 +318,31 @@ where
 }
 
 fn get_title(line: &str) -> Option<(usize, &str)> {
-    const MARKER: char = '=';
+    strip_prefix_symbol(line, '=')
+}
+
+fn get_list_item(line: &str) -> Option<(ListMarker, &str)> {
+    const HYPHYEN_MARKER: &'static str = "- ";
+    if let Some(text) = line.strip_prefix(HYPHYEN_MARKER) {
+        Some((ListMarker::Hyphen, text))
+    } else if let Some((count, text)) = strip_prefix_symbol(line, '*') {
+        Some((ListMarker::Asterisk(count), text))
+    } else if let Some((count, text)) = strip_prefix_symbol(line, '.') {
+        Some((ListMarker::Dot(count), text))
+    } else {
+        None
+    }
+}
+
+fn strip_prefix_symbol(line: &str, symbol: char) -> Option<(usize, &str)> {
     let mut iter = line.chars();
-    if iter.next()? != MARKER {
+    if iter.next()? != symbol {
         return None;
     }
     let mut count = 1;
     loop {
         match iter.next() {
-            Some(MARKER) => {
+            Some(ch) if ch == symbol => {
                 count += 1;
             }
             Some(' ') => {
@@ -332,16 +354,6 @@ fn get_title(line: &str) -> Option<(usize, &str)> {
     Some((count, iter.as_str()))
 }
 
-fn get_list_item(line: &str) -> Option<&str> {
-    const MARKER: &'static str = "* ";
-    if line.starts_with(MARKER) {
-        let item = &line[MARKER.len()..];
-        Some(item)
-    } else {
-        None
-    }
-}
-
 fn parse_media_block<'a>(line: &'a str, prefix: &str) -> Option<(&'a str, &'a str)> {
     if let Some(line) = line.strip_prefix(prefix) {
         if let Some((url, rest)) = line.split_once('[') {
@@ -351,6 +363,55 @@ fn parse_media_block<'a>(line: &'a str, prefix: &str) -> Option<(&'a str, &'a st
         }
     }
     None
+}
+
+#[derive(Debug)]
+struct ListNesting(Vec<ListMarker>);
+
+impl ListNesting {
+    fn new() -> Self {
+        Self(Vec::<ListMarker>::with_capacity(6))
+    }
+
+    fn set_current(&mut self, marker: ListMarker) {
+        let Self(markers) = self;
+        if let Some(index) = markers.iter().position(|m| *m == marker) {
+            markers.truncate(index + 1);
+        } else {
+            markers.push(marker);
+        }
+    }
+
+    fn indent(&self) -> usize {
+        self.0.iter().map(|m| m.in_markdown().len()).sum()
+    }
+
+    fn marker(&self) -> (&str, usize) {
+        let Self(markers) = self;
+        let indent = markers.iter().take(markers.len() - 1).map(|m| m.in_markdown().len()).sum();
+        let marker = match markers.last() {
+            None => "",
+            Some(marker) => marker.in_markdown(),
+        };
+        (marker, indent)
+    }
+}
+
+#[derive(Debug, PartialEq, Eq)]
+enum ListMarker {
+    Asterisk(usize),
+    Hyphen,
+    Dot(usize),
+}
+
+impl ListMarker {
+    fn in_markdown(&self) -> &str {
+        match self {
+            ListMarker::Asterisk(_) => "- ",
+            ListMarker::Hyphen => "- ",
+            ListMarker::Dot(_) => "1. ",
+        }
+    }
 }
 
 #[cfg(test)]
@@ -372,7 +433,19 @@ Release: release:2022-01-01[]
 == New Features
 
 * pr:1111[] foo bar baz
-* pr:2222[] foo bar baz
+- hyphen-prefixed list item
+* nested list item
+** `foo` -> `foofoo`
+** `bar` -> `barbar`
+* listing in the secondary level
+. install
+. add to config
++
+[source,json]
+----
+{\"foo\":\"bar\"}
+----
+* list item with continuation
 +
 image::https://example.com/animation.gif[]
 +
@@ -400,15 +473,10 @@ This is a plain listing.
 paragraph
 paragraph
 
-== Fixes
+== Another Section
 
-* pr:3333[] foo bar baz
-* pr:4444[] foo bar baz
-
-== Internal Improvements
-
-* pr:5555[] foo bar baz
-* pr:6666[] foo bar baz
+* foo bar baz
+* foo bar baz
 
 The highlight of the month is probably pr:1111[].
 
@@ -437,7 +505,18 @@ Release: release:2022-01-01[]
 ## New Features
 
 - pr:1111[] foo bar baz
-- pr:2222[] foo bar baz
+  - hyphen-prefixed list item
+- nested list item
+  - `foo` -> `foofoo`
+  - `bar` -> `barbar`
+- listing in the secondary level
+  1. install
+  1. add to config
+
+     ```json
+     {\"foo\":\"bar\"}
+     ```
+- list item with continuation
 
   ![](https://example.com/animation.gif)
 
@@ -464,15 +543,10 @@ Release: release:2022-01-01[]
   paragraph
   paragraph
 
-## Fixes
+## Another Section
 
-- pr:3333[] foo bar baz
-- pr:4444[] foo bar baz
-
-## Internal Improvements
-
-- pr:5555[] foo bar baz
-- pr:6666[] foo bar baz
+- foo bar baz
+- foo bar baz
 
 The highlight of the month is probably pr:1111[].
 
