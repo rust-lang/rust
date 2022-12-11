@@ -3,6 +3,9 @@
 //! This module implements parsing `config.toml` configuration files to tweak
 //! how the build runs.
 
+#[cfg(test)]
+mod tests;
+
 use std::cell::{Cell, RefCell};
 use std::cmp;
 use std::collections::{HashMap, HashSet};
@@ -696,7 +699,7 @@ define_config! {
     }
 }
 
-#[derive(Deserialize)]
+#[derive(Debug, Deserialize)]
 #[serde(untagged)]
 enum StringOrBool {
     String(String),
@@ -822,6 +825,29 @@ impl Config {
     }
 
     pub fn parse(args: &[String]) -> Config {
+        #[cfg(test)]
+        let get_toml = |_: &_| TomlConfig::default();
+        #[cfg(not(test))]
+        let get_toml = |file: &Path| {
+            let contents =
+                t!(fs::read_to_string(file), format!("config file {} not found", file.display()));
+            // Deserialize to Value and then TomlConfig to prevent the Deserialize impl of
+            // TomlConfig and sub types to be monomorphized 5x by toml.
+            match toml::from_str(&contents)
+                .and_then(|table: toml::Value| TomlConfig::deserialize(table))
+            {
+                Ok(table) => table,
+                Err(err) => {
+                    eprintln!("failed to parse TOML configuration '{}': {}", file.display(), err);
+                    crate::detail_exit(2);
+                }
+            }
+        };
+
+        Self::parse_inner(args, get_toml)
+    }
+
+    fn parse_inner<'a>(args: &[String], get_toml: impl 'a + Fn(&Path) -> TomlConfig) -> Config {
         let flags = Flags::parse(&args);
         let mut config = Config::default_opts();
 
@@ -906,25 +932,6 @@ impl Config {
         let stage0_json = t!(std::fs::read(&config.src.join("src").join("stage0.json")));
 
         config.stage0_metadata = t!(serde_json::from_slice::<Stage0Metadata>(&stage0_json));
-
-        #[cfg(test)]
-        let get_toml = |_| TomlConfig::default();
-        #[cfg(not(test))]
-        let get_toml = |file: &Path| {
-            let contents =
-                t!(fs::read_to_string(file), format!("config file {} not found", file.display()));
-            // Deserialize to Value and then TomlConfig to prevent the Deserialize impl of
-            // TomlConfig and sub types to be monomorphized 5x by toml.
-            match toml::from_str(&contents)
-                .and_then(|table: toml::Value| TomlConfig::deserialize(table))
-            {
-                Ok(table) => table,
-                Err(err) => {
-                    eprintln!("failed to parse TOML configuration '{}': {}", file.display(), err);
-                    crate::detail_exit(2);
-                }
-            }
-        };
 
         // Read from `--config`, then `RUST_BOOTSTRAP_CONFIG`, then `./config.toml`, then `config.toml` in the root directory.
         let toml_path = flags
@@ -1063,90 +1070,6 @@ impl Config {
         let mut optimize = None;
         let mut ignore_git = None;
 
-        if let Some(llvm) = toml.llvm {
-            match llvm.ccache {
-                Some(StringOrBool::String(ref s)) => config.ccache = Some(s.to_string()),
-                Some(StringOrBool::Bool(true)) => {
-                    config.ccache = Some("ccache".to_string());
-                }
-                Some(StringOrBool::Bool(false)) | None => {}
-            }
-            set(&mut config.ninja_in_file, llvm.ninja);
-            llvm_assertions = llvm.assertions;
-            llvm_tests = llvm.tests;
-            llvm_plugins = llvm.plugins;
-            llvm_skip_rebuild = llvm_skip_rebuild.or(llvm.skip_rebuild);
-            set(&mut config.llvm_optimize, llvm.optimize);
-            set(&mut config.llvm_thin_lto, llvm.thin_lto);
-            set(&mut config.llvm_release_debuginfo, llvm.release_debuginfo);
-            set(&mut config.llvm_version_check, llvm.version_check);
-            set(&mut config.llvm_static_stdcpp, llvm.static_libstdcpp);
-            if let Some(v) = llvm.link_shared {
-                config.llvm_link_shared.set(Some(v));
-            }
-            config.llvm_targets = llvm.targets.clone();
-            config.llvm_experimental_targets = llvm.experimental_targets.clone();
-            config.llvm_link_jobs = llvm.link_jobs;
-            config.llvm_version_suffix = llvm.version_suffix.clone();
-            config.llvm_clang_cl = llvm.clang_cl.clone();
-
-            config.llvm_cflags = llvm.cflags.clone();
-            config.llvm_cxxflags = llvm.cxxflags.clone();
-            config.llvm_ldflags = llvm.ldflags.clone();
-            set(&mut config.llvm_use_libcxx, llvm.use_libcxx);
-            config.llvm_use_linker = llvm.use_linker.clone();
-            config.llvm_allow_old_toolchain = llvm.allow_old_toolchain.unwrap_or(false);
-            config.llvm_polly = llvm.polly.unwrap_or(false);
-            config.llvm_clang = llvm.clang.unwrap_or(false);
-            config.llvm_build_config = llvm.build_config.clone().unwrap_or(Default::default());
-            config.llvm_from_ci = match llvm.download_ci_llvm {
-                Some(StringOrBool::String(s)) => {
-                    assert!(s == "if-available", "unknown option `{}` for download-ci-llvm", s);
-                    crate::native::is_ci_llvm_available(&config, llvm_assertions.unwrap_or(false))
-                }
-                Some(StringOrBool::Bool(b)) => b,
-                None => false,
-            };
-
-            if config.llvm_from_ci {
-                // None of the LLVM options, except assertions, are supported
-                // when using downloaded LLVM. We could just ignore these but
-                // that's potentially confusing, so force them to not be
-                // explicitly set. The defaults and CI defaults don't
-                // necessarily match but forcing people to match (somewhat
-                // arbitrary) CI configuration locally seems bad/hard.
-                check_ci_llvm!(llvm.optimize);
-                check_ci_llvm!(llvm.thin_lto);
-                check_ci_llvm!(llvm.release_debuginfo);
-                // CI-built LLVM can be either dynamic or static. We won't know until we download it.
-                check_ci_llvm!(llvm.link_shared);
-                check_ci_llvm!(llvm.static_libstdcpp);
-                check_ci_llvm!(llvm.targets);
-                check_ci_llvm!(llvm.experimental_targets);
-                check_ci_llvm!(llvm.link_jobs);
-                check_ci_llvm!(llvm.clang_cl);
-                check_ci_llvm!(llvm.version_suffix);
-                check_ci_llvm!(llvm.cflags);
-                check_ci_llvm!(llvm.cxxflags);
-                check_ci_llvm!(llvm.ldflags);
-                check_ci_llvm!(llvm.use_libcxx);
-                check_ci_llvm!(llvm.use_linker);
-                check_ci_llvm!(llvm.allow_old_toolchain);
-                check_ci_llvm!(llvm.polly);
-                check_ci_llvm!(llvm.clang);
-                check_ci_llvm!(llvm.build_config);
-                check_ci_llvm!(llvm.plugins);
-            }
-
-            // NOTE: can never be hit when downloading from CI, since we call `check_ci_llvm!(thin_lto)` above.
-            if config.llvm_thin_lto && llvm.link_shared.is_none() {
-                // If we're building with ThinLTO on, by default we want to link
-                // to LLVM shared, to avoid re-doing ThinLTO (which happens in
-                // the link step) with each stage.
-                config.llvm_link_shared.set(Some(true));
-            }
-        }
-
         if let Some(rust) = toml.rust {
             debug = rust.debug;
             debug_assertions = rust.debug_assertions;
@@ -1218,6 +1141,97 @@ impl Config {
         } else {
             config.rust_profile_use = flags.rust_profile_use;
             config.rust_profile_generate = flags.rust_profile_generate;
+        }
+
+        if let Some(llvm) = toml.llvm {
+            match llvm.ccache {
+                Some(StringOrBool::String(ref s)) => config.ccache = Some(s.to_string()),
+                Some(StringOrBool::Bool(true)) => {
+                    config.ccache = Some("ccache".to_string());
+                }
+                Some(StringOrBool::Bool(false)) | None => {}
+            }
+            set(&mut config.ninja_in_file, llvm.ninja);
+            llvm_assertions = llvm.assertions;
+            llvm_tests = llvm.tests;
+            llvm_plugins = llvm.plugins;
+            llvm_skip_rebuild = llvm_skip_rebuild.or(llvm.skip_rebuild);
+            set(&mut config.llvm_optimize, llvm.optimize);
+            set(&mut config.llvm_thin_lto, llvm.thin_lto);
+            set(&mut config.llvm_release_debuginfo, llvm.release_debuginfo);
+            set(&mut config.llvm_version_check, llvm.version_check);
+            set(&mut config.llvm_static_stdcpp, llvm.static_libstdcpp);
+            if let Some(v) = llvm.link_shared {
+                config.llvm_link_shared.set(Some(v));
+            }
+            config.llvm_targets = llvm.targets.clone();
+            config.llvm_experimental_targets = llvm.experimental_targets.clone();
+            config.llvm_link_jobs = llvm.link_jobs;
+            config.llvm_version_suffix = llvm.version_suffix.clone();
+            config.llvm_clang_cl = llvm.clang_cl.clone();
+
+            config.llvm_cflags = llvm.cflags.clone();
+            config.llvm_cxxflags = llvm.cxxflags.clone();
+            config.llvm_ldflags = llvm.ldflags.clone();
+            set(&mut config.llvm_use_libcxx, llvm.use_libcxx);
+            config.llvm_use_linker = llvm.use_linker.clone();
+            config.llvm_allow_old_toolchain = llvm.allow_old_toolchain.unwrap_or(false);
+            config.llvm_polly = llvm.polly.unwrap_or(false);
+            config.llvm_clang = llvm.clang.unwrap_or(false);
+            config.llvm_build_config = llvm.build_config.clone().unwrap_or(Default::default());
+
+            let asserts = llvm_assertions.unwrap_or(false);
+            config.llvm_from_ci = match llvm.download_ci_llvm {
+                Some(StringOrBool::String(s)) => {
+                    assert!(s == "if-available", "unknown option `{}` for download-ci-llvm", s);
+                    crate::native::is_ci_llvm_available(&config, asserts)
+                }
+                Some(StringOrBool::Bool(b)) => b,
+                None => {
+                    config.channel == "dev" && crate::native::is_ci_llvm_available(&config, asserts)
+                }
+            };
+
+            if config.llvm_from_ci {
+                // None of the LLVM options, except assertions, are supported
+                // when using downloaded LLVM. We could just ignore these but
+                // that's potentially confusing, so force them to not be
+                // explicitly set. The defaults and CI defaults don't
+                // necessarily match but forcing people to match (somewhat
+                // arbitrary) CI configuration locally seems bad/hard.
+                check_ci_llvm!(llvm.optimize);
+                check_ci_llvm!(llvm.thin_lto);
+                check_ci_llvm!(llvm.release_debuginfo);
+                // CI-built LLVM can be either dynamic or static. We won't know until we download it.
+                check_ci_llvm!(llvm.link_shared);
+                check_ci_llvm!(llvm.static_libstdcpp);
+                check_ci_llvm!(llvm.targets);
+                check_ci_llvm!(llvm.experimental_targets);
+                check_ci_llvm!(llvm.link_jobs);
+                check_ci_llvm!(llvm.clang_cl);
+                check_ci_llvm!(llvm.version_suffix);
+                check_ci_llvm!(llvm.cflags);
+                check_ci_llvm!(llvm.cxxflags);
+                check_ci_llvm!(llvm.ldflags);
+                check_ci_llvm!(llvm.use_libcxx);
+                check_ci_llvm!(llvm.use_linker);
+                check_ci_llvm!(llvm.allow_old_toolchain);
+                check_ci_llvm!(llvm.polly);
+                check_ci_llvm!(llvm.clang);
+                check_ci_llvm!(llvm.build_config);
+                check_ci_llvm!(llvm.plugins);
+            }
+
+            // NOTE: can never be hit when downloading from CI, since we call `check_ci_llvm!(thin_lto)` above.
+            if config.llvm_thin_lto && llvm.link_shared.is_none() {
+                // If we're building with ThinLTO on, by default we want to link
+                // to LLVM shared, to avoid re-doing ThinLTO (which happens in
+                // the link step) with each stage.
+                config.llvm_link_shared.set(Some(true));
+            }
+        } else {
+            config.llvm_from_ci =
+                config.channel == "dev" && crate::native::is_ci_llvm_available(&config, false);
         }
 
         if let Some(t) = toml.target {

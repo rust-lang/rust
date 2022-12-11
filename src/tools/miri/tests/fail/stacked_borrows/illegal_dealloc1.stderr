@@ -18,7 +18,7 @@ LL |         ptr1.write(0);
    |         ^^^^^^^^^^^^^
    = note: BACKTRACE:
    = note: inside `std::alloc::dealloc` at RUSTLIB/alloc/src/alloc.rs:LL:CC
-note: inside `main` at $DIR/illegal_deALLOC.rs:LL:CC
+note: inside `main`
   --> $DIR/illegal_deALLOC.rs:LL:CC
    |
 LL |         dealloc(ptr2, Layout::from_size_align_unchecked(1, 1));

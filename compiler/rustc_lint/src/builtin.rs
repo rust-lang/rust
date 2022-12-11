@@ -53,7 +53,8 @@ use rustc_span::source_map::Spanned;
 use rustc_span::symbol::{kw, sym, Ident, Symbol};
 use rustc_span::{BytePos, InnerSpan, Span};
 use rustc_target::abi::{Abi, VariantIdx};
-use rustc_trait_selection::traits::{self, misc::can_type_implement_copy};
+use rustc_trait_selection::infer::{InferCtxtExt, TyCtxtInferExt};
+use rustc_trait_selection::traits::{self, misc::can_type_implement_copy, EvaluationResult};
 
 use crate::nonstandard_style::{method_context, MethodLateContext};
 
@@ -96,6 +97,7 @@ fn pierce_parens(mut expr: &ast::Expr) -> &ast::Expr {
 }
 
 impl EarlyLintPass for WhileTrue {
+    #[inline]
     fn check_expr(&mut self, cx: &EarlyContext<'_>, e: &ast::Expr) {
         if let ast::ExprKind::While(cond, _, label) = &e.kind
             && let cond = pierce_parens(cond)
@@ -360,6 +362,7 @@ impl EarlyLintPass for UnsafeCode {
         }
     }
 
+    #[inline]
     fn check_expr(&mut self, cx: &EarlyContext<'_>, e: &ast::Expr) {
         if let ast::ExprKind::Block(ref blk, _) = e.kind {
             // Don't warn about generated blocks; that'll just pollute the output.
@@ -582,6 +585,7 @@ impl MissingDoc {
 }
 
 impl<'tcx> LateLintPass<'tcx> for MissingDoc {
+    #[inline]
     fn enter_lint_attrs(&mut self, _cx: &LateContext<'_>, attrs: &[ast::Attribute]) {
         let doc_hidden = self.doc_hidden()
             || attrs.iter().any(|attr| {
@@ -750,10 +754,39 @@ impl<'tcx> LateLintPass<'tcx> for MissingCopyImplementations {
         if def.has_dtor(cx.tcx) {
             return;
         }
+
+        // If the type contains a raw pointer, it may represent something like a handle,
+        // and recommending Copy might be a bad idea.
+        for field in def.all_fields() {
+            let did = field.did;
+            if cx.tcx.type_of(did).is_unsafe_ptr() {
+                return;
+            }
+        }
         let param_env = ty::ParamEnv::empty();
         if ty.is_copy_modulo_regions(cx.tcx, param_env) {
             return;
         }
+
+        // We shouldn't recommend implementing `Copy` on stateful things,
+        // such as iterators.
+        if let Some(iter_trait) = cx.tcx.get_diagnostic_item(sym::Iterator) {
+            if cx.tcx.infer_ctxt().build().type_implements_trait(iter_trait, [ty], param_env)
+                == EvaluationResult::EvaluatedToOk
+            {
+                return;
+            }
+        }
+
+        // Default value of clippy::trivially_copy_pass_by_ref
+        const MAX_SIZE: u64 = 256;
+
+        if let Some(size) = cx.layout_of(ty).ok().map(|l| l.size.bytes()) {
+            if size > MAX_SIZE {
+                return;
+            }
+        }
+
         if can_type_implement_copy(
             cx.tcx,
             param_env,

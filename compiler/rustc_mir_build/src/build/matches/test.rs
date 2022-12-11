@@ -203,7 +203,6 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
                     self.source_info(match_start_span),
                     TerminatorKind::SwitchInt {
                         discr: Operand::Move(discr),
-                        switch_ty: discr_ty,
                         targets: switch_targets,
                     },
                 );
@@ -221,7 +220,7 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
                         0 => (second_bb, first_bb),
                         v => span_bug!(test.span, "expected boolean value but got {:?}", v),
                     };
-                    TerminatorKind::if_(self.tcx, Operand::Copy(place), true_bb, false_bb)
+                    TerminatorKind::if_(Operand::Copy(place), true_bb, false_bb)
                 } else {
                     // The switch may be inexhaustive so we have a catch all block
                     debug_assert_eq!(options.len() + 1, target_blocks.len());
@@ -232,7 +231,6 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
                     );
                     TerminatorKind::SwitchInt {
                         discr: Operand::Copy(place),
-                        switch_ty,
                         targets: switch_targets,
                     }
                 };
@@ -378,7 +376,7 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
         self.cfg.terminate(
             block,
             source_info,
-            TerminatorKind::if_(self.tcx, Operand::Move(result), success_block, fail_block),
+            TerminatorKind::if_(Operand::Move(result), success_block, fail_block),
         );
     }
 
@@ -482,7 +480,7 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
         self.cfg.terminate(
             eq_block,
             source_info,
-            TerminatorKind::if_(self.tcx, Operand::Move(eq_result), success_block, fail_block),
+            TerminatorKind::if_(Operand::Move(eq_result), success_block, fail_block),
         );
     }
 

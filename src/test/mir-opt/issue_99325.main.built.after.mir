@@ -109,7 +109,7 @@ fn main() -> () {
         StorageDead(_12);                // scope 1 at $SRC_DIR/core/src/macros/mod.rs:LL:COL
         _10 = Not(move _11);             // scope 1 at $SRC_DIR/core/src/macros/mod.rs:LL:COL
         StorageDead(_11);                // scope 1 at $SRC_DIR/core/src/macros/mod.rs:LL:COL
-        switchInt(move _10) -> [false: bb4, otherwise: bb3]; // scope 1 at $SRC_DIR/core/src/macros/mod.rs:LL:COL
+        switchInt(move _10) -> [0: bb4, otherwise: bb3]; // scope 1 at $SRC_DIR/core/src/macros/mod.rs:LL:COL
     }
 
     bb3: {
@@ -218,7 +218,7 @@ fn main() -> () {
         StorageDead(_33);                // scope 3 at $SRC_DIR/core/src/macros/mod.rs:LL:COL
         _31 = Not(move _32);             // scope 3 at $SRC_DIR/core/src/macros/mod.rs:LL:COL
         StorageDead(_32);                // scope 3 at $SRC_DIR/core/src/macros/mod.rs:LL:COL
-        switchInt(move _31) -> [false: bb13, otherwise: bb12]; // scope 3 at $SRC_DIR/core/src/macros/mod.rs:LL:COL
+        switchInt(move _31) -> [0: bb13, otherwise: bb12]; // scope 3 at $SRC_DIR/core/src/macros/mod.rs:LL:COL
     }
 
     bb12: {

@@ -477,11 +477,9 @@ macro_rules! make_mir_visitor {
 
                     TerminatorKind::SwitchInt {
                         discr,
-                        switch_ty,
                         targets: _
                     } => {
                         self.visit_operand(discr, location);
-                        self.visit_ty($(& $mutability)? *switch_ty, TyContext::Location(location));
                     }
 
                     TerminatorKind::Drop {

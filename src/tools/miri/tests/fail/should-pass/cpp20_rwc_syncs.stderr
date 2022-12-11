@@ -8,7 +8,7 @@ LL |             std::hint::unreachable_unchecked();
    = help: see https://doc.rust-lang.org/nightly/reference/behavior-considered-undefined.html for further information
    = note: BACKTRACE:
    = note: inside `test_cpp20_rwc_syncs` at $DIR/cpp20_rwc_syncs.rs:LL:CC
-note: inside `main` at $DIR/cpp20_rwc_syncs.rs:LL:CC
+note: inside `main`
   --> $DIR/cpp20_rwc_syncs.rs:LL:CC
    |
 LL |         test_cpp20_rwc_syncs();

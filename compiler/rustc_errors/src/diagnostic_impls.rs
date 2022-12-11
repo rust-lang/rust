@@ -152,6 +152,12 @@ impl IntoDiagnosticArg for ast::Path {
     }
 }
 
+impl IntoDiagnosticArg for &ast::Path {
+    fn into_diagnostic_arg(self) -> DiagnosticArgValue<'static> {
+        DiagnosticArgValue::Str(Cow::Owned(pprust::path_to_string(self)))
+    }
+}
+
 impl IntoDiagnosticArg for ast::token::Token {
     fn into_diagnostic_arg(self) -> DiagnosticArgValue<'static> {
         DiagnosticArgValue::Str(pprust::token_to_string(&self))

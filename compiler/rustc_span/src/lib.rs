@@ -491,6 +491,10 @@ impl SpanData {
     pub fn is_dummy(self) -> bool {
         self.lo.0 == 0 && self.hi.0 == 0
     }
+    #[inline]
+    pub fn is_visible(self, sm: &SourceMap) -> bool {
+        !self.is_dummy() && sm.is_span_accessible(self.span())
+    }
     /// Returns `true` if `self` fully encloses `other`.
     pub fn contains(self, other: Self) -> bool {
         self.lo <= other.lo && other.hi <= self.hi
@@ -554,6 +558,11 @@ impl Span {
     #[inline]
     pub fn is_dummy(self) -> bool {
         self.data_untracked().is_dummy()
+    }
+
+    #[inline]
+    pub fn is_visible(self, sm: &SourceMap) -> bool {
+        self.data_untracked().is_visible(sm)
     }
 
     /// Returns `true` if this span comes from any kind of macro, desugaring or inlining.

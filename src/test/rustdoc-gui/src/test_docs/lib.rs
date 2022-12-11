@@ -343,6 +343,9 @@ pub mod doc_block_table {
     /// | header1                  | header2                  |
     /// |--------------------------|--------------------------|
     /// | Lorem Ipsum, Lorem Ipsum | Lorem Ipsum, Lorem Ipsum |
+    /// | Lorem Ipsum, Lorem Ipsum | Lorem Ipsum, Lorem Ipsum |
+    /// | Lorem Ipsum, Lorem Ipsum | Lorem Ipsum, Lorem Ipsum |
+    /// | Lorem Ipsum, Lorem Ipsum | Lorem Ipsum, Lorem Ipsum |
     pub struct DocBlockTable {}
 
     impl DocBlockTableTrait for DocBlockTable {

@@ -9,49 +9,49 @@ use rustc_span::Span;
 
 #[macro_export]
 macro_rules! late_lint_methods {
-    ($macro:path, $args:tt, [$hir:tt]) => (
-        $macro!($args, [$hir], [
-            fn check_body(a: &$hir hir::Body<$hir>);
-            fn check_body_post(a: &$hir hir::Body<$hir>);
+    ($macro:path, $args:tt) => (
+        $macro!($args, [
+            fn check_body(a: &'tcx hir::Body<'tcx>);
+            fn check_body_post(a: &'tcx hir::Body<'tcx>);
             fn check_crate();
             fn check_crate_post();
-            fn check_mod(a: &$hir hir::Mod<$hir>, b: hir::HirId);
-            fn check_foreign_item(a: &$hir hir::ForeignItem<$hir>);
-            fn check_item(a: &$hir hir::Item<$hir>);
-            fn check_item_post(a: &$hir hir::Item<$hir>);
-            fn check_local(a: &$hir hir::Local<$hir>);
-            fn check_block(a: &$hir hir::Block<$hir>);
-            fn check_block_post(a: &$hir hir::Block<$hir>);
-            fn check_stmt(a: &$hir hir::Stmt<$hir>);
-            fn check_arm(a: &$hir hir::Arm<$hir>);
-            fn check_pat(a: &$hir hir::Pat<$hir>);
-            fn check_expr(a: &$hir hir::Expr<$hir>);
-            fn check_expr_post(a: &$hir hir::Expr<$hir>);
-            fn check_ty(a: &$hir hir::Ty<$hir>);
-            fn check_generic_param(a: &$hir hir::GenericParam<$hir>);
-            fn check_generics(a: &$hir hir::Generics<$hir>);
-            fn check_poly_trait_ref(a: &$hir hir::PolyTraitRef<$hir>);
+            fn check_mod(a: &'tcx hir::Mod<'tcx>, b: hir::HirId);
+            fn check_foreign_item(a: &'tcx hir::ForeignItem<'tcx>);
+            fn check_item(a: &'tcx hir::Item<'tcx>);
+            fn check_item_post(a: &'tcx hir::Item<'tcx>);
+            fn check_local(a: &'tcx hir::Local<'tcx>);
+            fn check_block(a: &'tcx hir::Block<'tcx>);
+            fn check_block_post(a: &'tcx hir::Block<'tcx>);
+            fn check_stmt(a: &'tcx hir::Stmt<'tcx>);
+            fn check_arm(a: &'tcx hir::Arm<'tcx>);
+            fn check_pat(a: &'tcx hir::Pat<'tcx>);
+            fn check_expr(a: &'tcx hir::Expr<'tcx>);
+            fn check_expr_post(a: &'tcx hir::Expr<'tcx>);
+            fn check_ty(a: &'tcx hir::Ty<'tcx>);
+            fn check_generic_param(a: &'tcx hir::GenericParam<'tcx>);
+            fn check_generics(a: &'tcx hir::Generics<'tcx>);
+            fn check_poly_trait_ref(a: &'tcx hir::PolyTraitRef<'tcx>);
             fn check_fn(
-                a: rustc_hir::intravisit::FnKind<$hir>,
-                b: &$hir hir::FnDecl<$hir>,
-                c: &$hir hir::Body<$hir>,
+                a: rustc_hir::intravisit::FnKind<'tcx>,
+                b: &'tcx hir::FnDecl<'tcx>,
+                c: &'tcx hir::Body<'tcx>,
                 d: Span,
                 e: hir::HirId);
-            fn check_trait_item(a: &$hir hir::TraitItem<$hir>);
-            fn check_impl_item(a: &$hir hir::ImplItem<$hir>);
-            fn check_impl_item_post(a: &$hir hir::ImplItem<$hir>);
-            fn check_struct_def(a: &$hir hir::VariantData<$hir>);
-            fn check_field_def(a: &$hir hir::FieldDef<$hir>);
-            fn check_variant(a: &$hir hir::Variant<$hir>);
-            fn check_path(a: &hir::Path<$hir>, b: hir::HirId);
-            fn check_attribute(a: &$hir ast::Attribute);
+            fn check_trait_item(a: &'tcx hir::TraitItem<'tcx>);
+            fn check_impl_item(a: &'tcx hir::ImplItem<'tcx>);
+            fn check_impl_item_post(a: &'tcx hir::ImplItem<'tcx>);
+            fn check_struct_def(a: &'tcx hir::VariantData<'tcx>);
+            fn check_field_def(a: &'tcx hir::FieldDef<'tcx>);
+            fn check_variant(a: &'tcx hir::Variant<'tcx>);
+            fn check_path(a: &hir::Path<'tcx>, b: hir::HirId);
+            fn check_attribute(a: &'tcx ast::Attribute);
 
             /// Called when entering a syntax node that can have lint attributes such
             /// as `#[allow(...)]`. Called with *all* the attributes of that node.
-            fn enter_lint_attrs(a: &$hir [ast::Attribute]);
+            fn enter_lint_attrs(a: &'tcx [ast::Attribute]);
 
             /// Counterpart to `enter_lint_attrs`.
-            fn exit_lint_attrs(a: &$hir [ast::Attribute]);
+            fn exit_lint_attrs(a: &'tcx [ast::Attribute]);
         ]);
     )
 }
@@ -66,21 +66,23 @@ macro_rules! late_lint_methods {
 // contains a few lint-specific methods with no equivalent in `Visitor`.
 
 macro_rules! declare_late_lint_pass {
-    ([], [$hir:tt], [$($(#[$attr:meta])* fn $name:ident($($param:ident: $arg:ty),*);)*]) => (
-        pub trait LateLintPass<$hir>: LintPass {
-            $(#[inline(always)] fn $name(&mut self, _: &LateContext<$hir>, $(_: $arg),*) {})*
+    ([], [$($(#[$attr:meta])* fn $name:ident($($param:ident: $arg:ty),*);)*]) => (
+        pub trait LateLintPass<'tcx>: LintPass {
+            $(#[inline(always)] fn $name(&mut self, _: &LateContext<'tcx>, $(_: $arg),*) {})*
         }
     )
 }
 
-late_lint_methods!(declare_late_lint_pass, [], ['tcx]);
+// Declare the `LateLintPass` trait, which contains empty default definitions
+// for all the `check_*` methods.
+late_lint_methods!(declare_late_lint_pass, []);
 
 impl LateLintPass<'_> for HardwiredLints {}
 
 #[macro_export]
 macro_rules! expand_combined_late_lint_pass_method {
-    ([$($passes:ident),*], $self: ident, $name: ident, $params:tt) => ({
-        $($self.$passes.$name $params;)*
+    ([$($pass:ident),*], $self: ident, $name: ident, $params:tt) => ({
+        $($self.$pass.$name $params;)*
     })
 }
 
@@ -95,28 +97,28 @@ macro_rules! expand_combined_late_lint_pass_methods {
 
 #[macro_export]
 macro_rules! declare_combined_late_lint_pass {
-    ([$v:vis $name:ident, [$($passes:ident: $constructor:expr,)*]], [$hir:tt], $methods:tt) => (
+    ([$v:vis $name:ident, [$($pass:ident: $constructor:expr,)*]], $methods:tt) => (
         #[allow(non_snake_case)]
         $v struct $name {
-            $($passes: $passes,)*
+            $($pass: $pass,)*
         }
 
         impl $name {
             $v fn new() -> Self {
                 Self {
-                    $($passes: $constructor,)*
+                    $($pass: $constructor,)*
                 }
             }
 
             $v fn get_lints() -> LintArray {
                 let mut lints = Vec::new();
-                $(lints.extend_from_slice(&$passes::get_lints());)*
+                $(lints.extend_from_slice(&$pass::get_lints());)*
                 lints
             }
         }
 
         impl<'tcx> LateLintPass<'tcx> for $name {
-            expand_combined_late_lint_pass_methods!([$($passes),*], $methods);
+            expand_combined_late_lint_pass_methods!([$($pass),*], $methods);
         }
 
         #[allow(rustc::lint_pass_impl_without_macro)]
@@ -176,12 +178,14 @@ macro_rules! declare_early_lint_pass {
     )
 }
 
+// Declare the `EarlyLintPass` trait, which contains empty default definitions
+// for all the `check_*` methods.
 early_lint_methods!(declare_early_lint_pass, []);
 
 #[macro_export]
 macro_rules! expand_combined_early_lint_pass_method {
-    ([$($passes:ident),*], $self: ident, $name: ident, $params:tt) => ({
-        $($self.$passes.$name $params;)*
+    ([$($pass:ident),*], $self: ident, $name: ident, $params:tt) => ({
+        $($self.$pass.$name $params;)*
     })
 }
 
@@ -196,28 +200,28 @@ macro_rules! expand_combined_early_lint_pass_methods {
 
 #[macro_export]
 macro_rules! declare_combined_early_lint_pass {
-    ([$v:vis $name:ident, [$($passes:ident: $constructor:expr,)*]], $methods:tt) => (
+    ([$v:vis $name:ident, [$($pass:ident: $constructor:expr,)*]], $methods:tt) => (
         #[allow(non_snake_case)]
         $v struct $name {
-            $($passes: $passes,)*
+            $($pass: $pass,)*
         }
 
         impl $name {
             $v fn new() -> Self {
                 Self {
-                    $($passes: $constructor,)*
+                    $($pass: $constructor,)*
                 }
             }
 
             $v fn get_lints() -> LintArray {
                 let mut lints = Vec::new();
-                $(lints.extend_from_slice(&$passes::get_lints());)*
+                $(lints.extend_from_slice(&$pass::get_lints());)*
                 lints
             }
         }
 
         impl EarlyLintPass for $name {
-            expand_combined_early_lint_pass_methods!([$($passes),*], $methods);
+            expand_combined_early_lint_pass_methods!([$($pass),*], $methods);
         }
 
         #[allow(rustc::lint_pass_impl_without_macro)]

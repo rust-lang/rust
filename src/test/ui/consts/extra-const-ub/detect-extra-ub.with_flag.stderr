@@ -32,20 +32,23 @@ error[E0080]: evaluation of constant value failed
   --> $SRC_DIR/core/src/ptr/mod.rs:LL:COL
    |
 LL |         copy_nonoverlapping(src, tmp.as_mut_ptr(), 1);
-   |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
-   |         |
-   |         accessing memory with alignment 1, but alignment 4 is required
-   |         inside `std::ptr::read::<u32>` at $SRC_DIR/core/src/ptr/mod.rs:LL:COL
+   |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ accessing memory with alignment 1, but alignment 4 is required
    |
-  ::: $SRC_DIR/core/src/ptr/const_ptr.rs:LL:COL
+note: inside `std::ptr::read::<u32>`
+  --> $SRC_DIR/core/src/ptr/mod.rs:LL:COL
+   |
+LL |         copy_nonoverlapping(src, tmp.as_mut_ptr(), 1);
+   |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+note: inside `ptr::const_ptr::<impl *const u32>::read`
+  --> $SRC_DIR/core/src/ptr/const_ptr.rs:LL:COL
    |
 LL |         unsafe { read(self) }
-   |                  ---------- inside `ptr::const_ptr::<impl *const u32>::read` at $SRC_DIR/core/src/ptr/const_ptr.rs:LL:COL
-   |
-  ::: $DIR/detect-extra-ub.rs:38:9
+   |                  ^^^^^^^^^^
+note: inside `INNER`
+  --> $DIR/detect-extra-ub.rs:38:9
    |
 LL |         ptr.read();
-   |         ---------- inside `INNER` at $DIR/detect-extra-ub.rs:38:9
+   |         ^^^^^^^^^^
 
 note: erroneous constant used
   --> $DIR/detect-extra-ub.rs:32:5

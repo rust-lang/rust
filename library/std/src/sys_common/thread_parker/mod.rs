@@ -16,6 +16,8 @@ cfg_if::cfg_if! {
         pub use wait_flag::Parker;
     } else if #[cfg(any(windows, target_family = "unix"))] {
         pub use crate::sys::thread_parker::Parker;
+    } else if #[cfg(all(target_vendor = "fortanix", target_env = "sgx"))] {
+        pub use crate::sys::thread_parker::Parker;
     } else {
         mod generic;
         pub use generic::Parker;

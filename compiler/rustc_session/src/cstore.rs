@@ -6,9 +6,10 @@ use crate::search_paths::PathKind;
 use crate::utils::NativeLibKind;
 use crate::Session;
 use rustc_ast as ast;
-use rustc_data_structures::sync::{self, MetadataRef};
-use rustc_hir::def_id::{CrateNum, DefId, StableCrateId, LOCAL_CRATE};
-use rustc_hir::definitions::{DefKey, DefPath, DefPathHash};
+use rustc_data_structures::sync::{self, MetadataRef, RwLock};
+use rustc_hir::def_id::{CrateNum, DefId, LocalDefId, StableCrateId, LOCAL_CRATE};
+use rustc_hir::definitions::{DefKey, DefPath, DefPathHash, Definitions};
+use rustc_index::vec::IndexVec;
 use rustc_span::hygiene::{ExpnHash, ExpnId};
 use rustc_span::symbol::Symbol;
 use rustc_span::Span;
@@ -217,6 +218,7 @@ pub type MetadataLoaderDyn = dyn MetadataLoader + Sync;
 /// during resolve)
 pub trait CrateStore: std::fmt::Debug {
     fn as_any(&self) -> &dyn Any;
+    fn untracked_as_any(&mut self) -> &mut dyn Any;
 
     // Foreign definitions.
     // This information is safe to access, since it's hashed as part of the DefPathHash, which incr.
@@ -249,3 +251,11 @@ pub trait CrateStore: std::fmt::Debug {
 }
 
 pub type CrateStoreDyn = dyn CrateStore + sync::Sync;
+
+#[derive(Debug)]
+pub struct Untracked {
+    pub cstore: Box<CrateStoreDyn>,
+    /// Reference span for definitions.
+    pub source_span: IndexVec<LocalDefId, Span>,
+    pub definitions: RwLock<Definitions>,
+}

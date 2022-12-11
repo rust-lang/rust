@@ -13,7 +13,7 @@
           _3 = _1;                         // scope 0 at $DIR/if_condition_int.rs:+1:8: +1:9
           _2 = Eq(move _3, const -42f32);  // scope 0 at $DIR/if_condition_int.rs:+1:8: +1:18
           StorageDead(_3);                 // scope 0 at $DIR/if_condition_int.rs:+1:17: +1:18
-          switchInt(move _2) -> [false: bb2, otherwise: bb1]; // scope 0 at $DIR/if_condition_int.rs:+1:8: +1:18
+          switchInt(move _2) -> [0: bb2, otherwise: bb1]; // scope 0 at $DIR/if_condition_int.rs:+1:8: +1:18
       }
   
       bb1: {

@@ -17,10 +17,10 @@
 //! should have some resemblance to multiplication (and share expected
 //! properties like associativity).
 //!
-//! Note that the `&&` and `||` operators short-circuit, i.e., they only
-//! evaluate their second operand if it contributes to the result. Since this
-//! behavior is not enforceable by traits, `&&` and `||` are not supported as
-//! overloadable operators.
+//! Note that the `&&` and `||` operators are currently not supported for
+//! overloading. Due to their short circuiting nature, they require a different
+//! design from traits for other operators like [`BitAnd`]. Designs for them are
+//! under discussion.
 //!
 //! Many of the operators take their operands by value. In non-generic
 //! contexts involving built-in types, this is usually not a problem.

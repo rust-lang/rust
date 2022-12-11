@@ -15,7 +15,7 @@ fn old(_1: Result<T, E>) -> Result<T, E> {
 
     bb0: {
         _2 = discriminant(_1);           // scope 0 at $DIR/try_identity_e2e.rs:+2:15: +2:16
-        switchInt(move _2) -> [0_isize: bb3, 1_isize: bb1, otherwise: bb2]; // scope 0 at $DIR/try_identity_e2e.rs:+2:9: +2:16
+        switchInt(move _2) -> [0: bb3, 1: bb1, otherwise: bb2]; // scope 0 at $DIR/try_identity_e2e.rs:+2:9: +2:16
     }
 
     bb1: {

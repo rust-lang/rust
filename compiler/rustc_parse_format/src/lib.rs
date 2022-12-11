@@ -58,13 +58,13 @@ impl InnerOffset {
 
 /// A piece is a portion of the format string which represents the next part
 /// to emit. These are emitted as a stream by the `Parser` class.
-#[derive(Copy, Clone, Debug, PartialEq)]
+#[derive(Clone, Debug, PartialEq)]
 pub enum Piece<'a> {
     /// A literal string which should directly be emitted
     String(&'a str),
     /// This describes that formatting should process the next argument (as
     /// specified inside) for emission.
-    NextArgument(Argument<'a>),
+    NextArgument(Box<Argument<'a>>),
 }
 
 /// Representation of an argument specification.
@@ -244,7 +244,7 @@ impl<'a> Iterator for Parser<'a> {
                         } else {
                             self.suggest_positional_arg_instead_of_captured_arg(arg);
                         }
-                        Some(NextArgument(arg))
+                        Some(NextArgument(Box::new(arg)))
                     }
                 }
                 '}' => {
@@ -907,6 +907,10 @@ fn find_skips_from_snippet(
     }
     (skips, true)
 }
+
+// Assert a reasonable size for `Piece`
+#[cfg(all(target_arch = "x86_64", target_pointer_width = "64"))]
+rustc_data_structures::static_assert_size!(Piece<'_>, 16);
 
 #[cfg(test)]
 mod tests;

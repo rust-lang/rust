@@ -21,7 +21,7 @@ LL |     unsafe { *xraw = (42, 23) }; // unfreeze
    |              ^^^^^^^^^^^^^^^^
    = note: BACKTRACE:
    = note: inside `foo` at $DIR/return_invalid_shr_option.rs:LL:CC
-note: inside `main` at $DIR/return_invalid_shr_option.rs:LL:CC
+note: inside `main`
   --> $DIR/return_invalid_shr_option.rs:LL:CC
    |
 LL |     match foo(&mut (1, 2)) {

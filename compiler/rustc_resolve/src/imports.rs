@@ -541,7 +541,7 @@ impl<'a, 'b> ImportResolver<'a, 'b> {
             if let Some(candidate) = &err.candidate {
                 import_candidates(
                     self.r.session,
-                    &self.r.source_span,
+                    &self.r.untracked.source_span,
                     &mut diag,
                     Some(err.span),
                     &candidate,

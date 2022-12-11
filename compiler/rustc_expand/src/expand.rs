@@ -1,5 +1,9 @@
 use crate::base::*;
 use crate::config::StripUnconfigured;
+use crate::errors::{
+    IncompleteParse, RecursionLimitReached, RemoveExprNotSupported, RemoveNodeNotSupported,
+    UnsupportedKeyValue, WrongFragmentKind,
+};
 use crate::hygiene::SyntaxContext;
 use crate::mbe::diagnostics::annotate_err_with_kind;
 use crate::module::{mod_dir_path, parse_external_mod, DirOwnership, ParsedExternalMod};
@@ -18,7 +22,7 @@ use rustc_ast::{NestedMetaItem, NodeId, PatKind, StmtKind, TyKind};
 use rustc_ast_pretty::pprust;
 use rustc_data_structures::map_in_place::MapInPlace;
 use rustc_data_structures::sync::Lrc;
-use rustc_errors::{Applicability, PResult};
+use rustc_errors::PResult;
 use rustc_feature::Features;
 use rustc_parse::parser::{
     AttemptLocalParseRecovery, CommaRecoveryMode, ForceCollect, Parser, RecoverColon, RecoverComma,
@@ -606,29 +610,22 @@ impl<'a, 'b> MacroExpander<'a, 'b> {
             Limit(0) => Limit(2),
             limit => limit * 2,
         };
-        self.cx
-            .struct_span_err(
-                expn_data.call_site,
-                &format!("recursion limit reached while expanding `{}`", expn_data.kind.descr()),
-            )
-            .help(&format!(
-                "consider increasing the recursion limit by adding a \
-                 `#![recursion_limit = \"{}\"]` attribute to your crate (`{}`)",
-                suggested_limit, self.cx.ecfg.crate_name,
-            ))
-            .emit();
+
+        self.cx.emit_err(RecursionLimitReached {
+            span: expn_data.call_site,
+            descr: expn_data.kind.descr(),
+            suggested_limit,
+            crate_name: &self.cx.ecfg.crate_name,
+        });
+
         self.cx.trace_macros_diag();
     }
 
     /// A macro's expansion does not fit in this fragment kind.
     /// For example, a non-type macro in a type position.
     fn error_wrong_fragment_kind(&mut self, kind: AstFragmentKind, mac: &ast::MacCall, span: Span) {
-        let msg = format!(
-            "non-{kind} macro in {kind} position: {path}",
-            kind = kind.name(),
-            path = pprust::path_to_string(&mac.path),
-        );
-        self.cx.span_err(span, &msg);
+        self.cx.emit_err(WrongFragmentKind { span, kind: kind.name(), name: &mac.path });
+
         self.cx.trace_macros_diag();
     }
 
@@ -707,7 +704,7 @@ impl<'a, 'b> MacroExpander<'a, 'b> {
                     };
                     let attr_item = attr.unwrap_normal_item();
                     if let AttrArgs::Eq(..) = attr_item.args {
-                        self.cx.span_err(span, "key-value macro attributes are not supported");
+                        self.cx.emit_err(UnsupportedKeyValue { span });
                     }
                     let inner_tokens = attr_item.args.inner_tokens();
                     let Ok(tok_result) = expander.expand(self.cx, span, inner_tokens, tokens) else {
@@ -729,9 +726,7 @@ impl<'a, 'b> MacroExpander<'a, 'b> {
                                 }
                             };
                             if fragment_kind == AstFragmentKind::Expr && items.is_empty() {
-                                let msg =
-                                    "removing an expression is not supported in this position";
-                                self.cx.span_err(span, msg);
+                                self.cx.emit_err(RemoveExprNotSupported { span });
                                 fragment_kind.dummy(span)
                             } else {
                                 fragment_kind.expect_from_annotatables(items)
@@ -939,38 +934,32 @@ pub fn parse_ast_fragment<'a>(
 }
 
 pub fn ensure_complete_parse<'a>(
-    this: &mut Parser<'a>,
+    parser: &mut Parser<'a>,
     macro_path: &ast::Path,
     kind_name: &str,
     span: Span,
 ) {
-    if this.token != token::Eof {
-        let token = pprust::token_to_string(&this.token);
-        let msg = format!("macro expansion ignores token `{}` and any following", token);
+    if parser.token != token::Eof {
+        let token = pprust::token_to_string(&parser.token);
         // Avoid emitting backtrace info twice.
-        let def_site_span = this.token.span.with_ctxt(SyntaxContext::root());
-        let mut err = this.struct_span_err(def_site_span, &msg);
-        err.span_label(span, "caused by the macro expansion here");
-        let msg = format!(
-            "the usage of `{}!` is likely invalid in {} context",
-            pprust::path_to_string(macro_path),
-            kind_name,
-        );
-        err.note(&msg);
+        let def_site_span = parser.token.span.with_ctxt(SyntaxContext::root());
 
-        let semi_span = this.sess.source_map().next_point(span);
-        match this.sess.source_map().span_to_snippet(semi_span) {
+        let semi_span = parser.sess.source_map().next_point(span);
+        let add_semicolon = match parser.sess.source_map().span_to_snippet(semi_span) {
             Ok(ref snippet) if &snippet[..] != ";" && kind_name == "expression" => {
-                err.span_suggestion(
-                    span.shrink_to_hi(),
-                    "you might be missing a semicolon here",
-                    ";",
-                    Applicability::MaybeIncorrect,
-                );
+                Some(span.shrink_to_hi())
             }
-            _ => {}
-        }
-        err.emit();
+            _ => None,
+        };
+
+        parser.sess.emit_err(IncompleteParse {
+            span: def_site_span,
+            token,
+            label_span: span,
+            macro_path,
+            kind_name,
+            add_semicolon,
+        });
     }
 }
 
@@ -1766,9 +1755,8 @@ impl<'a, 'b> InvocationCollector<'a, 'b> {
                         if self.expand_cfg_true(node, attr, pos) {
                             continue;
                         }
-                        let msg =
-                            format!("removing {} is not supported in this position", Node::descr());
-                        self.cx.span_err(span, &msg);
+
+                        self.cx.emit_err(RemoveNodeNotSupported { span, descr: Node::descr() });
                         continue;
                     }
                     sym::cfg_attr => {
