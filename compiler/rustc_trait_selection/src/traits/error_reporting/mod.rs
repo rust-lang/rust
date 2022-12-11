@@ -980,6 +980,7 @@ impl<'tcx> TypeErrCtxtExt<'tcx> for TypeErrCtxt<'_, 'tcx> {
                                 trait_ref,
                                 obligation.cause.body_id,
                                 &mut err,
+                                true,
                             ) {
                                 // This is *almost* equivalent to
                                 // `obligation.cause.code().peel_derives()`, but it gives us the
@@ -1015,6 +1016,7 @@ impl<'tcx> TypeErrCtxtExt<'tcx> for TypeErrCtxt<'_, 'tcx> {
                                         trait_ref,
                                         obligation.cause.body_id,
                                         &mut err,
+                                        true,
                                     );
                                 }
                             }
@@ -1432,6 +1434,7 @@ trait InferCtxtPrivExt<'tcx> {
         trait_ref: ty::PolyTraitRef<'tcx>,
         body_id: hir::HirId,
         err: &mut Diagnostic,
+        other: bool,
     ) -> bool;
 
     /// Gets the parent trait chain start
@@ -1887,7 +1890,9 @@ impl<'tcx> InferCtxtPrivExt<'tcx> for TypeErrCtxt<'_, 'tcx> {
         trait_ref: ty::PolyTraitRef<'tcx>,
         body_id: hir::HirId,
         err: &mut Diagnostic,
+        other: bool,
     ) -> bool {
+        let other = if other { "other " } else { "" };
         let report = |mut candidates: Vec<TraitRef<'tcx>>, err: &mut Diagnostic| {
             candidates.sort();
             candidates.dedup();
@@ -1938,7 +1943,7 @@ impl<'tcx> InferCtxtPrivExt<'tcx> for TypeErrCtxt<'_, 'tcx> {
             candidates.dedup();
             let end = if candidates.len() <= 9 { candidates.len() } else { 8 };
             err.help(&format!(
-                "the following other types implement trait `{}`:{}{}",
+                "the following {other}types implement trait `{}`:{}{}",
                 trait_ref.print_only_trait_path(),
                 candidates[..end].join(""),
                 if len > 9 { format!("\nand {} others", len - 8) } else { String::new() }
@@ -2179,7 +2184,7 @@ impl<'tcx> InferCtxtPrivExt<'tcx> for TypeErrCtxt<'_, 'tcx> {
                             trait_ref.skip_binder().substs.types().any(|t| !t.is_ty_infer());
                         // It doesn't make sense to talk about applicable impls if there are more
                         // than a handful of them.
-                        if impls.len() > 1 && impls.len() < 5 && has_non_region_infer {
+                        if impls.len() > 1 && impls.len() < 10 && has_non_region_infer {
                             self.annotate_source_of_ambiguity(&mut err, &impls, predicate);
                         } else {
                             if self.tainted_by_errors().is_some() {
@@ -2187,6 +2192,18 @@ impl<'tcx> InferCtxtPrivExt<'tcx> for TypeErrCtxt<'_, 'tcx> {
                                 return;
                             }
                             err.note(&format!("cannot satisfy `{}`", predicate));
+                            let impl_candidates = self.find_similar_impl_candidates(
+                                predicate.to_opt_poly_trait_pred().unwrap(),
+                            );
+                            if impl_candidates.len() < 10 {
+                                self.report_similar_impl_candidates(
+                                    impl_candidates,
+                                    trait_ref,
+                                    body_id.map(|id| id.hir_id).unwrap_or(obligation.cause.body_id),
+                                    &mut err,
+                                    false,
+                                );
+                            }
                         }
                     }
                     _ => {

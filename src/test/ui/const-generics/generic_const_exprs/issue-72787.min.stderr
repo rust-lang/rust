@@ -41,6 +41,7 @@ LL |     IsLessOrEqual<I, 8>: True,
    |                          ^^^^
    |
    = note: cannot satisfy `IsLessOrEqual<I, 8>: True`
+   = help: the trait `True` is implemented for `IsLessOrEqual<LHS, RHS>`
 
 error[E0283]: type annotations needed: cannot satisfy `IsLessOrEqual<I, 8>: True`
   --> $DIR/issue-72787.rs:21:26
@@ -49,6 +50,7 @@ LL |     IsLessOrEqual<I, 8>: True,
    |                          ^^^^
    |
    = note: cannot satisfy `IsLessOrEqual<I, 8>: True`
+   = help: the trait `True` is implemented for `IsLessOrEqual<LHS, RHS>`
 
 error: aborting due to 6 previous errors
 
