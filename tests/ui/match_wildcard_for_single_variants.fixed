@@ -146,5 +146,11 @@ mod issue9993 {
             Foo::A(false) => 2,
             Foo::B => 3,
         };
+
+        let _ = match Foo::B {
+            _ if false => 0,
+            Foo::A(_) => 1,
+            Foo::B => 2,
+        };
     }
 }
