@@ -123,3 +123,31 @@ fn bench_extend_chained_bytes(b: &mut Bencher) {
         ring.extend(black_box(input1.iter().chain(input2.iter())));
     });
 }
+
+#[bench]
+fn bench_vec_deque_to_vec(b: &mut Bencher) {
+    let mut ring = VecDeque::from(vec![0; 1024]);
+    ring.shrink_to_fit();
+    assert_eq!(ring.len(), ring.capacity());
+
+    b.iter(move || {
+        assert_eq!(ring.capacity(), 1024);
+        unsafe {
+            ring.set_head(512);
+            ring.set_len(768);
+        }
+
+        let v = Vec::from(std::mem::take(&mut ring));
+        ring = VecDeque::from(v);
+
+        assert_eq!(ring.capacity(), 1024);
+
+        unsafe {
+            ring.set_head(512);
+            ring.set_len(769);
+        }
+
+        let v = Vec::from(std::mem::take(&mut ring));
+        ring = VecDeque::from(v);
+    })
+}

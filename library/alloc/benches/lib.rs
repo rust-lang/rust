@@ -7,6 +7,7 @@
 #![feature(slice_partition_dedup)]
 #![feature(strict_provenance)]
 #![feature(test)]
+#![feature(vec_deque_set_len)]
 #![deny(fuzzy_provenance_casts)]
 
 extern crate test;

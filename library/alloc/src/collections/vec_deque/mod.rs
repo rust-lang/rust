@@ -523,6 +523,18 @@ impl<T, A: Allocator> VecDeque<T, A> {
         }
         debug_assert!(self.head < self.capacity() || self.capacity() == 0);
     }
+
+    #[doc(hidden)]
+    #[unstable(feature = "vec_deque_set_len", issue = "none", reason = "implementation detail")]
+    pub unsafe fn set_head(&mut self, head: usize) {
+        self.head = head;
+    }
+
+    #[doc(hidden)]
+    #[unstable(feature = "vec_deque_set_len", issue = "none", reason = "implementation detail")]
+    pub unsafe fn set_len(&mut self, len: usize) {
+        self.len = len;
+    }
 }
 
 impl<T> VecDeque<T> {
