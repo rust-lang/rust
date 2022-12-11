@@ -345,4 +345,12 @@ fn test_ascii_with_prepending_hashtag() {
 #..#.####.####.####..##..
 </code></pre></div>",
     );
+    t(
+        r#"```markdown
+# hello
+```"#,
+        "<div class=\"example-wrap\"><pre class=\"language-markdown\"><code>\
+# hello
+</code></pre></div>",
+    );
 }
