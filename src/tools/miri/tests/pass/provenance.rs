@@ -10,6 +10,7 @@ fn main() {
     bytewise_ptr_methods();
     bytewise_custom_memcpy();
     bytewise_custom_memcpy_chunked();
+    int_load_strip_provenance();
 }
 
 /// Some basic smoke tests for provenance.
@@ -136,4 +137,10 @@ fn bytewise_custom_memcpy_chunked() {
         let ptr = unsafe { data2.as_ptr().byte_add(offset).cast::<&i32>().read_unaligned() };
         assert_eq!(*ptr, 42);
     }
+}
+
+fn int_load_strip_provenance() {
+    let ptrs = [&42];
+    let ints: [usize; 1] = unsafe { mem::transmute(ptrs) };
+    assert_eq!(ptrs[0] as *const _ as usize, ints[0]);
 }
