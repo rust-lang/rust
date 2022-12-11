@@ -29,6 +29,7 @@ use crate::ptr::{self, NonNull};
 // @TODO Make this target-specific
 #[unstable(feature = "global_co_alloc_meta", issue = "none")]
 #[allow(missing_debug_implementations)]
+#[derive(Clone, Copy)]
 pub struct GlobalCoAllocMeta {
     //pub one: usize,
     /*pub two: usize,
@@ -74,6 +75,9 @@ pub struct SliceAndMeta {
     pub meta: GlobalCoAllocMeta,
 }
 
+#[unstable(feature = "global_co_alloc_short_term_pref", issue = "none")]
+pub const SHORT_TERM_VEC_PREFERS_COOP: bool = true;
+
 #[unstable(feature = "global_co_alloc_meta", issue = "none")]
 #[allow(missing_debug_implementations)]
 pub type SliceAndMetaResult = Result<SliceAndMeta, AllocError>;
@@ -81,6 +85,13 @@ pub type SliceAndMetaResult = Result<SliceAndMeta, AllocError>;
 #[unstable(feature = "global_co_alloc", issue = "none")]
 pub const fn co_alloc_metadata_num_slots<A: Allocator>() -> usize {
     if A::IS_CO_ALLOCATOR { 1 } else { 0 }
+}
+
+#[unstable(feature = "global_co_alloc", issue = "none")]
+/// Param `coop_preferred` - if false, then this returns `0`, regardless of
+/// whether allocator `A` is cooperative.
+pub const fn co_alloc_metadata_num_slots_with_preference<A: Allocator>(coop_preferred: bool) -> usize {
+    if A::IS_CO_ALLOCATOR && coop_preferred { 1 } else { 0 }
 }
 
 /// An implementation of `Allocator` can allocate, grow, shrink, and deallocate arbitrary blocks of
