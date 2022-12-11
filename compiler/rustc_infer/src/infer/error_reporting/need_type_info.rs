@@ -77,13 +77,15 @@ impl InferenceDiagnosticsData {
         !(self.name == "_" && matches!(self.kind, UnderspecifiedArgKind::Type { .. }))
     }
 
-    fn where_x_is_kind(&self, in_type: Ty<'_>) -> &'static str {
-        if self.name == "_" {
+    fn where_x_is_kind(&self, in_type: Ty<'_>, is_collect: bool) -> &'static str {
+        if is_collect {
+            "empty"
+        } else if in_type.is_ty_infer() {
+            "anon"
+        } else if self.name == "_" {
             // FIXME: Consider specializing this message if there is a single `_`
             // in the type.
             "underscore"
-        } else if in_type.is_ty_infer() {
-            "empty"
         } else {
             "has_name"
         }
@@ -190,6 +192,7 @@ fn ty_to_string<'tcx>(infcx: &InferCtxt<'tcx>, ty: Ty<'tcx>) -> String {
         // We don't want the regular output for `fn`s because it includes its path in
         // invalid pseudo-syntax, we want the `fn`-pointer output instead.
         ty::FnDef(..) => ty.fn_sig(infcx.tcx).print(printer).unwrap().into_buffer(),
+        _ if ty.is_ty_infer() => "Type".to_string(),
         // FIXME: The same thing for closures, but this only works when the closure
         // does not capture anything.
         //
@@ -411,7 +414,7 @@ impl<'tcx> TypeErrCtxt<'_, 'tcx> {
                 infer_subdiags.push(SourceKindSubdiag::LetLike {
                     span: insert_span,
                     name: pattern_name.map(|name| name.to_string()).unwrap_or_else(String::new),
-                    x_kind: if is_collect { "empty" } else { arg_data.where_x_is_kind(ty) },
+                    x_kind: arg_data.where_x_is_kind(ty, is_collect),
                     prefix_kind: arg_data.kind.clone(),
                     prefix: arg_data.kind.try_get_prefix().unwrap_or_default(),
                     arg_name: arg_data.name,
@@ -427,7 +430,7 @@ impl<'tcx> TypeErrCtxt<'_, 'tcx> {
                 infer_subdiags.push(SourceKindSubdiag::LetLike {
                     span: insert_span,
                     name: String::new(),
-                    x_kind: arg_data.where_x_is_kind(ty),
+                    x_kind: arg_data.where_x_is_kind(ty, false),
                     prefix_kind: arg_data.kind.clone(),
                     prefix: arg_data.kind.try_get_prefix().unwrap_or_default(),
                     arg_name: arg_data.name,

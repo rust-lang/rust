@@ -4,10 +4,10 @@ error[E0282]: type annotations needed
 LL |         |x| x.len()
    |          ^  - type must be known at this point
    |
-help: consider giving this closure parameter an explicit type, where the placeholders `_` are specified
+help: consider giving this closure parameter an explicit type, where the placeholder `Type` is specified
    |
-LL |         |x: _| x.len()
-   |           +++
+LL |         |x: Type| x.len()
+   |           ++++++
 
 error[E0282]: type annotations needed
   --> $DIR/closures_in_branches.rs:21:10
@@ -15,10 +15,10 @@ error[E0282]: type annotations needed
 LL |         |x| x.len()
    |          ^  - type must be known at this point
    |
-help: consider giving this closure parameter an explicit type, where the placeholders `_` are specified
+help: consider giving this closure parameter an explicit type, where the placeholder `Type` is specified
    |
-LL |         |x: _| x.len()
-   |           +++
+LL |         |x: Type| x.len()
+   |           ++++++
 
 error: aborting due to 2 previous errors
 

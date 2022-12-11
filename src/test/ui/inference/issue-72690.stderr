@@ -30,10 +30,10 @@ error[E0282]: type annotations needed
 LL |     |x| String::from("x".as_ref());
    |      ^
    |
-help: consider giving this closure parameter an explicit type, where the placeholders `_` are specified
+help: consider giving this closure parameter an explicit type, where the placeholder `Type` is specified
    |
-LL |     |x: _| String::from("x".as_ref());
-   |       +++
+LL |     |x: Type| String::from("x".as_ref());
+   |       ++++++
 
 error[E0283]: type annotations needed
   --> $DIR/issue-72690.rs:12:26

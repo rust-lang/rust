@@ -19,10 +19,10 @@ error[E0282]: type annotations needed
 LL |         let mut N;
    |             ^^^^^
    |
-help: consider giving `N` an explicit type, where the placeholders `_` are specified
+help: consider giving `N` an explicit type, where the placeholder `Type` is specified
    |
-LL |         let mut N: _;
-   |                  +++
+LL |         let mut N: Type;
+   |                  ++++++
 
 error: aborting due to 3 previous errors
 

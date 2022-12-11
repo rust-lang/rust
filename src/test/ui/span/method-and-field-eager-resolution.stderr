@@ -7,10 +7,10 @@ LL |
 LL |     x.0;
    |     - type must be known at this point
    |
-help: consider giving `x` an explicit type, where the placeholders `_` are specified
+help: consider giving `x` an explicit type, where the placeholder `Type` is specified
    |
-LL |     let mut x: _ = Default::default();
-   |              +++
+LL |     let mut x: Type = Default::default();
+   |              ++++++
 
 error[E0282]: type annotations needed
   --> $DIR/method-and-field-eager-resolution.rs:11:9
@@ -21,10 +21,10 @@ LL |
 LL |     x[0];
    |     - type must be known at this point
    |
-help: consider giving `x` an explicit type, where the placeholders `_` are specified
+help: consider giving `x` an explicit type, where the placeholder `Type` is specified
    |
-LL |     let mut x: _ = Default::default();
-   |              +++
+LL |     let mut x: Type = Default::default();
+   |              ++++++
 
 error: aborting due to 2 previous errors
 

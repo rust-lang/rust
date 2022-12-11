@@ -34,6 +34,7 @@ infer_source_kind_subdiag_let = {$kind ->
         [const] the value of the constant
     } `{$arg_name}` is specified
     [underscore] , where the placeholders `_` are specified
+    [anon] , where the placeholder `Type` is specified
     *[empty] {""}
 }
 
