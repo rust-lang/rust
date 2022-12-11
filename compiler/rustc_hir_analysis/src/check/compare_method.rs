@@ -256,10 +256,21 @@ fn compare_predicate_entailment<'tcx>(
         infer::HigherRankedType,
         tcx.fn_sig(impl_m.def_id),
     );
+    let unnormalized_impl_fty = tcx.mk_fn_ptr(ty::Binder::dummy(unnormalized_impl_sig));
+
+    // We need to check that the impl's args are well-formed given
+    // the hybrid param-env (impl + trait method where-clauses).
+    ocx.register_obligation(traits::Obligation::new(
+        tcx,
+        cause.clone(),
+        param_env,
+        ty::Binder::dummy(ty::PredicateKind::WellFormed(
+            tcx.mk_fn_ptr(ty::Binder::dummy(unnormalized_impl_sig)).into(),
+        )),
+    ));
 
     let norm_cause = ObligationCause::misc(impl_m_span, impl_m_hir_id);
-    let impl_sig = ocx.normalize(&norm_cause, param_env, unnormalized_impl_sig);
-    let impl_fty = tcx.mk_fn_ptr(ty::Binder::dummy(impl_sig));
+    let impl_fty = ocx.normalize(&norm_cause, param_env, unnormalized_impl_fty);
     debug!("compare_impl_method: impl_fty={:?}", impl_fty);
 
     let trait_sig = tcx.bound_fn_sig(trait_m.def_id).subst(tcx, trait_to_placeholder_substs);
@@ -298,25 +309,6 @@ fn compare_predicate_entailment<'tcx>(
             impl_trait_ref,
         );
         return Err(emitted);
-    }
-
-    // Finally, we need to check that the impl's args are well-formed given
-    // the hybrid param-env (impl + trait method where-clauses).
-    for (unnormalized_arg, arg) in
-        std::iter::zip(unnormalized_impl_sig.inputs_and_output, impl_sig.inputs_and_output)
-    {
-        ocx.register_obligation(traits::Obligation::new(
-            tcx,
-            cause.clone(),
-            param_env,
-            ty::Binder::dummy(ty::PredicateKind::WellFormed(unnormalized_arg.into())),
-        ));
-        ocx.register_obligation(traits::Obligation::new(
-            tcx,
-            cause.clone(),
-            param_env,
-            ty::Binder::dummy(ty::PredicateKind::WellFormed(arg.into())),
-        ));
     }
 
     // Check that all obligations are satisfied by the implementation's
