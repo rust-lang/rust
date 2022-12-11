@@ -773,16 +773,16 @@ impl<T: Clone, V: Borrow<[T]>> Join<&[T]> for [V] {
 ////////////////////////////////////////////////////////////////////////////////
 
 #[stable(feature = "rust1", since = "1.0.0")]
-impl<T, A: Allocator> Borrow<[T]> for Vec<T, A>
-where [(); core::alloc::co_alloc_metadata_num_slots::<A>()]: {
+impl<T, A: Allocator, const COOP_PREFERRED: bool> Borrow<[T]> for Vec<T, A, COOP_PREFERRED>
+where [(); core::alloc::co_alloc_metadata_num_slots_with_preference::<A>(COOP_PREFERRED)]: {
     fn borrow(&self) -> &[T] {
         &self[..]
     }
 }
 
 #[stable(feature = "rust1", since = "1.0.0")]
-impl<T, A: Allocator> BorrowMut<[T]> for Vec<T, A>
-where [(); core::alloc::co_alloc_metadata_num_slots::<A>()]: {
+impl<T, A: Allocator, const COOP_PREFERRED: bool> BorrowMut<[T]> for Vec<T, A, COOP_PREFERRED>
+where [(); core::alloc::co_alloc_metadata_num_slots_with_preference::<A>(COOP_PREFERRED)]: {
     fn borrow_mut(&mut self) -> &mut [T] {
         &mut self[..]
     }
