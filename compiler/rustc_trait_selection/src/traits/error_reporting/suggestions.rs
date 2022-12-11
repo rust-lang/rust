@@ -3108,6 +3108,16 @@ impl<'tcx> TypeErrCtxtExt<'tcx> for TypeErrCtxt<'_, 'tcx> {
                         point_at_chain(expr);
                     }
                 }
+                let call_node = hir.find(call_hir_id);
+                if let Some(Node::Expr(hir::Expr {
+                    kind: hir::ExprKind::MethodCall(path, rcvr, ..),
+                    ..
+                })) = call_node
+                {
+                    if Some(rcvr.span) == err.span.primary_span() {
+                        err.replace_span_with(path.ident.span);
+                    }
+                }
                 if let Some(Node::Expr(hir::Expr {
                     kind:
                         hir::ExprKind::Call(hir::Expr { span, .. }, _)

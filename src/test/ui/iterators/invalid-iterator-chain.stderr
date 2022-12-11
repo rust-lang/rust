@@ -1,10 +1,8 @@
 error[E0277]: a value of type `i32` cannot be made by summing an iterator over elements of type `()`
-  --> $DIR/invalid-iterator-chain.rs:7:20
+  --> $DIR/invalid-iterator-chain.rs:7:27
    |
 LL |     println!("{}", scores.sum::<i32>());
-   |                    ^^^^^^ --- required by a bound introduced by this call
-   |                    |
-   |                    value of type `i32` cannot be made by summing a `std::iter::Iterator<Item=()>`
+   |                           ^^^ value of type `i32` cannot be made by summing a `std::iter::Iterator<Item=()>`
    |
    = help: the trait `Sum<()>` is not implemented for `i32`
    = help: the following other types implement trait `Sum<A>`:
@@ -29,18 +27,10 @@ LL |         S: Sum<Self::Item>,
    |            ^^^^^^^^^^^^^^^ required by this bound in `Iterator::sum`
 
 error[E0277]: a value of type `i32` cannot be made by summing an iterator over elements of type `()`
-  --> $DIR/invalid-iterator-chain.rs:10:9
+  --> $DIR/invalid-iterator-chain.rs:18:14
    |
-LL | /         vec![0, 1]
-LL | |             .iter()
-LL | |             .map(|x| x * 2)
-LL | |             .map(|x| x as f64)
-...  |
-LL | |             .map(|x| { x + 1 })
-LL | |             .map(|x| { x; })
-   | |____________________________^ value of type `i32` cannot be made by summing a `std::iter::Iterator<Item=()>`
-LL |               .sum::<i32>(),
-   |                --- required by a bound introduced by this call
+LL |             .sum::<i32>(),
+   |              ^^^ value of type `i32` cannot be made by summing a `std::iter::Iterator<Item=()>`
    |
    = help: the trait `Sum<()>` is not implemented for `i32`
    = help: the following other types implement trait `Sum<A>`:
@@ -72,17 +62,10 @@ LL |         S: Sum<Self::Item>,
    |            ^^^^^^^^^^^^^^^ required by this bound in `Iterator::sum`
 
 error[E0277]: a value of type `i32` cannot be made by summing an iterator over elements of type `f64`
-  --> $DIR/invalid-iterator-chain.rs:22:9
+  --> $DIR/invalid-iterator-chain.rs:28:14
    |
-LL | /         vec![0, 1]
-LL | |             .iter()
-LL | |             .map(|x| x * 2)
-LL | |             .map(|x| x as f64)
-LL | |             .filter(|x| *x > 0.0)
-LL | |             .map(|x| { x + 1.0 })
-   | |_________________________________^ value of type `i32` cannot be made by summing a `std::iter::Iterator<Item=f64>`
-LL |               .sum::<i32>(),
-   |                --- required by a bound introduced by this call
+LL |             .sum::<i32>(),
+   |              ^^^ value of type `i32` cannot be made by summing a `std::iter::Iterator<Item=f64>`
    |
    = help: the trait `Sum<f64>` is not implemented for `i32`
    = help: the following other types implement trait `Sum<A>`:
@@ -110,12 +93,10 @@ LL |         S: Sum<Self::Item>,
    |            ^^^^^^^^^^^^^^^ required by this bound in `Iterator::sum`
 
 error[E0277]: a value of type `i32` cannot be made by summing an iterator over elements of type `()`
-  --> $DIR/invalid-iterator-chain.rs:30:20
+  --> $DIR/invalid-iterator-chain.rs:30:54
    |
 LL |     println!("{}", vec![0, 1].iter().map(|x| { x; }).sum::<i32>());
-   |                    ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ --- required by a bound introduced by this call
-   |                    |
-   |                    value of type `i32` cannot be made by summing a `std::iter::Iterator<Item=()>`
+   |                                                      ^^^ value of type `i32` cannot be made by summing a `std::iter::Iterator<Item=()>`
    |
    = help: the trait `Sum<()>` is not implemented for `i32`
    = help: the following other types implement trait `Sum<A>`:
@@ -136,12 +117,10 @@ LL |         S: Sum<Self::Item>,
    |            ^^^^^^^^^^^^^^^ required by this bound in `Iterator::sum`
 
 error[E0277]: a value of type `i32` cannot be made by summing an iterator over elements of type `&()`
-  --> $DIR/invalid-iterator-chain.rs:31:20
+  --> $DIR/invalid-iterator-chain.rs:31:40
    |
 LL |     println!("{}", vec![(), ()].iter().sum::<i32>());
-   |                    ^^^^^^^^^^^^^^^^^^^ --- required by a bound introduced by this call
-   |                    |
-   |                    value of type `i32` cannot be made by summing a `std::iter::Iterator<Item=&()>`
+   |                                        ^^^ value of type `i32` cannot be made by summing a `std::iter::Iterator<Item=&()>`
    |
    = help: the trait `Sum<&()>` is not implemented for `i32`
    = help: the following other types implement trait `Sum<A>`:
@@ -161,12 +140,10 @@ LL |         S: Sum<Self::Item>,
    |            ^^^^^^^^^^^^^^^ required by this bound in `Iterator::sum`
 
 error[E0277]: a value of type `Vec<i32>` cannot be built from an iterator over elements of type `()`
-  --> $DIR/invalid-iterator-chain.rs:40:23
+  --> $DIR/invalid-iterator-chain.rs:40:25
    |
 LL |     let g: Vec<i32> = f.collect();
-   |                       ^ ------- required by a bound introduced by this call
-   |                       |
-   |                       value of type `Vec<i32>` cannot be built from `std::iter::Iterator<Item=()>`
+   |                         ^^^^^^^ value of type `Vec<i32>` cannot be built from `std::iter::Iterator<Item=()>`
    |
    = help: the trait `FromIterator<()>` is not implemented for `Vec<i32>`
    = help: the trait `FromIterator<T>` is implemented for `Vec<T>`

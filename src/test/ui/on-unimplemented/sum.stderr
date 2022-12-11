@@ -1,10 +1,8 @@
 error[E0277]: a value of type `i32` cannot be made by summing an iterator over elements of type `&()`
-  --> $DIR/sum.rs:4:5
+  --> $DIR/sum.rs:4:25
    |
 LL |     vec![(), ()].iter().sum::<i32>();
-   |     ^^^^^^^^^^^^^^^^^^^ --- required by a bound introduced by this call
-   |     |
-   |     value of type `i32` cannot be made by summing a `std::iter::Iterator<Item=&()>`
+   |                         ^^^ value of type `i32` cannot be made by summing a `std::iter::Iterator<Item=&()>`
    |
    = help: the trait `Sum<&()>` is not implemented for `i32`
    = help: the following other types implement trait `Sum<A>`:
@@ -24,12 +22,10 @@ LL |         S: Sum<Self::Item>,
    |            ^^^^^^^^^^^^^^^ required by this bound in `Iterator::sum`
 
 error[E0277]: a value of type `i32` cannot be made by multiplying all elements of type `&()` from an iterator
-  --> $DIR/sum.rs:7:5
+  --> $DIR/sum.rs:7:25
    |
 LL |     vec![(), ()].iter().product::<i32>();
-   |     ^^^^^^^^^^^^^^^^^^^ ------- required by a bound introduced by this call
-   |     |
-   |     value of type `i32` cannot be made by multiplying all elements from a `std::iter::Iterator<Item=&()>`
+   |                         ^^^^^^^ value of type `i32` cannot be made by multiplying all elements from a `std::iter::Iterator<Item=&()>`
    |
    = help: the trait `Product<&()>` is not implemented for `i32`
    = help: the following other types implement trait `Product<A>`:
