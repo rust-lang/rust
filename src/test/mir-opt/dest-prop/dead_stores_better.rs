@@ -2,7 +2,7 @@
 // that that pass enables this one to do more optimizations.
 
 // unit-test: DestinationPropagation
-// compile-flags: -Zmir-enable-passes=+DeadStoreElimination
+// compile-flags: -Zmir-opt-level=3 -Zmir-enable-passes=+DeadStoreElimination
 
 fn id<T>(x: T) -> T {
     x

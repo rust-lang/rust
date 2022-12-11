@@ -149,15 +149,18 @@ pub struct DestinationPropagation;
 
 impl<'tcx> MirPass<'tcx> for DestinationPropagation {
     fn is_enabled(&self, sess: &rustc_session::Session) -> bool {
-        // For now, only run at MIR opt level 3. Two things need to be changed before this can be
-        // turned on by default:
-        //  1. Because of the overeager removal of storage statements, this can cause stack space
-        //     regressions. This opt is not the place to fix this though, it's a more general
-        //     problem in MIR.
-        //  2. Despite being an overall perf improvement, this still causes a 30% regression in
-        //     keccak. We can temporarily fix this by bounding function size, but in the long term
-        //     we should fix this by being smarter about invalidating analysis results.
-        sess.mir_opt_level() >= 3
+        // This pass is technically enabled at MIR opt level 2, but in a reduced form.
+        // At MIR opt level 2, we run a single round, and at MIR opt level 3 or greater we keep
+        // running rounds until we reach a fixed point. Based on experimentation with the rustc
+        // benchmark suite, the majority of the benefit from this pass comes from the first round,
+        // though on some code it continues to find optimizations for >10 rounds.
+        // It may be possible to enable multiple rounds at MIR opt level 2 by being more careful
+        // about invalidating analysis results.
+        //
+        // Note that due to overeager removal of storage statements, this pass (particularly at MIR
+        // opt level 3), can cause stack space regressions. This opt is not the place to fix this
+        // though, it's a more general problem in MIR.
+        sess.mir_opt_level() >= 2
     }
 
     fn run_pass(&self, tcx: TyCtxt<'tcx>, body: &mut Body<'tcx>) {
@@ -236,6 +239,11 @@ impl<'tcx> MirPass<'tcx> for DestinationPropagation {
             round_count += 1;
 
             apply_merges(body, tcx, &merges, &merged_locals);
+
+            // At MIR opt level 2, we only run one iteration.
+            if tcx.sess.mir_opt_level() < 3 {
+                break;
+            }
         }
 
         trace!(round_count);
