@@ -1810,15 +1810,20 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
         match (src.layout.abi, dst.layout.abi) {
             (abi::Abi::Scalar(src_scalar), abi::Abi::Scalar(dst_scalar)) => {
                 // HACK(eddyb) LLVM doesn't like `bitcast`s between pointers and non-pointers.
-                if (src_scalar.primitive() == abi::Pointer)
-                    == (dst_scalar.primitive() == abi::Pointer)
-                {
+                let src_is_ptr = src_scalar.primitive() == abi::Pointer;
+                let dst_is_ptr = dst_scalar.primitive() == abi::Pointer;
+                if src_is_ptr == dst_is_ptr {
                     assert_eq!(src.layout.size, dst.layout.size);
 
                     // NOTE(eddyb) the `from_immediate` and `to_immediate_scalar`
                     // conversions allow handling `bool`s the same as `u8`s.
                     let src = bx.from_immediate(src.immediate());
-                    let src_as_dst = bx.bitcast(src, bx.backend_type(dst.layout));
+                    // LLVM also doesn't like `bitcast`s between pointers in different address spaces.
+                    let src_as_dst = if src_is_ptr {
+                        bx.pointercast(src, bx.backend_type(dst.layout))
+                    } else {
+                        bx.bitcast(src, bx.backend_type(dst.layout))
+                    };
                     Immediate(bx.to_immediate_scalar(src_as_dst, dst_scalar)).store(bx, dst);
                     return;
                 }
