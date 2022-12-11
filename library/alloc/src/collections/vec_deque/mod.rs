@@ -2138,17 +2138,31 @@ impl<T, A: Allocator> VecDeque<T, A> {
     /// }
     /// ```
     #[stable(feature = "deque_make_contiguous", since = "1.48.0")]
+    #[inline]
     pub fn make_contiguous(&mut self) -> &mut [T] {
+        self.make_contiguous_inner(false);
+        unsafe { slice::from_raw_parts_mut(self.ptr().add(self.head), self.len) }
+    }
+
+    /// If `left_align` is true, then this function will ensure that
+    /// `self.head == 0` after it returns.
+    fn make_contiguous_inner(&mut self, left_align: bool) {
         if T::IS_ZST {
             self.head = 0;
         }
 
         if self.is_contiguous() {
-            unsafe { return slice::from_raw_parts_mut(self.ptr().add(self.head), self.len) }
+            if self.head != 0 && left_align {
+                // SAFETY: the deque is contiguous, so both
+                // `head..head+len` and `0..len` lie inside
+                // `0..capacity`
+                unsafe { self.copy(self.head, 0, self.len) };
+                self.head = 0;
+            }
+            return;
         }
 
         let &mut Self { head, len, .. } = self;
-        let ptr = self.ptr();
         let cap = self.capacity();
 
         let free = cap - len;
@@ -2184,8 +2198,16 @@ impl<T, A: Allocator> VecDeque<T, A> {
                 self.copy_nonoverlapping(0, tail + head_len, tail_len);
                 // ...ABCDEFGH.
             }
-
-            self.head = tail;
+            // according to benchmarks, it's faster to do this than to
+            // always fall back to `slice::rotate` if we want to left align.
+            if !left_align {
+                self.head = tail;
+            } else {
+                // SAFETY: We just made the deque contiguous,
+                // so the ranges are obviously valid.
+                unsafe { self.copy(tail, 0, len) };
+                self.head = 0;
+            }
         } else {
             // `free` is smaller than both `head_len` and `tail_len`.
             // the general algorithm for this first moves the slices
@@ -2204,7 +2226,7 @@ impl<T, A: Allocator> VecDeque<T, A> {
 
             // pick the shorter of the 2 slices to reduce the amount
             // of memory that needs to be moved around.
-            if head_len > tail_len {
+            if head_len > tail_len && !left_align {
                 // tail is shorter, so:
                 //  1. copy tail forwards
                 //  2. rotate used part of the buffer
@@ -2233,7 +2255,7 @@ impl<T, A: Allocator> VecDeque<T, A> {
                     self.head = free;
                 }
             } else {
-                // head is shorter so:
+                // head is shorter or we need the items to be left-aligned, so:
                 //  1. copy head backwards
                 //  2. rotate used part of the buffer
                 //  3. update head to point to the new beginning (which is the beginning of the buffer)
@@ -2260,8 +2282,9 @@ impl<T, A: Allocator> VecDeque<T, A> {
                 }
             }
         }
-
-        unsafe { slice::from_raw_parts_mut(ptr.add(self.head), self.len) }
+        if left_align {
+            debug_assert_eq!(self.head, 0);
+        }
     }
 
     /// Rotates the double-ended queue `mid` places to the left.
@@ -2861,19 +2884,16 @@ impl<T, A: Allocator> From<VecDeque<T, A>> for Vec<T, A> {
     /// assert_eq!(vec, [8, 9, 1, 2, 3, 4]);
     /// assert_eq!(vec.as_ptr(), ptr);
     /// ```
+    #[inline]
     fn from(mut other: VecDeque<T, A>) -> Self {
-        other.make_contiguous();
-
+        other.make_contiguous_inner(true);
+        debug_assert_eq!(other.head, 0);
         unsafe {
             let other = ManuallyDrop::new(other);
             let buf = other.buf.ptr();
             let len = other.len();
             let cap = other.capacity();
             let alloc = ptr::read(other.allocator());
-
-            if other.head != 0 {
-                ptr::copy(buf.add(other.head), buf, len);
-            }
             Vec::from_raw_parts_in(buf, len, cap, alloc)
         }
     }
