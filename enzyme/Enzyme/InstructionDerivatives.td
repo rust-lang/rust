@@ -72,7 +72,7 @@ class Shadow<string val> {
 
 def : CallPattern<(Op $x),
                   ["atan", "atanf", "atanl", "__fd_atan_1"],
-                  [(FDiv (DiffeRet<"">), (FAdd (ConstantFP<"1.0"> $x), (FMul $x, $x)))]
+                  [(FDiv (DiffeRet<"">), (FAdd (FMul $x, $x), (ConstantFP<"1.0"> $x)))]
                   >;
 
 def : CallPattern<(Op $y, $x),
@@ -141,7 +141,7 @@ def : CallPattern<(Op $x),
                   >;
 def : CallPattern<(Op $x),
                   ["log1p", "log1pf", "log1pl"],
-                  [(FDiv (DiffeRet<"">), (FAdd (ConstantFP<"1.0"> $x), $x))]
+                  [(FDiv (DiffeRet<"">), (FAdd $x, (ConstantFP<"1.0"> $x)))]
                   >;
 def : CallPattern<(Op $x),
                   ["expm1"],

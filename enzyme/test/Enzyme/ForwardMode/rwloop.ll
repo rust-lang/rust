@@ -1,4 +1,5 @@
-; RUN: %opt < %s %loadEnzyme -enzyme -enzyme-preopt=false -mem2reg -early-cse -simplifycfg -instsimplify -correlated-propagation -adce -S | FileCheck %s
+; RUN: %opt < %s %loadEnzyme -enzyme -enzyme-preopt=false -mem2reg -early-cse -adce -S | FileCheck %s
+; RUN: %opt < %s %newLoadEnzyme -passes="enzyme,function(mem2reg,early-cse,adce)" -enzyme-preopt=false -S | FileCheck %s
 
 ; ModuleID = '../test/Integration/rwrloop.c'
 source_filename = "../test/Integration/rwrloop.c"
@@ -149,10 +150,13 @@ attributes #9 = { noreturn nounwind }
 ; CHECK-NEXT:   store double 0.000000e+00, double* %arrayidx, align 8, !tbaa !6
 ; CHECK-NEXT:   store double 0.000000e+00, double* %"arrayidx'ipg", align 8
 ; CHECK-NEXT:   %cmp2 = icmp slt i64 %iv.next2, %[[i3]]
-; CHECK-NEXT:   br i1 %cmp2, label %for.body4, label %for.cond.cleanup3
+; CHECK-NEXT:   br i1 %cmp2, label %for.body4, label %for.cond.cleanup3.loopexit
 
-; CHECK: for.cond.cleanup3:                                ; preds = %for.body4, %for.cond1.preheader
-; CHECK-NEXT:   %[[sumlcssa]] = phi {{(fast )?}}double [ %[[sum036]], %for.cond1.preheader ], [ %[[i9]], %for.body4 ]
+; CHECK: for.cond.cleanup3.loopexit:                       ; preds = %for.body4
+; CHECK-NEXT:   br label %for.cond.cleanup3
+
+; CHECK: for.cond.cleanup3:      
+; CHECK-NEXT:   %[[sumlcssa]] = phi {{(fast )?}}double [ %[[sum036]], %for.cond1.preheader ], [ %[[i9]], %for.cond.cleanup3.loopexit ]
 ; CHECK-NEXT:   %exitcond = icmp eq i64 %iv.next, 10
 ; CHECK-NEXT:   br i1 %exitcond, label %for.cond.cleanup, label %for.cond1.preheader
 

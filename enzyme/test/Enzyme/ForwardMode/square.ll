@@ -1,4 +1,5 @@
-; RUN: %opt < %s %loadEnzyme -enzyme -enzyme-preopt=false -mem2reg -simplifycfg -early-cse -S | FileCheck %s
+; RUN: %opt < %s %loadEnzyme -enzyme -enzyme-preopt=false -early-cse -S | FileCheck %s
+; RUN: %opt < %s %newLoadEnzyme -passes="enzyme,function(early-cse)" -enzyme-preopt=false -S | FileCheck %s
 
 ; source code
 ; double square(double x) {

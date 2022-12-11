@@ -48,6 +48,15 @@
 class PreProcessCache {
 public:
   PreProcessCache();
+  PreProcessCache(PreProcessCache &) = delete;
+  // Using the default move constructor will botch the FAM/MAM proxy passes
+  // since now the new location of FAM/MAM will not be used. Therefore, use a
+  // custom move constructor and default initialize these, and move the
+  // cache/origin maps.
+  PreProcessCache(PreProcessCache &&prev) : PreProcessCache() {
+    cache = std::move(prev.cache);
+    CloneOrigin = std::move(prev.CloneOrigin);
+  };
 
   llvm::FunctionAnalysisManager FAM;
   llvm::ModuleAnalysisManager MAM;

@@ -1,4 +1,5 @@
-; RUN: %opt < %s %loadEnzyme -enzyme -enzyme-preopt=false -inline -mem2reg -instcombine -early-cse -adce -S | FileCheck %s
+; RUN: %opt < %s %loadEnzyme -enzyme -enzyme-preopt=false -S | FileCheck %s
+; RUN: %opt < %s %newLoadEnzyme -passes="enzyme" -enzyme-preopt=false -S | FileCheck %s
 
 ; #include <math.h>
 ; 
@@ -48,25 +49,27 @@ attributes #1 = { nounwind readnone speculatable }
 attributes #2 = { nounwind uwtable }
 attributes #3 = { nounwind }
 
-; CHECK: define dso_local double @dsqrelu(double %x) local_unnamed_addr
+; CHECK: define internal double @fwddiffesqrelu(double %x, double %"x'")
 ; CHECK-NEXT: entry:
-; CHECK-NEXT:   %cmp.i = fcmp fast ogt double %x, 0.000000e+00
-; CHECK-NEXT:   br i1 %cmp.i, label %cond.true.i, label %fwddiffesqrelu.exit
+; CHECK-NEXT:   %cmp = fcmp fast ogt double %x, 0.000000e+00
+; CHECK-NEXT:   br i1 %cmp, label %cond.true, label %cond.end
 
-; CHECK: cond.true.i:
-; CHECK-NEXT:   %0 = call fast double @llvm.sin.f64(double %x)
+; CHECK: cond.true:
+; CHECK-NEXT:   %0 = tail call fast double @llvm.sin.f64(double %x)
 ; CHECK-NEXT:   %1 = call fast double @llvm.cos.f64(double %x)
-; CHECK-NEXT:   %mul.i = fmul fast double %0, %x
-; CHECK-NEXT:   %2 = fmul fast double %1, %x
-; CHECK-NEXT:   %3 = fadd fast double %2, %0
-; CHECK-NEXT:   %4 = call fast double @llvm.sqrt.f64(double %mul.i)
-; CHECK-NEXT:   %5 = fmul fast double %3, 5.000000e-01
-; CHECK-NEXT:   %6 = fdiv fast double %5, %4
-; CHECK-NEXT:   %7 = fcmp fast oeq double %mul.i, 0.000000e+00
-; CHECK-NEXT:   %8 = select  {{(fast )?}}i1 %7, double 0.000000e+00, double %6
-; CHECK-NEXT:   br label %fwddiffesqrelu.exit
+; CHECK-NEXT:   %2 = fmul fast double %"x'", %1
+; CHECK-NEXT:   %mul = fmul fast double %0, %x
+; CHECK-NEXT:   %3 = fmul fast double %2, %x
+; CHECK-NEXT:   %4 = fmul fast double %"x'", %0
+; CHECK-NEXT:   %5 = fadd fast double %3, %4
+; CHECK-NEXT:   %6 = call fast double @llvm.sqrt.f64(double %mul)
+; CHECK-NEXT:   %7 = fmul fast double 5.000000e-01, %5
+; CHECK-NEXT:   %8 = fdiv fast double %7, %6
+; CHECK-NEXT:   %9 = fcmp fast oeq double %mul, 0.000000e+00
+; CHECK-NEXT:   %10 = select  {{(fast )?}}i1 %9, double 0.000000e+00, double %8
+; CHECK-NEXT:   br label %cond.end
 
-; CHECK: fwddiffesqrelu.exit: 
-; CHECK-NEXT:   %[[condi:.+]] = phi  {{(fast )?}}double [ %8, %cond.true.i ], [ 0.000000e+00, %entry ]
+; CHECK: cond.end: 
+; CHECK-NEXT:   %[[condi:.+]] = phi  {{(fast )?}}double [ %10, %cond.true ], [ 0.000000e+00, %entry ]
 ; CHECK-NEXT:   ret double %[[condi]]
 ; CHECK-NEXT: }

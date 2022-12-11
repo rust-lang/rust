@@ -1,4 +1,5 @@
 ; RUN: %opt < %s %loadEnzyme -enzyme -enzyme-preopt=false -mem2reg -S | FileCheck %s
+; RUN: %opt < %s %newLoadEnzyme -passes="enzyme,function(mem2reg)" -enzyme-preopt=false -S | FileCheck %s
 
 declare [4 x double] @__enzyme_batch(...)
 

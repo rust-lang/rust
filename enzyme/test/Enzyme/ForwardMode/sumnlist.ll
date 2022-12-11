@@ -1,4 +1,5 @@
-; RUN: %opt < %s %loadEnzyme -enzyme -enzyme-preopt=false -mem2reg -gvn -early-cse-memssa -instcombine -instsimplify -simplifycfg -adce -licm -correlated-propagation -instcombine -correlated-propagation -adce -instsimplify -correlated-propagation -jump-threading -instsimplify -early-cse -simplifycfg -S | FileCheck %s
+; RUN: %opt < %s %loadEnzyme -enzyme -enzyme-preopt=false -mem2reg -adce -S | FileCheck %s
+; RUN: %opt < %s %newLoadEnzyme -passes="enzyme,function(mem2reg,adce)" -enzyme-preopt=false -S | FileCheck %s
 
 ; #include <stdlib.h>
 ; #include <stdio.h>
@@ -94,18 +95,24 @@ attributes #4 = { nounwind }
 ; CHECK: define internal double @fwddiffesum_list(%struct.n* noalias readonly %node, %struct.n* %"node'", i64 %times)
 ; CHECK-NEXT: entry:
 ; CHECK-NEXT:   %cmp18 = icmp eq %struct.n* %node, null
-; CHECK-NEXT:   br i1 %cmp18, label %for.cond.cleanup, label %for.cond1.preheader
+; CHECK-NEXT:   br i1 %cmp18, label %for.cond.cleanup, label %for.cond1.preheader.preheader
 
-; CHECK: for.cond1.preheader:                              ; preds = %entry, %for.cond.cleanup4
-; CHECK-NEXT:   %[[sum019:.+]] = phi {{(fast )?}}double [ %[[i3:.+]], %for.cond.cleanup4 ], [ 0.000000e+00, %entry ]
-; CHECK-NEXT:   %[[dval:.+]] = phi %struct.n* [ %[[ipl4:.+]], %for.cond.cleanup4 ], [ %"node'", %entry ]
-; CHECK-NEXT:   %val.020 = phi %struct.n* [ %[[i1:.+]], %for.cond.cleanup4 ], [ %node, %entry ]
+; CHECK: for.cond1.preheader.preheader:                    ; preds = %entry
+; CHECK-NEXT:   br label %for.cond1.preheader
+
+; CHECK: for.cond1.preheader:  
+; CHECK-NEXT:   %[[sum019:.+]] = phi {{(fast )?}}double [ %[[i3:.+]], %for.cond.cleanup4 ], [ 0.000000e+00, %for.cond1.preheader.preheader ]
+; CHECK-NEXT:   %[[dval:.+]] = phi %struct.n* [ %[[ipl4:.+]], %for.cond.cleanup4 ], [ %"node'", %for.cond1.preheader.preheader ]
+; CHECK-NEXT:   %val.020 = phi %struct.n* [ %[[i1:.+]], %for.cond.cleanup4 ], [ %node, %for.cond1.preheader.preheader ]
 ; CHECK-NEXT:   %"values'ipg" = getelementptr inbounds %struct.n, %struct.n* %[[dval]], i64 0, i32 0
 ; CHECK-NEXT:   %"'ipl" = load double*, double** %"values'ipg", align 8
 ; CHECK-NEXT:   br label %for.body5
 
-; CHECK: for.cond.cleanup:                                 ; preds = %for.cond.cleanup4, %entry
-; CHECK-NEXT:   %[[sum0:.+]] = phi {{(fast )?}}double [ 0.000000e+00, %entry ], [ %[[i3]], %for.cond.cleanup4 ]
+; CHECK: for.cond.cleanup.loopexit:                        ; preds = %for.cond.cleanup4
+; CHECK-NEXT:   br label %for.cond.cleanup
+
+; CHECK: for.cond.cleanup:  
+; CHECK-NEXT:   %[[sum0:.+]] = phi {{(fast )?}}double [ 0.000000e+00, %entry ], [ %[[i3]], %for.cond.cleanup.loopexit ]
 ; CHECK-NEXT:   ret double %[[sum0]]
 
 ; CHECK: for.cond.cleanup4:                                ; preds = %for.body5
@@ -114,11 +121,11 @@ attributes #4 = { nounwind }
 ; CHECK-NEXT:   %[[ipl4]] = load %struct.n*, %struct.n** %"next'ipg", align 8
 ; CHECK-NEXT:   %[[i1]] = load %struct.n*, %struct.n** %next, align 8, !tbaa !7
 ; CHECK-NEXT:   %cmp = icmp eq %struct.n* %[[i1]], null
-; CHECK-NEXT:   br i1 %cmp, label %for.cond.cleanup, label %for.cond1.preheader
+; CHECK-NEXT:   br i1 %cmp, label %for.cond.cleanup.loopexit, label %for.cond1.preheader
 
 ; CHECK: for.body5:                                        ; preds = %for.body5, %for.cond1.preheader
 ; CHECK-NEXT:   %[[sum116:.+]] = phi {{(fast )?}}double [ %[[sum019]], %for.cond1.preheader ], [ %[[i3]], %for.body5 ]
-; CHECK-NEXT:   %iv1 = phi i64 [ 0, %for.cond1.preheader ], [ %iv.next2, %for.body5 ]
+; CHECK-NEXT:   %iv1 = phi i64 [ %iv.next2, %for.body5 ], [ 0, %for.cond1.preheader ]
 ; CHECK-NEXT:   %iv.next2 = add nuw nsw i64 %iv1, 1
 ; CHECK-NEXT:   %"arrayidx'ipg" = getelementptr inbounds double, double* %"'ipl", i64 %iv1
 ; CHECK-NEXT:   %[[i2:.+]] = load double, double* %"arrayidx'ipg", align 8

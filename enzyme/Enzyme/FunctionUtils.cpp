@@ -41,6 +41,7 @@
 #include "llvm/Analysis/AliasAnalysis.h"
 #include "llvm/Analysis/AssumptionCache.h"
 #include "llvm/Analysis/BasicAliasAnalysis.h"
+#include "llvm/Analysis/CallGraph.h"
 #include "llvm/Analysis/GlobalsModRef.h"
 #include "llvm/Analysis/LazyValueInfo.h"
 #include "llvm/Analysis/LoopInfo.h"
@@ -1135,8 +1136,6 @@ void RemoveRedundantPHI(Function *F, FunctionAnalysisManager &FAM) {
 }
 
 PreProcessCache::PreProcessCache() {
-  MAM.registerPass([&] { return FunctionAnalysisManagerModuleProxy(FAM); });
-  FAM.registerPass([&] { return ModuleAnalysisManagerFunctionProxy(MAM); });
   FAM.registerPass([] { return AssumptionAnalysis(); });
   FAM.registerPass([] { return TargetLibraryAnalysis(); });
   FAM.registerPass([] { return LoopAnalysis(); });
@@ -1152,6 +1151,8 @@ PreProcessCache::PreProcessCache() {
   FAM.registerPass([] { return TypeBasedAA(); });
   FAM.registerPass([] { return BasicAA(); });
   MAM.registerPass([] { return GlobalsAA(); });
+  // CallGraphAnalysis required for GlobalsAA
+  MAM.registerPass([] { return CallGraphAnalysis(); });
 
   FAM.registerPass([] { return ScopedNoAliasAA(); });
 
@@ -1161,6 +1162,9 @@ PreProcessCache::PreProcessCache() {
 
   if (EnzymeAggressiveAA)
     FAM.registerPass([] { return CFLSteensAA(); });
+
+  MAM.registerPass([&] { return FunctionAnalysisManagerModuleProxy(FAM); });
+  FAM.registerPass([&] { return ModuleAnalysisManagerFunctionProxy(MAM); });
 
   FAM.registerPass([] {
     auto AM = AAManager();

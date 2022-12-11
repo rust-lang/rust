@@ -1,4 +1,5 @@
-; RUN: if [ %llvmver -lt 12 ]; then %opt < %s %loadEnzyme -enzyme -enzyme-preopt=false -mem2reg -simplifycfg -early-cse -S | FileCheck %s ; fi
+; RUN: if [ %llvmver -lt 12 ]; then %opt < %s %loadEnzyme -enzyme -early-cse -enzyme-preopt=false -S | FileCheck %s ; fi
+; RUN: if [ %llvmver -lt 12 ]; then %opt < %s %newLoadEnzyme -passes="enzyme,function(early-cse)" -enzyme-preopt=false -S | FileCheck %s ; fi
 
 
 ; #include <stdio.h>
