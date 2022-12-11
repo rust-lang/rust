@@ -257,7 +257,12 @@ fn compare_predicate_entailment<'tcx>(
     // Compute placeholder form of impl and trait method tys.
     let tcx = infcx.tcx;
 
-    let mut wf_tys = FxIndexSet::default();
+    // Add implied bounds from the impl header.
+    let mut wf_tys = ocx.assumed_wf_types(
+        param_env,
+        impl_m_span,
+        tcx.local_parent(impl_m.def_id.expect_local()),
+    );
 
     let impl_sig = infcx.replace_bound_vars_with_fresh_vars(
         impl_m_span,
