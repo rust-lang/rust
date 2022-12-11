@@ -6,7 +6,6 @@ use rustc_ast::attr;
 use rustc_ast::token::{self, Delimiter, Nonterminal};
 use rustc_errors::{error_code, fluent, Diagnostic, IntoDiagnostic, PResult};
 use rustc_span::{sym, BytePos, Span};
-use std::convert::TryInto;
 
 // Public for rustfmt usage
 #[derive(Debug)]

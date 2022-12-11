@@ -31,7 +31,6 @@ use rustc_trait_selection::traits::{
 };
 
 use std::cell::LazyCell;
-use std::convert::TryInto;
 use std::iter;
 use std::ops::{ControlFlow, Deref};
 

@@ -21,7 +21,6 @@ use rustc_span::lev_distance::lev_distance;
 use rustc_span::source_map::{self, Span};
 use rustc_span::symbol::{kw, sym, Ident, Symbol};
 use rustc_span::DUMMY_SP;
-use std::convert::TryFrom;
 use std::mem;
 use thin_vec::ThinVec;
 use tracing::debug;

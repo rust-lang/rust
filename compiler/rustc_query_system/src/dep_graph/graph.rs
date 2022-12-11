@@ -46,7 +46,7 @@ impl DepNodeIndex {
     pub const FOREVER_RED_NODE: DepNodeIndex = DepNodeIndex::from_u32(1);
 }
 
-impl std::convert::From<DepNodeIndex> for QueryInvocationId {
+impl From<DepNodeIndex> for QueryInvocationId {
     #[inline]
     fn from(dep_node_index: DepNodeIndex) -> Self {
         QueryInvocationId(dep_node_index.as_u32())

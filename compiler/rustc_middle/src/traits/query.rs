@@ -12,7 +12,6 @@ use crate::ty::subst::{GenericArg, SubstsRef};
 use crate::ty::{self, Ty, TyCtxt};
 use rustc_hir::def_id::DefId;
 use rustc_span::source_map::Span;
-use std::iter::FromIterator;
 
 pub mod type_op {
     use crate::ty::fold::TypeFoldable;

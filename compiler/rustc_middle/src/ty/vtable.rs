@@ -1,4 +1,3 @@
-use std::convert::TryFrom;
 use std::fmt;
 
 use crate::mir::interpret::{alloc_range, AllocId, Allocation, Pointer, Scalar};

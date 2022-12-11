@@ -9,7 +9,6 @@ use rustc_data_structures::sync::Lock;
 use rustc_macros::HashStable_Generic;
 use rustc_serialize::{Decodable, Decoder, Encodable, Encoder};
 
-use std::cmp::{Ord, PartialEq, PartialOrd};
 use std::fmt;
 use std::hash::{Hash, Hasher};
 use std::str;
@@ -1974,7 +1973,6 @@ pub mod kw {
 /// For example `sym::rustfmt` or `sym::u8`.
 pub mod sym {
     use super::Symbol;
-    use std::convert::TryInto;
 
     #[doc(inline)]
     pub use super::sym_generated::*;

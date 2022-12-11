@@ -33,7 +33,6 @@ use rustc_serialize::{Decodable, Decoder, Encodable, Encoder};
 use rustc_span::source_map::{respan, Spanned};
 use rustc_span::symbol::{kw, sym, Ident, Symbol};
 use rustc_span::{Span, DUMMY_SP};
-use std::convert::TryFrom;
 use std::fmt;
 use std::mem;
 use thin_vec::{thin_vec, ThinVec};

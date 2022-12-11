@@ -2,7 +2,6 @@ use rustc_apfloat::ieee::{Double, Single};
 use rustc_apfloat::Float;
 use rustc_serialize::{Decodable, Decoder, Encodable, Encoder};
 use rustc_target::abi::Size;
-use std::convert::{TryFrom, TryInto};
 use std::fmt;
 use std::num::NonZeroU8;
 

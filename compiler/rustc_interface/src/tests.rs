@@ -25,7 +25,6 @@ use rustc_target::spec::{CodeModel, LinkerFlavorCli, MergeFunctions, PanicStrate
 use rustc_target::spec::{RelroLevel, SanitizerSet, SplitDebuginfo, StackProtector, TlsModel};
 
 use std::collections::{BTreeMap, BTreeSet};
-use std::iter::FromIterator;
 use std::num::NonZeroUsize;
 use std::path::{Path, PathBuf};
 
