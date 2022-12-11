@@ -2,8 +2,6 @@
 //! looking at their MIR. Intrinsics/functions supported here are shared by CTFE
 //! and miri.
 
-use std::convert::TryFrom;
-
 use rustc_hir::def_id::DefId;
 use rustc_middle::mir::{
     self,

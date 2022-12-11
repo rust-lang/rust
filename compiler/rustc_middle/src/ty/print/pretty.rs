@@ -10,7 +10,7 @@ use rustc_data_structures::sso::SsoHashSet;
 use rustc_hir as hir;
 use rustc_hir::def::{self, CtorKind, DefKind, Namespace};
 use rustc_hir::def_id::{DefId, DefIdSet, CRATE_DEF_ID, LOCAL_CRATE};
-use rustc_hir::definitions::{DefPathData, DefPathDataName, DisambiguatedDefPathData};
+use rustc_hir::definitions::{DefKey, DefPathData, DefPathDataName, DisambiguatedDefPathData};
 use rustc_hir::LangItem;
 use rustc_session::config::TrimmedDefPaths;
 use rustc_session::cstore::{ExternCrate, ExternCrateSource};
@@ -23,7 +23,6 @@ use smallvec::SmallVec;
 use std::cell::Cell;
 use std::char;
 use std::collections::BTreeMap;
-use std::convert::TryFrom;
 use std::fmt::{self, Write as _};
 use std::iter;
 use std::ops::{ControlFlow, Deref, DerefMut};
@@ -63,6 +62,7 @@ thread_local! {
     static FORCE_IMPL_FILENAME_LINE: Cell<bool> = const { Cell::new(false) };
     static SHOULD_PREFIX_WITH_CRATE: Cell<bool> = const { Cell::new(false) };
     static NO_TRIMMED_PATH: Cell<bool> = const { Cell::new(false) };
+    static FORCE_TRIMMED_PATH: Cell<bool> = const { Cell::new(false) };
     static NO_QUERIES: Cell<bool> = const { Cell::new(false) };
     static NO_VISIBLE_PATH: Cell<bool> = const { Cell::new(false) };
 }
@@ -116,6 +116,7 @@ define_helper!(
     /// of various rustc types, for example `std::vec::Vec` would be trimmed to `Vec`,
     /// if no other `Vec` is found.
     fn with_no_trimmed_paths(NoTrimmedGuard, NO_TRIMMED_PATH);
+    fn with_forced_trimmed_paths(ForceTrimmedGuard, FORCE_TRIMMED_PATH);
     /// Prevent selection of visible paths. `Display` impl of DefId will prefer
     /// visible (public) reexports of types as paths.
     fn with_no_visible_paths(NoVisibleGuard, NO_VISIBLE_PATH);
@@ -295,11 +296,89 @@ pub trait PrettyPrinter<'tcx>:
         self.try_print_visible_def_path_recur(def_id, &mut callers)
     }
 
+    // Given a `DefId`, produce a short name. For types and traits, it prints *only* its name,
+    // For associated items on traits it prints out the trait's name and the associated item's name.
+    // For enum variants, if they have an unique name, then we only print the name, otherwise we
+    // print the enum name and the variant name. Otherwise, we do not print anything and let the
+    // caller use the `print_def_path` fallback.
+    fn force_print_trimmed_def_path(
+        mut self,
+        def_id: DefId,
+    ) -> Result<(Self::Path, bool), Self::Error> {
+        let key = self.tcx().def_key(def_id);
+        let visible_parent_map = self.tcx().visible_parent_map(());
+        let kind = self.tcx().def_kind(def_id);
+
+        let get_local_name = |this: &Self, name, def_id, key: DefKey| {
+            if let Some(visible_parent) = visible_parent_map.get(&def_id)
+                && let actual_parent = this.tcx().opt_parent(def_id)
+                && let DefPathData::TypeNs(_) = key.disambiguated_data.data
+                && Some(*visible_parent) != actual_parent
+            {
+                this
+                    .tcx()
+                    .module_children(visible_parent)
+                    .iter()
+                    .filter(|child| child.res.opt_def_id() == Some(def_id))
+                    .find(|child| child.vis.is_public() && child.ident.name != kw::Underscore)
+                    .map(|child| child.ident.name)
+                    .unwrap_or(name)
+            } else {
+                name
+            }
+        };
+        if let DefKind::Variant = kind
+            && let Some(symbol) = self.tcx().trimmed_def_paths(()).get(&def_id)
+        {
+            // If `Assoc` is unique, we don't want to talk about `Trait::Assoc`.
+            self.write_str(get_local_name(&self, *symbol, def_id, key).as_str())?;
+            return Ok((self, true));
+        }
+        if let Some(symbol) = key.get_opt_name() {
+            if let DefKind::AssocConst | DefKind::AssocFn | DefKind::AssocTy = kind
+                && let Some(parent) = self.tcx().opt_parent(def_id)
+                && let parent_key = self.tcx().def_key(parent)
+                && let Some(symbol) = parent_key.get_opt_name()
+            {
+                // Trait
+                self.write_str(get_local_name(&self, symbol, parent, parent_key).as_str())?;
+                self.write_str("::")?;
+            } else if let DefKind::Variant = kind
+                && let Some(parent) = self.tcx().opt_parent(def_id)
+                && let parent_key = self.tcx().def_key(parent)
+                && let Some(symbol) = parent_key.get_opt_name()
+            {
+                // Enum
+
+                // For associated items and variants, we want the "full" path, namely, include
+                // the parent type in the path. For example, `Iterator::Item`.
+                self.write_str(get_local_name(&self, symbol, parent, parent_key).as_str())?;
+                self.write_str("::")?;
+            } else if let DefKind::Struct | DefKind::Union | DefKind::Enum | DefKind::Trait
+                | DefKind::TyAlias | DefKind::Fn | DefKind::Const | DefKind::Static(_) = kind
+            {
+            } else {
+                // If not covered above, like for example items out of `impl` blocks, fallback.
+                return Ok((self, false));
+            }
+            self.write_str(get_local_name(&self, symbol, def_id, key).as_str())?;
+            return Ok((self, true));
+        }
+        Ok((self, false))
+    }
+
     /// Try to see if this path can be trimmed to a unique symbol name.
     fn try_print_trimmed_def_path(
         mut self,
         def_id: DefId,
     ) -> Result<(Self::Path, bool), Self::Error> {
+        if FORCE_TRIMMED_PATH.with(|flag| flag.get()) {
+            let (s, trimmed) = self.force_print_trimmed_def_path(def_id)?;
+            if trimmed {
+                return Ok((s, true));
+            }
+            self = s;
+        }
         if !self.tcx().sess.opts.unstable_opts.trim_diagnostic_paths
             || matches!(self.tcx().sess.opts.trimmed_def_paths, TrimmedDefPaths::Never)
             || NO_TRIMMED_PATH.with(|flag| flag.get())

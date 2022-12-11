@@ -55,7 +55,7 @@ error[E0308]: mismatched types
   --> $DIR/type-ascription-precedence.rs:53:5
    |
 LL |     (S .. S): S;
-   |     ^^^^^^^^ expected struct `S`, found struct `std::ops::Range`
+   |     ^^^^^^^^ expected struct `S`, found struct `Range`
    |
    = note: expected struct `S`
               found struct `std::ops::Range<S>`

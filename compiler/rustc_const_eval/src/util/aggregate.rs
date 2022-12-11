@@ -3,7 +3,6 @@ use rustc_middle::mir::*;
 use rustc_middle::ty::{Ty, TyCtxt};
 use rustc_target::abi::VariantIdx;
 
-use std::convert::TryFrom;
 use std::iter::TrustedLen;
 
 /// Expand `lhs = Rvalue::Aggregate(kind, operands)` into assignments to the fields.

@@ -1,7 +1,5 @@
 use std::fmt;
-use std::iter::ExactSizeIterator;
 use std::iter::FusedIterator;
-use std::iter::Iterator;
 
 /// Iterator which may contain instance of
 /// one of two specific implementations.

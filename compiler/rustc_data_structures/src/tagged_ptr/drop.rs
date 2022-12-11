@@ -76,7 +76,7 @@ where
     fn drop(&mut self) {
         // No need to drop the tag, as it's Copy
         unsafe {
-            std::mem::drop(P::from_usize(self.raw.pointer_raw()));
+            drop(P::from_usize(self.raw.pointer_raw()));
         }
     }
 }

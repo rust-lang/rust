@@ -1,5 +1,3 @@
-use std::convert::TryInto;
-
 use super::Const;
 use crate::mir;
 use crate::mir::interpret::{AllocId, ConstValue, Scalar};

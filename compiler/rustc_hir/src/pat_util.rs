@@ -6,7 +6,7 @@ use rustc_span::hygiene::DesugaringKind;
 use rustc_span::symbol::Ident;
 use rustc_span::Span;
 
-use std::iter::{Enumerate, ExactSizeIterator};
+use std::iter::Enumerate;
 
 pub struct EnumerateAndAdjust<I> {
     enumerate: Enumerate<I>,

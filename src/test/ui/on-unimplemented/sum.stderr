@@ -14,7 +14,7 @@ note: required by a bound in `std::iter::Iterator::sum`
   --> $SRC_DIR/core/src/iter/traits/iterator.rs:LL:COL
    |
 LL |         S: Sum<Self::Item>,
-   |            ^^^^^^^^^^^^^^^ required by this bound in `std::iter::Iterator::sum`
+   |            ^^^^^^^^^^^^^^^ required by this bound in `Iterator::sum`
 
 error[E0277]: a value of type `i32` cannot be made by multiplying all elements of type `&()` from an iterator
   --> $DIR/sum.rs:7:5
@@ -32,7 +32,7 @@ note: required by a bound in `std::iter::Iterator::product`
   --> $SRC_DIR/core/src/iter/traits/iterator.rs:LL:COL
    |
 LL |         P: Product<Self::Item>,
-   |            ^^^^^^^^^^^^^^^^^^^ required by this bound in `std::iter::Iterator::product`
+   |            ^^^^^^^^^^^^^^^^^^^ required by this bound in `Iterator::product`
 
 error: aborting due to 2 previous errors
 

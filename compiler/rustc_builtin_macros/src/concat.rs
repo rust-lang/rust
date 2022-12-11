@@ -4,8 +4,6 @@ use rustc_expand::base::{self, DummyResult};
 use rustc_session::errors::report_lit_error;
 use rustc_span::symbol::Symbol;
 
-use std::string::String;
-
 pub fn expand_concat(
     cx: &mut base::ExtCtxt<'_>,
     sp: rustc_span::Span,

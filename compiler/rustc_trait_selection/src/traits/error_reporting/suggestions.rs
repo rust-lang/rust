@@ -36,7 +36,7 @@ use std::fmt;
 use super::InferCtxtPrivExt;
 use crate::infer::InferCtxtExt as _;
 use crate::traits::query::evaluate_obligation::InferCtxtExt as _;
-use rustc_middle::ty::print::with_no_trimmed_paths;
+use rustc_middle::ty::print::{with_forced_trimmed_paths, with_no_trimmed_paths};
 
 #[derive(Debug)]
 pub enum GeneratorInteriorOrUpvar {
@@ -2412,6 +2412,7 @@ impl<'tcx> TypeErrCtxtExt<'tcx> for TypeErrCtxt<'_, 'tcx> {
             ObligationCauseCode::BindingObligation(item_def_id, span)
             | ObligationCauseCode::ExprBindingObligation(item_def_id, span, ..) => {
                 let item_name = tcx.def_path_str(item_def_id);
+                let short_item_name = with_forced_trimmed_paths!(tcx.def_path_str(item_def_id));
                 let mut multispan = MultiSpan::from(span);
                 let sm = tcx.sess.source_map();
                 if let Some(ident) = tcx.opt_item_ident(item_def_id) {
@@ -2424,9 +2425,9 @@ impl<'tcx> TypeErrCtxtExt<'tcx> for TypeErrCtxt<'_, 'tcx> {
                         multispan.push_span_label(ident.span, "required by a bound in this");
                     }
                 }
-                let descr = format!("required by a bound in `{}`", item_name);
+                let descr = format!("required by a bound in `{item_name}`");
                 if span.is_visible(sm) {
-                    let msg = format!("required by this bound in `{}`", item_name);
+                    let msg = format!("required by this bound in `{short_item_name}`");
                     multispan.push_span_label(span, msg);
                     err.span_note(multispan, &descr);
                 } else {

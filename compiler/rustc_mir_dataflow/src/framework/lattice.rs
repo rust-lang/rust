@@ -26,7 +26,7 @@
 //! ## `PartialOrd`
 //!
 //! Given that they represent partially ordered sets, you may be surprised that [`JoinSemiLattice`]
-//! and [`MeetSemiLattice`] do not have [`PartialOrd`][std::cmp::PartialOrd] as a supertrait. This
+//! and [`MeetSemiLattice`] do not have [`PartialOrd`] as a supertrait. This
 //! is because most standard library types use lexicographic ordering instead of set inclusion for
 //! their `PartialOrd` impl. Since we do not actually need to compare lattice elements to run a
 //! dataflow analysis, there's no need for a newtype wrapper with a custom `PartialOrd` impl. The
