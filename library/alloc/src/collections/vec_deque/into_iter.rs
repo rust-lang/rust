@@ -1,4 +1,4 @@
-use core::fmt;
+use core::{alloc, fmt};
 use core::iter::{FusedIterator, TrustedLen};
 
 use crate::alloc::{Allocator, Global};
@@ -17,11 +17,13 @@ use super::VecDeque;
 pub struct IntoIter<
     T,
     #[unstable(feature = "allocator_api", issue = "32838")] A: Allocator = Global,
-> {
+>
+where [(); alloc::co_alloc_metadata_num_slots::<A>()]: {
     inner: VecDeque<T, A>,
 }
 
-impl<T, A: Allocator> IntoIter<T, A> {
+impl<T, A: Allocator> IntoIter<T, A>
+where [(); alloc::co_alloc_metadata_num_slots::<A>()]: {
     pub(super) fn new(inner: VecDeque<T, A>) -> Self {
         IntoIter { inner }
     }
@@ -32,14 +34,16 @@ impl<T, A: Allocator> IntoIter<T, A> {
 }
 
 #[stable(feature = "collection_debug", since = "1.17.0")]
-impl<T: fmt::Debug, A: Allocator> fmt::Debug for IntoIter<T, A> {
+impl<T: fmt::Debug, A: Allocator> fmt::Debug for IntoIter<T, A>
+where [(); alloc::co_alloc_metadata_num_slots::<A>()]: {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         f.debug_tuple("IntoIter").field(&self.inner).finish()
     }
 }
 
 #[stable(feature = "rust1", since = "1.0.0")]
-impl<T, A: Allocator> Iterator for IntoIter<T, A> {
+impl<T, A: Allocator> Iterator for IntoIter<T, A>
+where [(); alloc::co_alloc_metadata_num_slots::<A>()]: {
     type Item = T;
 
     #[inline]
@@ -55,7 +59,8 @@ impl<T, A: Allocator> Iterator for IntoIter<T, A> {
 }
 
 #[stable(feature = "rust1", since = "1.0.0")]
-impl<T, A: Allocator> DoubleEndedIterator for IntoIter<T, A> {
+impl<T, A: Allocator> DoubleEndedIterator for IntoIter<T, A>
+where [(); alloc::co_alloc_metadata_num_slots::<A>()]: {
     #[inline]
     fn next_back(&mut self) -> Option<T> {
         self.inner.pop_back()
@@ -63,14 +68,17 @@ impl<T, A: Allocator> DoubleEndedIterator for IntoIter<T, A> {
 }
 
 #[stable(feature = "rust1", since = "1.0.0")]
-impl<T, A: Allocator> ExactSizeIterator for IntoIter<T, A> {
+impl<T, A: Allocator> ExactSizeIterator for IntoIter<T, A>
+where [(); alloc::co_alloc_metadata_num_slots::<A>()]: {
     fn is_empty(&self) -> bool {
         self.inner.is_empty()
     }
 }
 
 #[stable(feature = "fused", since = "1.26.0")]
-impl<T, A: Allocator> FusedIterator for IntoIter<T, A> {}
+impl<T, A: Allocator> FusedIterator for IntoIter<T, A>
+where [(); alloc::co_alloc_metadata_num_slots::<A>()]: {}
 
 #[unstable(feature = "trusted_len", issue = "37572")]
-unsafe impl<T, A: Allocator> TrustedLen for IntoIter<T, A> {}
+unsafe impl<T, A: Allocator> TrustedLen for IntoIter<T, A>
+where [(); alloc::co_alloc_metadata_num_slots::<A>()]: {}

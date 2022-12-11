@@ -456,7 +456,8 @@ where [(); alloc::co_alloc_metadata_num_slots::<A>()]: {
             written: usize,
         }
 
-        impl<'a, T, A: Allocator> Drop for Guard<'a, T, A> {
+        impl<'a, T, A: Allocator> Drop for Guard<'a, T, A>
+        where [(); alloc::co_alloc_metadata_num_slots::<A>()]: {
             fn drop(&mut self) {
                 self.deque.len += self.written;
             }

@@ -4,8 +4,7 @@ use crate::alloc::{Allocator, Global};
 #[cfg(not(no_global_oom_handling))]
 use crate::collections::VecDeque;
 use crate::raw_vec::RawVec;
-use core::array;
-use core::fmt;
+use core::{alloc, array, fmt};
 use core::iter::{
     FusedIterator, InPlaceIterable, SourceIter, TrustedLen, TrustedRandomAccessNoCoerce,
 };
@@ -32,7 +31,8 @@ use core::slice::{self};
 pub struct IntoIter<
     T,
     #[unstable(feature = "allocator_api", issue = "32838")] A: Allocator = Global,
-> {
+>
+where [(); alloc::co_alloc_metadata_num_slots::<A>()]: {
     pub(super) buf: NonNull<T>,
     pub(super) phantom: PhantomData<T>,
     pub(super) cap: usize,
@@ -44,13 +44,15 @@ pub struct IntoIter<
 }
 
 #[stable(feature = "vec_intoiter_debug", since = "1.13.0")]
-impl<T: fmt::Debug, A: Allocator> fmt::Debug for IntoIter<T, A> {
+impl<T: fmt::Debug, A: Allocator> fmt::Debug for IntoIter<T, A>
+where [(); alloc::co_alloc_metadata_num_slots::<A>()]: {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         f.debug_tuple("IntoIter").field(&self.as_slice()).finish()
     }
 }
 
-impl<T, A: Allocator> IntoIter<T, A> {
+impl<T, A: Allocator> IntoIter<T, A>
+where [(); alloc::co_alloc_metadata_num_slots::<A>()]: {
     /// Returns the remaining items of this iterator as a slice.
     ///
     /// # Examples
@@ -137,7 +139,8 @@ impl<T, A: Allocator> IntoIter<T, A> {
 
     #[cfg(not(no_global_oom_handling))]
     #[inline]
-    pub(crate) fn into_vecdeque(self) -> VecDeque<T, A> {
+    pub(crate) fn into_vecdeque(self) -> VecDeque<T, A>
+    where [(); alloc::co_alloc_metadata_num_slots::<A>()]: {
         // Keep our `Drop` impl from dropping the elements and the allocator
         let mut this = ManuallyDrop::new(self);
 
@@ -164,19 +167,23 @@ impl<T, A: Allocator> IntoIter<T, A> {
 }
 
 #[stable(feature = "vec_intoiter_as_ref", since = "1.46.0")]
-impl<T, A: Allocator> AsRef<[T]> for IntoIter<T, A> {
+impl<T, A: Allocator> AsRef<[T]> for IntoIter<T, A>
+where [(); alloc::co_alloc_metadata_num_slots::<A>()]: {
     fn as_ref(&self) -> &[T] {
         self.as_slice()
     }
 }
 
 #[stable(feature = "rust1", since = "1.0.0")]
-unsafe impl<T: Send, A: Allocator + Send> Send for IntoIter<T, A> {}
+unsafe impl<T: Send, A: Allocator + Send> Send for IntoIter<T, A>
+where [(); alloc::co_alloc_metadata_num_slots::<A>()]: {}
 #[stable(feature = "rust1", since = "1.0.0")]
-unsafe impl<T: Sync, A: Allocator + Sync> Sync for IntoIter<T, A> {}
+unsafe impl<T: Sync, A: Allocator + Sync> Sync for IntoIter<T, A>
+where [(); alloc::co_alloc_metadata_num_slots::<A>()]: {}
 
 #[stable(feature = "rust1", since = "1.0.0")]
-impl<T, A: Allocator> Iterator for IntoIter<T, A> {
+impl<T, A: Allocator> Iterator for IntoIter<T, A>
+where [(); alloc::co_alloc_metadata_num_slots::<A>()]: {
     type Item = T;
 
     #[inline]
@@ -293,7 +300,8 @@ impl<T, A: Allocator> Iterator for IntoIter<T, A> {
 }
 
 #[stable(feature = "rust1", since = "1.0.0")]
-impl<T, A: Allocator> DoubleEndedIterator for IntoIter<T, A> {
+impl<T, A: Allocator> DoubleEndedIterator for IntoIter<T, A>
+where [(); alloc::co_alloc_metadata_num_slots::<A>()]: {
     #[inline]
     fn next_back(&mut self) -> Option<T> {
         if self.end == self.ptr {
@@ -334,17 +342,20 @@ impl<T, A: Allocator> DoubleEndedIterator for IntoIter<T, A> {
 }
 
 #[stable(feature = "rust1", since = "1.0.0")]
-impl<T, A: Allocator> ExactSizeIterator for IntoIter<T, A> {
+impl<T, A: Allocator> ExactSizeIterator for IntoIter<T, A>
+where [(); alloc::co_alloc_metadata_num_slots::<A>()]: {
     fn is_empty(&self) -> bool {
         self.ptr == self.end
     }
 }
 
 #[stable(feature = "fused", since = "1.26.0")]
-impl<T, A: Allocator> FusedIterator for IntoIter<T, A> {}
+impl<T, A: Allocator> FusedIterator for IntoIter<T, A>
+where [(); alloc::co_alloc_metadata_num_slots::<A>()]: {}
 
 #[unstable(feature = "trusted_len", issue = "37572")]
-unsafe impl<T, A: Allocator> TrustedLen for IntoIter<T, A> {}
+unsafe impl<T, A: Allocator> TrustedLen for IntoIter<T, A>
+where [(); alloc::co_alloc_metadata_num_slots::<A>()]: {}
 
 #[doc(hidden)]
 #[unstable(issue = "none", feature = "std_internals")]
@@ -363,13 +374,15 @@ impl<T: Copy> NonDrop for T {}
 unsafe impl<T, A: Allocator> TrustedRandomAccessNoCoerce for IntoIter<T, A>
 where
     T: NonDrop,
+    [(); alloc::co_alloc_metadata_num_slots::<A>()]:
 {
     const MAY_HAVE_SIDE_EFFECT: bool = false;
 }
 
 #[cfg(not(no_global_oom_handling))]
 #[stable(feature = "vec_into_iter_clone", since = "1.8.0")]
-impl<T: Clone, A: Allocator + Clone> Clone for IntoIter<T, A> {
+impl<T: Clone, A: Allocator + Clone> Clone for IntoIter<T, A>
+where [(); alloc::co_alloc_metadata_num_slots::<A>()]: {
     #[cfg(not(test))]
     fn clone(&self) -> Self {
         self.as_slice().to_vec_in(self.alloc.deref().clone()).into_iter()
@@ -381,11 +394,14 @@ impl<T: Clone, A: Allocator + Clone> Clone for IntoIter<T, A> {
 }
 
 #[stable(feature = "rust1", since = "1.0.0")]
-unsafe impl<#[may_dangle] T, A: Allocator> Drop for IntoIter<T, A> {
+unsafe impl<#[may_dangle] T, A: Allocator> Drop for IntoIter<T, A>
+where [(); alloc::co_alloc_metadata_num_slots::<A>()]: {
     fn drop(&mut self) {
-        struct DropGuard<'a, T, A: Allocator>(&'a mut IntoIter<T, A>);
+        struct DropGuard<'a, T, A: Allocator>(&'a mut IntoIter<T, A>)
+        where [(); alloc::co_alloc_metadata_num_slots::<A>()]: ;
 
-        impl<T, A: Allocator> Drop for DropGuard<'_, T, A> {
+        impl<T, A: Allocator> Drop for DropGuard<'_, T, A>
+        where [(); alloc::co_alloc_metadata_num_slots::<A>()]: {
             fn drop(&mut self) {
                 unsafe {
                     // `IntoIter::alloc` is not used anymore after this and will be dropped by RawVec
@@ -409,11 +425,13 @@ unsafe impl<#[may_dangle] T, A: Allocator> Drop for IntoIter<T, A> {
 // also refer to the vec::in_place_collect module documentation to get an overview
 #[unstable(issue = "none", feature = "inplace_iteration")]
 #[doc(hidden)]
-unsafe impl<T, A: Allocator> InPlaceIterable for IntoIter<T, A> {}
+unsafe impl<T, A: Allocator> InPlaceIterable for IntoIter<T, A>
+where [(); alloc::co_alloc_metadata_num_slots::<A>()]: {}
 
 #[unstable(issue = "none", feature = "inplace_iteration")]
 #[doc(hidden)]
-unsafe impl<T, A: Allocator> SourceIter for IntoIter<T, A> {
+unsafe impl<T, A: Allocator> SourceIter for IntoIter<T, A>
+where [(); alloc::co_alloc_metadata_num_slots::<A>()]: {
     type Source = Self;
 
     #[inline]

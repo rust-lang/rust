@@ -2,7 +2,7 @@ use core::iter::FusedIterator;
 use core::marker::PhantomData;
 use core::mem::{self, SizedTypeProperties};
 use core::ptr::NonNull;
-use core::{fmt, ptr};
+use core::{alloc, fmt, ptr};
 
 use crate::alloc::{Allocator, Global};
 
@@ -19,7 +19,8 @@ pub struct Drain<
     'a,
     T: 'a,
     #[unstable(feature = "allocator_api", issue = "32838")] A: Allocator = Global,
-> {
+>
+where [(); alloc::co_alloc_metadata_num_slots::<A>()]: {
     // We can't just use a &mut VecDeque<T, A>, as that would make Drain invariant over T
     // and we want it to be covariant instead
     deque: NonNull<VecDeque<T, A>>,
@@ -34,7 +35,8 @@ pub struct Drain<
     _marker: PhantomData<&'a T>,
 }
 
-impl<'a, T, A: Allocator> Drain<'a, T, A> {
+impl<'a, T, A: Allocator> Drain<'a, T, A>
+where [(); alloc::co_alloc_metadata_num_slots::<A>()]: {
     pub(super) unsafe fn new(
         deque: &'a mut VecDeque<T, A>,
         drain_start: usize,
@@ -88,7 +90,8 @@ impl<'a, T, A: Allocator> Drain<'a, T, A> {
 }
 
 #[stable(feature = "collection_debug", since = "1.17.0")]
-impl<T: fmt::Debug, A: Allocator> fmt::Debug for Drain<'_, T, A> {
+impl<T: fmt::Debug, A: Allocator> fmt::Debug for Drain<'_, T, A>
+where [(); alloc::co_alloc_metadata_num_slots::<A>()]: {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         f.debug_tuple("Drain")
             .field(&self.drain_len)
@@ -100,16 +103,21 @@ impl<T: fmt::Debug, A: Allocator> fmt::Debug for Drain<'_, T, A> {
 }
 
 #[stable(feature = "drain", since = "1.6.0")]
-unsafe impl<T: Sync, A: Allocator + Sync> Sync for Drain<'_, T, A> {}
+unsafe impl<T: Sync, A: Allocator + Sync> Sync for Drain<'_, T, A>
+where [(); alloc::co_alloc_metadata_num_slots::<A>()]: {}
 #[stable(feature = "drain", since = "1.6.0")]
-unsafe impl<T: Send, A: Allocator + Send> Send for Drain<'_, T, A> {}
+unsafe impl<T: Send, A: Allocator + Send> Send for Drain<'_, T, A>
+where [(); alloc::co_alloc_metadata_num_slots::<A>()]: {}
 
 #[stable(feature = "drain", since = "1.6.0")]
-impl<T, A: Allocator> Drop for Drain<'_, T, A> {
+impl<T, A: Allocator> Drop for Drain<'_, T, A>
+where [(); alloc::co_alloc_metadata_num_slots::<A>()]: {
     fn drop(&mut self) {
-        struct DropGuard<'r, 'a, T, A: Allocator>(&'r mut Drain<'a, T, A>);
+        struct DropGuard<'r, 'a, T, A: Allocator> (&'r mut Drain<'a, T, A>)
+        where [(); alloc::co_alloc_metadata_num_slots::<A>()]:;
 
-        impl<'r, 'a, T, A: Allocator> Drop for DropGuard<'r, 'a, T, A> {
+        impl<'r, 'a, T, A: Allocator> Drop for DropGuard<'r, 'a, T, A>
+        where [(); alloc::co_alloc_metadata_num_slots::<A>()]: {
             fn drop(&mut self) {
                 if self.0.remaining != 0 {
                     unsafe {
@@ -190,7 +198,8 @@ impl<T, A: Allocator> Drop for Drain<'_, T, A> {
 }
 
 #[stable(feature = "drain", since = "1.6.0")]
-impl<T, A: Allocator> Iterator for Drain<'_, T, A> {
+impl<T, A: Allocator> Iterator for Drain<'_, T, A>
+where [(); alloc::co_alloc_metadata_num_slots::<A>()]: {
     type Item = T;
 
     #[inline]
@@ -212,7 +221,8 @@ impl<T, A: Allocator> Iterator for Drain<'_, T, A> {
 }
 
 #[stable(feature = "drain", since = "1.6.0")]
-impl<T, A: Allocator> DoubleEndedIterator for Drain<'_, T, A> {
+impl<T, A: Allocator> DoubleEndedIterator for Drain<'_, T, A>
+where [(); alloc::co_alloc_metadata_num_slots::<A>()]: {
     #[inline]
     fn next_back(&mut self) -> Option<T> {
         if self.remaining == 0 {
@@ -225,7 +235,9 @@ impl<T, A: Allocator> DoubleEndedIterator for Drain<'_, T, A> {
 }
 
 #[stable(feature = "drain", since = "1.6.0")]
-impl<T, A: Allocator> ExactSizeIterator for Drain<'_, T, A> {}
+impl<T, A: Allocator> ExactSizeIterator for Drain<'_, T, A>
+where [(); alloc::co_alloc_metadata_num_slots::<A>()]: {}
 
 #[stable(feature = "fused", since = "1.26.0")]
-impl<T, A: Allocator> FusedIterator for Drain<'_, T, A> {}
+impl<T, A: Allocator> FusedIterator for Drain<'_, T, A>
+where [(); alloc::co_alloc_metadata_num_slots::<A>()]: {}

@@ -180,7 +180,12 @@
 #![feature(global_co_alloc)]
 #![feature(hashmap_internals)]
 #![feature(lang_items)]
-#![feature(min_specialization)]
+// When we used min_specialization instead of specialization, library/alloc/src/vec/mod.rs was failing with:
+// - cannot specialize on predicate `the constant `core::alloc::co_alloc_metadata_num_slots::<A>()` can be evaluated`
+// - cannot specialize on predicate `[(); _] well-formed`
+// - cannot specialize on predicate `the constant `core::alloc::co_alloc_metadata_num_slots::<A>()` can be evaluated`
+//#![feature(min_specialization)]
+#![feature(specialization)]
 #![feature(negative_impls)]
 #![feature(never_type)]
 #![feature(rustc_allow_const_fn_unstable)]

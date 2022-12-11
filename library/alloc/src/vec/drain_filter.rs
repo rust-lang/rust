@@ -1,7 +1,6 @@
 use crate::alloc::{Allocator, Global};
 use core::mem::{self, ManuallyDrop};
-use core::ptr;
-use core::slice;
+use core::{alloc, ptr, slice};
 
 use super::Vec;
 
@@ -27,6 +26,7 @@ pub struct DrainFilter<
     #[unstable(feature = "allocator_api", issue = "32838")] A: Allocator = Global,
 > where
     F: FnMut(&mut T) -> bool,
+    [(); alloc::co_alloc_metadata_num_slots::<A>()]:
 {
     pub(super) vec: &'a mut Vec<T, A>,
     /// The index of the item that will be inspected by the next call to `next`.
@@ -48,6 +48,7 @@ pub struct DrainFilter<
 impl<T, F, A: Allocator> DrainFilter<'_, T, F, A>
 where
     F: FnMut(&mut T) -> bool,
+    [(); alloc::co_alloc_metadata_num_slots::<A>()]:
 {
     /// Returns a reference to the underlying allocator.
     #[unstable(feature = "allocator_api", issue = "32838")]
@@ -116,6 +117,7 @@ where
 impl<T, F, A: Allocator> Iterator for DrainFilter<'_, T, F, A>
 where
     F: FnMut(&mut T) -> bool,
+    [(); alloc::co_alloc_metadata_num_slots::<A>()]:
 {
     type Item = T;
 
@@ -154,11 +156,13 @@ where
 impl<T, F, A: Allocator> Drop for DrainFilter<'_, T, F, A>
 where
     F: FnMut(&mut T) -> bool,
+    [(); alloc::co_alloc_metadata_num_slots::<A>()]:
 {
     fn drop(&mut self) {
         struct BackshiftOnDrop<'a, 'b, T, F, A: Allocator>
         where
             F: FnMut(&mut T) -> bool,
+            [(); alloc::co_alloc_metadata_num_slots::<A>()]:
         {
             drain: &'b mut DrainFilter<'a, T, F, A>,
         }
@@ -166,6 +170,7 @@ where
         impl<'a, 'b, T, F, A: Allocator> Drop for BackshiftOnDrop<'a, 'b, T, F, A>
         where
             F: FnMut(&mut T) -> bool,
+            [(); alloc::co_alloc_metadata_num_slots::<A>()]:
         {
             fn drop(&mut self) {
                 unsafe {
