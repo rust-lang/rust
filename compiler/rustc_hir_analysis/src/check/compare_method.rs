@@ -255,15 +255,15 @@ fn compare_predicate_entailment<'tcx>(
 
     let mut wf_tys = FxIndexSet::default();
 
-    let impl_sig = infcx.replace_bound_vars_with_fresh_vars(
+    let unnormalized_impl_sig = infcx.replace_bound_vars_with_fresh_vars(
         impl_m_span,
         infer::HigherRankedType,
         tcx.fn_sig(impl_m.def_id),
     );
+    let unnormalized_impl_fty = tcx.mk_fn_ptr(ty::Binder::dummy(unnormalized_impl_sig));
 
     let norm_cause = ObligationCause::misc(impl_m_span, impl_m_hir_id);
-    let impl_sig = ocx.normalize(&norm_cause, param_env, impl_sig);
-    let impl_fty = tcx.mk_fn_ptr(ty::Binder::dummy(impl_sig));
+    let impl_fty = ocx.normalize(&norm_cause, param_env, unnormalized_impl_fty);
     debug!("compare_impl_method: impl_fty={:?}", impl_fty);
 
     let trait_sig = tcx.bound_fn_sig(trait_m.def_id).subst(tcx, trait_to_placeholder_substs);
@@ -312,19 +312,84 @@ fn compare_predicate_entailment<'tcx>(
         return Err(reported);
     }
 
+    // FIXME(compiler-errors): This can be removed when IMPLIED_BOUNDS_ENTAILMENT
+    // becomes a hard error.
+    let lint_infcx = infcx.fork();
+
     // Finally, resolve all regions. This catches wily misuses of
     // lifetime parameters.
     let outlives_environment = OutlivesEnvironment::with_bounds(
         param_env,
         Some(infcx),
-        infcx.implied_bounds_tys(param_env, impl_m_hir_id, wf_tys),
+        infcx.implied_bounds_tys(param_env, impl_m_hir_id, wf_tys.clone()),
     );
-    infcx.check_region_obligations_and_report_errors(
+    if let Some(guar) = infcx.check_region_obligations_and_report_errors(
         impl_m.def_id.expect_local(),
         &outlives_environment,
+    ) {
+        return Err(guar);
+    }
+
+    // FIXME(compiler-errors): This can be simplified when IMPLIED_BOUNDS_ENTAILMENT
+    // becomes a hard error (i.e. ideally we'd just register a WF obligation above...)
+    lint_implied_wf_entailment(
+        impl_m.def_id.expect_local(),
+        lint_infcx,
+        param_env,
+        unnormalized_impl_fty,
+        wf_tys,
     );
 
     Ok(())
+}
+
+fn lint_implied_wf_entailment<'tcx>(
+    impl_m_def_id: LocalDefId,
+    infcx: InferCtxt<'tcx>,
+    param_env: ty::ParamEnv<'tcx>,
+    unnormalized_impl_fty: Ty<'tcx>,
+    wf_tys: FxIndexSet<Ty<'tcx>>,
+) {
+    let ocx = ObligationCtxt::new(&infcx);
+
+    // We need to check that the impl's args are well-formed given
+    // the hybrid param-env (impl + trait method where-clauses).
+    ocx.register_obligation(traits::Obligation::new(
+        infcx.tcx,
+        ObligationCause::dummy(),
+        param_env,
+        ty::Binder::dummy(ty::PredicateKind::WellFormed(unnormalized_impl_fty.into())),
+    ));
+
+    let hir_id = infcx.tcx.hir().local_def_id_to_hir_id(impl_m_def_id);
+    let lint = || {
+        infcx.tcx.struct_span_lint_hir(
+            rustc_session::lint::builtin::IMPLIED_BOUNDS_ENTAILMENT,
+            hir_id,
+            infcx.tcx.def_span(impl_m_def_id),
+            "impl method assumes more implied bounds than the corresponding trait method",
+            |lint| lint,
+        );
+    };
+
+    let errors = ocx.select_all_or_error();
+    if !errors.is_empty() {
+        lint();
+    }
+
+    let outlives_environment = OutlivesEnvironment::with_bounds(
+        param_env,
+        Some(&infcx),
+        infcx.implied_bounds_tys(param_env, hir_id, wf_tys.clone()),
+    );
+    infcx.process_registered_region_obligations(
+        outlives_environment.region_bound_pairs(),
+        param_env,
+    );
+
+    if !infcx.resolve_regions(&outlives_environment).is_empty() {
+        lint();
+    }
 }
 
 fn compare_asyncness<'tcx>(
