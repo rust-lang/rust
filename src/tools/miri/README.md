@@ -576,6 +576,21 @@ extern "Rust" {
 
     /// Miri-provided extern function to deallocate memory.
     fn miri_dealloc(ptr: *mut u8, size: usize, align: usize);
+
+    /// Convert a path from the host Miri runs on to the target Miri interprets.
+    /// Performs conversion of path separators as needed.
+    ///
+    /// Usually Miri performs this kind of conversion automatically. However, manual conversion
+    /// might be necessary when reading an environment variable that was set of the host
+    /// (such as TMPDIR) and using it as a target path.
+    ///
+    /// Only works with isolation disabled.
+    ///
+    /// `in` must point to a null-terminated string, and will be read as the input host path.
+    /// `out` must point to at least `out_size` many bytes, and the result will be stored there
+    /// with a null terminator.
+    /// Returns 0 if the `out` buffer was large enough, and the required size otherwise.
+    fn miri_host_to_target_path(path: *const i8, out: *mut i8, out_size: usize) -> usize;
 }
 ```
 
