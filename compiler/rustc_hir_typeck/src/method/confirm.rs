@@ -45,7 +45,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         self_expr: &'tcx hir::Expr<'tcx>,
         call_expr: &'tcx hir::Expr<'tcx>,
         unadjusted_self_ty: Ty<'tcx>,
-        pick: probe::Pick<'tcx>,
+        pick: &probe::Pick<'tcx>,
         segment: &hir::PathSegment<'_>,
     ) -> ConfirmResult<'tcx> {
         debug!(
@@ -71,7 +71,7 @@ impl<'a, 'tcx> ConfirmContext<'a, 'tcx> {
     fn confirm(
         &mut self,
         unadjusted_self_ty: Ty<'tcx>,
-        pick: probe::Pick<'tcx>,
+        pick: &probe::Pick<'tcx>,
         segment: &hir::PathSegment<'_>,
     ) -> ConfirmResult<'tcx> {
         // Adjust the self expression the user provided and obtain the adjusted type.
