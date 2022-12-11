@@ -163,17 +163,6 @@ vcaddq_rot270_f32
 vcaddq_rot90_f32
 vcadd_rot270_f32
 vcadd_rot90_f32
-vcombine_f32
-vcombine_p16
-vcombine_p8
-vcombine_s16
-vcombine_s32
-vcombine_s64
-vcombine_s8
-vcombine_u16
-vcombine_u32
-vcombine_u64
-vcombine_u8
 vcvtaq_s32_f32
 vcvtaq_u32_f32
 vcvta_s32_f32
