@@ -1,5 +1,4 @@
 use std::assert_matches::assert_matches;
-use std::convert::TryFrom;
 
 use rustc_apfloat::ieee::{Double, Single};
 use rustc_apfloat::{Float, FloatConvert};

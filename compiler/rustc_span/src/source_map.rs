@@ -15,11 +15,10 @@ pub use crate::*;
 use rustc_data_structures::fx::FxHashMap;
 use rustc_data_structures::stable_hasher::StableHasher;
 use rustc_data_structures::sync::{AtomicU32, Lrc, MappedReadGuard, ReadGuard, RwLock};
+use std::cmp;
 use std::hash::Hash;
 use std::path::{Path, PathBuf};
 use std::sync::atomic::Ordering;
-use std::{clone::Clone, cmp};
-use std::{convert::TryFrom, unreachable};
 
 use std::fs;
 use std::io;

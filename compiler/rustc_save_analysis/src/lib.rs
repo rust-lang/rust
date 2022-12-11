@@ -36,7 +36,6 @@ use rustc_span::symbol::Ident;
 use rustc_span::*;
 
 use std::cell::Cell;
-use std::default::Default;
 use std::env;
 use std::fs::File;
 use std::io::BufWriter;

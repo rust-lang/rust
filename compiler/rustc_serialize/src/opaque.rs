@@ -1,6 +1,5 @@
 use crate::leb128::{self, largest_max_leb128_len};
 use crate::serialize::{Decodable, Decoder, Encodable, Encoder};
-use std::convert::TryInto;
 use std::fs::File;
 use std::io::{self, Write};
 use std::mem::MaybeUninit;

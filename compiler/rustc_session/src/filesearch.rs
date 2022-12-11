@@ -3,7 +3,6 @@
 use smallvec::{smallvec, SmallVec};
 use std::env;
 use std::fs;
-use std::iter::FromIterator;
 use std::path::{Path, PathBuf};
 
 use crate::search_paths::{PathKind, SearchPath};

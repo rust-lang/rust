@@ -32,7 +32,7 @@ use std::collections::btree_map::{
 use std::collections::{BTreeMap, BTreeSet};
 use std::fmt;
 use std::hash::Hash;
-use std::iter::{self, FromIterator};
+use std::iter;
 use std::path::{Path, PathBuf};
 use std::str::{self, FromStr};
 

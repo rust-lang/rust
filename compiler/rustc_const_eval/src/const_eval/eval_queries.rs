@@ -1,5 +1,4 @@
 use std::borrow::Cow;
-use std::convert::TryInto;
 
 use either::{Left, Right};
 

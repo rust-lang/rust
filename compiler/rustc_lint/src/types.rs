@@ -16,7 +16,6 @@ use rustc_target::abi::{Abi, Size, WrappingRange};
 use rustc_target::abi::{Integer, TagEncoding, Variants};
 use rustc_target::spec::abi::Abi as SpecAbi;
 
-use std::cmp;
 use std::iter;
 use std::ops::ControlFlow;
 
@@ -531,7 +530,7 @@ impl<'tcx> LateLintPass<'tcx> for TypeLimits {
             _ => {}
         };
 
-        fn is_valid<T: cmp::PartialOrd>(binop: hir::BinOp, v: T, min: T, max: T) -> bool {
+        fn is_valid<T: PartialOrd>(binop: hir::BinOp, v: T, min: T, max: T) -> bool {
             match binop.node {
                 hir::BinOpKind::Lt => v > min && v <= max,
                 hir::BinOpKind::Le => v >= min && v < max,

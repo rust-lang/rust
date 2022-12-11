@@ -1,5 +1,3 @@
-use std::convert::TryFrom;
-
 use rustc_apfloat::Float;
 use rustc_middle::mir;
 use rustc_middle::mir::interpret::{InterpResult, Scalar};
