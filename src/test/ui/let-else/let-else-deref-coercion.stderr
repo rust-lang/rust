@@ -12,7 +12,7 @@ error[E0308]: mismatched types
 LL |         let Bar(z) = x;
    |             ^^^^^^   - this expression has type `&mut irrefutable::Foo`
    |             |
-   |             expected struct `irrefutable::Foo`, found struct `irrefutable::Bar`
+   |             expected struct `Foo`, found struct `Bar`
 
 error: aborting due to 2 previous errors
 

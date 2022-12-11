@@ -1,6 +1,6 @@
 use crate::traits::{ObligationCause, ObligationCauseCode};
 use crate::ty::diagnostics::suggest_constraining_type_param;
-use crate::ty::print::{FmtPrinter, Printer};
+use crate::ty::print::{with_forced_trimmed_paths, FmtPrinter, Printer};
 use crate::ty::{self, BoundRegionKind, Region, Ty, TyCtxt};
 use hir::def::DefKind;
 use rustc_errors::Applicability::{MachineApplicable, MaybeIncorrect};
@@ -162,17 +162,29 @@ impl<'tcx> fmt::Display for TypeError<'tcx> {
             ),
             RegionsPlaceholderMismatch => write!(f, "one type is more general than the other"),
             ArgumentSorts(values, _) | Sorts(values) => ty::tls::with(|tcx| {
-                report_maybe_different(
-                    f,
-                    &values.expected.sort_string(tcx),
-                    &values.found.sort_string(tcx),
-                )
+                let (mut expected, mut found) = with_forced_trimmed_paths!((
+                    values.expected.sort_string(tcx),
+                    values.found.sort_string(tcx),
+                ));
+                if expected == found {
+                    expected = values.expected.sort_string(tcx);
+                    found = values.found.sort_string(tcx);
+                }
+                report_maybe_different(f, &expected, &found)
             }),
             Traits(values) => ty::tls::with(|tcx| {
+                let (mut expected, mut found) = with_forced_trimmed_paths!((
+                    tcx.def_path_str(values.expected),
+                    tcx.def_path_str(values.found),
+                ));
+                if expected == found {
+                    expected = tcx.def_path_str(values.expected);
+                    found = tcx.def_path_str(values.found);
+                }
                 report_maybe_different(
                     f,
-                    &format!("trait `{}`", tcx.def_path_str(values.expected)),
-                    &format!("trait `{}`", tcx.def_path_str(values.found)),
+                    &format!("trait `{expected}`"),
+                    &format!("trait `{found}`"),
                 )
             }),
             IntMismatch(ref values) => {
@@ -999,14 +1011,16 @@ fn foo(&self) -> Self::T { String::new() }
         let mut short;
         loop {
             // Look for the longest properly trimmed path that still fits in lenght_limit.
-            short = FmtPrinter::new_with_limit(
-                self,
-                hir::def::Namespace::TypeNS,
-                rustc_session::Limit(type_limit),
-            )
-            .pretty_print_type(ty)
-            .expect("could not write to `String`")
-            .into_buffer();
+            short = with_forced_trimmed_paths!(
+                FmtPrinter::new_with_limit(
+                    self,
+                    hir::def::Namespace::TypeNS,
+                    rustc_session::Limit(type_limit),
+                )
+                .pretty_print_type(ty)
+                .expect("could not write to `String`")
+                .into_buffer()
+            );
             if short.len() <= length_limit || type_limit == 0 {
                 break;
             }

@@ -12,7 +12,7 @@ note: required by a bound in `map`
   --> $SRC_DIR/core/src/iter/traits/iterator.rs:LL:COL
    |
 LL |         F: FnMut(Self::Item) -> B,
-   |            ^^^^^^^^^^^^^^^^^^^^^^ required by this bound in `map`
+   |            ^^^^^^^^^^^^^^^^^^^^^^ required by this bound in `Iterator::map`
 
 error[E0631]: type mismatch in closure arguments
   --> $DIR/closure-arg-type-mismatch.rs:4:14
@@ -28,7 +28,7 @@ note: required by a bound in `map`
   --> $SRC_DIR/core/src/iter/traits/iterator.rs:LL:COL
    |
 LL |         F: FnMut(Self::Item) -> B,
-   |            ^^^^^^^^^^^^^^^^^^^^^^ required by this bound in `map`
+   |            ^^^^^^^^^^^^^^^^^^^^^^ required by this bound in `Iterator::map`
 
 error[E0631]: type mismatch in closure arguments
   --> $DIR/closure-arg-type-mismatch.rs:5:14
@@ -44,7 +44,7 @@ note: required by a bound in `map`
   --> $SRC_DIR/core/src/iter/traits/iterator.rs:LL:COL
    |
 LL |         F: FnMut(Self::Item) -> B,
-   |            ^^^^^^^^^^^^^^^^^^^^^^ required by this bound in `map`
+   |            ^^^^^^^^^^^^^^^^^^^^^^ required by this bound in `Iterator::map`
 
 error: aborting due to 3 previous errors
 

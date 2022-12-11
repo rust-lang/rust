@@ -19,7 +19,7 @@ note: required by a bound in `a::bar`
   --> $DIR/closure-return-type-must-be-sized.rs:14:19
    |
 LL |     pub fn bar<F: FnOnce() -> R, R: ?Sized>() {}
-   |                   ^^^^^^^^^^^^^ required by this bound in `a::bar`
+   |                   ^^^^^^^^^^^^^ required by this bound in `bar`
 
 error[E0277]: the size for values of type `dyn A` cannot be known at compilation time
   --> $DIR/closure-return-type-must-be-sized.rs:56:5
@@ -51,7 +51,7 @@ note: required by a bound in `b::bar`
   --> $DIR/closure-return-type-must-be-sized.rs:28:19
    |
 LL |     pub fn bar<F: Fn() -> R, R: ?Sized>() {}
-   |                   ^^^^^^^^^ required by this bound in `b::bar`
+   |                   ^^^^^^^^^ required by this bound in `bar`
 
 error[E0277]: the size for values of type `dyn A` cannot be known at compilation time
   --> $DIR/closure-return-type-must-be-sized.rs:63:5
@@ -83,7 +83,7 @@ note: required by a bound in `c::bar`
   --> $DIR/closure-return-type-must-be-sized.rs:42:19
    |
 LL |     pub fn bar<F: FnMut() -> R, R: ?Sized>() {}
-   |                   ^^^^^^^^^^^^ required by this bound in `c::bar`
+   |                   ^^^^^^^^^^^^ required by this bound in `bar`
 
 error[E0277]: the size for values of type `dyn A` cannot be known at compilation time
   --> $DIR/closure-return-type-must-be-sized.rs:70:5
