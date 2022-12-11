@@ -68,6 +68,12 @@ IMAGE_BASE:
     globvar EH_FRM_OFFSET 8
     /*  The size in bytes of enclacve .eh_frame section */
     globvar EH_FRM_LEN 8
+    /*  The base address (relative to enclave start) of the TLS initialization image */
+    globvar TLS_INIT_BASE 8
+    /*  The size in bytes of the TLS initialization image */
+    globvar TLS_INIT_SIZE 8
+    /*  The TLS module offset of this enclave (see the ELF-TLS specification for more details) */
+    globvar TLS_OFFSET 8
 
 .org .Lxsave_clear+512
 .Lxsave_header:
@@ -80,24 +86,24 @@ IMAGE_BASE:
     .byte 0
 
 /*  TCS local storage section */
-.equ tcsls_tos,                 0x00 /*  initialized by loader to *offset* from image base to TOS */
-.equ tcsls_flags,               0x08 /*  initialized by loader */
+.equ tcsls_tp,                  0x00 /*  initialized by loader to *offset* from image base to this field */
+.equ tcsls_tos,                 0x08 /*  initialized by loader to *offset* from image base to TOS */
+.equ tcsls_flags,               0x10 /*  initialized by loader */
 .equ tcsls_flag_secondary,      0    /*  initialized by loader; 0 = standard TCS, 1 = secondary TCS */
 .equ tcsls_flag_init_once,      1    /*  initialized by loader to 0 */
 /*  14 unused bits */
-.equ tcsls_user_fcw,            0x0a
-.equ tcsls_user_mxcsr,          0x0c
-.equ tcsls_last_rsp,            0x10 /*  initialized by loader to 0 */
-.equ tcsls_panic_last_rsp,      0x18 /*  initialized by loader to 0 */
-.equ tcsls_debug_panic_buf_ptr, 0x20 /*  initialized by loader to 0 */
-.equ tcsls_user_rsp,            0x28
-.equ tcsls_user_retip,          0x30
-.equ tcsls_user_rbp,            0x38
-.equ tcsls_user_r12,            0x40
-.equ tcsls_user_r13,            0x48
-.equ tcsls_user_r14,            0x50
-.equ tcsls_user_r15,            0x58
-.equ tcsls_tls_ptr,             0x60
+.equ tcsls_user_fcw,            0x12
+.equ tcsls_user_mxcsr,          0x14
+.equ tcsls_last_rsp,            0x18 /*  initialized by loader to 0 */
+.equ tcsls_panic_last_rsp,      0x20 /*  initialized by loader to 0 */
+.equ tcsls_debug_panic_buf_ptr, 0x28 /*  initialized by loader to 0 */
+.equ tcsls_user_rsp,            0x30
+.equ tcsls_user_retip,          0x38
+.equ tcsls_user_rbp,            0x40
+.equ tcsls_user_r12,            0x48
+.equ tcsls_user_r13,            0x50
+.equ tcsls_user_r14,            0x58
+.equ tcsls_user_r15,            0x60
 .equ tcsls_tcs_addr,            0x68
 
 .macro load_tcsls_flag_secondary_bool reg:req comments:vararg
@@ -105,7 +111,7 @@ IMAGE_BASE:
     .abort
     .endif
         mov $(1<<tcsls_flag_secondary),%e\reg
-        and %gs:tcsls_flags,%\reg
+        and %fs:tcsls_flags,%\reg
 .endm
 
 /* We place the ELF entry point in a separate section so it can be removed by
@@ -157,21 +163,21 @@ elf_entry:
 .type sgx_entry,function
 sgx_entry:
 /*  save user registers */
-    mov %rcx,%gs:tcsls_user_retip
-    mov %rsp,%gs:tcsls_user_rsp
-    mov %rbp,%gs:tcsls_user_rbp
-    mov %r12,%gs:tcsls_user_r12
-    mov %r13,%gs:tcsls_user_r13
-    mov %r14,%gs:tcsls_user_r14
-    mov %r15,%gs:tcsls_user_r15
-    mov %rbx,%gs:tcsls_tcs_addr
-    stmxcsr %gs:tcsls_user_mxcsr
-    fnstcw %gs:tcsls_user_fcw
+    mov %rcx,%fs:tcsls_user_retip
+    mov %rsp,%fs:tcsls_user_rsp
+    mov %rbp,%fs:tcsls_user_rbp
+    mov %r12,%fs:tcsls_user_r12
+    mov %r13,%fs:tcsls_user_r13
+    mov %r14,%fs:tcsls_user_r14
+    mov %r15,%fs:tcsls_user_r15
+    mov %rbx,%fs:tcsls_tcs_addr
+    stmxcsr %fs:tcsls_user_mxcsr
+    fnstcw %fs:tcsls_user_fcw
 
 /*  check for debug buffer pointer */
     testb  $0xff,DEBUG(%rip)
     jz .Lskip_debug_init
-    mov %r10,%gs:tcsls_debug_panic_buf_ptr
+    mov %r10,%fs:tcsls_debug_panic_buf_ptr
 .Lskip_debug_init:
 /*  reset cpu state */
     mov %rdx, %r10
@@ -181,20 +187,23 @@ sgx_entry:
     mov %r10, %rdx
 
 /*  check if returning from usercall */
-    mov %gs:tcsls_last_rsp,%r11
+    mov %fs:tcsls_last_rsp,%r11
     test %r11,%r11
     jnz .Lusercall_ret
 /*  setup stack */
-    mov %gs:tcsls_tos,%rsp /*  initially, RSP is not set to the correct value */
+    mov %fs:tcsls_tos,%rsp /*  initially, RSP is not set to the correct value */
                            /*  here. This is fixed below under "adjust stack". */
 /*  check for thread init */
-    bts $tcsls_flag_init_once,%gs:tcsls_flags
+    bts $tcsls_flag_init_once,%fs:tcsls_flags
     jc .Lskip_init
 /*  adjust stack */
     lea IMAGE_BASE(%rip),%rax
     add %rax,%rsp
-    mov %rsp,%gs:tcsls_tos
+    mov %rsp,%fs:tcsls_tos
     entry_sanitize_final
+/*  adjust thread pointer */
+    lea IMAGE_BASE(%rip),%rax
+    add %rax,%fs:0
 /*  call tcs_init */
 /*  store caller-saved registers in callee-saved registers */
     mov %rdi,%rbx
@@ -246,15 +255,15 @@ sgx_entry:
     pushq $0
     popfq
 /*  restore user registers */
-    mov %gs:tcsls_user_r12,%r12
-    mov %gs:tcsls_user_r13,%r13
-    mov %gs:tcsls_user_r14,%r14
-    mov %gs:tcsls_user_r15,%r15
-    mov %gs:tcsls_user_retip,%rbx
-    mov %gs:tcsls_user_rsp,%rsp
-    mov %gs:tcsls_user_rbp,%rbp
-    fldcw %gs:tcsls_user_fcw
-    ldmxcsr %gs:tcsls_user_mxcsr
+    mov %fs:tcsls_user_r12,%r12
+    mov %fs:tcsls_user_r13,%r13
+    mov %fs:tcsls_user_r14,%r14
+    mov %fs:tcsls_user_r15,%r15
+    mov %fs:tcsls_user_retip,%rbx
+    mov %fs:tcsls_user_rsp,%rsp
+    mov %fs:tcsls_user_rbp,%rbp
+    fldcw %fs:tcsls_user_fcw
+    ldmxcsr %fs:tcsls_user_mxcsr
 /*  exit enclave */
     mov $0x4,%eax /*  EEXIT */
     enclu
@@ -288,7 +297,7 @@ usercall:
     sub $8, %rsp
     fstcw 4(%rsp)
     stmxcsr (%rsp)
-    movq %rsp,%gs:tcsls_last_rsp
+    movq %rsp,%fs:tcsls_last_rsp
 .Lusercall_noreturn:
 /*  clear general purpose register state */
     /*  RAX overwritten by ENCLU */
@@ -308,7 +317,7 @@ usercall:
 /*  exit */
     jmp .Lsgx_exit
 .Lusercall_ret:
-    movq $0,%gs:tcsls_last_rsp
+    movq $0,%fs:tcsls_last_rsp
 /*  restore callee-saved state, cf. "save" above */
     mov %r11,%rsp
     ldmxcsr (%rsp)
@@ -344,21 +353,7 @@ extern "C" fn entry(p1: u64, p2: u64, p3: u64, secondary: bool, p4: u64, p5: u64
 
 .global get_tcs_addr
 get_tcs_addr:
-    mov %gs:tcsls_tcs_addr,%rax
-    pop %r11
-    lfence
-    jmp *%r11
-
-.global get_tls_ptr
-get_tls_ptr:
-    mov %gs:tcsls_tls_ptr,%rax
-    pop %r11
-    lfence
-    jmp *%r11
-
-.global set_tls_ptr
-set_tls_ptr:
-    mov %rdi,%gs:tcsls_tls_ptr
+    mov %fs:tcsls_tcs_addr,%rax
     pop %r11
     lfence
     jmp *%r11
@@ -366,7 +361,7 @@ set_tls_ptr:
 .global take_debug_panic_buf_ptr
 take_debug_panic_buf_ptr:
     xor %rax,%rax
-    xchg %gs:tcsls_debug_panic_buf_ptr,%rax
+    xchg %fs:tcsls_debug_panic_buf_ptr,%rax
     pop %r11
     lfence
     jmp *%r11

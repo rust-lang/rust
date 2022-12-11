@@ -1,6 +1,6 @@
 use std::borrow::Cow;
 
-use super::{cvs, Cc, LinkerFlavor, Lld, Target, TargetOptions};
+use super::{cvs, Cc, LinkerFlavor, Lld, Target, TargetOptions, TlsModel};
 
 pub fn target() -> Target {
     let pre_link_args = TargetOptions::link_args(
@@ -53,6 +53,9 @@ pub fn target() -> Target {
         "EH_FRM_LEN",
         "TEXT_BASE",
         "TEXT_SIZE",
+        "TLS_INIT_BASE",
+        "TLS_INIT_SIZE",
+        "TLS_OFFSET",
     ];
     let opts = TargetOptions {
         os: "unknown".into(),
@@ -69,6 +72,8 @@ pub fn target() -> Target {
         pre_link_args,
         override_export_symbols: Some(EXPORT_SYMBOLS.iter().cloned().map(Cow::from).collect()),
         relax_elf_relocations: true,
+        has_thread_local: true,
+        tls_model: TlsModel::LocalExec,
         ..Default::default()
     };
     Target {
