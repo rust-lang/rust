@@ -274,10 +274,9 @@ pub fn each_linked_rlib(
 
 /// Create an 'rlib'.
 ///
-/// An rlib in its current incarnation is essentially a renamed .a file. The rlib primarily contains
-/// the object file of the crate, but it also contains all of the object files from native
-/// libraries. This is done by unzipping native libraries and inserting all of the contents into
-/// this archive.
+/// An rlib in its current incarnation is essentially a renamed .a file (with "dummy" object files).
+/// The rlib primarily contains the object file of the crate, but it also some of the object files
+/// from native libraries.
 fn link_rlib<'a>(
     sess: &'a Session,
     archive_builder_builder: &dyn ArchiveBuilderBuilder,
@@ -351,43 +350,24 @@ fn link_rlib<'a>(
     // loaded from the libraries found here and then encode that into the
     // metadata of the rlib we're generating somehow.
     for lib in codegen_results.crate_info.used_libraries.iter() {
-        match lib.kind {
-            NativeLibKind::Static { bundle: None | Some(true), whole_archive: Some(true) }
-                if flavor == RlibFlavor::Normal && sess.opts.unstable_opts.packed_bundled_libs => {}
-            NativeLibKind::Static { bundle: None | Some(true), whole_archive: Some(true) }
-                if flavor == RlibFlavor::Normal =>
-            {
-                // Don't allow mixing +bundle with +whole_archive since an rlib may contain
-                // multiple native libs, some of which are +whole-archive and some of which are
-                // -whole-archive and it isn't clear how we can currently handle such a
-                // situation correctly.
-                // See https://github.com/rust-lang/rust/issues/88085#issuecomment-901050897
-                sess.emit_err(errors::IncompatibleLinkingModifiers);
-            }
-            NativeLibKind::Static { bundle: None | Some(true), .. } => {}
-            NativeLibKind::Static { bundle: Some(false), .. }
-            | NativeLibKind::Dylib { .. }
-            | NativeLibKind::Framework { .. }
-            | NativeLibKind::RawDylib
-            | NativeLibKind::LinkArg
-            | NativeLibKind::Unspecified => continue,
-        }
-        if let Some(name) = lib.name {
-            let location =
+        let NativeLibKind::Static { bundle: None | Some(true), whole_archive } = lib.kind else {
+            continue;
+        };
+        if flavor == RlibFlavor::Normal
+            && (sess.opts.unstable_opts.packed_bundled_libs || whole_archive == Some(true))
+        {
+            let name = lib.filename.unwrap();
+            let path = find_native_static_library(name.as_str(), true, &lib_search_paths, sess);
+            let src =
+                read(path).map_err(|e| sess.emit_fatal(errors::ReadFileError { message: e }))?;
+            let (data, _) = create_wrapper_file(sess, b".bundled_lib".to_vec(), &src);
+            let wrapper_file = emit_wrapper_file(sess, &data, tmpdir, name.as_str());
+            packed_bundled_libs.push(wrapper_file);
+        } else if let Some(name) = lib.name {
+            let path =
                 find_native_static_library(name.as_str(), lib.verbatim, &lib_search_paths, sess);
-            if sess.opts.unstable_opts.packed_bundled_libs && flavor == RlibFlavor::Normal {
-                let filename = lib.filename.unwrap();
-                let lib_path =
-                    find_native_static_library(filename.as_str(), true, &lib_search_paths, sess);
-                let src = read(lib_path)
-                    .map_err(|e| sess.emit_fatal(errors::ReadFileError { message: e }))?;
-                let (data, _) = create_wrapper_file(sess, b".bundled_lib".to_vec(), &src);
-                let wrapper_file = emit_wrapper_file(sess, &data, tmpdir, filename.as_str());
-                packed_bundled_libs.push(wrapper_file);
-                continue;
-            }
-            ab.add_archive(&location, Box::new(|_| false)).unwrap_or_else(|error| {
-                sess.emit_fatal(errors::AddNativeLibrary { library_path: location, error });
+            ab.add_archive(&path, Box::new(|_| false)).unwrap_or_else(|error| {
+                sess.emit_fatal(errors::AddNativeLibrary { library_path: path, error });
             });
         }
     }
