@@ -1245,7 +1245,7 @@ impl<'a> State<'a> {
 
     fn print_literal(&mut self, lit: &hir::Lit) {
         self.maybe_print_comment(lit.span.lo());
-        self.word(lit.node.to_token_lit().to_string())
+        self.word(lit.node.to_string())
     }
 
     fn print_inline_asm(&mut self, asm: &hir::InlineAsm<'_>) {
