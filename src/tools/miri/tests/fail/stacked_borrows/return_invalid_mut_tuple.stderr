@@ -21,7 +21,7 @@ LL |     let _val = unsafe { *xraw }; // invalidate xref
    |                         ^^^^^
    = note: BACKTRACE:
    = note: inside `foo` at $DIR/return_invalid_mut_tuple.rs:LL:CC
-note: inside `main` at $DIR/return_invalid_mut_tuple.rs:LL:CC
+note: inside `main`
   --> $DIR/return_invalid_mut_tuple.rs:LL:CC
    |
 LL |     foo(&mut (1, 2)).0;

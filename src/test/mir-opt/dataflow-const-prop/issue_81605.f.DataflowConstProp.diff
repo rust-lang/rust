@@ -10,8 +10,8 @@
           StorageLive(_1);                 // scope 0 at $DIR/issue_81605.rs:+1:9: +1:33
           StorageLive(_2);                 // scope 0 at $DIR/issue_81605.rs:+1:12: +1:16
           _2 = const true;                 // scope 0 at $DIR/issue_81605.rs:+1:12: +1:16
--         switchInt(move _2) -> [false: bb2, otherwise: bb1]; // scope 0 at $DIR/issue_81605.rs:+1:12: +1:16
-+         switchInt(const true) -> [false: bb2, otherwise: bb1]; // scope 0 at $DIR/issue_81605.rs:+1:12: +1:16
+-         switchInt(move _2) -> [0: bb2, otherwise: bb1]; // scope 0 at $DIR/issue_81605.rs:+1:12: +1:16
++         switchInt(const true) -> [0: bb2, otherwise: bb1]; // scope 0 at $DIR/issue_81605.rs:+1:12: +1:16
       }
   
       bb1: {

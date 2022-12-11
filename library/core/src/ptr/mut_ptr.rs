@@ -100,6 +100,7 @@ impl<T: ?Sized> *mut T {
     /// [`cast_mut`]: #method.cast_mut
     #[stable(feature = "ptr_const_cast", since = "1.65.0")]
     #[rustc_const_stable(feature = "ptr_const_cast", since = "1.65.0")]
+    #[inline(always)]
     pub const fn cast_const(self) -> *const T {
         self as _
     }
@@ -132,6 +133,7 @@ impl<T: ?Sized> *mut T {
         note = "replaced by the `exposed_addr` method, or update your code \
             to follow the strict provenance rules using its APIs"
     )]
+    #[inline(always)]
     pub fn to_bits(self) -> usize
     where
         T: Sized,
@@ -161,6 +163,7 @@ impl<T: ?Sized> *mut T {
             update your code to follow the strict provenance rules using its APIs"
     )]
     #[allow(fuzzy_provenance_casts)] // this is an unstable and semi-deprecated cast function
+    #[inline(always)]
     pub fn from_bits(bits: usize) -> Self
     where
         T: Sized,
@@ -192,7 +195,7 @@ impl<T: ?Sized> *mut T {
     /// might change in the future (including possibly weakening this so it becomes wholly
     /// equivalent to `self as usize`). See the [module documentation][crate::ptr] for details.
     #[must_use]
-    #[inline]
+    #[inline(always)]
     #[unstable(feature = "strict_provenance", issue = "95228")]
     pub fn addr(self) -> usize
     where
@@ -229,7 +232,7 @@ impl<T: ?Sized> *mut T {
     ///
     /// [`from_exposed_addr_mut`]: from_exposed_addr_mut
     #[must_use]
-    #[inline]
+    #[inline(always)]
     #[unstable(feature = "strict_provenance", issue = "95228")]
     pub fn expose_addr(self) -> usize
     where

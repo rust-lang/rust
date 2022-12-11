@@ -17,7 +17,7 @@ fn foo(_1: Option<String>) -> i32 {
         _7 = const false;                // scope 0 at $DIR/string.rs:+1:11: +1:12
         _7 = const true;                 // scope 0 at $DIR/string.rs:+1:11: +1:12
         _5 = discriminant(_1);           // scope 0 at $DIR/string.rs:+1:11: +1:12
-        switchInt(move _5) -> [1_isize: bb2, otherwise: bb1]; // scope 0 at $DIR/string.rs:+1:5: +1:12
+        switchInt(move _5) -> [1: bb2, otherwise: bb1]; // scope 0 at $DIR/string.rs:+1:5: +1:12
     }
 
     bb1: {
@@ -47,7 +47,7 @@ fn foo(_1: Option<String>) -> i32 {
     }
 
     bb4: {
-        switchInt(move _4) -> [false: bb1, otherwise: bb5]; // scope 0 at $DIR/string.rs:+2:14: +2:17
+        switchInt(move _4) -> [0: bb1, otherwise: bb5]; // scope 0 at $DIR/string.rs:+2:14: +2:17
     }
 
     bb5: {
@@ -69,6 +69,6 @@ fn foo(_1: Option<String>) -> i32 {
     }
 
     bb9: {
-        switchInt(_7) -> [false: bb7, otherwise: bb8]; // scope 0 at $DIR/string.rs:+5:1: +5:2
+        switchInt(_7) -> [0: bb7, otherwise: bb8]; // scope 0 at $DIR/string.rs:+5:1: +5:2
     }
 }

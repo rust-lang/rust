@@ -8,7 +8,7 @@ LL |         match v.0 {}
    = help: see https://doc.rust-lang.org/nightly/reference/behavior-considered-undefined.html for further information
    = note: BACKTRACE:
    = note: inside `m::f` at $DIR/never_transmute_void.rs:LL:CC
-note: inside `main` at $DIR/never_transmute_void.rs:LL:CC
+note: inside `main`
   --> $DIR/never_transmute_void.rs:LL:CC
    |
 LL |     m::f(v);

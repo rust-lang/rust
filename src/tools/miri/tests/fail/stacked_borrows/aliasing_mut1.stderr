@@ -18,7 +18,7 @@ LL | pub fn safe(_x: &mut i32, _y: &mut i32) {}
    |             ^^
    = note: BACKTRACE:
    = note: inside `safe` at $DIR/aliasing_mut1.rs:LL:CC
-note: inside `main` at $DIR/aliasing_mut1.rs:LL:CC
+note: inside `main`
   --> $DIR/aliasing_mut1.rs:LL:CC
    |
 LL |     safe_raw(xraw, xraw);

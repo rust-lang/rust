@@ -6,9 +6,8 @@ use rustc_data_structures::stable_hasher::{HashStable, HashingControls, StableHa
 use rustc_data_structures::sync::Lrc;
 use rustc_hir as hir;
 use rustc_hir::def_id::{DefId, LocalDefId};
-use rustc_hir::definitions::{DefPathHash, Definitions};
-use rustc_index::vec::IndexVec;
-use rustc_session::cstore::CrateStore;
+use rustc_hir::definitions::DefPathHash;
+use rustc_session::cstore::Untracked;
 use rustc_session::Session;
 use rustc_span::source_map::SourceMap;
 use rustc_span::symbol::Symbol;
@@ -20,9 +19,7 @@ use rustc_span::{BytePos, CachingSourceMapView, SourceFile, Span, SpanData, DUMM
 /// things (e.g., each `DefId`/`DefPath` is only hashed once).
 #[derive(Clone)]
 pub struct StableHashingContext<'a> {
-    definitions: &'a Definitions,
-    cstore: &'a dyn CrateStore,
-    source_span: &'a IndexVec<LocalDefId, Span>,
+    untracked: &'a Untracked,
     // The value of `-Z incremental-ignore-spans`.
     // This field should only be used by `unstable_opts_incremental_ignore_span`
     incremental_ignore_spans: bool,
@@ -49,19 +46,12 @@ pub(super) enum BodyResolver<'tcx> {
 
 impl<'a> StableHashingContext<'a> {
     #[inline]
-    pub fn new(
-        sess: &'a Session,
-        definitions: &'a Definitions,
-        cstore: &'a dyn CrateStore,
-        source_span: &'a IndexVec<LocalDefId, Span>,
-    ) -> Self {
+    pub fn new(sess: &'a Session, untracked: &'a Untracked) -> Self {
         let hash_spans_initial = !sess.opts.unstable_opts.incremental_ignore_spans;
 
         StableHashingContext {
             body_resolver: BodyResolver::Forbidden,
-            definitions,
-            cstore,
-            source_span,
+            untracked,
             incremental_ignore_spans: sess.opts.unstable_opts.incremental_ignore_spans,
             caching_source_map: None,
             raw_source_map: sess.source_map(),
@@ -100,13 +90,13 @@ impl<'a> StableHashingContext<'a> {
         if let Some(def_id) = def_id.as_local() {
             self.local_def_path_hash(def_id)
         } else {
-            self.cstore.def_path_hash(def_id)
+            self.untracked.cstore.def_path_hash(def_id)
         }
     }
 
     #[inline]
     pub fn local_def_path_hash(&self, def_id: LocalDefId) -> DefPathHash {
-        self.definitions.def_path_hash(def_id)
+        self.untracked.definitions.read().def_path_hash(def_id)
     }
 
     #[inline]
@@ -156,7 +146,7 @@ impl<'a> rustc_span::HashStableContext for StableHashingContext<'a> {
 
     #[inline]
     fn def_span(&self, def_id: LocalDefId) -> Span {
-        *self.source_span.get(def_id).unwrap_or(&DUMMY_SP)
+        *self.untracked.source_span.get(def_id).unwrap_or(&DUMMY_SP)
     }
 
     #[inline]

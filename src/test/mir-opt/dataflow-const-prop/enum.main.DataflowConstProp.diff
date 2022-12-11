@@ -28,7 +28,7 @@
           discriminant(_1) = 0;            // scope 0 at $DIR/enum.rs:+1:13: +1:21
           StorageLive(_2);                 // scope 1 at $DIR/enum.rs:+2:9: +2:10
           _3 = discriminant(_1);           // scope 1 at $DIR/enum.rs:+2:19: +2:20
-          switchInt(move _3) -> [0_isize: bb3, 1_isize: bb1, otherwise: bb2]; // scope 1 at $DIR/enum.rs:+2:13: +2:20
+          switchInt(move _3) -> [0: bb3, 1: bb1, otherwise: bb2]; // scope 1 at $DIR/enum.rs:+2:13: +2:20
       }
   
       bb1: {

@@ -3542,6 +3542,8 @@ impl<'test> TestCx<'test> {
             option_env!("CFG_VIRTUAL_RUST_SOURCE_BASE_DIR").map(PathBuf::from),
             // Virtual `/rustc/$sha` coming from download-rustc:
             std::env::var_os("FAKE_DOWNLOAD_RUSTC_PREFIX").map(PathBuf::from),
+            // Tests using -Zsimulate-remapped-rust-src-base should use this fake path
+            Some("/rustc/FAKE_PREFIX".into()),
         ];
         for base_dir in source_bases {
             if let Some(base_dir) = base_dir {

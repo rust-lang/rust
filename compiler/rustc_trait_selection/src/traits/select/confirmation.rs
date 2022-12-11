@@ -19,6 +19,10 @@ use rustc_span::def_id::DefId;
 
 use crate::traits::project::{normalize_with_depth, normalize_with_depth_to};
 use crate::traits::util::{self, closure_trait_ref_and_return_type, predicate_for_trait_def};
+use crate::traits::vtable::{
+    count_own_vtable_entries, prepare_vtable_segments, vtable_trait_first_method_offset,
+    VtblSegment,
+};
 use crate::traits::{
     BuiltinDerivedObligation, ImplDerivedObligation, ImplDerivedObligationCause, ImplSource,
     ImplSourceAutoImplData, ImplSourceBuiltinData, ImplSourceClosureData,
@@ -26,7 +30,7 @@ use crate::traits::{
     ImplSourceGeneratorData, ImplSourceObjectData, ImplSourceTraitAliasData,
     ImplSourceTraitUpcastingData, ImplSourceUserDefinedData, Normalized, ObjectCastObligation,
     Obligation, ObligationCause, OutputTypeParameterMismatch, PredicateObligation, Selection,
-    SelectionError, TraitNotObjectSafe, TraitObligation, Unimplemented, VtblSegment,
+    SelectionError, TraitNotObjectSafe, TraitObligation, Unimplemented,
 };
 
 use super::BuiltinImplConditions;
@@ -583,7 +587,7 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
 
         debug!(?nested, "object nested obligations");
 
-        let vtable_base = super::super::vtable_trait_first_method_offset(
+        let vtable_base = vtable_trait_first_method_offset(
             tcx,
             (unnormalized_upcast_trait_ref, ty::Binder::dummy(object_trait_ref)),
         );
@@ -904,7 +908,7 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
                         vptr_offset += TyCtxt::COMMON_VTABLE_ENTRIES.len();
                     }
                     VtblSegment::TraitOwnEntries { trait_ref, emit_vptr } => {
-                        vptr_offset += util::count_own_vtable_entries(tcx, trait_ref);
+                        vptr_offset += count_own_vtable_entries(tcx, trait_ref);
                         if trait_ref == upcast_trait_ref {
                             if emit_vptr {
                                 return ControlFlow::Break(Some(vptr_offset));
@@ -923,8 +927,7 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
         };
 
         let vtable_vptr_slot =
-            super::super::prepare_vtable_segments(tcx, source_trait_ref, vtable_segment_callback)
-                .unwrap();
+            prepare_vtable_segments(tcx, source_trait_ref, vtable_segment_callback).unwrap();
 
         Ok(ImplSourceTraitUpcastingData { upcast_trait_ref, vtable_vptr_slot, nested })
     }

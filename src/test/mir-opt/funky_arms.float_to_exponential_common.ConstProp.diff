@@ -47,7 +47,7 @@
       bb1: {
           StorageDead(_5);                 // scope 0 at $DIR/funky_arms.rs:+4:36: +4:37
           StorageLive(_6);                 // scope 1 at $DIR/funky_arms.rs:+8:9: +8:13
-          switchInt(_4) -> [false: bb3, otherwise: bb2]; // scope 1 at $DIR/funky_arms.rs:+8:16: +8:32
+          switchInt(_4) -> [0: bb3, otherwise: bb2]; // scope 1 at $DIR/funky_arms.rs:+8:16: +8:32
       }
   
       bb2: {
@@ -75,7 +75,7 @@
       bb5: {
           StorageDead(_8);                 // scope 3 at $DIR/funky_arms.rs:+13:44: +13:45
           _9 = discriminant(_7);           // scope 3 at $DIR/funky_arms.rs:+13:12: +13:27
-          switchInt(move _9) -> [1_isize: bb6, otherwise: bb8]; // scope 3 at $DIR/funky_arms.rs:+13:12: +13:27
+          switchInt(move _9) -> [1: bb6, otherwise: bb8]; // scope 3 at $DIR/funky_arms.rs:+13:12: +13:27
       }
   
       bb6: {

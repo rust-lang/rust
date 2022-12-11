@@ -212,7 +212,7 @@ pre.rust a,
 .mobile-topbar h2 a,
 h1 a,
 .search-results a,
-.item-left .stab,
+.stab,
 .result-name .primitive > i, .result-name .keyword > i {
 	color: var(--main-color);
 }
@@ -630,22 +630,16 @@ pre, .rustdoc.source .example-wrap {
 
 .docblock table {
 	margin: .5em 0;
-	width: calc(100% - 2px);
-	overflow-x: auto;
-	display: block;
 	border-collapse: collapse;
 }
 
-.docblock table td {
+.docblock table td, .docblock table th {
 	padding: .5em;
-	border: 1px dashed var(--border-color);
-	vertical-align: top;
+	border: 1px solid var(--border-color);
 }
 
-.docblock table th {
-	padding: .5em;
-	text-align: left;
-	border: 1px solid var(--border-color);
+.docblock table tbody tr:nth-child(2n) {
+	background: var(--table-alt-row-background-color);
 }
 
 /* Shift "where ..." part of method or fn definition down a line */
@@ -966,22 +960,29 @@ so that we can apply CSS-filters to change the arrow color in themes */
 }
 
 .item-info .stab {
-	width: fit-content;
 	/* This min-height is needed to unify the height of the stab elements because some of them
 	   have emojis.
 	*/
 	min-height: 36px;
 	display: flex;
-	align-items: center;
-	white-space: pre-wrap;
-}
-.stab {
 	padding: 3px;
 	margin-bottom: 5px;
+}
+.item-left .stab {
+	margin-left: 0.3125em;
+}
+.stab {
+	padding: 0 2px;
 	font-size: 0.875rem;
 	font-weight: normal;
 	color: var(--main-color);
 	background-color: var(--stab-background-color);
+	width: fit-content;
+	align-items: center;
+	white-space: pre-wrap;
+	border-radius: 3px;
+	display: inline-flex;
+	vertical-align: text-bottom;
 }
 
 .stab.portability > code {
@@ -994,12 +995,6 @@ so that we can apply CSS-filters to change the arrow color in themes */
 	margin-right: 0.3rem;
 }
 
-/* This is to prevent the `.stab` elements to overflow the .docblock elements. */
-.docblock .stab {
-	padding: 0 0.125em;
-	margin-bottom: 0;
-}
-
 /* Black one-pixel outline around emoji shapes */
 .emoji {
 	text-shadow:
@@ -1007,16 +1002,6 @@ so that we can apply CSS-filters to change the arrow color in themes */
 		-1px 0 0 black,
 		0  1px 0 black,
 		0 -1px 0 black;
-}
-
-.item-left .stab {
-	border-radius: 3px;
-	display: inline-block;
-	line-height: 1.2;
-	margin-bottom: 0;
-	margin-left: 0.3125em;
-	padding: 2px;
-	vertical-align: text-bottom;
 }
 
 .module-item.unstable,
@@ -1748,7 +1733,6 @@ in storage.js
 		top: 100px;
 		width: 30px;
 		font-size: 1.5rem;
-		text-align: center;
 		padding: 0;
 		z-index: 10;
 		border-top-right-radius: 3px;
@@ -1810,6 +1794,22 @@ in storage.js
 	.source nav.sub {
 		margin: 0;
 		padding: 8px;
+	}
+}
+
+/* Should have min-width: (N + 1)px where N is the mobile breakpoint above. */
+@media (min-width: 701px) {
+	/* Places file-link for a scraped example on top of the example to save space.
+	   We only do this on large screens so the file-link doesn't overlap too much
+		 with the example's content. */
+	.scraped-example-title {
+		position: absolute;
+		z-index: 10;
+		background: var(--main-background-color);
+		bottom: 8px;
+		right: 5px;
+		padding: 2px 4px;
+		box-shadow: 0 0 4px var(--main-background-color);
 	}
 }
 
@@ -1899,6 +1899,11 @@ in storage.js
 	border-radius: 50px;
 }
 
+.scraped-example {
+	/* So .scraped-example-title can be positioned absolutely */
+	position: relative;
+}
+
 .scraped-example .code-wrapper {
 	position: relative;
 	display: flex;
@@ -1908,18 +1913,30 @@ in storage.js
 }
 
 .scraped-example:not(.expanded) .code-wrapper {
-	max-height: 240px;
+	/* scrape-examples.js has a constant DEFAULT_MAX_LINES (call it N) for the number
+	 * of lines shown in the un-expanded example code viewer. This pre needs to have
+	 * a max-height equal to line-height * N. The line-height is currently 1.5em,
+	 * and we include additional 10px for padding. */
+	 max-height: calc(1.5em * 5 + 10px);
 }
 
 .scraped-example:not(.expanded) .code-wrapper pre {
 	overflow-y: hidden;
-	max-height: 240px;
 	padding-bottom: 0;
+	/* See above comment, should be the same max-height. */
+	max-height: calc(1.5em * 5 + 10px);
+}
+
+.more-scraped-examples .scraped-example:not(.expanded) .code-wrapper,
+.more-scraped-examples .scraped-example:not(.expanded) .code-wrapper pre {
+	/* See above comment, except this height is based on HIDDEN_MAX_LINES. */
+	max-height: calc(1.5em * 10 + 10px);
 }
 
 .scraped-example .code-wrapper .next,
 .scraped-example .code-wrapper .prev,
 .scraped-example .code-wrapper .expand {
+	color: var(--main-color);
 	position: absolute;
 	top: 0.25em;
 	z-index: 1;

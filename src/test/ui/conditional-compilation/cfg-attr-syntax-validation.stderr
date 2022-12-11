@@ -14,7 +14,7 @@ error: `cfg` predicate is not specified
   --> $DIR/cfg-attr-syntax-validation.rs:7:1
    |
 LL | #[cfg()]
-   | ^^^^^^^^
+   | ^^^^^^^^ help: expected syntax is: `cfg(/* predicate */)`
 
 error: multiple `cfg` predicates are specified
   --> $DIR/cfg-attr-syntax-validation.rs:10:10

@@ -21,7 +21,7 @@ LL |     safe_raw(xraw, xshr);
    |     ^^^^^^^^^^^^^^^^^^^^
    = note: BACKTRACE:
    = note: inside `safe` at $DIR/aliasing_mut3.rs:LL:CC
-note: inside `main` at $DIR/aliasing_mut3.rs:LL:CC
+note: inside `main`
   --> $DIR/aliasing_mut3.rs:LL:CC
    |
 LL |     safe_raw(xraw, xshr);

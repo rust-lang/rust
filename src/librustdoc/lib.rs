@@ -674,7 +674,7 @@ type MainResult = Result<(), ErrorGuaranteed>;
 
 fn wrap_return(diag: &rustc_errors::Handler, res: Result<(), String>) -> MainResult {
     match res {
-        Ok(()) => Ok(()),
+        Ok(()) => diag.has_errors().map_or(Ok(()), Err),
         Err(err) => {
             let reported = diag.struct_err(&err).emit();
             Err(reported)
@@ -689,7 +689,7 @@ fn run_renderer<'tcx, T: formats::FormatRenderer<'tcx>>(
     tcx: TyCtxt<'tcx>,
 ) -> MainResult {
     match formats::run_format::<T>(krate, renderopts, cache, tcx) {
-        Ok(_) => Ok(()),
+        Ok(_) => tcx.sess.has_errors().map_or(Ok(()), Err),
         Err(e) => {
             let mut msg =
                 tcx.sess.struct_err(&format!("couldn't generate documentation: {}", e.error));
@@ -774,6 +774,7 @@ fn main_args(at_args: &[String]) -> MainResult {
     let output_format = options.output_format;
     let externs = options.externs.clone();
     let scrape_examples_options = options.scrape_examples_options.clone();
+    let bin_crate = options.bin_crate;
 
     let config = core::create_config(options);
 
@@ -832,7 +833,14 @@ fn main_args(at_args: &[String]) -> MainResult {
                 info!("finished with rustc");
 
                 if let Some(options) = scrape_examples_options {
-                    return scrape_examples::run(krate, render_opts, cache, tcx, options);
+                    return scrape_examples::run(
+                        krate,
+                        render_opts,
+                        cache,
+                        tcx,
+                        options,
+                        bin_crate,
+                    );
                 }
 
                 cache.crate_version = crate_version;

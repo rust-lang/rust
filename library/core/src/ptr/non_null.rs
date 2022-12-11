@@ -330,7 +330,7 @@ impl<T: ?Sized> NonNull<T> {
     #[stable(feature = "nonnull", since = "1.25.0")]
     #[rustc_const_stable(feature = "const_nonnull_as_ptr", since = "1.32.0")]
     #[must_use]
-    #[inline]
+    #[inline(always)]
     pub const fn as_ptr(self) -> *mut T {
         self.pointer as *mut T
     }
@@ -378,7 +378,7 @@ impl<T: ?Sized> NonNull<T> {
     #[stable(feature = "nonnull", since = "1.25.0")]
     #[rustc_const_unstable(feature = "const_ptr_as_ref", issue = "91822")]
     #[must_use]
-    #[inline]
+    #[inline(always)]
     pub const unsafe fn as_ref<'a>(&self) -> &'a T {
         // SAFETY: the caller must guarantee that `self` meets all the
         // requirements for a reference.
@@ -429,7 +429,7 @@ impl<T: ?Sized> NonNull<T> {
     #[stable(feature = "nonnull", since = "1.25.0")]
     #[rustc_const_unstable(feature = "const_ptr_as_ref", issue = "91822")]
     #[must_use]
-    #[inline]
+    #[inline(always)]
     pub const unsafe fn as_mut<'a>(&mut self) -> &'a mut T {
         // SAFETY: the caller must guarantee that `self` meets all the
         // requirements for a mutable reference.
@@ -703,7 +703,7 @@ impl<T> NonNull<[T]> {
 #[stable(feature = "nonnull", since = "1.25.0")]
 #[rustc_const_unstable(feature = "const_clone", issue = "91805")]
 impl<T: ?Sized> const Clone for NonNull<T> {
-    #[inline]
+    #[inline(always)]
     fn clone(&self) -> Self {
         *self
     }

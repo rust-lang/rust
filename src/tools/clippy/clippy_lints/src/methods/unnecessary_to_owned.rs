@@ -386,14 +386,12 @@ fn can_change_type<'a>(cx: &LateContext<'a>, mut expr: &'a Expr<'a>, mut ty: Ty<
             Node::Expr(parent_expr) => {
                 if let Some((callee_def_id, call_substs, recv, call_args)) = get_callee_substs_and_args(cx, parent_expr)
                 {
-                    if Some(callee_def_id) == cx.tcx.lang_items().into_future_fn() {
-                        return false;
-                    }
-
                     let fn_sig = cx.tcx.fn_sig(callee_def_id).skip_binder();
                     if let Some(arg_index) = recv.into_iter().chain(call_args).position(|arg| arg.hir_id == expr.hir_id)
                         && let Some(param_ty) = fn_sig.inputs().get(arg_index)
                         && let ty::Param(ParamTy { index: param_index , ..}) = param_ty.kind()
+                        // https://github.com/rust-lang/rust-clippy/issues/9504 and https://github.com/rust-lang/rust-clippy/issues/10021
+                        && (*param_index as usize) < call_substs.len()
                     {
                         if fn_sig
                             .inputs()

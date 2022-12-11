@@ -629,6 +629,9 @@ impl CrateStore for CStore {
     fn as_any(&self) -> &dyn Any {
         self
     }
+    fn untracked_as_any(&mut self) -> &mut dyn Any {
+        self
+    }
 
     fn crate_name(&self, cnum: CrateNum) -> Symbol {
         self.get_crate_data(cnum).root.name

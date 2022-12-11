@@ -613,7 +613,7 @@ pub const fn invalid_mut<T>(addr: usize) -> *mut T {
 /// This API and its claimed semantics are part of the Strict Provenance experiment, see the
 /// [module documentation][crate::ptr] for details.
 #[must_use]
-#[inline]
+#[inline(always)]
 #[unstable(feature = "strict_provenance", issue = "95228")]
 #[cfg_attr(miri, track_caller)] // even without panics, this helps for Miri backtraces
 #[allow(fuzzy_provenance_casts)] // this *is* the strict provenance API one should use instead
@@ -651,7 +651,7 @@ where
 /// This API and its claimed semantics are part of the Strict Provenance experiment, see the
 /// [module documentation][crate::ptr] for details.
 #[must_use]
-#[inline]
+#[inline(always)]
 #[unstable(feature = "strict_provenance", issue = "95228")]
 #[cfg_attr(miri, track_caller)] // even without panics, this helps for Miri backtraces
 #[allow(fuzzy_provenance_casts)] // this *is* the strict provenance API one should use instead
@@ -1769,7 +1769,7 @@ pub(crate) const unsafe fn align_offset<T: Sized>(p: *const T, a: usize) -> usiz
 /// (which is what the `PartialEq for &T` implementation does).
 ///
 /// When comparing wide pointers, both the address and the metadata are tested for equality.
-/// However, note that comparing trait object pointers (`*const dyn Trait`) is unrealiable: pointers
+/// However, note that comparing trait object pointers (`*const dyn Trait`) is unreliable: pointers
 /// to values of the same underlying type can compare inequal (because vtables are duplicated in
 /// multiple codegen units), and pointers to values of *different* underlying type can compare equal
 /// (since identical vtables can be deduplicated within a codegen unit).
@@ -1801,7 +1801,7 @@ pub(crate) const unsafe fn align_offset<T: Sized>(p: *const T, a: usize) -> usiz
 /// assert!(!std::ptr::eq(&a[0..2], &a[1..3]));
 /// ```
 #[stable(feature = "ptr_eq", since = "1.17.0")]
-#[inline]
+#[inline(always)]
 pub fn eq<T: ?Sized>(a: *const T, b: *const T) -> bool {
     a == b
 }

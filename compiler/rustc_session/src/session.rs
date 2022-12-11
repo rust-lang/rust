@@ -686,6 +686,10 @@ impl Session {
         self.opts.unstable_opts.sanitizer.contains(SanitizerSet::CFI)
     }
 
+    pub fn is_sanitizer_kcfi_enabled(&self) -> bool {
+        self.opts.unstable_opts.sanitizer.contains(SanitizerSet::KCFI)
+    }
+
     /// Check whether this compile session and crate type use static crt.
     pub fn crt_static(&self, crate_type: Option<CrateType>) -> bool {
         if !self.target.crt_static_respected {
@@ -1542,6 +1546,14 @@ fn validate_commandline_args_with_session_available(sess: &Session) {
         if sess.opts.unstable_opts.virtual_function_elimination {
             sess.emit_err(UnstableVirtualFunctionElimination);
         }
+    }
+
+    // LLVM CFI and KCFI are mutually exclusive
+    if sess.is_sanitizer_cfi_enabled() && sess.is_sanitizer_kcfi_enabled() {
+        sess.emit_err(CannotMixAndMatchSanitizers {
+            first: "cfi".to_string(),
+            second: "kcfi".to_string(),
+        });
     }
 
     if sess.opts.unstable_opts.stack_protector != StackProtector::None {

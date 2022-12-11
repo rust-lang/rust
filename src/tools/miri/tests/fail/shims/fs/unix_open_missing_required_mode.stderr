@@ -8,7 +8,7 @@ LL | ...safe { libc::open(name_ptr, libc::O_CREAT) };
    = help: see https://doc.rust-lang.org/nightly/reference/behavior-considered-undefined.html for further information
    = note: BACKTRACE:
    = note: inside `test_file_open_missing_needed_mode` at $DIR/unix_open_missing_required_mode.rs:LL:CC
-note: inside `main` at $DIR/unix_open_missing_required_mode.rs:LL:CC
+note: inside `main`
   --> $DIR/unix_open_missing_required_mode.rs:LL:CC
    |
 LL |     test_file_open_missing_needed_mode();

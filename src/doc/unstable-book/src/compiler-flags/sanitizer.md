@@ -14,6 +14,9 @@ This feature allows for use of one of following sanitizers:
   forward-edge control flow protection.
 * [HWAddressSanitizer](#hwaddresssanitizer) a memory error detector similar to
   AddressSanitizer, but based on partial hardware assistance.
+* [KernelControlFlowIntegrity](#kernelcontrolflowintegrity) LLVM Kernel Control
+  Flow Integrity (KCFI) provides forward-edge control flow protection for
+  operating systems kernels.
 * [LeakSanitizer](#leaksanitizer) a run-time memory leak detector.
 * [MemorySanitizer](#memorysanitizer) a detector of uninitialized reads.
 * [MemTagSanitizer](#memtagsanitizer) fast memory error detector based on
@@ -502,6 +505,32 @@ Registers where the failure occurred (pc 0xaaaae0ae4a98):
 SUMMARY: HWAddressSanitizer: tag-mismatch (/.../main+0x54a94)
 ```
 
+# KernelControlFlowIntegrity
+
+The LLVM Kernel Control Flow Integrity (CFI) support to the Rust compiler
+initially provides forward-edge control flow protection for operating systems
+kernels for Rust-compiled code only by aggregating function pointers in groups
+identified by their return and parameter types. (See [LLVM commit cff5bef "KCFI
+sanitizer"](https://github.com/llvm/llvm-project/commit/cff5bef948c91e4919de8a5fb9765e0edc13f3de).)
+
+Forward-edge control flow protection for C or C++ and Rust -compiled code "mixed
+binaries" (i.e., for when C or C++ and Rust -compiled code share the same
+virtual address space) will be provided in later work by defining and using
+compatible type identifiers (see Type metadata in the design document in the
+tracking issue [#89653](https://github.com/rust-lang/rust/issues/89653)).
+
+LLVM KCFI can be enabled with `-Zsanitizer=kcfi`.
+
+LLVM KCFI is supported on the following targets:
+
+* `aarch64-linux-android`
+* `aarch64-unknown-linux-gnu`
+* `x86_64-linux-android`
+* `x86_64-unknown-linux-gnu`
+
+See the [Clang KernelControlFlowIntegrity documentation][clang-kcfi] for more
+details.
+
 # LeakSanitizer
 
 LeakSanitizer is run-time memory leak detector.
@@ -693,6 +722,7 @@ Sanitizers produce symbolized stacktraces when llvm-symbolizer binary is in `PAT
 [clang-asan]: https://clang.llvm.org/docs/AddressSanitizer.html
 [clang-cfi]: https://clang.llvm.org/docs/ControlFlowIntegrity.html
 [clang-hwasan]: https://clang.llvm.org/docs/HardwareAssistedAddressSanitizerDesign.html
+[clang-kcfi]: https://clang.llvm.org/docs/ControlFlowIntegrity.html#fsanitize-kcfi
 [clang-lsan]: https://clang.llvm.org/docs/LeakSanitizer.html
 [clang-msan]: https://clang.llvm.org/docs/MemorySanitizer.html
 [clang-scs]: https://clang.llvm.org/docs/ShadowCallStack.html

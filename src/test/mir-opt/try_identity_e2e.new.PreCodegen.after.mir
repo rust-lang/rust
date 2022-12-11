@@ -26,7 +26,7 @@ fn new(_1: Result<T, E>) -> Result<T, E> {
     bb0: {
         StorageLive(_2);                 // scope 0 at $DIR/try_identity_e2e.rs:+2:15: +7:10
         _3 = discriminant(_1);           // scope 0 at $DIR/try_identity_e2e.rs:+3:19: +3:20
-        switchInt(move _3) -> [0_isize: bb2, 1_isize: bb1, otherwise: bb4]; // scope 0 at $DIR/try_identity_e2e.rs:+3:13: +3:20
+        switchInt(move _3) -> [0: bb2, 1: bb1, otherwise: bb4]; // scope 0 at $DIR/try_identity_e2e.rs:+3:13: +3:20
     }
 
     bb1: {
@@ -35,7 +35,7 @@ fn new(_1: Result<T, E>) -> Result<T, E> {
         ((_2 as Break).0: E) = move _5;  // scope 2 at $DIR/try_identity_e2e.rs:+5:27: +5:48
         discriminant(_2) = 1;            // scope 2 at $DIR/try_identity_e2e.rs:+5:27: +5:48
         _6 = discriminant(_2);           // scope 0 at $DIR/try_identity_e2e.rs:+2:15: +7:10
-        switchInt(move _6) -> [0_isize: bb5, 1_isize: bb3, otherwise: bb4]; // scope 0 at $DIR/try_identity_e2e.rs:+2:9: +7:10
+        switchInt(move _6) -> [0: bb5, 1: bb3, otherwise: bb4]; // scope 0 at $DIR/try_identity_e2e.rs:+2:9: +7:10
     }
 
     bb2: {
@@ -44,7 +44,7 @@ fn new(_1: Result<T, E>) -> Result<T, E> {
         ((_2 as Continue).0: T) = move _4; // scope 1 at $DIR/try_identity_e2e.rs:+4:26: +4:50
         discriminant(_2) = 0;            // scope 1 at $DIR/try_identity_e2e.rs:+4:26: +4:50
         _6 = discriminant(_2);           // scope 0 at $DIR/try_identity_e2e.rs:+2:15: +7:10
-        switchInt(move _6) -> [0_isize: bb5, 1_isize: bb3, otherwise: bb4]; // scope 0 at $DIR/try_identity_e2e.rs:+2:9: +7:10
+        switchInt(move _6) -> [0: bb5, 1: bb3, otherwise: bb4]; // scope 0 at $DIR/try_identity_e2e.rs:+2:9: +7:10
     }
 
     bb3: {

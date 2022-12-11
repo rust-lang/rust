@@ -11,7 +11,7 @@ pub fn expand_concat(
     sp: rustc_span::Span,
     tts: TokenStream,
 ) -> Box<dyn base::MacResult + 'static> {
-    let Some(es) = base::get_exprs_from_tts(cx, sp, tts) else {
+    let Some(es) = base::get_exprs_from_tts(cx, tts) else {
         return DummyResult::any(sp);
     };
     let mut accumulator = String::new();

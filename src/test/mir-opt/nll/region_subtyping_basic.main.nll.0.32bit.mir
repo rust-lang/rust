@@ -62,7 +62,7 @@ fn main() -> () {
         FakeRead(ForLet(None), _6);      // bb1[4]: scope 2 at $DIR/region_subtyping_basic.rs:+3:9: +3:10
         StorageLive(_7);                 // bb1[5]: scope 3 at $DIR/region_subtyping_basic.rs:+4:8: +4:12
         _7 = const ConstValue(Scalar(0x01): bool); // bb1[6]: scope 3 at $DIR/region_subtyping_basic.rs:+4:8: +4:12
-        switchInt(move _7) -> [ConstValue(Scalar(0x00): bool): bb4, otherwise: bb2]; // bb1[7]: scope 3 at $DIR/region_subtyping_basic.rs:+4:8: +4:12
+        switchInt(move _7) -> [0: bb4, otherwise: bb2]; // bb1[7]: scope 3 at $DIR/region_subtyping_basic.rs:+4:8: +4:12
     }
 
     bb2: {

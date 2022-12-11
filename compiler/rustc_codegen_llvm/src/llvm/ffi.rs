@@ -427,6 +427,7 @@ pub enum MetadataType {
     MD_type = 19,
     MD_vcall_visibility = 28,
     MD_noundef = 29,
+    MD_kcfi_type = 36,
 }
 
 /// LLVMRustAsmDialect
@@ -1063,6 +1064,7 @@ extern "C" {
     pub fn LLVMGlobalSetMetadata<'a>(Val: &'a Value, KindID: c_uint, Metadata: &'a Metadata);
     pub fn LLVMRustGlobalAddMetadata<'a>(Val: &'a Value, KindID: c_uint, Metadata: &'a Metadata);
     pub fn LLVMValueAsMetadata(Node: &Value) -> &Metadata;
+    pub fn LLVMIsAFunction(Val: &Value) -> Option<&Value>;
 
     // Operations on constants of any type
     pub fn LLVMConstNull(Ty: &Type) -> &Value;
@@ -1273,7 +1275,8 @@ extern "C" {
         NumArgs: c_uint,
         Then: &'a BasicBlock,
         Catch: &'a BasicBlock,
-        Bundle: Option<&OperandBundleDef<'a>>,
+        OpBundles: *const Option<&OperandBundleDef<'a>>,
+        NumOpBundles: c_uint,
         Name: *const c_char,
     ) -> &'a Value;
     pub fn LLVMBuildLandingPad<'a>(
@@ -1643,7 +1646,8 @@ extern "C" {
         Fn: &'a Value,
         Args: *const &'a Value,
         NumArgs: c_uint,
-        Bundle: Option<&OperandBundleDef<'a>>,
+        OpBundles: *const Option<&OperandBundleDef<'a>>,
+        NumOpBundles: c_uint,
     ) -> &'a Value;
     pub fn LLVMRustBuildMemCpy<'a>(
         B: &Builder<'a>,

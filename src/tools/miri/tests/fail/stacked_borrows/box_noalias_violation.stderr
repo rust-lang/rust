@@ -18,7 +18,7 @@ LL | unsafe fn test(mut x: Box<i32>, y: *const i32) -> i32 {
    |                ^^^^^
    = note: BACKTRACE:
    = note: inside `test` at $DIR/box_noalias_violation.rs:LL:CC
-note: inside `main` at $DIR/box_noalias_violation.rs:LL:CC
+note: inside `main`
   --> $DIR/box_noalias_violation.rs:LL:CC
    |
 LL |         test(Box::from_raw(ptr), ptr);

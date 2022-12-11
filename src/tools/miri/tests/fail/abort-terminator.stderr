@@ -10,7 +10,7 @@ LL | | }
    | |_^ the program aborted execution
    |
    = note: inside `panic_abort` at $DIR/abort-terminator.rs:LL:CC
-note: inside `main` at $DIR/abort-terminator.rs:LL:CC
+note: inside `main`
   --> $DIR/abort-terminator.rs:LL:CC
    |
 LL |     panic_abort();

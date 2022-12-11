@@ -250,6 +250,11 @@ pub unsafe fn create_module<'ll>(
         );
     }
 
+    if sess.is_sanitizer_kcfi_enabled() {
+        let kcfi = "kcfi\0".as_ptr().cast();
+        llvm::LLVMRustAddModuleFlag(llmod, llvm::LLVMModFlagBehavior::Override, kcfi, 1);
+    }
+
     // Control Flow Guard is currently only supported by the MSVC linker on Windows.
     if sess.target.is_like_msvc {
         match sess.opts.cg.control_flow_guard {

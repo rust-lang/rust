@@ -16,7 +16,7 @@ LL |         assert_eq!(*s.get_unchecked(1), 2);
    |                     ^^^^^^^^^^^^^^^^^^
    = note: BACKTRACE:
    = note: inside `core::slice::<impl [i32]>::get_unchecked::<usize>` at RUSTLIB/core/src/slice/mod.rs:LL:CC
-note: inside `main` at $DIR/zst_slice.rs:LL:CC
+note: inside `main`
   --> $DIR/zst_slice.rs:LL:CC
    |
 LL |         assert_eq!(*s.get_unchecked(1), 2);

@@ -18,7 +18,7 @@ LL | fn inner(x: *mut i32, _y: &i32) {
    |                       ^^
    = note: BACKTRACE:
    = note: inside `inner` at $DIR/invalidate_against_protector2.rs:LL:CC
-note: inside `main` at $DIR/invalidate_against_protector2.rs:LL:CC
+note: inside `main`
   --> $DIR/invalidate_against_protector2.rs:LL:CC
    |
 LL |     inner(xraw, xref);

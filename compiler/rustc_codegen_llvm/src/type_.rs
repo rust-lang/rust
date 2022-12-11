@@ -316,4 +316,19 @@ impl<'ll, 'tcx> TypeMembershipMethods<'tcx> for CodegenCx<'ll, 'tcx> {
             )
         }
     }
+
+    fn set_kcfi_type_metadata(&self, function: &'ll Value, kcfi_typeid: u32) {
+        let kcfi_type_metadata = self.const_u32(kcfi_typeid);
+        unsafe {
+            llvm::LLVMGlobalSetMetadata(
+                function,
+                llvm::MD_kcfi_type as c_uint,
+                llvm::LLVMMDNodeInContext2(
+                    self.llcx,
+                    &llvm::LLVMValueAsMetadata(kcfi_type_metadata),
+                    1,
+                ),
+            )
+        }
+    }
 }

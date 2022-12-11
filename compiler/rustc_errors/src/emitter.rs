@@ -24,7 +24,7 @@ use rustc_lint_defs::pluralize;
 
 use rustc_data_structures::fx::{FxHashMap, FxIndexMap};
 use rustc_data_structures::sync::Lrc;
-use rustc_error_messages::FluentArgs;
+use rustc_error_messages::{FluentArgs, SpanLabel};
 use rustc_span::hygiene::{ExpnKind, MacroKind};
 use std::borrow::Cow;
 use std::cmp::{max, min, Reverse};
@@ -773,6 +773,7 @@ impl EmitterWriter {
         draw_col_separator_no_space(buffer, line_offset, width_offset - 2);
     }
 
+    #[instrument(level = "trace", skip(self), ret)]
     fn render_source_line(
         &self,
         buffer: &mut StyledBuffer,
@@ -804,6 +805,7 @@ impl EmitterWriter {
             Some(s) => normalize_whitespace(&s),
             None => return Vec::new(),
         };
+        trace!(?source_string);
 
         let line_offset = buffer.num_lines();
 
@@ -1323,6 +1325,7 @@ impl EmitterWriter {
         }
     }
 
+    #[instrument(level = "trace", skip(self, args), ret)]
     fn emit_message_default(
         &mut self,
         msp: &MultiSpan,
@@ -1384,22 +1387,15 @@ impl EmitterWriter {
             }
         }
         let mut annotated_files = FileWithAnnotatedLines::collect_annotations(self, args, msp);
+        trace!("{annotated_files:#?}");
 
         // Make sure our primary file comes first
-        let (primary_lo, sm) = if let (Some(sm), Some(ref primary_span)) =
-            (self.sm.as_ref(), msp.primary_span().as_ref())
-        {
-            if !primary_span.is_dummy() {
-                (sm.lookup_char_pos(primary_span.lo()), sm)
-            } else {
-                emit_to_destination(&buffer.render(), level, &mut self.dst, self.short_message)?;
-                return Ok(());
-            }
-        } else {
+        let primary_span = msp.primary_span().unwrap_or_default();
+        let (Some(sm), false) = (self.sm.as_ref(), primary_span.is_dummy()) else {
             // If we don't have span information, emit and exit
-            emit_to_destination(&buffer.render(), level, &mut self.dst, self.short_message)?;
-            return Ok(());
+            return emit_to_destination(&buffer.render(), level, &mut self.dst, self.short_message);
         };
+        let primary_lo = sm.lookup_char_pos(primary_span.lo());
         if let Ok(pos) =
             annotated_files.binary_search_by(|x| x.file.name.cmp(&primary_lo.file.name))
         {
@@ -1410,6 +1406,54 @@ impl EmitterWriter {
         for annotated_file in annotated_files {
             // we can't annotate anything if the source is unavailable.
             if !sm.ensure_source_file_source_present(annotated_file.file.clone()) {
+                if !self.short_message {
+                    // We'll just print an unannotated message.
+                    for (annotation_id, line) in annotated_file.lines.into_iter().enumerate() {
+                        let mut annotations = line.annotations.clone();
+                        annotations.sort_by_key(|a| Reverse(a.start_col));
+                        let mut line_idx = buffer.num_lines();
+                        buffer.append(
+                            line_idx,
+                            &format!(
+                                "{}:{}:{}",
+                                sm.filename_for_diagnostics(&annotated_file.file.name),
+                                sm.doctest_offset_line(&annotated_file.file.name, line.line_index),
+                                annotations[0].start_col + 1,
+                            ),
+                            Style::LineAndColumn,
+                        );
+                        if annotation_id == 0 {
+                            buffer.prepend(line_idx, "--> ", Style::LineNumber);
+                            for _ in 0..max_line_num_len {
+                                buffer.prepend(line_idx, " ", Style::NoStyle);
+                            }
+                            line_idx += 1;
+                        };
+                        for (i, annotation) in annotations.into_iter().enumerate() {
+                            if let Some(label) = &annotation.label {
+                                let style = if annotation.is_primary {
+                                    Style::LabelPrimary
+                                } else {
+                                    Style::LabelSecondary
+                                };
+                                if annotation_id == 0 {
+                                    buffer.prepend(line_idx, " |", Style::LineNumber);
+                                    for _ in 0..max_line_num_len {
+                                        buffer.prepend(line_idx, " ", Style::NoStyle);
+                                    }
+                                    line_idx += 1;
+                                    buffer.append(line_idx + i, " = note: ", style);
+                                    for _ in 0..max_line_num_len {
+                                        buffer.prepend(line_idx, " ", Style::NoStyle);
+                                    }
+                                } else {
+                                    buffer.append(line_idx + i, ": ", style);
+                                }
+                                buffer.append(line_idx + i, label, style);
+                            }
+                        }
+                    }
+                }
                 continue;
             }
 
@@ -1656,6 +1700,7 @@ impl EmitterWriter {
                     multilines.extend(&to_add);
                 }
             }
+            trace!("buffer: {:#?}", buffer.render());
         }
 
         if let Some(tracked) = emitted_at {
@@ -1979,6 +2024,7 @@ impl EmitterWriter {
         Ok(())
     }
 
+    #[instrument(level = "trace", skip(self, args, code, children, suggestions))]
     fn emit_messages_default(
         &mut self,
         level: &Level,
@@ -2209,46 +2255,28 @@ impl FileWithAnnotatedLines {
         let mut multiline_annotations = vec![];
 
         if let Some(ref sm) = emitter.source_map() {
-            for span_label in msp.span_labels() {
-                let fixup_lo_hi = |span: Span| {
-                    let lo = sm.lookup_char_pos(span.lo());
-                    let mut hi = sm.lookup_char_pos(span.hi());
-
-                    // Watch out for "empty spans". If we get a span like 6..6, we
-                    // want to just display a `^` at 6, so convert that to
-                    // 6..7. This is degenerate input, but it's best to degrade
-                    // gracefully -- and the parser likes to supply a span like
-                    // that for EOF, in particular.
-
-                    if lo.col_display == hi.col_display && lo.line == hi.line {
-                        hi.col_display += 1;
-                    }
-                    (lo, hi)
+            for SpanLabel { span, is_primary, label } in msp.span_labels() {
+                // If we don't have a useful span, pick the primary span if that exists.
+                // Worst case we'll just print an error at the top of the main file.
+                let span = match (span.is_dummy(), msp.primary_span()) {
+                    (_, None) | (false, _) => span,
+                    (true, Some(span)) => span,
                 };
 
-                if span_label.span.is_dummy() {
-                    if let Some(span) = msp.primary_span() {
-                        // if we don't know where to render the annotation, emit it as a note
-                        // on the primary span.
+                let lo = sm.lookup_char_pos(span.lo());
+                let mut hi = sm.lookup_char_pos(span.hi());
 
-                        let (lo, hi) = fixup_lo_hi(span);
+                // Watch out for "empty spans". If we get a span like 6..6, we
+                // want to just display a `^` at 6, so convert that to
+                // 6..7. This is degenerate input, but it's best to degrade
+                // gracefully -- and the parser likes to supply a span like
+                // that for EOF, in particular.
 
-                        let ann = Annotation {
-                            start_col: lo.col_display,
-                            end_col: hi.col_display,
-                            is_primary: span_label.is_primary,
-                            label: span_label
-                                .label
-                                .as_ref()
-                                .map(|m| emitter.translate_message(m, args).to_string()),
-                            annotation_type: AnnotationType::Singleline,
-                        };
-                        add_annotation_to_file(&mut output, lo.file, lo.line, ann);
-                    }
-                    continue;
+                if lo.col_display == hi.col_display && lo.line == hi.line {
+                    hi.col_display += 1;
                 }
 
-                let (lo, hi) = fixup_lo_hi(span_label.span);
+                let label = label.as_ref().map(|m| emitter.translate_message(m, args).to_string());
 
                 if lo.line != hi.line {
                     let ml = MultilineAnnotation {
@@ -2257,11 +2285,8 @@ impl FileWithAnnotatedLines {
                         line_end: hi.line,
                         start_col: lo.col_display,
                         end_col: hi.col_display,
-                        is_primary: span_label.is_primary,
-                        label: span_label
-                            .label
-                            .as_ref()
-                            .map(|m| emitter.translate_message(m, args).to_string()),
+                        is_primary,
+                        label,
                         overlaps_exactly: false,
                     };
                     multiline_annotations.push((lo.file, ml));
@@ -2269,11 +2294,8 @@ impl FileWithAnnotatedLines {
                     let ann = Annotation {
                         start_col: lo.col_display,
                         end_col: hi.col_display,
-                        is_primary: span_label.is_primary,
-                        label: span_label
-                            .label
-                            .as_ref()
-                            .map(|m| emitter.translate_message(m, args).to_string()),
+                        is_primary,
+                        label,
                         annotation_type: AnnotationType::Singleline,
                     };
                     add_annotation_to_file(&mut output, lo.file, lo.line, ann);
