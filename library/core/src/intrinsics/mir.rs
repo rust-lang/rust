@@ -25,10 +25,10 @@
 //!
 //!         {
 //!             let temp1 = x;
-//!             Goto(exit)
+//!             Goto(my_second_block)
 //!         }
 //!
-//!         exit = {
+//!         my_second_block = {
 //!             temp2 = Move(temp1);
 //!             RET = temp2;
 //!             Return()
@@ -37,12 +37,14 @@
 //! }
 //! ```
 //!
-//! Hopefully the syntax is fairly self-explanatory to anyone familiar with MIR. The `custom_mir`
-//! attribute tells the compiler to treat the function as being custom MIR. This attribute only
-//! works on functions - there is no way to insert custom MIR into the middle of another function.
-//! The `dialect` and `phase` parameters indicate which version of MIR you are inserting here. This
-//! will normally be the phase that corresponds to the thing you are trying to test. The phase can
-//! be omitted for dialects that have just one.
+//! The `custom_mir` attribute tells the compiler to treat the function as being custom MIR. This
+//! attribute only works on functions - there is no way to insert custom MIR into the middle of
+//! another function. The `dialect` and `phase` parameters indicate which [version of MIR][dialect
+//! docs] you are inserting here. Generally you'll want to use `#![custom_mir(dialect = "built")]`
+//! if you want your MIR to be modified by the full MIR pipeline, or `#![custom_mir(dialect =
+//! "runtime", phase = "optimized")] if you don't.
+//!
+//! [dialect docs]: https://doc.rust-lang.org/nightly/nightly-rustc/rustc_middle/mir/enum.MirPhase.html
 //!
 //! The input to the [`mir!`] macro is:
 //!
@@ -159,7 +161,7 @@
 //!
 //! # Syntax
 //!
-//! The lists below are an exahustive description of how various MIR constructs can be created.
+//! The lists below are an exhaustive description of how various MIR constructs can be created.
 //! Anything missing from the list should be assumed to not be supported, PRs welcome.
 //!
 //! #### Locals
@@ -171,8 +173,8 @@
 //! #### Places
 //!  - Locals implicit convert to places.
 //!  - Field accesses, derefs, and indexing work normally.
-//!  - Fields in variants can be accessed via the [`Variant`] and [`Field`] methods, see their
-//!    documentation for details.
+//!  - Fields in variants can be accessed via the [`Variant`] and [`Field`] associated functions,
+//!    see their documentation for details.
 //!
 //! #### Operands
 //!  - Places implicitly convert to `Copy` operands.
