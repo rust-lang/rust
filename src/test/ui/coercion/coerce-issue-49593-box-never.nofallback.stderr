@@ -1,19 +1,122 @@
-error[E0277]: the trait bound `(): std::error::Error` is not satisfied
-  --> $DIR/coerce-issue-49593-box-never.rs:18:53
+error[E0277]: the size for values of type `dyn std::error::Error` cannot be known at compilation time
+  --> $DIR/coerce-issue-49593-box-never.rs:18:75
    |
 LL |     /* *mut $0 is coerced to Box<dyn Error> here */ Box::<_ /* ! */>::new(x)
-   |                                                     ^^^^^^^^^^^^^^^^^^^^^^^^ the trait `std::error::Error` is not implemented for `()`
+   |                                                     --------------------- ^ doesn't have a size known at compile-time
+   |                                                     |
+   |                                                     required by a bound introduced by this call
    |
-   = note: required for the cast from `()` to the object type `dyn std::error::Error`
+   = help: the trait `Sized` is not implemented for `dyn std::error::Error`
+note: required by a bound in `Box::<T>::new`
+  --> $SRC_DIR/alloc/src/boxed.rs:LL:COL
+   |
+LL | impl<T> Box<T> {
+   |      ^ required by this bound in `Box::<T>::new`
 
-error[E0277]: the trait bound `(): std::error::Error` is not satisfied
-  --> $DIR/coerce-issue-49593-box-never.rs:23:49
+error[E0277]: the size for values of type `(dyn std::error::Error + 'static)` cannot be known at compilation time
+  --> $DIR/coerce-issue-49593-box-never.rs:23:74
    |
 LL |     /* *mut $0 is coerced to *mut Error here */ raw_ptr_box::<_ /* ! */>(x)
-   |                                                 ^^^^^^^^^^^^^^^^^^^^^^^^^^^ the trait `std::error::Error` is not implemented for `()`
+   |                                                 ------------------------ ^ doesn't have a size known at compile-time
+   |                                                 |
+   |                                                 required by a bound introduced by this call
    |
-   = note: required for the cast from `()` to the object type `(dyn std::error::Error + 'static)`
+   = help: the trait `Sized` is not implemented for `(dyn std::error::Error + 'static)`
+note: required by a bound in `raw_ptr_box`
+  --> $DIR/coerce-issue-49593-box-never.rs:13:16
+   |
+LL | fn raw_ptr_box<T>(t: T) -> *mut T {
+   |                ^ required by this bound in `raw_ptr_box`
+help: consider relaxing the implicit `Sized` restriction
+   |
+LL | fn raw_ptr_box<T: ?Sized>(t: T) -> *mut T {
+   |                 ++++++++
 
-error: aborting due to 2 previous errors
+error[E0277]: the size for values of type `dyn Xyz` cannot be known at compilation time
+  --> $DIR/coerce-issue-49593-box-never.rs:45:70
+   |
+LL |                 = /* Box<$0> is coerced to Box<Xyz> here */ Box::new(x.unwrap());
+   |                                                             -------- ^^^^^^^^^^ doesn't have a size known at compile-time
+   |                                                             |
+   |                                                             required by a bound introduced by this call
+   |
+   = help: the trait `Sized` is not implemented for `dyn Xyz`
+note: required by a bound in `Box::<T>::new`
+  --> $SRC_DIR/alloc/src/boxed.rs:LL:COL
+   |
+LL | impl<T> Box<T> {
+   |      ^ required by this bound in `Box::<T>::new`
 
-For more information about this error, try `rustc --explain E0277`.
+error[E0277]: the size for values of type `dyn Xyz` cannot be known at compilation time
+  --> $DIR/coerce-issue-49593-box-never.rs:45:70
+   |
+LL |                 = /* Box<$0> is coerced to Box<Xyz> here */ Box::new(x.unwrap());
+   |                                                                      ^ ------ required by a bound introduced by this call
+   |                                                                      |
+   |                                                                      doesn't have a size known at compile-time
+   |
+   = help: the trait `Sized` is not implemented for `dyn Xyz`
+note: required by a bound in `Option::<T>::unwrap`
+  --> $SRC_DIR/core/src/option.rs:LL:COL
+   |
+LL | impl<T> Option<T> {
+   |      ^ required by this bound in `Option::<T>::unwrap`
+
+error[E0277]: the size for values of type `dyn Xyz` cannot be known at compilation time
+  --> $DIR/coerce-issue-49593-box-never.rs:40:35
+   |
+LL |     let mut x /* : Option<S> */ = None;
+   |                                   ^^^^ doesn't have a size known at compile-time
+   |
+   = help: the trait `Sized` is not implemented for `dyn Xyz`
+note: required by a bound in `None`
+  --> $SRC_DIR/core/src/option.rs:LL:COL
+   |
+LL | pub enum Option<T> {
+   |                 ^ required by this bound in `None`
+
+error[E0308]: mismatched types
+  --> $DIR/coerce-issue-49593-box-never.rs:48:13
+   |
+LL |     let mut x /* : Option<S> */ = None;
+   |                                   ---- expected due to this value
+...
+LL |         x = Some(S);
+   |             ^^^^^^^ expected trait object `dyn Xyz`, found struct `S`
+   |
+   = note: expected enum `Option<dyn Xyz>`
+              found enum `Option<S>`
+
+error[E0277]: the size for values of type `dyn Xyz` cannot be known at compilation time
+  --> $DIR/coerce-issue-49593-box-never.rs:54:5
+   |
+LL |     mem::swap(&mut x, &mut y);
+   |     ^^^^^^^^^ doesn't have a size known at compile-time
+   |
+   = help: the trait `Sized` is not implemented for `dyn Xyz`
+note: required by a bound in `Option`
+  --> $SRC_DIR/core/src/option.rs:LL:COL
+   |
+LL | pub enum Option<T> {
+   |                 ^ required by this bound in `Option`
+
+error[E0308]: mismatched types
+  --> $DIR/coerce-issue-49593-box-never.rs:54:23
+   |
+LL |     mem::swap(&mut x, &mut y);
+   |     ---------         ^^^^^^ expected trait object `dyn Xyz`, found struct `S`
+   |     |
+   |     arguments to this function are incorrect
+   |
+   = note: expected mutable reference `&mut Option<dyn Xyz>`
+              found mutable reference `&mut Option<S>`
+note: function defined here
+  --> $SRC_DIR/core/src/mem/mod.rs:LL:COL
+   |
+LL | pub const fn swap<T>(x: &mut T, y: &mut T) {
+   |              ^^^^
+
+error: aborting due to 8 previous errors
+
+Some errors have detailed explanations: E0277, E0308.
+For more information about an error, try `rustc --explain E0277`.
