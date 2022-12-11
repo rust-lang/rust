@@ -2774,7 +2774,8 @@ where [(); core::alloc::co_alloc_metadata_num_slots::<A>()]: {
     message = "vector indices are of type `usize` or ranges of `usize`",
     label = "vector indices are of type `usize` or ranges of `usize`"
 )]
-impl<T, I: SliceIndex<[T]>, A: Allocator> IndexMut<I> for Vec<T, A> {
+impl<T, I: SliceIndex<[T]>, A: Allocator> IndexMut<I> for Vec<T, A>
+where [(); core::alloc::co_alloc_metadata_num_slots::<A>()]: {
     #[inline]
     fn index_mut(&mut self, index: I) -> &mut Self::Output {
         IndexMut::index_mut(&mut **self, index)
@@ -2791,7 +2792,8 @@ impl<T> FromIterator<T> for Vec<T> {
 }
 
 #[stable(feature = "rust1", since = "1.0.0")]
-impl<T, A: Allocator> IntoIterator for Vec<T, A> {
+impl<T, A: Allocator> IntoIterator for Vec<T, A>
+where [(); core::alloc::co_alloc_metadata_num_slots::<A>()]: {
     type Item = T;
     type IntoIter = IntoIter<T, A>;
 
@@ -2836,7 +2838,8 @@ impl<T, A: Allocator> IntoIterator for Vec<T, A> {
 }
 
 #[stable(feature = "rust1", since = "1.0.0")]
-impl<'a, T, A: Allocator> IntoIterator for &'a Vec<T, A> {
+impl<'a, T, A: Allocator> IntoIterator for &'a Vec<T, A>
+where [(); core::alloc::co_alloc_metadata_num_slots::<A>()]: {
     type Item = &'a T;
     type IntoIter = slice::Iter<'a, T>;
 
@@ -2846,7 +2849,8 @@ impl<'a, T, A: Allocator> IntoIterator for &'a Vec<T, A> {
 }
 
 #[stable(feature = "rust1", since = "1.0.0")]
-impl<'a, T, A: Allocator> IntoIterator for &'a mut Vec<T, A> {
+impl<'a, T, A: Allocator> IntoIterator for &'a mut Vec<T, A>
+where [(); core::alloc::co_alloc_metadata_num_slots::<A>()]: {
     type Item = &'a mut T;
     type IntoIter = slice::IterMut<'a, T>;
 
@@ -2857,7 +2861,8 @@ impl<'a, T, A: Allocator> IntoIterator for &'a mut Vec<T, A> {
 
 #[cfg(not(no_global_oom_handling))]
 #[stable(feature = "rust1", since = "1.0.0")]
-impl<T, A: Allocator> Extend<T> for Vec<T, A> {
+impl<T, A: Allocator> Extend<T> for Vec<T, A>
+where [(); core::alloc::co_alloc_metadata_num_slots::<A>()]: {
     #[inline]
     fn extend<I: IntoIterator<Item = T>>(&mut self, iter: I) {
         <Self as SpecExtend<T, I::IntoIter>>::spec_extend(self, iter.into_iter())
@@ -2874,7 +2879,8 @@ impl<T, A: Allocator> Extend<T> for Vec<T, A> {
     }
 }
 
-impl<T, A: Allocator> Vec<T, A> {
+impl<T, A: Allocator> Vec<T, A>
+where [(); core::alloc::co_alloc_metadata_num_slots::<A>()]: {
     // leaf method to which various SpecFrom/SpecExtend implementations delegate when
     // they have no further optimizations to apply
     #[cfg(not(no_global_oom_handling))]
@@ -3048,7 +3054,8 @@ impl<T, A: Allocator> Vec<T, A> {
 /// [`copy_from_slice`]: slice::copy_from_slice
 #[cfg(not(no_global_oom_handling))]
 #[stable(feature = "extend_ref", since = "1.2.0")]
-impl<'a, T: Copy + 'a, A: Allocator + 'a> Extend<&'a T> for Vec<T, A> {
+impl<'a, T: Copy + 'a, A: Allocator + 'a> Extend<&'a T> for Vec<T, A>
+where [(); core::alloc::co_alloc_metadata_num_slots::<A>()]: {
     fn extend<I: IntoIterator<Item = &'a T>>(&mut self, iter: I) {
         self.spec_extend(iter.into_iter())
     }
@@ -3066,7 +3073,8 @@ impl<'a, T: Copy + 'a, A: Allocator + 'a> Extend<&'a T> for Vec<T, A> {
 
 /// Implements comparison of vectors, [lexicographically](core::cmp::Ord#lexicographical-comparison).
 #[stable(feature = "rust1", since = "1.0.0")]
-impl<T: PartialOrd, A: Allocator> PartialOrd for Vec<T, A> {
+impl<T: PartialOrd, A: Allocator> PartialOrd for Vec<T, A>
+where [(); core::alloc::co_alloc_metadata_num_slots::<A>()]: {
     #[inline]
     fn partial_cmp(&self, other: &Self) -> Option<Ordering> {
         PartialOrd::partial_cmp(&**self, &**other)
@@ -3074,11 +3082,13 @@ impl<T: PartialOrd, A: Allocator> PartialOrd for Vec<T, A> {
 }
 
 #[stable(feature = "rust1", since = "1.0.0")]
-impl<T: Eq, A: Allocator> Eq for Vec<T, A> {}
+impl<T: Eq, A: Allocator> Eq for Vec<T, A>
+where [(); core::alloc::co_alloc_metadata_num_slots::<A>()]: {}
 
 /// Implements ordering of vectors, [lexicographically](core::cmp::Ord#lexicographical-comparison).
 #[stable(feature = "rust1", since = "1.0.0")]
-impl<T: Ord, A: Allocator> Ord for Vec<T, A> {
+impl<T: Ord, A: Allocator> Ord for Vec<T, A>
+where [(); core::alloc::co_alloc_metadata_num_slots::<A>()]: {
     #[inline]
     fn cmp(&self, other: &Self) -> Ordering {
         Ord::cmp(&**self, &**other)
@@ -3086,7 +3096,8 @@ impl<T: Ord, A: Allocator> Ord for Vec<T, A> {
 }
 
 #[stable(feature = "rust1", since = "1.0.0")]
-unsafe impl<#[may_dangle] T, A: Allocator> Drop for Vec<T, A> {
+unsafe impl<#[may_dangle] T, A: Allocator> Drop for Vec<T, A>
+where [(); core::alloc::co_alloc_metadata_num_slots::<A>()]: {
     fn drop(&mut self) {
         unsafe {
             // use drop for [T]
@@ -3110,35 +3121,40 @@ impl<T> const Default for Vec<T> {
 }
 
 #[stable(feature = "rust1", since = "1.0.0")]
-impl<T: fmt::Debug, A: Allocator> fmt::Debug for Vec<T, A> {
+impl<T: fmt::Debug, A: Allocator> fmt::Debug for Vec<T, A>
+where [(); core::alloc::co_alloc_metadata_num_slots::<A>()]: {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         fmt::Debug::fmt(&**self, f)
     }
 }
 
 #[stable(feature = "rust1", since = "1.0.0")]
-impl<T, A: Allocator> AsRef<Vec<T, A>> for Vec<T, A> {
+impl<T, A: Allocator> AsRef<Vec<T, A>> for Vec<T, A>
+where [(); core::alloc::co_alloc_metadata_num_slots::<A>()]: {
     fn as_ref(&self) -> &Vec<T, A> {
         self
     }
 }
 
 #[stable(feature = "vec_as_mut", since = "1.5.0")]
-impl<T, A: Allocator> AsMut<Vec<T, A>> for Vec<T, A> {
+impl<T, A: Allocator> AsMut<Vec<T, A>> for Vec<T, A>
+where [(); core::alloc::co_alloc_metadata_num_slots::<A>()]: {
     fn as_mut(&mut self) -> &mut Vec<T, A> {
         self
     }
 }
 
 #[stable(feature = "rust1", since = "1.0.0")]
-impl<T, A: Allocator> AsRef<[T]> for Vec<T, A> {
+impl<T, A: Allocator> AsRef<[T]> for Vec<T, A>
+where [(); core::alloc::co_alloc_metadata_num_slots::<A>()]: {
     fn as_ref(&self) -> &[T] {
         self
     }
 }
 
 #[stable(feature = "vec_as_mut", since = "1.5.0")]
-impl<T, A: Allocator> AsMut<[T]> for Vec<T, A> {
+impl<T, A: Allocator> AsMut<[T]> for Vec<T, A>
+where [(); core::alloc::co_alloc_metadata_num_slots::<A>()]: {
     fn as_mut(&mut self) -> &mut [T] {
         self
     }
@@ -3235,7 +3251,8 @@ where
 // note: test pulls in std, which causes errors here
 #[cfg(not(test))]
 #[stable(feature = "vec_from_box", since = "1.18.0")]
-impl<T, A: Allocator> From<Box<[T], A>> for Vec<T, A> {
+impl<T, A: Allocator> From<Box<[T], A>> for Vec<T, A>
+where [(); core::alloc::co_alloc_metadata_num_slots::<A>()]: {
     /// Convert a boxed slice into a vector by transferring ownership of
     /// the existing heap allocation.
     ///
@@ -3254,7 +3271,8 @@ impl<T, A: Allocator> From<Box<[T], A>> for Vec<T, A> {
 #[cfg(not(no_global_oom_handling))]
 #[cfg(not(test))]
 #[stable(feature = "box_from_vec", since = "1.20.0")]
-impl<T, A: Allocator> From<Vec<T, A>> for Box<[T], A> {
+impl<T, A: Allocator> From<Vec<T, A>> for Box<[T], A>
+where [(); core::alloc::co_alloc_metadata_num_slots::<A>()]: {
     /// Convert a vector into a boxed slice.
     ///
     /// If `v` has excess capacity, its items will be moved into a
@@ -3294,7 +3312,8 @@ impl From<&str> for Vec<u8> {
 }
 
 #[stable(feature = "array_try_from_vec", since = "1.48.0")]
-impl<T, A: Allocator, const N: usize> TryFrom<Vec<T, A>> for [T; N] {
+impl<T, A: Allocator, const N: usize> TryFrom<Vec<T, A>> for [T; N]
+where [(); core::alloc::co_alloc_metadata_num_slots::<A>()]: {
     type Error = Vec<T, A>;
 
     /// Gets the entire contents of the `Vec<T>` as an array,
