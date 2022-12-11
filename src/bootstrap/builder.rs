@@ -744,6 +744,7 @@ impl<'a> Builder<'a> {
                 install::RustDemangler,
                 install::Clippy,
                 install::Miri,
+                install::LlvmTools,
                 install::Analysis,
                 install::Src,
                 install::Rustc
