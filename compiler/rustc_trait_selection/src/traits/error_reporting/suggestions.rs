@@ -2394,12 +2394,11 @@ impl<'tcx> TypeErrCtxtExt<'tcx> for TypeErrCtxt<'_, 'tcx> {
                 err.note("only the last element of a tuple may have a dynamically sized type");
             }
             ObligationCauseCode::ProjectionWf(data) => {
-                err.note(&format!("required so that the projection `{}` is well-formed", data,));
+                err.note(&format!("required so that the projection `{data}` is well-formed"));
             }
             ObligationCauseCode::ReferenceOutlivesReferent(ref_ty) => {
                 err.note(&format!(
-                    "required so that reference `{}` does not outlive its referent",
-                    ref_ty,
+                    "required so that reference `{ref_ty}` does not outlive its referent"
                 ));
             }
             ObligationCauseCode::ObjectTypeBound(object_ty, region) => {
@@ -2859,7 +2858,8 @@ impl<'tcx> TypeErrCtxtExt<'tcx> for TypeErrCtxt<'_, 'tcx> {
                                 if ty.references_error() {
                                     String::new()
                                 } else {
-                                    format!("this tail expression is of type `{:?}`", ty)
+                                    let ty = with_forced_trimmed_paths!(self.ty_to_string(ty));
+                                    format!("this tail expression is of type `{ty}`")
                                 },
                             );
                         }
@@ -2962,9 +2962,9 @@ impl<'tcx> TypeErrCtxtExt<'tcx> for TypeErrCtxt<'_, 'tcx> {
                                 ));
                                 if ocx.select_where_possible().is_empty() {
                                     // `ty_var` now holds the type that `Item` is for `ExprTy`.
-                                    let assoc = self.tcx.def_path_str(proj.item_def_id);
                                     let ty_var = self.resolve_vars_if_possible(ty_var);
-                                    assocs_in_this_method.push(Some((span, (assoc, ty_var))));
+                                    assocs_in_this_method
+                                        .push(Some((span, (proj.item_def_id, ty_var))));
                                 } else {
                                     // `<ExprTy as Iterator>` didn't select, so likely we've
                                     // reached the end of the iterator chain, like the originating
@@ -2994,7 +2994,7 @@ impl<'tcx> TypeErrCtxtExt<'tcx> for TypeErrCtxt<'_, 'tcx> {
                         // We want the type before deref coercions, otherwise we talk about `&[_]`
                         // instead of `Vec<_>`.
                         if let Some(ty) = typeck_results.expr_ty_opt(expr) {
-                            let ty = self.resolve_vars_if_possible(ty);
+                            let ty = with_forced_trimmed_paths!(self.ty_to_string(ty));
                             // Point at the root expression
                             // vec![1, 2, 3].iter().map(mapper).sum<i32>()
                             // ^^^^^^^^^^^^^
@@ -3021,7 +3021,10 @@ impl<'tcx> TypeErrCtxtExt<'tcx> for TypeErrCtxt<'_, 'tcx> {
                                     }
                                     span_labels.push((
                                         span,
-                                        format!("`{assoc}` is `{ty}` here"),
+                                        with_forced_trimmed_paths!(format!(
+                                            "`{}` is `{ty}` here",
+                                            self.tcx.def_path_str(assoc),
+                                        )),
                                     ));
                                 }
                                 break;
@@ -3031,6 +3034,12 @@ impl<'tcx> TypeErrCtxtExt<'tcx> for TypeErrCtxt<'_, 'tcx> {
                             {
                                 match (entry, prev_entry) {
                                     (Some((span, (assoc, ty))), Some((_, (_, prev_ty)))) => {
+                                        let ty_str =
+                                            with_forced_trimmed_paths!(self.ty_to_string(ty));
+
+                                        let assoc = with_forced_trimmed_paths!(
+                                            self.tcx.def_path_str(assoc)
+                                        );
                                         if ty != *prev_ty {
                                             if type_diffs.iter().any(|diff| {
                                                 let Sorts(expected_found) = diff else { return false; };
@@ -3040,18 +3049,24 @@ impl<'tcx> TypeErrCtxtExt<'tcx> for TypeErrCtxt<'_, 'tcx> {
                                             }
                                             span_labels.push((
                                                 span,
-                                                format!("`{assoc}` changed to `{ty}` here"),
+                                                format!("`{assoc}` changed to `{ty_str}` here"),
                                             ));
                                         } else {
                                             span_labels.push((
                                                 span,
-                                                format!("`{assoc}` remains `{ty}` here"),
+                                                format!("`{assoc}` remains `{ty_str}` here"),
                                             ));
                                         }
                                     }
                                     (Some((span, (assoc, ty))), None) => {
-                                        span_labels
-                                            .push((span, format!("`{assoc}` is `{ty}` here")));
+                                        span_labels.push((
+                                            span,
+                                            with_forced_trimmed_paths!(format!(
+                                                "`{}` is `{}` here",
+                                                self.tcx.def_path_str(assoc),
+                                                self.ty_to_string(ty),
+                                            )),
+                                        ));
                                     }
                                     (None, Some(_)) | (None, None) => {}
                                 }
@@ -3151,7 +3166,7 @@ impl<'tcx> TypeErrCtxtExt<'tcx> for TypeErrCtxt<'_, 'tcx> {
             }
             ObligationCauseCode::OpaqueReturnType(expr_info) => {
                 if let Some((expr_ty, expr_span)) = expr_info {
-                    let expr_ty = self.resolve_vars_if_possible(expr_ty);
+                    let expr_ty = with_forced_trimmed_paths!(self.ty_to_string(expr_ty));
                     err.span_label(
                         expr_span,
                         format!("return type was inferred to be `{expr_ty}` here"),
