@@ -67,6 +67,7 @@ rm -r src/test/run-make/emit-named-files # requires full --emit support
 rm src/test/ui/abi/stack-probes.rs # stack probes not yet implemented
 rm src/test/ui/simd/intrinsic/ptr-cast.rs # simd_expose_addr intrinsic unimplemented
 rm -r src/test/run-make/repr128-dwarf # debuginfo test
+rm src/test/codegen-units/item-collection/asm-sym.rs # requires support for sym in asm!()
 
 # optimization tests
 # ==================
@@ -85,6 +86,7 @@ rm src/test/ui/abi/stack-protector.rs # requires stack protector support
 rm src/test/ui/mir/mir_misc_casts.rs # depends on deduplication of constants
 rm src/test/ui/mir/mir_raw_fat_ptr.rs # same
 rm src/test/ui/consts/issue-33537.rs # same
+rm src/test/ui/layout/valid_range_oob.rs # different ICE message
 
 # doesn't work due to the way the rustc test suite is invoked.
 # should work when using ./x.py test the way it is intended
@@ -94,6 +96,7 @@ rm -r src/test/run-make/unstable-flag-required # same
 rm -r src/test/run-make/rustdoc-* # same
 rm -r src/test/run-make/issue-88756-default-output # same
 rm -r src/test/run-make/remap-path-prefix-dwarf # requires llvm-dwarfdump
+rm -r src/test/ui/consts/missing_span_in_backtrace.rs # expects sysroot source to be elsewhere
 
 # genuine bugs
 # ============
@@ -115,6 +118,7 @@ rm src/test/ui/test-attrs/test-type.rs # TODO panic message on stderr. correct s
 # not sure if this is actually a bug in the test suite, but the symbol list shows the function without leading _ for some reason
 rm -r src/test/run-make/native-link-modifier-bundle
 rm src/test/ui/process/nofile-limit.rs # TODO some AArch64 linking issue
+rm src/test/ui/dyn-star/dispatch-on-pin-mut.rs # TODO failed assertion in vtable::get_ptr_and_method_ref
 
 rm src/test/ui/stdio-is-blocking.rs # really slow with unoptimized libstd
 
