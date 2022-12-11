@@ -121,11 +121,13 @@ pub(crate) mod hack {
         #[inline]
         default fn to_vec<A: Allocator>(s: &[Self], alloc: A) -> Vec<Self, A>
         where [(); core::alloc::co_alloc_metadata_num_slots::<A>()]: {
-            struct DropGuard<'a, T, A: Allocator> {
+            struct DropGuard<'a, T, A: Allocator>
+            where [(); core::alloc::co_alloc_metadata_num_slots::<A>()]: {
                 vec: &'a mut Vec<T, A>,
                 num_init: usize,
             }
-            impl<'a, T, A: Allocator> Drop for DropGuard<'a, T, A> {
+            impl<'a, T, A: Allocator> Drop for DropGuard<'a, T, A>
+            where [(); core::alloc::co_alloc_metadata_num_slots::<A>()]: {
                 #[inline]
                 fn drop(&mut self) {
                     // SAFETY:
