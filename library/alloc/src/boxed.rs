@@ -146,6 +146,7 @@
 
 #![stable(feature = "rust1", since = "1.0.0")]
 
+use core::alloc;
 use core::any::Any;
 use core::async_iter::AsyncIterator;
 use core::borrow;
@@ -699,7 +700,7 @@ impl<T> Box<[T]> {
                 Err(_) => return Err(AllocError),
             };
             let ptr = Global.allocate(layout)?;
-            Ok(RawVec::from_raw_parts_in(ptr.as_mut_ptr() as *mut _, len, Global).into_box(len))
+            Ok(RawVec::<T, Global, false>::from_raw_parts_in(ptr.as_mut_ptr() as *mut _, len, Global).into_box(len))
         }
     }
 
@@ -731,12 +732,13 @@ impl<T> Box<[T]> {
                 Err(_) => return Err(AllocError),
             };
             let ptr = Global.allocate_zeroed(layout)?;
-            Ok(RawVec::from_raw_parts_in(ptr.as_mut_ptr() as *mut _, len, Global).into_box(len))
+            Ok(RawVec::<T, Global, false>::from_raw_parts_in(ptr.as_mut_ptr() as *mut _, len, Global).into_box(len))
         }
     }
 }
 
-impl<T, A: Allocator> Box<[T], A> {
+impl<T, A: Allocator> Box<[T], A>
+where [(); core::alloc::co_alloc_metadata_num_slots::<A>()]: {
     /// Constructs a new boxed slice with uninitialized contents in the provided allocator.
     ///
     /// # Examples
@@ -764,7 +766,7 @@ impl<T, A: Allocator> Box<[T], A> {
     // #[unstable(feature = "new_uninit", issue = "63291")]
     #[must_use]
     pub fn new_uninit_slice_in(len: usize, alloc: A) -> Box<[mem::MaybeUninit<T>], A> {
-        unsafe { RawVec::with_capacity_in(len, alloc).into_box(len) }
+        unsafe { RawVec::<T, A, {alloc::SHORT_TERM_VEC_PREFERS_COOP}>::with_capacity_in(len, alloc).into_box(len) }
     }
 
     /// Constructs a new boxed slice with uninitialized contents in the provided allocator,
@@ -792,7 +794,7 @@ impl<T, A: Allocator> Box<[T], A> {
     // #[unstable(feature = "new_uninit", issue = "63291")]
     #[must_use]
     pub fn new_zeroed_slice_in(len: usize, alloc: A) -> Box<[mem::MaybeUninit<T>], A> {
-        unsafe { RawVec::with_capacity_zeroed_in(len, alloc).into_box(len) }
+        unsafe { RawVec::<T, A, {alloc::SHORT_TERM_VEC_PREFERS_COOP}>::with_capacity_zeroed_in(len, alloc).into_box(len) }
     }
 }
 
@@ -2049,7 +2051,8 @@ impl<I> FromIterator<I> for Box<[I]> {
 
 #[cfg(not(no_global_oom_handling))]
 #[stable(feature = "box_slice_clone", since = "1.3.0")]
-impl<T: Clone, A: Allocator + Clone> Clone for Box<[T], A> {
+impl<T: Clone, A: Allocator + Clone> Clone for Box<[T], A>
+where [(); core::alloc::co_alloc_metadata_num_slots::<A>()]: {
     fn clone(&self) -> Self {
         let alloc = Box::allocator(self).clone();
         self.to_vec_in(alloc).into_boxed_slice()

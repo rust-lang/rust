@@ -178,6 +178,7 @@
 #![feature(fundamental)]
 #![cfg_attr(not(test), feature(generator_trait))]
 #![feature(global_co_alloc)]
+#![feature(global_co_alloc_short_term_pref)]
 #![feature(hashmap_internals)]
 #![feature(lang_items)]
 // When we used min_specialization instead of specialization, library/alloc/src/vec/mod.rs was failing with:
