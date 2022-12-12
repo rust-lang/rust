@@ -420,7 +420,7 @@ declare_features! (
     /// Allows `impl Trait` as output type in `Fn` traits in return position of functions.
     (active, impl_trait_in_fn_trait_return, "1.64.0", Some(99697), None),
     /// Allows referencing `Self` and projections in impl-trait.
-    (active, impl_trait_projections, "CURRENT_RUSTC_VERSION", Some(103532), None),
+    (active, impl_trait_projections, "1.67.0", Some(103532), None),
     /// Allows using imported `main` function
     (active, imported_main, "1.53.0", Some(28937), None),
     /// Allows associated types in inherent impls.
@@ -507,7 +507,7 @@ declare_features! (
     /// Allows lints part of the strict provenance effort.
     (active, strict_provenance, "1.61.0", Some(95228), None),
     /// Allows string patterns to dereference values to match them.
-    (active, string_deref_patterns, "CURRENT_RUSTC_VERSION", Some(87121), None),
+    (active, string_deref_patterns, "1.67.0", Some(87121), None),
     /// Allows the use of `#[target_feature]` on safe functions.
     (active, target_feature_11, "1.45.0", Some(69098), None),
     /// Allows using `#[thread_local]` on `static` items.

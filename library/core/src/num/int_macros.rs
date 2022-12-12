@@ -2290,8 +2290,8 @@ macro_rules! int_impl {
         /// ```
         #[doc = concat!("assert_eq!(5", stringify!($SelfT), ".ilog(5), 1);")]
         /// ```
-        #[stable(feature = "int_log", since = "CURRENT_RUSTC_VERSION")]
-        #[rustc_const_stable(feature = "int_log", since = "CURRENT_RUSTC_VERSION")]
+        #[stable(feature = "int_log", since = "1.67.0")]
+        #[rustc_const_stable(feature = "int_log", since = "1.67.0")]
         #[rustc_allow_const_fn_unstable(const_option)]
         #[must_use = "this returns the result of the operation, \
                       without modifying the original"]
@@ -2313,8 +2313,8 @@ macro_rules! int_impl {
         /// ```
         #[doc = concat!("assert_eq!(2", stringify!($SelfT), ".ilog2(), 1);")]
         /// ```
-        #[stable(feature = "int_log", since = "CURRENT_RUSTC_VERSION")]
-        #[rustc_const_stable(feature = "int_log", since = "CURRENT_RUSTC_VERSION")]
+        #[stable(feature = "int_log", since = "1.67.0")]
+        #[rustc_const_stable(feature = "int_log", since = "1.67.0")]
         #[rustc_allow_const_fn_unstable(const_option)]
         #[must_use = "this returns the result of the operation, \
                       without modifying the original"]
@@ -2335,8 +2335,8 @@ macro_rules! int_impl {
         /// ```
         #[doc = concat!("assert_eq!(10", stringify!($SelfT), ".ilog10(), 1);")]
         /// ```
-        #[stable(feature = "int_log", since = "CURRENT_RUSTC_VERSION")]
-        #[rustc_const_stable(feature = "int_log", since = "CURRENT_RUSTC_VERSION")]
+        #[stable(feature = "int_log", since = "1.67.0")]
+        #[rustc_const_stable(feature = "int_log", since = "1.67.0")]
         #[rustc_allow_const_fn_unstable(const_option)]
         #[must_use = "this returns the result of the operation, \
                       without modifying the original"]
@@ -2360,8 +2360,8 @@ macro_rules! int_impl {
         /// ```
         #[doc = concat!("assert_eq!(5", stringify!($SelfT), ".checked_ilog(5), Some(1));")]
         /// ```
-        #[stable(feature = "int_log", since = "CURRENT_RUSTC_VERSION")]
-        #[rustc_const_stable(feature = "int_log", since = "CURRENT_RUSTC_VERSION")]
+        #[stable(feature = "int_log", since = "1.67.0")]
+        #[rustc_const_stable(feature = "int_log", since = "1.67.0")]
         #[must_use = "this returns the result of the operation, \
                       without modifying the original"]
         #[inline]
@@ -2396,8 +2396,8 @@ macro_rules! int_impl {
         /// ```
         #[doc = concat!("assert_eq!(2", stringify!($SelfT), ".checked_ilog2(), Some(1));")]
         /// ```
-        #[stable(feature = "int_log", since = "CURRENT_RUSTC_VERSION")]
-        #[rustc_const_stable(feature = "int_log", since = "CURRENT_RUSTC_VERSION")]
+        #[stable(feature = "int_log", since = "1.67.0")]
+        #[rustc_const_stable(feature = "int_log", since = "1.67.0")]
         #[must_use = "this returns the result of the operation, \
                       without modifying the original"]
         #[inline]
@@ -2420,8 +2420,8 @@ macro_rules! int_impl {
         /// ```
         #[doc = concat!("assert_eq!(10", stringify!($SelfT), ".checked_ilog10(), Some(1));")]
         /// ```
-        #[stable(feature = "int_log", since = "CURRENT_RUSTC_VERSION")]
-        #[rustc_const_stable(feature = "int_log", since = "CURRENT_RUSTC_VERSION")]
+        #[stable(feature = "int_log", since = "1.67.0")]
+        #[rustc_const_stable(feature = "int_log", since = "1.67.0")]
         #[must_use = "this returns the result of the operation, \
                       without modifying the original"]
         #[inline]
