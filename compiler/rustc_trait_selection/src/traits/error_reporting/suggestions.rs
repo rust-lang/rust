@@ -3133,18 +3133,21 @@ impl<'tcx> TypeErrCtxtExt<'tcx> for TypeErrCtxt<'_, 'tcx> {
             if let ObligationCauseCode::ExprBindingObligation(def_id, _, _, idx) = parent_code.deref()
                 && let predicates = self.tcx.predicates_of(def_id).instantiate_identity(self.tcx)
                 && let Some(pred) = predicates.predicates.get(*idx)
-                && let ty::PredicateKind::Clause(ty::Clause::Trait(trait_pred)) = pred.kind().skip_binder()
+                && let Ok(trait_pred) = pred.kind().try_map_bound(|pred| match pred {
+                    ty::PredicateKind::Clause(ty::Clause::Trait(trait_pred)) => Ok(trait_pred),
+                    _ => Err(()),
+                })
             {
                 let mut c = CollectAllMismatches {
                     infcx: self.infcx,
                     param_env,
                     errors: vec![],
                 };
-                if let ty::PredicateKind::Clause(ty::Clause::Trait(
-                        predicate
-                    )) = predicate.kind().skip_binder()
-                {
-                    if let Ok(_) = c.relate(trait_pred, predicate) {
+                if let Ok(trait_predicate) = predicate.kind().try_map_bound(|pred| match pred {
+                    ty::PredicateKind::Clause(ty::Clause::Trait(trait_pred)) => Ok(trait_pred),
+                    _ => Err(()),
+                }) {
+                    if let Ok(_) = c.relate(trait_pred, trait_predicate) {
                         type_diffs = c.errors;
                     }
                 }
