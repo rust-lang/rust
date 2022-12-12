@@ -2075,6 +2075,8 @@ impl Target {
             Vectorcall { .. } if ["x86", "x86_64"].contains(&&self.arch[..]) => true,
             // Return a `None` for other cases so that we know to emit a future compat lint.
             Stdcall { .. } | Fastcall { .. } | Vectorcall { .. } => return None,
+            // Not yet implemented
+            Crabi => false,
         })
     }
 

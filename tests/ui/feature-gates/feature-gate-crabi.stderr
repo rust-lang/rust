@@ -1,0 +1,23 @@
+error[E0658]: crABI is experimental and subject to change
+  --> $DIR/feature-gate-crabi.rs:4:8
+   |
+LL | extern "crabi" {
+   |        ^^^^^^^
+   |
+   = note: see issue #111423 <https://github.com/rust-lang/rust/issues/111423> for more information
+   = help: add `#![feature(crabi)]` to the crate attributes to enable
+
+error[E0570]: `"crabi"` is not a supported ABI for the current target
+  --> $DIR/feature-gate-crabi.rs:4:1
+   |
+LL | / extern "crabi" {
+LL | |
+LL | |
+LL | |     fn f();
+LL | | }
+   | |_^
+
+error: aborting due to 2 previous errors
+
+Some errors have detailed explanations: E0570, E0658.
+For more information about an error, try `rustc --explain E0570`.
