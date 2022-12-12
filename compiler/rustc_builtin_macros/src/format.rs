@@ -478,7 +478,21 @@ fn make_format_args(
             let msg = if let FormatArgumentKind::Named(_) = args.explicit_args()[i].kind {
                 "named argument never used"
             } else {
-                "argument never used"
+                let mut err = "argument never used";
+                match args.explicit_args()[i].expr.to_ty() {
+                    Some(expr) => match expr.kind.is_simple_path() {
+                        Some(symbol) => {
+                            let current_arg = symbol.as_str();
+                            let current_arg_ph = "{".to_owned() + current_arg + "}";
+                            if current_arg.len() > 0 && fmt_str.contains(current_arg_ph.as_str()) {
+                                err = "argument never used, consider removing it"
+                            }
+                        }
+                        None => {}
+                    },
+                    None => {}
+                }
+                err
             };
             (args.explicit_args()[i].expr.span, msg)
         })

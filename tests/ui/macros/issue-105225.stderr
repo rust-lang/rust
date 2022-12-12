@@ -1,0 +1,10 @@
+error: argument never used, consider removing it
+  --> $DIR/issue-105225.rs:3:21
+   |
+LL |     println!("{x}", x);
+   |              -----  ^ argument never used, consider removing it
+   |              |
+   |              formatting specifier missing
+
+error: aborting due to previous error
+
