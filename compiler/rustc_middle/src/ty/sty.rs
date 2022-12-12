@@ -1128,6 +1128,13 @@ impl<'tcx, T> Binder<'tcx, Option<T>> {
     }
 }
 
+impl<'tcx, T: IntoIterator> Binder<'tcx, T> {
+    pub fn iter(self) -> impl Iterator<Item = ty::Binder<'tcx, T::Item>> {
+        let bound_vars = self.1;
+        self.0.into_iter().map(|v| Binder(v, bound_vars))
+    }
+}
+
 /// Represents the projection of an associated type. In explicit UFCS
 /// form this would be written `<T as Trait<..>>::N`.
 #[derive(Copy, Clone, PartialEq, Eq, PartialOrd, Ord, Hash, Debug, TyEncodable, TyDecodable)]

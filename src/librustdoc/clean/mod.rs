@@ -127,7 +127,7 @@ fn clean_generic_bound<'tcx>(
         hir::GenericBound::LangItemTrait(lang_item, span, _, generic_args) => {
             let def_id = cx.tcx.require_lang_item(lang_item, Some(span));
 
-            let trait_ref = ty::TraitRef::identity(cx.tcx, def_id).skip_binder();
+            let trait_ref = ty::TraitRef::identity(cx.tcx, def_id);
 
             let generic_args = clean_generic_args(generic_args, cx);
             let GenericArgs::AngleBracketed { bindings, .. } = generic_args
@@ -156,17 +156,18 @@ fn clean_generic_bound<'tcx>(
 
 pub(crate) fn clean_trait_ref_with_bindings<'tcx>(
     cx: &mut DocContext<'tcx>,
-    trait_ref: ty::TraitRef<'tcx>,
+    trait_ref: ty::PolyTraitRef<'tcx>,
     bindings: ThinVec<TypeBinding>,
 ) -> Path {
-    let kind = cx.tcx.def_kind(trait_ref.def_id).into();
+    let kind = cx.tcx.def_kind(trait_ref.def_id()).into();
     if !matches!(kind, ItemType::Trait | ItemType::TraitAlias) {
-        span_bug!(cx.tcx.def_span(trait_ref.def_id), "`TraitRef` had unexpected kind {:?}", kind);
+        span_bug!(cx.tcx.def_span(trait_ref.def_id()), "`TraitRef` had unexpected kind {:?}", kind);
     }
-    inline::record_extern_fqn(cx, trait_ref.def_id, kind);
-    let path = external_path(cx, trait_ref.def_id, true, bindings, trait_ref.substs);
+    inline::record_extern_fqn(cx, trait_ref.def_id(), kind);
+    let path =
+        external_path(cx, trait_ref.def_id(), true, bindings, trait_ref.skip_binder().substs);
 
-    debug!("ty::TraitRef\n  subst: {:?}\n", trait_ref.substs);
+    debug!(?trait_ref);
 
     path
 }
@@ -187,7 +188,7 @@ fn clean_poly_trait_ref_with_bindings<'tcx>(
         })
         .collect();
 
-    let trait_ = clean_trait_ref_with_bindings(cx, poly_trait_ref.skip_binder(), bindings);
+    let trait_ = clean_trait_ref_with_bindings(cx, poly_trait_ref, bindings);
     GenericBound::TraitBound(
         PolyTrait { trait_, generic_params: late_bound_regions },
         hir::TraitBoundModifier::None,
@@ -398,32 +399,31 @@ fn clean_projection_predicate<'tcx>(
         })
         .collect();
 
-    let ty::ProjectionPredicate { projection_ty, term } = pred.skip_binder();
-
     WherePredicate::EqPredicate {
-        lhs: Box::new(clean_projection(projection_ty, cx, None)),
-        rhs: Box::new(clean_middle_term(term, cx)),
+        lhs: Box::new(clean_projection(pred.map_bound(|p| p.projection_ty), cx, None)),
+        rhs: Box::new(clean_middle_term(pred.skip_binder().term, cx)),
         bound_params: late_bound_regions,
     }
 }
 
 fn clean_projection<'tcx>(
-    ty: ty::ProjectionTy<'tcx>,
+    ty: ty::Binder<'tcx, ty::ProjectionTy<'tcx>>,
     cx: &mut DocContext<'tcx>,
     def_id: Option<DefId>,
 ) -> Type {
-    if cx.tcx.def_kind(ty.item_def_id) == DefKind::ImplTraitPlaceholder {
+    if cx.tcx.def_kind(ty.skip_binder().item_def_id) == DefKind::ImplTraitPlaceholder {
         let bounds = cx
             .tcx
-            .explicit_item_bounds(ty.item_def_id)
+            .explicit_item_bounds(ty.skip_binder().item_def_id)
             .iter()
-            .map(|(bound, _)| EarlyBinder(*bound).subst(cx.tcx, ty.substs))
+            .map(|(bound, _)| EarlyBinder(*bound).subst(cx.tcx, ty.skip_binder().substs))
             .collect::<Vec<_>>();
         return clean_middle_opaque_bounds(cx, bounds);
     }
 
-    let trait_ = clean_trait_ref_with_bindings(cx, ty.trait_ref(cx.tcx), ThinVec::new());
-    let self_type = clean_middle_ty(ty.self_ty(), cx, None);
+    let trait_ =
+        clean_trait_ref_with_bindings(cx, ty.map_bound(|ty| ty.trait_ref(cx.tcx)), ThinVec::new());
+    let self_type = clean_middle_ty(ty.skip_binder().self_ty(), cx, None);
     let self_def_id = if let Some(def_id) = def_id {
         cx.tcx.opt_parent(def_id).or(Some(def_id))
     } else {
@@ -431,7 +431,7 @@ fn clean_projection<'tcx>(
     };
     let should_show_cast = compute_should_show_cast(self_def_id, &trait_, &self_type);
     Type::QPath(Box::new(QPathData {
-        assoc: projection_to_path_segment(ty, cx),
+        assoc: projection_to_path_segment(ty.skip_binder(), cx),
         should_show_cast,
         self_type,
         trait_,
@@ -783,7 +783,7 @@ fn clean_ty_generics<'tcx>(
 
                     let proj = projection.map(|p| {
                         (
-                            clean_projection(p.skip_binder().projection_ty, cx, None),
+                            clean_projection(p.map_bound(|p| p.projection_ty), cx, None),
                             p.skip_binder().term,
                         )
                     });
@@ -1076,11 +1076,10 @@ fn clean_fn_decl_from_did_and_sig<'tcx>(
         c_variadic: sig.skip_binder().c_variadic,
         inputs: Arguments {
             values: sig
-                .skip_binder()
                 .inputs()
                 .iter()
                 .map(|t| Argument {
-                    type_: clean_middle_ty(*t, cx, None),
+                    type_: clean_middle_ty(*t.skip_binder(), cx, None),
                     name: names
                         .next()
                         .map(|i| i.name)
@@ -1781,7 +1780,7 @@ pub(crate) fn clean_middle_ty<'tcx>(
         }
         ty::Tuple(t) => Tuple(t.iter().map(|t| clean_middle_ty(t, cx, None)).collect()),
 
-        ty::Projection(ref data) => clean_projection(*data, cx, def_id),
+        ty::Projection(ref data) => clean_projection(ty::Binder::dummy(*data), cx, def_id),
 
         ty::Param(ref p) => {
             if let Some(bounds) = cx.impl_trait_bounds.remove(&p.index.into()) {
