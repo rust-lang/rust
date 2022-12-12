@@ -1,14 +1,16 @@
-// This is used to ICE with MIR inlining enabled due to an invalid bitcast.
-// run-pass
-// compile-flags: -O -Zmir-opt-level=3
-#![feature(portable_simd)]
+// build-pass
 
-use std::simd::Simd;
+#![crate_type = "lib"]
 
-fn main() {
-    let a = Simd::from_array([0, 4, 1, 5]);
-    let b = Simd::from_array([2, 6, 3, 7]);
-    let (x, y) = a.deinterleave(b);
-    assert_eq!(x.to_array(), [0, 1, 2, 3]);
-    assert_eq!(y.to_array(), [4, 5, 6, 7]);
+#![feature(repr_simd)]
+#![feature(platform_intrinsics)]
+
+#[allow(non_camel_case_types)]
+#[derive(Clone, Copy)]
+#[repr(simd)]
+pub struct i32x4([i32; 4]);
+
+pub fn f(a: i32x4) -> [i32; 4] {
+    let b = a;
+    b.0
 }
