@@ -97,11 +97,7 @@ fn gather_explicit_predicates_of(tcx: TyCtxt<'_>, def_id: DefId) -> ty::GenericP
             | ItemKind::Struct(_, ref generics)
             | ItemKind::Union(_, ref generics) => *generics,
 
-            ItemKind::Trait(_, _, ref generics, ..) => {
-                is_trait = Some(ty::TraitRef::identity(tcx, def_id));
-                *generics
-            }
-            ItemKind::TraitAlias(ref generics, _) => {
+            ItemKind::Trait(_, _, ref generics, ..) | ItemKind::TraitAlias(ref generics, _) => {
                 is_trait = Some(ty::TraitRef::identity(tcx, def_id));
                 *generics
             }
