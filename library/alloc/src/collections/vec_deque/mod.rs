@@ -8,7 +8,7 @@
 #![feature(global_co_alloc)]
 
 #![stable(feature = "rust1", since = "1.0.0")]
-use core::alloc;
+use core::alloc::{self, GlobalAlloc};
 use core::cmp::{self, Ordering};
 use core::fmt;
 use core::hash::{Hash, Hasher};
@@ -2755,8 +2755,9 @@ where [(); alloc::co_alloc_metadata_num_slots_with_preference::<A>(COOP_PREFERRE
 }
 
 #[stable(feature = "rust1", since = "1.0.0")]
-impl<T> FromIterator<T> for VecDeque<T> {
-    fn from_iter<I: IntoIterator<Item = T>>(iter: I) -> VecDeque<T> {
+impl<T, const COOP_PREFERRED: bool> FromIterator<T> for VecDeque<T, GlobalAlloc, COOP_PREFERRED>
+where [(); alloc::co_alloc_metadata_num_slots_with_preference::<A>(COOP_PREFERRED)]: {
+    fn from_iter<I: IntoIterator<Item = T>>(iter: I) -> VecDeque<T, Global, COOP_PREFERRED> {
         SpecFromIter::spec_from_iter(iter.into_iter())
     }
 }
@@ -2852,7 +2853,8 @@ where [(); alloc::co_alloc_metadata_num_slots_with_preference::<A>(COOP_PREFERRE
     /// conversion. This isn't yet a guarantee though, and
     /// shouldn't be relied on.
     #[inline]
-    fn from(other: Vec<T, A>) -> Self {
+    fn from<const OTHER_COOP_PREFERRED: bool>(other: Vec<T, A, OTHER_COOP_PREFERRED>) -> Self
+    where [(); alloc::co_alloc_metadata_num_slots_with_preference::<A>(OTHER_COOP_PREFERRED)]: {
         let (ptr, len, cap, alloc) = other.into_raw_parts_with_alloc();
         Self { head: 0, len, buf: unsafe { RawVec::from_raw_parts_in(ptr, cap, alloc) } }
     }
@@ -2910,7 +2912,8 @@ where [(); alloc::co_alloc_metadata_num_slots_with_preference::<A>(COOP_PREFERRE
 }
 
 #[stable(feature = "std_collections_from_array", since = "1.56.0")]
-impl<T, const N: usize> From<[T; N]> for VecDeque<T> {
+impl<T, const N: usize, const COOP_PREFERRED: bool> From<[T; N]> for VecDeque<T, Global, COOP_PREFERRED>
+where [(); alloc::co_alloc_metadata_num_slots_with_preference::<A>(COOP_PREFERRED)]: {
     /// Converts a `[T; N]` into a `VecDeque<T>`.
     ///
     /// ```

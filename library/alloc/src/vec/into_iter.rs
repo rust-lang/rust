@@ -140,7 +140,7 @@ where [(); alloc::co_alloc_metadata_num_slots_with_preference::<A>(COOP_PREFERRE
 
     #[cfg(not(no_global_oom_handling))]
     #[inline]
-    pub(crate) fn into_vecdeque(self) -> VecDeque<T, A> {
+    pub(crate) fn into_vecdeque(self) -> VecDeque<T, A, COOP_PREFERRED> {
         // Keep our `Drop` impl from dropping the elements and the allocator
         let mut this = ManuallyDrop::new(self);
 

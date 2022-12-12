@@ -32,7 +32,7 @@ where [(); alloc::co_alloc_metadata_num_slots_with_preference::<A>(COOP_PREFERRE
     pub(super) tail_len: usize,
     /// Current remaining range to remove
     pub(super) iter: slice::Iter<'a, T>,
-    pub(super) vec: NonNull<Vec<T, A>>,
+    pub(super) vec: NonNull<Vec<T, A, COOP_PREFERRED>>,
 }
 
 #[stable(feature = "collection_debug", since = "1.17.0")]
