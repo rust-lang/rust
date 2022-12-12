@@ -108,7 +108,7 @@ impl<'a, 'tcx> BlanketImplFinder<'a, 'tcx> {
                             ty::Binder::dummy(trait_ref.0),
                             ThinVec::new(),
                         )),
-                        for_: clean_middle_ty(ty.0, cx, None),
+                        for_: clean_middle_ty(ty::Binder::dummy(ty.0), cx, None),
                         items: cx
                             .tcx
                             .associated_items(impl_def_id)
@@ -117,7 +117,7 @@ impl<'a, 'tcx> BlanketImplFinder<'a, 'tcx> {
                             .collect::<Vec<_>>(),
                         polarity: ty::ImplPolarity::Positive,
                         kind: ImplKind::Blanket(Box::new(clean_middle_ty(
-                            trait_ref.0.self_ty(),
+                            ty::Binder::dummy(trait_ref.0.self_ty()),
                             cx,
                             None,
                         ))),

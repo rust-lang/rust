@@ -91,8 +91,12 @@ pub(crate) fn substs_to_args<'tcx>(
             skip_first = false;
             None
         }
-        GenericArgKind::Type(ty) => Some(GenericArg::Type(clean_middle_ty(ty, cx, None))),
-        GenericArgKind::Const(ct) => Some(GenericArg::Const(Box::new(clean_middle_const(ct, cx)))),
+        GenericArgKind::Type(ty) => {
+            Some(GenericArg::Type(clean_middle_ty(ty::Binder::dummy(ty), cx, None)))
+        }
+        GenericArgKind::Const(ct) => {
+            Some(GenericArg::Const(Box::new(clean_middle_const(ty::Binder::dummy(ct), cx))))
+        }
     }));
     ret_val
 }
@@ -110,7 +114,7 @@ fn external_generic_args<'tcx>(
         let inputs =
             // The trait's first substitution is the one after self, if there is one.
             match substs.iter().nth(if has_self { 1 } else { 0 }).unwrap().expect_ty().kind() {
-                ty::Tuple(tys) => tys.iter().map(|t| clean_middle_ty(t, cx, None)).collect::<Vec<_>>().into(),
+                ty::Tuple(tys) => tys.iter().map(|t| clean_middle_ty(ty::Binder::dummy(t), cx, None)).collect::<Vec<_>>().into(),
                 _ => return GenericArgs::AngleBracketed { args: args.into(), bindings },
             };
         let output = bindings.into_iter().next().and_then(|binding| match binding.kind {
