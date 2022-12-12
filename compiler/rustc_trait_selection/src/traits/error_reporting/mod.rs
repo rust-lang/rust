@@ -1,4 +1,5 @@
 mod ambiguity;
+pub mod method_chain;
 pub mod on_unimplemented;
 pub mod suggestions;
 
