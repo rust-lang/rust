@@ -402,9 +402,10 @@ pub(super) fn explicit_predicates_of<'tcx>(
             // For a predicate from a where clause to become a bound on an
             // associated type:
             // * It must use the identity substs of the item.
-            //     * Since any generic parameters on the item are not in scope,
-            //       this means that the item is not a GAT, and its identity
-            //       substs are the same as the trait's.
+            //   * We're in the scope of the trait, so we can't name any
+            //     parameters of the GAT. That means that all we need to
+            //     check are that the substs of the projection are the
+            //     identity substs of the trait.
             // * It must be an associated type for this trait (*not* a
             //   supertrait).
             if let ty::Projection(projection) = ty.kind() {
