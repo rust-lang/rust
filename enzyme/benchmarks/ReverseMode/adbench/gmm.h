@@ -1,9 +1,11 @@
 #pragma once
 
+#include "../../json.hpp"
 #include "../mshared/defs.h"
 #include <vector>
 #include <string>
 #include <iostream>
+#include <fstream>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
@@ -13,6 +15,7 @@ float tdiff(struct timeval *start, struct timeval *end) {
 }
 
 using namespace std;
+using json = nlohmann::json;
 
 struct GMMInput {
     int d, k, n;
@@ -167,10 +170,15 @@ int main(const int argc, const char* argv[]) {
     getTests(paths, "data/1k", "1k/");
     getTests(paths, "data/2.5k", "2.5k/");
     getTests(paths, "data/10k", "10k/");
+    
+    std::ofstream jsonfile("results.json", std::ofstream::trunc);
+    json test_results;
 
     for (auto path : paths) {
     	if (path == "10k/gmm_d128_K200.txt" || path == "10k/gmm_d128_K100.txt" || path == "10k/gmm_d64_K200.txt" || path == "10k/gmm_d128_K50.txt" || path == "10k/gmm_d64_K100.txt") continue;
         printf("starting path %s\n", path.c_str());
+      json test_suite;
+      test_suite["name"] = path;
 
     {
 
@@ -188,9 +196,15 @@ int main(const int argc, const char* argv[]) {
       calculate_jacobian<gmm_objective_b>(input, result);
       gettimeofday(&end, NULL);
       printf("Tapenade combined %0.6f\n", tdiff(&start, &end));
-      for(unsigned i=0; i<5; i++) {
+      json tapenade;
+      tapenade["name"] = "Tapenade combined";
+      tapenade["runtime"] = tdiff(&start, &end);
+      for (unsigned i = result.gradient.size() - 5;
+           i < result.gradient.size(); i++) {
         printf("%f ", result.gradient[i]);
+        tapenade["result"].push_back(result.gradient[i]);
       }
+      test_suite["tools"].push_back(tapenade);
       printf("\n");
     }
 
@@ -212,10 +226,16 @@ int main(const int argc, const char* argv[]) {
       calculate_jacobian<adept_dgmm_objective>(input, result);
       gettimeofday(&end, NULL);
       printf("Adept combined %0.6f\n", tdiff(&start, &end));
-      for(unsigned i=0; i<5; i++) {
+      json adept;
+      adept["name"] = "Adept combined";
+      adept["runtime"] = tdiff(&start, &end);
+      for (unsigned i = result.gradient.size() - 5;
+           i < result.gradient.size(); i++) {
         printf("%f ", result.gradient[i]);
+        adept["result"].push_back(result.gradient[i]);
       }
       printf("\n");
+      test_suite["tools"].push_back(adept);
     } catch(std::bad_alloc) {
        printf("Adept combined 88888888 ooms\n");
     }
@@ -237,14 +257,23 @@ int main(const int argc, const char* argv[]) {
       gettimeofday(&start, NULL);
       calculate_jacobian<dgmm_objective>(input, result);
       gettimeofday(&end, NULL);
-      printf("Enzyme combined %0.6f\n", tdiff(&start, &end));
-      for(unsigned i=0; i<5; i++) {
+      json enzyme;
+      enzyme["name"] = "Enzyme combined";
+      enzyme["runtime"] = tdiff(&start, &end);
+      for (unsigned i = result.gradient.size() - 5;
+           i < result.gradient.size(); i++) {
         printf("%f ", result.gradient[i]);
+        enzyme["result"].push_back(result.gradient[i]);
       }
       printf("\n");
+      test_suite["tools"].push_back(enzyme);
     }
 
     }
-
-    }
+    test_suite["llvm-version"] = __clang_version__;
+    test_suite["mode"] = "ReverseMode";
+    test_suite["batch-size"] = 1;
+    test_results.push_back(test_suite);
+   }
+   jsonfile << std::setw(4) << test_results;
 }

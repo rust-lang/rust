@@ -51,3 +51,9 @@ jobs:
       run: cd enzyme/build && make bench-enzyme
     - name: results
       run: cat enzyme/benchmarks/*/*/results.txt
+    - name: graph results
+      run: |
+          for p in enzyme/benchmarks/ReverseMode/*/results.json; do
+          python3 enzyme/benchmarks/upload-results.py $p --url https://enzyme.mit.edu/cibench/api --token ${{ secrets.GRAPH_TOKEN }}
+          done
+      if: github.event_name != 'pull_request' && matrix.build.mode == 'Release'

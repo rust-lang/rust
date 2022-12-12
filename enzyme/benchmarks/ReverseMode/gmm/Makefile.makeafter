@@ -1,4 +1,4 @@
-# RUN: cd %S && LD_LIBRARY_PATH="%bldpath:$LD_LIBRARY_PATH" BENCH="%bench" BENCHLINK="%blink" LOAD="%loadEnzyme" make -B gmm-unopt.ll gmm-raw.ll resultsafter.txt -f %s
+# RUN: cd %S && LD_LIBRARY_PATH="%bldpath:$LD_LIBRARY_PATH" BENCH="%bench" BENCHLINK="%blink" LOAD="%loadEnzyme" make -B gmm-unopt.ll gmm-raw.ll resultsafter.json -f %s
 
 .PHONY: clean
 
@@ -19,5 +19,5 @@ clean:
 gmm.o: gmm-opt.ll
 	clang++ -O2 $^ -o $@ -lblas $(BENCHLINK)
 
-resultsafter.txt: gmm.o
-	./$^ | tee $@
+resultsafter.json: ba.o
+	./$^

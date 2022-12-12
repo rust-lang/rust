@@ -1,4 +1,4 @@
-# RUN: cd %S && LD_LIBRARY_PATH="%bldpath:$LD_LIBRARY_PATH" BENCH="%bench" BENCHLINK="%blink" LOAD="%loadEnzyme" make -B lstm-raw.ll results.txt -f %s
+# RUN: cd %S && LD_LIBRARY_PATH="%bldpath:$LD_LIBRARY_PATH" BENCH="%bench" BENCHLINK="%blink" LOAD="%loadEnzyme" make -B lstm-raw.ll results.json -f %s
 
 .PHONY: clean
 
@@ -19,5 +19,5 @@ clean:
 lstm.o: lstm-opt.ll
 	clang++ -O2 $^ -o $@ -lblas $(BENCHLINK) -lm
 
-results.txt: lstm.o
-	./$^ | tee $@
+results.json: lstm.o
+	./$^
