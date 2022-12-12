@@ -42,7 +42,7 @@ impl<'a, 'b, R: BufRead> Converter<'a, 'b, R> {
             } else if line.starts_with(VIDEO_BLOCK_PREFIX) {
                 self.process_video_block(None, 0)?;
             } else {
-                self.process_paragraph(0)?;
+                self.process_paragraph(0, |line| line.is_empty())?;
             }
 
             self.skip_blank_lines()?;
@@ -84,16 +84,19 @@ impl<'a, 'b, R: BufRead> Converter<'a, 'b, R> {
 
     fn process_list(&mut self) -> anyhow::Result<()> {
         let mut nesting = ListNesting::new();
-        while let Some(line) = self.iter.next() {
-            let line = line?;
-            if line.is_empty() {
-                break;
-            }
+        while let Some(line) = self.iter.peek() {
+            let line = line.as_deref().map_err(|e| anyhow!("{e}"))?;
 
-            if let Some((marker, item)) = get_list_item(&line) {
+            if get_list_item(&line).is_some() {
+                let line = self.iter.next().unwrap()?;
+                let (marker, item) = get_list_item(&line).unwrap();
                 nesting.set_current(marker);
                 self.write_list_item(item, &nesting);
+                self.process_paragraph(nesting.indent(), |line| {
+                    line.is_empty() || get_list_item(line).is_some() || line == "+"
+                })?;
             } else if line == "+" {
+                let _ = self.iter.next().unwrap()?;
                 let line = self
                     .iter
                     .peek()
@@ -118,11 +121,17 @@ impl<'a, 'b, R: BufRead> Converter<'a, 'b, R> {
                     self.process_video_block(None, indent)?;
                 } else {
                     self.write_line("", 0);
-                    self.process_paragraph(indent)?;
+                    let current = nesting.current().unwrap();
+                    self.process_paragraph(indent, |line| {
+                        line.is_empty()
+                            || get_list_item(line).filter(|(m, _)| m == current).is_some()
+                            || line == "+"
+                    })?;
                 }
             } else {
-                bail!("not a list block")
+                break;
             }
+            self.skip_blank_lines()?;
         }
 
         Ok(())
@@ -235,15 +244,19 @@ impl<'a, 'b, R: BufRead> Converter<'a, 'b, R> {
         bail!("not a video block")
     }
 
-    fn process_paragraph(&mut self, level: usize) -> anyhow::Result<()> {
+    fn process_paragraph<P>(&mut self, level: usize, predicate: P) -> anyhow::Result<()>
+    where
+        P: Fn(&str) -> bool,
+    {
         while let Some(line) = self.iter.peek() {
             let line = line.as_deref().map_err(|e| anyhow!("{e}"))?;
-            if line.is_empty() || (level > 0 && line == "+") {
+            if predicate(&line) {
                 break;
             }
 
             self.write_indent(level);
             let line = self.iter.next().unwrap()?;
+            let line = line.trim_start();
             if line.ends_with('+') {
                 let line = &line[..(line.len() - 1)];
                 self.output.push_str(line);
@@ -373,6 +386,10 @@ impl ListNesting {
         Self(Vec::<ListMarker>::with_capacity(6))
     }
 
+    fn current(&mut self) -> Option<&ListMarker> {
+        self.0.last()
+    }
+
     fn set_current(&mut self, marker: ListMarker) {
         let Self(markers) = self;
         if let Some(index) = markers.iter().position(|m| *m == marker) {
@@ -469,6 +486,22 @@ rustup update nightly
 ----
 This is a plain listing.
 ----
+* single line item followed by empty lines
+
+* multiline list
+item followed by empty lines
+
+* multiline list
+  item with indent
+
+* multiline list
+item not followed by empty lines
+* multiline list
+item followed by different marker
+** foo
+** bar
+* multiline list
+item followed by list continuation
 +
 paragraph
 paragraph
@@ -539,6 +572,19 @@ Release: release:2022-01-01[]
   ```
   This is a plain listing.
   ```
+- single line item followed by empty lines
+- multiline list
+  item followed by empty lines
+- multiline list
+  item with indent
+- multiline list
+  item not followed by empty lines
+- multiline list
+  item followed by different marker
+  - foo
+  - bar
+- multiline list
+  item followed by list continuation
 
   paragraph
   paragraph
