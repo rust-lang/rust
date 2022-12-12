@@ -10,9 +10,9 @@ LL |   trait Foo {
 LL |       let _z = y.clone();
    |                  ^^^^^ method cannot be called on `Box<dyn Foo>` due to unsatisfied trait bounds
   --> $SRC_DIR/alloc/src/boxed.rs:LL:COL
-$SRC_DIR/alloc/src/boxed.rs:LL:COL
-$SRC_DIR/alloc/src/boxed.rs:LL:COL
-$SRC_DIR/alloc/src/boxed.rs:LL:COL: doesn't satisfy `Box<dyn Foo>: Clone`
+  ::: $SRC_DIR/alloc/src/boxed.rs:LL:COL
+   |
+   = note: doesn't satisfy `Box<dyn Foo>: Clone`
    |
    = note: the following trait bounds were not satisfied:
            `dyn Foo: Sized`

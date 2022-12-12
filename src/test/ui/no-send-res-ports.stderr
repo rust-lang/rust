@@ -31,10 +31,6 @@ LL |     thread::spawn(move|| {
    |                   ^^^^^^
 note: required by a bound in `spawn`
   --> $SRC_DIR/std/src/thread/mod.rs:LL:COL
-$SRC_DIR/std/src/thread/mod.rs:LL:COL
-$SRC_DIR/std/src/thread/mod.rs:LL:COL
-$SRC_DIR/std/src/thread/mod.rs:LL:COL
-$SRC_DIR/std/src/thread/mod.rs:LL:COL
 
 error: aborting due to previous error
 

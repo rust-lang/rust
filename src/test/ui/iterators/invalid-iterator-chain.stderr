@@ -22,9 +22,6 @@ LL | |         });
    | |__________^ `Iterator::Item` changed to `()` here
 note: required by a bound in `std::iter::Iterator::sum`
   --> $SRC_DIR/core/src/iter/traits/iterator.rs:LL:COL
-$SRC_DIR/core/src/iter/traits/iterator.rs:LL:COL
-$SRC_DIR/core/src/iter/traits/iterator.rs:LL:COL
-$SRC_DIR/core/src/iter/traits/iterator.rs:LL:COL
 
 error[E0277]: a value of type `i32` cannot be made by summing an iterator over elements of type `()`
   --> $DIR/invalid-iterator-chain.rs:18:14
@@ -57,9 +54,6 @@ LL |             .map(|x| { x; })
    |              ^^^^^^^^^^^^^^^ `Iterator::Item` changed to `()` here
 note: required by a bound in `std::iter::Iterator::sum`
   --> $SRC_DIR/core/src/iter/traits/iterator.rs:LL:COL
-$SRC_DIR/core/src/iter/traits/iterator.rs:LL:COL
-$SRC_DIR/core/src/iter/traits/iterator.rs:LL:COL
-$SRC_DIR/core/src/iter/traits/iterator.rs:LL:COL
 
 error[E0277]: a value of type `i32` cannot be made by summing an iterator over elements of type `f64`
   --> $DIR/invalid-iterator-chain.rs:28:14
@@ -88,9 +82,6 @@ LL |             .map(|x| { x + 1.0 })
    |              -------------------- `Iterator::Item` remains `f64` here
 note: required by a bound in `std::iter::Iterator::sum`
   --> $SRC_DIR/core/src/iter/traits/iterator.rs:LL:COL
-$SRC_DIR/core/src/iter/traits/iterator.rs:LL:COL
-$SRC_DIR/core/src/iter/traits/iterator.rs:LL:COL
-$SRC_DIR/core/src/iter/traits/iterator.rs:LL:COL
 
 error[E0277]: a value of type `i32` cannot be made by summing an iterator over elements of type `()`
   --> $DIR/invalid-iterator-chain.rs:30:54
@@ -112,9 +103,6 @@ LL |     println!("{}", vec![0, 1].iter().map(|x| { x; }).sum::<i32>());
    |                    this expression has type `Vec<{integer}>`
 note: required by a bound in `std::iter::Iterator::sum`
   --> $SRC_DIR/core/src/iter/traits/iterator.rs:LL:COL
-$SRC_DIR/core/src/iter/traits/iterator.rs:LL:COL
-$SRC_DIR/core/src/iter/traits/iterator.rs:LL:COL
-$SRC_DIR/core/src/iter/traits/iterator.rs:LL:COL
 
 error[E0277]: a value of type `i32` cannot be made by summing an iterator over elements of type `&()`
   --> $DIR/invalid-iterator-chain.rs:31:40
@@ -135,9 +123,6 @@ LL |     println!("{}", vec![(), ()].iter().sum::<i32>());
    |                    this expression has type `Vec<()>`
 note: required by a bound in `std::iter::Iterator::sum`
   --> $SRC_DIR/core/src/iter/traits/iterator.rs:LL:COL
-$SRC_DIR/core/src/iter/traits/iterator.rs:LL:COL
-$SRC_DIR/core/src/iter/traits/iterator.rs:LL:COL
-$SRC_DIR/core/src/iter/traits/iterator.rs:LL:COL
 
 error[E0277]: a value of type `Vec<i32>` cannot be built from an iterator over elements of type `()`
   --> $DIR/invalid-iterator-chain.rs:40:25
@@ -167,8 +152,6 @@ LL |       let f = e.filter(|_| false);
    |                 ----------------- `Iterator::Item` remains `()` here
 note: required by a bound in `collect`
   --> $SRC_DIR/core/src/iter/traits/iterator.rs:LL:COL
-$SRC_DIR/core/src/iter/traits/iterator.rs:LL:COL
-$SRC_DIR/core/src/iter/traits/iterator.rs:LL:COL
 
 error: aborting due to 6 previous errors
 

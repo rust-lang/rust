@@ -8,7 +8,9 @@ LL |     let Some(y) = x;
    = note: for more information, visit https://doc.rust-lang.org/book/ch18-02-refutability.html
 note: `Option<i32>` defined here
   --> $SRC_DIR/core/src/option.rs:LL:COL
-$SRC_DIR/core/src/option.rs:LL:COL: not covered
+  ::: $SRC_DIR/core/src/option.rs:LL:COL
+   |
+   = note: not covered
    = note: the matched value is of type `Option<i32>`
 help: you might want to use `if let` to ignore the variant that isn't matched
    |

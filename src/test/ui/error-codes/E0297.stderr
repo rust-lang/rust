@@ -6,7 +6,9 @@ LL |     for Some(x) in xs {}
    |
 note: `Option<i32>` defined here
   --> $SRC_DIR/core/src/option.rs:LL:COL
-$SRC_DIR/core/src/option.rs:LL:COL: not covered
+  ::: $SRC_DIR/core/src/option.rs:LL:COL
+   |
+   = note: not covered
    = note: the matched value is of type `Option<i32>`
 
 error: aborting due to previous error

@@ -7,8 +7,6 @@ LL |     let whatever: [u32; 10] = (0..10).collect();
    = help: the trait `FromIterator<{integer}>` is not implemented for `[u32; 10]`
 note: required by a bound in `collect`
   --> $SRC_DIR/core/src/iter/traits/iterator.rs:LL:COL
-$SRC_DIR/core/src/iter/traits/iterator.rs:LL:COL
-$SRC_DIR/core/src/iter/traits/iterator.rs:LL:COL
 
 error: aborting due to previous error
 
