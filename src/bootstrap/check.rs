@@ -105,7 +105,7 @@ impl Step for Std {
             "Checking stage{} library artifacts ({} -> {})",
             builder.top_stage, &compiler.host, target
         ));
-        run_cargo(builder, cargo, &libstd_stamp(builder, compiler, target), vec![], true);
+        run_cargo(builder, cargo, &libstd_stamp(builder, compiler, target), vec![], true, false);
 
         // We skip populating the sysroot in non-zero stage because that'll lead
         // to rlib/rmeta conflicts if std gets built during this session.
@@ -155,7 +155,14 @@ impl Step for Std {
             "Checking stage{} library test/bench/example targets ({} -> {})",
             builder.top_stage, &compiler.host, target
         ));
-        run_cargo(builder, cargo, &libstd_test_stamp(builder, compiler, target), vec![], true);
+        run_cargo(
+            builder,
+            cargo,
+            &libstd_test_stamp(builder, compiler, target),
+            vec![],
+            true,
+            false,
+        );
     }
 }
 
@@ -225,7 +232,7 @@ impl Step for Rustc {
             "Checking stage{} compiler artifacts ({} -> {})",
             builder.top_stage, &compiler.host, target
         ));
-        run_cargo(builder, cargo, &librustc_stamp(builder, compiler, target), vec![], true);
+        run_cargo(builder, cargo, &librustc_stamp(builder, compiler, target), vec![], true, false);
 
         let libdir = builder.sysroot_libdir(compiler, target);
         let hostdir = builder.sysroot_libdir(compiler, compiler.host);
@@ -285,6 +292,7 @@ impl Step for CodegenBackend {
             &codegen_backend_stamp(builder, compiler, target, backend),
             vec![],
             true,
+            false,
         );
     }
 }
@@ -343,7 +351,7 @@ impl Step for RustAnalyzer {
             "Checking stage{} {} artifacts ({} -> {})",
             compiler.stage, "rust-analyzer", &compiler.host.triple, target.triple
         ));
-        run_cargo(builder, cargo, &stamp(builder, compiler, target), vec![], true);
+        run_cargo(builder, cargo, &stamp(builder, compiler, target), vec![], true, false);
 
         /// Cargo's output path in a given stage, compiled by a particular
         /// compiler for the specified target.
@@ -417,6 +425,7 @@ macro_rules! tool_check_step {
                     &stamp(builder, compiler, target),
                     vec![],
                     true,
+                    false,
                 );
 
                 /// Cargo's output path in a given stage, compiled by a particular
