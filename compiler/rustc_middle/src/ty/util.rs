@@ -1,6 +1,5 @@
 //! Miscellaneous type-system utilities that are too small to deserve their own modules.
 
-use crate::middle::codegen_fn_attrs::CodegenFnAttrFlags;
 use crate::mir;
 use crate::ty::layout::IntegerExt;
 use crate::ty::{
@@ -591,7 +590,8 @@ impl<'tcx> TyCtxt<'tcx> {
 
     /// Returns `true` if this is a `static` item with the `#[thread_local]` attribute.
     pub fn is_thread_local_static(self, def_id: DefId) -> bool {
-        self.codegen_fn_attrs(def_id).flags.contains(CodegenFnAttrFlags::THREAD_LOCAL)
+        matches!(self.def_kind(def_id), DefKind::Static(_))
+            && self.has_attr(def_id, sym::thread_local)
     }
 
     /// Returns `true` if the node pointed to by `def_id` is a mutable `static` item.
