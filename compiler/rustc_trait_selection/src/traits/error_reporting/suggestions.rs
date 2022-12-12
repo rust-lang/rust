@@ -2212,17 +2212,11 @@ impl<'tcx> TypeErrCtxtExt<'tcx> for TypeErrCtxt<'_, 'tcx> {
                     interior_span,
                     format!("has type `{}` which {}", target_ty, trait_explanation),
                 );
-                // If available, use the scope span to annotate the drop location.
-                let mut scope_note = None;
                 if let Some(scope_span) = scope_span {
                     let scope_span = source_map.end_point(scope_span);
 
                     let msg = format!("{} is later dropped here", snippet);
-                    if source_map.is_multiline(yield_span.between(scope_span)) {
-                        span.push_span_label(scope_span, msg);
-                    } else {
-                        scope_note = Some((scope_span, msg));
-                    }
+                    span.push_span_label(scope_span, msg);
                 }
                 err.span_note(
                     span,
@@ -2231,9 +2225,6 @@ impl<'tcx> TypeErrCtxtExt<'tcx> for TypeErrCtxt<'_, 'tcx> {
                         future_or_generator, trait_explanation, an_await_or_yield
                     ),
                 );
-                if let Some((span, msg)) = scope_note {
-                    err.span_note(span, &msg);
-                }
             };
         match interior_or_upvar_span {
             GeneratorInteriorOrUpvar::Interior(interior_span, interior_extra_info) => {
