@@ -1493,7 +1493,7 @@ pub mod tracked_env {
     use std::ffi::OsStr;
 
     /// Retrieve an environment variable and add it to build dependency info.
-    /// Build system executing the compiler will know that the variable was accessed during
+    /// The build system executing the compiler will know that the variable was accessed during
     /// compilation, and will be able to rerun the build when the value of that variable changes.
     /// Besides the dependency tracking this function should be equivalent to `env::var` from the
     /// standard library, except that the argument must be UTF-8.
