@@ -2,6 +2,7 @@ use rustc_ast::{ast, MetaItemKind, NestedMetaItem};
 use rustc_attr::{list_contains_name, InlineAttr, InstructionSetAttr, OptimizeAttr};
 use rustc_errors::struct_span_err;
 use rustc_hir as hir;
+use rustc_hir::def::DefKind;
 use rustc_hir::def_id::{DefId, LocalDefId, LOCAL_CRATE};
 use rustc_hir::{lang_items, weak_lang_items::WEAK_LANG_ITEMS, LangItem};
 use rustc_middle::middle::codegen_fn_attrs::{CodegenFnAttrFlags, CodegenFnAttrs};
@@ -59,6 +60,21 @@ fn codegen_fn_attrs(tcx: TyCtxt<'_>, did: DefId) -> CodegenFnAttrs {
     }
 
     let supported_target_features = tcx.supported_target_features(LOCAL_CRATE);
+
+    // In some cases, attribute are only valid on functions, but it's the `check_attr`
+    // pass that check that they aren't used anywhere else, rather this module.
+    // In these cases, we bail from performing further checks that are only meaningful for
+    // functions (such as calling `fn_sig`, which ICEs if given a non-function). We also
+    // report a delayed bug, just in case `check_attr` isn't doing its job.
+    let validate_fn_only_attr = |attr_sp| -> bool {
+        let def_kind = tcx.def_kind(did);
+        if let DefKind::Fn | DefKind::AssocFn = def_kind {
+            true
+        } else {
+            tcx.sess.delay_span_bug(attr_sp, "this attribute can only be applied to functions");
+            false
+        }
+    };
 
     let mut inline_span = None;
     let mut link_ordinal_span = None;
@@ -197,7 +213,9 @@ fn codegen_fn_attrs(tcx: TyCtxt<'_>, did: DefId) -> CodegenFnAttrs {
                 }
             }
         } else if attr.has_name(sym::cmse_nonsecure_entry) {
-            if !matches!(tcx.fn_sig(did).abi(), abi::Abi::C { .. }) {
+            if validate_fn_only_attr(attr.span)
+                && !matches!(tcx.fn_sig(did).abi(), abi::Abi::C { .. })
+            {
                 struct_span_err!(
                     tcx.sess,
                     attr.span,
@@ -214,7 +232,10 @@ fn codegen_fn_attrs(tcx: TyCtxt<'_>, did: DefId) -> CodegenFnAttrs {
         } else if attr.has_name(sym::thread_local) {
             codegen_fn_attrs.flags |= CodegenFnAttrFlags::THREAD_LOCAL;
         } else if attr.has_name(sym::track_caller) {
-            if !tcx.is_closure(did.to_def_id()) && tcx.fn_sig(did).abi() != abi::Abi::Rust {
+            if !tcx.is_closure(did.to_def_id())
+                && validate_fn_only_attr(attr.span)
+                && tcx.fn_sig(did).abi() != abi::Abi::Rust
+            {
                 struct_span_err!(tcx.sess, attr.span, E0737, "`#[track_caller]` requires Rust ABI")
                     .emit();
             }
