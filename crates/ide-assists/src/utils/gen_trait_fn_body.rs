@@ -516,10 +516,18 @@ fn gen_partial_eq(adt: &ast::Adt, func: &ast::Fn) -> Option<()> {
 
             let expr = match arms.len() {
                 0 => eq_check,
-                _ => {
-                    if n_cases > arms.len() {
+                arms_len => {
+                    // Generate the fallback arm when this enum has >1 variants.
+                    // The fallback arm will be `_ => false,` if we've already gone through every case where the variants of self and other match,
+                    // and `_ => std::mem::discriminant(self) == std::mem::discriminant(other),` otherwise.
+                    if n_cases > 1 {
                         let lhs = make::wildcard_pat().into();
-                        arms.push(make::match_arm(Some(lhs), None, eq_check));
+                        let rhs = if arms_len == n_cases {
+                            make::expr_literal("false").into()
+                        } else {
+                            eq_check
+                        };
+                        arms.push(make::match_arm(Some(lhs), None, rhs));
                     }
 
                     let match_target = make::expr_tuple(vec![lhs_name, rhs_name]);

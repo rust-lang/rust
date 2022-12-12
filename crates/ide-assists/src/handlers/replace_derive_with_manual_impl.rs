@@ -907,7 +907,34 @@ impl PartialEq for Foo {
     }
 
     #[test]
-    fn add_custom_impl_partial_eq_tuple_enum() {
+    fn add_custom_impl_partial_eq_single_variant_tuple_enum() {
+        check_assist(
+            replace_derive_with_manual_impl,
+            r#"
+//- minicore: eq, derive
+#[derive(Partial$0Eq)]
+enum Foo {
+    Bar(String),
+}
+"#,
+            r#"
+enum Foo {
+    Bar(String),
+}
+
+impl PartialEq for Foo {
+    $0fn eq(&self, other: &Self) -> bool {
+        match (self, other) {
+            (Self::Bar(l0), Self::Bar(r0)) => l0 == r0,
+        }
+    }
+}
+"#,
+        )
+    }
+
+    #[test]
+    fn add_custom_impl_partial_eq_partial_tuple_enum() {
         check_assist(
             replace_derive_with_manual_impl,
             r#"
@@ -929,6 +956,37 @@ impl PartialEq for Foo {
         match (self, other) {
             (Self::Bar(l0), Self::Bar(r0)) => l0 == r0,
             _ => core::mem::discriminant(self) == core::mem::discriminant(other),
+        }
+    }
+}
+"#,
+        )
+    }
+
+    #[test]
+    fn add_custom_impl_partial_eq_tuple_enum() {
+        check_assist(
+            replace_derive_with_manual_impl,
+            r#"
+//- minicore: eq, derive
+#[derive(Partial$0Eq)]
+enum Foo {
+    Bar(String),
+    Baz(i32),
+}
+"#,
+            r#"
+enum Foo {
+    Bar(String),
+    Baz(i32),
+}
+
+impl PartialEq for Foo {
+    $0fn eq(&self, other: &Self) -> bool {
+        match (self, other) {
+            (Self::Bar(l0), Self::Bar(r0)) => l0 == r0,
+            (Self::Baz(l0), Self::Baz(r0)) => l0 == r0,
+            _ => false,
         }
     }
 }
