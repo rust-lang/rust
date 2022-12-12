@@ -7,6 +7,7 @@ use syntax::SmolStr;
 
 use crate::{
     context::{ParamContext, ParamKind, PathCompletionCtx, PatternContext},
+    item::CompletionRelevanceTypeMatch,
     render::{
         variant::{format_literal_label, format_literal_lookup, visible_fields},
         RenderContext,
@@ -37,7 +38,7 @@ pub(crate) fn render_struct_pat(
     let lookup = format_literal_lookup(name.as_str(), kind);
     let pat = render_pat(&ctx, pattern_ctx, &escaped_name, kind, &visible_fields, fields_omitted)?;
 
-    Some(build_completion(ctx, label, lookup, pat, strukt))
+    Some(build_completion(ctx, label, lookup, pat, strukt, false))
 }
 
 pub(crate) fn render_variant_pat(
@@ -47,6 +48,7 @@ pub(crate) fn render_variant_pat(
     variant: hir::Variant,
     local_name: Option<Name>,
     path: Option<&hir::ModPath>,
+    is_exact_type_match: bool,
 ) -> Option<CompletionItem> {
     let _p = profile::span("render_variant_pat");
 
@@ -81,7 +83,7 @@ pub(crate) fn render_variant_pat(
         }
     };
 
-    Some(build_completion(ctx, label, lookup, pat, variant))
+    Some(build_completion(ctx, label, lookup, pat, variant, is_exact_type_match))
 }
 
 fn build_completion(
@@ -90,13 +92,20 @@ fn build_completion(
     lookup: SmolStr,
     pat: String,
     def: impl HasAttrs + Copy,
+    is_exact_type_match: bool,
 ) -> CompletionItem {
+    let mut relevance = ctx.completion_relevance();
+
+    if is_exact_type_match {
+        relevance.type_match = Some(CompletionRelevanceTypeMatch::Exact);
+    }
+
     let mut item = CompletionItem::new(CompletionItemKind::Binding, ctx.source_range(), label);
     item.set_documentation(ctx.docs(def))
         .set_deprecated(ctx.is_deprecated(def))
         .detail(&pat)
         .lookup_by(lookup)
-        .set_relevance(ctx.completion_relevance());
+        .set_relevance(relevance);
     match ctx.snippet_cap() {
         Some(snippet_cap) => item.insert_snippet(snippet_cap, pat),
         None => item.insert_text(pat),
