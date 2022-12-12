@@ -385,6 +385,21 @@ impl<'tcx> Instance<'tcx> {
         )
     }
 
+    pub fn expect_resolve(
+        tcx: TyCtxt<'tcx>,
+        param_env: ty::ParamEnv<'tcx>,
+        def_id: DefId,
+        substs: SubstsRef<'tcx>,
+    ) -> Instance<'tcx> {
+        match ty::Instance::resolve(tcx, param_env, def_id, substs) {
+            Ok(Some(instance)) => instance,
+            _ => bug!(
+                "failed to resolve instance for {}",
+                tcx.def_path_str_with_substs(def_id, substs)
+            ),
+        }
+    }
+
     // This should be kept up to date with `resolve`.
     pub fn resolve_opt_const_arg(
         tcx: TyCtxt<'tcx>,
@@ -525,7 +540,7 @@ impl<'tcx> Instance<'tcx> {
     pub fn resolve_drop_in_place(tcx: TyCtxt<'tcx>, ty: Ty<'tcx>) -> ty::Instance<'tcx> {
         let def_id = tcx.require_lang_item(LangItem::DropInPlace, None);
         let substs = tcx.intern_substs(&[ty.into()]);
-        Instance::resolve(tcx, ty::ParamEnv::reveal_all(), def_id, substs).unwrap().unwrap()
+        Instance::expect_resolve(tcx, ty::ParamEnv::reveal_all(), def_id, substs)
     }
 
     #[instrument(level = "debug", skip(tcx), ret)]

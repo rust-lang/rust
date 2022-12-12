@@ -751,10 +751,13 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
         let (instance, mut llfn) = match *callee.layout.ty.kind() {
             ty::FnDef(def_id, substs) => (
                 Some(
-                    ty::Instance::resolve(bx.tcx(), ty::ParamEnv::reveal_all(), def_id, substs)
-                        .unwrap()
-                        .unwrap()
-                        .polymorphize(bx.tcx()),
+                    ty::Instance::expect_resolve(
+                        bx.tcx(),
+                        ty::ParamEnv::reveal_all(),
+                        def_id,
+                        substs,
+                    )
+                    .polymorphize(bx.tcx()),
                 ),
                 None,
             ),
