@@ -2,6 +2,7 @@ use super::place::PlaceRef;
 use super::{FunctionCx, LocalRef};
 
 use crate::base;
+use crate::common::TypeKind;
 use crate::glue;
 use crate::traits::*;
 use crate::MemFlags;
@@ -240,15 +241,24 @@ impl<'a, 'tcx, V: CodegenObject> OperandRef<'tcx, V> {
                 // Bools in union fields needs to be truncated.
                 *llval = bx.to_immediate(*llval, field);
                 // HACK(eddyb) have to bitcast pointers until LLVM removes pointee types.
-                *llval = bx.bitcast(*llval, bx.cx().immediate_backend_type(field));
+                let ty = bx.cx().immediate_backend_type(field);
+                if bx.type_kind(ty) == TypeKind::Pointer {
+                    *llval = bx.pointercast(*llval, ty);
+                }
             }
             (OperandValue::Pair(a, b), Abi::ScalarPair(a_abi, b_abi)) => {
                 // Bools in union fields needs to be truncated.
                 *a = bx.to_immediate_scalar(*a, a_abi);
                 *b = bx.to_immediate_scalar(*b, b_abi);
                 // HACK(eddyb) have to bitcast pointers until LLVM removes pointee types.
-                *a = bx.bitcast(*a, bx.cx().scalar_pair_element_backend_type(field, 0, true));
-                *b = bx.bitcast(*b, bx.cx().scalar_pair_element_backend_type(field, 1, true));
+                let a_ty = bx.cx().scalar_pair_element_backend_type(field, 0, true);
+                let b_ty = bx.cx().scalar_pair_element_backend_type(field, 1, true);
+                if bx.type_kind(a_ty) == TypeKind::Pointer {
+                    *a = bx.pointercast(*a, a_ty);
+                }
+                if bx.type_kind(b_ty) == TypeKind::Pointer {
+                    *b = bx.pointercast(*b, b_ty);
+                }
             }
             (OperandValue::Pair(..), _) => bug!(),
             (OperandValue::Ref(..), _) => bug!(),
