@@ -911,8 +911,7 @@ declare_lint! {
 
 declare_lint! {
     /// The `trivial_casts` lint detects trivial casts which could be replaced
-    /// with coercion, which may require [type ascription] or a temporary
-    /// variable.
+    /// with coercion, which may require a temporary variable.
     ///
     /// ### Example
     ///
@@ -934,12 +933,14 @@ declare_lint! {
     /// with FFI interfaces or complex type aliases, where it triggers
     /// incorrectly, or in situations where it will be more difficult to
     /// clearly express the intent. It may be possible that this will become a
-    /// warning in the future, possibly with [type ascription] providing a
-    /// convenient way to work around the current issues. See [RFC 401] for
-    /// historical context.
+    /// warning in the future, possibly with an explicit syntax for coercions
+    /// providing a convenient way to work around the current issues.
+    /// See [RFC 401 (coercions)][rfc-401], [RFC 803 (type ascription)][rfc-803] and
+    /// [RFC 3307 (remove type ascription)][rfc-3307] for historical context.
     ///
-    /// [type ascription]: https://github.com/rust-lang/rust/issues/23416
-    /// [RFC 401]: https://github.com/rust-lang/rfcs/blob/master/text/0401-coercions.md
+    /// [rfc-401]: https://github.com/rust-lang/rfcs/blob/master/text/0401-coercions.md
+    /// [rfc-803]: https://github.com/rust-lang/rfcs/blob/master/text/0803-type-ascription.md
+    /// [rfc-3307]: https://github.com/rust-lang/rfcs/blob/master/text/3307-de-rfc-type-ascription.md
     pub TRIVIAL_CASTS,
     Allow,
     "detects trivial casts which could be removed"
@@ -967,12 +968,14 @@ declare_lint! {
     /// with FFI interfaces or complex type aliases, where it triggers
     /// incorrectly, or in situations where it will be more difficult to
     /// clearly express the intent. It may be possible that this will become a
-    /// warning in the future, possibly with [type ascription] providing a
-    /// convenient way to work around the current issues. See [RFC 401] for
-    /// historical context.
+    /// warning in the future, possibly with an explicit syntax for coercions
+    /// providing a convenient way to work around the current issues.
+    /// See [RFC 401 (coercions)][rfc-401], [RFC 803 (type ascription)][rfc-803] and
+    /// [RFC 3307 (remove type ascription)][rfc-3307] for historical context.
     ///
-    /// [type ascription]: https://github.com/rust-lang/rust/issues/23416
-    /// [RFC 401]: https://github.com/rust-lang/rfcs/blob/master/text/0401-coercions.md
+    /// [rfc-401]: https://github.com/rust-lang/rfcs/blob/master/text/0401-coercions.md
+    /// [rfc-803]: https://github.com/rust-lang/rfcs/blob/master/text/0803-type-ascription.md
+    /// [rfc-3307]: https://github.com/rust-lang/rfcs/blob/master/text/3307-de-rfc-type-ascription.md
     pub TRIVIAL_NUMERIC_CASTS,
     Allow,
     "detects trivial casts of numeric types which could be removed"
