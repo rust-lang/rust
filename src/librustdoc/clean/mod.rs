@@ -22,6 +22,7 @@ use rustc_infer::infer::region_constraints::{Constraint, RegionConstraintData};
 use rustc_middle::middle::resolve_lifetime as rl;
 use rustc_middle::ty::fold::TypeFolder;
 use rustc_middle::ty::InternalSubsts;
+use rustc_middle::ty::TypeVisitable;
 use rustc_middle::ty::{self, AdtKind, DefIdTree, EarlyBinder, Ty, TyCtxt};
 use rustc_middle::{bug, span_bug};
 use rustc_span::hygiene::{AstPass, MacroKind};
@@ -1459,8 +1460,11 @@ fn clean_qpath<'tcx>(hir_ty: &hir::Ty<'tcx>, cx: &mut DocContext<'tcx>) -> Type 
         hir::QPath::Resolved(Some(qself), p) => {
             // Try to normalize `<X as Y>::T` to a type
             let ty = hir_ty_to_ty(cx.tcx, hir_ty);
-            if let Some(normalized_value) = normalize(cx, ty::Binder::dummy(ty)) {
-                return clean_middle_ty(normalized_value, cx, None);
+            // `hir_to_ty` can return projection types with escaping vars for GATs, e.g. `<() as Trait>::Gat<'_>`
+            if !ty.has_escaping_bound_vars() {
+                if let Some(normalized_value) = normalize(cx, ty::Binder::dummy(ty)) {
+                    return clean_middle_ty(normalized_value, cx, None);
+                }
             }
 
             let trait_segments = &p.segments[..p.segments.len() - 1];
