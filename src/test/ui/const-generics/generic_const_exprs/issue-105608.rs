@@ -1,5 +1,5 @@
-#![allow(incomplete_features, unstable_features)]
 #![feature(generic_const_exprs)]
+#![allow(incomplete_features)]
 
 struct Combination<const STRATEGIES: usize>;
 
