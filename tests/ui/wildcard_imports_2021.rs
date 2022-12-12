@@ -1,10 +1,8 @@
-// edition:2015
+// revisions: edition2018 edition2021
+//[edition2018] edition:2018
+//[edition2021] edition:2021
 // run-rustfix
 // aux-build:wildcard_imports_helper.rs
-
-// the 2015 edition here is needed because edition 2018 changed the module system
-// (see https://doc.rust-lang.org/edition-guide/rust-2018/path-changes.html) which means the lint
-// no longer detects some of the cases starting with Rust 2018.
 
 #![warn(clippy::wildcard_imports)]
 #![allow(unused, clippy::unnecessary_wraps, clippy::let_unit_value)]
@@ -12,19 +10,17 @@
 
 extern crate wildcard_imports_helper;
 
-use crate::fn_mod::foo;
-use crate::mod_mod::inner_mod;
-use crate::multi_fn_mod::{multi_bar, multi_foo, multi_inner_mod};
-#[macro_use]
-use crate::struct_mod::{A, inner_struct_mod};
+use crate::fn_mod::*;
+use crate::mod_mod::*;
+use crate::multi_fn_mod::*;
+use crate::struct_mod::*;
 
 #[allow(unused_imports)]
-use wildcard_imports_helper::inner::inner_for_self_import;
-use wildcard_imports_helper::inner::inner_for_self_import::inner_extern_bar;
-use wildcard_imports_helper::{ExternA, extern_foo};
+use wildcard_imports_helper::inner::inner_for_self_import::*;
+use wildcard_imports_helper::prelude::v1::*;
+use wildcard_imports_helper::*;
 
 use std::io::prelude::*;
-use wildcard_imports_helper::prelude::v1::*;
 
 struct ReadFoo;
 
@@ -92,14 +88,14 @@ mod in_fn_test {
     pub(crate) use self::inner_exported2::*;
 
     fn test_intern() {
-        use crate::fn_mod::foo;
+        use crate::fn_mod::*;
 
         foo();
     }
 
     fn test_extern() {
-        use wildcard_imports_helper::inner::inner_for_self_import::{self, inner_extern_foo};
-        use wildcard_imports_helper::{ExternA, extern_foo};
+        use wildcard_imports_helper::inner::inner_for_self_import::{self, *};
+        use wildcard_imports_helper::*;
 
         inner_for_self_import::inner_extern_foo();
         inner_extern_foo();
@@ -110,14 +106,14 @@ mod in_fn_test {
     }
 
     fn test_inner_nested() {
-        use self::{inner::inner_foo, inner2::inner_bar};
+        use self::{inner::*, inner2::*};
 
         inner_foo();
         inner_bar();
     }
 
     fn test_extern_reexported() {
-        use wildcard_imports_helper::{ExternExportedEnum, ExternExportedStruct, extern_exported};
+        use wildcard_imports_helper::*;
 
         extern_exported();
         let _ = ExternExportedStruct;
@@ -146,7 +142,7 @@ mod in_fn_test {
 }
 
 fn test_reexported() {
-    use crate::in_fn_test::{ExportedEnum, ExportedStruct, exported};
+    use crate::in_fn_test::*;
 
     exported();
     let _ = ExportedStruct;
@@ -155,8 +151,9 @@ fn test_reexported() {
 
 #[rustfmt::skip]
 fn test_weird_formatting() {
-    use crate:: in_fn_test::exported;
-    use crate:: fn_mod::foo;
+    use crate:: in_fn_test::  * ;
+    use crate:: fn_mod::
+        *;
 
     exported();
     foo();
@@ -166,7 +163,7 @@ mod super_imports {
     fn foofoo() {}
 
     mod should_be_replaced {
-        use super::foofoo;
+        use super::*;
 
         fn with_super() {
             let _ = foofoo();
@@ -201,7 +198,7 @@ mod super_imports {
     mod should_be_replaced_further_inside {
         fn insidefoo() {}
         mod inner {
-            use super::insidefoo;
+            use super::*;
             fn with_super() {
                 let _ = insidefoo();
             }
@@ -209,7 +206,7 @@ mod super_imports {
     }
 
     mod use_explicit_should_be_replaced {
-        use super_imports::foofoo;
+        use crate::super_imports::*;
 
         fn with_explicit() {
             let _ = foofoo();
@@ -218,7 +215,7 @@ mod super_imports {
 
     mod use_double_super_should_be_replaced {
         mod inner {
-            use super::super::foofoo;
+            use super::super::*;
 
             fn with_double_super() {
                 let _ = foofoo();
@@ -227,7 +224,7 @@ mod super_imports {
     }
 
     mod use_super_explicit_should_be_replaced {
-        use super::super::super_imports::foofoo;
+        use super::super::super_imports::*;
 
         fn with_super_explicit() {
             let _ = foofoo();
@@ -235,7 +232,7 @@ mod super_imports {
     }
 
     mod attestation_should_be_replaced {
-        use super::foofoo;
+        use super::*;
 
         fn with_explicit() {
             let _ = foofoo();
