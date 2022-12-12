@@ -33,7 +33,7 @@ impl<'tcx> LateLintPass<'tcx> for InvalidUtf8InUnchecked {
         if let Some([arg]) = match_function_call(cx, expr, &paths::STR_FROM_UTF8_UNCHECKED) {
             match &arg.kind {
                 ExprKind::Lit(Spanned { node: lit, .. }) => {
-                    if let LitKind::ByteStr(bytes) = &lit
+                    if let LitKind::ByteStr(bytes, _) = &lit
                         && std::str::from_utf8(bytes).is_err()
                     {
                         lint(cx, expr.span);
