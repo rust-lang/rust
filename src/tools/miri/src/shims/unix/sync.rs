@@ -21,14 +21,14 @@ fn is_mutex_kind_default<'mir, 'tcx: 'mir>(
     ecx: &mut MiriInterpCx<'mir, 'tcx>,
     kind: i32,
 ) -> InterpResult<'tcx, bool> {
-    Ok(kind == ecx.eval_libc_i32("PTHREAD_MUTEX_DEFAULT")?)
+    Ok(kind == ecx.eval_libc_i32("PTHREAD_MUTEX_DEFAULT"))
 }
 
 fn is_mutex_kind_normal<'mir, 'tcx: 'mir>(
     ecx: &mut MiriInterpCx<'mir, 'tcx>,
     kind: i32,
 ) -> InterpResult<'tcx, bool> {
-    let mutex_normal_kind = ecx.eval_libc_i32("PTHREAD_MUTEX_NORMAL")?;
+    let mutex_normal_kind = ecx.eval_libc_i32("PTHREAD_MUTEX_NORMAL");
     Ok(kind == (mutex_normal_kind | PTHREAD_MUTEX_NORMAL_FLAG))
 }
 
@@ -217,7 +217,7 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriInterpCxExt<'mir, 'tcx> {
     ) -> InterpResult<'tcx, i32> {
         let this = self.eval_context_mut();
 
-        let default_kind = this.eval_libc_i32("PTHREAD_MUTEX_DEFAULT")?;
+        let default_kind = this.eval_libc_i32("PTHREAD_MUTEX_DEFAULT");
         mutexattr_set_kind(this, attr_op, default_kind)?;
 
         Ok(0)
@@ -231,7 +231,7 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriInterpCxExt<'mir, 'tcx> {
         let this = self.eval_context_mut();
 
         let kind = this.read_scalar(kind_op)?.to_i32()?;
-        if kind == this.eval_libc_i32("PTHREAD_MUTEX_NORMAL")? {
+        if kind == this.eval_libc_i32("PTHREAD_MUTEX_NORMAL") {
             // In `glibc` implementation, the numeric values of
             // `PTHREAD_MUTEX_NORMAL` and `PTHREAD_MUTEX_DEFAULT` are equal.
             // However, a mutex created by explicitly passing
@@ -247,17 +247,17 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriInterpCxExt<'mir, 'tcx> {
             let normal_kind = kind | PTHREAD_MUTEX_NORMAL_FLAG;
             // Check that after setting the flag, the kind is distinguishable
             // from all other kinds.
-            assert_ne!(normal_kind, this.eval_libc_i32("PTHREAD_MUTEX_DEFAULT")?);
-            assert_ne!(normal_kind, this.eval_libc_i32("PTHREAD_MUTEX_ERRORCHECK")?);
-            assert_ne!(normal_kind, this.eval_libc_i32("PTHREAD_MUTEX_RECURSIVE")?);
+            assert_ne!(normal_kind, this.eval_libc_i32("PTHREAD_MUTEX_DEFAULT"));
+            assert_ne!(normal_kind, this.eval_libc_i32("PTHREAD_MUTEX_ERRORCHECK"));
+            assert_ne!(normal_kind, this.eval_libc_i32("PTHREAD_MUTEX_RECURSIVE"));
             mutexattr_set_kind(this, attr_op, normal_kind)?;
-        } else if kind == this.eval_libc_i32("PTHREAD_MUTEX_DEFAULT")?
-            || kind == this.eval_libc_i32("PTHREAD_MUTEX_ERRORCHECK")?
-            || kind == this.eval_libc_i32("PTHREAD_MUTEX_RECURSIVE")?
+        } else if kind == this.eval_libc_i32("PTHREAD_MUTEX_DEFAULT")
+            || kind == this.eval_libc_i32("PTHREAD_MUTEX_ERRORCHECK")
+            || kind == this.eval_libc_i32("PTHREAD_MUTEX_RECURSIVE")
         {
             mutexattr_set_kind(this, attr_op, kind)?;
         } else {
-            let einval = this.eval_libc_i32("EINVAL")?;
+            let einval = this.eval_libc_i32("EINVAL");
             return Ok(einval);
         }
 
@@ -299,7 +299,7 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriInterpCxExt<'mir, 'tcx> {
 
         let attr = this.read_pointer(attr_op)?;
         let kind = if this.ptr_is_null(attr)? {
-            this.eval_libc_i32("PTHREAD_MUTEX_DEFAULT")?
+            this.eval_libc_i32("PTHREAD_MUTEX_DEFAULT")
         } else {
             mutexattr_get_kind(this, attr_op)?
         };
@@ -331,9 +331,9 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriInterpCxExt<'mir, 'tcx> {
                     throw_ub_format!("trying to acquire already locked default mutex");
                 } else if is_mutex_kind_normal(this, kind)? {
                     throw_machine_stop!(TerminationInfo::Deadlock);
-                } else if kind == this.eval_libc_i32("PTHREAD_MUTEX_ERRORCHECK")? {
-                    this.eval_libc_i32("EDEADLK")
-                } else if kind == this.eval_libc_i32("PTHREAD_MUTEX_RECURSIVE")? {
+                } else if kind == this.eval_libc_i32("PTHREAD_MUTEX_ERRORCHECK") {
+                    Ok(this.eval_libc_i32("EDEADLK"))
+                } else if kind == this.eval_libc_i32("PTHREAD_MUTEX_RECURSIVE") {
                     this.mutex_lock(id, active_thread);
                     Ok(0)
                 } else {
@@ -362,14 +362,14 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriInterpCxExt<'mir, 'tcx> {
         if this.mutex_is_locked(id) {
             let owner_thread = this.mutex_get_owner(id);
             if owner_thread != active_thread {
-                this.eval_libc_i32("EBUSY")
+                Ok(this.eval_libc_i32("EBUSY"))
             } else {
                 if is_mutex_kind_default(this, kind)?
                     || is_mutex_kind_normal(this, kind)?
-                    || kind == this.eval_libc_i32("PTHREAD_MUTEX_ERRORCHECK")?
+                    || kind == this.eval_libc_i32("PTHREAD_MUTEX_ERRORCHECK")
                 {
-                    this.eval_libc_i32("EBUSY")
-                } else if kind == this.eval_libc_i32("PTHREAD_MUTEX_RECURSIVE")? {
+                    Ok(this.eval_libc_i32("EBUSY"))
+                } else if kind == this.eval_libc_i32("PTHREAD_MUTEX_RECURSIVE") {
                     this.mutex_lock(id, active_thread);
                     Ok(0)
                 } else {
@@ -410,10 +410,10 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriInterpCxExt<'mir, 'tcx> {
                 throw_ub_format!(
                     "unlocked a PTHREAD_MUTEX_NORMAL mutex that was not locked by the current thread"
                 );
-            } else if kind == this.eval_libc_i32("PTHREAD_MUTEX_ERRORCHECK")?
-                || kind == this.eval_libc_i32("PTHREAD_MUTEX_RECURSIVE")?
+            } else if kind == this.eval_libc_i32("PTHREAD_MUTEX_ERRORCHECK")
+                || kind == this.eval_libc_i32("PTHREAD_MUTEX_RECURSIVE")
             {
-                this.eval_libc_i32("EPERM")
+                Ok(this.eval_libc_i32("EPERM"))
             } else {
                 throw_unsup_format!("called pthread_mutex_unlock on an unsupported type of mutex");
             }
@@ -471,7 +471,7 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriInterpCxExt<'mir, 'tcx> {
         let active_thread = this.get_active_thread();
 
         if this.rwlock_is_write_locked(id) {
-            this.eval_libc_i32("EBUSY")
+            Ok(this.eval_libc_i32("EBUSY"))
         } else {
             this.rwlock_reader_lock(id, active_thread);
             Ok(0)
@@ -518,7 +518,7 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriInterpCxExt<'mir, 'tcx> {
         let active_thread = this.get_active_thread();
 
         if this.rwlock_is_locked(id) {
-            this.eval_libc_i32("EBUSY")
+            Ok(this.eval_libc_i32("EBUSY"))
         } else {
             this.rwlock_writer_lock(id, active_thread);
             Ok(0)
@@ -575,7 +575,7 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriInterpCxExt<'mir, 'tcx> {
         // The default value of the clock attribute shall refer to the system
         // clock.
         // https://pubs.opengroup.org/onlinepubs/9699919799/functions/pthread_condattr_setclock.html
-        let default_clock_id = this.eval_libc_i32("CLOCK_REALTIME")?;
+        let default_clock_id = this.eval_libc_i32("CLOCK_REALTIME");
         condattr_set_clock_id(this, attr_op, default_clock_id)?;
 
         Ok(0)
@@ -589,12 +589,12 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriInterpCxExt<'mir, 'tcx> {
         let this = self.eval_context_mut();
 
         let clock_id = this.read_scalar(clock_id_op)?.to_i32()?;
-        if clock_id == this.eval_libc_i32("CLOCK_REALTIME")?
-            || clock_id == this.eval_libc_i32("CLOCK_MONOTONIC")?
+        if clock_id == this.eval_libc_i32("CLOCK_REALTIME")
+            || clock_id == this.eval_libc_i32("CLOCK_MONOTONIC")
         {
             condattr_set_clock_id(this, attr_op, clock_id)?;
         } else {
-            let einval = this.eval_libc_i32("EINVAL")?;
+            let einval = this.eval_libc_i32("EINVAL");
             return Ok(Scalar::from_i32(einval));
         }
 
@@ -638,7 +638,7 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriInterpCxExt<'mir, 'tcx> {
 
         let attr = this.read_pointer(attr_op)?;
         let clock_id = if this.ptr_is_null(attr)? {
-            this.eval_libc_i32("CLOCK_REALTIME")?
+            this.eval_libc_i32("CLOCK_REALTIME")
         } else {
             condattr_get_clock_id(this, attr_op)?
         };
@@ -718,16 +718,16 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriInterpCxExt<'mir, 'tcx> {
         let duration = match this.read_timespec(&this.deref_operand(abstime_op)?)? {
             Some(duration) => duration,
             None => {
-                let einval = this.eval_libc("EINVAL")?;
+                let einval = this.eval_libc("EINVAL");
                 this.write_scalar(einval, dest)?;
                 return Ok(());
             }
         };
 
-        let timeout_time = if clock_id == this.eval_libc_i32("CLOCK_REALTIME")? {
+        let timeout_time = if clock_id == this.eval_libc_i32("CLOCK_REALTIME") {
             this.check_no_isolation("`pthread_cond_timedwait` with `CLOCK_REALTIME`")?;
             Time::RealTime(SystemTime::UNIX_EPOCH.checked_add(duration).unwrap())
-        } else if clock_id == this.eval_libc_i32("CLOCK_MONOTONIC")? {
+        } else if clock_id == this.eval_libc_i32("CLOCK_MONOTONIC") {
             Time::Monotonic(this.machine.clock.anchor().checked_add(duration).unwrap())
         } else {
             throw_unsup_format!("unsupported clock id: {}", clock_id);
@@ -763,7 +763,7 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriInterpCxExt<'mir, 'tcx> {
                 ecx.condvar_remove_waiter(self.id, self.active_thread);
 
                 // Set the return value: we timed out.
-                let etimedout = ecx.eval_libc("ETIMEDOUT")?;
+                let etimedout = ecx.eval_libc("ETIMEDOUT");
                 ecx.write_scalar(etimedout, &self.dest)?;
 
                 Ok(())

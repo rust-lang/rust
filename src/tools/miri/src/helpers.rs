@@ -138,55 +138,77 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriInterpCxExt<'mir, 'tcx> {
             .unwrap_or_else(|| panic!("failed to find required Rust item: {path:?}"))
     }
 
-    /// Evaluates the scalar at the specified path. Returns Some(val)
-    /// if the path could be resolved, and None otherwise
-    fn eval_path_scalar(&self, path: &[&str]) -> InterpResult<'tcx, Scalar<Provenance>> {
+    /// Evaluates the scalar at the specified path.
+    fn eval_path_scalar(&self, path: &[&str]) -> Scalar<Provenance> {
         let this = self.eval_context_ref();
         let instance = this.resolve_path(path, Namespace::ValueNS);
         let cid = GlobalId { instance, promoted: None };
         // We don't give a span -- this isn't actually used directly by the program anyway.
-        let const_val = this.eval_global(cid, None)?;
+        let const_val = this
+            .eval_global(cid, None)
+            .unwrap_or_else(|err| panic!("failed to evaluate required Rust item: {path:?}\n{err}"));
         this.read_scalar(&const_val.into())
+            .unwrap_or_else(|err| panic!("failed to read required Rust item: {path:?}\n{err}"))
     }
 
     /// Helper function to get a `libc` constant as a `Scalar`.
-    fn eval_libc(&self, name: &str) -> InterpResult<'tcx, Scalar<Provenance>> {
+    fn eval_libc(&self, name: &str) -> Scalar<Provenance> {
         self.eval_path_scalar(&["libc", name])
     }
 
     /// Helper function to get a `libc` constant as an `i32`.
-    fn eval_libc_i32(&self, name: &str) -> InterpResult<'tcx, i32> {
+    fn eval_libc_i32(&self, name: &str) -> i32 {
         // TODO: Cache the result.
-        self.eval_libc(name)?.to_i32()
+        self.eval_libc(name).to_i32().unwrap_or_else(|_err| {
+            panic!("required libc item has unexpected type (not `i32`): {name}")
+        })
+    }
+
+    /// Helper function to get a `libc` constant as an `u32`.
+    fn eval_libc_u32(&self, name: &str) -> u32 {
+        // TODO: Cache the result.
+        self.eval_libc(name).to_u32().unwrap_or_else(|_err| {
+            panic!("required libc item has unexpected type (not `u32`): {name}")
+        })
     }
 
     /// Helper function to get a `windows` constant as a `Scalar`.
-    fn eval_windows(&self, module: &str, name: &str) -> InterpResult<'tcx, Scalar<Provenance>> {
+    fn eval_windows(&self, module: &str, name: &str) -> Scalar<Provenance> {
         self.eval_context_ref().eval_path_scalar(&["std", "sys", "windows", module, name])
     }
 
-    /// Helper function to get a `windows` constant as a `u64`.
-    fn eval_windows_u64(&self, module: &str, name: &str) -> InterpResult<'tcx, u64> {
+    /// Helper function to get a `windows` constant as a `u32`.
+    fn eval_windows_u32(&self, module: &str, name: &str) -> u32 {
         // TODO: Cache the result.
-        self.eval_windows(module, name)?.to_u64()
+        self.eval_windows(module, name).to_u32().unwrap_or_else(|_err| {
+            panic!("required Windows item has unexpected type (not `u32`): {module}::{name}")
+        })
+    }
+
+    /// Helper function to get a `windows` constant as a `u64`.
+    fn eval_windows_u64(&self, module: &str, name: &str) -> u64 {
+        // TODO: Cache the result.
+        self.eval_windows(module, name).to_u64().unwrap_or_else(|_err| {
+            panic!("required Windows item has unexpected type (not `u64`): {module}::{name}")
+        })
     }
 
     /// Helper function to get the `TyAndLayout` of a `libc` type
-    fn libc_ty_layout(&self, name: &str) -> InterpResult<'tcx, TyAndLayout<'tcx>> {
+    fn libc_ty_layout(&self, name: &str) -> TyAndLayout<'tcx> {
         let this = self.eval_context_ref();
         let ty = this
             .resolve_path(&["libc", name], Namespace::TypeNS)
             .ty(*this.tcx, ty::ParamEnv::reveal_all());
-        this.layout_of(ty)
+        this.layout_of(ty).unwrap()
     }
 
     /// Helper function to get the `TyAndLayout` of a `windows` type
-    fn windows_ty_layout(&self, name: &str) -> InterpResult<'tcx, TyAndLayout<'tcx>> {
+    fn windows_ty_layout(&self, name: &str) -> TyAndLayout<'tcx> {
         let this = self.eval_context_ref();
         let ty = this
             .resolve_path(&["std", "sys", "windows", "c", name], Namespace::TypeNS)
             .ty(*this.tcx, ty::ParamEnv::reveal_all());
-        this.layout_of(ty)
+        this.layout_of(ty).unwrap()
     }
 
     /// Project to the given *named* field of the mplace (which must be a struct or union type).
@@ -609,14 +631,14 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriInterpCxExt<'mir, 'tcx> {
         if target.families.iter().any(|f| f == "unix") {
             for &(name, kind) in UNIX_IO_ERROR_TABLE {
                 if err_kind == kind {
-                    return this.eval_libc(name);
+                    return Ok(this.eval_libc(name));
                 }
             }
             throw_unsup_format!("io error {:?} cannot be translated into a raw os error", err_kind)
         } else if target.families.iter().any(|f| f == "windows") {
             // FIXME: we have to finish implementing the Windows equivalent of this.
             use std::io::ErrorKind::*;
-            this.eval_windows(
+            Ok(this.eval_windows(
                 "c",
                 match err_kind {
                     NotFound => "ERROR_FILE_NOT_FOUND",
@@ -627,7 +649,7 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriInterpCxExt<'mir, 'tcx> {
                             err_kind
                         ),
                 },
-            )
+            ))
         } else {
             throw_unsup_format!(
                 "converting io::Error into errnum is unsupported for OS {}",
@@ -647,7 +669,7 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriInterpCxExt<'mir, 'tcx> {
         if target.families.iter().any(|f| f == "unix") {
             let errnum = errnum.to_i32()?;
             for &(name, kind) in UNIX_IO_ERROR_TABLE {
-                if errnum == this.eval_libc_i32(name)? {
+                if errnum == this.eval_libc_i32(name) {
                     return Ok(Some(kind));
                 }
             }
