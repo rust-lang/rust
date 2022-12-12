@@ -378,7 +378,8 @@ impl Write for &mut [u8] {
 /// Write is implemented for `Vec<u8>` by appending to the vector.
 /// The vector will grow as needed.
 #[stable(feature = "rust1", since = "1.0.0")]
-impl<A: Allocator> Write for Vec<u8, A> {
+impl<A: Allocator, const COOP_PREFERRED: bool> Write for Vec<u8, A, COOP_PREFERRED>
+where [(); alloc::co_alloc_metadata_num_slots_with_preference::<A>(COOP_PREFERRED)]: {
     #[inline]
     fn write(&mut self, buf: &[u8]) -> io::Result<usize> {
         self.extend_from_slice(buf);
