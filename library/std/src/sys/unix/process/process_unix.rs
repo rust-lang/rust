@@ -66,14 +66,15 @@ impl Command {
         //
         // Note that as soon as we're done with the fork there's no need to hold
         // a lock any more because the parent won't do anything and the child is
-        // in its own process. Thus the parent drops the lock guard while the child
-        // forgets it to avoid unlocking it on a new thread, which would be invalid.
+        // in its own process. Thus the parent drops the lock guard immediately.
+        // The child calls `mem::forget` to leak the lock, which is crucial because
+        // releasing a lock is not async-signal-safe.
         let env_lock = sys::os::env_read_lock();
         let (pid, pidfd) = unsafe { self.do_fork()? };
 
         if pid == 0 {
             crate::panic::always_abort();
-            mem::forget(env_lock);
+            mem::forget(env_lock); // avoid non-async-signal-safe unlocking
             drop(input);
             let Err(err) = unsafe { self.do_exec(theirs, envp.as_ref()) };
             let errno = err.raw_os_error().unwrap_or(libc::EINVAL) as u32;
