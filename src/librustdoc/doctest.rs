@@ -115,9 +115,7 @@ pub(crate) fn run(options: RustdocOptions) -> Result<(), ErrorGuaranteed> {
     let (tests, unused_extern_reports, compiling_test_count) =
         interface::run_compiler(config, |compiler| {
             compiler.enter(|queries| {
-                let mut global_ctxt = queries.global_ctxt()?.take();
-
-                let collector = global_ctxt.enter(|tcx| {
+                let collector = queries.global_ctxt()?.enter(|tcx| {
                     let crate_attrs = tcx.hir().attrs(CRATE_HIR_ID);
 
                     let opts = scrape_test_config(crate_attrs);
@@ -156,9 +154,7 @@ pub(crate) fn run(options: RustdocOptions) -> Result<(), ErrorGuaranteed> {
 
                 let unused_extern_reports = collector.unused_extern_reports.clone();
                 let compiling_test_count = collector.compiling_test_count.load(Ordering::SeqCst);
-                let ret: Result<_, ErrorGuaranteed> =
-                    Ok((collector.tests, unused_extern_reports, compiling_test_count));
-                ret
+                Ok((collector.tests, unused_extern_reports, compiling_test_count))
             })
         })?;
 

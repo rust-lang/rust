@@ -62,7 +62,7 @@ impl rustc_driver::Callbacks for CompilerCalls {
         queries: &'tcx Queries<'tcx>,
     ) -> Compilation {
         compiler.session().abort_if_errors();
-        queries.global_ctxt().unwrap().peek_mut().enter(|tcx| {
+        queries.global_ctxt().unwrap().enter(|tcx| {
             // Collect definition ids of MIR bodies.
             let hir = tcx.hir();
             let mut bodies = Vec::new();
