@@ -56,4 +56,4 @@ jobs:
           for p in enzyme/benchmarks/ReverseMode/*/results.json; do
           python3 enzyme/benchmarks/upload-results.py $p --url https://enzyme.mit.edu/cibench/api --token ${{ secrets.GRAPH_TOKEN }}
           done
-      if: github.event_name != 'pull_request' && matrix.build.mode == 'Release'
+      if: github.event_name != 'pull_request' && matrix.build == 'Release'
