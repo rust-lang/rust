@@ -893,7 +893,7 @@ impl<T> [T] {
     #[stable(feature = "chunks_exact", since = "1.31.0")]
     #[inline]
     pub fn chunks_exact(&self, chunk_size: usize) -> ChunksExact<'_, T> {
-        assert_ne!(chunk_size, 0);
+        assert_ne!(chunk_size, 0, "chunks cannot have a size of zero");
         ChunksExact::new(self, chunk_size)
     }
 
@@ -935,7 +935,7 @@ impl<T> [T] {
     #[stable(feature = "chunks_exact", since = "1.31.0")]
     #[inline]
     pub fn chunks_exact_mut(&mut self, chunk_size: usize) -> ChunksExactMut<'_, T> {
-        assert_ne!(chunk_size, 0);
+        assert_ne!(chunk_size, 0, "chunks cannot have a size of zero");
         ChunksExactMut::new(self, chunk_size)
     }
 
@@ -1006,7 +1006,7 @@ impl<T> [T] {
     #[inline]
     #[must_use]
     pub fn as_chunks<const N: usize>(&self) -> (&[[T; N]], &[T]) {
-        assert_ne!(N, 0);
+        assert_ne!(N, 0, "chunks cannot have a size of zero");
         let len = self.len() / N;
         let (multiple_of_n, remainder) = self.split_at(len * N);
         // SAFETY: We already panicked for zero, and ensured by construction
@@ -1037,7 +1037,7 @@ impl<T> [T] {
     #[inline]
     #[must_use]
     pub fn as_rchunks<const N: usize>(&self) -> (&[T], &[[T; N]]) {
-        assert_ne!(N, 0);
+        assert_ne!(N, 0, "chunks cannot have a size of zero");
         let len = self.len() / N;
         let (remainder, multiple_of_n) = self.split_at(self.len() - len * N);
         // SAFETY: We already panicked for zero, and ensured by construction
@@ -1076,7 +1076,7 @@ impl<T> [T] {
     #[unstable(feature = "array_chunks", issue = "74985")]
     #[inline]
     pub fn array_chunks<const N: usize>(&self) -> ArrayChunks<'_, T, N> {
-        assert_ne!(N, 0);
+        assert_ne!(N, 0, "chunks cannot have a size of zero");
         ArrayChunks::new(self)
     }
 
@@ -1155,7 +1155,7 @@ impl<T> [T] {
     #[inline]
     #[must_use]
     pub fn as_chunks_mut<const N: usize>(&mut self) -> (&mut [[T; N]], &mut [T]) {
-        assert_ne!(N, 0);
+        assert_ne!(N, 0, "chunks cannot have a size of zero");
         let len = self.len() / N;
         let (multiple_of_n, remainder) = self.split_at_mut(len * N);
         // SAFETY: We already panicked for zero, and ensured by construction
@@ -1192,7 +1192,7 @@ impl<T> [T] {
     #[inline]
     #[must_use]
     pub fn as_rchunks_mut<const N: usize>(&mut self) -> (&mut [T], &mut [[T; N]]) {
-        assert_ne!(N, 0);
+        assert_ne!(N, 0, "chunks cannot have a size of zero");
         let len = self.len() / N;
         let (remainder, multiple_of_n) = self.split_at_mut(self.len() - len * N);
         // SAFETY: We already panicked for zero, and ensured by construction
@@ -1233,7 +1233,7 @@ impl<T> [T] {
     #[unstable(feature = "array_chunks", issue = "74985")]
     #[inline]
     pub fn array_chunks_mut<const N: usize>(&mut self) -> ArrayChunksMut<'_, T, N> {
-        assert_ne!(N, 0);
+        assert_ne!(N, 0, "chunks cannot have a size of zero");
         ArrayChunksMut::new(self)
     }
 
@@ -1265,7 +1265,7 @@ impl<T> [T] {
     #[unstable(feature = "array_windows", issue = "75027")]
     #[inline]
     pub fn array_windows<const N: usize>(&self) -> ArrayWindows<'_, T, N> {
-        assert_ne!(N, 0);
+        assert_ne!(N, 0, "windows cannot have a size of zero");
         ArrayWindows::new(self)
     }
 
