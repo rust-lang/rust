@@ -1770,6 +1770,9 @@ pub trait Seek {
     /// Rewind to the beginning of a stream.
     ///
     /// This is a convenience method, equivalent to `seek(SeekFrom::Start(0))`.
+    /// Note that unlike `seek(SeekFrom::Start(0))`, this method does not return
+    /// the old offset and cannot replace assignements of the form:
+    /// `let old_offset = buf.seek(SeekFrom::Start(0))?;`.
     ///
     /// # Errors
     ///
