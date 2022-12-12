@@ -1567,3 +1567,29 @@ fn test_eq_direntry_metadata() {
         assert_eq!(ft1, ft2);
     }
 }
+
+/// Regression test for https://github.com/rust-lang/rust/issues/50619.
+#[test]
+#[cfg(target_os = "linux")]
+fn test_read_dir_infinite_loop() {
+    use crate::process::Command;
+    use crate::thread::sleep;
+    use crate::time::Duration;
+
+    // Create a child process
+    let Ok(child) = Command::new("echo").spawn() else { return };
+
+    // Wait for it to (probably) become a zombie.  We can't use wait() because
+    // that will reap the process.
+    sleep(Duration::from_millis(10));
+
+    // open() on this path will succeed, but readdir() will fail
+    let id = child.id();
+    let path = format!("/proc/{id}/net");
+
+    // Skip the test if we can't open the directory in the first place
+    let Ok(dir) = fs::read_dir(path) else { return };
+
+    // Iterate through the directory
+    for _ in dir {}
+}
