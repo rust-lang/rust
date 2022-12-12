@@ -562,17 +562,17 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriInterpCxExt<'mir, 'tcx> {
         let mut mirror = access_mode;
 
         let o_append = this.eval_libc_i32("O_APPEND")?;
-        if flag & o_append != 0 {
+        if flag & o_append == o_append {
             options.append(true);
             mirror |= o_append;
         }
         let o_trunc = this.eval_libc_i32("O_TRUNC")?;
-        if flag & o_trunc != 0 {
+        if flag & o_trunc == o_trunc {
             options.truncate(true);
             mirror |= o_trunc;
         }
         let o_creat = this.eval_libc_i32("O_CREAT")?;
-        if flag & o_creat != 0 {
+        if flag & o_creat == o_creat {
             // Get the mode.  On macOS, the argument type `mode_t` is actually `u16`, but
             // C integer promotion rules mean that on the ABI level, it gets passed as `u32`
             // (see https://github.com/rust-lang/rust/issues/71915).
@@ -592,7 +592,7 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriInterpCxExt<'mir, 'tcx> {
             mirror |= o_creat;
 
             let o_excl = this.eval_libc_i32("O_EXCL")?;
-            if flag & o_excl != 0 {
+            if flag & o_excl == o_excl {
                 mirror |= o_excl;
                 options.create_new(true);
             } else {
@@ -600,14 +600,14 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriInterpCxExt<'mir, 'tcx> {
             }
         }
         let o_cloexec = this.eval_libc_i32("O_CLOEXEC")?;
-        if flag & o_cloexec != 0 {
+        if flag & o_cloexec == o_cloexec {
             // We do not need to do anything for this flag because `std` already sets it.
             // (Technically we do not support *not* setting this flag, but we ignore that.)
             mirror |= o_cloexec;
         }
         if this.tcx.sess.target.os == "linux" {
             let o_tmpfile = this.eval_libc_i32("O_TMPFILE")?;
-            if flag & o_tmpfile != 0 {
+            if flag & o_tmpfile == o_tmpfile {
                 // if the flag contains `O_TMPFILE` then we return a graceful error
                 let eopnotsupp = this.eval_libc("EOPNOTSUPP")?;
                 this.set_last_error(eopnotsupp)?;
@@ -1020,7 +1020,8 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriInterpCxExt<'mir, 'tcx> {
 
         let path = this.read_path_from_c_str(pathname_ptr)?.into_owned();
         // See <https://github.com/rust-lang/rust/pull/79196> for a discussion of argument sizes.
-        let empty_path_flag = flags & this.eval_libc("AT_EMPTY_PATH")?.to_i32()? != 0;
+        let at_ampty_path = this.eval_libc_i32("AT_EMPTY_PATH")?;
+        let empty_path_flag = flags & at_ampty_path == at_ampty_path;
         // We only support:
         // * interpreting `path` as an absolute directory,
         // * interpreting `path` as a path relative to `dirfd` when the latter is `AT_FDCWD`, or

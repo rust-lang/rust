@@ -90,7 +90,8 @@ pub fn futex<'tcx>(
             let timeout_time = if this.ptr_is_null(timeout.ptr)? {
                 None
             } else {
-                if op & futex_realtime != 0 {
+                let realtime = op & futex_realtime == futex_realtime;
+                if realtime {
                     this.check_no_isolation(
                         "`futex` syscall with `op=FUTEX_WAIT` and non-null timeout with `FUTEX_CLOCK_REALTIME`",
                     )?;
@@ -106,14 +107,14 @@ pub fn futex<'tcx>(
                 };
                 Some(if wait_bitset {
                     // FUTEX_WAIT_BITSET uses an absolute timestamp.
-                    if op & futex_realtime != 0 {
+                    if realtime {
                         Time::RealTime(SystemTime::UNIX_EPOCH.checked_add(duration).unwrap())
                     } else {
                         Time::Monotonic(this.machine.clock.anchor().checked_add(duration).unwrap())
                     }
                 } else {
                     // FUTEX_WAIT uses a relative timestamp.
-                    if op & futex_realtime != 0 {
+                    if realtime {
                         Time::RealTime(SystemTime::now().checked_add(duration).unwrap())
                     } else {
                         Time::Monotonic(this.machine.clock.now().checked_add(duration).unwrap())
