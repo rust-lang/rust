@@ -37,7 +37,8 @@ pub(crate) fn unwrap_block(acc: &mut Assists, ctx: &AssistContext<'_>) -> Option
         parent = parent.ancestors().find(|it| ast::MatchExpr::can_cast(it.kind()))?
     }
 
-    if matches!(parent.kind(), SyntaxKind::STMT_LIST | SyntaxKind::EXPR_STMT) {
+    if matches!(parent.kind(), SyntaxKind::STMT_LIST | SyntaxKind::EXPR_STMT | SyntaxKind::LET_STMT)
+    {
         return acc.add(assist_id, assist_label, target, |builder| {
             builder.replace(block.syntax().text_range(), update_expr_string(block.to_string()));
         });
@@ -712,6 +713,50 @@ fn main() -> i32 {
     let a = 5;
     return 3;
     5
+}
+"#,
+        );
+    }
+
+    #[test]
+    fn unwrap_block_in_let_initializers() {
+        // https://github.com/rust-lang/rust-analyzer/issues/13679
+        check_assist(
+            unwrap_block,
+            r#"
+fn main() {
+    let x = {$0
+        bar
+    };
+}
+"#,
+            r#"
+fn main() {
+    let x = bar;
+}
+"#,
+        );
+    }
+
+    #[test]
+    fn unwrap_if_in_let_initializers() {
+        // https://github.com/rust-lang/rust-analyzer/issues/13679
+        check_assist(
+            unwrap_block,
+            r#"
+fn main() {
+    let a = 1;
+    let x = if a - 1 == 0 {$0
+        foo
+    } else {
+        bar
+    };
+}
+"#,
+            r#"
+fn main() {
+    let a = 1;
+    let x = foo;
 }
 "#,
         );
