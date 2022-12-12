@@ -666,12 +666,12 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
         enum AssertIntrinsic {
             Inhabited,
             ZeroValid,
-            UninitValid,
+            MemUninitializedValid,
         }
         let panic_intrinsic = intrinsic.and_then(|i| match i {
             sym::assert_inhabited => Some(AssertIntrinsic::Inhabited),
             sym::assert_zero_valid => Some(AssertIntrinsic::ZeroValid),
-            sym::assert_uninit_valid => Some(AssertIntrinsic::UninitValid),
+            sym::assert_mem_uninitialized_valid => Some(AssertIntrinsic::MemUninitializedValid),
             _ => None,
         });
         if let Some(intrinsic) = panic_intrinsic {
@@ -682,7 +682,7 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
             let do_panic = match intrinsic {
                 Inhabited => layout.abi.is_uninhabited(),
                 ZeroValid => !bx.tcx().permits_zero_init(layout),
-                UninitValid => !bx.tcx().permits_uninit_init(layout),
+                MemUninitializedValid => !bx.tcx().permits_uninit_init(layout),
             };
             Some(if do_panic {
                 let msg_str = with_no_visible_paths!({
