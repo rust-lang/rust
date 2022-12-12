@@ -278,6 +278,8 @@ fn closure_expr(p: &mut Parser<'_>) -> CompletedMarker {
         // fn main() { || -> i32 { 92 }(); }
         block_expr(p);
     } else if p.at_ts(EXPR_FIRST) {
+        // test closure_body_underscore_assignment
+        // fn main() { || _ = 0; }
         expr(p);
     } else {
         p.error("expected expression");
