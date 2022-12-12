@@ -80,7 +80,7 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriInterpCxExt<'mir, 'tcx> {
             return Ok(false);
         }
 
-        let req_align = this.read_scalar(align_op)?.to_machine_usize(this)?;
+        let req_align = this.read_machine_usize(align_op)?;
 
         // Stop if the alignment is not a power of two.
         if !req_align.is_power_of_two() {
