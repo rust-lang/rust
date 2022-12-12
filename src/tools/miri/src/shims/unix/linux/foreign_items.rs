@@ -88,11 +88,11 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriInterpCxExt<'mir, 'tcx> {
                 // argument, we have to also check all arguments *before* it to ensure that they
                 // have the right type.
 
-                let sys_getrandom = this.eval_libc("SYS_getrandom")?.to_machine_usize(this)?;
+                let sys_getrandom = this.eval_libc("SYS_getrandom").to_machine_usize(this)?;
 
-                let sys_statx = this.eval_libc("SYS_statx")?.to_machine_usize(this)?;
+                let sys_statx = this.eval_libc("SYS_statx").to_machine_usize(this)?;
 
-                let sys_futex = this.eval_libc("SYS_futex")?.to_machine_usize(this)?;
+                let sys_futex = this.eval_libc("SYS_futex").to_machine_usize(this)?;
 
                 if args.is_empty() {
                     throw_ub_format!(
@@ -150,7 +150,7 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriInterpCxExt<'mir, 'tcx> {
                 this.read_scalar(cpusetsize)?.to_machine_usize(this)?;
                 this.deref_operand(mask)?;
                 // FIXME: we just return an error; `num_cpus` then falls back to `sysconf`.
-                let einval = this.eval_libc("EINVAL")?;
+                let einval = this.eval_libc("EINVAL");
                 this.set_last_error(einval)?;
                 this.write_scalar(Scalar::from_i32(-1), dest)?;
             }

@@ -196,7 +196,7 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriInterpCxExt<'mir, 'tcx> {
                 // Align must be power of 2, and also at least ptr-sized (POSIX rules).
                 // But failure to adhere to this is not UB, it's an error condition.
                 if !align.is_power_of_two() || align < this.pointer_size().bytes() {
-                    let einval = this.eval_libc_i32("EINVAL")?;
+                    let einval = this.eval_libc_i32("EINVAL");
                     this.write_int(einval, dest)?;
                 } else {
                     if size == 0 {
@@ -243,7 +243,7 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriInterpCxExt<'mir, 'tcx> {
                 ];
                 let mut result = None;
                 for &(sysconf_name, value) in sysconfs {
-                    let sysconf_name = this.eval_libc_i32(sysconf_name)?;
+                    let sysconf_name = this.eval_libc_i32(sysconf_name);
                     if sysconf_name == name {
                         result = Some(value(this));
                         break;
@@ -480,7 +480,7 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriInterpCxExt<'mir, 'tcx> {
                     None => format!("<unknown errnum in strerror_r: {errnum}>"),
                 };
                 let (complete, _) = this.write_os_str_to_c_str(OsStr::new(&formatted), buf, buflen)?;
-                let ret = if complete { 0 } else { this.eval_libc_i32("ERANGE")? };
+                let ret = if complete { 0 } else { this.eval_libc_i32("ERANGE") };
                 this.write_int(ret, dest)?;
             }
             "getpid" => {
@@ -495,7 +495,7 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriInterpCxExt<'mir, 'tcx> {
             if this.frame_in_std() => {
                 let [_attr, guard_size] = this.check_shim(abi, Abi::C { unwind: false }, link_name, args)?;
                 let guard_size = this.deref_operand(guard_size)?;
-                let guard_size_layout = this.libc_ty_layout("size_t")?;
+                let guard_size_layout = this.libc_ty_layout("size_t");
                 this.write_scalar(Scalar::from_uint(this.machine.page_size, guard_size_layout.size), &guard_size.into())?;
 
                 // Return success (`0`).
@@ -589,7 +589,7 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriInterpCxExt<'mir, 'tcx> {
                     this.write_null(dest)?;
                 } else {
                     this.write_null(&result.into())?;
-                    this.write_scalar(this.eval_libc("ERANGE")?, dest)?;
+                    this.write_scalar(this.eval_libc("ERANGE"), dest)?;
                 }
             }
 
