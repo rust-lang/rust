@@ -1,15 +1,15 @@
 //! Functions dealing with attributes and meta items.
 
-use crate::ast;
 use crate::ast::{AttrArgs, AttrArgsEq, AttrId, AttrItem, AttrKind, AttrStyle, AttrVec, Attribute};
 use crate::ast::{DelimArgs, Expr, ExprKind, LitKind, MetaItemLit};
 use crate::ast::{MacDelimiter, MetaItem, MetaItemKind, NestedMetaItem, NormalAttr};
-use crate::ast::{Path, PathSegment, StrStyle, DUMMY_NODE_ID};
+use crate::ast::{Path, PathSegment, DUMMY_NODE_ID};
 use crate::ptr::P;
 use crate::token::{self, CommentKind, Delimiter, Token};
 use crate::tokenstream::{DelimSpan, Spacing, TokenTree};
 use crate::tokenstream::{LazyAttrTokenStream, TokenStream};
 use crate::util::comments;
+use crate::util::literal::escape_string_symbol;
 use rustc_data_structures::sync::WorkerLocal;
 use rustc_index::bit_set::GrowableBitSet;
 use rustc_span::symbol::{sym, Ident, Symbol};
@@ -321,18 +321,6 @@ impl Attribute {
     }
 }
 
-/* Constructors */
-
-pub fn mk_name_value_item_str(ident: Ident, str: Symbol, str_span: Span) -> MetaItem {
-    mk_name_value_item(ident, LitKind::Str(str, ast::StrStyle::Cooked), str_span)
-}
-
-pub fn mk_name_value_item(ident: Ident, kind: LitKind, lit_span: Span) -> MetaItem {
-    let lit = MetaItemLit { token_lit: kind.to_token_lit(), kind, span: lit_span };
-    let span = ident.span.to(lit_span);
-    MetaItem { path: Path::from_ident(ident), kind: MetaItemKind::NameValue(lit), span }
-}
-
 pub struct AttrIdGenerator(WorkerLocal<Cell<u32>>);
 
 #[cfg(debug_assertions)]
@@ -408,7 +396,7 @@ pub fn mk_attr_name_value_str(
     val: Symbol,
     span: Span,
 ) -> Attribute {
-    let lit = LitKind::Str(val, StrStyle::Cooked).to_token_lit();
+    let lit = token::Lit::new(token::Str, escape_string_symbol(val), None);
     let expr = P(Expr {
         id: DUMMY_NODE_ID,
         kind: ExprKind::Lit(lit),
