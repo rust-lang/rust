@@ -802,7 +802,7 @@ impl Diagnostic {
         debug_assert!(
             !(suggestions
                 .iter()
-                .flat_map(|suggs| suggs)
+                .flatten()
                 .any(|(sp, suggestion)| sp.is_empty() && suggestion.is_empty())),
             "Span must not be empty and have no suggestion"
         );
