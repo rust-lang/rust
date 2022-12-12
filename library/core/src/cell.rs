@@ -202,9 +202,9 @@ use crate::ptr::{self, NonNull};
 mod lazy;
 mod once;
 
-#[unstable(feature = "once_cell", issue = "74465")]
+#[unstable(feature = "lazy_cell", issue = "109736")]
 pub use lazy::LazyCell;
-#[unstable(feature = "once_cell", issue = "74465")]
+#[stable(feature = "once_cell", since = "CURRENT_RUSTC_VERSION")]
 pub use once::OnceCell;
 
 /// A mutable memory location.

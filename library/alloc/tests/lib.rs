@@ -43,7 +43,6 @@
 #![feature(slice_flatten)]
 #![feature(thin_box)]
 #![feature(strict_provenance)]
-#![feature(once_cell)]
 #![feature(drain_keep_rest)]
 #![deny(fuzzy_provenance_casts)]
 #![deny(unsafe_op_in_unsafe_fn)]

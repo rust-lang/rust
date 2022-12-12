@@ -5,7 +5,6 @@
 #![feature(const_mut_refs)]
 #![feature(min_specialization)]
 #![feature(never_type)]
-#![feature(once_cell)]
 #![feature(rustc_attrs)]
 #![recursion_limit = "256"]
 #![allow(rustc::potential_query_instability)]

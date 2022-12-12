@@ -172,9 +172,9 @@ pub use self::poison::{LockResult, PoisonError, TryLockError, TryLockResult};
 #[stable(feature = "rust1", since = "1.0.0")]
 pub use self::rwlock::{RwLock, RwLockReadGuard, RwLockWriteGuard};
 
-#[unstable(feature = "once_cell", issue = "74465")]
+#[unstable(feature = "lazy_cell", issue = "109736")]
 pub use self::lazy_lock::LazyLock;
-#[unstable(feature = "once_cell", issue = "74465")]
+#[stable(feature = "once_cell", since = "CURRENT_RUSTC_VERSION")]
 pub use self::once_lock::OnceLock;
 
 pub(crate) use self::remutex::{ReentrantMutex, ReentrantMutexGuard};

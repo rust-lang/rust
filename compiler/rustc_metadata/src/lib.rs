@@ -4,7 +4,6 @@
 #![feature(generators)]
 #![feature(iter_from_generator)]
 #![feature(let_chains)]
-#![feature(once_cell)]
 #![feature(proc_macro_internals)]
 #![feature(macro_metavar_expr)]
 #![feature(min_specialization)]
