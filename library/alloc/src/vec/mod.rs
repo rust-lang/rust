@@ -2478,7 +2478,7 @@ where [(); core::alloc::co_alloc_metadata_num_slots_with_preference::<A>(COOP_PR
     /// assert_eq!(flattened.pop(), Some(6));
     /// ```
     #[unstable(feature = "slice_flatten", issue = "95629")]
-    pub fn into_flattened(self) -> Vec<T, A> {
+    pub fn into_flattened(self) -> Vec<T, A, COOP_PREFERRED> {
         let (ptr, len, cap, alloc) = self.into_raw_parts_with_alloc();
         let (new_len, new_cap) = if T::IS_ZST {
             (len.checked_mul(N).expect("vec len overflow"), usize::MAX)
@@ -3124,17 +3124,17 @@ where [(); core::alloc::co_alloc_metadata_num_slots_with_preference::<A>(COOP_PR
 }
 
 #[stable(feature = "rust1", since = "1.0.0")]
-impl<T, A: Allocator, const COOP_PREFERRED: bool> AsRef<Vec<T, A>> for Vec<T, A, COOP_PREFERRED>
+impl<T, A: Allocator, const COOP_PREFERRED: bool> AsRef<Vec<T, A, COOP_PREFERRED>> for Vec<T, A, COOP_PREFERRED>
 where [(); core::alloc::co_alloc_metadata_num_slots_with_preference::<A>(COOP_PREFERRED)]: {
-    fn as_ref(&self) -> &Vec<T, A> {
+    fn as_ref(&self) -> &Vec<T, A, COOP_PREFERRED> {
         self
     }
 }
 
 #[stable(feature = "vec_as_mut", since = "1.5.0")]
-impl<T, A: Allocator, const COOP_PREFERRED: bool> AsMut<Vec<T, A>> for Vec<T, A, COOP_PREFERRED>
+impl<T, A: Allocator, const COOP_PREFERRED: bool> AsMut<Vec<T, A, COOP_PREFERRED>> for Vec<T, A, COOP_PREFERRED>
 where [(); core::alloc::co_alloc_metadata_num_slots_with_preference::<A>(COOP_PREFERRED)]: {
-    fn as_mut(&mut self) -> &mut Vec<T, A> {
+    fn as_mut(&mut self) -> &mut Vec<T, A, COOP_PREFERRED> {
         self
     }
 }
@@ -3286,7 +3286,7 @@ where [(); core::alloc::co_alloc_metadata_num_slots_with_preference::<A>(COOP_PR
     ///
     /// assert_eq!(Box::from(vec), vec![1, 2, 3].into_boxed_slice());
     /// ```
-    fn from(v: Vec<T, A>) -> Self {
+    fn from(v: Vec<T, A, COOP_PREFERRED>) -> Self {
         v.into_boxed_slice()
     }
 }
@@ -3309,7 +3309,7 @@ impl From<&str> for Vec<u8> {
 #[stable(feature = "array_try_from_vec", since = "1.48.0")]
 impl<T, A: Allocator, const N: usize, const COOP_PREFERRED: bool> TryFrom<Vec<T, A, COOP_PREFERRED>> for [T; N]
 where [(); core::alloc::co_alloc_metadata_num_slots_with_preference::<A>(COOP_PREFERRED)]: {
-    type Error = Vec<T, A>;
+    type Error = Vec<T, A, COOP_PREFERRED>;
 
     /// Gets the entire contents of the `Vec<T>` as an array,
     /// if its size exactly matches that of the requested array.
@@ -3337,7 +3337,7 @@ where [(); core::alloc::co_alloc_metadata_num_slots_with_preference::<A>(COOP_PR
     /// assert_eq!(a, b' ');
     /// assert_eq!(b, b'd');
     /// ```
-    fn try_from(mut vec: Vec<T, A>) -> Result<[T; N], Vec<T, A>> {
+    fn try_from(mut vec: Vec<T, A, COOP_PREFERRED>) -> Result<[T; N], Vec<T, A, COOP_PREFERRED>> {
         if vec.len() != N {
             return Err(vec);
         }
