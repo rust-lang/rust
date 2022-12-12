@@ -143,11 +143,11 @@
 #![allow(missing_docs)]
 #![stable(feature = "rust1", since = "1.0.0")]
 
-use core::{alloc, fmt};
 use core::iter::{FromIterator, FusedIterator, InPlaceIterable, SourceIter, TrustedLen};
 use core::mem::{self, swap, ManuallyDrop};
 use core::ops::{Deref, DerefMut};
 use core::ptr;
+use core::{alloc, fmt};
 
 use crate::alloc::Global;
 
@@ -1198,7 +1198,7 @@ impl<T> BinaryHeap<T> {
     /// ```
     #[inline]
     #[stable(feature = "drain", since = "1.6.0")]
-    pub fn drain(&mut self) -> Drain<'_, T, {alloc::SHORT_TERM_VEC_PREFERS_COOP}> {
+    pub fn drain(&mut self) -> Drain<'_, T, { alloc::SHORT_TERM_VEC_PREFERS_COOP }> {
         Drain { iter: self.data.drain(..) }
     }
 
@@ -1479,13 +1479,17 @@ unsafe impl<T: Ord> TrustedLen for IntoIterSorted<T> {}
 #[stable(feature = "drain", since = "1.6.0")]
 #[derive(Debug)]
 pub struct Drain<'a, T: 'a, const COOP_PREFERRED: bool>
-where [(); alloc::co_alloc_metadata_num_slots_with_preference::<Global>(COOP_PREFERRED)]: {
+where
+    [(); alloc::co_alloc_metadata_num_slots_with_preference::<Global>(COOP_PREFERRED)]:,
+{
     iter: vec::Drain<'a, T, Global, COOP_PREFERRED>,
 }
 
 #[stable(feature = "drain", since = "1.6.0")]
 impl<T, const COOP_PREFERRED: bool> Iterator for Drain<'_, T, COOP_PREFERRED>
-where [(); alloc::co_alloc_metadata_num_slots_with_preference::<Global>(COOP_PREFERRED)]: {
+where
+    [(); alloc::co_alloc_metadata_num_slots_with_preference::<Global>(COOP_PREFERRED)]:,
+{
     type Item = T;
 
     #[inline]

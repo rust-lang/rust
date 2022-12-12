@@ -92,8 +92,12 @@ pub(crate) mod hack {
     // We shouldn't add inline attribute to this since this is used in
     // `vec!` macro mostly and causes perf regression. See #71204 for
     // discussion and perf results.
-    pub fn into_vec<T, A: Allocator, const COOP_PREFERRED: bool>(b: Box<[T], A>) -> Vec<T, A, COOP_PREFERRED>
-    where [(); core::alloc::co_alloc_metadata_num_slots_with_preference::<A>(COOP_PREFERRED)]: {
+    pub fn into_vec<T, A: Allocator, const COOP_PREFERRED: bool>(
+        b: Box<[T], A>,
+    ) -> Vec<T, A, COOP_PREFERRED>
+    where
+        [(); core::alloc::co_alloc_metadata_num_slots_with_preference::<A>(COOP_PREFERRED)]:,
+    {
         unsafe {
             let len = b.len();
             let (b, alloc) = Box::into_raw_with_allocator(b);
@@ -103,14 +107,22 @@ pub(crate) mod hack {
 
     #[cfg(not(no_global_oom_handling))]
     #[inline]
-    pub fn to_vec<T: ConvertVec, A: Allocator, const COOP_PREFERRED: bool>(s: &[T], alloc: A) -> Vec<T, A, COOP_PREFERRED>
-    where [(); core::alloc::co_alloc_metadata_num_slots_with_preference::<A>(COOP_PREFERRED)]: {
+    pub fn to_vec<T: ConvertVec, A: Allocator, const COOP_PREFERRED: bool>(
+        s: &[T],
+        alloc: A,
+    ) -> Vec<T, A, COOP_PREFERRED>
+    where
+        [(); core::alloc::co_alloc_metadata_num_slots_with_preference::<A>(COOP_PREFERRED)]:,
+    {
         T::to_vec(s, alloc)
     }
 
     #[cfg(not(no_global_oom_handling))]
     pub trait ConvertVec {
-        fn to_vec<A: Allocator, const COOP_PREFERRED: bool>(s: &[Self], alloc: A) -> Vec<Self, A, COOP_PREFERRED>
+        fn to_vec<A: Allocator, const COOP_PREFERRED: bool>(
+            s: &[Self],
+            alloc: A,
+        ) -> Vec<Self, A, COOP_PREFERRED>
         where
             Self: Sized,
             [(); core::alloc::co_alloc_metadata_num_slots_with_preference::<A>(COOP_PREFERRED)]:;
@@ -119,15 +131,24 @@ pub(crate) mod hack {
     #[cfg(not(no_global_oom_handling))]
     impl<T: Clone> ConvertVec for T {
         #[inline]
-        default fn to_vec<A: Allocator, const COOP_PREFERRED: bool>(s: &[Self], alloc: A) -> Vec<Self, A, COOP_PREFERRED>
-        where [(); core::alloc::co_alloc_metadata_num_slots_with_preference::<A>(COOP_PREFERRED)]: {
+        default fn to_vec<A: Allocator, const COOP_PREFERRED: bool>(
+            s: &[Self],
+            alloc: A,
+        ) -> Vec<Self, A, COOP_PREFERRED>
+        where
+            [(); core::alloc::co_alloc_metadata_num_slots_with_preference::<A>(COOP_PREFERRED)]:,
+        {
             struct DropGuard<'a, T, A: Allocator, const COOP_PREFERRED: bool>
-            where [(); core::alloc::co_alloc_metadata_num_slots_with_preference::<A>(COOP_PREFERRED)]: {
+            where
+                [(); core::alloc::co_alloc_metadata_num_slots_with_preference::<A>(COOP_PREFERRED)]:,
+            {
                 vec: &'a mut Vec<T, A, COOP_PREFERRED>,
                 num_init: usize,
             }
             impl<'a, T, A: Allocator, const COOP_PREFERRED: bool> Drop for DropGuard<'a, T, A, COOP_PREFERRED>
-            where [(); core::alloc::co_alloc_metadata_num_slots_with_preference::<A>(COOP_PREFERRED)]: {
+            where
+                [(); core::alloc::co_alloc_metadata_num_slots_with_preference::<A>(COOP_PREFERRED)]:,
+            {
                 #[inline]
                 fn drop(&mut self) {
                     // SAFETY:
@@ -159,8 +180,13 @@ pub(crate) mod hack {
     #[cfg(not(no_global_oom_handling))]
     impl<T: Copy> ConvertVec for T {
         #[inline]
-        fn to_vec<A: Allocator, const COOP_PREFERRED: bool>(s: &[Self], alloc: A) -> Vec<Self, A, COOP_PREFERRED>
-        where [(); core::alloc::co_alloc_metadata_num_slots_with_preference::<A>(COOP_PREFERRED)]: {
+        fn to_vec<A: Allocator, const COOP_PREFERRED: bool>(
+            s: &[Self],
+            alloc: A,
+        ) -> Vec<Self, A, COOP_PREFERRED>
+        where
+            [(); core::alloc::co_alloc_metadata_num_slots_with_preference::<A>(COOP_PREFERRED)]:,
+        {
             let mut v = Vec::with_capacity_in(s.len(), alloc);
             // SAFETY:
             // allocated above with the capacity of `s`, and initialize to `s.len()` in
@@ -438,7 +464,7 @@ impl<T> [T] {
     pub fn to_vec_in<A: Allocator>(&self, alloc: A) -> Vec<T, A>
     where
         T: Clone,
-        [(); core::alloc::co_alloc_metadata_num_slots::<A>()]:
+        [(); core::alloc::co_alloc_metadata_num_slots::<A>()]:,
     {
         // N.B., see the `hack` module in this file for more details.
         hack::to_vec(self, alloc)
@@ -462,7 +488,9 @@ impl<T> [T] {
     #[stable(feature = "rust1", since = "1.0.0")]
     #[inline]
     pub fn into_vec<A: Allocator>(self: Box<Self, A>) -> Vec<T, A>
-    where [(); core::alloc::co_alloc_metadata_num_slots::<A>()]: {
+    where
+        [(); core::alloc::co_alloc_metadata_num_slots::<A>()]:,
+    {
         // N.B., see the `hack` module in this file for more details.
         hack::into_vec(self)
     }
@@ -774,7 +802,9 @@ impl<T: Clone, V: Borrow<[T]>> Join<&[T]> for [V] {
 
 #[stable(feature = "rust1", since = "1.0.0")]
 impl<T, A: Allocator, const COOP_PREFERRED: bool> Borrow<[T]> for Vec<T, A, COOP_PREFERRED>
-where [(); core::alloc::co_alloc_metadata_num_slots_with_preference::<A>(COOP_PREFERRED)]: {
+where
+    [(); core::alloc::co_alloc_metadata_num_slots_with_preference::<A>(COOP_PREFERRED)]:,
+{
     fn borrow(&self) -> &[T] {
         &self[..]
     }
@@ -782,7 +812,9 @@ where [(); core::alloc::co_alloc_metadata_num_slots_with_preference::<A>(COOP_PR
 
 #[stable(feature = "rust1", since = "1.0.0")]
 impl<T, A: Allocator, const COOP_PREFERRED: bool> BorrowMut<[T]> for Vec<T, A, COOP_PREFERRED>
-where [(); core::alloc::co_alloc_metadata_num_slots_with_preference::<A>(COOP_PREFERRED)]: {
+where
+    [(); core::alloc::co_alloc_metadata_num_slots_with_preference::<A>(COOP_PREFERRED)]:,
+{
     fn borrow_mut(&mut self) -> &mut [T] {
         &mut self[..]
     }

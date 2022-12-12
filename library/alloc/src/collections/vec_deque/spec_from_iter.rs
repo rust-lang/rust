@@ -7,10 +7,11 @@ pub(super) trait SpecFromIter<T, I> {
     fn spec_from_iter(iter: I) -> Self;
 }
 
-impl<T, I, A: Allocator, const COOP_PREFERRED: bool> SpecFromIter<T, I> for VecDeque<T, A, COOP_PREFERRED>
+impl<T, I, A: Allocator, const COOP_PREFERRED: bool> SpecFromIter<T, I>
+    for VecDeque<T, A, COOP_PREFERRED>
 where
     I: Iterator<Item = T>,
-    [(); alloc::co_alloc_metadata_num_slots_with_preference::<A>(COOP_PREFERRED)]:
+    [(); alloc::co_alloc_metadata_num_slots_with_preference::<A>(COOP_PREFERRED)]:,
 {
     default fn spec_from_iter(iterator: I) -> Self {
         // Since converting is O(1) now, just re-use the `Vec` logic for
@@ -21,16 +22,22 @@ where
     }
 }
 
-impl<T, A: Allocator, const COOP_PREFERRED: bool> SpecFromIter<T, crate::vec::IntoIter<T>> for VecDeque<T, A, COOP_PREFERRED>
-where [(); alloc::co_alloc_metadata_num_slots_with_preference::<A>(COOP_PREFERRED)]: {
+impl<T, A: Allocator, const COOP_PREFERRED: bool> SpecFromIter<T, crate::vec::IntoIter<T>>
+    for VecDeque<T, A, COOP_PREFERRED>
+where
+    [(); alloc::co_alloc_metadata_num_slots_with_preference::<A>(COOP_PREFERRED)]:,
+{
     #[inline]
     fn spec_from_iter(iterator: crate::vec::IntoIter<T>) -> Self {
         iterator.into_vecdeque()
     }
 }
 
-impl<T, A: Allocator, const COOP_PREFERRED: bool> SpecFromIter<T, IntoIter<T>> for VecDeque<T, A, COOP_PREFERRED>
-where [(); alloc::co_alloc_metadata_num_slots_with_preference::<A>(COOP_PREFERRED)]: {
+impl<T, A: Allocator, const COOP_PREFERRED: bool> SpecFromIter<T, IntoIter<T>>
+    for VecDeque<T, A, COOP_PREFERRED>
+where
+    [(); alloc::co_alloc_metadata_num_slots_with_preference::<A>(COOP_PREFERRED)]:,
+{
     #[inline]
     fn spec_from_iter(iterator: IntoIter<T>) -> Self {
         iterator.into_vecdeque()
