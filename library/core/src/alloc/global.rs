@@ -1,7 +1,7 @@
+use crate::alloc::GlobalCoAllocMeta;
 use crate::alloc::Layout;
 use crate::cmp;
 use crate::ptr;
-use crate::alloc::GlobalCoAllocMeta;
 
 #[unstable(feature = "global_co_alloc_meta", issue = "none")]
 #[allow(missing_debug_implementations)]
@@ -166,7 +166,9 @@ pub unsafe trait GlobalAlloc {
     unsafe fn alloc(&self, layout: Layout) -> *mut u8;
 
     #[unstable(feature = "global_co_alloc", issue = "none")]
-    unsafe fn co_alloc(&self, _layout: Layout, mut _result: &mut RawAndMeta) {panic!("@FIXME")}
+    unsafe fn co_alloc(&self, _layout: Layout, mut _result: &mut RawAndMeta) {
+        panic!("@FIXME")
+    }
 
     /// Deallocate the block of memory at the given `ptr` pointer with the given `layout`.
     ///
@@ -184,7 +186,9 @@ pub unsafe trait GlobalAlloc {
     unsafe fn dealloc(&self, ptr: *mut u8, layout: Layout);
 
     #[unstable(feature = "global_co_alloc", issue = "none")]
-    unsafe fn co_dealloc(&self, _ptr_and_meta: RawAndMeta, _layout: Layout) {panic!("@FIXME")}
+    unsafe fn co_dealloc(&self, _ptr_and_meta: RawAndMeta, _layout: Layout) {
+        panic!("@FIXME")
+    }
 
     /// Behaves like `alloc`, but also ensures that the contents
     /// are set to zero before being returned.
@@ -308,7 +312,7 @@ pub unsafe trait GlobalAlloc {
         ptr_and_meta: RawAndMeta,
         layout: Layout,
         new_size: usize,
-        mut result: &mut RawAndMeta
+        mut result: &mut RawAndMeta,
     ) {
         // SAFETY: the caller must ensure that the `new_size` does not overflow.
         // `layout.align()` comes from a `Layout` and is thus guaranteed to be valid.

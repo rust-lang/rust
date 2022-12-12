@@ -90,7 +90,9 @@ pub const fn co_alloc_metadata_num_slots<A: Allocator>() -> usize {
 #[unstable(feature = "global_co_alloc", issue = "none")]
 /// Param `coop_preferred` - if false, then this returns `0`, regardless of
 /// whether allocator `A` is cooperative.
-pub const fn co_alloc_metadata_num_slots_with_preference<A: Allocator>(coop_preferred: bool) -> usize {
+pub const fn co_alloc_metadata_num_slots_with_preference<A: Allocator>(
+    coop_preferred: bool,
+) -> usize {
     if A::IS_CO_ALLOCATOR && coop_preferred { 1 } else { 0 }
 }
 
@@ -183,7 +185,9 @@ pub unsafe trait Allocator {
     /// [`handle_alloc_error`]: ../../alloc/alloc/fn.handle_alloc_error.html
     fn allocate(&self, layout: Layout) -> Result<NonNull<[u8]>, AllocError>;
 
-    fn co_allocate(&self, _layout: Layout, _result: &mut SliceAndMetaResult) {panic!("FIXME")}
+    fn co_allocate(&self, _layout: Layout, _result: &mut SliceAndMetaResult) {
+        panic!("FIXME")
+    }
 
     /// Behaves like `allocate`, but also ensures that the returned memory is zero-initialized.
     ///
@@ -209,14 +213,9 @@ pub unsafe trait Allocator {
 
     fn co_allocate_zeroed(&self, layout: Layout, mut result: &mut SliceAndMetaResult) {
         self.co_allocate(layout, &mut result);
-        if let Ok(SliceAndMeta{slice, ..}) = result {
+        if let Ok(SliceAndMeta { slice, .. }) = result {
             // SAFETY: `alloc` returns a valid memory block
-            unsafe {
-                    slice
-                    .as_non_null_ptr()
-                    .as_ptr()
-                    .write_bytes(0, slice.len())
-            }
+            unsafe { slice.as_non_null_ptr().as_ptr().write_bytes(0, slice.len()) }
         }
     }
 
@@ -231,7 +230,9 @@ pub unsafe trait Allocator {
     /// [*fit*]: #memory-fitting
     unsafe fn deallocate(&self, ptr: NonNull<u8>, layout: Layout);
 
-    unsafe fn co_deallocate(&self, _ptr_and_meta: PtrAndMeta, _layout: Layout) {panic!("FIXME")}
+    unsafe fn co_deallocate(&self, _ptr_and_meta: PtrAndMeta, _layout: Layout) {
+        panic!("FIXME")
+    }
 
     /// Attempts to extend the memory block.
     ///
@@ -302,7 +303,7 @@ pub unsafe trait Allocator {
         ptr_and_meta: PtrAndMeta,
         old_layout: Layout,
         new_layout: Layout,
-        mut result: &mut SliceAndMetaResult
+        mut result: &mut SliceAndMetaResult,
     ) {
         debug_assert!(
             new_layout.size() >= old_layout.size(),
@@ -311,7 +312,7 @@ pub unsafe trait Allocator {
 
         self.co_allocate(new_layout, &mut result);
 
-        if let Ok(SliceAndMeta {slice, ..}) = result {
+        if let Ok(SliceAndMeta { slice, .. }) = result {
             // SAFETY: because `new_layout.size()` must be greater than or equal to
             // `old_layout.size()`, both the old and new memory allocation are valid for reads and
             // writes for `old_layout.size()` bytes. Also, because the old allocation wasn't yet
@@ -396,7 +397,7 @@ pub unsafe trait Allocator {
         ptr_and_meta: PtrAndMeta,
         old_layout: Layout,
         new_layout: Layout,
-        mut result: &mut SliceAndMetaResult
+        mut result: &mut SliceAndMetaResult,
     ) {
         debug_assert!(
             new_layout.size() >= old_layout.size(),
@@ -405,7 +406,7 @@ pub unsafe trait Allocator {
 
         self.co_allocate_zeroed(new_layout, &mut result);
 
-        if let Ok(SliceAndMeta{ slice, ..}) = result {
+        if let Ok(SliceAndMeta { slice, .. }) = result {
             // SAFETY: because `new_layout.size()` must be greater than or equal to
             // `old_layout.size()`, both the old and new memory allocation are valid for reads and
             // writes for `old_layout.size()` bytes. Also, because the old allocation wasn't yet
@@ -491,7 +492,7 @@ pub unsafe trait Allocator {
         ptr_and_meta: PtrAndMeta,
         old_layout: Layout,
         new_layout: Layout,
-        mut result: &mut SliceAndMetaResult
+        mut result: &mut SliceAndMetaResult,
     ) {
         debug_assert!(
             new_layout.size() <= old_layout.size(),
@@ -500,7 +501,7 @@ pub unsafe trait Allocator {
 
         self.co_allocate(new_layout, &mut result);
 
-        if let Ok(SliceAndMeta{ slice, ..}) = result {
+        if let Ok(SliceAndMeta { slice, .. }) = result {
             // SAFETY: because `new_layout.size()` must be lower than or equal to
             // `old_layout.size()`, both the old and new memory allocation are valid for reads and
             // writes for `new_layout.size()` bytes. Also, because the old allocation wasn't yet

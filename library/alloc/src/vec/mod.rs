@@ -397,19 +397,25 @@ mod spec_extend;
 #[stable(feature = "rust1", since = "1.0.0")]
 #[cfg_attr(not(test), rustc_diagnostic_item = "Vec")]
 #[rustc_insignificant_dtor]
-pub struct Vec<T, #[unstable(feature = "allocator_api", issue = "32838")] A: Allocator = Global, const COOP_PREFERRED: bool = DEFAULT_COOP_PREFERRED>
-where [(); core::alloc::co_alloc_metadata_num_slots_with_preference::<A>(COOP_PREFERRED)]:
+pub struct Vec<
+    T,
+    #[unstable(feature = "allocator_api", issue = "32838")] A: Allocator = Global,
+    const COOP_PREFERRED: bool = DEFAULT_COOP_PREFERRED,
+> where
+    [(); core::alloc::co_alloc_metadata_num_slots_with_preference::<A>(COOP_PREFERRED)]:,
 {
     buf: RawVec<T, A, COOP_PREFERRED>,
     len: usize,
 }
 
 #[unstable(feature = "global_co_alloc_covec", issue = "none")]
-pub type CoVec<T, #[unstable(feature = "allocator_api", issue = "32838")] A: Allocator = Global> = Vec<T, A, true>;
+pub type CoVec<T, #[unstable(feature = "allocator_api", issue = "32838")] A: Allocator = Global> =
+    Vec<T, A, true>;
 
 /// "Plain" Vec. Not "cooperative" - not carrying extra data to assist the allocator.
 #[unstable(feature = "global_co_alloc_plvec", issue = "none")]
-pub type PlVec<T, #[unstable(feature = "allocator_api", issue = "32838")] A: Allocator = Global> = Vec<T, A, false>;
+pub type PlVec<T, #[unstable(feature = "allocator_api", issue = "32838")] A: Allocator = Global> =
+    Vec<T, A, false>;
 
 /// Default `Vec`, `DefVec`, `DecVeque`, `DefDecVeq` "cooperation" (`COOP_PREFERRED`) generic parameter.
 #[unstable(feature = "global_co_alloc_def", issue = "none")]
@@ -419,14 +425,14 @@ pub const DEFAULT_COOP_PREFERRED: bool = true;
 /// difference to `Vec` (used without specifying `COOP_PREFERRED`): `DefVec` indicates that the
 /// author considered using `CoVec` or `PlVec`, but left it to default instead.
 #[unstable(feature = "global_co_alloc_defvec", issue = "none")]
-pub type DefVec<T, #[unstable(feature = "allocator_api", issue = "32838")] A: Allocator = Global> = Vec<T, A, DEFAULT_COOP_PREFERRED>;
-
+pub type DefVec<T, #[unstable(feature = "allocator_api", issue = "32838")] A: Allocator = Global> =
+    Vec<T, A, DEFAULT_COOP_PREFERRED>;
 
 /// "Weighted cooperative" Vec. Weight means how much it wants to cooperate (with the allocator). 0
 /// = always pack; u8::MAX = always cooperate (if `Global` supports it).
 /// @FIXME A `pub const` threshold.
 #[unstable(feature = "global_co_alloc_vec", issue = "none")]
-pub type WeVec<T, const weight: u8> = Vec<T, Global, {weight>1}>;
+pub type WeVec<T, const weight: u8> = Vec<T, Global, { weight > 1 }>;
 
 ////////////////////////////////////////////////////////////////////////////////
 // Inherent methods
@@ -617,7 +623,9 @@ impl<T> Vec<T> {
 }
 
 impl<T, A: Allocator, const COOP_PREFERRED: bool> Vec<T, A, COOP_PREFERRED>
-where [(); core::alloc::co_alloc_metadata_num_slots_with_preference::<A>(COOP_PREFERRED)]: {
+where
+    [(); core::alloc::co_alloc_metadata_num_slots_with_preference::<A>(COOP_PREFERRED)]:,
+{
     /// Constructs a new, empty `Vec<T, A>`.
     ///
     /// The vector will not allocate until elements are pushed onto it.
@@ -1628,8 +1636,10 @@ where [(); core::alloc::co_alloc_metadata_num_slots_with_preference::<A>(COOP_PR
         // This drop guard will be invoked when predicate or `drop` of element panicked.
         // It shifts unchecked elements to cover holes and `set_len` to the correct length.
         // In cases when predicate and `drop` never panick, it will be optimized out.
-        struct BackshiftOnDrop<'a, T, A: Allocator, const VEC_IS_COOP: bool=true>
-        where [(); core::alloc::co_alloc_metadata_num_slots_with_preference::<A>(VEC_IS_COOP)]: {
+        struct BackshiftOnDrop<'a, T, A: Allocator, const VEC_IS_COOP: bool = true>
+        where
+            [(); core::alloc::co_alloc_metadata_num_slots_with_preference::<A>(VEC_IS_COOP)]:,
+        {
             v: &'a mut Vec<T, A, VEC_IS_COOP>,
             processed_len: usize,
             deleted_cnt: usize,
@@ -1637,7 +1647,9 @@ where [(); core::alloc::co_alloc_metadata_num_slots_with_preference::<A>(COOP_PR
         }
 
         impl<T, A: Allocator, const VEC_IS_COOP: bool> Drop for BackshiftOnDrop<'_, T, A, VEC_IS_COOP>
-        where [(); core::alloc::co_alloc_metadata_num_slots_with_preference::<A>(VEC_IS_COOP)]: {
+        where
+            [(); core::alloc::co_alloc_metadata_num_slots_with_preference::<A>(VEC_IS_COOP)]:,
+        {
             fn drop(&mut self) {
                 if self.deleted_cnt > 0 {
                     // SAFETY: Trailing unchecked items must be valid since we never touch them.
@@ -1656,7 +1668,12 @@ where [(); core::alloc::co_alloc_metadata_num_slots_with_preference::<A>(COOP_PR
             }
         }
 
-        let mut g = BackshiftOnDrop::<T, A, COOP_PREFERRED> { v: self, processed_len: 0, deleted_cnt: 0, original_len };
+        let mut g = BackshiftOnDrop::<T, A, COOP_PREFERRED> {
+            v: self,
+            processed_len: 0,
+            deleted_cnt: 0,
+            original_len,
+        };
 
         fn process_loop<F, T, A: Allocator, const DELETED: bool, const VEC_IS_COOP: bool>(
             original_len: usize,
@@ -1664,7 +1681,7 @@ where [(); core::alloc::co_alloc_metadata_num_slots_with_preference::<A>(COOP_PR
             g: &mut BackshiftOnDrop<'_, T, A, VEC_IS_COOP>,
         ) where
             F: FnMut(&mut T) -> bool,
-            [(); core::alloc::co_alloc_metadata_num_slots_with_preference::<A>(VEC_IS_COOP)]:
+            [(); core::alloc::co_alloc_metadata_num_slots_with_preference::<A>(VEC_IS_COOP)]:,
         {
             while g.processed_len != original_len {
                 // SAFETY: Unchecked element must be valid.
@@ -1758,7 +1775,9 @@ where [(); core::alloc::co_alloc_metadata_num_slots_with_preference::<A>(COOP_PR
 
         /* INVARIANT: vec.len() > read >= write > write-1 >= 0 */
         struct FillGapOnDrop<'a, T, A: core::alloc::Allocator, const COOP_PREFERRED: bool>
-        where [(); core::alloc::co_alloc_metadata_num_slots_with_preference::<A>(COOP_PREFERRED)]: {
+        where
+            [(); core::alloc::co_alloc_metadata_num_slots_with_preference::<A>(COOP_PREFERRED)]:,
+        {
             /* Offset of the element we want to check if it is duplicate */
             read: usize,
 
@@ -1770,8 +1789,11 @@ where [(); core::alloc::co_alloc_metadata_num_slots_with_preference::<A>(COOP_PR
             vec: &'a mut Vec<T, A, COOP_PREFERRED>,
         }
 
-        impl<'a, T, A: core::alloc::Allocator, const COOP_PREFERRED: bool> Drop for FillGapOnDrop<'a, T, A, COOP_PREFERRED> 
-        where [(); core::alloc::co_alloc_metadata_num_slots_with_preference::<A>(COOP_PREFERRED)]: {
+        impl<'a, T, A: core::alloc::Allocator, const COOP_PREFERRED: bool> Drop
+            for FillGapOnDrop<'a, T, A, COOP_PREFERRED>
+        where
+            [(); core::alloc::co_alloc_metadata_num_slots_with_preference::<A>(COOP_PREFERRED)]:,
+        {
             fn drop(&mut self) {
                 /* This code gets executed when `same_bucket` panics */
 
@@ -2365,7 +2387,9 @@ where [(); core::alloc::co_alloc_metadata_num_slots_with_preference::<A>(COOP_PR
 }
 
 impl<T: Clone, A: Allocator, const COOP_PREFERRED: bool> Vec<T, A, COOP_PREFERRED>
-where [(); core::alloc::co_alloc_metadata_num_slots_with_preference::<A>(COOP_PREFERRED)]: {
+where
+    [(); core::alloc::co_alloc_metadata_num_slots_with_preference::<A>(COOP_PREFERRED)]:,
+{
     /// Resizes the `Vec` in-place so that `len` is equal to `new_len`.
     ///
     /// If `new_len` is greater than `len`, the `Vec` is extended by the
@@ -2465,7 +2489,9 @@ where [(); core::alloc::co_alloc_metadata_num_slots_with_preference::<A>(COOP_PR
 }
 
 impl<T, A: Allocator, const N: usize, const COOP_PREFERRED: bool> Vec<[T; N], A, COOP_PREFERRED>
-where [(); core::alloc::co_alloc_metadata_num_slots_with_preference::<A>(COOP_PREFERRED)]: {
+where
+    [(); core::alloc::co_alloc_metadata_num_slots_with_preference::<A>(COOP_PREFERRED)]:,
+{
     /// Takes a `Vec<[T; N]>` and flattens it into a `Vec<T>`.
     ///
     /// # Panics
@@ -2527,7 +2553,9 @@ impl<T: Clone> ExtendWith<T> for ExtendElement<T> {
 }
 
 impl<T, A: Allocator, const COOP_PREFERRED: bool> Vec<T, A, COOP_PREFERRED>
-where [(); core::alloc::co_alloc_metadata_num_slots_with_preference::<A>(COOP_PREFERRED)]: {
+where
+    [(); core::alloc::co_alloc_metadata_num_slots_with_preference::<A>(COOP_PREFERRED)]:,
+{
     #[cfg(not(no_global_oom_handling))]
     /// Extend the vector by `n` values, using the given generator.
     fn extend_with<E: ExtendWith<T>>(&mut self, n: usize, mut value: E) {
@@ -2560,7 +2588,9 @@ where [(); core::alloc::co_alloc_metadata_num_slots_with_preference::<A>(COOP_PR
 }
 
 impl<T: PartialEq, A: Allocator, const COOP_PREFERRED: bool> Vec<T, A, COOP_PREFERRED>
-where [(); core::alloc::co_alloc_metadata_num_slots_with_preference::<A>(COOP_PREFERRED)]: {
+where
+    [(); core::alloc::co_alloc_metadata_num_slots_with_preference::<A>(COOP_PREFERRED)]:,
+{
     /// Removes consecutive repeated elements in the vector according to the
     /// [`PartialEq`] trait implementation.
     ///
@@ -2596,8 +2626,14 @@ pub fn from_elem<T: Clone>(elem: T, n: usize) -> Vec<T> {
 #[doc(hidden)]
 #[cfg(not(no_global_oom_handling))]
 #[unstable(feature = "allocator_api", issue = "32838")]
-pub fn from_elem_in<T: Clone, A: Allocator, const COOP_PREFERRED: bool>(elem: T, n: usize, alloc: A) -> Vec<T, A, COOP_PREFERRED>
-where [(); core::alloc::co_alloc_metadata_num_slots_with_preference::<A>(COOP_PREFERRED)]: {
+pub fn from_elem_in<T: Clone, A: Allocator, const COOP_PREFERRED: bool>(
+    elem: T,
+    n: usize,
+    alloc: A,
+) -> Vec<T, A, COOP_PREFERRED>
+where
+    [(); core::alloc::co_alloc_metadata_num_slots_with_preference::<A>(COOP_PREFERRED)]:,
+{
     <T as SpecFromElem>::from_elem(elem, n, alloc)
 }
 
@@ -2609,8 +2645,11 @@ trait ExtendFromWithinSpec {
     unsafe fn spec_extend_from_within(&mut self, src: Range<usize>);
 }
 
-impl<T: Clone, A: Allocator, const COOP_PREFERRED: bool> ExtendFromWithinSpec for Vec<T, A, COOP_PREFERRED>
-where [(); core::alloc::co_alloc_metadata_num_slots_with_preference::<A>(COOP_PREFERRED)]: {
+impl<T: Clone, A: Allocator, const COOP_PREFERRED: bool> ExtendFromWithinSpec
+    for Vec<T, A, COOP_PREFERRED>
+where
+    [(); core::alloc::co_alloc_metadata_num_slots_with_preference::<A>(COOP_PREFERRED)]:,
+{
     default unsafe fn spec_extend_from_within(&mut self, src: Range<usize>) {
         // SAFETY:
         // - len is increased only after initializing elements
@@ -2629,8 +2668,11 @@ where [(); core::alloc::co_alloc_metadata_num_slots_with_preference::<A>(COOP_PR
     }
 }
 
-impl<T: Copy, A: Allocator, const COOP_PREFERRED: bool> ExtendFromWithinSpec for Vec<T, A, COOP_PREFERRED>
-where [(); core::alloc::co_alloc_metadata_num_slots_with_preference::<A>(COOP_PREFERRED)]: {
+impl<T: Copy, A: Allocator, const COOP_PREFERRED: bool> ExtendFromWithinSpec
+    for Vec<T, A, COOP_PREFERRED>
+where
+    [(); core::alloc::co_alloc_metadata_num_slots_with_preference::<A>(COOP_PREFERRED)]:,
+{
     unsafe fn spec_extend_from_within(&mut self, src: Range<usize>) {
         let count = src.len();
         {
@@ -2664,7 +2706,9 @@ where [(); core::alloc::co_alloc_metadata_num_slots_with_preference::<A>(COOP_PR
 
 #[stable(feature = "rust1", since = "1.0.0")]
 impl<T, A: Allocator, const COOP_PREFERRED: bool> ops::Deref for Vec<T, A, COOP_PREFERRED>
-where [(); core::alloc::co_alloc_metadata_num_slots_with_preference::<A>(COOP_PREFERRED)]: {
+where
+    [(); core::alloc::co_alloc_metadata_num_slots_with_preference::<A>(COOP_PREFERRED)]:,
+{
     type Target = [T];
 
     #[inline]
@@ -2675,7 +2719,9 @@ where [(); core::alloc::co_alloc_metadata_num_slots_with_preference::<A>(COOP_PR
 
 #[stable(feature = "rust1", since = "1.0.0")]
 impl<T, A: Allocator, const COOP_PREFERRED: bool> ops::DerefMut for Vec<T, A, COOP_PREFERRED>
-where [(); core::alloc::co_alloc_metadata_num_slots_with_preference::<A>(COOP_PREFERRED)]: {
+where
+    [(); core::alloc::co_alloc_metadata_num_slots_with_preference::<A>(COOP_PREFERRED)]:,
+{
     #[inline]
     fn deref_mut(&mut self) -> &mut [T] {
         unsafe { slice::from_raw_parts_mut(self.as_mut_ptr(), self.len) }
@@ -2689,7 +2735,9 @@ trait SpecCloneFrom {
 
 #[cfg(not(no_global_oom_handling))]
 impl<T: Clone, A: Allocator, const COOP_PREFERRED: bool> SpecCloneFrom for Vec<T, A, COOP_PREFERRED>
-where [(); core::alloc::co_alloc_metadata_num_slots_with_preference::<A>(COOP_PREFERRED)]: {
+where
+    [(); core::alloc::co_alloc_metadata_num_slots_with_preference::<A>(COOP_PREFERRED)]:,
+{
     default fn clone_from(this: &mut Self, other: &Self) {
         // drop anything that will not be overwritten
         this.truncate(other.len());
@@ -2706,7 +2754,9 @@ where [(); core::alloc::co_alloc_metadata_num_slots_with_preference::<A>(COOP_PR
 
 #[cfg(not(no_global_oom_handling))]
 impl<T: Copy, A: Allocator, const COOP_PREFERRED: bool> SpecCloneFrom for Vec<T, A, COOP_PREFERRED>
-where [(); core::alloc::co_alloc_metadata_num_slots_with_preference::<A>(COOP_PREFERRED)]: {
+where
+    [(); core::alloc::co_alloc_metadata_num_slots_with_preference::<A>(COOP_PREFERRED)]:,
+{
     fn clone_from(this: &mut Self, other: &Self) {
         this.clear();
         this.extend_from_slice(other);
@@ -2716,7 +2766,9 @@ where [(); core::alloc::co_alloc_metadata_num_slots_with_preference::<A>(COOP_PR
 #[cfg(not(no_global_oom_handling))]
 #[stable(feature = "rust1", since = "1.0.0")]
 impl<T: Clone, A: Allocator + Clone, const COOP_PREFERRED: bool> Clone for Vec<T, A, COOP_PREFERRED>
-where [(); core::alloc::co_alloc_metadata_num_slots_with_preference::<A>(COOP_PREFERRED)]: {
+where
+    [(); core::alloc::co_alloc_metadata_num_slots_with_preference::<A>(COOP_PREFERRED)]:,
+{
     #[cfg(not(test))]
     fn clone(&self) -> Self {
         let alloc = self.allocator().clone();
@@ -2752,7 +2804,9 @@ where [(); core::alloc::co_alloc_metadata_num_slots_with_preference::<A>(COOP_PR
 /// ```
 #[stable(feature = "rust1", since = "1.0.0")]
 impl<T: Hash, A: Allocator, const COOP_PREFERRED: bool> Hash for Vec<T, A, COOP_PREFERRED>
-where [(); core::alloc::co_alloc_metadata_num_slots_with_preference::<A>(COOP_PREFERRED)]: {
+where
+    [(); core::alloc::co_alloc_metadata_num_slots_with_preference::<A>(COOP_PREFERRED)]:,
+{
     #[inline]
     fn hash<H: Hasher>(&self, state: &mut H) {
         Hash::hash(&**self, state)
@@ -2764,8 +2818,11 @@ where [(); core::alloc::co_alloc_metadata_num_slots_with_preference::<A>(COOP_PR
     message = "vector indices are of type `usize` or ranges of `usize`",
     label = "vector indices are of type `usize` or ranges of `usize`"
 )]
-impl<T, I: SliceIndex<[T]>, A: Allocator, const COOP_PREFERRED: bool> Index<I> for Vec<T, A, COOP_PREFERRED>
-where [(); core::alloc::co_alloc_metadata_num_slots_with_preference::<A>(COOP_PREFERRED)]: {
+impl<T, I: SliceIndex<[T]>, A: Allocator, const COOP_PREFERRED: bool> Index<I>
+    for Vec<T, A, COOP_PREFERRED>
+where
+    [(); core::alloc::co_alloc_metadata_num_slots_with_preference::<A>(COOP_PREFERRED)]:,
+{
     type Output = I::Output;
 
     #[inline]
@@ -2779,8 +2836,11 @@ where [(); core::alloc::co_alloc_metadata_num_slots_with_preference::<A>(COOP_PR
     message = "vector indices are of type `usize` or ranges of `usize`",
     label = "vector indices are of type `usize` or ranges of `usize`"
 )]
-impl<T, I: SliceIndex<[T]>, A: Allocator, const COOP_PREFERRED: bool> IndexMut<I> for Vec<T, A, COOP_PREFERRED>
-where [(); core::alloc::co_alloc_metadata_num_slots_with_preference::<A>(COOP_PREFERRED)]: {
+impl<T, I: SliceIndex<[T]>, A: Allocator, const COOP_PREFERRED: bool> IndexMut<I>
+    for Vec<T, A, COOP_PREFERRED>
+where
+    [(); core::alloc::co_alloc_metadata_num_slots_with_preference::<A>(COOP_PREFERRED)]:,
+{
     #[inline]
     fn index_mut(&mut self, index: I) -> &mut Self::Output {
         IndexMut::index_mut(&mut **self, index)
@@ -2798,7 +2858,9 @@ impl<T> FromIterator<T> for Vec<T> {
 
 #[stable(feature = "rust1", since = "1.0.0")]
 impl<T, A: Allocator, const COOP_PREFERRED: bool> IntoIterator for Vec<T, A, COOP_PREFERRED>
-where [(); core::alloc::co_alloc_metadata_num_slots_with_preference::<A>(COOP_PREFERRED)]: {
+where
+    [(); core::alloc::co_alloc_metadata_num_slots_with_preference::<A>(COOP_PREFERRED)]:,
+{
     type Item = T;
     type IntoIter = IntoIter<T, A>;
 
@@ -2844,7 +2906,9 @@ where [(); core::alloc::co_alloc_metadata_num_slots_with_preference::<A>(COOP_PR
 
 #[stable(feature = "rust1", since = "1.0.0")]
 impl<'a, T, A: Allocator, const COOP_PREFERRED: bool> IntoIterator for &'a Vec<T, A, COOP_PREFERRED>
-where [(); core::alloc::co_alloc_metadata_num_slots_with_preference::<A>(COOP_PREFERRED)]: {
+where
+    [(); core::alloc::co_alloc_metadata_num_slots_with_preference::<A>(COOP_PREFERRED)]:,
+{
     type Item = &'a T;
     type IntoIter = slice::Iter<'a, T>;
 
@@ -2854,8 +2918,11 @@ where [(); core::alloc::co_alloc_metadata_num_slots_with_preference::<A>(COOP_PR
 }
 
 #[stable(feature = "rust1", since = "1.0.0")]
-impl<'a, T, A: Allocator, const COOP_PREFERRED: bool> IntoIterator for &'a mut Vec<T, A, COOP_PREFERRED>
-where [(); core::alloc::co_alloc_metadata_num_slots_with_preference::<A>(COOP_PREFERRED)]: {
+impl<'a, T, A: Allocator, const COOP_PREFERRED: bool> IntoIterator
+    for &'a mut Vec<T, A, COOP_PREFERRED>
+where
+    [(); core::alloc::co_alloc_metadata_num_slots_with_preference::<A>(COOP_PREFERRED)]:,
+{
     type Item = &'a mut T;
     type IntoIter = slice::IterMut<'a, T>;
 
@@ -2867,7 +2934,9 @@ where [(); core::alloc::co_alloc_metadata_num_slots_with_preference::<A>(COOP_PR
 #[cfg(not(no_global_oom_handling))]
 #[stable(feature = "rust1", since = "1.0.0")]
 impl<T, A: Allocator, const COOP_PREFERRED: bool> Extend<T> for Vec<T, A, COOP_PREFERRED>
-where [(); core::alloc::co_alloc_metadata_num_slots_with_preference::<A>(COOP_PREFERRED)]: {
+where
+    [(); core::alloc::co_alloc_metadata_num_slots_with_preference::<A>(COOP_PREFERRED)]:,
+{
     #[inline]
     fn extend<I: IntoIterator<Item = T>>(&mut self, iter: I) {
         <Self as SpecExtend<T, I::IntoIter>>::spec_extend(self, iter.into_iter())
@@ -2885,7 +2954,9 @@ where [(); core::alloc::co_alloc_metadata_num_slots_with_preference::<A>(COOP_PR
 }
 
 impl<T, A: Allocator, const COOP_PREFERRED: bool> Vec<T, A, COOP_PREFERRED>
-where [(); core::alloc::co_alloc_metadata_num_slots_with_preference::<A>(COOP_PREFERRED)]: {
+where
+    [(); core::alloc::co_alloc_metadata_num_slots_with_preference::<A>(COOP_PREFERRED)]:,
+{
     // leaf method to which various SpecFrom/SpecExtend implementations delegate when
     // they have no further optimizations to apply
     #[cfg(not(no_global_oom_handling))]
@@ -3059,8 +3130,11 @@ where [(); core::alloc::co_alloc_metadata_num_slots_with_preference::<A>(COOP_PR
 /// [`copy_from_slice`]: slice::copy_from_slice
 #[cfg(not(no_global_oom_handling))]
 #[stable(feature = "extend_ref", since = "1.2.0")]
-impl<'a, T: Copy + 'a, A: Allocator + 'a, const COOP_PREFERRED: bool> Extend<&'a T> for Vec<T, A, COOP_PREFERRED>
-where [(); core::alloc::co_alloc_metadata_num_slots_with_preference::<A>(COOP_PREFERRED)]: {
+impl<'a, T: Copy + 'a, A: Allocator + 'a, const COOP_PREFERRED: bool> Extend<&'a T>
+    for Vec<T, A, COOP_PREFERRED>
+where
+    [(); core::alloc::co_alloc_metadata_num_slots_with_preference::<A>(COOP_PREFERRED)]:,
+{
     fn extend<I: IntoIterator<Item = &'a T>>(&mut self, iter: I) {
         self.spec_extend(iter.into_iter())
     }
@@ -3078,8 +3152,11 @@ where [(); core::alloc::co_alloc_metadata_num_slots_with_preference::<A>(COOP_PR
 
 /// Implements comparison of vectors, [lexicographically](core::cmp::Ord#lexicographical-comparison).
 #[stable(feature = "rust1", since = "1.0.0")]
-impl<T: PartialOrd, A: Allocator, const COOP_PREFERRED: bool> PartialOrd for Vec<T, A, COOP_PREFERRED>
-where [(); core::alloc::co_alloc_metadata_num_slots_with_preference::<A>(COOP_PREFERRED)]: {
+impl<T: PartialOrd, A: Allocator, const COOP_PREFERRED: bool> PartialOrd
+    for Vec<T, A, COOP_PREFERRED>
+where
+    [(); core::alloc::co_alloc_metadata_num_slots_with_preference::<A>(COOP_PREFERRED)]:,
+{
     #[inline]
     fn partial_cmp(&self, other: &Self) -> Option<Ordering> {
         PartialOrd::partial_cmp(&**self, &**other)
@@ -3087,13 +3164,17 @@ where [(); core::alloc::co_alloc_metadata_num_slots_with_preference::<A>(COOP_PR
 }
 
 #[stable(feature = "rust1", since = "1.0.0")]
-impl<T: Eq, A: Allocator, const COOP_PREFERRED: bool> Eq for Vec<T, A, COOP_PREFERRED>
-where [(); core::alloc::co_alloc_metadata_num_slots_with_preference::<A>(COOP_PREFERRED)]: {}
+impl<T: Eq, A: Allocator, const COOP_PREFERRED: bool> Eq for Vec<T, A, COOP_PREFERRED> where
+    [(); core::alloc::co_alloc_metadata_num_slots_with_preference::<A>(COOP_PREFERRED)]:
+{
+}
 
 /// Implements ordering of vectors, [lexicographically](core::cmp::Ord#lexicographical-comparison).
 #[stable(feature = "rust1", since = "1.0.0")]
 impl<T: Ord, A: Allocator, const COOP_PREFERRED: bool> Ord for Vec<T, A, COOP_PREFERRED>
-where [(); core::alloc::co_alloc_metadata_num_slots_with_preference::<A>(COOP_PREFERRED)]: {
+where
+    [(); core::alloc::co_alloc_metadata_num_slots_with_preference::<A>(COOP_PREFERRED)]:,
+{
     #[inline]
     fn cmp(&self, other: &Self) -> Ordering {
         Ord::cmp(&**self, &**other)
@@ -3101,8 +3182,11 @@ where [(); core::alloc::co_alloc_metadata_num_slots_with_preference::<A>(COOP_PR
 }
 
 #[stable(feature = "rust1", since = "1.0.0")]
-unsafe impl<#[may_dangle] T, A: Allocator, const COOP_PREFERRED: bool> Drop for Vec<T, A, COOP_PREFERRED>
-where [(); core::alloc::co_alloc_metadata_num_slots_with_preference::<A>(COOP_PREFERRED)]: {
+unsafe impl<#[may_dangle] T, A: Allocator, const COOP_PREFERRED: bool> Drop
+    for Vec<T, A, COOP_PREFERRED>
+where
+    [(); core::alloc::co_alloc_metadata_num_slots_with_preference::<A>(COOP_PREFERRED)]:,
+{
     fn drop(&mut self) {
         unsafe {
             // use drop for [T]
@@ -3126,24 +3210,33 @@ impl<T> const Default for Vec<T> {
 }
 
 #[stable(feature = "rust1", since = "1.0.0")]
-impl<T: fmt::Debug, A: Allocator, const COOP_PREFERRED: bool> fmt::Debug for Vec<T, A, COOP_PREFERRED>
-where [(); core::alloc::co_alloc_metadata_num_slots_with_preference::<A>(COOP_PREFERRED)]: {
+impl<T: fmt::Debug, A: Allocator, const COOP_PREFERRED: bool> fmt::Debug
+    for Vec<T, A, COOP_PREFERRED>
+where
+    [(); core::alloc::co_alloc_metadata_num_slots_with_preference::<A>(COOP_PREFERRED)]:,
+{
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         fmt::Debug::fmt(&**self, f)
     }
 }
 
 #[stable(feature = "rust1", since = "1.0.0")]
-impl<T, A: Allocator, const COOP_PREFERRED: bool> AsRef<Vec<T, A, COOP_PREFERRED>> for Vec<T, A, COOP_PREFERRED>
-where [(); core::alloc::co_alloc_metadata_num_slots_with_preference::<A>(COOP_PREFERRED)]: {
+impl<T, A: Allocator, const COOP_PREFERRED: bool> AsRef<Vec<T, A, COOP_PREFERRED>>
+    for Vec<T, A, COOP_PREFERRED>
+where
+    [(); core::alloc::co_alloc_metadata_num_slots_with_preference::<A>(COOP_PREFERRED)]:,
+{
     fn as_ref(&self) -> &Vec<T, A, COOP_PREFERRED> {
         self
     }
 }
 
 #[stable(feature = "vec_as_mut", since = "1.5.0")]
-impl<T, A: Allocator, const COOP_PREFERRED: bool> AsMut<Vec<T, A, COOP_PREFERRED>> for Vec<T, A, COOP_PREFERRED>
-where [(); core::alloc::co_alloc_metadata_num_slots_with_preference::<A>(COOP_PREFERRED)]: {
+impl<T, A: Allocator, const COOP_PREFERRED: bool> AsMut<Vec<T, A, COOP_PREFERRED>>
+    for Vec<T, A, COOP_PREFERRED>
+where
+    [(); core::alloc::co_alloc_metadata_num_slots_with_preference::<A>(COOP_PREFERRED)]:,
+{
     fn as_mut(&mut self) -> &mut Vec<T, A, COOP_PREFERRED> {
         self
     }
@@ -3151,7 +3244,9 @@ where [(); core::alloc::co_alloc_metadata_num_slots_with_preference::<A>(COOP_PR
 
 #[stable(feature = "rust1", since = "1.0.0")]
 impl<T, A: Allocator, const COOP_PREFERRED: bool> AsRef<[T]> for Vec<T, A, COOP_PREFERRED>
-where [(); core::alloc::co_alloc_metadata_num_slots_with_preference::<A>(COOP_PREFERRED)]: {
+where
+    [(); core::alloc::co_alloc_metadata_num_slots_with_preference::<A>(COOP_PREFERRED)]:,
+{
     fn as_ref(&self) -> &[T] {
         self
     }
@@ -3159,7 +3254,9 @@ where [(); core::alloc::co_alloc_metadata_num_slots_with_preference::<A>(COOP_PR
 
 #[stable(feature = "vec_as_mut", since = "1.5.0")]
 impl<T, A: Allocator, const COOP_PREFERRED: bool> AsMut<[T]> for Vec<T, A, COOP_PREFERRED>
-where [(); core::alloc::co_alloc_metadata_num_slots_with_preference::<A>(COOP_PREFERRED)]: {
+where
+    [(); core::alloc::co_alloc_metadata_num_slots_with_preference::<A>(COOP_PREFERRED)]:,
+{
     fn as_mut(&mut self) -> &mut [T] {
         self
     }
@@ -3257,7 +3354,9 @@ where
 #[cfg(not(test))]
 #[stable(feature = "vec_from_box", since = "1.18.0")]
 impl<T, A: Allocator, const COOP_PREFERRED: bool> From<Box<[T], A>> for Vec<T, A, COOP_PREFERRED>
-where [(); core::alloc::co_alloc_metadata_num_slots_with_preference::<A>(COOP_PREFERRED)]: {
+where
+    [(); core::alloc::co_alloc_metadata_num_slots_with_preference::<A>(COOP_PREFERRED)]:,
+{
     /// Convert a boxed slice into a vector by transferring ownership of
     /// the existing heap allocation.
     ///
@@ -3277,7 +3376,9 @@ where [(); core::alloc::co_alloc_metadata_num_slots_with_preference::<A>(COOP_PR
 #[cfg(not(test))]
 #[stable(feature = "box_from_vec", since = "1.20.0")]
 impl<T, A: Allocator, const COOP_PREFERRED: bool> From<Vec<T, A, COOP_PREFERRED>> for Box<[T], A>
-where [(); core::alloc::co_alloc_metadata_num_slots_with_preference::<A>(COOP_PREFERRED)]: {
+where
+    [(); core::alloc::co_alloc_metadata_num_slots_with_preference::<A>(COOP_PREFERRED)]:,
+{
     /// Convert a vector into a boxed slice.
     ///
     /// If `v` has excess capacity, its items will be moved into a
@@ -3317,8 +3418,11 @@ impl From<&str> for Vec<u8> {
 }
 
 #[stable(feature = "array_try_from_vec", since = "1.48.0")]
-impl<T, A: Allocator, const N: usize, const COOP_PREFERRED: bool> TryFrom<Vec<T, A, COOP_PREFERRED>> for [T; N]
-where [(); core::alloc::co_alloc_metadata_num_slots_with_preference::<A>(COOP_PREFERRED)]: {
+impl<T, A: Allocator, const N: usize, const COOP_PREFERRED: bool> TryFrom<Vec<T, A, COOP_PREFERRED>>
+    for [T; N]
+where
+    [(); core::alloc::co_alloc_metadata_num_slots_with_preference::<A>(COOP_PREFERRED)]:,
+{
     type Error = Vec<T, A, COOP_PREFERRED>;
 
     /// Gets the entire contents of the `Vec<T>` as an array,
