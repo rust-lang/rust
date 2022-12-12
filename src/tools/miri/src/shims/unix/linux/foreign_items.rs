@@ -99,7 +99,7 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriInterpCxExt<'mir, 'tcx> {
                         "incorrect number of arguments for syscall: got 0, expected at least 1"
                     );
                 }
-                match this.read_scalar(&args[0])?.to_machine_usize(this)? {
+                match this.read_machine_usize(&args[0])? {
                     // `libc::syscall(NR_GETRANDOM, buf.as_mut_ptr(), buf.len(), GRND_NONBLOCK)`
                     // is called if a `HashMap` is created the regular way (e.g. HashMap<K, V>).
                     id if id == sys_getrandom => {
@@ -147,7 +147,7 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriInterpCxExt<'mir, 'tcx> {
                 let [pid, cpusetsize, mask] =
                     this.check_shim(abi, Abi::C { unwind: false }, link_name, args)?;
                 this.read_scalar(pid)?.to_i32()?;
-                this.read_scalar(cpusetsize)?.to_machine_usize(this)?;
+                this.read_machine_usize(cpusetsize)?;
                 this.deref_operand(mask)?;
                 // FIXME: we just return an error; `num_cpus` then falls back to `sysconf`.
                 let einval = this.eval_libc("EINVAL")?;
@@ -179,7 +179,7 @@ fn getrandom<'tcx>(
     dest: &PlaceTy<'tcx, Provenance>,
 ) -> InterpResult<'tcx> {
     let ptr = this.read_pointer(ptr)?;
-    let len = this.read_scalar(len)?.to_machine_usize(this)?;
+    let len = this.read_machine_usize(len)?;
 
     // The only supported flags are GRND_RANDOM and GRND_NONBLOCK,
     // neither of which have any effect on our current PRNG.
