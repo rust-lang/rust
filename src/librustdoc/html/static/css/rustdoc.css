@@ -523,7 +523,6 @@ ul.block, .block li {
 }
 
 .source .content pre.rust {
-	overflow: auto;
 	padding-left: 0;
 }
 
