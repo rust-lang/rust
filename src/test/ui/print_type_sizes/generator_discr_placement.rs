@@ -1,14 +1,13 @@
-// compile-flags: -Z print-type-sizes
+// compile-flags: -Z print-type-sizes --crate-type lib
 // build-pass
 // ignore-pass
 
 // Tests a generator that has its discriminant as the *final* field.
 
 // Avoid emitting panic handlers, like the rest of these tests...
-#![feature(start, generators)]
+#![feature(generators)]
 
-#[start]
-fn start(_: isize, _: *const *const u8) -> isize {
+pub fn foo() {
     let a = || {
         {
             let w: i32 = 4;
@@ -21,5 +20,4 @@ fn start(_: isize, _: *const *const u8) -> isize {
             drop(z);
         }
     };
-    0
 }

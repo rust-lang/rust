@@ -1,4 +1,4 @@
-// compile-flags: -Z print-type-sizes
+// compile-flags: -Z print-type-sizes --crate-type=lib
 // build-pass
 // ignore-pass
 // ^-- needed because `--pass check` does not emit the output needed.
@@ -14,7 +14,6 @@
 // aligned (while on most it is 8-byte aligned) and so the resulting
 // padding and overall computed sizes can be quite different.
 
-#![feature(start)]
 #![feature(rustc_attrs)]
 #![allow(dead_code)]
 
@@ -56,7 +55,7 @@ pub struct NestedNonZero {
 
 impl Default for NestedNonZero {
     fn default() -> Self {
-        NestedNonZero { pre: 0, val: NonZeroU32::new(1).unwrap(), post: 0 }
+        NestedNonZero { pre: 0, val: unsafe { NonZeroU32::new_unchecked(1) }, post: 0 }
     }
 }
 
@@ -76,8 +75,7 @@ pub union Union2<A: Copy, B: Copy> {
     b: B,
 }
 
-#[start]
-fn start(_: isize, _: *const *const u8) -> isize {
+pub fn test() {
     let _x: MyOption<NonZeroU32> = Default::default();
     let _y: EmbeddedDiscr = Default::default();
     let _z: MyOption<IndirectNonZero> = Default::default();
@@ -96,6 +94,4 @@ fn start(_: isize, _: *const *const u8) -> isize {
     // ...even when theoretically possible.
     let _j: MyOption<Union1<NonZeroU32>> = Default::default();
     let _k: MyOption<Union2<NonZeroU32, NonZeroU32>> = Default::default();
-
-    0
 }
