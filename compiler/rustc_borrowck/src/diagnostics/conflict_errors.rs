@@ -745,7 +745,7 @@ impl<'cx, 'tcx> MirBorrowckCtxt<'cx, 'tcx> {
             err.span_suggestion_verbose(
                 span.shrink_to_hi(),
                 "consider cloning the value if the performance cost is acceptable",
-                ".clone()".to_string(),
+                ".clone()",
                 Applicability::MachineApplicable,
             );
         }

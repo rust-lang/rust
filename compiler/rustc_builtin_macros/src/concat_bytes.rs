@@ -196,7 +196,7 @@ pub fn expand_concat_bytes(
         }
     }
     if !missing_literals.is_empty() {
-        let mut err = cx.struct_span_err(missing_literals.clone(), "expected a byte literal");
+        let mut err = cx.struct_span_err(missing_literals, "expected a byte literal");
         err.note("only byte literals (like `b\"foo\"`, `b's'`, and `[3, 4, 5]`) can be passed to `concat_bytes!()`");
         err.emit();
         return base::MacEager::expr(DummyResult::raw_expr(sp, true));

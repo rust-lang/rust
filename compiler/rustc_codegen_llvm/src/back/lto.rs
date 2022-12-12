@@ -206,7 +206,7 @@ pub(crate) fn run_thin(
 }
 
 pub(crate) fn prepare_thin(module: ModuleCodegen<ModuleLlvm>) -> (String, ThinBuffer) {
-    let name = module.name.clone();
+    let name = module.name;
     let buffer = ThinBuffer::new(module.module_llvm.llmod(), true);
     (name, buffer)
 }
