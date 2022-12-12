@@ -151,6 +151,9 @@ impl Thread {
                     // Since the parent might drop `*inner` and terminate us as
                     // soon as it sees `JOIN_FINALIZE`, the release ordering
                     // must be used in the above `swap` call.
+                    //
+                    // To make the task referred to by `parent_tid` visible, we
+                    // must use the acquire ordering in the above `swap` call.
 
                     // [JOINING → JOIN_FINALIZE]
                     // Wake up the parent task.
@@ -218,11 +221,15 @@ impl Thread {
 
         let current_task = current_task as usize;
 
-        match inner.lifecycle.swap(current_task, Ordering::Acquire) {
+        match inner.lifecycle.swap(current_task, Ordering::AcqRel) {
             LIFECYCLE_INIT => {
                 // [INIT → JOINING]
                 // The child task will transition the state to `JOIN_FINALIZE`
                 // and wake us up.
+                //
+                // To make the task referred to by `current_task` visible from
+                // the child task's point of view, we must use the release
+                // ordering in the above `swap` call.
                 loop {
                     expect_success_aborting(unsafe { abi::slp_tsk() }, &"slp_tsk");
                     // To synchronize with the child task's memory accesses to
