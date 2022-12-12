@@ -462,7 +462,7 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
                 assert!(bx.cx().tcx().is_static(def_id));
                 let static_ = bx.get_static(def_id);
                 let layout = bx.layout_of(bx.cx().tcx().static_ptr_ty(def_id));
-                OperandRef::from_immediate_or_packed_pair(bx, static_, layout)
+                OperandRef { val: OperandValue::Immediate(static_), layout }
             }
             mir::Rvalue::Use(ref operand) => self.codegen_operand(bx, operand),
             mir::Rvalue::Repeat(..) | mir::Rvalue::Aggregate(..) => {
