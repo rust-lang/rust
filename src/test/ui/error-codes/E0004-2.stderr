@@ -6,8 +6,6 @@ LL |     match x { }
    |
 note: `Option<i32>` defined here
   --> $SRC_DIR/core/src/option.rs:LL:COL
-   |
-   = note: 
 $SRC_DIR/core/src/option.rs:LL:COL: not covered
 $SRC_DIR/core/src/option.rs:LL:COL: not covered
    = note: the matched value is of type `Option<i32>`

@@ -1431,25 +1431,27 @@ impl EmitterWriter {
                         };
                         for (i, annotation) in annotations.into_iter().enumerate() {
                             if let Some(label) = &annotation.label {
-                                let style = if annotation.is_primary {
-                                    Style::LabelPrimary
-                                } else {
-                                    Style::LabelSecondary
-                                };
-                                if annotation_id == 0 {
-                                    buffer.prepend(line_idx, " |", Style::LineNumber);
-                                    for _ in 0..max_line_num_len {
-                                        buffer.prepend(line_idx, " ", Style::NoStyle);
+                                if !label.is_empty() {
+                                    let style = if annotation.is_primary {
+                                        Style::LabelPrimary
+                                    } else {
+                                        Style::LabelSecondary
+                                    };
+                                    if annotation_id == 0 {
+                                        buffer.prepend(line_idx, " |", Style::LineNumber);
+                                        for _ in 0..max_line_num_len {
+                                            buffer.prepend(line_idx, " ", Style::NoStyle);
+                                        }
+                                        line_idx += 1;
+                                        buffer.append(line_idx + i, " = note: ", style);
+                                        for _ in 0..max_line_num_len {
+                                            buffer.prepend(line_idx, " ", Style::NoStyle);
+                                        }
+                                    } else {
+                                        buffer.append(line_idx + i, ": ", style);
                                     }
-                                    line_idx += 1;
-                                    buffer.append(line_idx + i, " = note: ", style);
-                                    for _ in 0..max_line_num_len {
-                                        buffer.prepend(line_idx, " ", Style::NoStyle);
-                                    }
-                                } else {
-                                    buffer.append(line_idx + i, ": ", style);
+                                    buffer.append(line_idx + i, label, style);
                                 }
-                                buffer.append(line_idx + i, label, style);
                             }
                         }
                     }
