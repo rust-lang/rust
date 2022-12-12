@@ -6,10 +6,8 @@ use rustc_middle::thir::*;
 
 impl<'a, 'tcx> Builder<'a, 'tcx> {
     /// Builds a block of MIR statements to evaluate the THIR `expr`.
-    /// If the original expression was an AST statement,
-    /// (e.g., `some().code(&here());`) then `opt_stmt_span` is the
-    /// span of that statement (including its semicolon, if any).
-    /// The scope is used if a statement temporary must be dropped.
+    ///
+    /// The `statement_scope` is used if a statement temporary must be dropped.
     pub(crate) fn stmt_expr(
         &mut self,
         mut block: BasicBlock,
