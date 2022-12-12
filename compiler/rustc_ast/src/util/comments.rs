@@ -163,15 +163,19 @@ fn trim_whitespace_prefix(s: &str, col: CharPos) -> &str {
 }
 
 fn split_block_comment_into_lines(text: &str, col: CharPos) -> Lrc<[String]> {
-    let mut res: Vec<String> = vec![];
+    let mut res: Lrc<[String]> = iter::repeat(String::new()).take(text.lines().count()).collect();
     let mut lines = text.lines();
+    let res_slice = Lrc::get_mut(&mut res).unwrap();
     // just push the first line
-    res.extend(lines.next().map(|it| it.to_string()));
-    // for other lines, strip common whitespace prefix
-    for line in lines {
-        res.push(trim_whitespace_prefix(line, col).to_string())
+    if let Some(first) = lines.next() {
+        res_slice[0] = first.to_owned();
     }
-    res.into()
+    // for other lines, strip common whitespace prefix
+    for (line, out) in iter::zip(lines, &mut res_slice[1..]) {
+        *out = trim_whitespace_prefix(line, col).to_owned();
+    }
+
+    res
 }
 
 // it appears this function is called only from pprust... that's
