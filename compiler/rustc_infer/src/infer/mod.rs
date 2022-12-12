@@ -2014,31 +2014,54 @@ fn replace_param_and_infer_substs_with_placeholder<'tcx>(
     tcx: TyCtxt<'tcx>,
     substs: SubstsRef<'tcx>,
 ) -> SubstsRef<'tcx> {
-    tcx.mk_substs(substs.iter().enumerate().map(|(idx, arg)| {
-        match arg.unpack() {
-            GenericArgKind::Type(_) if arg.has_non_region_param() || arg.has_non_region_infer() => {
-                tcx.mk_ty(ty::Placeholder(ty::PlaceholderType {
+    struct ReplaceParamAndInferWithPlaceholder<'tcx> {
+        tcx: TyCtxt<'tcx>,
+        idx: usize,
+    }
+
+    impl<'tcx> TypeFolder<'tcx> for ReplaceParamAndInferWithPlaceholder<'tcx> {
+        fn tcx(&self) -> TyCtxt<'tcx> {
+            self.tcx
+        }
+
+        fn fold_ty(&mut self, t: Ty<'tcx>) -> Ty<'tcx> {
+            if let ty::Infer(_) = t.kind() {
+                self.tcx.mk_ty(ty::Placeholder(ty::PlaceholderType {
                     universe: ty::UniverseIndex::ROOT,
-                    name: ty::BoundVar::from_usize(idx),
+                    name: ty::BoundVar::from_usize({
+                        let idx = self.idx;
+                        self.idx += 1;
+                        idx
+                    }),
                 }))
-                .into()
+            } else {
+                t.super_fold_with(self)
             }
-            GenericArgKind::Const(ct) if ct.has_non_region_infer() || ct.has_non_region_param() => {
-                let ty = ct.ty();
-                // If the type references param or infer, replace that too...
+        }
+
+        fn fold_const(&mut self, c: ty::Const<'tcx>) -> ty::Const<'tcx> {
+            if let ty::ConstKind::Infer(_) = c.kind() {
+                let ty = c.ty();
+                // If the type references param or infer then ICE ICE ICE
                 if ty.has_non_region_param() || ty.has_non_region_infer() {
-                    bug!("const `{ct}`'s type should not reference params or types");
+                    bug!("const `{c}`'s type should not reference params or types");
                 }
-                tcx.mk_const(
+                self.tcx.mk_const(
                     ty::PlaceholderConst {
                         universe: ty::UniverseIndex::ROOT,
-                        name: ty::BoundVar::from_usize(idx),
+                        name: ty::BoundVar::from_usize({
+                            let idx = self.idx;
+                            self.idx += 1;
+                            idx
+                        }),
                     },
                     ty,
                 )
-                .into()
+            } else {
+                c.super_fold_with(self)
             }
-            _ => arg,
         }
-    }))
+    }
+
+    substs.fold_with(&mut ReplaceParamAndInferWithPlaceholder { tcx, idx: 0 })
 }
