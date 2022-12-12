@@ -980,6 +980,7 @@ where
     /// contain any bound vars that would be bound by the
     /// binder. This is commonly used to 'inject' a value T into a
     /// different binding level.
+    #[track_caller]
     pub fn dummy(value: T) -> Binder<'tcx, T> {
         assert!(!value.has_escaping_bound_vars());
         Binder(value, ty::List::empty())

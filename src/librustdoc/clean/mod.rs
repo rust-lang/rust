@@ -165,7 +165,7 @@ pub(crate) fn clean_trait_ref_with_bindings<'tcx>(
     }
     inline::record_extern_fqn(cx, trait_ref.def_id(), kind);
     let path =
-        external_path(cx, trait_ref.def_id(), true, bindings, trait_ref.skip_binder().substs);
+        external_path(cx, trait_ref.def_id(), true, bindings, trait_ref.map_bound(|tr| tr.substs));
 
     debug!(?trait_ref);
 
@@ -437,7 +437,7 @@ fn clean_projection<'tcx>(
     };
     let should_show_cast = compute_should_show_cast(self_def_id, &trait_, &self_type);
     Type::QPath(Box::new(QPathData {
-        assoc: projection_to_path_segment(ty.skip_binder(), cx),
+        assoc: projection_to_path_segment(ty, cx),
         should_show_cast,
         self_type,
         trait_,
@@ -452,15 +452,16 @@ fn compute_should_show_cast(self_def_id: Option<DefId>, trait_: &Path, self_type
 }
 
 fn projection_to_path_segment<'tcx>(
-    ty: ty::ProjectionTy<'tcx>,
+    ty: ty::Binder<'tcx, ty::ProjectionTy<'tcx>>,
     cx: &mut DocContext<'tcx>,
 ) -> PathSegment {
-    let item = cx.tcx.associated_item(ty.item_def_id);
-    let generics = cx.tcx.generics_of(ty.item_def_id);
+    let item = cx.tcx.associated_item(ty.skip_binder().item_def_id);
+    let generics = cx.tcx.generics_of(ty.skip_binder().item_def_id);
     PathSegment {
         name: item.name,
         args: GenericArgs::AngleBracketed {
-            args: substs_to_args(cx, &ty.substs[generics.parent_count..], false).into(),
+            args: substs_to_args(cx, ty.map_bound(|ty| &ty.substs[generics.parent_count..]), false)
+                .into(),
             bindings: Default::default(),
         },
     }
@@ -1732,12 +1733,18 @@ pub(crate) fn clean_middle_ty<'tcx>(
                 AdtKind::Enum => ItemType::Enum,
             };
             inline::record_extern_fqn(cx, did, kind);
-            let path = external_path(cx, did, false, ThinVec::new(), substs);
+            let path = external_path(cx, did, false, ThinVec::new(), bound_ty.rebind(substs));
             Type::Path { path }
         }
         ty::Foreign(did) => {
             inline::record_extern_fqn(cx, did, ItemType::ForeignType);
-            let path = external_path(cx, did, false, ThinVec::new(), InternalSubsts::empty());
+            let path = external_path(
+                cx,
+                did,
+                false,
+                ThinVec::new(),
+                ty::Binder::dummy(InternalSubsts::empty()),
+            );
             Type::Path { path }
         }
         ty::Dynamic(obj, ref reg, _) => {
@@ -1750,9 +1757,9 @@ pub(crate) fn clean_middle_ty<'tcx>(
                 .or_else(|| dids.next())
                 .unwrap_or_else(|| panic!("found trait object `{bound_ty:?}` with no traits?"));
             let substs = match obj.principal() {
-                Some(principal) => principal.skip_binder().substs,
+                Some(principal) => principal.map_bound(|p| p.substs),
                 // marker traits have no substs.
-                _ => cx.tcx.intern_substs(&[]),
+                _ => ty::Binder::dummy(InternalSubsts::empty()),
             };
 
             inline::record_extern_fqn(cx, did, ItemType::Trait);
@@ -1763,7 +1770,7 @@ pub(crate) fn clean_middle_ty<'tcx>(
             let lifetime = clean_middle_region(*reg);
             let mut bounds = dids
                 .map(|did| {
-                    let empty = cx.tcx.intern_substs(&[]);
+                    let empty = ty::Binder::dummy(InternalSubsts::empty());
                     let path = external_path(cx, did, false, ThinVec::new(), empty);
                     inline::record_extern_fqn(cx, did, ItemType::Trait);
                     PolyTrait { trait_: path, generic_params: Vec::new() }
@@ -1774,11 +1781,13 @@ pub(crate) fn clean_middle_ty<'tcx>(
                 .projection_bounds()
                 .map(|pb| TypeBinding {
                     assoc: projection_to_path_segment(
-                        pb.skip_binder()
-                            // HACK(compiler-errors): Doesn't actually matter what self
-                            // type we put here, because we're only using the GAT's substs.
-                            .with_self_ty(cx.tcx, cx.tcx.types.self_param)
-                            .projection_ty,
+                        pb.map_bound(|pb| {
+                            pb
+                                // HACK(compiler-errors): Doesn't actually matter what self
+                                // type we put here, because we're only using the GAT's substs.
+                                .with_self_ty(cx.tcx, cx.tcx.types.self_param)
+                                .projection_ty
+                        }),
                         cx,
                     ),
                     kind: TypeBindingKind::Equality {
@@ -1883,7 +1892,10 @@ fn clean_middle_opaque_bounds<'tcx>(
                     {
                         if proj.projection_ty.trait_ref(cx.tcx) == trait_ref.skip_binder() {
                             Some(TypeBinding {
-                                assoc: projection_to_path_segment(proj.projection_ty, cx),
+                                assoc: projection_to_path_segment(
+                                    bound.kind().rebind(proj.projection_ty),
+                                    cx,
+                                ),
                                 kind: TypeBindingKind::Equality {
                                     term: clean_middle_term(bound.kind().rebind(proj.term), cx),
                                 },
