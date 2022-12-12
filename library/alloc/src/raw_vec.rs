@@ -62,7 +62,8 @@ where [(); alloc::co_alloc_metadata_num_slots_with_preference::<A>(COOP_PREFERRE
     pub(crate) metas: [GlobalCoAllocMeta; alloc::co_alloc_metadata_num_slots_with_preference::<A>(COOP_PREFERRED)],
 }
 
-impl<T> RawVec<T, Global> {
+impl<T, const COOP_PREFERRED: bool> RawVec<T, Global, COOP_PREFERRED>
+where [(); alloc::co_alloc_metadata_num_slots_with_preference::<Global>(COOP_PREFERRED)]: {
     /// HACK(Centril): This exists because stable `const fn` can only call stable `const fn`, so
     /// they cannot call `Self::new()`.
     ///
