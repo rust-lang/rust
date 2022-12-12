@@ -1799,7 +1799,6 @@ fn make_body(
                 })
                 .collect::<Vec<SyntaxElement>>();
             let tail_expr = tail_expr.map(|expr| expr.dedent(old_indent).indent(body_indent));
-
             make::hacky_block_expr_with_comments(elements, tail_expr)
         }
     };
@@ -1860,9 +1859,29 @@ fn with_default_tail_expr(block: ast::BlockExpr, tail_expr: ast::Expr) -> ast::B
 }
 
 fn with_tail_expr(block: ast::BlockExpr, tail_expr: ast::Expr) -> ast::BlockExpr {
-    let stmt_tail = block.tail_expr().map(|expr| make::expr_stmt(expr).into());
-    let stmts = block.statements().chain(stmt_tail);
-    make::block_expr(stmts, Some(tail_expr))
+    let stmt_tail_opt: Option<ast::Stmt> =
+        block.tail_expr().map(|expr| make::expr_stmt(expr).into());
+
+    let mut elements: Vec<SyntaxElement> = vec![];
+
+    block.statements().for_each(|stmt| {
+        elements.push(syntax::NodeOrToken::Node(stmt.syntax().clone()));
+    });
+
+    if let Some(stmt_list) = block.stmt_list() {
+        stmt_list.syntax().children_with_tokens().for_each(|node_or_token| {
+            match &node_or_token {
+                syntax::NodeOrToken::Token(_) => elements.push(node_or_token),
+                _ => (),
+            };
+        });
+    }
+
+    if let Some(stmt_tail) = stmt_tail_opt {
+        elements.push(syntax::NodeOrToken::Node(stmt_tail.syntax().clone()));
+    }
+
+    make::hacky_block_expr_with_comments(elements, Some(tail_expr))
 }
 
 fn format_type(ty: &hir::Type, ctx: &AssistContext<'_>, module: hir::Module) -> String {
@@ -5743,6 +5762,46 @@ fn $0fun_name() -> Option<()> {
         ()
     };
     Some(a)
+}
+"#,
+        );
+    }
+
+    #[test]
+    fn non_tail_expr_with_comment_of_tail_expr_loop() {
+        check_assist(
+            extract_function,
+            r#"
+pub fn f() {
+    loop {
+        $0// A comment
+        if true {
+            continue;
+        }$0
+        if false {
+            break;
+        }
+    }
+}
+"#,
+            r#"
+pub fn f() {
+    loop {
+        if let ControlFlow::Break(_) = fun_name() {
+            continue;
+        }
+        if false {
+            break;
+        }
+    }
+}
+
+fn $0fun_name() -> ControlFlow<()> {
+    // A comment
+    if true {
+        return ControlFlow::Break(());
+    }
+    ControlFlow::Continue(())
 }
 "#,
         );
