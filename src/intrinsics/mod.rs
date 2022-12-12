@@ -713,7 +713,7 @@ fn codegen_regular_intrinsic_call<'tcx>(
             let res = CValue::by_val(swap(&mut fx.bcx, val), arg.layout());
             ret.write_cvalue(fx, res);
         }
-        sym::assert_inhabited | sym::assert_zero_valid | sym::assert_uninit_valid => {
+        sym::assert_inhabited | sym::assert_zero_valid | sym::assert_mem_uninitialized_valid => {
             intrinsic_args!(fx, args => (); intrinsic);
 
             let layout = fx.layout_of(substs.type_at(0));
@@ -742,7 +742,9 @@ fn codegen_regular_intrinsic_call<'tcx>(
                 return;
             }
 
-            if intrinsic == sym::assert_uninit_valid && !fx.tcx.permits_uninit_init(layout) {
+            if intrinsic == sym::assert_mem_uninitialized_valid
+                && !fx.tcx.permits_uninit_init(layout)
+            {
                 with_no_trimmed_paths!({
                     crate::base::codegen_panic(
                         fx,
