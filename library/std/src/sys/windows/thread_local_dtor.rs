@@ -3,10 +3,13 @@
 
 #![unstable(feature = "thread_local_internals", issue = "none")]
 #![cfg(target_thread_local)]
+#![feature(global_co_alloc_plvec)]
+
+use core::alloc::PlVec;
 
 // Using a per-thread list avoids the problems in synchronizing global state.
 #[thread_local]
-static mut DESTRUCTORS: Vec<(*mut u8, unsafe extern "C" fn(*mut u8))> = Vec::new();
+static mut DESTRUCTORS: PlVec<(*mut u8, unsafe extern "C" fn(*mut u8))> = Vec::new();
 
 // Ensure this can never be inlined because otherwise this may break in dylibs.
 // See #44391.

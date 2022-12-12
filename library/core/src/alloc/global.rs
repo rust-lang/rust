@@ -166,7 +166,7 @@ pub unsafe trait GlobalAlloc {
     unsafe fn alloc(&self, layout: Layout) -> *mut u8;
 
     #[unstable(feature = "global_co_alloc", issue = "none")]
-    unsafe fn co_alloc(&self, _layout: Layout, mut _result: &mut RawAndMeta) {panic!("TODO")}
+    unsafe fn co_alloc(&self, _layout: Layout, mut _result: &mut RawAndMeta) {panic!("@FIXME")}
 
     /// Deallocate the block of memory at the given `ptr` pointer with the given `layout`.
     ///
@@ -184,7 +184,7 @@ pub unsafe trait GlobalAlloc {
     unsafe fn dealloc(&self, ptr: *mut u8, layout: Layout);
 
     #[unstable(feature = "global_co_alloc", issue = "none")]
-    unsafe fn co_dealloc(&self, _ptr_and_meta: RawAndMeta, _layout: Layout) {panic!("TODO")}
+    unsafe fn co_dealloc(&self, _ptr_and_meta: RawAndMeta, _layout: Layout) {panic!("@FIXME")}
 
     /// Behaves like `alloc`, but also ensures that the contents
     /// are set to zero before being returned.

@@ -14,6 +14,7 @@ use crate::alloc::{Allocator, Global, Layout};
 use crate::boxed::Box;
 use crate::collections::TryReserveError;
 use crate::collections::TryReserveErrorKind::*;
+use crate::vec::DEFAULT_COOP_PREFERRED;
 
 #[cfg(test)]
 mod tests;
@@ -49,8 +50,7 @@ enum AllocInit {
 /// `usize::MAX`. This means that you need to be careful when round-tripping this type with a
 /// `Box<[T]>`, since `capacity()` won't yield the length.
 #[allow(missing_debug_implementations)]
-// @TODO apply `_coop` with logical && to `A::IsCoAllocator`
-pub(crate) struct RawVec<T, A: Allocator = Global, const COOP_PREFERRED: bool = true>
+pub(crate) struct RawVec<T, A: Allocator = Global, const COOP_PREFERRED: bool = DEFAULT_COOP_PREFERRED>
 where [(); alloc::co_alloc_metadata_num_slots_with_preference::<A>(COOP_PREFERRED)]:
 {
     ptr: Unique<T>,
@@ -506,12 +506,12 @@ where [(); alloc::co_alloc_metadata_num_slots_with_preference::<A>(COOP_PREFERRE
     }
 }
 
-// @TODO Custom
+// @FIXME Custom
 unsafe impl<#[may_dangle] T, const COOP_PREFERRED: bool> Drop for RawVec<T, Global, COOP_PREFERRED>
 where [(); alloc::co_alloc_metadata_num_slots_with_preference::<Global>(COOP_PREFERRED)]: {
     /// Frees the memory owned by the `RawVec` *without* trying to drop its contents.
     fn drop(&mut self) {
-        // @TODO
+        // @TOFIXMEDO
         if let Some((ptr, layout)) = self.current_memory() {
             unsafe { self.alloc.deallocate(ptr, layout) }
         }
