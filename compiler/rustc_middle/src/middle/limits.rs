@@ -38,7 +38,7 @@ pub fn provide(providers: &mut ty::query::Providers) {
             tcx.hir().krate_attrs(),
             tcx.sess,
             sym::const_eval_limit,
-            1_000_000,
+            2_000_000,
         ),
     }
 }

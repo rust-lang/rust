@@ -1,3 +1,200 @@
+Version 1.66.0 (2022-12-15)
+==========================
+
+Language
+--------
+- [Permit specifying explicit discriminants on all `repr(Int)` enums](https://github.com/rust-lang/rust/pull/95710/)
+  ```rust
+  #[repr(u8)]
+  enum Foo {
+      A(u8) = 0,
+      B(i8) = 1,
+      C(bool) = 42,
+  }
+  ```
+- [Allow transmutes between the same type differing only in lifetimes](https://github.com/rust-lang/rust/pull/101520/)
+- [Change constant evaluation errors from a deny-by-default lint to a hard error](https://github.com/rust-lang/rust/pull/102091/)
+- [Trigger `must_use` on `impl Trait` for supertraits](https://github.com/rust-lang/rust/pull/102287/)
+  This makes `impl ExactSizeIterator` respect the existing `#[must_use]` annotation on `Iterator`.
+- [Allow `..X` and `..=X` in patterns](https://github.com/rust-lang/rust/pull/102275/)
+- [Uplift `clippy::for_loops_over_fallibles` lint into rustc](https://github.com/rust-lang/rust/pull/99696/)
+- [Stabilize `sym` operands in inline assembly](https://github.com/rust-lang/rust/pull/103168/)
+- [Update to Unicode 15](https://github.com/rust-lang/rust/pull/101912/)
+- [Opaque types no longer imply lifetime bounds](https://github.com/rust-lang/rust/pull/95474/)
+  This is a soundness fix which may break code that was erroneously relying on this behavior.
+
+Compiler
+--------
+- [Add armv5te-none-eabi and thumbv5te-none-eabi tier 3 targets](https://github.com/rust-lang/rust/pull/101329/)
+  - Refer to Rust's [platform support page][platform-support-doc] for more
+    information on Rust's tiered platform support.
+- [Add support for linking against macOS universal libraries](https://github.com/rust-lang/rust/pull/98736)
+
+Libraries
+---------
+- [Fix `#[derive(Default)]` on a generic `#[default]` enum adding unnecessary `Default` bounds](https://github.com/rust-lang/rust/pull/101040/)
+- [Update to Unicode 15](https://github.com/rust-lang/rust/pull/101821/)
+
+Stabilized APIs
+---------------
+
+- [`proc_macro::Span::source_text`](https://doc.rust-lang.org/stable/proc_macro/struct.Span.html#method.source_text)
+- [`uX::{checked_add_signed, overflowing_add_signed, saturating_add_signed, wrapping_add_signed}`](https://doc.rust-lang.org/stable/std/primitive.u8.html#method.checked_add_signed)
+- [`iX::{checked_add_unsigned, overflowing_add_unsigned, saturating_add_unsigned, wrapping_add_unsigned}`](https://doc.rust-lang.org/stable/std/primitive.i8.html#method.checked_add_unsigned)
+- [`iX::{checked_sub_unsigned, overflowing_sub_unsigned, saturating_sub_unsigned, wrapping_sub_unsigned}`](https://doc.rust-lang.org/stable/std/primitive.i8.html#method.checked_sub_unsigned)
+- [`BTreeSet::{first, last, pop_first, pop_last}`](https://doc.rust-lang.org/stable/std/collections/struct.BTreeSet.html#method.first)
+- [`BTreeMap::{first_key_value, last_key_value, first_entry, last_entry, pop_first, pop_last}`](https://doc.rust-lang.org/stable/std/collections/struct.BTreeMap.html#method.first_key_value)
+- [Add `AsFd` implementations for stdio lock types on WASI.](https://github.com/rust-lang/rust/pull/101768/)
+- [`impl TryFrom<Vec<T>> for Box<[T; N]>`](https://doc.rust-lang.org/stable/std/boxed/struct.Box.html#impl-TryFrom%3CVec%3CT%2C%20Global%3E%3E-for-Box%3C%5BT%3B%20N%5D%2C%20Global%3E)
+- [`core::hint::black_box`](https://doc.rust-lang.org/stable/std/hint/fn.black_box.html)
+- [`Duration::try_from_secs_{f32,f64}`](https://doc.rust-lang.org/stable/std/time/struct.Duration.html#method.try_from_secs_f32)
+- [`Option::unzip`](https://doc.rust-lang.org/stable/std/option/enum.Option.html#method.unzip)
+- [`std::os::fd`](https://doc.rust-lang.org/stable/std/os/fd/index.html)
+
+
+Rustdoc
+-------
+
+- [Add Rustdoc warning for invalid HTML tags in the documentation](https://github.com/rust-lang/rust/pull/101720/)
+
+Cargo
+-----
+
+- [Added `cargo remove` to remove dependencies from Cargo.toml](https://doc.rust-lang.org/nightly/cargo/commands/cargo-remove.html)
+- [`cargo publish` now waits for the new version to be downloadable before exiting](https://github.com/rust-lang/cargo/pull/11062)
+
+See [detailed release notes](https://github.com/rust-lang/cargo/blob/master/CHANGELOG.md#cargo-166-2022-12-15) for more.
+
+Compatibility Notes
+-------------------
+
+- [Only apply `ProceduralMasquerade` hack to older versions of `rental`](https://github.com/rust-lang/rust/pull/94063/)
+- [Don't export `__heap_base` and `__data_end` on wasm32-wasi.](https://github.com/rust-lang/rust/pull/102385/)
+- [Don't export `__wasm_init_memory` on WebAssembly.](https://github.com/rust-lang/rust/pull/102426/)
+- [Only export `__tls_*` on wasm32-unknown-unknown.](https://github.com/rust-lang/rust/pull/102440/)
+- [Don't link to `libresolv` in libstd on Darwin](https://github.com/rust-lang/rust/pull/102766/)
+- [Update libstd's libc to 0.2.135 (to make `libstd` no longer pull in `libiconv.dylib` on Darwin)](https://github.com/rust-lang/rust/pull/103277/)
+- [Opaque types no longer imply lifetime bounds](https://github.com/rust-lang/rust/pull/95474/)
+  This is a soundness fix which may break code that was erroneously relying on this behavior.
+- [Make `order_dependent_trait_objects` show up in future-breakage reports](https://github.com/rust-lang/rust/pull/102635/)
+- [Change std::process::Command spawning to default to inheriting the parent's signal mask](https://github.com/rust-lang/rust/pull/101077/)
+
+Internal Changes
+----------------
+
+These changes do not affect any public interfaces of Rust, but they represent
+significant improvements to the performance or internals of rustc and related
+tools.
+
+- [Enable BOLT for LLVM compilation](https://github.com/rust-lang/rust/pull/94381/)
+- [Enable LTO for rustc_driver.so](https://github.com/rust-lang/rust/pull/101403/)
+
+Version 1.65.0 (2022-11-03)
+==========================
+
+Language
+--------
+- [Error on `as` casts of enums with `#[non_exhaustive]` variants](https://github.com/rust-lang/rust/pull/92744/)
+- [Stabilize `let else`](https://github.com/rust-lang/rust/pull/93628/)
+- [Stabilize generic associated types (GATs)](https://github.com/rust-lang/rust/pull/96709/)
+- [Add lints `let_underscore_drop` and `let_underscore_lock` from Clippy](https://github.com/rust-lang/rust/pull/97739/)
+- [Stabilize `break`ing from arbitrary labeled blocks ("label-break-value")](https://github.com/rust-lang/rust/pull/99332/)
+- [Uninitialized integers, floats, and raw pointers are now considered immediate UB](https://github.com/rust-lang/rust/pull/98919/).
+  Usage of `MaybeUninit` is the correct way to work with uninitialized memory.
+- [Stabilize raw-dylib for Windows x86_64, aarch64, and thumbv7a](https://github.com/rust-lang/rust/pull/99916/)
+- [Do not allow `Drop` impl on foreign ADTs](https://github.com/rust-lang/rust/pull/99576/)
+
+Compiler
+--------
+- [Stabilize -Csplit-debuginfo on Linux](https://github.com/rust-lang/rust/pull/98051/)
+- [Use niche-filling optimization even when multiple variants have data](https://github.com/rust-lang/rust/pull/94075/)
+- [Associated type projections are now verified to be well-formed prior to resolving the underlying type](https://github.com/rust-lang/rust/pull/99217/#issuecomment-1209365630)
+- [Stringify non-shorthand visibility correctly](https://github.com/rust-lang/rust/pull/100350/)
+- [Normalize struct field types when unsizing](https://github.com/rust-lang/rust/pull/101831/)
+- [Update to LLVM 15](https://github.com/rust-lang/rust/pull/99464/)
+- [Fix aarch64 call abi to correctly zeroext when needed](https://github.com/rust-lang/rust/pull/97800/)
+- [debuginfo: Generalize C++-like encoding for enums](https://github.com/rust-lang/rust/pull/98393/)
+- [Add `special_module_name` lint](https://github.com/rust-lang/rust/pull/94467/)
+- [Add support for generating unique profraw files by default when using `-C instrument-coverage`](https://github.com/rust-lang/rust/pull/100384/)
+- [Allow dynamic linking for iOS/tvOS targets](https://github.com/rust-lang/rust/pull/100636/)
+
+New targets:
+
+- [Add armv4t-none-eabi as a tier 3 target](https://github.com/rust-lang/rust/pull/100244/)
+- [Add powerpc64-unknown-openbsd and riscv64-unknown-openbsd as tier 3 targets](https://github.com/rust-lang/rust/pull/101025/)
+  - Refer to Rust's [platform support page][platform-support-doc] for more
+    information on Rust's tiered platform support.
+
+Libraries
+---------
+
+- [Don't generate `PartialEq::ne` in derive(PartialEq)](https://github.com/rust-lang/rust/pull/98655/)
+- [Windows RNG: Use `BCRYPT_RNG_ALG_HANDLE` by default](https://github.com/rust-lang/rust/pull/101325/)
+- [Forbid mixing `System` with direct system allocator calls](https://github.com/rust-lang/rust/pull/101394/)
+- [Document no support for writing to non-blocking stdio/stderr](https://github.com/rust-lang/rust/pull/101416/)
+- [`std::layout::Layout` size must not overflow `isize::MAX` when rounded up to `align`](https://github.com/rust-lang/rust/pull/95295)
+  This also changes the safety conditions on `Layout::from_size_align_unchecked`.
+
+Stabilized APIs
+---------------
+
+- [`std::backtrace::Backtrace`](https://doc.rust-lang.org/stable/std/backtrace/struct.Backtrace.html)
+- [`Bound::as_ref`](https://doc.rust-lang.org/stable/std/ops/enum.Bound.html#method.as_ref)
+- [`std::io::read_to_string`](https://doc.rust-lang.org/stable/std/io/fn.read_to_string.html)
+- [`<*const T>::cast_mut`](https://doc.rust-lang.org/stable/std/primitive.pointer.html#method.cast_mut)
+- [`<*mut T>::cast_const`](https://doc.rust-lang.org/stable/std/primitive.pointer.html#method.cast_const)
+
+These APIs are now stable in const contexts:
+
+- [`<*const T>::offset_from`](https://doc.rust-lang.org/stable/std/primitive.pointer.html#method.offset_from)
+- [`<*mut T>::offset_from`](https://doc.rust-lang.org/stable/std/primitive.pointer.html#method.offset_from)
+
+Cargo
+-----
+
+- [Apply GitHub fast path even for partial hashes](https://github.com/rust-lang/cargo/pull/10807/)
+- [Do not add home bin path to PATH if it's already there](https://github.com/rust-lang/cargo/pull/11023/)
+- [Take priority into account within the pending queue](https://github.com/rust-lang/cargo/pull/11032/).
+  This slightly optimizes job scheduling by Cargo, with typically small improvements on larger crate graph builds.
+
+Compatibility Notes
+-------------------
+
+- [`std::layout::Layout` size must not overflow `isize::MAX` when rounded up to `align`](https://github.com/rust-lang/rust/pull/95295).
+  This also changes the safety conditions on `Layout::from_size_align_unchecked`.
+- [`PollFn` now only implements `Unpin` if the closure is `Unpin`](https://github.com/rust-lang/rust/pull/102737).
+  This is a possible breaking change if users were relying on the blanket unpin implementation.
+  See discussion on the PR for details of why this change was made.
+- [Drop ExactSizeIterator impl from std::char::EscapeAscii](https://github.com/rust-lang/rust/pull/99880)
+  This is a backwards-incompatible change to the standard library's surface
+  area, but is unlikely to affect real world usage.
+- [Do not consider a single repeated lifetime eligible for elision in the return type](https://github.com/rust-lang/rust/pull/103450)
+  This behavior was unintentionally changed in 1.64.0, and this release reverts that change by making this an error again.
+- [Reenable disabled early syntax gates as future-incompatibility lints](https://github.com/rust-lang/rust/pull/99935/)
+- [Update the minimum external LLVM to 13](https://github.com/rust-lang/rust/pull/100460/)
+- [Don't duplicate file descriptors into stdio fds](https://github.com/rust-lang/rust/pull/101426/)
+- [Sunset RLS](https://github.com/rust-lang/rust/pull/100863/)
+- [Deny usage of `#![cfg_attr(..., crate_type = ...)]` to set the crate type](https://github.com/rust-lang/rust/pull/99784/)
+  This strengthens the forward compatibility lint deprecated_cfg_attr_crate_type_name to deny.
+- [`llvm-has-rust-patches` allows setting the build system to treat the LLVM as having Rust-specific patches](https://github.com/rust-lang/rust/pull/101072)
+  This option may need to be set for distributions that are building Rust with a patched LLVM via `llvm-config`, not the built-in LLVM.
+- Combining three or more languages (e.g. Objective C, C++ and Rust) into one binary may hit linker limitations when using `lld`. For more information, see [issue 102754][102754].
+
+[102754]: https://github.com/rust-lang/rust/issues/102754
+
+Internal Changes
+----------------
+
+These changes do not affect any public interfaces of Rust, but they represent
+significant improvements to the performance or internals of rustc and related
+tools.
+
+- [Add `x.sh` and `x.ps1` shell scripts](https://github.com/rust-lang/rust/pull/99992/)
+- [compiletest: use target cfg instead of hard-coded tables](https://github.com/rust-lang/rust/pull/100260/)
+- [Use object instead of LLVM for reading bitcode from rlibs](https://github.com/rust-lang/rust/pull/98100/)
+- [Enable MIR inlining for optimized compilations](https://github.com/rust-lang/rust/pull/91743)
+  This provides a 3-10% improvement in compiletimes for real world crates. See [perf results](https://perf.rust-lang.org/compare.html?start=aedf78e56b2279cc869962feac5153b6ba7001ed&end=0075bb4fad68e64b6d1be06bf2db366c30bc75e1&stat=instructions:u).
+
 Version 1.64.0 (2022-09-22)
 ===========================
 
