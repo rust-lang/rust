@@ -109,10 +109,7 @@ LL |     foo_add;
    |     ^^^^^^^ value used here after move
    |
 note: calling this operator moves the left-hand side
-  --> $DIR/move-fn-self-receiver.rs:58:5
-   |
-LL |     foo_add + Foo;
-   |     ^^^^^^^^^^^^^
+  --> $SRC_DIR/core/src/ops/arith.rs:LL:COL
 
 error[E0382]: use of moved value: `implicit_into_iter`
   --> $DIR/move-fn-self-receiver.rs:63:5
