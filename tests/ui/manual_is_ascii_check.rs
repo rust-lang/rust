@@ -15,7 +15,14 @@ fn main() {
     assert!(matches!('x', 'A'..='Z' | 'a'..='z'));
 
     assert!(matches!('x', 'A'..='Z' | 'a'..='z' | '_'));
+
     assert!((b'0'..=b'9').contains(&b'0'));
+    assert!((b'a'..=b'z').contains(&b'a'));
+    assert!((b'A'..=b'Z').contains(&b'A'));
+
+    assert!(('0'..='9').contains(&'0'));
+    assert!(('a'..='z').contains(&'a'));
+    assert!(('A'..='Z').contains(&'A'));
 }
 
 #[clippy::msrv = "1.23"]

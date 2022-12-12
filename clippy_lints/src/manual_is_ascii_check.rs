@@ -1,5 +1,6 @@
 use clippy_utils::msrvs::{self, Msrv};
 use clippy_utils::{diagnostics::span_lint_and_sugg, higher, in_constant, macros::root_macro_call, source::snippet};
+use rustc_ast::ast::RangeLimits;
 use rustc_ast::LitKind::{Byte, Char};
 use rustc_errors::Applicability;
 use rustc_hir::{Expr, ExprKind, PatKind, RangeEnd};
@@ -83,7 +84,8 @@ impl<'tcx> LateLintPass<'tcx> for ManualIsAsciiCheck {
             }
         } else if let ExprKind::MethodCall(path, receiver, [arg], ..) = expr.kind
             && path.ident.name == sym!(contains)
-            && let Some(higher::Range { start: Some(start), end: Some(end), .. }) = higher::Range::hir(receiver) {
+            && let Some(higher::Range { start: Some(start), end: Some(end), limits: RangeLimits::Closed })
+            = higher::Range::hir(receiver) {
                 let range = check_range(start, end);
                 check_is_ascii(cx, expr.span, arg, &range);
         }
