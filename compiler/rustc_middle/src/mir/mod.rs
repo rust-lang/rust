@@ -2,7 +2,6 @@
 //!
 //! [rustc dev guide]: https://rustc-dev-guide.rust-lang.org/mir/index.html
 
-use core::alloc::GlobalCoAllocMeta;
 use crate::mir::interpret::{
     AllocRange, ConstAllocation, ConstValue, ErrorHandled, GlobalAlloc, LitToConstInput, Scalar,
 };
@@ -14,6 +13,7 @@ use crate::ty::visit::{TypeVisitable, TypeVisitor};
 use crate::ty::{self, DefIdTree, List, Ty, TyCtxt};
 use crate::ty::{AdtDef, InstanceDef, ScalarInt, UserTypeAnnotationIndex};
 use crate::ty::{GenericArg, InternalSubsts, SubstsRef};
+use core::alloc::GlobalCoAllocMeta;
 
 use rustc_data_structures::captures::Captures;
 use rustc_errors::ErrorGuaranteed;
