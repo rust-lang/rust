@@ -11,7 +11,7 @@ note: an implementation of `AddAssign<_>` might be missing for `Foo`
    |
 LL | struct Foo;
    | ^^^^^^^^^^ must implement `AddAssign<_>`
-note: the following trait must be implemented
+note: the trait `AddAssign` must be implemented
   --> $SRC_DIR/core/src/ops/arith.rs:LL:COL
 
 error: aborting due to previous error

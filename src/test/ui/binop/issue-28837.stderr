@@ -11,7 +11,7 @@ note: an implementation of `Add<_>` might be missing for `A`
    |
 LL | struct A;
    | ^^^^^^^^ must implement `Add<_>`
-note: the following trait must be implemented
+note: the trait `Add` must be implemented
   --> $SRC_DIR/core/src/ops/arith.rs:LL:COL
 
 error[E0369]: cannot subtract `A` from `A`
@@ -27,7 +27,7 @@ note: an implementation of `Sub<_>` might be missing for `A`
    |
 LL | struct A;
    | ^^^^^^^^ must implement `Sub<_>`
-note: the following trait must be implemented
+note: the trait `Sub` must be implemented
   --> $SRC_DIR/core/src/ops/arith.rs:LL:COL
 
 error[E0369]: cannot multiply `A` by `A`
@@ -43,7 +43,7 @@ note: an implementation of `Mul<_>` might be missing for `A`
    |
 LL | struct A;
    | ^^^^^^^^ must implement `Mul<_>`
-note: the following trait must be implemented
+note: the trait `Mul` must be implemented
   --> $SRC_DIR/core/src/ops/arith.rs:LL:COL
 
 error[E0369]: cannot divide `A` by `A`
@@ -59,7 +59,7 @@ note: an implementation of `Div<_>` might be missing for `A`
    |
 LL | struct A;
    | ^^^^^^^^ must implement `Div<_>`
-note: the following trait must be implemented
+note: the trait `Div` must be implemented
   --> $SRC_DIR/core/src/ops/arith.rs:LL:COL
 
 error[E0369]: cannot mod `A` by `A`
@@ -75,7 +75,7 @@ note: an implementation of `Rem<_>` might be missing for `A`
    |
 LL | struct A;
    | ^^^^^^^^ must implement `Rem<_>`
-note: the following trait must be implemented
+note: the trait `Rem` must be implemented
   --> $SRC_DIR/core/src/ops/arith.rs:LL:COL
 
 error[E0369]: no implementation for `A & A`
@@ -91,7 +91,7 @@ note: an implementation of `BitAnd<_>` might be missing for `A`
    |
 LL | struct A;
    | ^^^^^^^^ must implement `BitAnd<_>`
-note: the following trait must be implemented
+note: the trait `BitAnd` must be implemented
   --> $SRC_DIR/core/src/ops/bit.rs:LL:COL
 
 error[E0369]: no implementation for `A | A`
@@ -107,7 +107,7 @@ note: an implementation of `BitOr<_>` might be missing for `A`
    |
 LL | struct A;
    | ^^^^^^^^ must implement `BitOr<_>`
-note: the following trait must be implemented
+note: the trait `BitOr` must be implemented
   --> $SRC_DIR/core/src/ops/bit.rs:LL:COL
 
 error[E0369]: no implementation for `A << A`
@@ -123,7 +123,7 @@ note: an implementation of `Shl<_>` might be missing for `A`
    |
 LL | struct A;
    | ^^^^^^^^ must implement `Shl<_>`
-note: the following trait must be implemented
+note: the trait `Shl` must be implemented
   --> $SRC_DIR/core/src/ops/bit.rs:LL:COL
 
 error[E0369]: no implementation for `A >> A`
@@ -139,7 +139,7 @@ note: an implementation of `Shr<_>` might be missing for `A`
    |
 LL | struct A;
    | ^^^^^^^^ must implement `Shr<_>`
-note: the following trait must be implemented
+note: the trait `Shr` must be implemented
   --> $SRC_DIR/core/src/ops/bit.rs:LL:COL
 
 error[E0369]: binary operation `==` cannot be applied to type `A`

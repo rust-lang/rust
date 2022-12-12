@@ -20,7 +20,7 @@ LL |     let y = x.test();
            `Enum: Clone`
            `Enum: Default`
            `CloneEnum: Default`
-note: the following trait must be implemented
+note: the trait `Default` must be implemented
   --> $SRC_DIR/core/src/default.rs:LL:COL
 help: consider annotating `Enum` with `#[derive(Clone)]`
    |

@@ -1853,7 +1853,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         )],
     ) {
         let mut derives = Vec::<(String, Span, Symbol)>::new();
-        let mut traits = Vec::<Span>::new();
+        let mut traits = Vec::new();
         for (pred, _, _) in unsatisfied_predicates {
             let ty::PredicateKind::Clause(ty::Clause::Trait(trait_pred)) = pred.kind().skip_binder() else { continue };
             let adt = match trait_pred.self_ty().ty_adt_def() {
@@ -1892,10 +1892,10 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                     }
                     derives.push((self_name, self_span, diagnostic_name));
                 } else {
-                    traits.push(self.tcx.def_span(trait_pred.def_id()));
+                    traits.push(trait_pred.def_id());
                 }
             } else {
-                traits.push(self.tcx.def_span(trait_pred.def_id()));
+                traits.push(trait_pred.def_id());
             }
         }
         traits.sort();
@@ -1918,10 +1918,23 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
 
         let len = traits.len();
         if len > 0 {
-            let span: MultiSpan = traits.into();
+            let span =
+                MultiSpan::from_spans(traits.iter().map(|&did| self.tcx.def_span(did)).collect());
+            let mut names = format!("`{}`", self.tcx.def_path_str(traits[0]));
+            for (i, &did) in traits.iter().enumerate().skip(1) {
+                if len > 2 {
+                    names.push_str(", ");
+                }
+                if i == len - 1 {
+                    names.push_str(" and ");
+                }
+                names.push('`');
+                names.push_str(&self.tcx.def_path_str(did));
+                names.push('`');
+            }
             err.span_note(
                 span,
-                &format!("the following trait{} must be implemented", pluralize!(len),),
+                &format!("the trait{} {} must be implemented", pluralize!(len), names),
             );
         }
 

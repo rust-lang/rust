@@ -27,7 +27,7 @@ LL | default impl<T> Foo for T {
    | ^^^^^^^^^^^^^^^^---^^^^^-
    | |
    | unsatisfied trait bound introduced here
-note: the following trait must be implemented
+note: the trait `Foo` must be implemented
   --> $DIR/specialization-trait-not-implemented.rs:7:1
    |
 LL | trait Foo {

@@ -26,7 +26,7 @@ note: an implementation of `Add<_>` might be missing for `World`
    |
 LL | enum World {
    | ^^^^^^^^^^ must implement `Add<_>`
-note: the following trait must be implemented
+note: the trait `Add` must be implemented
   --> $SRC_DIR/core/src/ops/arith.rs:LL:COL
 
 error[E0369]: cannot add `String` to `&str`
