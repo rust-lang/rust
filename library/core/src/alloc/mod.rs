@@ -26,7 +26,7 @@ use crate::error::Error;
 use crate::fmt;
 use crate::ptr::{self, NonNull};
 
-// @TODO Make this target-specific
+// @FIXME Make this target-specific
 #[unstable(feature = "global_co_alloc_meta", issue = "none")]
 #[allow(missing_debug_implementations)]
 #[derive(Clone, Copy)]
@@ -157,7 +157,8 @@ pub unsafe trait Allocator {
     // Can't have: const type Xyz;
     /// If this is any type with non-zero size, then the actual `Allocator` implementation supports cooperative functions (`co_*`) as first class citizens.
     //type IsCoAllocator = ();
-    // It applies to the global (default) allocator only. And/or System allocator?! TODO
+    // It applies to the global (default) allocator only. And/or System allocator?! @FIXME
+    // @FIXME make false by default
     const IS_CO_ALLOCATOR: bool = true;
 
     /// Attempts to allocate a block of memory.
@@ -182,7 +183,7 @@ pub unsafe trait Allocator {
     /// [`handle_alloc_error`]: ../../alloc/alloc/fn.handle_alloc_error.html
     fn allocate(&self, layout: Layout) -> Result<NonNull<[u8]>, AllocError>;
 
-    fn co_allocate(&self, _layout: Layout, _result: &mut SliceAndMetaResult) {panic!("TODO")}
+    fn co_allocate(&self, _layout: Layout, _result: &mut SliceAndMetaResult) {panic!("FIXME")}
 
     /// Behaves like `allocate`, but also ensures that the returned memory is zero-initialized.
     ///
@@ -230,7 +231,7 @@ pub unsafe trait Allocator {
     /// [*fit*]: #memory-fitting
     unsafe fn deallocate(&self, ptr: NonNull<u8>, layout: Layout);
 
-    unsafe fn co_deallocate(&self, _ptr_and_meta: PtrAndMeta, _layout: Layout) {panic!("TODO")}
+    unsafe fn co_deallocate(&self, _ptr_and_meta: PtrAndMeta, _layout: Layout) {panic!("FIXME")}
 
     /// Attempts to extend the memory block.
     ///
@@ -528,7 +529,7 @@ pub unsafe trait Allocator {
     }
 }
 
-// @TODO
+// @FIXME
 #[unstable(feature = "allocator_api", issue = "32838")]
 unsafe impl<A> Allocator for &A
 where

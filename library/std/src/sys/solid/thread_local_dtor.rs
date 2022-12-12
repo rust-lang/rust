@@ -1,16 +1,18 @@
 #![cfg(target_thread_local)]
 #![unstable(feature = "thread_local_internals", issue = "none")]
+#![feature(global_co_alloc_plvec)]
 
 // Simplify dtor registration by using a list of destructors.
 
 use super::{abi, itron::task};
 use crate::cell::Cell;
 use crate::ptr;
+use core::alloc::PlVec;
 
 #[thread_local]
 static DTORS: Cell<*mut List> = Cell::new(ptr::null_mut());
 
-type List = Vec<(*mut u8, unsafe extern "C" fn(*mut u8))>;
+type List = PlVec<(*mut u8, unsafe extern "C" fn(*mut u8))>;
 
 pub unsafe fn register_dtor(t: *mut u8, dtor: unsafe extern "C" fn(*mut u8)) {
     if DTORS.get().is_null() {
