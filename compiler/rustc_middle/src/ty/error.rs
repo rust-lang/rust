@@ -1010,7 +1010,7 @@ fn foo(&self) -> Self::T { String::new() }
         }
         let mut short;
         loop {
-            // Look for the longest properly trimmed path that still fits in lenght_limit.
+            // Look for the longest properly trimmed path that still fits in length_limit.
             short = with_forced_trimmed_paths!(
                 FmtPrinter::new_with_limit(
                     self,
