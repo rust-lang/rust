@@ -27,7 +27,7 @@ LL |         foo = Some(Struct);
 LL |     let _y = foo;
    |              ^^^ value used here after move
    |
-note: this function takes ownership of the receiver `self`, which moves `foo`
+note: `Option::<T>::unwrap` takes ownership of the receiver `self`, which moves `foo`
   --> $SRC_DIR/core/src/option.rs:LL:COL
 
 error[E0382]: use of moved value: `foo`
@@ -52,7 +52,7 @@ LL |         foo = Some(Struct);
 LL |     } else if true {
 LL |         foo = Some(Struct);
    |         ^^^^^^^^^^^^^^^^^^
-note: this function takes ownership of the receiver `self`, which moves `foo`
+note: `Option::<T>::unwrap` takes ownership of the receiver `self`, which moves `foo`
   --> $SRC_DIR/core/src/option.rs:LL:COL
 
 error: aborting due to 3 previous errors

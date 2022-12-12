@@ -9,7 +9,7 @@ LL |     for y in x {
 LL |     let z = x;
    |             ^ value used here after move
    |
-note: this function takes ownership of the receiver `self`, which moves `x`
+note: `into_iter` takes ownership of the receiver `self`, which moves `x`
   --> $SRC_DIR/core/src/iter/traits/collect.rs:LL:COL
 help: consider iterating over a slice of the `Vec<S>`'s content to avoid moving into the `for` loop
    |

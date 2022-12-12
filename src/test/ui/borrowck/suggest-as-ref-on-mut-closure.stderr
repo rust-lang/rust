@@ -8,7 +8,7 @@ LL |     cb.map(|cb| cb());
    |     help: consider calling `.as_ref()` or `.as_mut()` to borrow the type's contents
    |     move occurs because `*cb` has type `Option<&mut dyn FnMut()>`, which does not implement the `Copy` trait
    |
-note: this function takes ownership of the receiver `self`, which moves `*cb`
+note: `Option::<T>::map` takes ownership of the receiver `self`, which moves `*cb`
   --> $SRC_DIR/core/src/option.rs:LL:COL
 
 error[E0596]: cannot borrow `*cb` as mutable, as it is behind a `&` reference

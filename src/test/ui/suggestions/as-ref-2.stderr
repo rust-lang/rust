@@ -10,7 +10,7 @@ LL |     let _x: Option<Struct> = foo.map(|s| bar(&s));
 LL |     let _y = foo;
    |              ^^^ value used here after move
    |
-note: this function takes ownership of the receiver `self`, which moves `foo`
+note: `Option::<T>::map` takes ownership of the receiver `self`, which moves `foo`
   --> $SRC_DIR/core/src/option.rs:LL:COL
 
 error: aborting due to previous error

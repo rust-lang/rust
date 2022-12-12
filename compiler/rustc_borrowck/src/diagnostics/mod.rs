@@ -1069,7 +1069,7 @@ impl<'cx, 'tcx> MirBorrowckCtxt<'cx, 'tcx> {
                         );
                     }
                 }
-                CallKind::Normal { self_arg, desugaring, is_option_or_result } => {
+                CallKind::Normal { self_arg, desugaring, method_did } => {
                     let self_arg = self_arg.unwrap();
                     if let Some((CallDesugaringKind::ForLoopIntoIter, _)) = desugaring {
                         let ty = moved_place.ty(self.body, self.infcx.tcx).ty;
@@ -1139,14 +1139,27 @@ impl<'cx, 'tcx> MirBorrowckCtxt<'cx, 'tcx> {
                             ),
                         );
                     }
+                    let tcx = self.infcx.tcx;
                     // Avoid pointing to the same function in multiple different
                     // error messages.
                     if span != DUMMY_SP && self.fn_self_span_reported.insert(self_arg.span) {
+                        let func = tcx.def_path_str(method_did);
                         err.span_note(
                             self_arg.span,
-                            &format!("this function takes ownership of the receiver `self`, which moves {}", place_name)
+                            &format!("`{func}` takes ownership of the receiver `self`, which moves {place_name}")
                         );
                     }
+                    let parent_did = tcx.parent(method_did);
+                    let parent_self_ty = (tcx.def_kind(parent_did)
+                        == rustc_hir::def::DefKind::Impl)
+                        .then_some(parent_did)
+                        .and_then(|did| match tcx.type_of(did).kind() {
+                            ty::Adt(def, ..) => Some(def.did()),
+                            _ => None,
+                        });
+                    let is_option_or_result = parent_self_ty.map_or(false, |def_id| {
+                        matches!(tcx.get_diagnostic_name(def_id), Some(sym::Option | sym::Result))
+                    });
                     if is_option_or_result && maybe_reinitialized_locations_is_empty {
                         err.span_label(
                             var_span,

@@ -9,7 +9,7 @@ LL |     {
 LL |         println!("{:?}", some_vec);
    |                          ^^^^^^^^ value borrowed here after move
    |
-note: this function takes ownership of the receiver `self`, which moves `some_vec`
+note: `into_iter` takes ownership of the receiver `self`, which moves `some_vec`
   --> $SRC_DIR/core/src/iter/traits/collect.rs:LL:COL
    = note: this error originates in the macro `$crate::format_args_nl` which comes from the expansion of the macro `println` (in Nightly builds, run with -Z macro-backtrace for more info)
 help: consider cloning the value if the performance cost is acceptable

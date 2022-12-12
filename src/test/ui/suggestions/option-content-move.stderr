@@ -7,7 +7,7 @@ LL |                 if selection.1.unwrap().contains(selection.0) {
    |                    help: consider calling `.as_ref()` or `.as_mut()` to borrow the type's contents
    |                    move occurs because `selection.1` has type `Option<String>`, which does not implement the `Copy` trait
    |
-note: this function takes ownership of the receiver `self`, which moves `selection.1`
+note: `Option::<T>::unwrap` takes ownership of the receiver `self`, which moves `selection.1`
   --> $SRC_DIR/core/src/option.rs:LL:COL
 
 error[E0507]: cannot move out of `selection.1` which is behind a shared reference
@@ -19,7 +19,7 @@ LL |                 if selection.1.unwrap().contains(selection.0) {
    |                    help: consider calling `.as_ref()` or `.as_mut()` to borrow the type's contents
    |                    move occurs because `selection.1` has type `Result<String, String>`, which does not implement the `Copy` trait
    |
-note: this function takes ownership of the receiver `self`, which moves `selection.1`
+note: `Result::<T, E>::unwrap` takes ownership of the receiver `self`, which moves `selection.1`
   --> $SRC_DIR/core/src/result.rs:LL:COL
 
 error: aborting due to 2 previous errors
