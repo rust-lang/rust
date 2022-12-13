@@ -57,7 +57,7 @@ fn update_release(sh: &Shell, tag_name: &str, release_notes: &str) -> Result<()>
 
     let release_json = cmd!(
         sh,
-        "curl -s -H {accept} -H {authorization} -H {api_version} {release_url}/tags/{tag_name}"
+        "curl -sf -H {accept} -H {authorization} -H {api_version} {release_url}/tags/{tag_name}"
     )
     .read()?;
     let release_id = cmd!(sh, "jq .id").stdin(release_json).read()?;
@@ -72,7 +72,7 @@ fn update_release(sh: &Shell, tag_name: &str, release_notes: &str) -> Result<()>
         .bool("prerelease", false);
     let _ = cmd!(
         sh,
-        "curl -s -X PATCH -H {accept} -H {authorization} -H {api_version} {release_url}/{release_id} -d {patch}"
+        "curl -sf -X PATCH -H {accept} -H {authorization} -H {api_version} {release_url}/{release_id} -d {patch}"
     )
     .read()?;
 
