@@ -703,9 +703,7 @@ fn receiver_is_dispatchable<'tcx>(
                     }
                 });
 
-            ty::Binder::dummy(ty::TraitRef { def_id: unsize_did, substs })
-                .without_const()
-                .to_predicate(tcx)
+            ty::Binder::dummy(tcx.mk_trait_ref(unsize_did, substs)).to_predicate(tcx)
         };
 
         let caller_bounds: Vec<Predicate<'tcx>> =

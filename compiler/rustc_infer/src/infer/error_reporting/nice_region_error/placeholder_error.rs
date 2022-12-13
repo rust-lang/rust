@@ -226,13 +226,11 @@ impl<'tcx> NiceRegionError<'_, 'tcx> {
             false
         };
 
-        let expected_trait_ref = self.cx.resolve_vars_if_possible(ty::TraitRef {
-            def_id: trait_def_id,
-            substs: expected_substs,
-        });
-        let actual_trait_ref = self
+        let expected_trait_ref = self
             .cx
-            .resolve_vars_if_possible(ty::TraitRef { def_id: trait_def_id, substs: actual_substs });
+            .resolve_vars_if_possible(self.cx.tcx.mk_trait_ref(trait_def_id, expected_substs));
+        let actual_trait_ref =
+            self.cx.resolve_vars_if_possible(self.cx.tcx.mk_trait_ref(trait_def_id, actual_substs));
 
         // Search the expected and actual trait references to see (a)
         // whether the sub/sup placeholders appear in them (sometimes

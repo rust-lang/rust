@@ -570,7 +570,7 @@ fn check_item_type<'tcx>(tcx: TyCtxt<'tcx>, id: hir::ItemId) {
                             assoc_item,
                             assoc_item,
                             default.span,
-                            ty::TraitRef { def_id: it.owner_id.to_def_id(), substs: trait_substs },
+                            tcx.mk_trait_ref(it.owner_id.to_def_id(), trait_substs),
                         );
                     }
                     _ => {}

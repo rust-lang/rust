@@ -13,7 +13,7 @@ use rustc_hir_analysis::astconv::AstConv;
 use rustc_infer::infer;
 use rustc_infer::traits::{self, StatementAsExpression};
 use rustc_middle::lint::in_external_macro;
-use rustc_middle::ty::{self, Binder, DefIdTree, IsSuggestable, ToPredicate, Ty};
+use rustc_middle::ty::{self, Binder, DefIdTree, IsSuggestable, Ty};
 use rustc_session::errors::ExprParenthesesNeeded;
 use rustc_span::symbol::sym;
 use rustc_span::Span;
@@ -1277,17 +1277,15 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             // Check that we're in fact trying to clone into the expected type
             && self.can_coerce(*pointee_ty, expected_ty)
             // And the expected type doesn't implement `Clone`
-            && !self.predicate_must_hold_considering_regions(&traits::Obligation {
-                cause: traits::ObligationCause::dummy(),
-                param_env: self.param_env,
-                recursion_depth: 0,
-                predicate: ty::Binder::dummy(ty::TraitRef {
-                    def_id: clone_trait_did,
-                    substs: self.tcx.mk_substs([expected_ty.into()].iter()),
-                })
-                .without_const()
-                .to_predicate(self.tcx),
-            })
+            && !self.predicate_must_hold_considering_regions(&traits::Obligation::new(
+                self.tcx,
+                traits::ObligationCause::dummy(),
+                self.param_env,
+                ty::Binder::dummy(self.tcx.mk_trait_ref(
+                    clone_trait_did,
+                    [expected_ty],
+                )),
+            ))
         {
             diag.span_note(
                 callee_expr.span,

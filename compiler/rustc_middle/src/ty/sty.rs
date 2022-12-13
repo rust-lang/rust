@@ -816,11 +816,14 @@ impl<'tcx> List<ty::PolyExistentialPredicate<'tcx>> {
 pub struct TraitRef<'tcx> {
     pub def_id: DefId,
     pub substs: SubstsRef<'tcx>,
+    /// This field exists to prevent the creation of `TraitRef` without
+    /// calling [TyCtxt::mk_trait_ref].
+    _use_mk_trait_ref_instead: (),
 }
 
 impl<'tcx> TraitRef<'tcx> {
     pub fn new(def_id: DefId, substs: SubstsRef<'tcx>) -> TraitRef<'tcx> {
-        TraitRef { def_id, substs }
+        TraitRef { def_id, substs, _use_mk_trait_ref_instead: () }
     }
 
     pub fn with_self_ty(self, tcx: TyCtxt<'tcx>, self_ty: Ty<'tcx>) -> Self {
@@ -836,6 +839,7 @@ impl<'tcx> TraitRef<'tcx> {
         ty::Binder::dummy(TraitRef {
             def_id,
             substs: InternalSubsts::identity_for_item(tcx, def_id),
+            _use_mk_trait_ref_instead: (),
         })
     }
 
@@ -850,7 +854,11 @@ impl<'tcx> TraitRef<'tcx> {
         substs: SubstsRef<'tcx>,
     ) -> ty::TraitRef<'tcx> {
         let defs = tcx.generics_of(trait_id);
-        ty::TraitRef { def_id: trait_id, substs: tcx.intern_substs(&substs[..defs.params.len()]) }
+        ty::TraitRef {
+            def_id: trait_id,
+            substs: tcx.intern_substs(&substs[..defs.params.len()]),
+            _use_mk_trait_ref_instead: (),
+        }
     }
 }
 
@@ -1194,10 +1202,7 @@ impl<'tcx> AliasTy<'tcx> {
         let trait_def_id = self.trait_def_id(tcx);
         let trait_generics = tcx.generics_of(trait_def_id);
         (
-            ty::TraitRef {
-                def_id: trait_def_id,
-                substs: self.substs.truncate_to(tcx, trait_generics),
-            },
+            tcx.mk_trait_ref(trait_def_id, self.substs.truncate_to(tcx, trait_generics)),
             &self.substs[trait_generics.count()..],
         )
     }
@@ -1211,7 +1216,7 @@ impl<'tcx> AliasTy<'tcx> {
     /// as well.
     pub fn trait_ref(&self, tcx: TyCtxt<'tcx>) -> ty::TraitRef<'tcx> {
         let def_id = self.trait_def_id(tcx);
-        ty::TraitRef { def_id, substs: self.substs.truncate_to(tcx, tcx.generics_of(def_id)) }
+        tcx.mk_trait_ref(def_id, self.substs.truncate_to(tcx, tcx.generics_of(def_id)))
     }
 
     pub fn self_ty(&self) -> Ty<'tcx> {
