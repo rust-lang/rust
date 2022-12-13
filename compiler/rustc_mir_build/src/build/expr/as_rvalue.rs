@@ -142,7 +142,7 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
                 let exchange_malloc = Operand::function_handle(
                     tcx,
                     tcx.require_lang_item(LangItem::ExchangeMalloc, Some(expr_span)),
-                    ty::List::empty(),
+                    [],
                     expr_span,
                 );
                 let storage = this.temp(tcx.mk_mut_ptr(tcx.types.u8), expr_span);
