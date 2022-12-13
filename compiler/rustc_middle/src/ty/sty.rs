@@ -980,8 +980,12 @@ where
     /// contain any bound vars that would be bound by the
     /// binder. This is commonly used to 'inject' a value T into a
     /// different binding level.
+    #[track_caller]
     pub fn dummy(value: T) -> Binder<'tcx, T> {
-        assert!(!value.has_escaping_bound_vars());
+        assert!(
+            !value.has_escaping_bound_vars(),
+            "`{value:?}` has escaping bound vars, so it cannot be wrapped in a dummy binder."
+        );
         Binder(value, ty::List::empty())
     }
 
@@ -1125,6 +1129,13 @@ impl<'tcx, T> Binder<'tcx, Option<T>> {
     pub fn transpose(self) -> Option<Binder<'tcx, T>> {
         let bound_vars = self.1;
         self.0.map(|v| Binder(v, bound_vars))
+    }
+}
+
+impl<'tcx, T: IntoIterator> Binder<'tcx, T> {
+    pub fn iter(self) -> impl Iterator<Item = ty::Binder<'tcx, T::Item>> {
+        let bound_vars = self.1;
+        self.0.into_iter().map(|v| Binder(v, bound_vars))
     }
 }
 
