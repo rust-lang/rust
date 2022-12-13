@@ -1,10 +1,8 @@
 error[E0277]: a value of type `Foo` cannot be built from an iterator over elements of type `_`
-  --> $DIR/recursion4.rs:10:9
+  --> $DIR/recursion4.rs:10:28
    |
 LL |     x = std::iter::empty().collect();
-   |         ^^^^^^^^^^^^^^^^^^ ------- required by a bound introduced by this call
-   |         |
-   |         value of type `Foo` cannot be built from `std::iter::Iterator<Item=_>`
+   |                            ^^^^^^^ value of type `Foo` cannot be built from `std::iter::Iterator<Item=_>`
    |
    = help: the trait `FromIterator<_>` is not implemented for `Foo`
 note: required by a bound in `collect`
@@ -14,12 +12,10 @@ LL |     fn collect<B: FromIterator<Self::Item>>(self) -> B
    |                   ^^^^^^^^^^^^^^^^^^^^^^^^ required by this bound in `Iterator::collect`
 
 error[E0277]: a value of type `impl Debug` cannot be built from an iterator over elements of type `_`
-  --> $DIR/recursion4.rs:19:9
+  --> $DIR/recursion4.rs:19:28
    |
 LL |     x = std::iter::empty().collect();
-   |         ^^^^^^^^^^^^^^^^^^ ------- required by a bound introduced by this call
-   |         |
-   |         value of type `impl Debug` cannot be built from `std::iter::Iterator<Item=_>`
+   |                            ^^^^^^^ value of type `impl Debug` cannot be built from `std::iter::Iterator<Item=_>`
    |
    = help: the trait `FromIterator<_>` is not implemented for `impl Debug`
 note: required by a bound in `collect`

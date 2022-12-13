@@ -33,7 +33,9 @@ assert-css: ("#settings", {"display": "block"})
 click: "input#line-numbers"
 wait-for: 100 // wait-for-false does not exist
 assert-false: "pre.example-line-numbers"
+assert-local-storage: {"rustdoc-line-numbers": "false" }
 
 // Finally, turn it on again.
 click: "input#line-numbers"
 wait-for: "pre.example-line-numbers"
+assert-local-storage: {"rustdoc-line-numbers": "true" }

@@ -548,12 +548,7 @@ impl<'hir> Generics<'hir> {
     }
 
     pub fn get_named(&self, name: Symbol) -> Option<&GenericParam<'hir>> {
-        for param in self.params {
-            if name == param.name.ident().name {
-                return Some(param);
-            }
-        }
-        None
+        self.params.iter().find(|&param| name == param.name.ident().name)
     }
 
     pub fn spans(&self) -> MultiSpan {

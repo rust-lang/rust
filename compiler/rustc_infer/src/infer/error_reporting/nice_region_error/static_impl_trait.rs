@@ -330,7 +330,7 @@ pub fn suggest_new_region_bound(
                             Applicability::MaybeIncorrect,
                         );
                     }
-                    if let Some((param_span, param_ty)) = param.clone() {
+                    if let Some((param_span, ref param_ty)) = param {
                         err.span_suggestion_verbose(
                             param_span,
                             add_static_bound,

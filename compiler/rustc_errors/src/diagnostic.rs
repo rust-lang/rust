@@ -370,7 +370,11 @@ impl Diagnostic {
         self.set_span(after);
         for span_label in before.span_labels() {
             if let Some(label) = span_label.label {
-                self.span.push_span_label(after, label);
+                if span_label.is_primary {
+                    self.span.push_span_label(after, label);
+                } else {
+                    self.span.push_span_label(span_label.span, label);
+                }
             }
         }
         self
@@ -802,7 +806,7 @@ impl Diagnostic {
         debug_assert!(
             !(suggestions
                 .iter()
-                .flat_map(|suggs| suggs)
+                .flatten()
                 .any(|(sp, suggestion)| sp.is_empty() && suggestion.is_empty())),
             "Span must not be empty and have no suggestion"
         );

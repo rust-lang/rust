@@ -22,12 +22,10 @@ LL |     fn collect<B: FromIterator<Self::Item>>(self) -> B
    |                ^ required by this bound in `Iterator::collect`
 
 error[E0277]: a slice of type `[i32]` cannot be built since `[i32]` has no definite size
-  --> $DIR/collect-into-slice.rs:6:30
+  --> $DIR/collect-into-slice.rs:6:38
    |
 LL |     let some_generated_vec = (0..10).collect();
-   |                              ^^^^^^^ ------- required by a bound introduced by this call
-   |                              |
-   |                              try explicitly collecting into a `Vec<{integer}>`
+   |                                      ^^^^^^^ try explicitly collecting into a `Vec<{integer}>`
    |
    = help: the trait `FromIterator<{integer}>` is not implemented for `[i32]`
 note: required by a bound in `collect`
