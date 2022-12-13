@@ -1036,6 +1036,14 @@ fn default_configuration(sess: &Session) -> CrateConfig {
         ret.insert((sym::sanitize, Some(symbol)));
     }
 
+    if sess.is_sanitizer_cfi_generalize_pointers_enabled() {
+        ret.insert((sym::sanitizer_cfi_generalize_pointers, None));
+    }
+
+    if sess.is_sanitizer_cfi_normalize_integers_enabled() {
+        ret.insert((sym::sanitizer_cfi_normalize_integers, None));
+    }
+
     if sess.opts.debug_assertions {
         ret.insert((sym::debug_assertions, None));
     }

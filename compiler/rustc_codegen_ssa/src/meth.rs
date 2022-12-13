@@ -28,8 +28,9 @@ impl<'a, 'tcx> VirtualIndex {
         if bx.cx().sess().opts.unstable_opts.virtual_function_elimination
             && bx.cx().sess().lto() == Lto::Fat
         {
-            let typeid =
-                bx.typeid_metadata(typeid_for_trait_ref(bx.tcx(), expect_dyn_trait_in_self(ty)));
+            let typeid = bx
+                .typeid_metadata(typeid_for_trait_ref(bx.tcx(), expect_dyn_trait_in_self(ty)))
+                .unwrap();
             let vtable_byte_offset = self.0 * bx.data_layout().pointer_size.bytes();
             let func = bx.type_checked_load(llvtable, vtable_byte_offset, typeid);
             bx.pointercast(func, llty)

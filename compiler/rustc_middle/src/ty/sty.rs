@@ -2400,6 +2400,13 @@ impl<'tcx> Ty<'tcx> {
             _ => None,
         }
     }
+
+    pub fn is_c_void(self, tcx: TyCtxt<'_>) -> bool {
+        match self.kind() {
+            ty::Adt(adt, _) => tcx.lang_items().get(LangItem::CVoid) == Some(adt.did()),
+            _ => false,
+        }
+    }
 }
 
 /// Extra information about why we ended up with a particular variance.

@@ -128,12 +128,16 @@ pub trait LayoutTypeMethods<'tcx>: Backend<'tcx> {
     ) -> Self::Type;
 }
 
-// For backends that support CFI using type membership (i.e., testing whether a given  pointer is
+// For backends that support CFI using type membership (i.e., testing whether a given pointer is
 // associated with a type identifier).
 pub trait TypeMembershipMethods<'tcx>: Backend<'tcx> {
-    fn set_type_metadata(&self, function: Self::Function, typeid: String);
-    fn typeid_metadata(&self, typeid: String) -> Self::Value;
-    fn set_kcfi_type_metadata(&self, function: Self::Function, typeid: u32);
+    fn add_type_metadata(&self, _function: Self::Function, _typeid: String) {}
+    fn set_type_metadata(&self, _function: Self::Function, _typeid: String) {}
+    fn typeid_metadata(&self, _typeid: String) -> Option<Self::Value> {
+        None
+    }
+    fn add_kcfi_type_metadata(&self, _function: Self::Function, _typeid: u32) {}
+    fn set_kcfi_type_metadata(&self, _function: Self::Function, _typeid: u32) {}
 }
 
 pub trait ArgAbiMethods<'tcx>: HasCodegen<'tcx> {
