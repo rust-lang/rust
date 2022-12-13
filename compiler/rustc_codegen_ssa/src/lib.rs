@@ -42,6 +42,7 @@ use std::path::{Path, PathBuf};
 
 pub mod back;
 pub mod base;
+pub mod codegen_attrs;
 pub mod common;
 pub mod coverageinfo;
 pub mod debuginfo;
@@ -180,6 +181,7 @@ pub fn provide(providers: &mut Providers) {
     crate::back::symbol_export::provide(providers);
     crate::base::provide(providers);
     crate::target_features::provide(providers);
+    crate::codegen_attrs::provide(providers);
 }
 
 pub fn provide_extern(providers: &mut ExternProviders) {
