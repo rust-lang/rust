@@ -35,6 +35,7 @@ use rustc_codegen_ssa::traits::{
 };
 use rustc_data_structures::fx::FxHashSet;
 use rustc_middle::bug;
+use rustc_middle::middle::codegen_fn_attrs::CodegenFnAttrs;
 use rustc_middle::ty::{ParamEnv, Ty, TyCtxt};
 use rustc_middle::ty::layout::{FnAbiError, FnAbiOfHelpers, FnAbiRequest, HasParamEnv, HasTyCtxt, LayoutError, LayoutOfHelpers, TyAndLayout};
 use rustc_span::Span;
@@ -455,12 +456,12 @@ impl<'a, 'gcc, 'tcx> BuilderMethods<'a, 'tcx> for Builder<'a, 'gcc, 'tcx> {
     }
 
     #[cfg(feature="master")]
-    fn invoke(&mut self, typ: Type<'gcc>, _fn_abi: Option<&FnAbi<'tcx, Ty<'tcx>>>, func: RValue<'gcc>, args: &[RValue<'gcc>], then: Block<'gcc>, catch: Block<'gcc>, _funclet: Option<&Funclet>) -> RValue<'gcc> {
+    fn invoke(&mut self, typ: Type<'gcc>, fn_attrs: Option<&CodegenFnAttrs>, _fn_abi: Option<&FnAbi<'tcx, Ty<'tcx>>>, func: RValue<'gcc>, args: &[RValue<'gcc>], then: Block<'gcc>, catch: Block<'gcc>, _funclet: Option<&Funclet>) -> RValue<'gcc> {
         let try_block = self.current_func().new_block("try");
 
         let current_block = self.block.clone();
         self.block = try_block;
-        let call = self.call(typ, None, func, args, None); // TODO(antoyo): use funclet here?
+        let call = self.call(typ, fn_attrs, None, func, args, None); // TODO(antoyo): use funclet here?
         self.block = current_block;
 
         let return_value = self.current_func()
@@ -483,8 +484,8 @@ impl<'a, 'gcc, 'tcx> BuilderMethods<'a, 'tcx> for Builder<'a, 'gcc, 'tcx> {
     }
 
     #[cfg(not(feature="master"))]
-    fn invoke(&mut self, typ: Type<'gcc>, fn_abi: Option<&FnAbi<'tcx, Ty<'tcx>>>, func: RValue<'gcc>, args: &[RValue<'gcc>], then: Block<'gcc>, catch: Block<'gcc>, _funclet: Option<&Funclet>) -> RValue<'gcc> {
-        let call_site = self.call(typ, None, func, args, None);
+    fn invoke(&mut self, typ: Type<'gcc>, fn_attrs: &CodegenFnAttrs, fn_abi: Option<&FnAbi<'tcx, Ty<'tcx>>>, func: RValue<'gcc>, args: &[RValue<'gcc>], then: Block<'gcc>, catch: Block<'gcc>, _funclet: Option<&Funclet>) -> RValue<'gcc> {
+        let call_site = self.call(typ, fn_attrs, None, func, args, None);
         let condition = self.context.new_rvalue_from_int(self.bool_type, 1);
         self.llbb().end_with_conditional(None, condition, then, catch);
         if let Some(_fn_abi) = fn_abi {
@@ -1351,6 +1352,7 @@ impl<'a, 'gcc, 'tcx> BuilderMethods<'a, 'tcx> for Builder<'a, 'gcc, 'tcx> {
     fn call(
         &mut self,
         _typ: Type<'gcc>,
+        _fn_attrs: Option<&CodegenFnAttrs>,
         fn_abi: Option<&FnAbi<'tcx, Ty<'tcx>>>,
         func: RValue<'gcc>,
         args: &[RValue<'gcc>],
