@@ -18,9 +18,9 @@ use super::{CompileTimeEvalContext, CompileTimeInterpreter};
 use crate::errors;
 use crate::interpret::eval_nullary_intrinsic;
 use crate::interpret::{
-    intern_const_alloc_recursive, Allocation, ConstAlloc, ConstValue, CtfeValidationMode, GlobalId,
-    Immediate, InternKind, InterpCx, InterpError, InterpResult, MPlaceTy, MemoryKind, OpTy,
-    RefTracking, StackPopCleanup,
+    intern_const_alloc_recursive, ConstAlloc, ConstValue, CtfeValidationMode, GlobalId, Immediate,
+    InternKind, InterpCx, InterpError, InterpResult, MPlaceTy, MemoryKind, OpTy, RefTracking,
+    StackPopCleanup,
 };
 
 // Returns a pointer to where the result lives
@@ -108,7 +108,7 @@ pub(super) fn mk_eval_cx<'mir, 'tcx>(
 /// type system.
 #[instrument(skip(ecx), level = "debug")]
 pub(super) fn op_to_const<'tcx>(
-    ecx: &CompileTimeEvalContext<'_, 'tcx>,
+    ecx: &mut CompileTimeEvalContext<'_, 'tcx>,
     op: &OpTy<'tcx>,
 ) -> ConstValue<'tcx> {
     // We do not have value optimizations for everything.
@@ -143,12 +143,14 @@ pub(super) fn op_to_const<'tcx>(
 
     debug!(?immediate);
 
+    let tcx = ecx.tcx;
+
     // We know `offset` is relative to the allocation, so we can use `into_parts`.
     let to_const_value = |mplace: &MPlaceTy<'_>| {
         debug!("to_const_value(mplace: {:?})", mplace);
         match mplace.ptr.into_parts() {
             (Some(alloc_id), offset) => {
-                let alloc = ecx.tcx.global_alloc(alloc_id).unwrap_memory();
+                let alloc = tcx.global_alloc(alloc_id).unwrap_memory();
                 ConstValue::ByRef { alloc, offset }
             }
             (None, offset) => {
@@ -169,24 +171,12 @@ pub(super) fn op_to_const<'tcx>(
         Right(imm) => match *imm {
             _ if imm.layout.is_zst() => ConstValue::ZeroSized,
             Immediate::Scalar(x) => ConstValue::Scalar(x),
-            Immediate::ScalarPair(a, b) => {
-                debug!("ScalarPair(a: {:?}, b: {:?})", a, b);
-                // We know `offset` is relative to the allocation, so we can use `into_parts`.
-                let (data, start) = match a.to_pointer(ecx).unwrap().into_parts() {
-                    (Some(alloc_id), offset) => {
-                        (ecx.tcx.global_alloc(alloc_id).unwrap_memory(), offset.bytes())
-                    }
-                    (None, _offset) => (
-                        ecx.tcx.mk_const_alloc(Allocation::from_bytes_byte_aligned_immutable(
-                            b"" as &[u8],
-                        )),
-                        0,
-                    ),
-                };
-                let len = b.to_target_usize(ecx).unwrap();
-                let start = start.try_into().unwrap();
-                let len: usize = len.try_into().unwrap();
-                ConstValue::Slice { data, start, end: start + len }
+            Immediate::ScalarPair(..) => {
+                let place = ecx.allocate(imm.layout, MemoryKind::Stack).unwrap();
+                ecx.write_immediate(*imm, &place.into()).unwrap();
+                intern_const_alloc_recursive(ecx, InternKind::Constant, &place).unwrap();
+
+                to_const_value(&place)
             }
             Immediate::Uninit => to_const_value(&op.assert_mem_place()),
         },
@@ -202,8 +192,7 @@ pub(crate) fn turn_into_const_value<'tcx>(
     let cid = key.value;
     let def_id = cid.instance.def.def_id();
     let is_static = tcx.is_static(def_id);
-    // This is just accessing an already computed constant, so no need to check alignment here.
-    let ecx = mk_eval_cx(
+    let mut ecx = mk_eval_cx(
         tcx,
         tcx.def_span(key.value.instance.def_id()),
         key.param_env,
@@ -220,7 +209,7 @@ pub(crate) fn turn_into_const_value<'tcx>(
     );
 
     // Turn this into a proper constant.
-    op_to_const(&ecx, &mplace.into())
+    op_to_const(&mut ecx, &mplace.into())
 }
 
 #[instrument(skip(tcx), level = "debug")]

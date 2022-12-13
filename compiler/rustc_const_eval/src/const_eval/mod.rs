@@ -2,10 +2,10 @@
 
 use crate::errors::MaxNumNodesInConstErr;
 use crate::interpret::{
-    intern_const_alloc_recursive, ConstValue, InternKind, InterpCx, InterpResult, Scalar,
+    intern_const_alloc_recursive, ConstValue, ImmTy, InternKind, InterpCx, InterpResult, Scalar,
 };
 use rustc_middle::mir;
-use rustc_middle::mir::interpret::{EvalToValTreeResult, GlobalId};
+use rustc_middle::mir::interpret::{ConstAllocation, EvalToValTreeResult, GlobalId};
 use rustc_middle::ty::{self, TyCtxt};
 use rustc_span::{source_map::DUMMY_SP, symbol::Symbol};
 
@@ -91,7 +91,7 @@ pub(crate) fn try_destructure_mir_constant<'tcx>(
     val: mir::ConstantKind<'tcx>,
 ) -> InterpResult<'tcx, mir::DestructuredConstant<'tcx>> {
     trace!("destructure_mir_constant: {:?}", val);
-    let ecx = mk_eval_cx(tcx, DUMMY_SP, param_env, false);
+    let mut ecx = mk_eval_cx(tcx, DUMMY_SP, param_env, false);
     let op = ecx.eval_mir_constant(&val, None, None)?;
 
     // We go to `usize` as we cannot allocate anything bigger anyway.
@@ -112,11 +112,30 @@ pub(crate) fn try_destructure_mir_constant<'tcx>(
     let fields_iter = (0..field_count)
         .map(|i| {
             let field_op = ecx.operand_field(&down, i)?;
-            let val = op_to_const(&ecx, &field_op);
+            let val = op_to_const(&mut ecx, &field_op);
             Ok(mir::ConstantKind::Val(val, field_op.layout.ty))
         })
         .collect::<InterpResult<'tcx, Vec<_>>>()?;
     let fields = tcx.arena.alloc_from_iter(fields_iter);
 
     Ok(mir::DestructuredConstant { variant, fields })
+}
+
+/// Creates an `&[u8]` slice pointing to the given allocation
+/// (covering it entirely, i.e., the length is the allocation size).
+pub fn slice_for_alloc<'tcx>(tcx: TyCtxt<'tcx>, alloc: ConstAllocation<'tcx>) -> ConstValue<'tcx> {
+    let alloc_id = tcx.create_memory_alloc(alloc);
+
+    let a = Scalar::from_pointer(alloc_id.into(), &tcx);
+    let b = Scalar::from_target_usize(alloc.0.size().bytes(), &tcx);
+    let imm = crate::interpret::Immediate::ScalarPair(a, b);
+    let mut ecx = mk_eval_cx(tcx, DUMMY_SP, ty::ParamEnv::reveal_all(), false);
+
+    let layout = tcx
+        .layout_of(
+            ty::ParamEnv::reveal_all()
+                .and(tcx.mk_imm_ref(tcx.lifetimes.re_static, tcx.mk_slice(tcx.types.u8))),
+        )
+        .unwrap();
+    op_to_const(&mut ecx, &ImmTy::from_immediate(imm, layout).into())
 }

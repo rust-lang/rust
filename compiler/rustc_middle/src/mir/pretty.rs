@@ -464,7 +464,6 @@ impl<'tcx> Visitor<'tcx> for ExtraComments<'tcx> {
             let fmt_val = |val: &ConstValue<'tcx>| match val {
                 ConstValue::ZeroSized => "<ZST>".to_string(),
                 ConstValue::Scalar(s) => format!("Scalar({:?})", s),
-                ConstValue::Slice { .. } => "Slice(..)".to_string(),
                 ConstValue::ByRef { .. } => "ByRef(..)".to_string(),
             };
 
@@ -700,7 +699,7 @@ pub fn write_mir_intro<'tcx>(
 /// allocations.
 pub fn write_allocations<'tcx>(
     tcx: TyCtxt<'tcx>,
-    body: &Body<'_>,
+    body: &Body<'tcx>,
     w: &mut dyn Write,
 ) -> io::Result<()> {
     fn alloc_ids_from_alloc(
@@ -718,31 +717,35 @@ pub fn write_allocations<'tcx>(
                 Either::Left(Either::Right(std::iter::empty()))
             }
             ConstValue::ZeroSized => Either::Left(Either::Right(std::iter::empty())),
-            ConstValue::ByRef { alloc, .. } | ConstValue::Slice { data: alloc, .. } => {
-                Either::Right(alloc_ids_from_alloc(alloc))
-            }
+            ConstValue::ByRef { alloc, .. } => Either::Right(alloc_ids_from_alloc(alloc)),
         }
     }
-    struct CollectAllocIds(BTreeSet<AllocId>);
+    struct CollectAllocIds<'tcx> {
+        seen: BTreeSet<AllocId>,
+        tcx: TyCtxt<'tcx>,
+    }
 
-    impl<'tcx> Visitor<'tcx> for CollectAllocIds {
+    impl<'tcx> Visitor<'tcx> for CollectAllocIds<'tcx> {
         fn visit_constant(&mut self, c: &Constant<'tcx>, _: Location) {
             match c.literal {
                 ConstantKind::Ty(_) | ConstantKind::Unevaluated(..) => {}
-                ConstantKind::Val(val, _) => {
-                    self.0.extend(alloc_ids_from_const_val(val));
-                }
+                ConstantKind::Val(val, _) => match *c.ty().kind() {
+                    // Don't dump the content of string slices, they are rendered
+                    // inline in MIR already.
+                    ty::Ref(_, ty, _) if ty == self.tcx.types.str_ => {}
+                    _ => self.seen.extend(alloc_ids_from_const_val(val)),
+                },
             }
         }
     }
 
-    let mut visitor = CollectAllocIds(Default::default());
+    let mut visitor = CollectAllocIds { seen: Default::default(), tcx };
     visitor.visit_body(body);
 
     // `seen` contains all seen allocations, including the ones we have *not* printed yet.
     // The protocol is to first `insert` into `seen`, and only if that returns `true`
     // then push to `todo`.
-    let mut seen = visitor.0;
+    let mut seen = visitor.seen;
     let mut todo: Vec<_> = seen.iter().copied().collect();
     while let Some(id) = todo.pop() {
         let mut write_allocation_track_relocs =

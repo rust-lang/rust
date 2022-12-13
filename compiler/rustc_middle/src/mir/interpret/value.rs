@@ -7,12 +7,13 @@ use rustc_apfloat::{
     Float,
 };
 use rustc_macros::HashStable;
+use rustc_span::Span;
 use rustc_target::abi::{HasDataLayout, Size};
 
 use crate::ty::{ParamEnv, ScalarInt, Ty, TyCtxt};
 
 use super::{
-    AllocId, AllocRange, ConstAllocation, InterpResult, Pointer, PointerArithmetic, Provenance,
+    AllocId, ConstAllocation, InterpResult, Pointer, PointerArithmetic, Provenance,
     ScalarSizeMismatch,
 };
 
@@ -25,7 +26,7 @@ pub struct ConstAlloc<'tcx> {
     pub ty: Ty<'tcx>,
 }
 
-/// Represents a constant value in Rust. `Scalar` and `Slice` are optimizations for
+/// Represents a constant value in Rust. `Scalar` is an optimization for
 /// array length computations, enum discriminants and the pattern matching logic.
 #[derive(Copy, Clone, Debug, Eq, PartialEq, TyEncodable, TyDecodable, Hash)]
 #[derive(HashStable, Lift)]
@@ -38,9 +39,6 @@ pub enum ConstValue<'tcx> {
     /// Only used for ZSTs.
     ZeroSized,
 
-    /// Used only for `&[u8]` and `&str`
-    Slice { data: ConstAllocation<'tcx>, start: usize, end: usize },
-
     /// A value not represented/representable by `Scalar` or `Slice`
     ByRef {
         /// The backing memory of the value, may contain more memory than needed for just the value
@@ -52,13 +50,46 @@ pub enum ConstValue<'tcx> {
 }
 
 #[cfg(all(target_arch = "x86_64", target_pointer_width = "64"))]
-static_assert_size!(ConstValue<'_>, 32);
+static_assert_size!(ConstValue<'_>, 24);
 
 impl<'tcx> ConstValue<'tcx> {
+    pub fn expect_slice(self, tcx: TyCtxt<'tcx>, span: Span) -> &'tcx [u8] {
+        let ConstValue::ByRef { alloc, offset } = self else {
+            span_bug!(span, "invalid string constant: {self:?}")
+        };
+        assert_eq!(offset, Size::ZERO);
+        let ptr_size = tcx.data_layout.pointer_size;
+        let (alloc_id, offset) = alloc
+            .0
+            .read_scalar(&tcx, Size::ZERO..ptr_size, true)
+            .unwrap()
+            .to_pointer(&tcx)
+            .unwrap()
+            .into_parts();
+        let len = alloc
+            .0
+            .read_scalar(&tcx, ptr_size..(ptr_size * 2), true)
+            .unwrap()
+            .assert_bits(ptr_size);
+        match (alloc_id, len) {
+            (_, 0) => b"",
+            (None, _) => {
+                span_bug!(span, "string with {len} bytes but no alloc id")
+            }
+            (Some(alloc_id), _) => {
+                let alloc = tcx.global_alloc(alloc_id).unwrap_memory();
+                alloc
+                    .inner()
+                    .get_bytes_strip_provenance(&tcx, offset..(offset + Size::from_bytes(len)))
+                    .unwrap()
+            }
+        }
+    }
+
     #[inline]
     pub fn try_to_scalar(&self) -> Option<Scalar<AllocId>> {
         match *self {
-            ConstValue::ByRef { .. } | ConstValue::Slice { .. } | ConstValue::ZeroSized => None,
+            ConstValue::ByRef { .. } | ConstValue::ZeroSized => None,
             ConstValue::Scalar(val) => Some(val),
         }
     }
@@ -323,6 +354,13 @@ impl<Prov> Scalar<Prov> {
 }
 
 impl<'tcx, Prov: Provenance> Scalar<Prov> {
+    pub fn size(self) -> Size {
+        match self {
+            Scalar::Int(s) => s.size(),
+            Scalar::Ptr(_, size) => Size::from_bytes(size),
+        }
+    }
+
     pub fn to_pointer(self, cx: &impl HasDataLayout) -> InterpResult<'tcx, Pointer<Option<Prov>>> {
         match self
             .to_bits_or_ptr_internal(cx.pointer_size())
@@ -494,20 +532,5 @@ impl<'tcx, Prov: Provenance> Scalar<Prov> {
     pub fn to_f64(self) -> InterpResult<'tcx, Double> {
         // Going through `u64` to check size and truncation.
         Ok(Double::from_bits(self.to_u64()?.into()))
-    }
-}
-
-/// Gets the bytes of a constant slice value.
-pub fn get_slice_bytes<'tcx>(cx: &impl HasDataLayout, val: ConstValue<'tcx>) -> &'tcx [u8] {
-    if let ConstValue::Slice { data, start, end } = val {
-        let len = end - start;
-        data.inner()
-            .get_bytes_strip_provenance(
-                cx,
-                AllocRange { start: Size::from_bytes(start), size: Size::from_bytes(len) },
-            )
-            .unwrap_or_else(|err| bug!("const slice is invalid: {:?}", err))
-    } else {
-        bug!("expected const slice, but found another const value");
     }
 }

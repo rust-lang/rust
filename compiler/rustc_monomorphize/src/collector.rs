@@ -1383,7 +1383,7 @@ fn collect_const_value<'tcx>(
 ) {
     match value {
         ConstValue::Scalar(Scalar::Ptr(ptr, _size)) => collect_miri(tcx, ptr.provenance, output),
-        ConstValue::Slice { data: alloc, start: _, end: _ } | ConstValue::ByRef { alloc, .. } => {
+        ConstValue::ByRef { alloc, .. } => {
             for &id in alloc.inner().provenance().ptrs().values() {
                 collect_miri(tcx, id, output);
             }

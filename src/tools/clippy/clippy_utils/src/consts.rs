@@ -662,20 +662,16 @@ pub fn miri_to_const<'tcx>(tcx: TyCtxt<'tcx>, result: mir::ConstantKind<'tcx>) -
                 _ => None,
             }
         },
-        mir::ConstantKind::Val(ConstValue::Slice { data, start, end }, _) => match result.ty().kind() {
+        mir::ConstantKind::Val(val @ ConstValue::ByRef { alloc, offset: _ }, _) => match result.ty().kind() {
             ty::Ref(_, tam, _) => match tam.kind() {
                 ty::Str => String::from_utf8(
-                    data.inner()
-                        .inspect_with_uninit_and_ptr_outside_interpreter(start..end)
+                    val.expect_slice(tcx, rustc_span::DUMMY_SP)
                         .to_owned(),
                 )
                 .ok()
                 .map(Constant::Str),
                 _ => None,
             },
-            _ => None,
-        },
-        mir::ConstantKind::Val(ConstValue::ByRef { alloc, offset: _ }, _) => match result.ty().kind() {
             ty::Array(sub_type, len) => match sub_type.kind() {
                 ty::Float(FloatTy::F32) => match len.kind().try_to_target_usize(tcx) {
                     Some(len) => alloc

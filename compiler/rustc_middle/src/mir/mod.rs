@@ -2842,33 +2842,21 @@ fn pretty_print_const_value<'tcx>(
         let u8_type = tcx.types.u8;
         match (ct, ty.kind()) {
             // Byte/string slices, printed as (byte) string literals.
-            (ConstValue::Slice { data, start, end }, ty::Ref(_, inner, _)) => {
-                match inner.kind() {
-                    ty::Slice(t) => {
-                        if *t == u8_type {
-                            // The `inspect` here is okay since we checked the bounds, and `u8` carries
-                            // no provenance (we have an active slice reference here). We don't use
-                            // this result to affect interpreter execution.
-                            let byte_str = data
-                                .inner()
-                                .inspect_with_uninit_and_ptr_outside_interpreter(start..end);
-                            pretty_print_byte_str(fmt, byte_str)?;
-                            return Ok(());
-                        }
-                    }
-                    ty::Str => {
-                        // The `inspect` here is okay since we checked the bounds, and `str` carries
-                        // no provenance (we have an active `str` reference here). We don't use this
-                        // result to affect interpreter execution.
-                        let slice = data
-                            .inner()
-                            .inspect_with_uninit_and_ptr_outside_interpreter(start..end);
-                        fmt.write_str(&format!("{:?}", String::from_utf8_lossy(slice)))?;
+            (ConstValue::ByRef { .. }, ty::Ref(_, inner, _)) => match inner.kind() {
+                ty::Slice(t) => {
+                    if *t == u8_type {
+                        let byte_str = ct.expect_slice(tcx, DUMMY_SP);
+                        pretty_print_byte_str(fmt, byte_str)?;
                         return Ok(());
                     }
-                    _ => {}
                 }
-            }
+                ty::Str => {
+                    let slice = ct.expect_slice(tcx, DUMMY_SP);
+                    fmt.write_str(&format!("{:?}", String::from_utf8_lossy(slice)))?;
+                    return Ok(());
+                }
+                _ => {}
+            },
             (ConstValue::ByRef { alloc, offset }, ty::Array(t, n)) if *t == u8_type => {
                 let n = n.kind().try_to_bits(tcx.data_layout.pointer_size).unwrap();
                 // cast is ok because we already checked for pointer size (32 or 64 bit) above

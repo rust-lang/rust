@@ -812,9 +812,11 @@ impl<'tcx> Constructor<'tcx> {
                 }
             }
             (Str(self_val), Str(other_val)) => {
-                // FIXME Once valtrees are available we can directly use the bytes
-                // in the `Str` variant of the valtree for the comparison here.
-                self_val == other_val
+                let get_const = |val| match val {
+                    &mir::ConstantKind::Ty(ct) => ct,
+                    _ => span_bug!(pcx.span, "str constant is not a valtree: {val:#?}"),
+                };
+                get_const(self_val) == get_const(other_val)
             }
             (Slice(self_slice), Slice(other_slice)) => self_slice.is_covered_by(*other_slice),
 

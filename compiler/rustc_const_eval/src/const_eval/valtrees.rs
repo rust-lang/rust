@@ -296,9 +296,9 @@ pub fn valtree_to_const_value<'tcx>(
                     let imm =
                         ImmTy::from_immediate(ref_place, tcx.layout_of(param_env_ty).unwrap());
 
-                    op_to_const(&ecx, &imm.into())
+                    op_to_const(&mut ecx, &imm.into())
                 }
-                _ => op_to_const(&ecx, &place.into()),
+                _ => op_to_const(&mut ecx, &place.into()),
             }
         }
         ty::Never
