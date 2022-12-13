@@ -2321,7 +2321,7 @@ impl<'tcx> TyCtxt<'tcx> {
 
     /// Given a `ty`, return whether it's an `impl Future<...>`.
     pub fn ty_is_opaque_future(self, ty: Ty<'_>) -> bool {
-        let ty::Alias(ty::Opaque, ty::AliasTy { def_id, substs: _ }) = ty.kind() else { return false };
+        let ty::Alias(ty::Opaque, ty::AliasTy { def_id, .. }) = ty.kind() else { return false };
         let future_trait = self.require_lang_item(LangItem::Future, None);
 
         self.explicit_item_bounds(def_id).iter().any(|(predicate, _)| {
@@ -2673,7 +2673,7 @@ impl<'tcx> TyCtxt<'tcx> {
 
     #[inline]
     pub fn mk_opaque(self, def_id: DefId, substs: SubstsRef<'tcx>) -> Ty<'tcx> {
-        self.mk_ty(Alias(ty::Opaque, ty::AliasTy { def_id, substs }))
+        self.mk_ty(Alias(ty::Opaque, self.mk_alias_ty(def_id, substs)))
     }
 
     pub fn mk_place_field(self, place: Place<'tcx>, f: Field, ty: Ty<'tcx>) -> Place<'tcx> {
@@ -2888,7 +2888,7 @@ impl<'tcx> TyCtxt<'tcx> {
             substs.collect::<Vec<_>>(),
         );
         let substs = self.mk_substs(substs);
-        ty::AliasTy { def_id, substs }
+        ty::AliasTy { def_id, substs, _use_mk_alias_ty_instead: () }
     }
 
     pub fn mk_bound_variable_kinds<

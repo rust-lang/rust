@@ -1166,6 +1166,10 @@ pub struct AliasTy<'tcx> {
     /// `TraitRef` containing this associated type, which is in `tcx.associated_item(def_id).container`,
     /// aka. `tcx.parent(def_id)`.
     pub def_id: DefId,
+
+    /// This field exists to prevent the creation of `ProjectionTy` without using
+    /// [TyCtxt::mk_projection_ty].
+    pub(super) _use_mk_alias_ty_instead: (),
 }
 
 impl<'tcx> AliasTy<'tcx> {

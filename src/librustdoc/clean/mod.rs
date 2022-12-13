@@ -1835,7 +1835,7 @@ pub(crate) fn clean_middle_ty<'tcx>(
             }
         }
 
-        ty::Alias(ty::Opaque, ty::AliasTy { def_id, substs }) => {
+        ty::Alias(ty::Opaque, ty::AliasTy { def_id, substs, .. }) => {
             // Grab the "TraitA + TraitB" from `impl TraitA + TraitB`,
             // by looking up the bounds associated with the def_id.
             let bounds = cx

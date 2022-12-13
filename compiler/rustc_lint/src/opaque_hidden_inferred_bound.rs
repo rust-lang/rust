@@ -117,7 +117,7 @@ impl<'tcx> LateLintPass<'tcx> for OpaqueHiddenInferredBound {
                     // then we can emit a suggestion to add the bound.
                     let add_bound = match (proj_term.kind(), assoc_pred.kind().skip_binder()) {
                         (
-                            ty::Alias(ty::Opaque, ty::AliasTy { def_id, substs: _ }),
+                            ty::Alias(ty::Opaque, ty::AliasTy { def_id, .. }),
                             ty::PredicateKind::Clause(ty::Clause::Trait(trait_pred)),
                         ) => Some(AddBound {
                             suggest_span: cx.tcx.def_span(*def_id).shrink_to_hi(),

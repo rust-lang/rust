@@ -338,7 +338,7 @@ where
             substs,
             true,
             |ty| match *ty.kind() {
-                ty::Alias(ty::Opaque, ty::AliasTy { def_id, substs }) => (def_id, substs),
+                ty::Alias(ty::Opaque, ty::AliasTy { def_id, substs, .. }) => (def_id, substs),
                 _ => bug!("expected only projection types from env, not {:?}", ty),
             },
         );

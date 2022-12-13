@@ -557,8 +557,8 @@ pub fn super_relate_tys<'tcx, R: TypeRelation<'tcx>>(
         }
 
         (
-            &ty::Alias(ty::Opaque, ty::AliasTy { def_id: a_def_id, substs: a_substs }),
-            &ty::Alias(ty::Opaque, ty::AliasTy { def_id: b_def_id, substs: b_substs }),
+            &ty::Alias(ty::Opaque, ty::AliasTy { def_id: a_def_id, substs: a_substs, .. }),
+            &ty::Alias(ty::Opaque, ty::AliasTy { def_id: b_def_id, substs: b_substs, .. }),
         ) if a_def_id == b_def_id => {
             if relation.intercrate() {
                 // During coherence, opaque types should be treated as equal to each other, even if their generic params

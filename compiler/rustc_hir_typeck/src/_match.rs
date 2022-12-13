@@ -518,7 +518,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
 
                 let substs = sig.output().walk().find_map(|arg| {
                     if let ty::GenericArgKind::Type(ty) = arg.unpack()
-                        && let ty::Alias(ty::Opaque, ty::AliasTy { def_id, substs }) = *ty.kind()
+                        && let ty::Alias(ty::Opaque, ty::AliasTy { def_id, substs, .. }) = *ty.kind()
                         && def_id == rpit_def_id
                     {
                         Some(substs)

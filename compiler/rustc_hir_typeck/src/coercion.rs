@@ -1805,7 +1805,7 @@ impl<'tcx, 'exprs, E: AsCoercionSite> CoerceMany<'tcx, 'exprs, E> {
         {
             let ty = <dyn AstConv<'_>>::ast_ty_to_ty(fcx, ty);
             // Get the `impl Trait`'s `DefId`.
-            if let ty::Alias(ty::Opaque, ty::AliasTy { def_id, substs: _ }) = ty.kind()
+            if let ty::Alias(ty::Opaque, ty::AliasTy { def_id, .. }) = ty.kind()
                 // Get the `impl Trait`'s `Item` so that we can get its trait bounds and
                 // get the `Trait`'s `DefId`.
                 && let hir::ItemKind::OpaqueTy(hir::OpaqueTy { bounds, .. }) =

@@ -216,7 +216,7 @@ impl<'tcx> Printer<'tcx> for &mut SymbolPrinter<'tcx> {
         match *ty.kind() {
             // Print all nominal types as paths (unlike `pretty_print_type`).
             ty::FnDef(def_id, substs)
-            | ty::Alias(_, ty::AliasTy { def_id, substs })
+            | ty::Alias(_, ty::AliasTy { def_id, substs, .. })
             | ty::Closure(def_id, substs)
             | ty::Generator(def_id, substs, _) => self.print_def_path(def_id, substs),
 

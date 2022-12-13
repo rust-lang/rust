@@ -167,7 +167,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         expected_ty: Ty<'tcx>,
     ) -> (Option<ExpectedSig<'tcx>>, Option<ty::ClosureKind>) {
         match *expected_ty.kind() {
-            ty::Alias(ty::Opaque, ty::AliasTy { def_id, substs }) => self
+            ty::Alias(ty::Opaque, ty::AliasTy { def_id, substs, .. }) => self
                 .deduce_signature_from_predicates(
                     self.tcx.bound_explicit_item_bounds(def_id).subst_iter_copied(self.tcx, substs),
                 ),
@@ -678,7 +678,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                     get_future_output(obligation.predicate, obligation.cause.span)
                 })?
             }
-            ty::Alias(ty::Opaque, ty::AliasTy { def_id, substs }) => self
+            ty::Alias(ty::Opaque, ty::AliasTy { def_id, substs, .. }) => self
                 .tcx
                 .bound_explicit_item_bounds(def_id)
                 .subst_iter_copied(self.tcx, substs)

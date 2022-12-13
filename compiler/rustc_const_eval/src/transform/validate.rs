@@ -241,7 +241,7 @@ impl<'a, 'tcx> Visitor<'tcx> for TypeChecker<'a, 'tcx> {
                 };
 
                 let kind = match parent_ty.ty.kind() {
-                    &ty::Alias(ty::Opaque, ty::AliasTy { def_id, substs }) => {
+                    &ty::Alias(ty::Opaque, ty::AliasTy { def_id, substs, .. }) => {
                         self.tcx.bound_type_of(def_id).subst(self.tcx, substs).kind()
                     }
                     kind => kind,

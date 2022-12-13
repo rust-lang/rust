@@ -496,7 +496,7 @@ impl<'a, 'b, 'tcx> TypeFolder<'tcx> for AssocTypeNormalizer<'a, 'b, 'tcx> {
             // This is really important. While we *can* handle this, this has
             // severe performance implications for large opaque types with
             // late-bound regions. See `issue-88862` benchmark.
-            ty::Alias(ty::Opaque, ty::AliasTy { def_id, substs })
+            ty::Alias(ty::Opaque, ty::AliasTy { def_id, substs, .. })
                 if !substs.has_escaping_bound_vars() =>
             {
                 // Only normalize `impl Trait` outside of type inference, usually in codegen.
