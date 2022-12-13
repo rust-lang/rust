@@ -630,7 +630,7 @@ fn check_incompatible_features(sess: &Session) {
             {
                 let spans = vec![f1_span, f2_span];
                 sess.struct_span_err(
-                    spans.clone(),
+                    spans,
                     &format!(
                         "features `{}` and `{}` are incompatible, using them at the same time \
                         is not allowed",
