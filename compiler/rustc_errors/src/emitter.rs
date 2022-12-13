@@ -1308,7 +1308,7 @@ impl EmitterWriter {
         //                see how it *looks* with
         //                very *weird* formats
         //                see?
-        for &(ref text, ref style) in msg.iter() {
+        for (text, style) in msg.iter() {
             let text = self.translate_message(text, args);
             let lines = text.split('\n').collect::<Vec<_>>();
             if lines.len() > 1 {
@@ -1370,7 +1370,7 @@ impl EmitterWriter {
                 buffer.append(0, ": ", header_style);
                 label_width += 2;
             }
-            for &(ref text, _) in msg.iter() {
+            for (text, _) in msg.iter() {
                 let text = self.translate_message(text, args);
                 // Account for newlines to align output to its label.
                 for (line, text) in normalize_whitespace(&text).lines().enumerate() {

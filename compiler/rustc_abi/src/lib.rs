@@ -802,12 +802,9 @@ impl Integer {
     pub fn for_align<C: HasDataLayout>(cx: &C, wanted: Align) -> Option<Integer> {
         let dl = cx.data_layout();
 
-        for candidate in [I8, I16, I32, I64, I128] {
-            if wanted == candidate.align(dl).abi && wanted.bytes() == candidate.size().bytes() {
-                return Some(candidate);
-            }
-        }
-        None
+        [I8, I16, I32, I64, I128].into_iter().find(|&candidate| {
+            wanted == candidate.align(dl).abi && wanted.bytes() == candidate.size().bytes()
+        })
     }
 
     /// Find the largest integer with the given alignment or less.
