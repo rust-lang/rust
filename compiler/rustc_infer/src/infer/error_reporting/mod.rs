@@ -338,13 +338,14 @@ pub fn unexpected_hidden_region_diagnostic<'tcx>(
 
 impl<'tcx> InferCtxt<'tcx> {
     pub fn get_impl_future_output_ty(&self, ty: Ty<'tcx>) -> Option<Ty<'tcx>> {
-        // FIXME(alias): Merge these
         let (def_id, substs) = match *ty.kind() {
-            ty::Alias(ty::Opaque, ty::AliasTy { def_id, substs }) => (def_id, substs),
-            ty::Alias(ty::Projection, data)
-                if self.tcx.def_kind(data.def_id) == DefKind::ImplTraitPlaceholder =>
+            ty::Alias(_, ty::AliasTy { def_id, substs })
+                if matches!(
+                    self.tcx.def_kind(def_id),
+                    DefKind::OpaqueTy | DefKind::ImplTraitPlaceholder
+                ) =>
             {
-                (data.def_id, data.substs)
+                (def_id, substs)
             }
             _ => return None,
         };
@@ -1730,7 +1731,6 @@ impl<'tcx> TypeErrCtxt<'_, 'tcx> {
                 TypeError::Sorts(values) => {
                     let extra = expected == found;
                     let sort_string = |ty: Ty<'tcx>, path: Option<PathBuf>| {
-                        // FIXME(alias): Merge these
                         let mut s = match (extra, ty.kind()) {
                             (true, ty::Alias(ty::Opaque, ty::AliasTy { def_id, .. })) => {
                                 let sm = self.tcx.sess.source_map();

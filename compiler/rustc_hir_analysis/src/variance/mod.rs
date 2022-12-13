@@ -110,13 +110,14 @@ fn variance_of_opaque(tcx: TyCtxt<'_>, item_def_id: LocalDefId) -> &[ty::Varianc
 
         #[instrument(level = "trace", skip(self), ret)]
         fn visit_ty(&mut self, t: Ty<'tcx>) -> ControlFlow<Self::BreakTy> {
-            // FIXME(alias): merge these
             match t.kind() {
-                ty::Alias(ty::Opaque, ty::AliasTy { def_id, substs }) => self.visit_opaque(*def_id, substs),
-                ty::Alias(ty::Projection, proj)
-                    if self.tcx.def_kind(proj.def_id) == DefKind::ImplTraitPlaceholder =>
+                ty::Alias(_, ty::AliasTy { def_id, substs })
+                    if matches!(
+                        self.tcx.def_kind(*def_id),
+                        DefKind::OpaqueTy | DefKind::ImplTraitPlaceholder
+                    ) =>
                 {
-                    self.visit_opaque(proj.def_id, proj.substs)
+                    self.visit_opaque(*def_id, substs)
                 }
                 _ => t.super_visit_with(self),
             }
