@@ -183,10 +183,14 @@ fn fmt_printer<'a, 'tcx>(infcx: &'a InferCtxt<'tcx>, ns: Namespace) -> FmtPrinte
     printer
 }
 
-fn ty_to_string<'tcx>(infcx: &InferCtxt<'tcx>, ty: Ty<'tcx>, def_id: Option<DefId>) -> String {
+fn ty_to_string<'tcx>(
+    infcx: &InferCtxt<'tcx>,
+    ty: Ty<'tcx>,
+    called_method_def_id: Option<DefId>,
+) -> String {
     let printer = fmt_printer(infcx, Namespace::TypeNS);
     let ty = infcx.resolve_vars_if_possible(ty);
-    match (ty.kind(), def_id) {
+    match (ty.kind(), called_method_def_id) {
         // We don't want the regular output for `fn`s because it includes its path in
         // invalid pseudo-syntax, we want the `fn`-pointer output instead.
         (ty::FnDef(..), _) => ty.fn_sig(infcx.tcx).print(printer).unwrap().into_buffer(),
