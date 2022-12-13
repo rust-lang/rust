@@ -4,9 +4,9 @@ use crate::errors::{
     DefaultNotFollowedByItem, DocCommentDoesNotDocumentAnything, EnumStructMutuallyExclusive,
     ExpectedTraitInTraitImplFoundType, ExternCrateNameWithDashes, ExternCrateNameWithDashesSugg,
     ExternItemCannotBeConst, MissingConstType, MissingForInTraitImpl,
-    MissingKeywordForItemDefinition, MissingTraitInTraitImpl, NonItemInItemList,
-    NonItemInItemListSub, SelfArgumentPointer, TraitAliasCannotBeAuto, TraitAliasCannotBeUnsafe,
-    UnexpectedTokenAfterStructName, UseEmptyBlockNotSemi, VisibilityNotFollowedByItem,
+    MissingKeywordForItemDefinition, MissingTraitInTraitImpl, SelfArgumentPointer,
+    TraitAliasCannotBeAuto, TraitAliasCannotBeUnsafe, UnexpectedTokenAfterStructName,
+    UseEmptyBlockNotSemi, VisibilityNotFollowedByItem,
 };
 
 use super::diagnostics::{dummy_arg, ConsumeClosingDelim};
@@ -703,22 +703,29 @@ impl<'a> Parser<'a> {
                     let non_item_span = self.token.span;
                     let is_let = self.token.is_keyword(kw::Let);
 
+                    let mut err = self.struct_span_err(non_item_span, "non-item in item list");
                     self.consume_block(Delimiter::Brace, ConsumeClosingDelim::Yes);
-
-                    self.sess.emit_err(NonItemInItemList {
-                        span: non_item_span,
-                        sub: if is_let {
-                            NonItemInItemListSub::Let { span: non_item_span }
-                        } else {
-                            NonItemInItemListSub::Other {
-                                list_start: open_brace_span,
-                                non_item: non_item_span,
-                                list_end: self.prev_token.span,
-                            }
-                        },
-                        remove_semicolon: is_unnecessary_semicolon.then_some(semicolon_span),
-                    });
-
+                    if is_let {
+                        err.span_suggestion(
+                            non_item_span,
+                            "consider using `const` instead of `let` for associated const",
+                            "const",
+                            Applicability::MachineApplicable,
+                        );
+                    } else {
+                        err.span_label(open_brace_span, "item list starts here")
+                            .span_label(non_item_span, "non-item starts here")
+                            .span_label(self.prev_token.span, "item list ends here");
+                    }
+                    if is_unnecessary_semicolon {
+                        err.span_suggestion(
+                            semicolon_span,
+                            "consider removing this semicolon",
+                            "",
+                            Applicability::MaybeIncorrect,
+                        );
+                    }
+                    err.emit();
                     break;
                 }
                 Ok(Some(item)) => items.extend(item),
