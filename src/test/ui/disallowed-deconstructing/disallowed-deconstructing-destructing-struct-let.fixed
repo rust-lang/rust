@@ -9,11 +9,13 @@ impl Drop for X {
     }
 }
 
+fn unwrap(x: X) -> String {
+    let X { x: ref y } = x; //~ ERROR cannot move out of type
+    y.to_string()
+}
+
 fn main() {
     let x = X { x: "hello".to_string() };
-
-    match x {
-    //~^ ERROR cannot move out of type `X`, which implements the `Drop` trait
-        X { x: y } => println!("contents: {}", y)
-    }
+    let y = unwrap(x);
+    println!("contents: {}", y);
 }
