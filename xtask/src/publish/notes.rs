@@ -1,5 +1,6 @@
 use anyhow::{anyhow, bail};
 use std::{
+    borrow::Cow,
     io::{BufRead, Lines},
     iter::Peekable,
 };
@@ -431,6 +432,141 @@ impl ListMarker {
     }
 }
 
+fn process_inline_macros(line: &str) -> anyhow::Result<Cow<'_, str>> {
+    let mut chars = line.char_indices();
+    loop {
+        let (start, end, a_macro) = match get_next_line_component(&mut chars) {
+            Component::None => break,
+            Component::Text => continue,
+            Component::Macro(s, e, m) => (s, e, m),
+        };
+        let mut src = line.chars();
+        let mut processed = String::new();
+        for _ in 0..start {
+            processed.push(src.next().unwrap());
+        }
+        processed.push_str(a_macro.process()?.as_str());
+        for _ in start..end {
+            let _ = src.next().unwrap();
+        }
+        let mut pos = end;
+
+        loop {
+            let (start, end, a_macro) = match get_next_line_component(&mut chars) {
+                Component::None => break,
+                Component::Text => continue,
+                Component::Macro(s, e, m) => (s, e, m),
+            };
+            for _ in pos..start {
+                processed.push(src.next().unwrap());
+            }
+            processed.push_str(a_macro.process()?.as_str());
+            for _ in start..end {
+                let _ = src.next().unwrap();
+            }
+            pos = end;
+        }
+        for ch in src {
+            processed.push(ch);
+        }
+        return Ok(Cow::Owned(processed));
+    }
+    Ok(Cow::Borrowed(line))
+}
+
+fn get_next_line_component(chars: &mut std::str::CharIndices<'_>) -> Component {
+    let (start, mut macro_name) = match chars.next() {
+        None => return Component::None,
+        Some((_, ch)) if ch == ' ' || !ch.is_ascii() => return Component::Text,
+        Some((pos, ch)) => (pos, String::from(ch)),
+    };
+    loop {
+        match chars.next() {
+            None => return Component::None,
+            Some((_, ch)) if ch == ' ' || !ch.is_ascii() => return Component::Text,
+            Some((_, ':')) => break,
+            Some((_, ch)) => macro_name.push(ch),
+        }
+    }
+
+    let mut macro_target = String::new();
+    loop {
+        match chars.next() {
+            None => return Component::None,
+            Some((_, ' ')) => return Component::Text,
+            Some((_, '[')) => break,
+            Some((_, ch)) => macro_target.push(ch),
+        }
+    }
+
+    let mut attr_value = String::new();
+    let end = loop {
+        match chars.next() {
+            None => return Component::None,
+            Some((pos, ']')) => break pos + 1,
+            Some((_, ch)) => attr_value.push(ch),
+        }
+    };
+
+    Component::Macro(start, end, Macro::new(macro_name, macro_target, attr_value))
+}
+
+enum Component {
+    None,
+    Text,
+    Macro(usize, usize, Macro),
+}
+
+struct Macro {
+    name: String,
+    target: String,
+    attrs: String,
+}
+
+impl Macro {
+    fn new(name: String, target: String, attrs: String) -> Self {
+        Self { name, target, attrs }
+    }
+
+    fn process(&self) -> anyhow::Result<String> {
+        let name = &self.name;
+        let text = match name.as_str() {
+            "https" => {
+                let url = &self.target;
+                let anchor_text = &self.attrs;
+                format!("[{anchor_text}](https:{url})")
+            }
+            "image" => {
+                let url = &self.target;
+                let alt = &self.attrs;
+                format!("![{alt}]({url})")
+            }
+            "kbd" => {
+                let keys = self.attrs.split('+').map(|k| Cow::Owned(format!("<kbd>{k}</kbd>")));
+                keys.collect::<Vec<_>>().join("+")
+            }
+            "pr" => {
+                let pr = &self.target;
+                let url = format!("https://github.com/rust-analyzer/rust-analyzer/pull/{pr}");
+                format!("[`#{pr}`]({url})")
+            }
+            "commit" => {
+                let hash = &self.target;
+                let short = &hash[0..7];
+                let url = format!("https://github.com/rust-analyzer/rust-analyzer/commit/{hash}");
+                format!("[`{short}`]({url})")
+            }
+            "release" => {
+                let date = &self.target;
+                let url = format!("https://github.com/rust-analyzer/rust-analyzer/releases/{date}");
+                format!("[`{date}`]({url})")
+            }
+            _ => bail!("macro not supported: {name}"),
+        };
+        Ok(text)
+    }
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -611,5 +747,51 @@ This is a plain listing.
         let actual = convert_asciidoc_to_markdown(std::io::Cursor::new(input)).unwrap();
 
         assert_eq!(actual, expected);
+    }
+
+    macro_rules! test_inline_macro_processing {
+        ($((
+            $name:ident,
+            $input:expr,
+            $expected:expr
+        ),)*) => ($(
+            #[test]
+            fn $name() {
+                let input = $input;
+                let actual = process_inline_macros(&input).unwrap();
+                let expected = $expected;
+                assert_eq!(actual, expected)
+            }
+        )*);
+    }
+
+    test_inline_macro_processing! {
+        (inline_macro_processing_for_empty_line, "", ""),
+        (inline_macro_processing_for_line_with_no_macro, "foo bar", "foo bar"),
+        (
+            inline_macro_processing_for_macro_in_line_start,
+            "kbd::[Ctrl+T] foo",
+            "<kbd>Ctrl</kbd>+<kbd>T</kbd> foo"
+        ),
+        (
+            inline_macro_processing_for_macro_in_line_end,
+            "foo kbd::[Ctrl+T]",
+            "foo <kbd>Ctrl</kbd>+<kbd>T</kbd>"
+        ),
+        (
+            inline_macro_processing_for_macro_in_the_middle_of_line,
+            "foo kbd::[Ctrl+T] foo",
+            "foo <kbd>Ctrl</kbd>+<kbd>T</kbd> foo"
+        ),
+        (
+            inline_macro_processing_for_several_macros,
+            "foo kbd::[Ctrl+T] foo kbd::[Enter] foo",
+            "foo <kbd>Ctrl</kbd>+<kbd>T</kbd> foo <kbd>Enter</kbd> foo"
+        ),
+        (
+            inline_macro_processing_for_several_macros_without_text_in_between,
+            "foo kbd::[Ctrl+T]kbd::[Enter] foo",
+            "foo <kbd>Ctrl</kbd>+<kbd>T</kbd><kbd>Enter</kbd> foo"
+        ),
     }
 }
