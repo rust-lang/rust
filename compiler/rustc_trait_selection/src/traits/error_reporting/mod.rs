@@ -1482,7 +1482,7 @@ trait InferCtxtPrivExt<'tcx> {
     fn annotate_source_of_ambiguity(
         &self,
         err: &mut Diagnostic,
-        impls: &[DefId],
+        impls: &[ambiguity::Ambiguity],
         predicate: ty::Predicate<'tcx>,
     );
 
@@ -2174,13 +2174,22 @@ impl<'tcx> InferCtxtPrivExt<'tcx> for TypeErrCtxt<'_, 'tcx> {
                 let mut selcx = SelectionContext::new(&self);
                 match selcx.select_from_obligation(&obligation) {
                     Ok(None) => {
-                        let impls = ambiguity::recompute_applicable_impls(self.infcx, &obligation);
+                        let ambiguities =
+                            ambiguity::recompute_applicable_impls(self.infcx, &obligation);
                         let has_non_region_infer =
                             trait_ref.skip_binder().substs.types().any(|t| !t.is_ty_infer());
                         // It doesn't make sense to talk about applicable impls if there are more
                         // than a handful of them.
-                        if impls.len() > 1 && impls.len() < 5 && has_non_region_infer {
-                            self.annotate_source_of_ambiguity(&mut err, &impls, predicate);
+                        if ambiguities.len() > 1 && ambiguities.len() < 5 && has_non_region_infer {
+                            if self.tainted_by_errors().is_some() && subst.is_none() {
+                                // If `subst.is_none()`, then this is probably two param-env
+                                // candidates or impl candidates that are equal modulo lifetimes.
+                                // Therefore, if we've already emitted an error, just skip this
+                                // one, since it's not particularly actionable.
+                                err.cancel();
+                                return;
+                            }
+                            self.annotate_source_of_ambiguity(&mut err, &ambiguities, predicate);
                         } else {
                             if self.tainted_by_errors().is_some() {
                                 err.cancel();
@@ -2466,20 +2475,29 @@ impl<'tcx> InferCtxtPrivExt<'tcx> for TypeErrCtxt<'_, 'tcx> {
     fn annotate_source_of_ambiguity(
         &self,
         err: &mut Diagnostic,
-        impls: &[DefId],
+        ambiguities: &[ambiguity::Ambiguity],
         predicate: ty::Predicate<'tcx>,
     ) {
         let mut spans = vec![];
         let mut crates = vec![];
         let mut post = vec![];
-        for def_id in impls {
-            match self.tcx.span_of_impl(*def_id) {
-                Ok(span) => spans.push(span),
-                Err(name) => {
-                    crates.push(name);
-                    if let Some(header) = to_pretty_impl_header(self.tcx, *def_id) {
-                        post.push(header);
+        let mut has_param_env = false;
+        for ambiguity in ambiguities {
+            match ambiguity {
+                ambiguity::Ambiguity::DefId(impl_def_id) => {
+                    match self.tcx.span_of_impl(*impl_def_id) {
+                        Ok(span) => spans.push(span),
+                        Err(name) => {
+                            crates.push(name);
+                            if let Some(header) = to_pretty_impl_header(self.tcx, *impl_def_id) {
+                                post.push(header);
+                            }
+                        }
                     }
+                }
+                ambiguity::Ambiguity::ParamEnv(span) => {
+                    has_param_env = true;
+                    spans.push(*span);
                 }
             }
         }
@@ -2504,7 +2522,11 @@ impl<'tcx> InferCtxtPrivExt<'tcx> for TypeErrCtxt<'_, 'tcx> {
             return;
         }
 
-        let msg = format!("multiple `impl`s satisfying `{}` found", predicate);
+        let msg = format!(
+            "multiple `impl`s{} satisfying `{}` found",
+            if has_param_env { " or `where` clauses" } else { "" },
+            predicate
+        );
         let post = if post.len() > 1 || (post.len() == 1 && post[0].contains('\n')) {
             format!(":\n{}", post.iter().map(|p| format!("- {}", p)).collect::<Vec<_>>().join("\n"),)
         } else if post.len() == 1 {
