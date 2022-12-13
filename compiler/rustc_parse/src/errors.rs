@@ -1354,38 +1354,6 @@ pub(crate) struct ExpectedTraitInTraitImplFoundType {
 }
 
 #[derive(Diagnostic)]
-#[diag(parse_non_item_in_item_list)]
-pub(crate) struct NonItemInItemList {
-    #[primary_span]
-    pub span: Span,
-    #[subdiagnostic]
-    pub sub: NonItemInItemListSub,
-    #[suggestion(suggestion_remove_semicolon, code = "", applicability = "maybe-incorrect")]
-    pub remove_semicolon: Option<Span>,
-}
-
-#[derive(Subdiagnostic)]
-pub(crate) enum NonItemInItemListSub {
-    #[suggestion(
-        suggestion_use_const_not_let,
-        code = "const",
-        applicability = "machine-applicable"
-    )]
-    Let {
-        #[primary_span]
-        span: Span,
-    },
-    Other {
-        #[label(label_list_start)]
-        list_start: Span,
-        #[label(label_non_item)]
-        non_item: Span,
-        #[label(label_list_end)]
-        list_end: Span,
-    },
-}
-
-#[derive(Diagnostic)]
 #[diag(parse_bounds_not_allowed_on_trait_aliases)]
 pub(crate) struct BoundsNotAllowedOnTraitAliases {
     #[primary_span]
