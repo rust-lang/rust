@@ -1,4 +1,4 @@
-error[E0271]: expected `TakeWhile<&mut std::vec::IntoIter<u8>, [closure@$DIR/issue-31173.rs:7:21: 7:25]>` to be an iterator that yields `&_`, but it yields `u8`
+error[E0271]: expected `TakeWhile<&mut IntoIter<u8>, [closure@$DIR/issue-31173.rs:7:21: 7:25]>` to be an iterator that yields `&_`, but it yields `u8`
   --> $DIR/issue-31173.rs:11:10
    |
 LL |         .cloned()
