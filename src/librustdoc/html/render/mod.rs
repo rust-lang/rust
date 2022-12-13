@@ -1512,8 +1512,7 @@ fn render_impl(
 
         let toggled = !doc_buffer.is_empty();
         if toggled {
-            let method_toggle_class =
-                if item_type == ItemType::Method { " method-toggle" } else { "" };
+            let method_toggle_class = if item_type.is_method() { " method-toggle" } else { "" };
             write!(w, "<details class=\"rustdoc-toggle{}\" open><summary>", method_toggle_class);
         }
         match &*item.kind {
