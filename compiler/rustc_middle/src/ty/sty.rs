@@ -1449,10 +1449,8 @@ impl<'tcx> ExistentialProjection<'tcx> {
         debug_assert!(!self_ty.has_escaping_bound_vars());
 
         ty::ProjectionPredicate {
-            projection_ty: ty::AliasTy {
-                def_id: self.def_id,
-                substs: tcx.mk_substs_trait(self_ty, self.substs),
-            },
+            projection_ty: tcx
+                .mk_alias_ty(self.def_id, [self_ty.into()].into_iter().chain(self.substs)),
             term: self.term,
         }
     }

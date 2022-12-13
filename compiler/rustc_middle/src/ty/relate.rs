@@ -280,7 +280,7 @@ impl<'tcx> Relate<'tcx> for ty::AliasTy<'tcx> {
             Err(TypeError::ProjectionMismatched(expected_found(relation, a.def_id, b.def_id)))
         } else {
             let substs = relation.relate(a.substs, b.substs)?;
-            Ok(ty::AliasTy { def_id: a.def_id, substs: &substs })
+            Ok(relation.tcx().mk_alias_ty(a.def_id, substs))
         }
     }
 }

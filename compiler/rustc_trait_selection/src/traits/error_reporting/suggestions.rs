@@ -3265,9 +3265,9 @@ impl<'tcx> TypeErrCtxtExt<'tcx> for TypeErrCtxt<'_, 'tcx> {
                 // in. For example, this would be what `Iterator::Item` is here.
                 let ty_var = self.infcx.next_ty_var(origin);
                 // This corresponds to `<ExprTy as Iterator>::Item = _`.
-                let trait_ref = ty::Binder::dummy(ty::PredicateKind::Clause(
+                let projection = ty::Binder::dummy(ty::PredicateKind::Clause(
                     ty::Clause::Projection(ty::ProjectionPredicate {
-                        projection_ty: ty::AliasTy { substs, def_id: proj.def_id },
+                        projection_ty: tcx.mk_alias_ty(proj.def_id, substs),
                         term: ty_var.into(),
                     }),
                 ));
@@ -3277,7 +3277,7 @@ impl<'tcx> TypeErrCtxtExt<'tcx> for TypeErrCtxt<'_, 'tcx> {
                     span,
                     expr.hir_id,
                     param_env,
-                    trait_ref,
+                    projection,
                 ));
                 if ocx.select_where_possible().is_empty() {
                     // `ty_var` now holds the type that `Item` is for `ExprTy`.

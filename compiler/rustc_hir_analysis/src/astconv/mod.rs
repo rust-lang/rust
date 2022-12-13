@@ -1146,7 +1146,7 @@ impl<'o, 'tcx> dyn AstConv<'tcx> + 'o {
 
             debug!(?substs_trait_ref_and_assoc_item);
 
-            ty::AliasTy { def_id: assoc_item.def_id, substs: substs_trait_ref_and_assoc_item }
+            self.tcx().mk_alias_ty(assoc_item.def_id, substs_trait_ref_and_assoc_item)
         });
 
         if !speculative {
