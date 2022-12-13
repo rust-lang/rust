@@ -1151,6 +1151,22 @@ void TypeAnalyzer::visitValue(Value &val) {
   if (!isa<Argument>(&val) && !isa<Instruction>(&val))
     return;
 
+#if LLVM_VERSION_MAJOR >= 10
+  if (auto *FPMO = dyn_cast<FPMathOperator>(&val)) {
+    if (FPMO->getOpcode() == Instruction::FNeg) {
+      Value *op = FPMO->getOperand(0);
+      auto ty = op->getType()->getScalarType();
+      assert(ty->isFloatingPointTy());
+      ConcreteType dt(ty);
+      updateAnalysis(op, TypeTree(ty).Only(-1, nullptr),
+                     cast<Instruction>(&val));
+      updateAnalysis(FPMO, TypeTree(ty).Only(-1, nullptr),
+                     cast<Instruction>(&val));
+      return;
+    }
+  }
+#endif
+
   if (auto inst = dyn_cast<Instruction>(&val)) {
     visit(*inst);
   }
