@@ -818,14 +818,10 @@ pub struct TraitRef<'tcx> {
     pub substs: SubstsRef<'tcx>,
     /// This field exists to prevent the creation of `TraitRef` without
     /// calling [TyCtxt::mk_trait_ref].
-    _use_mk_trait_ref_instead: (),
+    pub(super) _use_mk_trait_ref_instead: (),
 }
 
 impl<'tcx> TraitRef<'tcx> {
-    pub fn new(def_id: DefId, substs: SubstsRef<'tcx>) -> TraitRef<'tcx> {
-        TraitRef { def_id, substs, _use_mk_trait_ref_instead: () }
-    }
-
     pub fn with_self_ty(self, tcx: TyCtxt<'tcx>, self_ty: Ty<'tcx>) -> Self {
         tcx.mk_trait_ref(
             self.def_id,
@@ -836,11 +832,7 @@ impl<'tcx> TraitRef<'tcx> {
     /// Returns a `TraitRef` of the form `P0: Foo<P1..Pn>` where `Pi`
     /// are the parameters defined on trait.
     pub fn identity(tcx: TyCtxt<'tcx>, def_id: DefId) -> Binder<'tcx, TraitRef<'tcx>> {
-        ty::Binder::dummy(TraitRef {
-            def_id,
-            substs: InternalSubsts::identity_for_item(tcx, def_id),
-            _use_mk_trait_ref_instead: (),
-        })
+        ty::Binder::dummy(tcx.mk_trait_ref(def_id, InternalSubsts::identity_for_item(tcx, def_id)))
     }
 
     #[inline]
@@ -854,11 +846,7 @@ impl<'tcx> TraitRef<'tcx> {
         substs: SubstsRef<'tcx>,
     ) -> ty::TraitRef<'tcx> {
         let defs = tcx.generics_of(trait_id);
-        ty::TraitRef {
-            def_id: trait_id,
-            substs: tcx.intern_substs(&substs[..defs.params.len()]),
-            _use_mk_trait_ref_instead: (),
-        }
+        tcx.mk_trait_ref(trait_id, tcx.intern_substs(&substs[..defs.params.len()]))
     }
 }
 

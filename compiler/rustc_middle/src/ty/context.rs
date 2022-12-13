@@ -2871,7 +2871,7 @@ impl<'tcx> TyCtxt<'tcx> {
             substs.collect::<Vec<_>>(),
         );
         let substs = self.mk_substs(substs);
-        ty::TraitRef::new(trait_def_id, substs)
+        ty::TraitRef { def_id: trait_def_id, substs, _use_mk_trait_ref_instead: () }
     }
 
     pub fn mk_alias_ty(

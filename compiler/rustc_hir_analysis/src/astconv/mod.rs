@@ -680,7 +680,7 @@ impl<'o, 'tcx> dyn AstConv<'tcx> + 'o {
         let assoc_bindings = self.create_assoc_bindings_for_generic_args(args);
 
         let poly_trait_ref =
-            ty::Binder::bind_with_vars(ty::TraitRef::new(trait_def_id, substs), bound_vars);
+            ty::Binder::bind_with_vars(tcx.mk_trait_ref(trait_def_id, substs), bound_vars);
 
         debug!(?poly_trait_ref, ?assoc_bindings);
         bounds.trait_bounds.push((poly_trait_ref, span, constness));
@@ -813,7 +813,7 @@ impl<'o, 'tcx> dyn AstConv<'tcx> + 'o {
         if let Some(b) = trait_segment.args().bindings.first() {
             Self::prohibit_assoc_ty_binding(self.tcx(), b.span);
         }
-        ty::TraitRef::new(trait_def_id, substs)
+        self.tcx().mk_trait_ref(trait_def_id, substs)
     }
 
     #[instrument(level = "debug", skip(self, span))]
