@@ -200,7 +200,7 @@ fn bool_to_zero_or_max_uint<'tcx>(
     let mut res = fx.bcx.ins().bmask(int_ty, val);
 
     if ty.is_float() {
-        res = fx.bcx.ins().bitcast(ty, res);
+        res = codegen_bitcast(fx, ty, res);
     }
 
     res

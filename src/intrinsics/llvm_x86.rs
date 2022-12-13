@@ -33,8 +33,8 @@ pub(crate) fn codegen_x86_llvm_intrinsic_call<'tcx>(
 
                 // cast float to int
                 let a_lane = match lane_ty {
-                    types::F32 => fx.bcx.ins().bitcast(types::I32, a_lane),
-                    types::F64 => fx.bcx.ins().bitcast(types::I64, a_lane),
+                    types::F32 => codegen_bitcast(fx, types::I32, a_lane),
+                    types::F64 => codegen_bitcast(fx, types::I64, a_lane),
                     _ => a_lane,
                 };
 

@@ -113,6 +113,8 @@ pub(crate) fn codegen_fn<'tcx>(
     };
 
     tcx.sess.time("codegen clif ir", || codegen_fn_body(&mut fx, start_block));
+    fx.bcx.seal_all_blocks();
+    fx.bcx.finalize();
 
     // Recover all necessary data from fx, before accessing func will prevent future access to it.
     let symbol_name = fx.symbol_name;
@@ -487,9 +489,6 @@ fn codegen_fn_body(fx: &mut FunctionCx<'_, '_, '_>, start_block: Block) {
             }
         };
     }
-
-    fx.bcx.seal_all_blocks();
-    fx.bcx.finalize();
 }
 
 fn codegen_stmt<'tcx>(

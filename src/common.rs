@@ -167,6 +167,15 @@ pub(crate) fn codegen_icmp_imm(
     }
 }
 
+pub(crate) fn codegen_bitcast(fx: &mut FunctionCx<'_, '_, '_>, dst_ty: Type, val: Value) -> Value {
+    let mut flags = MemFlags::new();
+    flags.set_endianness(match fx.tcx.data_layout.endian {
+        rustc_target::abi::Endian::Big => cranelift_codegen::ir::Endianness::Big,
+        rustc_target::abi::Endian::Little => cranelift_codegen::ir::Endianness::Little,
+    });
+    fx.bcx.ins().bitcast(dst_ty, flags, val)
+}
+
 pub(crate) fn type_zero_value(bcx: &mut FunctionBuilder<'_>, ty: Type) -> Value {
     if ty == types::I128 {
         let zero = bcx.ins().iconst(types::I64, 0);
