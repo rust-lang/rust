@@ -2565,12 +2565,20 @@ impl<'tcx> TyCtxt<'tcx> {
     }
 
     #[inline]
-    pub fn mk_fn_def(self, def_id: DefId, substs: SubstsRef<'tcx>) -> Ty<'tcx> {
+    pub fn mk_fn_def(
+        self,
+        def_id: DefId,
+        substs: impl IntoIterator<Item = impl Into<GenericArg<'tcx>>>,
+    ) -> Ty<'tcx> {
+        let substs = substs.into_iter().map(Into::into);
+        let n = self.generics_of(def_id).count();
         debug_assert_eq!(
-            self.generics_of(def_id).count(),
-            substs.len(),
-            "wrong number of generic parameters for {def_id:?}: {substs:?}",
+            (n, Some(n)),
+            substs.size_hint(),
+            "wrong number of generic parameters for {def_id:?}: {:?} \nDid you accidentally include the self-type in the params list?",
+            substs.collect::<Vec<_>>(),
         );
+        let substs = self.mk_substs(substs);
         self.mk_ty(FnDef(def_id, substs))
     }
 

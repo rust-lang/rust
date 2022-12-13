@@ -417,10 +417,8 @@ impl<'tcx> CloneShimBuilder<'tcx> {
     ) {
         let tcx = self.tcx;
 
-        let substs = tcx.mk_substs_trait(ty, []);
-
         // `func == Clone::clone(&ty) -> ty`
-        let func_ty = tcx.mk_fn_def(self.def_id, substs);
+        let func_ty = tcx.mk_fn_def(self.def_id, [ty]);
         let func = Operand::Constant(Box::new(Constant {
             span: self.span,
             user_ty: None,
