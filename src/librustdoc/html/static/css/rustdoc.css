@@ -585,8 +585,8 @@ ul.block, .block li {
 	text-overflow: ellipsis;
 }
 /* Wrap non-pre code blocks (`text`) but not (```text```). */
-.docblock > :not(pre) > code,
-.docblock-short > code {
+.docblock :not(pre) > code,
+.docblock-short code {
 	white-space: pre-wrap;
 }
 
