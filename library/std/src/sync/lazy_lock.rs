@@ -50,6 +50,7 @@ pub struct LazyLock<T, F = fn() -> T> {
 impl<T, F> LazyLock<T, F> {
     /// Creates a new lazy value with the given initializing
     /// function.
+    #[inline]
     #[unstable(feature = "once_cell", issue = "74465")]
     pub const fn new(f: F) -> LazyLock<T, F> {
         LazyLock { cell: OnceLock::new(), init: Cell::new(Some(f)) }
@@ -73,6 +74,7 @@ impl<T, F: FnOnce() -> T> LazyLock<T, F> {
     /// assert_eq!(LazyLock::force(&lazy), &92);
     /// assert_eq!(&*lazy, &92);
     /// ```
+    #[inline]
     #[unstable(feature = "once_cell", issue = "74465")]
     pub fn force(this: &LazyLock<T, F>) -> &T {
         this.cell.get_or_init(|| match this.init.take() {
@@ -85,6 +87,8 @@ impl<T, F: FnOnce() -> T> LazyLock<T, F> {
 #[unstable(feature = "once_cell", issue = "74465")]
 impl<T, F: FnOnce() -> T> Deref for LazyLock<T, F> {
     type Target = T;
+
+    #[inline]
     fn deref(&self) -> &T {
         LazyLock::force(self)
     }
@@ -93,6 +97,7 @@ impl<T, F: FnOnce() -> T> Deref for LazyLock<T, F> {
 #[unstable(feature = "once_cell", issue = "74465")]
 impl<T: Default> Default for LazyLock<T> {
     /// Creates a new lazy value using `Default` as the initializing function.
+    #[inline]
     fn default() -> LazyLock<T> {
         LazyLock::new(T::default)
     }

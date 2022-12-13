@@ -51,6 +51,7 @@ impl<T, F> LazyCell<T, F> {
     ///
     /// assert_eq!(&*lazy, "HELLO, WORLD!");
     /// ```
+    #[inline]
     #[unstable(feature = "once_cell", issue = "74465")]
     pub const fn new(init: F) -> LazyCell<T, F> {
         LazyCell { cell: OnceCell::new(), init: Cell::new(Some(init)) }
@@ -75,6 +76,7 @@ impl<T, F: FnOnce() -> T> LazyCell<T, F> {
     /// assert_eq!(LazyCell::force(&lazy), &92);
     /// assert_eq!(&*lazy, &92);
     /// ```
+    #[inline]
     #[unstable(feature = "once_cell", issue = "74465")]
     pub fn force(this: &LazyCell<T, F>) -> &T {
         this.cell.get_or_init(|| match this.init.take() {
@@ -87,6 +89,7 @@ impl<T, F: FnOnce() -> T> LazyCell<T, F> {
 #[unstable(feature = "once_cell", issue = "74465")]
 impl<T, F: FnOnce() -> T> Deref for LazyCell<T, F> {
     type Target = T;
+    #[inline]
     fn deref(&self) -> &T {
         LazyCell::force(self)
     }
@@ -95,6 +98,7 @@ impl<T, F: FnOnce() -> T> Deref for LazyCell<T, F> {
 #[unstable(feature = "once_cell", issue = "74465")]
 impl<T: Default> Default for LazyCell<T> {
     /// Creates a new lazy value using `Default` as the initializing function.
+    #[inline]
     fn default() -> LazyCell<T> {
         LazyCell::new(T::default)
     }
