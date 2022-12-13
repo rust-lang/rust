@@ -728,7 +728,6 @@ fn main_args(at_args: &[String]) -> MainResult {
             };
         }
     };
-
     let diag = core::new_handler(
         options.error_format,
         None,
