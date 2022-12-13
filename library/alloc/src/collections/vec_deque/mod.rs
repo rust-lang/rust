@@ -158,7 +158,7 @@ where
 }
 
 #[stable(feature = "rust1", since = "1.0.0")]
-impl<T, const COOP_PREFERRED: bool = true> Default for VecDeque<T, Global, COOP_PREFERRED> {
+impl<T, A: Allocator, const COOP_PREFERRED: bool> Default for VecDeque<T, Global, COOP_PREFERRED> {
     /// Creates an empty deque.
     #[inline]
     fn default() -> VecDeque<T, Global, COOP_PREFERRED> {
@@ -547,7 +547,7 @@ where
     }
 }
 
-impl<T, Global, const COOP_PREFERRED: bool> VecDeque<T, Global, COOP_PREFERRED>
+impl<T, A: Allocator, const COOP_PREFERRED: bool> VecDeque<T, A, COOP_PREFERRED>
 where
     [(); alloc::co_alloc_metadata_num_slots_with_preference::<A>(COOP_PREFERRED)]:,
 {
@@ -564,7 +564,7 @@ where
     #[inline]
     #[stable(feature = "rust1", since = "1.0.0")]
     #[must_use]
-    pub fn new() -> VecDeque<T, Global, COOP_PREFERRED> {
+    pub fn new() -> VecDeque<T, A, COOP_PREFERRED> {
         VecDeque::new_in(Global)
     }
 
@@ -580,7 +580,7 @@ where
     #[inline]
     #[stable(feature = "rust1", since = "1.0.0")]
     #[must_use]
-    pub fn with_capacity(capacity: usize) -> VecDeque<T, Global, COOP_PREFERRED> {
+    pub fn with_capacity(capacity: usize) -> VecDeque<T, A, COOP_PREFERRED> {
         Self::with_capacity_in(capacity, Global)
     }
 }
@@ -2788,7 +2788,7 @@ where
 }
 
 #[stable(feature = "rust1", since = "1.0.0")]
-impl<T, const COOP_PREFERRED: bool> FromIterator<T> for VecDeque<T, GlobalAlloc, COOP_PREFERRED>
+impl<T, A: Allocator, const COOP_PREFERRED: bool> FromIterator<T> for VecDeque<T, A, COOP_PREFERRED>
 where
     [(); alloc::co_alloc_metadata_num_slots_with_preference::<A>(COOP_PREFERRED)]:,
 {
@@ -2973,8 +2973,8 @@ where
 }
 
 #[stable(feature = "std_collections_from_array", since = "1.56.0")]
-impl<T, const N: usize, const COOP_PREFERRED: bool> From<[T; N]>
-    for VecDeque<T, Global, COOP_PREFERRED>
+impl<T, const N: usize, A: Allocator = Global, const COOP_PREFERRED: bool = DEFAULT_COOP_PREFERRED>
+    From<[T; N]> for VecDeque<T, A, COOP_PREFERRED>
 where
     [(); alloc::co_alloc_metadata_num_slots_with_preference::<A>(COOP_PREFERRED)]:,
 {
@@ -2993,6 +2993,7 @@ where
         if !<T>::IS_ZST {
             // SAFETY: VecDeque::with_capacity ensures that there is enough capacity.
             unsafe {
+                // @FIXME for COOP_PREFERRED:
                 ptr::copy_nonoverlapping(arr.as_ptr(), deq.ptr(), N);
             }
         }
