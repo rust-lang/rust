@@ -79,8 +79,7 @@ ENV RUST_CONFIGURE_ARGS \
       --set llvm.thin-lto=true \
       --set llvm.ninja=false \
       --set rust.jemalloc \
-      --set rust.use-lld=true \
-      --set rust.lto=thin
+      --set rust.use-lld=true
 ENV SCRIPT ../src/ci/pgo.sh python3 ../x.py dist \
     --host $HOSTS --target $HOSTS \
     --include-default-paths \
