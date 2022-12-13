@@ -3059,7 +3059,7 @@ declare_clippy_lint! {
     /// let map: HashMap<u32, u32> = HashMap::new();
     /// let values = map.values().collect::<Vec<_>>();
     /// ```
-    #[clippy::version = "1.65.0"]
+    #[clippy::version = "1.66.0"]
     pub ITER_KV_MAP,
     complexity,
     "iterating on map using `iter` when `keys` or `values` would do"
