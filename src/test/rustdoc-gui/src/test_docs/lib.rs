@@ -442,3 +442,11 @@ pub mod trait_members {
         fn function2() {}
     }
 }
+
+pub struct TypeWithImplDoc;
+
+/// impl doc
+impl TypeWithImplDoc {
+    /// fn doc
+    pub fn test_fn() {}
+}

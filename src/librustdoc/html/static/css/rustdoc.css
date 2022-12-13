@@ -1872,6 +1872,7 @@ in storage.js
 }
 
 .variants > .docblock,
+.implementors-toggle > .docblock,
 .impl-items > .rustdoc-toggle[open]:not(:last-child),
 .methods > .rustdoc-toggle[open]:not(:last-child),
 .implementors-toggle[open]:not(:last-child) {
