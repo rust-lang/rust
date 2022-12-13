@@ -3,20 +3,21 @@ pub use super::*;
 use crate::{CallReturnPlaces, GenKill, Results, ResultsRefCursor};
 use rustc_middle::mir::visit::{NonMutatingUseContext, PlaceContext, Visitor};
 use rustc_middle::mir::*;
+use std::borrow::Cow;
 use std::cell::RefCell;
 
 #[derive(Clone)]
-pub struct MaybeStorageLive {
-    always_live_locals: BitSet<Local>,
+pub struct MaybeStorageLive<'a> {
+    always_live_locals: Cow<'a, BitSet<Local>>,
 }
 
-impl MaybeStorageLive {
-    pub fn new(always_live_locals: BitSet<Local>) -> Self {
+impl<'a> MaybeStorageLive<'a> {
+    pub fn new(always_live_locals: Cow<'a, BitSet<Local>>) -> Self {
         MaybeStorageLive { always_live_locals }
     }
 }
 
-impl<'tcx> crate::AnalysisDomain<'tcx> for MaybeStorageLive {
+impl<'tcx, 'a> crate::AnalysisDomain<'tcx> for MaybeStorageLive<'a> {
     type Domain = BitSet<Local>;
 
     const NAME: &'static str = "maybe_storage_live";
@@ -38,7 +39,7 @@ impl<'tcx> crate::AnalysisDomain<'tcx> for MaybeStorageLive {
     }
 }
 
-impl<'tcx> crate::GenKillAnalysis<'tcx> for MaybeStorageLive {
+impl<'tcx, 'a> crate::GenKillAnalysis<'tcx> for MaybeStorageLive<'a> {
     type Idx = Local;
 
     fn statement_effect(
