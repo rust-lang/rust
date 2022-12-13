@@ -33,6 +33,8 @@ struct InteriorVisitor<'a, 'tcx> {
     prev_unresolved_span: Option<Span>,
     linted_values: HirIdSet,
     drop_ranges: DropRanges,
+    task_context_hir_id: Option<HirId>,
+    in_lowered_await: bool,
 }
 
 impl<'a, 'tcx> InteriorVisitor<'a, 'tcx> {
@@ -53,7 +55,7 @@ impl<'a, 'tcx> InteriorVisitor<'a, 'tcx> {
             ty, hir_id, scope, expr, source_span, self.expr_count,
         );
 
-        let live_across_yield = scope
+        let mut live_across_yield = scope
             .map(|s| {
                 self.region_scope_tree.yield_in_scope(s).and_then(|yield_data| {
                     // If we are recording an expression that is the last yield
@@ -91,6 +93,34 @@ impl<'a, 'tcx> InteriorVisitor<'a, 'tcx> {
             .unwrap_or_else(|| {
                 Some(YieldData { span: DUMMY_SP, expr_and_pat_count: 0, source: self.kind.into() })
             });
+
+        // If this is the `&mut Context<'_>` async resume argument, or we are
+        // just visiting a `_task_context = yield ()` expression from async
+        // lowering, we do *not* consider this type to be live across yields.
+        if Some(hir_id) == self.task_context_hir_id || self.in_lowered_await {
+            #[cfg(debug_assertions)]
+            {
+                // As `record` is being invoked for multiple parts / types of the
+                // lowered `.await`, the `ty` has to either be the `()` going *into*
+                // the `yield`, or a `&mut Context<'_>` coming *out* of it.
+                let tcx = self.fcx.tcx;
+                if ty == tcx.types.unit {
+                    // all good
+                } else if let ty::Ref(_, adt, hir::Mutability::Mut) = ty.kind() && let ty::Adt(adt, _) = adt.kind()
+                {
+                    let context_def_id = tcx.lang_items().context();
+                    assert_eq!(
+                        Some(adt.did()),
+                        context_def_id,
+                        "expected `&mut Context<'_>, found `{:?}` instead`",
+                        ty
+                    );
+                } else {
+                    panic!("expected `()` or `&mut Context<'_>`, found `{:?}` instead", ty);
+                }
+            }
+            live_across_yield = None;
+        }
 
         if let Some(yield_data) = live_across_yield {
             debug!(
@@ -183,6 +213,17 @@ pub fn resolve_interior<'a, 'tcx>(
     kind: hir::GeneratorKind,
 ) {
     let body = fcx.tcx.hir().body(body_id);
+
+    // In case we are in an async block, this is the Param/Pat HirId of the
+    // `&mut Context<'_>` resume type. We can use this to explicitly prevent it
+    // from being considered as `live_across_yield`, which it is not, but the
+    // simple scope-based analysis can't tell.
+    let task_context_hir_id = if matches!(kind, hir::GeneratorKind::Async(_)) {
+        Some(body.params[0].pat.hir_id)
+    } else {
+        None
+    };
+
     let typeck_results = fcx.inh.typeck_results.borrow();
     let mut visitor = InteriorVisitor {
         fcx,
@@ -194,6 +235,8 @@ pub fn resolve_interior<'a, 'tcx>(
         prev_unresolved_span: None,
         linted_values: <_>::default(),
         drop_ranges: drop_ranges::compute_drop_ranges(fcx, def_id, body),
+        task_context_hir_id,
+        in_lowered_await: false,
     };
     intravisit::walk_body(&mut visitor, body);
 
@@ -426,6 +469,22 @@ impl<'a, 'tcx> Visitor<'tcx> for InteriorVisitor<'a, 'tcx> {
                 }
                 _ => intravisit::walk_expr(self, expr),
             },
+            ExprKind::Assign(_, rhs, _) => {
+                // An `.await` expression will be lowered to `_task_context = yield ()`.
+                // In that case, other forms of `yield` are considered errors in lowering.
+                if self.task_context_hir_id.is_some()
+                    && matches!(rhs.kind, hir::ExprKind::Yield(..))
+                {
+                    assert!(!self.in_lowered_await);
+                    self.in_lowered_await = true;
+                }
+                // We are still walking the whole expression including its types.
+                // First, we need to keep `expr_count` in sync as it is asserted
+                // at the very end, and to keep all the other computations in
+                // place just in case they are causing other side effects.
+                intravisit::walk_expr(self, expr);
+                self.in_lowered_await = false;
+            }
             _ => intravisit::walk_expr(self, expr),
         }
 

@@ -40,7 +40,7 @@ LL |   async fn bar2<T>(_: T) -> ! {
 LL | |     panic!()
 LL | | }
    | |_^
-   = note: required because it captures the following types: `&mut Context<'_>`, `Option<bool>`, `impl Future<Output = !>`, `()`
+   = note: required because it captures the following types: `Option<bool>`, `impl Future<Output = !>`, `()`
 note: required because it's used within this `async fn` body
   --> $DIR/async-await-let-else.rs:21:32
    |
