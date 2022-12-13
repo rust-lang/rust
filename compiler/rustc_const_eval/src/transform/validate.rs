@@ -52,7 +52,7 @@ impl<'tcx> MirPass<'tcx> for Validator {
         };
 
         let always_live_locals = always_storage_live_locals(body);
-        let storage_liveness = MaybeStorageLive::new(always_live_locals)
+        let storage_liveness = MaybeStorageLive::new(std::borrow::Cow::Owned(always_live_locals))
             .into_engine(tcx, body)
             .iterate_to_fixpoint()
             .into_results_cursor(body);
@@ -79,7 +79,7 @@ struct TypeChecker<'a, 'tcx> {
     param_env: ParamEnv<'tcx>,
     mir_phase: MirPhase,
     reachable_blocks: BitSet<BasicBlock>,
-    storage_liveness: ResultsCursor<'a, 'tcx, MaybeStorageLive>,
+    storage_liveness: ResultsCursor<'a, 'tcx, MaybeStorageLive<'static>>,
     place_cache: Vec<PlaceRef<'tcx>>,
     value_cache: Vec<u128>,
 }
