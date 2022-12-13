@@ -8,7 +8,7 @@ use rustc_ast::expand::allocator::AllocatorKind;
 use rustc_ast::{self as ast, *};
 use rustc_data_structures::fx::{FxHashMap, FxHashSet};
 use rustc_data_structures::svh::Svh;
-use rustc_data_structures::sync::{MappedReadGuard, ReadGuard};
+use rustc_data_structures::sync::MappedReadGuard;
 use rustc_expand::base::SyntaxExtension;
 use rustc_hir::def_id::{CrateNum, LocalDefId, StableCrateId, LOCAL_CRATE};
 use rustc_hir::definitions::Definitions;
@@ -64,7 +64,6 @@ pub struct CrateLoader<'a> {
     // Immutable configuration.
     sess: &'a Session,
     metadata_loader: &'a MetadataLoaderDyn,
-    definitions: ReadGuard<'a, Definitions>,
     local_crate_name: Symbol,
     // Mutable output.
     cstore: &'a mut CStore,
@@ -261,17 +260,9 @@ impl<'a> CrateLoader<'a> {
         metadata_loader: &'a MetadataLoaderDyn,
         local_crate_name: Symbol,
         cstore: &'a mut CStore,
-        definitions: ReadGuard<'a, Definitions>,
         used_extern_options: &'a mut FxHashSet<Symbol>,
     ) -> Self {
-        CrateLoader {
-            sess,
-            metadata_loader,
-            local_crate_name,
-            cstore,
-            used_extern_options,
-            definitions,
-        }
+        CrateLoader { sess, metadata_loader, local_crate_name, cstore, used_extern_options }
     }
     pub fn cstore(&self) -> &CStore {
         &self.cstore
@@ -989,6 +980,7 @@ impl<'a> CrateLoader<'a> {
         &mut self,
         item: &ast::Item,
         def_id: LocalDefId,
+        definitions: &Definitions,
     ) -> Option<CrateNum> {
         match item.kind {
             ast::ItemKind::ExternCrate(orig_name) => {
@@ -1011,7 +1003,7 @@ impl<'a> CrateLoader<'a> {
 
                 let cnum = self.resolve_crate(name, item.span, dep_kind)?;
 
-                let path_len = self.definitions.def_path(def_id).data.len();
+                let path_len = definitions.def_path(def_id).data.len();
                 self.update_extern_crate(
                     cnum,
                     ExternCrate {

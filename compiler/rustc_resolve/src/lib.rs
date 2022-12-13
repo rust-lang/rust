@@ -1470,7 +1470,6 @@ impl<'a, 'tcx> Resolver<'a, 'tcx> {
             &*self.metadata_loader,
             self.local_crate_name,
             &mut *self.tcx.untracked().cstore.write().untracked_as_any().downcast_mut().unwrap(),
-            self.tcx.definitions_untracked(),
             &mut self.used_extern_options,
         ))
     }

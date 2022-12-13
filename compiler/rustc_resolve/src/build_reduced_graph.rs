@@ -855,7 +855,10 @@ impl<'a, 'b, 'tcx> BuildReducedGraphVisitor<'a, 'b, 'tcx> {
         } else if orig_name == Some(kw::SelfLower) {
             Some(self.r.graph_root)
         } else {
-            let crate_id = self.r.crate_loader(|c| c.process_extern_crate(item, local_def_id));
+            let tcx = self.r.tcx;
+            let crate_id = self.r.crate_loader(|c| {
+                c.process_extern_crate(item, local_def_id, &tcx.definitions_untracked())
+            });
             crate_id.map(|crate_id| {
                 self.r.extern_crate_map.insert(local_def_id, crate_id);
                 self.r.expect_module(crate_id.as_def_id())
