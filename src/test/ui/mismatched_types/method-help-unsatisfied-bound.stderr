@@ -1,10 +1,8 @@
 error[E0277]: `Foo` doesn't implement `Debug`
-  --> $DIR/method-help-unsatisfied-bound.rs:5:5
+  --> $DIR/method-help-unsatisfied-bound.rs:5:7
    |
 LL |     a.unwrap();
-   |     ^ ------ required by a bound introduced by this call
-   |     |
-   |     `Foo` cannot be formatted using `{:?}`
+   |       ^^^^^^ `Foo` cannot be formatted using `{:?}`
    |
    = help: the trait `Debug` is not implemented for `Foo`
    = note: add `#[derive(Debug)]` to `Foo` or manually `impl Debug for Foo`

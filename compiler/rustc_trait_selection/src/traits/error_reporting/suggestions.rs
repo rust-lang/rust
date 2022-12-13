@@ -1,8 +1,9 @@
+// ignore-tidy-filelength
 use super::{DefIdOrName, Obligation, ObligationCause, ObligationCauseCode, PredicateObligation};
 
 use crate::autoderef::Autoderef;
 use crate::infer::InferCtxt;
-use crate::traits::NormalizeExt;
+use crate::traits::{NormalizeExt, ObligationCtxt};
 
 use hir::def::CtorOf;
 use hir::HirId;
@@ -22,17 +23,20 @@ use rustc_infer::infer::error_reporting::TypeErrCtxt;
 use rustc_infer::infer::type_variable::{TypeVariableOrigin, TypeVariableOriginKind};
 use rustc_infer::infer::{InferOk, LateBoundRegionConversionTime};
 use rustc_middle::hir::map;
+use rustc_middle::ty::error::TypeError::{self, Sorts};
+use rustc_middle::ty::relate::TypeRelation;
 use rustc_middle::ty::{
     self, suggest_arbitrary_trait_bound, suggest_constraining_type_param, AdtKind, DefIdTree,
-    GeneratorDiagnosticData, GeneratorInteriorTypeCause, Infer, InferTy, IsSuggestable,
-    ToPredicate, Ty, TyCtxt, TypeFoldable, TypeFolder, TypeSuperFoldable, TypeVisitable,
+    GeneratorDiagnosticData, GeneratorInteriorTypeCause, Infer, InferTy, InternalSubsts,
+    IsSuggestable, ToPredicate, Ty, TyCtxt, TypeAndMut, TypeFoldable, TypeFolder,
+    TypeSuperFoldable, TypeVisitable, TypeckResults,
 };
-use rustc_middle::ty::{TypeAndMut, TypeckResults};
 use rustc_span::symbol::{sym, Ident, Symbol};
 use rustc_span::{BytePos, DesugaringKind, ExpnKind, Span, DUMMY_SP};
 use rustc_target::spec::abi;
-use std::fmt;
+use std::ops::Deref;
 
+use super::method_chain::CollectAllMismatches;
 use super::InferCtxtPrivExt;
 use crate::infer::InferCtxtExt as _;
 use crate::traits::query::evaluate_obligation::InferCtxtExt as _;
@@ -292,13 +296,13 @@ pub trait TypeErrCtxtExt<'tcx> {
     fn note_obligation_cause_code<T>(
         &self,
         err: &mut Diagnostic,
-        predicate: &T,
+        predicate: T,
         param_env: ty::ParamEnv<'tcx>,
         cause_code: &ObligationCauseCode<'tcx>,
         obligated_types: &mut Vec<Ty<'tcx>>,
         seen_requirements: &mut FxHashSet<DefId>,
     ) where
-        T: fmt::Display + ToPredicate<'tcx>;
+        T: ToPredicate<'tcx>;
 
     /// Suggest to await before try: future? => future.await?
     fn suggest_await_before_try(
@@ -328,6 +332,23 @@ pub trait TypeErrCtxtExt<'tcx> {
         obligation: &PredicateObligation<'tcx>,
         err: &mut Diagnostic,
         trait_pred: ty::PolyTraitPredicate<'tcx>,
+    );
+    fn function_argument_obligation(
+        &self,
+        arg_hir_id: HirId,
+        err: &mut Diagnostic,
+        parent_code: &ObligationCauseCode<'tcx>,
+        param_env: ty::ParamEnv<'tcx>,
+        predicate: ty::Predicate<'tcx>,
+        call_hir_id: HirId,
+    );
+    fn point_at_chain(
+        &self,
+        expr: &hir::Expr<'_>,
+        typeck_results: &TypeckResults<'tcx>,
+        type_diffs: Vec<TypeError<'tcx>>,
+        param_env: ty::ParamEnv<'tcx>,
+        err: &mut Diagnostic,
     );
 }
 
@@ -2336,7 +2357,7 @@ impl<'tcx> TypeErrCtxtExt<'tcx> for TypeErrCtxt<'_, 'tcx> {
         debug!(?next_code);
         self.note_obligation_cause_code(
             err,
-            &obligation.predicate,
+            obligation.predicate,
             obligation.param_env,
             next_code.unwrap(),
             &mut Vec::new(),
@@ -2347,15 +2368,16 @@ impl<'tcx> TypeErrCtxtExt<'tcx> for TypeErrCtxt<'_, 'tcx> {
     fn note_obligation_cause_code<T>(
         &self,
         err: &mut Diagnostic,
-        predicate: &T,
+        predicate: T,
         param_env: ty::ParamEnv<'tcx>,
         cause_code: &ObligationCauseCode<'tcx>,
         obligated_types: &mut Vec<Ty<'tcx>>,
         seen_requirements: &mut FxHashSet<DefId>,
     ) where
-        T: fmt::Display + ToPredicate<'tcx>,
+        T: ToPredicate<'tcx>,
     {
         let tcx = self.tcx;
+        let predicate = predicate.to_predicate(tcx);
         match *cause_code {
             ObligationCauseCode::ExprAssignable
             | ObligationCauseCode::MatchExpressionArm { .. }
@@ -2390,12 +2412,11 @@ impl<'tcx> TypeErrCtxtExt<'tcx> for TypeErrCtxt<'_, 'tcx> {
                 err.note("only the last element of a tuple may have a dynamically sized type");
             }
             ObligationCauseCode::ProjectionWf(data) => {
-                err.note(&format!("required so that the projection `{}` is well-formed", data,));
+                err.note(&format!("required so that the projection `{data}` is well-formed"));
             }
             ObligationCauseCode::ReferenceOutlivesReferent(ref_ty) => {
                 err.note(&format!(
-                    "required so that reference `{}` does not outlive its referent",
-                    ref_ty,
+                    "required so that reference `{ref_ty}` does not outlive its referent"
                 ));
             }
             ObligationCauseCode::ObjectTypeBound(object_ty, region) => {
@@ -2689,7 +2710,7 @@ impl<'tcx> TypeErrCtxtExt<'tcx> for TypeErrCtxt<'_, 'tcx> {
                     ensure_sufficient_stack(|| {
                         self.note_obligation_cause_code(
                             err,
-                            &parent_predicate,
+                            parent_predicate,
                             param_env,
                             &data.parent_code,
                             obligated_types,
@@ -2700,7 +2721,7 @@ impl<'tcx> TypeErrCtxtExt<'tcx> for TypeErrCtxt<'_, 'tcx> {
                     ensure_sufficient_stack(|| {
                         self.note_obligation_cause_code(
                             err,
-                            &parent_predicate,
+                            parent_predicate,
                             param_env,
                             cause_code.peel_derives(),
                             obligated_types,
@@ -2809,7 +2830,7 @@ impl<'tcx> TypeErrCtxtExt<'tcx> for TypeErrCtxt<'_, 'tcx> {
                 ensure_sufficient_stack(|| {
                     self.note_obligation_cause_code(
                         err,
-                        &parent_predicate,
+                        parent_predicate,
                         param_env,
                         &data.parent_code,
                         obligated_types,
@@ -2824,7 +2845,7 @@ impl<'tcx> TypeErrCtxtExt<'tcx> for TypeErrCtxt<'_, 'tcx> {
                 ensure_sufficient_stack(|| {
                     self.note_obligation_cause_code(
                         err,
-                        &parent_predicate,
+                        parent_predicate,
                         param_env,
                         &data.parent_code,
                         obligated_types,
@@ -2837,43 +2858,14 @@ impl<'tcx> TypeErrCtxtExt<'tcx> for TypeErrCtxt<'_, 'tcx> {
                 call_hir_id,
                 ref parent_code,
             } => {
-                let hir = self.tcx.hir();
-                if let Some(Node::Expr(expr @ hir::Expr { kind: hir::ExprKind::Block(..), .. })) =
-                    hir.find(arg_hir_id)
-                {
-                    let parent_id = hir.get_parent_item(arg_hir_id);
-                    let typeck_results: &TypeckResults<'tcx> = match &self.typeck_results {
-                        Some(t) if t.hir_owner == parent_id => t,
-                        _ => self.tcx.typeck(parent_id.def_id),
-                    };
-                    let expr = expr.peel_blocks();
-                    let ty = typeck_results.expr_ty_adjusted_opt(expr).unwrap_or(tcx.ty_error());
-                    let span = expr.span;
-                    if Some(span) != err.span.primary_span() {
-                        err.span_label(
-                            span,
-                            if ty.references_error() {
-                                String::new()
-                            } else {
-                                format!("this tail expression is of type `{:?}`", ty)
-                            },
-                        );
-                    }
-                }
-                if let Some(Node::Expr(hir::Expr {
-                    kind:
-                        hir::ExprKind::Call(hir::Expr { span, .. }, _)
-                        | hir::ExprKind::MethodCall(
-                            hir::PathSegment { ident: Ident { span, .. }, .. },
-                            ..,
-                        ),
-                    ..
-                })) = hir.find(call_hir_id)
-                {
-                    if Some(*span) != err.span.primary_span() {
-                        err.span_label(*span, "required by a bound introduced by this call");
-                    }
-                }
+                self.function_argument_obligation(
+                    arg_hir_id,
+                    err,
+                    parent_code,
+                    param_env,
+                    predicate,
+                    call_hir_id,
+                );
                 ensure_sufficient_stack(|| {
                     self.note_obligation_cause_code(
                         err,
@@ -2888,9 +2880,8 @@ impl<'tcx> TypeErrCtxtExt<'tcx> for TypeErrCtxt<'_, 'tcx> {
             ObligationCauseCode::CompareImplItemObligation { trait_item_def_id, kind, .. } => {
                 let item_name = self.tcx.item_name(trait_item_def_id);
                 let msg = format!(
-                    "the requirement `{}` appears on the `impl`'s {kind} `{}` but not on the \
-                     corresponding trait's {kind}",
-                    predicate, item_name,
+                    "the requirement `{predicate}` appears on the `impl`'s {kind} \
+                     `{item_name}` but not on the corresponding trait's {kind}",
                 );
                 let sp = self
                     .tcx
@@ -2900,7 +2891,7 @@ impl<'tcx> TypeErrCtxtExt<'tcx> for TypeErrCtxt<'_, 'tcx> {
                 let mut assoc_span: MultiSpan = sp.into();
                 assoc_span.push_span_label(
                     sp,
-                    format!("this trait's {kind} doesn't have the requirement `{}`", predicate),
+                    format!("this trait's {kind} doesn't have the requirement `{predicate}`"),
                 );
                 if let Some(ident) = self
                     .tcx
@@ -2919,7 +2910,7 @@ impl<'tcx> TypeErrCtxtExt<'tcx> for TypeErrCtxt<'_, 'tcx> {
             }
             ObligationCauseCode::OpaqueReturnType(expr_info) => {
                 if let Some((expr_ty, expr_span)) = expr_info {
-                    let expr_ty = self.resolve_vars_if_possible(expr_ty);
+                    let expr_ty = with_forced_trimmed_paths!(self.ty_to_string(expr_ty));
                     err.span_label(
                         expr_span,
                         format!("return type was inferred to be `{expr_ty}` here"),
@@ -3096,6 +3087,298 @@ impl<'tcx> TypeErrCtxtExt<'tcx> for TypeErrCtxt<'_, 'tcx> {
             "dereference this index",
             '*',
                 Applicability::MachineApplicable,
+            );
+        }
+    }
+    fn function_argument_obligation(
+        &self,
+        arg_hir_id: HirId,
+        err: &mut Diagnostic,
+        parent_code: &ObligationCauseCode<'tcx>,
+        param_env: ty::ParamEnv<'tcx>,
+        predicate: ty::Predicate<'tcx>,
+        call_hir_id: HirId,
+    ) {
+        let tcx = self.tcx;
+        let hir = tcx.hir();
+        if let Some(Node::Expr(expr)) = hir.find(arg_hir_id) {
+            let parent_id = hir.get_parent_item(arg_hir_id);
+            let typeck_results: &TypeckResults<'tcx> = match &self.typeck_results {
+                Some(t) if t.hir_owner == parent_id => t,
+                _ => self.tcx.typeck(parent_id.def_id),
+            };
+            if let hir::Expr { kind: hir::ExprKind::Block(..), .. } = expr {
+                let expr = expr.peel_blocks();
+                let ty = typeck_results.expr_ty_adjusted_opt(expr).unwrap_or(tcx.ty_error());
+                let span = expr.span;
+                if Some(span) != err.span.primary_span() {
+                    err.span_label(
+                        span,
+                        if ty.references_error() {
+                            String::new()
+                        } else {
+                            let ty = with_forced_trimmed_paths!(self.ty_to_string(ty));
+                            format!("this tail expression is of type `{ty}`")
+                        },
+                    );
+                }
+            }
+
+            // FIXME: visit the ty to see if there's any closure involved, and if there is,
+            // check whether its evaluated return type is the same as the one corresponding
+            // to an associated type (as seen from `trait_pred`) in the predicate. Like in
+            // trait_pred `S: Sum<<Self as Iterator>::Item>` and predicate `i32: Sum<&()>`
+            let mut type_diffs = vec![];
+
+            if let ObligationCauseCode::ExprBindingObligation(def_id, _, _, idx) = parent_code.deref()
+                && let predicates = self.tcx.predicates_of(def_id).instantiate_identity(self.tcx)
+                && let Some(pred) = predicates.predicates.get(*idx)
+                && let Ok(trait_pred) = pred.kind().try_map_bound(|pred| match pred {
+                    ty::PredicateKind::Clause(ty::Clause::Trait(trait_pred)) => Ok(trait_pred),
+                    _ => Err(()),
+                })
+            {
+                let mut c = CollectAllMismatches {
+                    infcx: self.infcx,
+                    param_env,
+                    errors: vec![],
+                };
+                if let Ok(trait_predicate) = predicate.kind().try_map_bound(|pred| match pred {
+                    ty::PredicateKind::Clause(ty::Clause::Trait(trait_pred)) => Ok(trait_pred),
+                    _ => Err(()),
+                }) {
+                    if let Ok(_) = c.relate(trait_pred, trait_predicate) {
+                        type_diffs = c.errors;
+                    }
+                }
+            }
+            if let hir::ExprKind::Path(hir::QPath::Resolved(None, path)) = expr.kind
+                && let hir::Path { res: hir::def::Res::Local(hir_id), .. } = path
+                && let Some(hir::Node::Pat(binding)) = self.tcx.hir().find(*hir_id)
+                && let parent_hir_id = self.tcx.hir().get_parent_node(binding.hir_id)
+                && let Some(hir::Node::Local(local)) = self.tcx.hir().find(parent_hir_id)
+                && let Some(binding_expr) = local.init
+            {
+                // If the expression we're calling on is a binding, we want to point at the
+                // `let` when talking about the type. Otherwise we'll point at every part
+                // of the method chain with the type.
+                self.point_at_chain(binding_expr, typeck_results, type_diffs, param_env, err);
+            } else {
+                self.point_at_chain(expr, typeck_results, type_diffs, param_env, err);
+            }
+        }
+        let call_node = hir.find(call_hir_id);
+        if let Some(Node::Expr(hir::Expr {
+            kind: hir::ExprKind::MethodCall(path, rcvr, ..), ..
+        })) = call_node
+        {
+            if Some(rcvr.span) == err.span.primary_span() {
+                err.replace_span_with(path.ident.span);
+            }
+        }
+        if let Some(Node::Expr(hir::Expr {
+            kind:
+                hir::ExprKind::Call(hir::Expr { span, .. }, _)
+                | hir::ExprKind::MethodCall(hir::PathSegment { ident: Ident { span, .. }, .. }, ..),
+            ..
+        })) = hir.find(call_hir_id)
+        {
+            if Some(*span) != err.span.primary_span() {
+                err.span_label(*span, "required by a bound introduced by this call");
+            }
+        }
+    }
+
+    fn point_at_chain(
+        &self,
+        expr: &hir::Expr<'_>,
+        typeck_results: &TypeckResults<'tcx>,
+        type_diffs: Vec<TypeError<'tcx>>,
+        param_env: ty::ParamEnv<'tcx>,
+        err: &mut Diagnostic,
+    ) {
+        let mut primary_spans = vec![];
+        let mut span_labels = vec![];
+
+        let tcx = self.tcx;
+
+        let mut assocs = vec![];
+        // We still want to point at the different methods even if there hasn't
+        // been a change of assoc type.
+        let mut call_spans = vec![];
+        let mut expr = expr;
+        let mut prev_ty = self.resolve_vars_if_possible(
+            typeck_results.expr_ty_adjusted_opt(expr).unwrap_or(tcx.ty_error()),
+        );
+        while let hir::ExprKind::MethodCall(_path_segment, rcvr_expr, _args, span) = expr.kind {
+            // Point at every method call in the chain with the resulting type.
+            // vec![1, 2, 3].iter().map(mapper).sum<i32>()
+            //               ^^^^^^ ^^^^^^^^^^^
+            expr = rcvr_expr;
+            let mut assocs_in_this_method = Vec::with_capacity(type_diffs.len());
+            call_spans.push(span);
+
+            let ocx = ObligationCtxt::new_in_snapshot(self.infcx);
+            for diff in &type_diffs {
+                let Sorts(expected_found) = diff else { continue; };
+                let ty::Projection(proj) = expected_found.expected.kind() else { continue; };
+
+                let origin =
+                    TypeVariableOrigin { kind: TypeVariableOriginKind::TypeInference, span };
+                let trait_def_id = proj.trait_def_id(self.tcx);
+                // Make `Self` be equivalent to the type of the call chain
+                // expression we're looking at now, so that we can tell what
+                // for example `Iterator::Item` is at this point in the chain.
+                let substs = InternalSubsts::for_item(self.tcx, trait_def_id, |param, _| {
+                    match param.kind {
+                        ty::GenericParamDefKind::Type { .. } => {
+                            if param.index == 0 {
+                                return prev_ty.into();
+                            }
+                        }
+                        ty::GenericParamDefKind::Lifetime
+                        | ty::GenericParamDefKind::Const { .. } => {}
+                    }
+                    self.var_for_def(span, param)
+                });
+                // This will hold the resolved type of the associated type, if the
+                // current expression implements the trait that associated type is
+                // in. For example, this would be what `Iterator::Item` is here.
+                let ty_var = self.infcx.next_ty_var(origin);
+                // This corresponds to `<ExprTy as Iterator>::Item = _`.
+                let trait_ref = ty::Binder::dummy(ty::PredicateKind::Clause(
+                    ty::Clause::Projection(ty::ProjectionPredicate {
+                        projection_ty: ty::ProjectionTy { substs, item_def_id: proj.item_def_id },
+                        term: ty_var.into(),
+                    }),
+                ));
+                // Add `<ExprTy as Iterator>::Item = _` obligation.
+                ocx.register_obligation(Obligation::misc(
+                    self.tcx,
+                    span,
+                    expr.hir_id,
+                    param_env,
+                    trait_ref,
+                ));
+                if ocx.select_where_possible().is_empty() {
+                    // `ty_var` now holds the type that `Item` is for `ExprTy`.
+                    let ty_var = self.resolve_vars_if_possible(ty_var);
+                    assocs_in_this_method.push(Some((span, (proj.item_def_id, ty_var))));
+                } else {
+                    // `<ExprTy as Iterator>` didn't select, so likely we've
+                    // reached the end of the iterator chain, like the originating
+                    // `Vec<_>`.
+                    // Keep the space consistent for later zipping.
+                    assocs_in_this_method.push(None);
+                }
+            }
+            assocs.push(assocs_in_this_method);
+            prev_ty = self.resolve_vars_if_possible(
+                typeck_results.expr_ty_adjusted_opt(expr).unwrap_or(tcx.ty_error()),
+            );
+
+            if let hir::ExprKind::Path(hir::QPath::Resolved(None, path)) = expr.kind
+                && let hir::Path { res: hir::def::Res::Local(hir_id), .. } = path
+                && let Some(hir::Node::Pat(binding)) = self.tcx.hir().find(*hir_id)
+                && let parent_hir_id = self.tcx.hir().get_parent_node(binding.hir_id)
+                && let Some(hir::Node::Local(local)) = self.tcx.hir().find(parent_hir_id)
+                && let Some(binding_expr) = local.init
+            {
+                // We've reached the root of the method call chain and it is a
+                // binding. Get the binding creation and try to continue the chain.
+                expr = binding_expr;
+            }
+        }
+        // We want the type before deref coercions, otherwise we talk about `&[_]`
+        // instead of `Vec<_>`.
+        if let Some(ty) = typeck_results.expr_ty_opt(expr) {
+            let ty = with_forced_trimmed_paths!(self.ty_to_string(ty));
+            // Point at the root expression
+            // vec![1, 2, 3].iter().map(mapper).sum<i32>()
+            // ^^^^^^^^^^^^^
+            span_labels.push((expr.span, format!("this expression has type `{ty}`")));
+        };
+        // Only show this if it is not a "trivial" expression (not a method
+        // chain) and there are associated types to talk about.
+        let mut assocs = assocs.into_iter().peekable();
+        while let Some(assocs_in_method) = assocs.next() {
+            let Some(prev_assoc_in_method) = assocs.peek() else {
+                for entry in assocs_in_method {
+                    let Some((span, (assoc, ty))) = entry else { continue; };
+                    if type_diffs.iter().any(|diff| {
+                        let Sorts(expected_found) = diff else { return false; };
+                        self.can_eq(param_env, expected_found.found, ty).is_ok()
+                    }) {
+                        // FIXME: this doesn't quite work for `Iterator::collect`
+                        // because we have `Vec<i32>` and `()`, but we'd want `i32`
+                        // to point at the `.into_iter()` call, but as long as we
+                        // still point at the other method calls that might have
+                        // introduced the issue, this is fine for now.
+                        primary_spans.push(span);
+                    }
+                    span_labels.push((
+                        span,
+                        with_forced_trimmed_paths!(format!(
+                            "`{}` is `{ty}` here",
+                            self.tcx.def_path_str(assoc),
+                        )),
+                    ));
+                }
+                break;
+            };
+            for (entry, prev_entry) in
+                assocs_in_method.into_iter().zip(prev_assoc_in_method.into_iter())
+            {
+                match (entry, prev_entry) {
+                    (Some((span, (assoc, ty))), Some((_, (_, prev_ty)))) => {
+                        let ty_str = with_forced_trimmed_paths!(self.ty_to_string(ty));
+
+                        let assoc = with_forced_trimmed_paths!(self.tcx.def_path_str(assoc));
+                        if ty != *prev_ty {
+                            if type_diffs.iter().any(|diff| {
+                                let Sorts(expected_found) = diff else { return false; };
+                                self.can_eq(param_env, expected_found.found, ty).is_ok()
+                            }) {
+                                primary_spans.push(span);
+                            }
+                            span_labels
+                                .push((span, format!("`{assoc}` changed to `{ty_str}` here")));
+                        } else {
+                            span_labels.push((span, format!("`{assoc}` remains `{ty_str}` here")));
+                        }
+                    }
+                    (Some((span, (assoc, ty))), None) => {
+                        span_labels.push((
+                            span,
+                            with_forced_trimmed_paths!(format!(
+                                "`{}` is `{}` here",
+                                self.tcx.def_path_str(assoc),
+                                self.ty_to_string(ty),
+                            )),
+                        ));
+                    }
+                    (None, Some(_)) | (None, None) => {}
+                }
+            }
+        }
+        for span in call_spans {
+            if span_labels.iter().find(|(s, _)| *s == span).is_none() {
+                // Ensure we are showing the entire chain, even if the assoc types
+                // haven't changed.
+                span_labels.push((span, String::new()));
+            }
+        }
+        if !primary_spans.is_empty() {
+            let mut multi_span: MultiSpan = primary_spans.into();
+            for (span, label) in span_labels {
+                multi_span.push_span_label(span, label);
+            }
+            err.span_note(
+                multi_span,
+                format!(
+                    "the method call chain might not have had the expected \
+                                     associated types",
+                ),
             );
         }
     }

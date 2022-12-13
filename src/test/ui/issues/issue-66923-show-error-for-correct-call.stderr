@@ -1,13 +1,18 @@
 error[E0277]: a value of type `Vec<f64>` cannot be built from an iterator over elements of type `&f64`
-  --> $DIR/issue-66923-show-error-for-correct-call.rs:8:24
+  --> $DIR/issue-66923-show-error-for-correct-call.rs:8:39
    |
 LL |     let x2: Vec<f64> = x1.into_iter().collect();
-   |                        ^^^^^^^^^^^^^^ ------- required by a bound introduced by this call
-   |                        |
-   |                        value of type `Vec<f64>` cannot be built from `std::iter::Iterator<Item=&f64>`
+   |                                       ^^^^^^^ value of type `Vec<f64>` cannot be built from `std::iter::Iterator<Item=&f64>`
    |
    = help: the trait `FromIterator<&f64>` is not implemented for `Vec<f64>`
    = help: the trait `FromIterator<T>` is implemented for `Vec<T>`
+note: the method call chain might not have had the expected associated types
+  --> $DIR/issue-66923-show-error-for-correct-call.rs:8:27
+   |
+LL |     let x1: &[f64] = &v;
+   |                      -- this expression has type `&Vec<f64>`
+LL |     let x2: Vec<f64> = x1.into_iter().collect();
+   |                           ^^^^^^^^^^^ `Iterator::Item` is `&f64` here
 note: required by a bound in `collect`
   --> $SRC_DIR/core/src/iter/traits/iterator.rs:LL:COL
    |
@@ -15,15 +20,21 @@ LL |     fn collect<B: FromIterator<Self::Item>>(self) -> B
    |                   ^^^^^^^^^^^^^^^^^^^^^^^^ required by this bound in `Iterator::collect`
 
 error[E0277]: a value of type `Vec<f64>` cannot be built from an iterator over elements of type `&f64`
-  --> $DIR/issue-66923-show-error-for-correct-call.rs:12:14
+  --> $DIR/issue-66923-show-error-for-correct-call.rs:12:29
    |
 LL |     let x3 = x1.into_iter().collect::<Vec<f64>>();
-   |              ^^^^^^^^^^^^^^ ------- required by a bound introduced by this call
-   |              |
-   |              value of type `Vec<f64>` cannot be built from `std::iter::Iterator<Item=&f64>`
+   |                             ^^^^^^^ value of type `Vec<f64>` cannot be built from `std::iter::Iterator<Item=&f64>`
    |
    = help: the trait `FromIterator<&f64>` is not implemented for `Vec<f64>`
    = help: the trait `FromIterator<T>` is implemented for `Vec<T>`
+note: the method call chain might not have had the expected associated types
+  --> $DIR/issue-66923-show-error-for-correct-call.rs:12:17
+   |
+LL |     let x1: &[f64] = &v;
+   |                      -- this expression has type `&Vec<f64>`
+...
+LL |     let x3 = x1.into_iter().collect::<Vec<f64>>();
+   |                 ^^^^^^^^^^^ `Iterator::Item` is `&f64` here
 note: required by a bound in `collect`
   --> $SRC_DIR/core/src/iter/traits/iterator.rs:LL:COL
    |
