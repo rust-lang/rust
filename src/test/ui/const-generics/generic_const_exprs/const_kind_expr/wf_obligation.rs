@@ -16,6 +16,7 @@ where
 {
     foo::<_, L>([(); L + 1 + L]);
     //~^ ERROR: unconstrained generic constant
+    //~| ERROR: mismatched types
 }
 
 fn main() {}

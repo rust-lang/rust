@@ -168,7 +168,9 @@ fn satisfied_from_param_env<'tcx>(
         param_env: ty::ParamEnv<'tcx>,
 
         infcx: &'a InferCtxt<'tcx>,
+        single_match: Option<Result<ty::Const<'tcx>, ()>>,
     }
+
     impl<'a, 'tcx> TypeVisitor<'tcx> for Visitor<'a, 'tcx> {
         type BreakTy = ();
         fn visit_const(&mut self, c: ty::Const<'tcx>) -> ControlFlow<Self::BreakTy> {
@@ -179,7 +181,9 @@ fn satisfied_from_param_env<'tcx>(
                     && ocx.eq(&ObligationCause::dummy(), self.param_env, c, self.ct).is_ok()
                     && ocx.select_all_or_error().is_empty()
             }) {
-                ControlFlow::BREAK
+                self.single_match =
+                    if self.single_match.is_none() { Some(Ok(c)) } else { Some(Err(())) };
+                ControlFlow::CONTINUE
             } else if let ty::ConstKind::Expr(e) = c.kind() {
                 e.visit_with(self)
             } else {
@@ -195,20 +199,35 @@ fn satisfied_from_param_env<'tcx>(
         }
     }
 
+    let mut single_match: Option<Result<ty::Const<'tcx>, ()>> = None;
+
     for pred in param_env.caller_bounds() {
         match pred.kind().skip_binder() {
             ty::PredicateKind::ConstEvaluatable(ce) => {
                 let b_ct = tcx.expand_abstract_consts(ce);
-                let mut v = Visitor { ct, infcx, param_env };
-                let result = b_ct.visit_with(&mut v);
-
-                if let ControlFlow::Break(()) = result {
-                    debug!("is_const_evaluatable: yes");
-                    return true;
+                let mut v = Visitor { ct, infcx, param_env, single_match: None };
+                let _ = b_ct.visit_with(&mut v);
+                if let Some(inner) = v.single_match {
+                    single_match = if single_match.is_none() { Some(inner) } else { Some(Err(())) };
                 }
             }
             _ => {} // don't care
         }
+    }
+
+    if let Some(c) = single_match {
+        if let Ok(c) = c {
+            let is_ok = infcx
+                .commit_if_ok(|_| {
+                    let ocx = ObligationCtxt::new_in_snapshot(infcx);
+                    assert!(ocx.eq(&ObligationCause::dummy(), param_env, c.ty(), ct.ty()).is_ok());
+                    assert!(ocx.eq(&ObligationCause::dummy(), param_env, c, ct).is_ok());
+                    if ocx.select_all_or_error().is_empty() { Ok(()) } else { Err(()) }
+                })
+                .is_ok();
+            assert!(is_ok);
+        }
+        return true;
     }
 
     debug!("is_const_evaluatable: no");
