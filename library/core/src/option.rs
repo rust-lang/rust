@@ -106,11 +106,10 @@
 //!
 //! *It's much nicer!*
 //!
-//! Ending the expression with [`?`] will result in the unwrapped
-//! success ([`Some`]) value, unless the result is [`None`], in which case
-//! [`None`] is returned early from the enclosing function.
+//! Ending the expression with [`?`] will result in the [`Some`]'s unwrapped value, unless the
+//! result is [`None`], in which case [`None`] is returned early from the enclosing function.
 //!
-//! [`?`] can only be used in functions that return [`Option`] because of the
+//! [`?`] can be used in functions that return [`Option`] because of the
 //! early return of [`None`] that it provides.
 //!
 //! [`?`]: crate::ops::Try
