@@ -33,9 +33,8 @@ basically consists of one method, `run_pass`, that simply gets an
 came from). The MIR is therefore modified in place (which helps to
 keep things efficient).
 
-A good example of a basic MIR pass is [`NoLandingPads`], which walks
-the MIR and removes all edges that are due to unwinding – this is
-used when configured with `panic=abort`, which never unwinds. As you
+A basic example of a MIR pass is [`RemoveStorageMarkers`], which walks
+the MIR and removes all storage marks if they won't be emitted during codegen. As you
 can see from its source, a MIR pass is defined by first defining a
 dummy type, a struct with no fields, something like:
 
@@ -98,5 +97,5 @@ alternatives in [rust-lang/rust#41710].
 [rust-lang/rust#41710]: https://github.com/rust-lang/rust/issues/41710
 [mirtransform]: https://doc.rust-lang.org/nightly/nightly-rustc/rustc_mir_transform/
 <!--- TODO: Change NoLandingPads. [#1232](https://github.com/rust-lang/rustc-dev-guide/issues/1232) -->
-[`NoLandingPads`]: https://doc.rust-lang.org/nightly/nightly-rustc/rustc_mir_transform/no_landing_pads/struct.NoLandingPads.html
+[`RemoveStorageMarkers`]: https://doc.rust-lang.org/nightly/nightly-rustc/rustc_mir_transform/remove_storage_markers/struct.RemoveStorageMarkers.html
 [MIR visitor]: ./visitor.html
