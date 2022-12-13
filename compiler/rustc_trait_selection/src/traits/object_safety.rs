@@ -694,16 +694,12 @@ fn receiver_is_dispatchable<'tcx>(
 
         // U: Trait<Arg1, ..., ArgN>
         let trait_predicate = {
-            let substs =
-                InternalSubsts::for_item(tcx, method.trait_container(tcx).unwrap(), |param, _| {
-                    if param.index == 0 {
-                        unsized_self_ty.into()
-                    } else {
-                        tcx.mk_param_from_def(param)
-                    }
-                });
+            let trait_def_id = method.trait_container(tcx).unwrap();
+            let substs = InternalSubsts::for_item(tcx, trait_def_id, |param, _| {
+                if param.index == 0 { unsized_self_ty.into() } else { tcx.mk_param_from_def(param) }
+            });
 
-            ty::Binder::dummy(tcx.mk_trait_ref(unsize_did, substs)).to_predicate(tcx)
+            ty::Binder::dummy(tcx.mk_trait_ref(trait_def_id, substs)).to_predicate(tcx)
         };
 
         let caller_bounds: Vec<Predicate<'tcx>> =
