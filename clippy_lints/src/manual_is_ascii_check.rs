@@ -3,7 +3,7 @@ use clippy_utils::{diagnostics::span_lint_and_sugg, higher, in_constant, macros:
 use rustc_ast::ast::RangeLimits;
 use rustc_ast::LitKind::{Byte, Char};
 use rustc_errors::Applicability;
-use rustc_hir::{Expr, ExprKind, PatKind, RangeEnd};
+use rustc_hir::{BorrowKind, Expr, ExprKind, PatKind, RangeEnd};
 use rustc_lint::{LateContext, LateLintPass};
 use rustc_session::{declare_tool_lint, impl_lint_pass};
 use rustc_span::{def_id::DefId, sym, Span};
@@ -86,8 +86,12 @@ impl<'tcx> LateLintPass<'tcx> for ManualIsAsciiCheck {
             && path.ident.name == sym!(contains)
             && let Some(higher::Range { start: Some(start), end: Some(end), limits: RangeLimits::Closed })
             = higher::Range::hir(receiver) {
-                let range = check_range(start, end);
+            let range = check_range(start, end);
+            if let ExprKind::AddrOf(BorrowKind::Ref, _, e) = arg.kind {
+                check_is_ascii(cx, expr.span, e, &range);
+            } else {
                 check_is_ascii(cx, expr.span, arg, &range);
+            }
         }
     }
 

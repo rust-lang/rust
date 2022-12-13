@@ -16,13 +16,13 @@ fn main() {
 
     assert!(matches!('x', 'A'..='Z' | 'a'..='z' | '_'));
 
-    assert!(&b'0'.is_ascii_digit());
-    assert!(&b'a'.is_ascii_lowercase());
-    assert!(&b'A'.is_ascii_uppercase());
+    assert!(b'0'.is_ascii_digit());
+    assert!(b'a'.is_ascii_lowercase());
+    assert!(b'A'.is_ascii_uppercase());
 
-    assert!(&'0'.is_ascii_digit());
-    assert!(&'a'.is_ascii_lowercase());
-    assert!(&'A'.is_ascii_uppercase());
+    assert!('0'.is_ascii_digit());
+    assert!('a'.is_ascii_lowercase());
+    assert!('A'.is_ascii_uppercase());
 }
 
 #[clippy::msrv = "1.23"]

@@ -46,37 +46,37 @@ error: manual check for common ascii range
   --> $DIR/manual_is_ascii_check.rs:19:13
    |
 LL |     assert!((b'0'..=b'9').contains(&b'0'));
-   |             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: try: `&b'0'.is_ascii_digit()`
+   |             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: try: `b'0'.is_ascii_digit()`
 
 error: manual check for common ascii range
   --> $DIR/manual_is_ascii_check.rs:20:13
    |
 LL |     assert!((b'a'..=b'z').contains(&b'a'));
-   |             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: try: `&b'a'.is_ascii_lowercase()`
+   |             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: try: `b'a'.is_ascii_lowercase()`
 
 error: manual check for common ascii range
   --> $DIR/manual_is_ascii_check.rs:21:13
    |
 LL |     assert!((b'A'..=b'Z').contains(&b'A'));
-   |             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: try: `&b'A'.is_ascii_uppercase()`
+   |             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: try: `b'A'.is_ascii_uppercase()`
 
 error: manual check for common ascii range
   --> $DIR/manual_is_ascii_check.rs:23:13
    |
 LL |     assert!(('0'..='9').contains(&'0'));
-   |             ^^^^^^^^^^^^^^^^^^^^^^^^^^ help: try: `&'0'.is_ascii_digit()`
+   |             ^^^^^^^^^^^^^^^^^^^^^^^^^^ help: try: `'0'.is_ascii_digit()`
 
 error: manual check for common ascii range
   --> $DIR/manual_is_ascii_check.rs:24:13
    |
 LL |     assert!(('a'..='z').contains(&'a'));
-   |             ^^^^^^^^^^^^^^^^^^^^^^^^^^ help: try: `&'a'.is_ascii_lowercase()`
+   |             ^^^^^^^^^^^^^^^^^^^^^^^^^^ help: try: `'a'.is_ascii_lowercase()`
 
 error: manual check for common ascii range
   --> $DIR/manual_is_ascii_check.rs:25:13
    |
 LL |     assert!(('A'..='Z').contains(&'A'));
-   |             ^^^^^^^^^^^^^^^^^^^^^^^^^^ help: try: `&'A'.is_ascii_uppercase()`
+   |             ^^^^^^^^^^^^^^^^^^^^^^^^^^ help: try: `'A'.is_ascii_uppercase()`
 
 error: manual check for common ascii range
   --> $DIR/manual_is_ascii_check.rs:37:13
