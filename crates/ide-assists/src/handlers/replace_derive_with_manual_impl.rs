@@ -995,6 +995,68 @@ impl PartialEq for Foo {
     }
 
     #[test]
+    fn add_custom_impl_partial_eq_tuple_enum_generic() {
+        check_assist(
+            replace_derive_with_manual_impl,
+            r#"
+//- minicore: eq, derive
+#[derive(Partial$0Eq)]
+enum Either<T, U> {
+    Left(T),
+    Right(U),
+}
+"#,
+            r#"
+enum Either<T, U> {
+    Left(T),
+    Right(U),
+}
+
+impl<T: PartialEq, U: PartialEq> PartialEq for Either<T, U> {
+    $0fn eq(&self, other: &Self) -> bool {
+        match (self, other) {
+            (Self::Left(l0), Self::Left(r0)) => l0 == r0,
+            (Self::Right(l0), Self::Right(r0)) => l0 == r0,
+            _ => false,
+        }
+    }
+}
+"#,
+        )
+    }
+
+    #[test]
+    fn add_custom_impl_partial_eq_tuple_enum_generic_existing_bounds() {
+        check_assist(
+            replace_derive_with_manual_impl,
+            r#"
+//- minicore: eq, derive
+#[derive(Partial$0Eq)]
+enum Either<T: PartialEq + Error, U: Clone> {
+    Left(T),
+    Right(U),
+}
+"#,
+            r#"
+enum Either<T: PartialEq + Error, U: Clone> {
+    Left(T),
+    Right(U),
+}
+
+impl<T: PartialEq + Error, U: Clone + PartialEq> PartialEq for Either<T, U> {
+    $0fn eq(&self, other: &Self) -> bool {
+        match (self, other) {
+            (Self::Left(l0), Self::Left(r0)) => l0 == r0,
+            (Self::Right(l0), Self::Right(r0)) => l0 == r0,
+            _ => false,
+        }
+    }
+}
+"#,
+        )
+    }
+
+    #[test]
     fn add_custom_impl_partial_eq_record_enum() {
         check_assist(
             replace_derive_with_manual_impl,
@@ -1170,7 +1232,7 @@ struct Foo<T, U> {
     bar: U,
 }
 
-impl<T, U> Default for Foo<T, U> {
+impl<T: Default, U: Default> Default for Foo<T, U> {
     $0fn default() -> Self {
         Self { foo: Default::default(), bar: Default::default() }
     }

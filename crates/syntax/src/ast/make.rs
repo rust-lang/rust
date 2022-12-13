@@ -719,11 +719,22 @@ pub fn param_list(
     ast_from_text(&list)
 }
 
-pub fn type_param(name: ast::Name, ty: Option<ast::TypeBoundList>) -> ast::TypeParam {
-    let bound = match ty {
-        Some(it) => format!(": {it}"),
-        None => String::new(),
-    };
+pub fn type_bound(bound: &str) -> ast::TypeBound {
+    ast_from_text(&format!("fn f<T: {bound}>() {{ }}"))
+}
+
+pub fn type_bound_list(
+    bounds: impl IntoIterator<Item = ast::TypeBound>,
+) -> Option<ast::TypeBoundList> {
+    let bounds = bounds.into_iter().map(|it| it.to_string()).unique().join(" + ");
+    if bounds.is_empty() {
+        return None;
+    }
+    Some(ast_from_text(&format!("fn f<T: {bounds}>() {{ }}")))
+}
+
+pub fn type_param(name: ast::Name, bounds: Option<ast::TypeBoundList>) -> ast::TypeParam {
+    let bound = bounds.map_or_else(String::new, |it| format!(": {it}"));
     ast_from_text(&format!("fn f<{name}{bound}>() {{ }}"))
 }
 

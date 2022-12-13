@@ -5,6 +5,7 @@ use std::ops;
 pub(crate) use gen_trait_fn_body::gen_trait_fn_body;
 use hir::{db::HirDatabase, HirDisplay, Semantics};
 use ide_db::{famous_defs::FamousDefs, path_transform::PathTransform, RootDatabase, SnippetCap};
+use itertools::Itertools;
 use stdx::format_to;
 use syntax::{
     ast::{
@@ -452,15 +453,32 @@ fn generate_impl_text_inner(adt: &ast::Adt, trait_text: Option<&str>, code: &str
         let lifetime_params =
             generic_params.lifetime_params().map(ast::GenericParam::LifetimeParam);
         let ty_or_const_params = generic_params.type_or_const_params().filter_map(|param| {
-            // remove defaults since they can't be specified in impls
             match param {
                 ast::TypeOrConstParam::Type(param) => {
                     let param = param.clone_for_update();
+                    // remove defaults since they can't be specified in impls
                     param.remove_default();
+                    let mut bounds = param
+                        .type_bound_list()
+                        .map_or_else(Vec::new, |it| it.bounds().collect_vec());
+                    // `{ty_param}: {trait_text}`
+                    if let Some(trait_) = trait_text {
+                        // Defense against the following cases:
+                        // - The trait is undetermined, e.g. `$0`.
+                        // - The trait is a `From`, e.g. `From<T>`.
+                        if !trait_.starts_with('$')
+                            && !matches!(trait_.split_once('<'), Some((left, _right)) if left.trim() == "From")
+                        {
+                            bounds.push(make::type_bound(trait_));
+                        }
+                    };
+                    let param =
+                        make::type_param(param.name().unwrap(), make::type_bound_list(bounds));
                     Some(ast::GenericParam::TypeParam(param))
                 }
                 ast::TypeOrConstParam::Const(param) => {
                     let param = param.clone_for_update();
+                    // remove defaults since they can't be specified in impls
                     param.remove_default();
                     Some(ast::GenericParam::ConstParam(param))
                 }
