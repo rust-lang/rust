@@ -178,6 +178,11 @@ impl<'tcx> TypeRelation<'tcx> for Equate<'_, '_, 'tcx> {
     where
         T: Relate<'tcx>,
     {
+        // A binder is equal to itself if it's structually equal to itself
+        if a == b {
+            return Ok(a);
+        }
+
         if a.skip_binder().has_escaping_bound_vars() || b.skip_binder().has_escaping_bound_vars() {
             self.fields.higher_ranked_sub(a, b, self.a_is_expected)?;
             self.fields.higher_ranked_sub(b, a, self.a_is_expected)?;
