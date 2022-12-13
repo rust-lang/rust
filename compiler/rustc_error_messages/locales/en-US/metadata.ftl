@@ -4,6 +4,11 @@ metadata_rlib_required =
 metadata_lib_required =
     crate `{$crate_name}` required to be available in {$kind} format, but was not found in this form
 
+metadata_rustc_lib_required =
+    crate `{$crate_name}` required to be available in {$kind} format, but was not found in this form
+    .note = only .rmeta files are distributed for `rustc_private` crates other than `rustc_driver`
+    .help = try adding `extern crate rustc_driver;` at the top level of this crate
+
 metadata_crate_dep_multiple =
     cannot satisfy dependencies so `{$crate_name}` only shows up once
     .help = having upstream crates all available in one format will likely make this go away
