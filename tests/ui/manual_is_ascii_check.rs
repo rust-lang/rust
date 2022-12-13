@@ -16,13 +16,18 @@ fn main() {
 
     assert!(matches!('x', 'A'..='Z' | 'a'..='z' | '_'));
 
-    assert!((b'0'..=b'9').contains(&b'0'));
-    assert!((b'a'..=b'z').contains(&b'a'));
-    assert!((b'A'..=b'Z').contains(&b'A'));
+    (b'0'..=b'9').contains(&b'0');
+    (b'a'..=b'z').contains(&b'a');
+    (b'A'..=b'Z').contains(&b'A');
 
-    assert!(('0'..='9').contains(&'0'));
-    assert!(('a'..='z').contains(&'a'));
-    assert!(('A'..='Z').contains(&'A'));
+    ('0'..='9').contains(&'0');
+    ('a'..='z').contains(&'a');
+    ('A'..='Z').contains(&'A');
+
+    let cool_letter = &'g';
+    ('0'..='9').contains(cool_letter);
+    ('a'..='z').contains(cool_letter);
+    ('A'..='Z').contains(cool_letter);
 }
 
 #[clippy::msrv = "1.23"]

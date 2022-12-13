@@ -25,13 +25,9 @@ declare_clippy_lint! {
     ///     assert!(matches!('2', '0'..='9'));
     ///     assert!(matches!('x', 'A'..='Z' | 'a'..='z'));
     ///
-    ///     assert!((b'0'..=b'9').contains(&b'0'));
-    ///     assert!((b'a'..=b'z').contains(&b'a'));
-    ///     assert!((b'A'..=b'Z').contains(&b'A'));
-    ///
-    ///     assert!(('0'..='9').contains(&'0'));
-    ///     assert!(('a'..='z').contains(&'a'));
-    ///     assert!(('A'..='Z').contains(&'A'));
+    ///     ('0'..='9').contains(&'0');
+    ///     ('a'..='z').contains(&'a');
+    ///     ('A'..='Z').contains(&'A');
     /// }
     /// ```
     /// Use instead:
@@ -42,13 +38,9 @@ declare_clippy_lint! {
     ///     assert!('2'.is_ascii_digit());
     ///     assert!('x'.is_ascii_alphabetic());
     ///
-    ///     assert!(b'0'.is_ascii_digit());
-    ///     assert!(b'a'.is_ascii_lowercase());
-    ///     assert!(b'A'.is_ascii_uppercase());
-    ///
-    ///     assert!('0'.is_ascii_digit());
-    ///     assert!('a'.is_ascii_lowercase());
-    ///     assert!('A'.is_ascii_uppercase());
+    ///     '0'.is_ascii_digit();
+    ///     'a'.is_ascii_lowercase();
+    ///     'A'.is_ascii_uppercase();
     /// }
     /// ```
     #[clippy::version = "1.66.0"]
