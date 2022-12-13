@@ -236,12 +236,12 @@ impl<'a, I: Iterator<Item = Event<'a>>> Iterator for CodeBlocks<'_, 'a, I> {
             return event;
         };
 
-        let mut origtext = String::new();
+        let mut original_text = String::new();
         for event in &mut self.inner {
             match event {
                 Event::End(Tag::CodeBlock(..)) => break,
                 Event::Text(ref s) => {
-                    origtext.push_str(s);
+                    original_text.push_str(s);
                 }
                 _ => {}
             }
@@ -258,7 +258,7 @@ impl<'a, I: Iterator<Item = Event<'a>>> Iterator for CodeBlocks<'_, 'a, I> {
                                  <pre class=\"language-{}\"><code>{}</code></pre>\
                              </div>",
                             lang,
-                            Escape(&origtext),
+                            Escape(&original_text),
                         )
                         .into(),
                     ));
@@ -268,7 +268,7 @@ impl<'a, I: Iterator<Item = Event<'a>>> Iterator for CodeBlocks<'_, 'a, I> {
             CodeBlockKind::Indented => Default::default(),
         };
 
-        let lines = origtext.lines().filter_map(|l| map_line(l).for_html());
+        let lines = original_text.lines().filter_map(|l| map_line(l).for_html());
         let text = lines.intersperse("\n".into()).collect::<String>();
 
         compile_fail = parse_result.compile_fail;
@@ -285,7 +285,7 @@ impl<'a, I: Iterator<Item = Event<'a>>> Iterator for CodeBlocks<'_, 'a, I> {
             if url.is_empty() {
                 return None;
             }
-            let test = origtext
+            let test = original_text
                 .lines()
                 .map(|l| map_line(l).for_code())
                 .intersperse("\n".into())
