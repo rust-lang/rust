@@ -479,19 +479,15 @@ fn make_format_args(
                 "named argument never used"
             } else {
                 let mut err = "argument never used";
-                match args.explicit_args()[i].expr.to_ty() {
-                    Some(expr) => match expr.kind.is_simple_path() {
-                        Some(symbol) => {
+                if let Some(expr) = args.explicit_args()[i].expr.to_ty() {
+                    if let Some(symbol) = expr.kind.is_simple_path() {
                             let current_arg = symbol.as_str();
-                            let current_arg_ph = "{".to_owned() + current_arg + "}";
+                            let current_arg_ph = format!("{{{current_arg}}}");
                             if current_arg.len() > 0 && fmt_str.contains(current_arg_ph.as_str()) {
-                                err = "argument never used, consider removing it"
+                                err = "argument is a duplicate of an inline argument"
                             }
                         }
-                        None => {}
-                    },
-                    None => {}
-                }
+                    }
                 err
             };
             (args.explicit_args()[i].expr.span, msg)

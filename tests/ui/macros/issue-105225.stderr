@@ -1,8 +1,8 @@
-error: argument never used, consider removing it
+error: argument is a duplicate of an inline argument
   --> $DIR/issue-105225.rs:3:21
    |
 LL |     println!("{x}", x);
-   |              -----  ^ argument never used, consider removing it
+   |              -----  ^ argument is a duplicate of an inline argument
    |              |
    |              formatting specifier missing
 
