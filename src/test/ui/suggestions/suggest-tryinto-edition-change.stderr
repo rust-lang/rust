@@ -52,11 +52,9 @@ error[E0599]: no method named `try_into` found for type `i32` in the current sco
    |
 LL |     let _i: i16 = 0_i32.try_into().unwrap();
    |                         ^^^^^^^^ method not found in `i32`
+  --> $SRC_DIR/core/src/convert/mod.rs:LL:COL
    |
-  ::: $SRC_DIR/core/src/convert/mod.rs:LL:COL
-   |
-LL |     fn try_into(self) -> Result<T, Self::Error>;
-   |        -------- the method is available for `i32` here
+   = note: the method is available for `i32` here
    |
    = help: items from traits can only be used if the trait is in scope
    = note: 'std::convert::TryInto' is included in the prelude starting in Edition 2021

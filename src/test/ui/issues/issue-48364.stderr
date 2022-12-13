@@ -10,9 +10,6 @@ LL |     b"".starts_with(stringify!(foo))
               found reference `&'static str`
 note: associated function defined here
   --> $SRC_DIR/core/src/slice/mod.rs:LL:COL
-   |
-LL |     pub fn starts_with(&self, needle: &[T]) -> bool
-   |            ^^^^^^^^^^^
    = note: this error originates in the macro `stringify` (in Nightly builds, run with -Z macro-backtrace for more info)
 
 error: aborting due to previous error

@@ -24,11 +24,6 @@ error[E0107]: this struct takes at least 1 generic argument but 0 generic argume
 LL |     let _: Vec<A:B> = A::B;
    |            ^^^ expected at least 1 generic argument
    |
-note: struct defined here, with at least 1 generic parameter: `T`
-  --> $SRC_DIR/alloc/src/vec/mod.rs:LL:COL
-   |
-LL | pub struct Vec<T, #[unstable(feature = "allocator_api", issue = "32838")] A: Allocator = Global> {
-   |            ^^^ -
 help: add missing generic argument
    |
 LL |     let _: Vec<T, A:B> = A::B;

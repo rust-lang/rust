@@ -49,11 +49,8 @@ note: an implementation of `AddAssign<_>` might be missing for `S`
    |
 LL | struct S { x: u8, y: u8 }
    | ^^^^^^^^ must implement `AddAssign<_>`
-note: the following trait must be implemented
+note: the trait `AddAssign` must be implemented
   --> $SRC_DIR/core/src/ops/arith.rs:LL:COL
-   |
-LL | pub trait AddAssign<Rhs = Self> {
-   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
 error[E0067]: invalid left-hand side of assignment
   --> $DIR/note-unsupported.rs:17:22

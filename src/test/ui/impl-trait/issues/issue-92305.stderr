@@ -4,11 +4,6 @@ error[E0107]: missing generics for struct `Vec`
 LL | fn f<T>(data: &[T]) -> impl Iterator<Item = Vec> {
    |                                             ^^^ expected at least 1 generic argument
    |
-note: struct defined here, with at least 1 generic parameter: `T`
-  --> $SRC_DIR/alloc/src/vec/mod.rs:LL:COL
-   |
-LL | pub struct Vec<T, #[unstable(feature = "allocator_api", issue = "32838")] A: Allocator = Global> {
-   |            ^^^ -
 help: add missing generic argument
    |
 LL | fn f<T>(data: &[T]) -> impl Iterator<Item = Vec<T>> {
