@@ -1,4 +1,5 @@
 // ignore-tidy-filelength
+
 use super::{DefIdOrName, Obligation, ObligationCause, ObligationCauseCode, PredicateObligation};
 
 use crate::autoderef::Autoderef;
@@ -258,6 +259,7 @@ pub trait TypeErrCtxtExt<'tcx> {
         found: ty::PolyTraitRef<'tcx>,
         expected: ty::PolyTraitRef<'tcx>,
         cause: &ObligationCauseCode<'tcx>,
+        found_node: Option<Node<'_>>,
     ) -> DiagnosticBuilder<'tcx, ErrorGuaranteed>;
 
     fn note_conflicting_closure_bounds(
@@ -1695,6 +1697,7 @@ impl<'tcx> TypeErrCtxtExt<'tcx> for TypeErrCtxt<'_, 'tcx> {
         found: ty::PolyTraitRef<'tcx>,
         expected: ty::PolyTraitRef<'tcx>,
         cause: &ObligationCauseCode<'tcx>,
+        found_node: Option<Node<'_>>,
     ) -> DiagnosticBuilder<'tcx, ErrorGuaranteed> {
         pub(crate) fn build_fn_sig_ty<'tcx>(
             infcx: &InferCtxt<'tcx>,
@@ -1755,6 +1758,10 @@ impl<'tcx> TypeErrCtxtExt<'tcx> for TypeErrCtxt<'_, 'tcx> {
         err.note_expected_found(&signature_kind, expected_str, &signature_kind, found_str);
 
         self.note_conflicting_closure_bounds(cause, &mut err);
+
+        if let Some(found_node) = found_node {
+            hint_missing_borrow(span, found_span, found, expected, found_node, &mut err);
+        }
 
         err
     }
@@ -3381,6 +3388,78 @@ impl<'tcx> TypeErrCtxtExt<'tcx> for TypeErrCtxt<'_, 'tcx> {
                 ),
             );
         }
+    }
+}
+
+/// Add a hint to add a missing borrow or remove an unnecessary one.
+fn hint_missing_borrow<'tcx>(
+    span: Span,
+    found_span: Span,
+    found: Ty<'tcx>,
+    expected: Ty<'tcx>,
+    found_node: Node<'_>,
+    err: &mut Diagnostic,
+) {
+    let found_args = match found.kind() {
+        ty::FnPtr(f) => f.inputs().skip_binder().iter(),
+        kind => {
+            span_bug!(span, "found was converted to a FnPtr above but is now {:?}", kind)
+        }
+    };
+    let expected_args = match expected.kind() {
+        ty::FnPtr(f) => f.inputs().skip_binder().iter(),
+        kind => {
+            span_bug!(span, "expected was converted to a FnPtr above but is now {:?}", kind)
+        }
+    };
+
+    let fn_decl = found_node
+        .fn_decl()
+        .unwrap_or_else(|| span_bug!(found_span, "found node must be a function"));
+
+    let arg_spans = fn_decl.inputs.iter().map(|ty| ty.span);
+
+    fn get_deref_type_and_refs<'tcx>(mut ty: Ty<'tcx>) -> (Ty<'tcx>, usize) {
+        let mut refs = 0;
+
+        while let ty::Ref(_, new_ty, _) = ty.kind() {
+            ty = *new_ty;
+            refs += 1;
+        }
+
+        (ty, refs)
+    }
+
+    let mut to_borrow = Vec::new();
+    let mut remove_borrow = Vec::new();
+
+    for ((found_arg, expected_arg), arg_span) in found_args.zip(expected_args).zip(arg_spans) {
+        let (found_ty, found_refs) = get_deref_type_and_refs(*found_arg);
+        let (expected_ty, expected_refs) = get_deref_type_and_refs(*expected_arg);
+
+        if found_ty == expected_ty {
+            if found_refs < expected_refs {
+                to_borrow.push((arg_span, expected_arg.to_string()));
+            } else if found_refs > expected_refs {
+                remove_borrow.push((arg_span, expected_arg.to_string()));
+            }
+        }
+    }
+
+    if !to_borrow.is_empty() {
+        err.multipart_suggestion(
+            "consider borrowing the argument",
+            to_borrow,
+            Applicability::MaybeIncorrect,
+        );
+    }
+
+    if !remove_borrow.is_empty() {
+        err.multipart_suggestion(
+            "do not borrow the argument",
+            remove_borrow,
+            Applicability::MaybeIncorrect,
+        );
     }
 }
 
