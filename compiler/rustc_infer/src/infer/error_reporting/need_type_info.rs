@@ -77,11 +77,9 @@ impl InferenceDiagnosticsData {
         !(self.name == "_" && matches!(self.kind, UnderspecifiedArgKind::Type { .. }))
     }
 
-    fn where_x_is_kind(&self, in_type: Ty<'_>, is_collect: bool) -> &'static str {
-        if is_collect {
-            "empty"
-        } else if in_type.is_ty_infer() {
-            "anon"
+    fn where_x_is_kind(&self, in_type: Ty<'_>) -> &'static str {
+        if in_type.is_ty_infer() {
+            ""
         } else if self.name == "_" {
             // FIXME: Consider specializing this message if there is a single `_`
             // in the type.
@@ -185,14 +183,20 @@ fn fmt_printer<'a, 'tcx>(infcx: &'a InferCtxt<'tcx>, ns: Namespace) -> FmtPrinte
     printer
 }
 
-fn ty_to_string<'tcx>(infcx: &InferCtxt<'tcx>, ty: Ty<'tcx>) -> String {
+fn ty_to_string<'tcx>(infcx: &InferCtxt<'tcx>, ty: Ty<'tcx>, def_id: Option<DefId>) -> String {
     let printer = fmt_printer(infcx, Namespace::TypeNS);
     let ty = infcx.resolve_vars_if_possible(ty);
-    match ty.kind() {
+    match (ty.kind(), def_id) {
         // We don't want the regular output for `fn`s because it includes its path in
         // invalid pseudo-syntax, we want the `fn`-pointer output instead.
-        ty::FnDef(..) => ty.fn_sig(infcx.tcx).print(printer).unwrap().into_buffer(),
-        _ if ty.is_ty_infer() => "Type".to_string(),
+        (ty::FnDef(..), _) => ty.fn_sig(infcx.tcx).print(printer).unwrap().into_buffer(),
+        (_, Some(def_id))
+            if ty.is_ty_infer()
+                && infcx.tcx.get_diagnostic_item(sym::iterator_collect_fn) == Some(def_id) =>
+        {
+            "Vec<_>".to_string()
+        }
+        _ if ty.is_ty_infer() => "/* Type */".to_string(),
         // FIXME: The same thing for closures, but this only works when the closure
         // does not capture anything.
         //
@@ -216,7 +220,7 @@ fn closure_as_fn_str<'tcx>(infcx: &InferCtxt<'tcx>, ty: Ty<'tcx>) -> String {
         .map(|args| {
             args.tuple_fields()
                 .iter()
-                .map(|arg| ty_to_string(infcx, arg))
+                .map(|arg| ty_to_string(infcx, arg, None))
                 .collect::<Vec<_>>()
                 .join(", ")
         })
@@ -224,7 +228,7 @@ fn closure_as_fn_str<'tcx>(infcx: &InferCtxt<'tcx>, ty: Ty<'tcx>) -> String {
     let ret = if fn_sig.output().skip_binder().is_unit() {
         String::new()
     } else {
-        format!(" -> {}", ty_to_string(infcx, fn_sig.output().skip_binder()))
+        format!(" -> {}", ty_to_string(infcx, fn_sig.output().skip_binder(), None))
     };
     format!("fn({}){}", args, ret)
 }
@@ -410,32 +414,28 @@ impl<'tcx> TypeErrCtxt<'_, 'tcx> {
         let mut infer_subdiags = Vec::new();
         let mut multi_suggestions = Vec::new();
         match kind {
-            InferSourceKind::LetBinding { insert_span, pattern_name, ty, is_collect } => {
+            InferSourceKind::LetBinding { insert_span, pattern_name, ty, def_id } => {
                 infer_subdiags.push(SourceKindSubdiag::LetLike {
                     span: insert_span,
                     name: pattern_name.map(|name| name.to_string()).unwrap_or_else(String::new),
-                    x_kind: arg_data.where_x_is_kind(ty, is_collect),
+                    x_kind: arg_data.where_x_is_kind(ty),
                     prefix_kind: arg_data.kind.clone(),
                     prefix: arg_data.kind.try_get_prefix().unwrap_or_default(),
                     arg_name: arg_data.name,
                     kind: if pattern_name.is_some() { "with_pattern" } else { "other" },
-                    type_name: if is_collect {
-                        "Vec<_>".to_string()
-                    } else {
-                        ty_to_string(self, ty)
-                    },
+                    type_name: ty_to_string(self, ty, def_id),
                 });
             }
             InferSourceKind::ClosureArg { insert_span, ty } => {
                 infer_subdiags.push(SourceKindSubdiag::LetLike {
                     span: insert_span,
                     name: String::new(),
-                    x_kind: arg_data.where_x_is_kind(ty, false),
+                    x_kind: arg_data.where_x_is_kind(ty),
                     prefix_kind: arg_data.kind.clone(),
                     prefix: arg_data.kind.try_get_prefix().unwrap_or_default(),
                     arg_name: arg_data.name,
                     kind: "closure",
-                    type_name: ty_to_string(self, ty),
+                    type_name: ty_to_string(self, ty, None),
                 });
             }
             InferSourceKind::GenericArg {
@@ -534,7 +534,7 @@ impl<'tcx> TypeErrCtxt<'_, 'tcx> {
                 ));
             }
             InferSourceKind::ClosureReturn { ty, data, should_wrap_expr } => {
-                let ty_info = ty_to_string(self, ty);
+                let ty_info = ty_to_string(self, ty, None);
                 multi_suggestions.push(SourceKindMultiSuggestion::new_closure_return(
                     ty_info,
                     data,
@@ -622,7 +622,7 @@ enum InferSourceKind<'tcx> {
         insert_span: Span,
         pattern_name: Option<Ident>,
         ty: Ty<'tcx>,
-        is_collect: bool,
+        def_id: Option<DefId>,
     },
     ClosureArg {
         insert_span: Span,
@@ -677,7 +677,7 @@ impl<'tcx> InferSourceKind<'tcx> {
                 if ty.is_closure() {
                     ("closure", closure_as_fn_str(infcx, ty))
                 } else if !ty.is_ty_infer() {
-                    ("normal", ty_to_string(infcx, ty))
+                    ("normal", ty_to_string(infcx, ty, None))
                 } else {
                     ("other", String::new())
                 }
@@ -807,14 +807,13 @@ impl<'a, 'tcx> FindInferSourceVisitor<'a, 'tcx> {
         let cost = self.source_cost(&new_source) + self.attempt;
         debug!(?cost);
         self.attempt += 1;
-        if let Some(InferSource { kind: InferSourceKind::GenericArg { def_id, ..}, .. }) = self.infer_source
-            && self.infcx.tcx.get_diagnostic_item(sym::iterator_collect_fn) == Some(def_id)
-            && let InferSourceKind::LetBinding { ref ty, ref mut is_collect, ..} = new_source.kind
+        if let Some(InferSource { kind: InferSourceKind::GenericArg { def_id: did, ..}, .. }) = self.infer_source
+            && let InferSourceKind::LetBinding { ref ty, ref mut def_id, ..} = new_source.kind
             && ty.is_ty_infer()
         {
             // Customize the output so we talk about `let x: Vec<_> = iter.collect();` instead of
             // `let x: _ = iter.collect();`, as this is a very common case.
-            *is_collect = true;
+            *def_id = Some(did);
         }
         if cost < self.infer_source_cost {
             self.infer_source_cost = cost;
@@ -1113,7 +1112,7 @@ impl<'a, 'tcx> Visitor<'tcx> for FindInferSourceVisitor<'a, 'tcx> {
                                 insert_span: local.pat.span.shrink_to_hi(),
                                 pattern_name: local.pat.simple_ident(),
                                 ty,
-                                is_collect: false,
+                                def_id: None,
                             },
                         })
                     }

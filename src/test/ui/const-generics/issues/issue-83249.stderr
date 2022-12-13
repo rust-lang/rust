@@ -4,10 +4,10 @@ error[E0282]: type annotations needed
 LL |     let _ = foo([0; 1]);
    |         ^
    |
-help: consider giving this pattern a type, where the placeholder `Type` is specified
+help: consider giving this pattern a type
    |
-LL |     let _: Type = foo([0; 1]);
-   |          ++++++
+LL |     let _: /* Type */ = foo([0; 1]);
+   |          ++++++++++++
 
 error: aborting due to previous error
 

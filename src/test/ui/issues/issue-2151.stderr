@@ -6,10 +6,10 @@ LL |     let x = panic!();
 LL |     x.clone();
    |     - type must be known at this point
    |
-help: consider giving `x` an explicit type, where the placeholder `Type` is specified
+help: consider giving `x` an explicit type
    |
-LL |     let x: Type = panic!();
-   |          ++++++
+LL |     let x: /* Type */ = panic!();
+   |          ++++++++++++
 
 error: aborting due to previous error
 

@@ -191,10 +191,10 @@ error[E0282]: type annotations needed
 LL |     let x @ ..;
    |         ^^^^^^
    |
-help: consider giving this pattern a type, where the placeholder `Type` is specified
+help: consider giving this pattern a type
    |
-LL |     let x @ ..: Type;
-   |               ++++++
+LL |     let x @ ..: /* Type */;
+   |               ++++++++++++
 
 error: aborting due to 23 previous errors
 

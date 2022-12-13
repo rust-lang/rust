@@ -28,10 +28,10 @@ error[E0282]: type annotations needed
 LL |     let _ = |a, b: _| -> _ { 0 };
    |              ^
    |
-help: consider giving this closure parameter an explicit type, where the placeholder `Type` is specified
+help: consider giving this closure parameter an explicit type
    |
-LL |     let _ = |a: Type, b: _| -> _ { 0 };
-   |               ++++++
+LL |     let _ = |a: /* Type */, b: _| -> _ { 0 };
+   |               ++++++++++++
 
 error: aborting due to 5 previous errors
 
