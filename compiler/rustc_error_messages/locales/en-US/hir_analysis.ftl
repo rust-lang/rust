@@ -101,8 +101,6 @@ hir_analysis_extern_crate_not_idiomatic =
     `extern crate` is not idiomatic in the new edition
     .suggestion = convert it to a `{$msg_code}`
 
-hir_analysis_expected_used_symbol = expected `used`, `used(compiler)` or `used(linker)`
-
 hir_analysis_const_impl_for_non_const_trait =
     const `impl` for trait `{$trait_name}` which is not marked with `#[const_trait]`
     .suggestion = mark `{$trait_name}` as const

@@ -9,9 +9,6 @@ LL |     "".chars().fold(|_, _| (), ());
    = help: the trait `FnMut<(_, char)>` is not implemented for `()`
 note: required by a bound in `fold`
   --> $SRC_DIR/core/src/iter/traits/iterator.rs:LL:COL
-   |
-LL |         F: FnMut(B, Self::Item) -> B,
-   |            ^^^^^^^^^^^^^^^^^^^^^^^^^ required by this bound in `Iterator::fold`
 
 error: aborting due to previous error
 

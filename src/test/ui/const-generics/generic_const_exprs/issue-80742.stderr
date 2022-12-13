@@ -1,14 +1,10 @@
 error[E0080]: evaluation of `Inline::<dyn std::fmt::Debug>::{constant#0}` failed
   --> $SRC_DIR/core/src/mem/mod.rs:LL:COL
    |
-LL |     intrinsics::size_of::<T>()
-   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^ size_of called on unsized type `dyn Debug`
+   = note: size_of called on unsized type `dyn Debug`
    |
 note: inside `std::mem::size_of::<dyn Debug>`
   --> $SRC_DIR/core/src/mem/mod.rs:LL:COL
-   |
-LL |     intrinsics::size_of::<T>()
-   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^
 note: inside `Inline::<dyn Debug>::{constant#0}`
   --> $DIR/issue-80742.rs:22:10
    |
@@ -23,11 +19,9 @@ LL | struct Inline<T>
 ...
 LL |     let dst = Inline::<dyn Debug>::new(0);
    |                                    ^^^ function or associated item cannot be called on `Inline<dyn Debug>` due to unsatisfied trait bounds
+  --> $SRC_DIR/core/src/fmt/mod.rs:LL:COL
    |
-  ::: $SRC_DIR/core/src/fmt/mod.rs:LL:COL
-   |
-LL | pub trait Debug {
-   | --------------- doesn't satisfy `dyn Debug: Sized`
+   = note: doesn't satisfy `dyn Debug: Sized`
    |
    = note: the following trait bounds were not satisfied:
            `dyn Debug: Sized`
@@ -35,14 +29,10 @@ LL | pub trait Debug {
 error[E0080]: evaluation of `Inline::<dyn std::fmt::Debug>::{constant#0}` failed
   --> $SRC_DIR/core/src/mem/mod.rs:LL:COL
    |
-LL |     intrinsics::size_of::<T>()
-   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^ size_of called on unsized type `dyn Debug`
+   = note: size_of called on unsized type `dyn Debug`
    |
 note: inside `std::mem::size_of::<dyn Debug>`
   --> $SRC_DIR/core/src/mem/mod.rs:LL:COL
-   |
-LL |     intrinsics::size_of::<T>()
-   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^
 note: inside `Inline::<dyn Debug>::{constant#0}`
   --> $DIR/issue-80742.rs:14:10
    |

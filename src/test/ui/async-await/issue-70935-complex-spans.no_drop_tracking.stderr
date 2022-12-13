@@ -12,14 +12,10 @@ LL |           baz(|| async{
    |  _____________-
 LL | |             foo(tx.clone());
 LL | |         }).await;
-   | |         - ^^^^^^ await occurs here, with the value maybe used later
-   | |_________|
+   | |         - ^^^^^^- the value is later dropped here
+   | |         | |
+   | |_________| await occurs here, with the value maybe used later
    |           has type `[closure@$DIR/issue-70935-complex-spans.rs:17:13: 17:15]` which is not `Send`
-note: the value is later dropped here
-  --> $DIR/issue-70935-complex-spans.rs:19:17
-   |
-LL |         }).await;
-   |                 ^
 
 error: aborting due to previous error
 

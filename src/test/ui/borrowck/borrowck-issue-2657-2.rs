@@ -1,3 +1,4 @@
+// run-rustfix
 fn main() {
 
     let x: Option<Box<_>> = Some(Box::new(1));

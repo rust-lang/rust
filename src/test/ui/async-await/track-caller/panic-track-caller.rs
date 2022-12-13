@@ -1,7 +1,7 @@
 // run-pass
 // edition:2021
 // needs-unwind
-#![feature(closure_track_caller)]
+#![feature(closure_track_caller, async_closure, stmt_expr_attributes)]
 
 use std::future::Future;
 use std::panic;
@@ -67,6 +67,13 @@ async fn foo_assoc() {
     Foo::bar_assoc().await
 }
 
+async fn foo_closure() {
+    let c = #[track_caller] async || {
+        panic!();
+    };
+    c().await
+}
+
 fn panicked_at(f: impl FnOnce() + panic::UnwindSafe) -> u32 {
     let loc = Arc::new(Mutex::new(None));
 
@@ -87,4 +94,5 @@ fn main() {
     assert_eq!(panicked_at(|| block_on(foo())), 41);
     assert_eq!(panicked_at(|| block_on(foo_track_caller())), 54);
     assert_eq!(panicked_at(|| block_on(foo_assoc())), 67);
+    assert_eq!(panicked_at(|| block_on(foo_closure())), 74);
 }

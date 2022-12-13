@@ -1,14 +1,10 @@
 error[E0080]: could not evaluate static initializer
   --> $SRC_DIR/core/src/slice/raw.rs:LL:COL
    |
-LL |         &*ptr::slice_from_raw_parts(data, len)
-   |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ dereferencing pointer failed: null pointer is a dangling pointer (it has no provenance)
+   = note: dereferencing pointer failed: null pointer is a dangling pointer (it has no provenance)
    |
 note: inside `std::slice::from_raw_parts::<'_, u32>`
   --> $SRC_DIR/core/src/slice/raw.rs:LL:COL
-   |
-LL |         &*ptr::slice_from_raw_parts(data, len)
-   |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 note: inside `S0`
   --> $DIR/forbidden_slices.rs:18:34
    |
@@ -18,14 +14,10 @@ LL | pub static S0: &[u32] = unsafe { from_raw_parts(ptr::null(), 0) };
 error[E0080]: could not evaluate static initializer
   --> $SRC_DIR/core/src/slice/raw.rs:LL:COL
    |
-LL |         &*ptr::slice_from_raw_parts(data, len)
-   |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ dereferencing pointer failed: null pointer is a dangling pointer (it has no provenance)
+   = note: dereferencing pointer failed: null pointer is a dangling pointer (it has no provenance)
    |
 note: inside `std::slice::from_raw_parts::<'_, ()>`
   --> $SRC_DIR/core/src/slice/raw.rs:LL:COL
-   |
-LL |         &*ptr::slice_from_raw_parts(data, len)
-   |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 note: inside `S1`
   --> $DIR/forbidden_slices.rs:19:33
    |
@@ -35,14 +27,10 @@ LL | pub static S1: &[()] = unsafe { from_raw_parts(ptr::null(), 0) };
 error[E0080]: could not evaluate static initializer
   --> $SRC_DIR/core/src/slice/raw.rs:LL:COL
    |
-LL |         &*ptr::slice_from_raw_parts(data, len)
-   |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ dereferencing pointer failed: ALLOC_ID has size 4, so pointer to 8 bytes starting at offset 0 is out-of-bounds
+   = note: dereferencing pointer failed: ALLOC_ID has size 4, so pointer to 8 bytes starting at offset 0 is out-of-bounds
    |
 note: inside `std::slice::from_raw_parts::<'_, u32>`
   --> $SRC_DIR/core/src/slice/raw.rs:LL:COL
-   |
-LL |         &*ptr::slice_from_raw_parts(data, len)
-   |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 note: inside `S2`
   --> $DIR/forbidden_slices.rs:22:34
    |
@@ -97,14 +85,10 @@ LL | pub static S7: &[u16] = unsafe {
 error[E0080]: could not evaluate static initializer
   --> $SRC_DIR/core/src/slice/raw.rs:LL:COL
    |
-LL |         &*ptr::slice_from_raw_parts(data, len)
-   |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ dereferencing pointer failed: ALLOC_ID has size 8, so pointer to 8 bytes starting at offset 1 is out-of-bounds
+   = note: dereferencing pointer failed: ALLOC_ID has size 8, so pointer to 8 bytes starting at offset 1 is out-of-bounds
    |
 note: inside `std::slice::from_raw_parts::<'_, u64>`
   --> $SRC_DIR/core/src/slice/raw.rs:LL:COL
-   |
-LL |         &*ptr::slice_from_raw_parts(data, len)
-   |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 note: inside `S8`
   --> $DIR/forbidden_slices.rs:43:5
    |
@@ -114,19 +98,12 @@ LL |     from_raw_parts(ptr, 1)
 error[E0080]: could not evaluate static initializer
   --> $SRC_DIR/core/src/ptr/const_ptr.rs:LL:COL
    |
-LL |         unsafe { intrinsics::ptr_offset_from_unsigned(self, origin) }
-   |                  ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ out-of-bounds offset_from: null pointer is a dangling pointer (it has no provenance)
+   = note: out-of-bounds offset_from: null pointer is a dangling pointer (it has no provenance)
    |
 note: inside `ptr::const_ptr::<impl *const u32>::sub_ptr`
   --> $SRC_DIR/core/src/ptr/const_ptr.rs:LL:COL
-   |
-LL |         unsafe { intrinsics::ptr_offset_from_unsigned(self, origin) }
-   |                  ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 note: inside `from_ptr_range::<'_, u32>`
   --> $SRC_DIR/core/src/slice/raw.rs:LL:COL
-   |
-LL |     unsafe { from_raw_parts(range.start, range.end.sub_ptr(range.start)) }
-   |                                          ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 note: inside `R0`
   --> $DIR/forbidden_slices.rs:46:34
    |
@@ -136,19 +113,12 @@ LL | pub static R0: &[u32] = unsafe { from_ptr_range(ptr::null()..ptr::null()) }
 error[E0080]: could not evaluate static initializer
   --> $SRC_DIR/core/src/ptr/const_ptr.rs:LL:COL
    |
-LL |         assert!(0 < pointee_size && pointee_size <= isize::MAX as usize);
-   |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ the evaluated program panicked at 'assertion failed: 0 < pointee_size && pointee_size <= isize::MAX as usize', $SRC_DIR/core/src/ptr/const_ptr.rs:LL:COL
+   = note: the evaluated program panicked at 'assertion failed: 0 < pointee_size && pointee_size <= isize::MAX as usize', $SRC_DIR/core/src/ptr/const_ptr.rs:LL:COL
    |
 note: inside `ptr::const_ptr::<impl *const ()>::sub_ptr`
   --> $SRC_DIR/core/src/ptr/const_ptr.rs:LL:COL
-   |
-LL |         assert!(0 < pointee_size && pointee_size <= isize::MAX as usize);
-   |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 note: inside `from_ptr_range::<'_, ()>`
   --> $SRC_DIR/core/src/slice/raw.rs:LL:COL
-   |
-LL |     unsafe { from_raw_parts(range.start, range.end.sub_ptr(range.start)) }
-   |                                          ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 note: inside `R1`
   --> $DIR/forbidden_slices.rs:47:33
    |
@@ -159,19 +129,12 @@ LL | pub static R1: &[()] = unsafe { from_ptr_range(ptr::null()..ptr::null()) };
 error[E0080]: could not evaluate static initializer
   --> $SRC_DIR/core/src/ptr/const_ptr.rs:LL:COL
    |
-LL |         unsafe { intrinsics::offset(self, count) }
-   |                  ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ out-of-bounds pointer arithmetic: ALLOC_ID has size 4, so pointer to 8 bytes starting at offset 0 is out-of-bounds
+   = note: out-of-bounds pointer arithmetic: ALLOC_ID has size 4, so pointer to 8 bytes starting at offset 0 is out-of-bounds
    |
 note: inside `ptr::const_ptr::<impl *const u32>::offset`
   --> $SRC_DIR/core/src/ptr/const_ptr.rs:LL:COL
-   |
-LL |         unsafe { intrinsics::offset(self, count) }
-   |                  ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 note: inside `ptr::const_ptr::<impl *const u32>::add`
   --> $SRC_DIR/core/src/ptr/const_ptr.rs:LL:COL
-   |
-LL |         unsafe { self.offset(count as isize) }
-   |                  ^^^^^^^^^^^^^^^^^^^^^^^^^^^
 note: inside `R2`
   --> $DIR/forbidden_slices.rs:50:25
    |
@@ -226,19 +189,12 @@ LL | pub static R7: &[u16] = unsafe {
 error[E0080]: could not evaluate static initializer
   --> $SRC_DIR/core/src/ptr/const_ptr.rs:LL:COL
    |
-LL |         unsafe { intrinsics::offset(self, count) }
-   |                  ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ out-of-bounds pointer arithmetic: ALLOC_ID has size 8, so pointer to 8 bytes starting at offset 1 is out-of-bounds
+   = note: out-of-bounds pointer arithmetic: ALLOC_ID has size 8, so pointer to 8 bytes starting at offset 1 is out-of-bounds
    |
 note: inside `ptr::const_ptr::<impl *const u64>::offset`
   --> $SRC_DIR/core/src/ptr/const_ptr.rs:LL:COL
-   |
-LL |         unsafe { intrinsics::offset(self, count) }
-   |                  ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 note: inside `ptr::const_ptr::<impl *const u64>::add`
   --> $SRC_DIR/core/src/ptr/const_ptr.rs:LL:COL
-   |
-LL |         unsafe { self.offset(count as isize) }
-   |                  ^^^^^^^^^^^^^^^^^^^^^^^^^^^
 note: inside `R8`
   --> $DIR/forbidden_slices.rs:74:25
    |
@@ -248,19 +204,12 @@ LL |     from_ptr_range(ptr..ptr.add(1))
 error[E0080]: could not evaluate static initializer
   --> $SRC_DIR/core/src/ptr/const_ptr.rs:LL:COL
    |
-LL |         unsafe { intrinsics::ptr_offset_from_unsigned(self, origin) }
-   |                  ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ `ptr_offset_from_unsigned` called on pointers into different allocations
+   = note: `ptr_offset_from_unsigned` called on pointers into different allocations
    |
 note: inside `ptr::const_ptr::<impl *const u32>::sub_ptr`
   --> $SRC_DIR/core/src/ptr/const_ptr.rs:LL:COL
-   |
-LL |         unsafe { intrinsics::ptr_offset_from_unsigned(self, origin) }
-   |                  ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 note: inside `from_ptr_range::<'_, u32>`
   --> $SRC_DIR/core/src/slice/raw.rs:LL:COL
-   |
-LL |     unsafe { from_raw_parts(range.start, range.end.sub_ptr(range.start)) }
-   |                                          ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 note: inside `R9`
   --> $DIR/forbidden_slices.rs:79:34
    |
@@ -270,19 +219,12 @@ LL | pub static R9: &[u32] = unsafe { from_ptr_range(&D0..(&D0 as *const u32).ad
 error[E0080]: could not evaluate static initializer
   --> $SRC_DIR/core/src/ptr/const_ptr.rs:LL:COL
    |
-LL |         unsafe { intrinsics::ptr_offset_from_unsigned(self, origin) }
-   |                  ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ `ptr_offset_from_unsigned` called on pointers into different allocations
+   = note: `ptr_offset_from_unsigned` called on pointers into different allocations
    |
 note: inside `ptr::const_ptr::<impl *const u32>::sub_ptr`
   --> $SRC_DIR/core/src/ptr/const_ptr.rs:LL:COL
-   |
-LL |         unsafe { intrinsics::ptr_offset_from_unsigned(self, origin) }
-   |                  ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 note: inside `from_ptr_range::<'_, u32>`
   --> $SRC_DIR/core/src/slice/raw.rs:LL:COL
-   |
-LL |     unsafe { from_raw_parts(range.start, range.end.sub_ptr(range.start)) }
-   |                                          ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 note: inside `R10`
   --> $DIR/forbidden_slices.rs:80:35
    |

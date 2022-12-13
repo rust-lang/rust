@@ -13,9 +13,6 @@ LL |         groups.push(new_group, vec![process]);
              found struct `Vec<String>`
 note: associated function defined here
   --> $SRC_DIR/alloc/src/vec/mod.rs:LL:COL
-   |
-LL |     pub fn push(&mut self, value: T) {
-   |            ^^^^
 help: remove the extra argument
    |
 LL |         groups.push(/* (Vec<String>, Vec<Process>) */);

@@ -604,9 +604,6 @@ LL |         let _val: Result<i32, i32> = mem::uninitialized();
    |
 note: enums with multiple inhabited variants have to be initialized to a variant
   --> $SRC_DIR/core/src/result.rs:LL:COL
-   |
-LL | pub enum Result<T, E> {
-   | ^^^^^^^^^^^^^^^^^^^^^
 
 error: the type `&i32` does not permit zero-initialization
   --> $DIR/invalid_value.rs:152:34

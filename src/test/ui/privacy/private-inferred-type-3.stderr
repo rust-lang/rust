@@ -6,7 +6,7 @@ LL |     ext::m!();
    |
    = note: this error originates in the macro `ext::m` (in Nightly builds, run with -Z macro-backtrace for more info)
 
-error: static `PRIV_STATIC` is private
+error: static `ext::PRIV_STATIC` is private
   --> $DIR/private-inferred-type-3.rs:16:5
    |
 LL |     ext::m!();

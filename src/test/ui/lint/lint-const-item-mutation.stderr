@@ -108,9 +108,6 @@ LL |     VEC.push(0);
    = note: the mutable reference will refer to this temporary, not the original `const` item
 note: mutable reference created due to call to this method
   --> $SRC_DIR/alloc/src/vec/mod.rs:LL:COL
-   |
-LL |     pub fn push(&mut self, value: T) {
-   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 note: `const` item defined here
   --> $DIR/lint-const-item-mutation.rs:31:1
    |

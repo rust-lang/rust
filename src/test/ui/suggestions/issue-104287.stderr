@@ -11,12 +11,6 @@ LL |     simd_gt::<()>(x);
    |     ^^^^^^^------ help: remove these generics
    |     |
    |     expected 0 generic arguments
-   |
-note: associated function defined here, with 0 generic parameters
-  --> $SRC_DIR/core/src/../../portable-simd/crates/core_simd/src/ord.rs:LL:COL
-   |
-LL |     fn simd_gt(self, other: Self) -> Self::Mask;
-   |        ^^^^^^^
 
 error[E0425]: cannot find function `simd_gt` in this scope
   --> $DIR/issue-104287.rs:6:5

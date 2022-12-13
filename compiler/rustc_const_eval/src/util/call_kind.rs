@@ -5,7 +5,7 @@
 use rustc_hir::def_id::DefId;
 use rustc_hir::{lang_items, LangItem};
 use rustc_middle::ty::subst::SubstsRef;
-use rustc_middle::ty::{self, AssocItemContainer, DefIdTree, Instance, ParamEnv, Ty, TyCtxt};
+use rustc_middle::ty::{AssocItemContainer, Instance, ParamEnv, Ty, TyCtxt};
 use rustc_span::symbol::Ident;
 use rustc_span::{sym, DesugaringKind, Span};
 
@@ -39,9 +39,7 @@ pub enum CallKind<'tcx> {
     Normal {
         self_arg: Option<Ident>,
         desugaring: Option<(CallDesugaringKind, Ty<'tcx>)>,
-        /// Whether the self type of the method call has an `.as_ref()` method.
-        /// Used for better diagnostics.
-        is_option_or_result: bool,
+        method_did: DefId,
     },
     /// A call to `Fn(..)::call(..)`, desugared from `my_closure(a, b, c)`
     FnCall { fn_trait_id: DefId, self_ty: Ty<'tcx> },
@@ -133,16 +131,6 @@ pub fn call_kind<'tcx>(
         } else {
             None
         };
-        let parent_did = tcx.parent(method_did);
-        let parent_self_ty = (tcx.def_kind(parent_did) == rustc_hir::def::DefKind::Impl)
-            .then_some(parent_did)
-            .and_then(|did| match tcx.type_of(did).kind() {
-                ty::Adt(def, ..) => Some(def.did()),
-                _ => None,
-            });
-        let is_option_or_result = parent_self_ty.map_or(false, |def_id| {
-            matches!(tcx.get_diagnostic_name(def_id), Some(sym::Option | sym::Result))
-        });
-        CallKind::Normal { self_arg, desugaring, is_option_or_result }
+        CallKind::Normal { self_arg, desugaring, method_did }
     })
 }

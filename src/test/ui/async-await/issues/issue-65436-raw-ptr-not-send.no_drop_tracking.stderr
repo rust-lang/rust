@@ -13,14 +13,10 @@ note: future is not `Send` as this value is used across an await
   --> $DIR/issue-65436-raw-ptr-not-send.rs:18:35
    |
 LL |         bar(Foo(std::ptr::null())).await;
-   |                 ----------------  ^^^^^^ await occurs here, with `std::ptr::null()` maybe used later
-   |                 |
+   |                 ----------------  ^^^^^^- `std::ptr::null()` is later dropped here
+   |                 |                 |
+   |                 |                 await occurs here, with `std::ptr::null()` maybe used later
    |                 has type `*const u8` which is not `Send`
-note: `std::ptr::null()` is later dropped here
-  --> $DIR/issue-65436-raw-ptr-not-send.rs:18:41
-   |
-LL |         bar(Foo(std::ptr::null())).await;
-   |                                         ^
 help: consider moving this into a `let` binding to create a shorter lived borrow
   --> $DIR/issue-65436-raw-ptr-not-send.rs:18:13
    |

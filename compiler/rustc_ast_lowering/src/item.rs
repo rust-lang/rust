@@ -1139,7 +1139,7 @@ impl<'hir> LoweringContext<'_, 'hir> {
 
             let async_expr = this.make_async_expr(
                 CaptureBy::Value,
-                Some(fn_id),
+                fn_id,
                 closure_id,
                 None,
                 body.span,

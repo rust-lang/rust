@@ -4,13 +4,6 @@ error[E0107]: missing generics for struct `Box`
 LL | fn fn1(0: Box) {}
    |           ^^^ expected at least 1 generic argument
    |
-note: struct defined here, with at least 1 generic parameter: `T`
-  --> $SRC_DIR/alloc/src/boxed.rs:LL:COL
-   |
-LL | pub struct Box<
-   |            ^^^
-LL |     T: ?Sized,
-   |     -
 help: add missing generic argument
    |
 LL | fn fn1(0: Box<T>) {}
