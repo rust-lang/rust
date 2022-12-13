@@ -254,13 +254,6 @@ pub struct ExternCrateNotIdiomatic {
 }
 
 #[derive(Diagnostic)]
-#[diag(hir_analysis_expected_used_symbol)]
-pub struct ExpectedUsedSymbol {
-    #[primary_span]
-    pub span: Span,
-}
-
-#[derive(Diagnostic)]
 #[diag(hir_analysis_const_impl_for_non_const_trait)]
 pub struct ConstImplForNonConstTrait {
     #[primary_span]
