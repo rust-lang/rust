@@ -1036,7 +1036,7 @@ impl<'tcx> TypeErrCtxtExt<'tcx> for TypeErrCtxt<'_, 'tcx> {
                             && self.fallback_has_occurred
                         {
                             let predicate = trait_predicate.map_bound(|trait_pred| {
-                                trait_pred.with_self_type(self.tcx, self.tcx.mk_unit())
+                                trait_pred.with_self_ty(self.tcx, self.tcx.mk_unit())
                             });
                             let unit_obligation = obligation.with(tcx, predicate);
                             if self.predicate_may_hold(&unit_obligation) {
@@ -2085,8 +2085,8 @@ impl<'tcx> InferCtxtPrivExt<'tcx> for TypeErrCtxt<'_, 'tcx> {
         param_env: ty::ParamEnv<'tcx>,
         trait_ref_and_ty: ty::Binder<'tcx, (ty::TraitPredicate<'tcx>, Ty<'tcx>)>,
     ) -> PredicateObligation<'tcx> {
-        let trait_pred = trait_ref_and_ty
-            .map_bound(|(tr, new_self_ty)| tr.with_self_type(self.tcx, new_self_ty));
+        let trait_pred =
+            trait_ref_and_ty.map_bound(|(tr, new_self_ty)| tr.with_self_ty(self.tcx, new_self_ty));
 
         Obligation::new(self.tcx, ObligationCause::dummy(), param_env, trait_pred)
     }

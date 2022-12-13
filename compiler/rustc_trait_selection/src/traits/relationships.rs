@@ -26,7 +26,7 @@ pub(crate) fn update<'tcx, T>(
                 .kind()
                 .rebind(
                     // (*) binder moved here
-                    ty::PredicateKind::Clause(ty::Clause::Trait(tpred.with_self_type(infcx.tcx, new_self_ty)))
+                    ty::PredicateKind::Clause(ty::Clause::Trait(tpred.with_self_ty(infcx.tcx, new_self_ty)))
                 ),
         );
         // Don't report overflow errors. Otherwise equivalent to may_hold.

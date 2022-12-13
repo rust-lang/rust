@@ -542,7 +542,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                             ty::PredicateKind::Clause(ty::Clause::Trait(trait_pred)) => {
                                 assert_eq!(trait_pred.trait_ref.self_ty(), opaque_ty);
                                 ty::PredicateKind::Clause(ty::Clause::Trait(
-                                    trait_pred.with_self_type(self.tcx, ty),
+                                    trait_pred.with_self_ty(self.tcx, ty),
                                 ))
                             }
                             ty::PredicateKind::Clause(ty::Clause::Projection(mut proj_pred)) => {

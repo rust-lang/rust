@@ -823,7 +823,7 @@ impl<'tcx> TraitRef<'tcx> {
         TraitRef { def_id, substs }
     }
 
-    pub fn with_self_type(self, tcx: TyCtxt<'tcx>, self_ty: Ty<'tcx>) -> Self {
+    pub fn with_self_ty(self, tcx: TyCtxt<'tcx>, self_ty: Ty<'tcx>) -> Self {
         tcx.mk_trait_ref(
             self.def_id,
             [self_ty.into()].into_iter().chain(self.substs.iter().skip(1)),
