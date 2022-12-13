@@ -126,7 +126,7 @@ pub fn simplify_type<'tcx>(
             TreatParams::AsPlaceholder => Some(PlaceholderSimplifiedType),
             TreatParams::AsInfer => None,
         },
-        ty::Alias(ty::Opaque, ..) | ty::Alias(ty::Projection, _) => match treat_params {
+        ty::Alias(..) => match treat_params {
             // When treating `ty::Param` as a placeholder, projections also
             // don't unify with anything else as long as they are fully normalized.
             //
@@ -225,10 +225,7 @@ impl DeepRejectCtxt {
         match impl_ty.kind() {
             // Start by checking whether the type in the impl may unify with
             // pretty much everything. Just return `true` in that case.
-            ty::Param(_)
-            | ty::Alias(ty::Projection, _)
-            | ty::Error(_)
-            | ty::Alias(ty::Opaque, ..) => return true,
+            ty::Param(_) | ty::Error(_) | ty::Alias(..) => return true,
             // These types only unify with inference variables or their own
             // variant.
             ty::Bool
@@ -326,8 +323,6 @@ impl DeepRejectCtxt {
                 _ => false,
             },
 
-            ty::Alias(ty::Opaque, ..) => true,
-
             // Impls cannot contain these types as these cannot be named directly.
             ty::FnDef(..) | ty::Closure(..) | ty::Generator(..) => false,
 
@@ -347,7 +342,7 @@ impl DeepRejectCtxt {
             // projections can unify with other stuff.
             //
             // Looking forward to lazy normalization this is the safer strategy anyways.
-            ty::Alias(ty::Projection, _) => true,
+            ty::Alias(..) => true,
 
             ty::Error(_) => true,
 
