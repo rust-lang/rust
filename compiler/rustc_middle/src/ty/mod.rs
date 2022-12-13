@@ -1050,6 +1050,18 @@ impl<'tcx> PolyProjectionPredicate<'tcx> {
     }
 }
 
+impl<'tcx> ProjectionPredicate<'tcx> {
+    pub fn with_self_ty(self, tcx: TyCtxt<'tcx>, self_ty: Ty<'tcx>) -> Self {
+        Self {
+            projection_ty: tcx.mk_alias_ty(
+                self.projection_ty.def_id,
+                [self_ty.into()].into_iter().chain(self.projection_ty.substs.iter().skip(1)),
+            ),
+            ..self
+        }
+    }
+}
+
 pub trait ToPolyTraitRef<'tcx> {
     fn to_poly_trait_ref(&self) -> PolyTraitRef<'tcx>;
 }

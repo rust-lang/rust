@@ -2598,7 +2598,11 @@ impl<'tcx> TyCtxt<'tcx> {
     }
 
     #[inline]
-    pub fn mk_projection(self, item_def_id: DefId, substs: SubstsRef<'tcx>) -> Ty<'tcx> {
+    pub fn mk_projection(
+        self,
+        item_def_id: DefId,
+        substs: impl IntoIterator<Item = impl Into<GenericArg<'tcx>>>,
+    ) -> Ty<'tcx> {
         self.mk_ty(Alias(ty::Projection, self.mk_alias_ty(item_def_id, substs)))
     }
 

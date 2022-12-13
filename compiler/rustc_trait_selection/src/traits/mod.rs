@@ -425,13 +425,8 @@ pub fn fully_solve_bound<'tcx>(
     bound: DefId,
 ) -> Vec<FulfillmentError<'tcx>> {
     let tcx = infcx.tcx;
-    let trait_ref = ty::TraitRef { def_id: bound, substs: tcx.mk_substs_trait(ty, []) };
-    let obligation = Obligation {
-        cause,
-        recursion_depth: 0,
-        param_env,
-        predicate: ty::Binder::dummy(trait_ref).without_const().to_predicate(tcx),
-    };
+    let trait_ref = tcx.mk_trait_ref(bound, [ty]);
+    let obligation = Obligation::new(tcx, cause, param_env, ty::Binder::dummy(trait_ref));
 
     fully_solve_obligation(infcx, obligation)
 }

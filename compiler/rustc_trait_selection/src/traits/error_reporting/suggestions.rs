@@ -2975,7 +2975,7 @@ impl<'tcx> TypeErrCtxtExt<'tcx> for TypeErrCtxt<'_, 'tcx> {
                     self.tcx.mk_projection(
                         item_def_id,
                         // Future::Output has no substs
-                        self.tcx.mk_substs_trait(trait_pred.self_ty(), []),
+                        [trait_pred.self_ty()],
                     )
                 });
                 let InferOk { value: projection_ty, .. } =
