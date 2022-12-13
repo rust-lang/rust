@@ -27,6 +27,12 @@ use crate::fmt;
 use crate::ptr::{self, NonNull};
 
 // @FIXME Make this target-specific
+/// Metadata for `Vec/VecDeque/RawVec` to assist the allocator. Make sure its
+/// alignment is not bigger than alignment of `usize`. Otherwise, even if (a
+/// particular) `Vec/VecDeque/RawVec` generic instance doesn't use cooperation,
+/// it would increase size of that `Vec/VecDeque/RawVec` because of alignment
+/// rules! @FIXME compile time test that `GlobalCoAllocMeta` alignment <=
+/// `usize` alignment.
 #[unstable(feature = "global_co_alloc_meta", issue = "none")]
 #[allow(missing_debug_implementations)]
 #[derive(Clone, Copy)]
@@ -84,6 +90,9 @@ pub type SliceAndMetaResult = Result<SliceAndMeta, AllocError>;
 
 #[unstable(feature = "global_co_alloc", issue = "none")]
 pub const fn co_alloc_metadata_num_slots<A: Allocator>() -> usize {
+    if true {
+        panic!("FIXME - consider removing co_alloc_metadata_num_slots()");
+    }
     if A::IS_CO_ALLOCATOR { 1 } else { 0 }
 }
 
