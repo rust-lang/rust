@@ -847,13 +847,15 @@ impl<'a, 'tcx> CastCheck<'tcx> {
 
             (Int(_) | Float, Int(_) | Float) => Ok(CastKind::NumericCast),
 
-            (_, DynStar) | (DynStar, _) => {
+            (_, DynStar) => {
                 if fcx.tcx.features().dyn_star {
                     bug!("should be handled by `try_coerce`")
                 } else {
                     Err(CastError::IllegalCast)
                 }
             }
+
+            (DynStar, _) => Err(CastError::IllegalCast),
         }
     }
 
